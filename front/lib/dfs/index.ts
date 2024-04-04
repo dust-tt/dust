@@ -6,22 +6,16 @@ import { pipeline } from "stream/promises";
 
 import config from "@app/lib/dfs/config";
 
-type BucketKeyType = "PRIVATE_UPLOAD" | "PUBLIC_UPLOAD";
-
-const storage = new Storage({
-  keyFilename: config.getServiceAccount(),
-});
-
-const bucketKeysToBucket: Record<BucketKeyType, Bucket> = {
-  PRIVATE_UPLOAD: storage.bucket(config.getGcsPrivateUploadsBucket()),
-  PUBLIC_UPLOAD: storage.bucket(config.getGcsPublicUploadBucket()),
-};
-
 class DFS {
   private readonly bucket: Bucket;
+  private readonly storage: Storage;
 
-  constructor(bucketKey: BucketKeyType) {
-    this.bucket = bucketKeysToBucket[bucketKey];
+  constructor(bucketKey: string) {
+    this.storage = new Storage({
+      keyFilename: config.getServiceAccount(),
+    });
+
+    this.bucket = this.storage.bucket(bucketKey);
   }
 
   /**
@@ -87,6 +81,8 @@ class DFS {
   }
 }
 
-export const getPrivateUploadBucket = () => new DFS("PRIVATE_UPLOAD");
+export const getPrivateUploadBucket = () =>
+  new DFS(config.getGcsPrivateUploadsBucket());
 
-export const getPublicUploadBucket = () => new DFS("PUBLIC_UPLOAD");
+export const getPublicUploadBucket = () =>
+  new DFS(config.getGcsPublicUploadBucket());
