@@ -131,9 +131,9 @@ impl AI21LLM {
                 Err(ModelError {
                     message: format!("Ai21APIError: {}", error.detail),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 1,
                     }),
                 })
             }
@@ -141,7 +141,11 @@ impl AI21LLM {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
                     message: format!("Ai21APIError: {}", error.detail),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 })
             }
         }?;
