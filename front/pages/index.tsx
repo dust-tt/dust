@@ -19,19 +19,19 @@ import { useCookies } from "react-cookie";
 import { A } from "@app/components/home/contentComponents";
 import Particles, { particuleShapes } from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
+import { ForCustomerSupport } from "@app/components/home/website/ForCustomerSupport";
+import { ForMarketing } from "@app/components/home/website/ForMarketing";
+import { ForPeople } from "@app/components/home/website/ForPeople";
+import { Navigation } from "@app/components/home/website/Navigation";
+import { PricingPage } from "@app/components/home/website/PricingPage";
+import { ProductPage } from "@app/components/home/website/ProductPage";
+import { SecurityPage } from "@app/components/home/website/SecurityPage";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { trackPageView } from "@app/lib/amplitude/browser";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
-import { ForCustomerSupport } from "@app/pages/website/ForCustomerSupport";
-import { ForMarketing } from "@app/pages/website/ForMarketing";
-import { ForPeople } from "@app/pages/website/ForPeople";
-import { Navigation } from "@app/pages/website/Navigation";
-import { PricingPage } from "@app/pages/website/PricingPage";
-import { ProductPage } from "@app/pages/website/ProductPage";
-import { SecurityPage } from "@app/pages/website/SecurityPage";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

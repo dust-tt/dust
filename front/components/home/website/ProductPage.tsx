@@ -2,9 +2,9 @@ import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
 import { Grid, H1 } from "@app/components/home/contentComponents";
-import { ArtSection } from "@app/pages/website/Product/ArtSection";
-import { IntroSection } from "@app/pages/website/Product/IntroSection";
-import { TeamSection } from "@app/pages/website/Product/TeamSection";
+import { ArtSection } from "@app/components/home/website/Product/ArtSection";
+import { IntroSection } from "@app/components/home/website/Product/IntroSection";
+import { TeamSection } from "@app/components/home/website/Product/TeamSection";
 
 interface ProductPageProps {
   getReturnToUrl: (routerQuery: ParsedUrlQuery) => string;
