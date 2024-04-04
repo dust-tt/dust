@@ -756,3 +756,22 @@ export async function pauseIntercomConnector(connectorId: ModelId) {
 
   return new Ok(undefined);
 }
+
+export async function unpauseIntercomConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "[Intercom] Connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsUnpaused();
+
+  const r = await launchIntercomSyncWorkflow({
+    connectorId,
+  });
+  if (r.isErr()) {
+    return r;
+  }
+
+  return new Ok(undefined);
+}

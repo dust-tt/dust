@@ -230,6 +230,31 @@ export async function pauseNotionConnector(
   return new Ok(undefined);
 }
 
+export async function unpauseNotionConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+
+  if (!connector) {
+    logger.error(
+      {
+        connectorId,
+      },
+      "Notion connector not found."
+    );
+
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsUnpaused();
+  const r = await resumeNotionConnector(connector.id);
+  if (r.isErr()) {
+    return r;
+  }
+
+  return new Ok(undefined);
+}
+
 export async function resumeNotionConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {

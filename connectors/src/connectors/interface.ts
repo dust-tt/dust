@@ -91,6 +91,10 @@ export type ConnectorGarbageCollector = (
 export type ConnectorPauser = (
   connectorId: ModelId
 ) => Promise<Result<undefined, Error>>;
+export type ConnectorUnpauser = (
+  connectorId: ModelId
+) => Promise<Result<undefined, Error>>;
+
 export type ConnectorConfigurationSetter<T extends ConnectorConfiguration> = (
   connectorId: ModelId,
   configuration: T
