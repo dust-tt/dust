@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 
 import appConfig from "@app/lib/api/config";
-import { getPrivateUploadBucket } from "@app/lib/dfs";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { Message } from "@app/lib/models";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
