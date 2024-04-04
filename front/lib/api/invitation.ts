@@ -4,7 +4,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { sanitizeString } from "@dust-tt/types";
+import { Err, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 
@@ -19,11 +19,70 @@ function typeFromModel(
   invitation: MembershipInvitation
 ): MembershipInvitationType {
   return {
+    sId: invitation.sId,
     id: invitation.id,
     inviteEmail: invitation.inviteEmail,
     status: invitation.status,
     initialRole: invitation.initialRole,
   };
+}
+
+export async function getInvitation(
+  auth: Authenticator,
+  {
+    invitationId,
+  }: {
+    invitationId: string;
+  }
+): Promise<MembershipInvitationType | null> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isAdmin()) {
+    return null;
+  }
+
+  const invitation = await MembershipInvitation.findOne({
+    where: {
+      workspaceId: owner.id,
+      sId: invitationId,
+    },
+  });
+
+  if (!invitation) {
+    return null;
+  }
+
+  return typeFromModel(invitation);
+}
+
+export async function updateInvitationStatus(
+  auth: Authenticator,
+  {
+    invitation,
+    status,
+  }: {
+    invitation: MembershipInvitationType;
+    status: "pending" | "consumed" | "revoked";
+  }
+): Promise<MembershipInvitationType> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isAdmin()) {
+    throw new Error("Unauthorized attempt to update invitation status.");
+  }
+
+  const existingInvitation = await MembershipInvitation.findOne({
+    where: {
+      workspaceId: owner.id,
+      id: invitation.id,
+    },
+  });
+
+  if (!existingInvitation) {
+    throw new Err("Invitaion unexpectedly not found.");
+  }
+
+  await existingInvitation.update({ status });
+
+  return typeFromModel(existingInvitation);
 }
 
 export async function updateOrCreateInvitation(
@@ -56,41 +115,6 @@ export async function updateOrCreateInvitation(
       initialRole,
     })
   );
-}
-
-export async function updateInvitation(
-  owner: WorkspaceType,
-  id: number,
-  status: "pending" | "consumed" | "revoked"
-): Promise<MembershipInvitationType> {
-  const invitation = await MembershipInvitation.findOne({
-    where: {
-      id,
-      workspaceId: owner.id,
-    },
-  });
-
-  if (!invitation) {
-    throw new Error("Invitation not found");
-  }
-
-  await invitation.update({
-    status,
-  });
-
-  return typeFromModel(invitation);
-}
-
-export async function deleteInvitation(
-  owner: WorkspaceType,
-  id: number
-): Promise<void> {
-  await MembershipInvitation.destroy({
-    where: {
-      id,
-      workspaceId: owner.id,
-    },
-  });
 }
 
 export async function sendWorkspaceInvitationEmail(
@@ -146,6 +170,7 @@ export async function getPendingInvitations(
 
   return invitations.map((i) => {
     return {
+      sId: i.sId,
       id: i.id,
       status: i.status,
       inviteEmail: i.inviteEmail,
