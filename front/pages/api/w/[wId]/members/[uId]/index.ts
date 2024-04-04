@@ -74,7 +74,7 @@ async function handler(
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
         const revokeResult = await MembershipResource.revokeMembership({
-          userId: user.id,
+          user,
           workspace: owner,
         });
         if (revokeResult.isErr()) {

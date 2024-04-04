@@ -45,7 +45,7 @@ async function fetchRevokedWorkspace(
   // TODO(@fontanierh): this doesn't look very solid as it will start to behave
   // weirdly if a user has multiple revoked memberships.
   const memberships = await MembershipResource.getLatestMemberships({
-    userIds: [user.id],
+    users: [user],
   });
 
   if (!memberships.length) {

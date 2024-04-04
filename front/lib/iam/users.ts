@@ -3,6 +3,7 @@ import type { UserProviderType, UserType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
 import { trackSignup } from "@app/lib/amplitude/node";
+import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
@@ -94,7 +95,7 @@ export async function maybeUpdateFromExternalUser(
 
 export async function createOrUpdateUser(
   session: SessionWithUser
-): Promise<{ user: User; created: boolean }> {
+): Promise<{ user: UserType; created: boolean }> {
   const { user: externalUser } = session;
 
   const user = await fetchUserFromSession(session);
@@ -124,7 +125,7 @@ export async function createOrUpdateUser(
 
     await user.save();
 
-    return { user, created: false };
+    return { user: renderUserType(user), created: false };
   } else {
     const { firstName, lastName } = guessFirstandLastNameFromFullName(
       externalUser.name
@@ -154,6 +155,6 @@ export async function createOrUpdateUser(
       fullName: u.name,
     } satisfies UserType);
 
-    return { user: u, created: true };
+    return { user: renderUserType(u), created: true };
   }
 }

@@ -1,9 +1,8 @@
-import type { Result } from "@dust-tt/types";
+import type { Result, UserType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
 import { AuthFlowError } from "@app/lib/iam/errors";
-import type { User } from "@app/lib/models";
 import { MembershipInvitation } from "@app/lib/models";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
@@ -38,7 +37,7 @@ export async function getPendingMembershipInvitationForToken(
 
 export async function markInvitationAsConsumed(
   membershipInvite: MembershipInvitation,
-  user: User
+  user: UserType
 ) {
   membershipInvite.status = "consumed";
   membershipInvite.invitedUserId = user.id;

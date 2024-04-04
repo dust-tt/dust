@@ -51,8 +51,8 @@ async function handler(
 
   const workspace = await createWorkspace(session);
   await createAndLogMembership({
+    user,
     workspace,
-    userId: user.id,
     role: "admin",
   });
 

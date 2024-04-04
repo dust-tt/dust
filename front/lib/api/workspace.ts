@@ -105,11 +105,9 @@ export async function getMembers(
   {
     roles,
     activeOnly,
-    userIds,
   }: {
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
-    userIds?: ModelId[];
   } = {}
 ): Promise<UserTypeWithWorkspaces[]> {
   const owner = auth.workspace();
@@ -121,12 +119,10 @@ export async function getMembers(
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
-        userIds,
       })
     : await MembershipResource.getLatestMemberships({
         workspace: owner,
         roles,
-        userIds,
       });
 
   const users = await User.findAll({

@@ -5,6 +5,21 @@ import { User, UserMetadata } from "@app/lib/models";
 
 import { MembershipResource } from "../resources/membership_resource";
 
+export function renderUserType(user: User): UserType {
+  return {
+    sId: user.sId,
+    id: user.id,
+    createdAt: user.createdAt.getTime(),
+    provider: user.provider,
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+    image: user.imageUrl,
+  };
+}
+
 /**
  * This function checks that the user had at least one membership in the past for this workspace
  * otherwise returns null, preventing retrieving user information from their sId.
@@ -30,7 +45,7 @@ export async function getUserForWorkspace(
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
-      userId: user.id,
+      user: renderUserType(user),
       workspace: owner,
     });
 
@@ -38,18 +53,15 @@ export async function getUserForWorkspace(
     return null;
   }
 
-  return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: user.imageUrl,
-  };
+  return renderUserType(user);
+}
+
+export async function deleteUser(user: UserType): Promise<void> {
+  await User.destroy({
+    where: {
+      id: user.id,
+    },
+  });
 }
 
 /**

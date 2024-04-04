@@ -3,7 +3,6 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   DataSourceType,
-  ModelId,
   UserMessageType,
   UserType,
   WorkspaceType,
@@ -25,7 +24,7 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
-import { User, Workspace } from "@app/lib/models";
+import { Workspace } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 
@@ -52,12 +51,13 @@ export function getBackendClient() {
   return BACKEND_CLIENT;
 }
 
-export async function trackUserMemberships(userId: ModelId) {
+export async function trackUserMemberships(user: UserType) {
   const amplitude = getBackendClient();
-  const user = await User.findByPk(userId);
-  const memberships = await MembershipResource.getActiveMemberships({
-    userIds: [userId],
-  });
+  const memberships = user
+    ? await MembershipResource.getActiveMemberships({
+        users: [user],
+      })
+    : [];
   const groups: string[] = [];
   for (const membership of memberships) {
     const workspace = await Workspace.findByPk(membership.workspaceId);
@@ -70,7 +70,7 @@ export async function trackUserMemberships(userId: ModelId) {
   }
   if (groups.length > 0) {
     amplitude.client.setGroup(GROUP_TYPE, groups, {
-      user_id: `user-${userId}`,
+      user_id: `user-${user.id}`,
     });
   }
 }
