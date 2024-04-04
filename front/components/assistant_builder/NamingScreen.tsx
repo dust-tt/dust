@@ -32,7 +32,6 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { debounce } from "@app/lib/utils/debounce";
-import { as } from "fp-ts/lib/Option";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -414,19 +413,16 @@ async function getNamingSuggestions({
   instructions: string;
   description: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  return await fetchWithErr(
-    `/api/w/${owner.sId}/assistant/builder/suggestions`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        type: "name",
-        inputs: { instructions, description },
-      }),
-    }
-  );
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "name",
+      inputs: { instructions, description },
+    }),
+  });
 }
 
 async function getDescriptionSuggestions({
