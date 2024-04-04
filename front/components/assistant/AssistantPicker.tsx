@@ -13,7 +13,6 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ellipsis } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
