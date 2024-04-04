@@ -9,12 +9,14 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  getRecentPendingOrRevokedInvitations,
   sendWorkspaceInvitationEmail,
   updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -152,7 +154,39 @@ async function handler(
         });
       }
       const existingMembers = await getMembers(auth);
-
+      const unconsumedInvitations = await getRecentPendingOrRevokedInvitations(
+        auth
+      );
+      if (
+        unconsumedInvitations.length >=
+        MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Too many unconsumed invitations. Please ask your members to consume their invitations before sending more.`,
+          },
+        });
+      }
+      const emailsWithRecentUnconsumedInvitations = new Set(
+        unconsumedInvitations.map((i) => i.inviteEmail.toLowerCase().trim())
+      );
+      if (
+        invitationRequests.some((r) =>
+          emailsWithRecentUnconsumedInvitations.has(
+            r.email.toLowerCase().trim()
+          )
+        )
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Some of the emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+          },
+        });
+      }
       const invitationResults = await Promise.all(
         invitationRequests.map(async ({ email, role }) => {
           if (existingMembers.find((m) => m.email === email)) {

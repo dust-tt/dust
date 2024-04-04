@@ -53,6 +53,7 @@ import {
   PRO_PLAN_29_COST,
 } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isUpgraded, PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
@@ -484,6 +485,17 @@ function InviteEmailModal({
   async function handleSendInvitations(
     inviteEmailsList: string[]
   ): Promise<void> {
+    if (
+      inviteEmailsList.length > MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
+    ) {
+      sendNotification({
+        type: "error",
+        title: "Too many invitations",
+        description: `Your cannot send more than ${MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day.`,
+      });
+      return;
+    }
+
     const invitesByCase = {
       activeSameRole: members.filter((m) =>
         inviteEmailsList.find(
