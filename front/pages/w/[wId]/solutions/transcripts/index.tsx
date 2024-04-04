@@ -6,6 +6,7 @@ import {
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import Nango from '@nangohq/frontend';
+import type { drive_v3 } from "googleapis";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
@@ -58,13 +59,11 @@ export default function SolutionsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGDriveConnected, setIsGDriveConnected] = useState(false);
+  const [files, setFiles] = useState<drive_v3.Schema$File[] | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
 
   useEffect(() => {
-    // GET /api/w/%5BwId%5D/solutions/transcripts/connect 
-    // This is the API call that fetches the solution configuration
-    // for the transcripts summarizer solution.
-    void fetch(`/api/w/${owner.sId}/solutions/transcripts/connect?provider=google_drive`, {
+    void fetch(`/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -73,9 +72,12 @@ export default function SolutionsTranscriptsIndex({
       if (!response.ok) {
         throw new Error("Failed to fetch solution configuration");
       }
-      const { configuration } = await response.json();
+      const { configuration, files } = await response.json();
       if (configuration?.id) {
         setIsGDriveConnected(true);
+      }
+      if (files) {
+        setFiles(files);
       }
     }
     )
@@ -92,7 +94,7 @@ export default function SolutionsTranscriptsIndex({
         connectionId: nangoConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);
 
-      await fetch(`/api/w/${owner.sId}/solutions/transcripts/connect`, {
+      await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -155,6 +157,13 @@ export default function SolutionsTranscriptsIndex({
             }} 
           />
         </Page.Vertical>
+        <Page.Vertical align="stretch" gap="xl">
+          <Page.SectionHeader title="Available Transcripts" />
+          {files?.map((file) => (
+            <Page.P key={file.id}>{file.name}</Page.P>
+          ))}
+        </Page.Vertical>
+
       </AppLayout>
     </>
   );
