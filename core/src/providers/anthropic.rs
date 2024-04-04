@@ -541,11 +541,7 @@ impl AnthropicLLM {
                                     "Anthropic API Error: {}",
                                     event.error.to_string()
                                 ),
-                                retryable: Some(ModelErrorRetryOptions {
-                                    sleep: Duration::from_millis(500),
-                                    factor: 1,
-                                    retries: 1,
-                                }),
+                                retryable: None,
                             })?;
                             break 'stream;
                         }
@@ -557,14 +553,10 @@ impl AnthropicLLM {
                     }
                 },
                 Err(error) => {
-                    Err(ModelError {
-                        message: format!("Error streaming from Anthropic: {:?}", error),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 1,
-                            retries: 1,
-                        }),
-                    })?;
+                    Err(anyhow!(
+                        "Error streaming tokens from Anthropic: {:?}",
+                        error
+                    ))?;
                     break 'stream;
                 }
             }
