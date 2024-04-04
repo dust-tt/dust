@@ -130,6 +130,7 @@ export async function createOrUpdateUser(
     );
 
     const u = await User.create({
+      sId: generateModelSId(),
       auth0Sub: externalUser.sub,
       provider: mapAuth0ProviderToLegacy(session)?.provider,
       username: externalUser.nickname,
