@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsMeetingsTranscriptsConfiguration } from "@app/lib/models/solutions";
+import { getAuthObject } from "@app/lib/solutions/utils/helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
@@ -56,10 +57,10 @@ async function handler(
       );
       const accessToken = connectionDetail.credentials.raw.access_token;
       console.log('access token is: ', accessToken);
-      // const gDriveToken = await nango.getToken(transcriptsConfiguration.connectionId, "google_drive");
-      // console.log('GDRIVE TOKEN IS: ', gDriveToken);
 
-      // PULL FILES FROM GOOGLE DRIVE ROOT WITH CURRENT ACCESS TOKEN THAT START WITH "transcripts-" AND END WITH ".json"
+      const auth = getAuthObject(transcriptsConfiguration.connectionId, NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string);
+
+      console.log('auth is: ', auth);
       
 
 
