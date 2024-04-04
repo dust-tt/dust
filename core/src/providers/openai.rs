@@ -273,14 +273,18 @@ pub async fn streamed_completion(
                                             true => Err(ModelError {
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
-                                                    sleep: Duration::from_millis(100),
+                                                    sleep: Duration::from_millis(500),
                                                     factor: 2,
                                                     retries: 3,
                                                 }),
                                             })?,
                                             false => Err(ModelError {
                                                 message: error.message(),
-                                                retryable: None,
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(500),
+                                                    factor: 1,
+                                                    retries: 1,
+                                                }),
                                             })?,
                                         }
                                         break 'stream;
@@ -500,14 +504,18 @@ pub async fn completion(
                 true => Err(ModelError {
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 3,
                     }),
                 }),
                 false => Err(ModelError {
                     message: error.message(),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 }),
             }
         }
@@ -651,14 +659,18 @@ pub async fn streamed_chat_completion(
                                             true => Err(ModelError {
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
-                                                    sleep: Duration::from_millis(100),
+                                                    sleep: Duration::from_millis(500),
                                                     factor: 2,
                                                     retries: 3,
                                                 }),
                                             })?,
                                             false => Err(ModelError {
                                                 message: error.message(),
-                                                retryable: None,
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(500),
+                                                    factor: 1,
+                                                    retries: 1,
+                                                }),
                                             })?,
                                         }
                                         break 'stream;
@@ -982,14 +994,18 @@ pub async fn chat_completion(
                 true => Err(ModelError {
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 3,
                     }),
                 }),
                 false => Err(ModelError {
                     message: error.message(),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 }),
             }
         }
@@ -1078,14 +1094,18 @@ pub async fn embed(
                 true => Err(ModelError {
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 3,
                     }),
                 }),
                 false => Err(ModelError {
                     message: error.message(),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 }),
             }
         }

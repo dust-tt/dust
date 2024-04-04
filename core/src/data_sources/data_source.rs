@@ -1310,7 +1310,7 @@ impl DataSource {
         Ok(document)
     }
 
-    const MAX_TOP_K_SEARCH: usize = 128;
+    const MAX_TOP_K_SEARCH: usize = 1024;
 
     pub async fn search(
         &self,

@@ -58,9 +58,9 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
             Err(ModelError {
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
-                    sleep: Duration::from_millis(2000),
+                    sleep: Duration::from_millis(500),
                     factor: 2,
-                    retries: 8,
+                    retries: 3,
                 }),
             })
         }
@@ -68,7 +68,11 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
             let error: Error = serde_json::from_slice(c)?;
             Err(ModelError {
                 message: format!("CohereAPIError: {}", error.message),
-                retryable: None,
+                retryable: Some(ModelErrorRetryOptions {
+                    sleep: Duration::from_millis(500),
+                    factor: 1,
+                    retries: 1,
+                }),
             })
         }
     }?;
@@ -105,9 +109,9 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
             Err(ModelError {
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
-                    sleep: Duration::from_millis(2000),
+                    sleep: Duration::from_millis(500),
                     factor: 2,
-                    retries: 8,
+                    retries: 3,
                 }),
             })
         }
@@ -115,7 +119,11 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
             let error: Error = serde_json::from_slice(c)?;
             Err(ModelError {
                 message: format!("CohereAPIError: {}", error.message),
-                retryable: None,
+                retryable: Some(ModelErrorRetryOptions {
+                    sleep: Duration::from_millis(500),
+                    factor: 1,
+                    retries: 1,
+                }),
             })
         }
     }?;
@@ -226,9 +234,9 @@ impl CohereLLM {
                 Err(ModelError {
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 3,
                     }),
                 })
             }
@@ -450,9 +458,9 @@ impl CohereEmbedder {
                 Err(ModelError {
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(2000),
+                        sleep: Duration::from_millis(500),
                         factor: 2,
-                        retries: 8,
+                        retries: 3,
                     }),
                 })
             }
@@ -460,7 +468,11 @@ impl CohereEmbedder {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
                     message: format!("CohereAPIError: {}", error.message),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 })
             }
         }?;

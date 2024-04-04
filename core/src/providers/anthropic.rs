@@ -2,7 +2,7 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
     ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
 };
-use crate::providers::provider::{ModelError, Provider, ProviderID};
+use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::run::Credentials;
 use crate::utils;
@@ -280,7 +280,11 @@ impl AnthropicLLM {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
                     message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 })
             }
         }?;
@@ -537,7 +541,11 @@ impl AnthropicLLM {
                                     "Anthropic API Error: {}",
                                     event.error.to_string()
                                 ),
-                                retryable: None,
+                                retryable: Some(ModelErrorRetryOptions {
+                                    sleep: Duration::from_millis(500),
+                                    factor: 1,
+                                    retries: 1,
+                                }),
                             })?;
                             break 'stream;
                         }
@@ -750,7 +758,11 @@ impl AnthropicLLM {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
                     message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: None,
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
                 })
             }
         }?;
