@@ -340,6 +340,10 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         An initial user message object. See "Create a New User Message" endpoint body attributes for
         more details.
       </Property>
+      <Property name="isSync" type="boolean">
+        When set to true, the conversation will be created synchronously and the response will
+        include the full generation data. Default value is false.
+      </Property>
     </Properties>
 
   </Col>
@@ -465,6 +469,15 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         `timezone` (in the format of Javascript `Intl.DateTimeFormat().resolvedOptions().timeZone`,
         eg: `Europe/Paris`), and `username`. Optional attributes are `email`, `fullName` and
         `profilePictureUrl`.
+      </Property>
+    </Properties>
+
+    ### Optional JSON body attributes
+
+    <Properties>
+      <Property name="isSync" type="boolean">
+        When set to true, the message will be posted synchronously and the response will
+        include agentMessages. Default value is false.
       </Property>
     </Properties>
 
