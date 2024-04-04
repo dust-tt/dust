@@ -1,44 +1,36 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
-import { Grid, H2, P, Strong } from "@app/components/home/contentComponents";
-
-const defaultFlexClasses = "flex flex-col gap-4";
-
-import { ImgBlock } from "@app/components/home/contentBlocks";
+import { ImgBlock } from "@app/components/home/components/contentBlocks";
+import {
+  Grid,
+  H2,
+  P,
+  Strong,
+} from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function ArtSection() {
+export function FutureSection() {
   return (
     <>
       <Grid>
         <div
           className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
+            "col-span-12 flex flex-col gap-8",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-10 xl:col-start-2"
+            "xl:col-span-8 xl:col-start-2"
           )}
         >
           <H2 className="text-pink-500">
-            Future-Proof your AI&nbsp;Strategy
+            Future-Proof
             <br />
-            <span className="text-pink-200">
-              with a Model-Agnostic, modular&nbsp;solution.
-            </span>
+            <span className="text-pink-200">your AI&nbsp;Strategy</span>
           </H2>
           <P size="lg">
-            <Strong>
-              Dust is&nbsp; exceptionally modular and&nbsp;adaptable,
-            </Strong>
-            <br />
-            tailoring to&nbsp;your unique requirements.
-          </P>
-          <P size="lg">
             Continuously&nbsp;evolving to&nbsp;meet
-            your&nbsp;changing&nbsp;needs, Dust offers access the&nbsp;market's
-            leading&nbsp;models and support of&nbsp;multiple sources
-            of&nbsp;data.
+            your&nbsp;changing&nbsp;needs, Dust&nbsp;offers access
+            the&nbsp;market's leading&nbsp;models and support of&nbsp;multiple
+            sources of&nbsp;data.
           </P>
         </div>
         <ImgBlock

@@ -1,8 +1,11 @@
 import React from "react";
 
-import { avatars, DroidItem } from "@app/components/home/carousel";
-import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
-import { Grid, H1 } from "@app/components/home/contentComponents";
+import { avatars, DroidItem } from "@app/components/home/components/carousel";
+import {
+  Block,
+  HeaderContentBlock,
+} from "@app/components/home/components/contentBlocks";
+import { Grid, H1 } from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
@@ -29,20 +32,7 @@ export function ForMarketing() {
           </>
         }
       />
-      {/* <SimpleSlider slides={marketingSlides} /> */}
 
-      <Grid>
-        <H1 className="col-span-12 text-center text-white">
-          Links to Blog articles around Marketing use cases
-        </H1>
-      </Grid>
-      <Grid>
-        <H1 className="col-span-12 text-center text-white">
-          Structured referal specific to Marketing
-          <br />
-          (post from our users, quotes)
-        </H1>
-      </Grid>
       <Grid>
         <div
           className={classNames(
@@ -100,6 +90,18 @@ export function ForMarketing() {
             </Block>
           </div>
         </div>
+      </Grid>
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Links to Blog articles around Marketing use cases
+        </H1>
+      </Grid>
+      <Grid>
+        <H1 className="col-span-12 text-center text-white">
+          Structured referal specific to Marketing
+          <br />
+          (post from our users, quotes)
+        </H1>
       </Grid>
     </>
   );

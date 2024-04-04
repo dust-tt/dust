@@ -9,7 +9,7 @@ import {
   H4,
   H5,
   P,
-} from "@app/components/home/contentComponents";
+} from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
@@ -121,10 +121,10 @@ interface BlockProps {
 }
 
 const blockColors = {
-  pink: { block: "bg-pink-300/80", title: "text-pink-800" },
-  sky: { block: "bg-sky-300/80", title: "text-sky-800" },
-  emerald: { block: "bg-emerald-300/80", title: "text-emerald-800" },
-  amber: { block: "bg-amber-300/80", title: "text-amber-800" },
+  pink: { block: "bg-pink-300", title: "text-pink-700" },
+  sky: { block: "bg-sky-300", title: "text-sky-700" },
+  emerald: { block: "bg-emerald-300", title: "text-emerald-700" },
+  amber: { block: "bg-amber-300", title: "text-amber-700" },
 };
 
 export const Block = ({ children, title, color }: BlockProps) => {

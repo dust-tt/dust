@@ -1,7 +1,11 @@
 import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import React from "react";
 
-import { A, H4, Strong } from "@app/components/home/contentComponents";
+import {
+  A,
+  H4,
+  Strong,
+} from "@app/components/home/components/contentComponents";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -9,7 +13,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-} from "@app/components/home/NavigationMenu";
+} from "@app/components/home/components/NavigationMenu";
 
 const solutions: { title: string; target: string }[] = [
   {
@@ -118,7 +122,7 @@ export function Navigation({
         <NavigationMenuItem>
           <NavigationMenuLink onClick={() => onPageChange("product")}>
             <A
-              variant={currentPage === "product" ? "primary" : "tertiary"}
+              variant={currentPage === "product" ? "secondary" : "tertiary"}
               className="pr-2"
             >
               Product
@@ -129,7 +133,7 @@ export function Navigation({
           <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
-              <H4 className="col-span-2 text-emerald-400">Dust for…</H4>
+              <H4 className="col-span-2 text-white">Dust for…</H4>
               {solutions.map((solution, index) => (
                 <ListItem
                   key={index}
@@ -148,7 +152,7 @@ export function Navigation({
           <NavigationMenuTrigger>Developpers</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
-              <H4 className="col-span-2 text-amber-400">Build with Dust</H4>
+              <H4 className="col-span-2 text-white">Build with Dust</H4>
               {devs.map((dev, index) => (
                 <ListItem
                   key={index}
@@ -168,7 +172,7 @@ export function Navigation({
         <NavigationMenuItem>
           <NavigationMenuLink onClick={() => onPageChange("pricing")}>
             <A
-              variant={currentPage === "pricing" ? "primary" : "tertiary"}
+              variant={currentPage === "pricing" ? "secondary" : "tertiary"}
               className="pr-2"
             >
               Pricing
@@ -178,7 +182,7 @@ export function Navigation({
         <NavigationMenuItem>
           <NavigationMenuLink onClick={() => onPageChange("security")}>
             <A
-              variant={currentPage === "pricing" ? "primary" : "tertiary"}
+              variant={currentPage === "security" ? "secondary" : "tertiary"}
               className="pr-2"
             >
               Security
@@ -188,8 +192,8 @@ export function Navigation({
         <NavigationMenuItem>
           <NavigationMenuTrigger>More</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="grid gap-4 p-6 pb-8 lg:w-[580px] lg:grid-cols-3">
-              <H4 className="col-span-3 text-pink-400">All about Dust</H4>
+            <div className="grid gap-4 p-6 pb-8 text-white lg:w-[580px] lg:grid-cols-3">
+              <H4 className="col-span-3 text-white">All about Dust</H4>
 
               <ul className="flex flex-col gap-4">
                 <Strong>Careers</Strong>

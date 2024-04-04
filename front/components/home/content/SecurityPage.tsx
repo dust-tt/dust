@@ -1,6 +1,11 @@
 import React from "react";
 
-import { Grid, H2, P, Strong } from "@app/components/home/contentComponents";
+import {
+  Grid,
+  H2,
+  P,
+  Strong,
+} from "@app/components/home/components/contentComponents";
 
 export function SecurityPage() {
   return (

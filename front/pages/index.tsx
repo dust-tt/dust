@@ -16,16 +16,18 @@ import type { ParsedUrlQuery } from "querystring";
 import React, { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
-import { A } from "@app/components/home/contentComponents";
-import Particles, { particuleShapes } from "@app/components/home/particles";
-import ScrollingHeader from "@app/components/home/scrollingHeader";
-import { ForCustomerSupport } from "@app/components/home/website/ForCustomerSupport";
-import { ForMarketing } from "@app/components/home/website/ForMarketing";
-import { ForPeople } from "@app/components/home/website/ForPeople";
-import { Navigation } from "@app/components/home/website/Navigation";
-import { PricingPage } from "@app/components/home/website/PricingPage";
-import { ProductPage } from "@app/components/home/website/ProductPage";
-import { SecurityPage } from "@app/components/home/website/SecurityPage";
+import { A } from "@app/components/home/components/contentComponents";
+import Particles, {
+  particuleShapes,
+} from "@app/components/home/components/particles";
+import ScrollingHeader from "@app/components/home/components/scrollingHeader";
+import { ForCustomerSupport } from "@app/components/home/content/ForCustomerSupport";
+import { ForMarketing } from "@app/components/home/content/ForMarketing";
+import { ForPeople } from "@app/components/home/content/ForPeople";
+import { Navigation } from "@app/components/home/content/Navigation";
+import { PricingPage } from "@app/components/home/content/PricingPage";
+import { ProductPage } from "@app/components/home/content/ProductPage";
+import { SecurityPage } from "@app/components/home/content/SecurityPage";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { trackPageView } from "@app/lib/amplitude/browser";
 import { getSession } from "@app/lib/auth";
@@ -77,6 +79,7 @@ export default function Home({
 
   const handlePageChange = async (page: string) => {
     await router.push(`/?${page}`, undefined, { shallow: true });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);

@@ -2,7 +2,7 @@ import { ChevronDownIcon, Icon } from "@dust-tt/sparkle";
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
 import * as React from "react";
 
-import { A } from "@app/components/home/contentComponents";
+import { A } from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const NavigationMenu = React.forwardRef<

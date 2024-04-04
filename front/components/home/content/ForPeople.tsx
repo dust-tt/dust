@@ -1,8 +1,16 @@
 import React from "react";
 
-import { avatars, DroidItem } from "@app/components/home/carousel";
-import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
-import { Grid, H1, H2, P } from "@app/components/home/contentComponents";
+import { avatars, DroidItem } from "@app/components/home/components/carousel";
+import {
+  Block,
+  HeaderContentBlock,
+} from "@app/components/home/components/contentBlocks";
+import {
+  Grid,
+  H1,
+  H2,
+  P,
+} from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";

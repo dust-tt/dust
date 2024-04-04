@@ -9,7 +9,7 @@ import {
   H4,
   P,
   Strong,
-} from "@app/components/home/contentComponents";
+} from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface IntroSectionProps {
@@ -30,7 +30,7 @@ export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
           )}
         >
           <div className="flex flex-col gap-12">
-            <H1 className="text-slate-100">
+            <H1 className="text-red-300">
               Cracking
               <br />
               <span className="text-red-400">team AI productivity</span>

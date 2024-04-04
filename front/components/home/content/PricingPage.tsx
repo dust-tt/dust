@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
-import { Grid, H2 } from "@app/components/home/contentComponents";
+import { Grid, H2 } from "@app/components/home/components/contentComponents";
 import { PricePlans } from "@app/components/PlansTables";
 
 interface PricingPageProps {

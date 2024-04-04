@@ -10,7 +10,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { A } from "@app/components/home/contentComponents";
+import { A } from "@app/components/home/components/contentComponents";
 import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
