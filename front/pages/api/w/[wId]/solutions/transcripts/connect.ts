@@ -1,7 +1,8 @@
 import type {
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { Nango } from "@nangohq/node";
+import type { drive_v3 } from "googleapis";
+import { google } from "googleapis";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -10,14 +11,15 @@ import { getGoogleAuthObject } from "@app/lib/solutions/utils/helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
-  configuration: SolutionsTranscriptsConfiguration | null;
+  configuration: SolutionsTranscriptsConfiguration | null,
+  files: drive_v3.Schema$File[] | null
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>>
 ): Promise<void> {
-  const { NANGO_SECRET_KEY, NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
+  const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -46,13 +48,19 @@ async function handler(
       })
 
       if (!transcriptsConfiguration) {
-        return res.status(200).json({ configuration: null });
+        return res.status(200).json({ configuration: null, files: null});
       }
 
       const auth = await getGoogleAuthObject(NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string, transcriptsConfiguration.connectionId)
       console.log('ACCESS TOKEN', auth.credentials.access_token)
 
-      return res.status(200).json({ configuration: transcriptsConfiguration });
+      // list google drive files here that start with "Transcript -"
+      const files = await google.drive({ version: "v3", auth }).files.list({
+        q: "name contains '- Transcript'",
+        fields: "files(id, name)",
+      });
+
+      return res.status(200).json({ configuration: transcriptsConfiguration, files: files.data.files ?? null });
 
     case "POST":
       const { connectionId, provider } = req.body;
@@ -72,7 +80,7 @@ async function handler(
         provider,
       });
 
-      res.status(200).json({ configuration: transcriptsConfigurationPost});
+      res.status(200).json({ configuration: transcriptsConfigurationPost, files: null });
 
       return;
 
