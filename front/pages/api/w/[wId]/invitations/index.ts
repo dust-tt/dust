@@ -158,12 +158,14 @@ async function handler(
         });
       }
       const existingMembers = await getMembers(auth);
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
       const unconsumedInvitations = await MembershipInvitation.findAll({
         where: {
           workspaceId: owner.id,
           status: ["pending", "revoked"],
           createdAt: {
-            [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0)),
+            [Op.gte]: startOfDay,
           },
         },
       });
