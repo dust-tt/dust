@@ -25,7 +25,6 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import {
-  ActiveSubscriptionPlanLimitationsTable,
   ActiveSubscriptionTable,
   SubscriptionsDataTable,
 } from "@app/components/poke/subscriptions/table";
