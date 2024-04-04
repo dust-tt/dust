@@ -9,7 +9,7 @@ import {
   MistralLogo,
   OpenaiLogo,
   Page,
-  Spinner,
+  Spinner2,
   TextArea,
 } from "@dust-tt/sparkle";
 import type {
@@ -335,7 +335,7 @@ function Suggestions({
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-base font-bold text-element-800">
           <div>Tips</div>
-          {loading && <Spinner size="sm" />}
+          {loading && <Spinner2 size="sm" />}
         </div>
         <div>
           {(() => {
