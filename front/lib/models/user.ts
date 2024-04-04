@@ -17,6 +17,7 @@ export class User extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
   declare auth0Sub: string | null;
   declare provider: UserProviderType;
   declare providerId: string | null;
@@ -46,6 +47,10 @@ User.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     provider: {
       type: DataTypes.STRING,
@@ -97,6 +102,7 @@ User.init(
       { fields: ["username"] },
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
+      { unique: true, fields: ["sId"] },
     ],
   }
 );

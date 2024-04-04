@@ -6,6 +6,7 @@ import { trackSignup } from "@app/lib/amplitude/node";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
+import { generateModelSId } from "@app/lib/utils";
 
 interface LegacyProviderInfo {
   provider: UserProviderType;
@@ -130,6 +131,7 @@ export async function createOrUpdateUser(
     );
 
     const u = await User.create({
+      sId: generateModelSId(),
       auth0Sub: externalUser.sub,
       provider: mapAuth0ProviderToLegacy(session)?.provider,
       username: externalUser.nickname,
