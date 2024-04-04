@@ -17,10 +17,10 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   content,
 }) => {
   return (
-    <div className="col-span-4 flex flex-col gap-4 p-4">
+    <div className="col-span-4 flex flex-col gap-6">
       {children ? children : null}
       <H4 className="text-white">{title}</H4>
-      <P size="md">{content}</P>
+      <P size="sm">{content}</P>
     </div>
   );
 };

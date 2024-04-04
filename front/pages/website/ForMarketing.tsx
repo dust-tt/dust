@@ -1,11 +1,8 @@
 import React from "react";
 
-import SimpleSlider, {
-  avatars,
-  DroidItem,
-} from "@app/components/home/carousel";
+import { avatars, DroidItem } from "@app/components/home/carousel";
 import { Block, HeaderContentBlock } from "@app/components/home/contentBlocks";
-import { Grid, H1, H2, H4, P } from "@app/components/home/contentComponents";
+import { Grid, H1 } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";

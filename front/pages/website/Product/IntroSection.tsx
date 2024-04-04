@@ -1,4 +1,6 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
 import {
@@ -10,7 +12,12 @@ import {
 } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function IntroSection() {
+interface IntroSectionProps {
+  getReturnToUrl: (routerQuery: ParsedUrlQuery) => string;
+}
+
+export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
+  const router = useRouter();
   return (
     <>
       <Grid className="min-h-[60vh]" verticalAlign="center">
@@ -19,7 +26,7 @@ export function IntroSection() {
             "flex flex-col justify-end justify-center gap-16 sm:gap-24",
             "col-span-12",
             "xl:col-span-5",
-            "2xl:col-span-6"
+            "2xl:col-start-2"
           )}
         >
           <div className="flex flex-col gap-12">
@@ -76,75 +83,31 @@ export function IntroSection() {
             </Div3D>
           </Hover3D>
         </div>
-      </Grid>
-      <Grid>
-        <P
-          dotCSS="text-amber-300"
-          shape="triangle"
-          className={classNames(
-            "col-span-10 col-start-3",
-            "sm:col-span-6 sm:col-start-auto",
-            "lg:col-span-5",
-            "xl:col-span-3"
-          )}
-        >
-          Connect <Strong>your team’s data</Strong> and{" "}
-          <Strong>break down knowledge silos</Strong>{" "}
-          with&nbsp;context&#8209;aware assistants.
-        </P>
-        <P
-          dotCSS="text-red-400"
-          shape="rectangle"
-          className={classNames(
-            "col-span-9",
-            "sm:col-span-6",
-            "lg:col-span-5",
-            "xl:col-span-3"
-          )}
-        >
-          Empower your teams with{" "}
-          <Strong>assistants tailored to&nbsp;their needs</Strong> on concrete
-          use&nbsp;cases.
-        </P>
-        <P
-          dotCSS="text-sky-400"
-          shape="circle"
-          className={classNames(
-            "col-span-9",
-            "sm:col-span-6",
-            "lg:col-span-5",
-            "xl:col-span-3"
-          )}
-        >
-          Effortlessly <Strong>switch to the most advanced AI models</Strong>{" "}
-          without touching your workflows. Dust is model&nbsp;agnostic.
-        </P>
-        <P
-          dotCSS="text-emerald-400"
-          shape="hexagon"
-          className={classNames(
-            "col-span-10 col-start-3",
-            "sm:col-span-6 sm:col-start-auto",
-            "lg:col-span-5",
-            "xl:col-span-3"
-          )}
-        >
-          <Strong>Control data access granularly</Strong> with a{" "}
-          <Strong>safe and privacy-obsessed</Strong> application.
-        </P>
-      </Grid>
-      <Grid className="text-xl text-white">
-        <div className="col-span-2 col-start-3">
+        <div className="col-span-12 grid grid grid-cols-4 gap-12">
           <img src="/static/landing/logos/alan.png" />
-        </div>
-        <div className="col-span-2">
           <img src="/static/landing/logos/qonto.png" />
-        </div>
-        <div className="col-span-2">
           <img src="/static/landing/logos/pennylane.png" />
-        </div>
-        <div className="col-span-2">
           <img src="/static/landing/logos/payfit.png" />
+        </div>
+        <div className="col-span-8 col-start-3 grid grid grid-cols-2 gap-12">
+          <P dotCSS="text-amber-300" shape="triangle">
+            Connect <Strong>your team’s data</Strong> and{" "}
+            <Strong>break down knowledge silos</Strong>{" "}
+            with&nbsp;context&#8209;aware assistants.
+          </P>
+          <P dotCSS="text-red-400" shape="rectangle">
+            Empower your teams with{" "}
+            <Strong>assistants tailored to&nbsp;their needs</Strong> on concrete
+            use&nbsp;cases.
+          </P>
+          <P dotCSS="text-sky-400" shape="circle">
+            Effortlessly <Strong>switch to the most advanced AI models</Strong>{" "}
+            without touching your workflows. Dust is model&nbsp;agnostic.
+          </P>
+          <P dotCSS="text-emerald-400" shape="hexagon">
+            <Strong>Control data access granularly</Strong> with a{" "}
+            <Strong>safe and privacy-obsessed</Strong> application.
+          </P>
         </div>
       </Grid>
     </>

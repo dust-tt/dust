@@ -182,7 +182,9 @@ export function TeamSection() {
               workflow.
             </>
           }
-          content={<>Slack integration, Dust API and Dust Apps.</>}
+          content={
+            <>Slack integration, Dust's&nbsp;API and&nbsp;Dust&nbsp;Apps.</>
+          }
         >
           <Hover3D
             depth={-20}

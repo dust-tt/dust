@@ -10,7 +10,6 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@app/components/home/NavigationMenu";
-import { classNames } from "@app/lib/utils";
 
 const solutions: { title: string; target: string }[] = [
   {
@@ -53,8 +52,8 @@ const devs: { title: string; target: string }[] = [
     target: "dust_apps",
   },
   {
-    target: "https://docs.dust.tt",
     title: "Platform Doc",
+    target: "https://docs.dust.tt",
   },
   {
     title: "Github Repo",
@@ -62,39 +61,48 @@ const devs: { title: string; target: string }[] = [
   },
 ];
 
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a"> & { target?: string }
->(({ className, title, onClick, target }, ref) => {
-  const isExternalLink = target && target.startsWith("http");
+interface ListItemProps extends React.ComponentPropsWithoutRef<"a"> {
+  target: string;
+  title: string;
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => Promise<void>;
+}
 
-  const handleClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!isExternalLink && onClick) {
-      event.preventDefault();
-      await onClick(event);
-    }
-  };
+const ListItem = React.forwardRef<React.ElementRef<"a">, ListItemProps>(
+  ({ title, onClick, target }, ref) => {
+    const isExternalLink = target && target.startsWith("http");
+    console.log("isExternalLink", isExternalLink);
 
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={classNames(className ? className : "")}
-          onClick={handleClick}
-          href={isExternalLink ? target : `/?${target}`}
-          target={isExternalLink ? "_blank" : undefined}
-          rel={isExternalLink ? "noopener noreferrer" : undefined}
-        >
-          <div className="flex items-center gap-1.5 text-slate-50">
-            <Icon visual={ChevronRightIcon} size="md" />
-            <A variant="tertiary">{title}</A>
-          </div>
-        </a>
-      </NavigationMenuLink>
-    </li>
-  );
-});
+    const handleClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!isExternalLink && onClick) {
+        event.preventDefault();
+        await onClick(event);
+      }
+    };
+
+    return (
+      <li>
+        <NavigationMenuLink asChild>
+          <a
+            ref={ref}
+            onClick={handleClick}
+            href={isExternalLink ? target : `/?${target}`}
+            target={isExternalLink ? "_blank" : undefined}
+            rel={isExternalLink ? "noopener noreferrer" : undefined}
+          >
+            <div className="s-flex s-items-center s-gap-1.5 s-text-slate-50">
+              <Icon
+                className="text-slate-500"
+                visual={ChevronRightIcon}
+                size="md"
+              />
+              <A variant="tertiary">{title}</A>
+            </div>
+          </a>
+        </NavigationMenuLink>
+      </li>
+    );
+  }
+);
 ListItem.displayName = "ListItem";
 
 export function Navigation({
@@ -122,10 +130,11 @@ export function Navigation({
           <NavigationMenuContent>
             <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
               <H4 className="col-span-2 text-emerald-400">Dust for…</H4>
-              {solutions.map((solution) => (
+              {solutions.map((solution, index) => (
                 <ListItem
-                  key={solution.title}
+                  key={index}
                   title={solution.title}
+                  target={solution.target}
                   onClick={async (event) => {
                     event.preventDefault();
                     await onPageChange(solution.target);
@@ -140,9 +149,9 @@ export function Navigation({
           <NavigationMenuContent>
             <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
               <H4 className="col-span-2 text-amber-400">Build with Dust</H4>
-              {devs.map((dev) => (
+              {devs.map((dev, index) => (
                 <ListItem
-                  key={dev.title}
+                  key={index}
                   title={dev.title}
                   target={dev.target}
                   onClick={async (event) => {
@@ -185,33 +194,36 @@ export function Navigation({
               <ul className="flex flex-col gap-4">
                 <Strong>Careers</Strong>
                 <ListItem
-                  href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
+                  target="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
                   title="Jobs"
                 />
                 <ListItem
-                  href="https://www.linkedin.com/company/dust-tt/"
+                  target="https://www.linkedin.com/company/dust-tt/"
                   title="LinkedIn"
                 />
               </ul>
               <ul className="flex flex-col gap-4">
                 <Strong>About</Strong>
-                <ListItem href="https://blog.dust.tt/" title="Blog" />
-                <ListItem href="https://x.com/dust4ai" title="@dust4ai" />
-                <ListItem href="https://github.com/dust-tt" title="GitHub" />
+                <ListItem target="https://blog.dust.tt/" title="Blog" />
+                <ListItem target="https://x.com/dust4ai" title="@dust4ai" />
+                <ListItem target="https://github.com/dust-tt" title="GitHub" />
               </ul>
               <ul className="flex flex-col gap-4">
                 <Strong>Legal</Strong>
                 <ListItem
-                  href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
+                  target="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
                   title="Privacy Policy"
                 />
-                <ListItem href="/terms" title="Terms of Use" />
                 <ListItem
-                  href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
+                  target="https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb"
+                  title="Terms of Use"
+                />
+                <ListItem
+                  target="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
                   title="Legal Notice"
                 />
                 <ListItem
-                  href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
+                  target="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
                   title="Cookie Notice"
                 />
               </ul>

@@ -219,7 +219,7 @@ export default function Home({
           {(() => {
             switch (currentPage) {
               case "product":
-                return <ProductPage />;
+                return <ProductPage getReturnToUrl={getReturnToUrl} />;
               case "pricing":
                 return <PricingPage />;
               case "security":
@@ -245,7 +245,7 @@ export default function Home({
               // case "for_it":
               //   return <ITSecurityPage />;
               default:
-                return <ProductPage />;
+                return <ProductPage getReturnToUrl={getReturnToUrl} />;
             }
           })()}
           <CookieBanner

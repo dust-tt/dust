@@ -1,27 +1,7 @@
-import {
-  AnthropicWhiteLogo,
-  Div3D,
-  DriveLogo,
-  GithubLogo,
-  GoogleLogo,
-  Hover3D,
-  MicrosoftLogo,
-  MistralLogo,
-  MoreIcon,
-  NotionLogo,
-  OpenaiWhiteLogo,
-  SalesforceLogo,
-  SlackLogo,
-} from "@dust-tt/sparkle";
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
-import {
-  Grid,
-  H2,
-  P,
-  ReactiveIcon,
-  Strong,
-} from "@app/components/home/contentComponents";
+import { Grid, H2, P, Strong } from "@app/components/home/contentComponents";
 
 const defaultFlexClasses = "flex flex-col gap-4";
 
@@ -57,7 +37,8 @@ export function ArtSection() {
           <P size="lg">
             Continuously&nbsp;evolving to&nbsp;meet
             your&nbsp;changing&nbsp;needs, Dust offers access the&nbsp;market's
-            leading&nbsp;models, support of&nbsp;multiple sources of&nbsp;data.
+            leading&nbsp;models and support of&nbsp;multiple sources
+            of&nbsp;data.
           </P>
         </div>
         <ImgBlock

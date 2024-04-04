@@ -1,9 +1,6 @@
 import React from "react";
 
-import SimpleSlider, {
-  avatars,
-  DroidItem,
-} from "@app/components/home/carousel";
+import { avatars, DroidItem } from "@app/components/home/carousel";
 import {
   Block,
   Conversation,
@@ -11,7 +8,7 @@ import {
   HeaderContentBlock,
   Message,
 } from "@app/components/home/contentBlocks";
-import { Grid, H1, H2, P } from "@app/components/home/contentComponents";
+import { Grid, H1, P } from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
@@ -132,7 +129,7 @@ export function ForCustomerSupport() {
             <Message
               type="user"
               name="Jessica Parker"
-              visual="static/humanavatar/human14.pg"
+              visual="static/humanavatar/human14.jpg"
             >
               <P size="sm">
                 <Handle>@customerWrite</Handle>, the customer is called Cedric.
