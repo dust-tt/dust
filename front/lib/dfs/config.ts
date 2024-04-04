@@ -4,8 +4,11 @@ const config = {
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
-  getPublicUploadBucket: (): string => {
+  getGcsPublicUploadBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_UPLOAD_BUCKET");
+  },
+  getGcsPrivateUploadsBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_PRIVATE_UPLOADS_BUCKET");
   },
 };
 

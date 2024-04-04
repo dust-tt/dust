@@ -1,16 +1,12 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { isContentFragmentType } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
-import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { pipeline } from "stream/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import appConfig from "@app/lib/api/config";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/dfs";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
-import { gcsConfig } from "@app/lib/resources/storage/config";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export const config = {
@@ -18,6 +14,8 @@ export const config = {
     bodyParser: false, // Disabling Next.js's body parser as formidable has its own
   },
 };
+
+const privateUploadGcs = getPrivateUploadBucket();
 
 async function handler(
   req: NextApiRequest,
@@ -112,16 +110,10 @@ async function handler(
     contentFormat: "raw",
   });
 
-  const storage = new Storage({
-    keyFilename: appConfig.getServiceAccount(),
-  });
-  const bucket = storage.bucket(gcsConfig.getGcsPrivateUploadsBucket());
-  const gcsFile = bucket.file(filePath);
-
   switch (req.method) {
     case "GET":
       // redirect to a signed URL
-      const [url] = await gcsFile.getSignedUrl({
+      const [url] = await privateUploadGcs.file(filePath).getSignedUrl({
         version: "v4",
         action: "read",
         // since we redirect, the use is immediate so expiry can be short
@@ -150,16 +142,7 @@ async function handler(
 
         const [file] = maybeFiles;
 
-        const fileStream = fs.createReadStream(file.filepath);
-
-        await pipeline(
-          fileStream,
-          gcsFile.createWriteStream({
-            metadata: {
-              contentType: file.mimetype,
-            },
-          })
-        );
+        await privateUploadGcs.uploadFileToBucket(file, filePath);
 
         res.status(200).json({ sourceUrl: downloadUrl });
         return;

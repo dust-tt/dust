@@ -34,7 +34,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFileContentType } from "@app/lib/dfs";
+import { getPublicUploadBucket } from "@app/lib/dfs";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -761,7 +761,9 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
     return false;
   }
 
-  const contentType = await getFileContentType("PUBLIC_UPLOAD", filename);
+  const contentType = await getPublicUploadBucket().getFileContentType(
+    filename
+  );
   if (!contentType) {
     return false;
   }

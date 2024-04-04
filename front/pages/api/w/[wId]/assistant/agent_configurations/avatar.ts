@@ -1,16 +1,16 @@
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { uploadToBucket } from "@app/lib/dfs";
+import { getPublicUploadBucket } from "@app/lib/dfs";
 import { withLogging } from "@app/logger/withlogging";
-
-const { DUST_UPLOAD_BUCKET = "" } = process.env;
 
 export const config = {
   api: {
     bodyParser: false, // Disabling Next.js's body parser as formidable has its own
   },
 };
+
+const publicUploadGcs = getPublicUploadBucket();
 
 async function handler(
   req: NextApiRequest,
@@ -41,9 +41,9 @@ async function handler(
 
       const [file] = maybeFiles;
 
-      await uploadToBucket("PUBLIC_UPLOAD", file);
+      await publicUploadGcs.uploadFileToBucket(file, file.newFilename);
 
-      const fileUrl = `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/${file.newFilename}`;
+      const fileUrl = `https://storage.googleapis.com/${publicUploadGcs.name}/${file.newFilename}`;
 
       res.status(200).json({ fileUrl });
     } catch (error) {
