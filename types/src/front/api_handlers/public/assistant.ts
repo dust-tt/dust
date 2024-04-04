@@ -51,5 +51,5 @@ export const PublicPostConversationsRequestBodySchema = t.intersection([
       t.undefined,
     ]),
   }),
-  t.partial({ isSync: t.union([t.boolean, t.undefined]) }),
+  t.partial({ isSync: t.boolean }),
 ]);
