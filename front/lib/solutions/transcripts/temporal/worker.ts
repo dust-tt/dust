@@ -8,7 +8,7 @@ import * as activities from "@app/upsert_queue/temporal/activities";
 
 import { QUEUE_NAME } from "./config";
 
-export async function runUpsertQueueWorker() {
+export async function runRetrieveNewTranscriptsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),

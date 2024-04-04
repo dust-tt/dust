@@ -4,6 +4,7 @@
     "build": "next build",
     "start": "next start",
     "start:worker": "tsx ./start_worker.ts",
+    "start:solutions_worker": "tsx ./lib/solutions/start_worker.ts",
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
