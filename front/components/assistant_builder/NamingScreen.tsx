@@ -6,7 +6,7 @@ import {
   Page,
   PencilSquareIcon,
   SparklesIcon,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -32,6 +32,7 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { debounce } from "@app/lib/utils/debounce";
+import { as } from "fp-ts/lib/Option";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;
@@ -177,63 +178,60 @@ export default function NamingScreen({
   ]);
 
   // Description suggestions handling
-  /*const [descriptionSuggestions, setDescriptionSuggestions] =
-    useState<BuilderSuggestionsType>({
-      status: "unavailable",
-      reason: "irrelevant",
-    });
-
-  const [descriptionSuggestionsIndex, setDescriptionSuggestionIndex] =
-    useState(0);*/
 
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionIsGenerated, setDescriptionIsGenerated] = useState(false);
 
-  const suggestDescription = useCallback(async () => {
-    setGeneratingDescription(true);
-    const descriptionSuggestions = await getDescriptionSuggestions({
-      owner,
-      instructions: builderState.instructions || "",
-      name: builderState.handle || "",
-    });
-    if (descriptionSuggestions.isOk()) {
-      const suggestion =
-        descriptionSuggestions.value.status === "ok" &&
-        descriptionSuggestions.value.suggestions.length > 0
-          ? descriptionSuggestions.value.suggestions[0]
-          : null;
-      if (suggestion) {
-        setBuilderState((state) => ({
-          ...state,
-          description: suggestion,
-        }));
-        setDescriptionIsGenerated(true);
+  const suggestDescription = useCallback(
+    async (fromUserClick?: boolean) => {
+      setGeneratingDescription(true);
+      const notifyError = fromUserClick ? sendNotification : console.log;
+      const descriptionSuggestions = await getDescriptionSuggestions({
+        owner,
+        instructions: builderState.instructions || "",
+        name: builderState.handle || "",
+      });
+      if (descriptionSuggestions.isOk()) {
+        const suggestion =
+          descriptionSuggestions.value.status === "ok" &&
+          descriptionSuggestions.value.suggestions.length > 0
+            ? descriptionSuggestions.value.suggestions[0]
+            : null;
+        if (suggestion) {
+          setBuilderState((state) => ({
+            ...state,
+            description: suggestion,
+          }));
+          setDescriptionIsGenerated(true);
+        } else {
+          const errorMessage =
+            descriptionSuggestions.value.status === "unavailable"
+              ? descriptionSuggestions.value.reason ||
+                "No suggestions available"
+              : "No suggestions available";
+          notifyError({
+            type: "error",
+            title: "Error generating description suggestion.",
+            description: errorMessage,
+          });
+        }
       } else {
-        const errorMessage =
-          descriptionSuggestions.value.status === "unavailable"
-            ? descriptionSuggestions.value.reason || "No suggestions available"
-            : "No suggestions available";
-        sendNotification({
+        notifyError({
           type: "error",
           title: "Error generating description suggestion.",
-          description: errorMessage,
+          description: descriptionSuggestions.error.message,
         });
       }
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Error generating description suggestion.",
-        description: descriptionSuggestions.error.message,
-      });
-    }
-    setGeneratingDescription(false);
-  }, [
-    owner,
-    builderState.instructions,
-    builderState.handle,
-    setBuilderState,
-    sendNotification,
-  ]);
+      setGeneratingDescription(false);
+    },
+    [
+      owner,
+      builderState.instructions,
+      builderState.handle,
+      setBuilderState,
+      sendNotification,
+    ]
+  );
 
   useEffect(() => {
     if (isDevelopmentOrDustWorkspace(owner)) {
@@ -242,13 +240,7 @@ export default function NamingScreen({
         builderState.instructions?.trim() &&
         !generatingDescription
       ) {
-        suggestDescription().catch((error) => {
-          sendNotification({
-            type: "error",
-            title: "Error generating description suggestion.",
-            description: error.message,
-          });
-        });
+        void suggestDescription();
       }
     }
     // Here we only want to run this effect once
@@ -358,7 +350,7 @@ export default function NamingScreen({
           <div>
             <div className="flex gap-1">
               <Page.SectionHeader title="Description" />
-              {generatingDescription && <Spinner size="sm" />}
+              {generatingDescription && <Spinner2 size="sm" />}
             </div>
             <div className="text-sm font-normal text-element-700">
               Describe for others the assistant’s purpose.{" "}
@@ -400,13 +392,7 @@ export default function NamingScreen({
                       "Heads up! This will overwrite your current description. Are you sure you want to proceed?"
                     )
                   ) {
-                    suggestDescription().catch((error) => {
-                      sendNotification({
-                        type: "error",
-                        title: "Error generating description suggestion.",
-                        description: error.message,
-                      });
-                    });
+                    await suggestDescription();
                   }
                 }}
                 tooltip="Click to generate a description"
@@ -428,23 +414,19 @@ async function getNamingSuggestions({
   instructions: string;
   description: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      type: "name",
-      inputs: { instructions, description },
-    }),
-  });
-  if (!res.ok) {
-    return new Err({
-      type: "internal_server_error",
-      message: "Failed to get suggestions",
-    });
-  }
-  return new Ok(await res.json());
+  return await fetchWithErr(
+    `/api/w/${owner.sId}/assistant/builder/suggestions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        type: "name",
+        inputs: { instructions, description },
+      }),
+    }
+  );
 }
 
 async function getDescriptionSuggestions({
@@ -456,7 +438,7 @@ async function getDescriptionSuggestions({
   instructions: string;
   name: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -466,11 +448,28 @@ async function getDescriptionSuggestions({
       inputs: { instructions, name },
     }),
   });
-  if (!res.ok) {
+}
+
+async function fetchWithErr<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Result<T, APIError>> {
+  try {
+    const res = await fetch(input, init);
+    if (!res.ok) {
+      return new Err({
+        type: "internal_server_error",
+        message: `Failed to fetch: ${
+          res.statusText
+        }\nResponse: ${await res.text()}`,
+      });
+    }
+
+    return new Ok((await res.json()) as T);
+  } catch (e) {
     return new Err({
       type: "internal_server_error",
-      message: "Failed to get suggestions",
+      message: `Failed to fetch.\nError: ${e}`,
     });
   }
-  return new Ok(await res.json());
 }
