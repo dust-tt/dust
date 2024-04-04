@@ -47,7 +47,8 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.uId === "string")) {
+  const userId = req.query.uId;
+  if (!(typeof userId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -57,7 +58,7 @@ async function handler(
     });
   }
 
-  const user = await getUserForWorkspace(auth, { userId: req.query.uId });
+  const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
     return apiError(req, res, {
       status_code: 404,
