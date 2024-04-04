@@ -52,7 +52,7 @@ const _webhookGoogleDriveAPIHandler = async (
       },
     });
   }
-  if (connector.pausedAt) {
+  if (connector.isPaused()) {
     logger.info(
       {
         connectorId: webhook.connectorId,

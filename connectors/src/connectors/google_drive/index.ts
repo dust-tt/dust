@@ -832,7 +832,7 @@ export async function pauseGoogleDriveConnector(connectorId: ModelId) {
   if (!connector) {
     return new Err(new Error(`Connector not found with id ${connectorId}`));
   }
-  await connector.update({ pausedAt: new Date() });
+  await connector.markAsPaused();
   await terminateAllWorkflowsForConnectorId(connectorId);
   return new Ok(undefined);
 }

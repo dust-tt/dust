@@ -151,7 +151,7 @@ export async function pauseGithubConnector(
     logger.error({ connectorId }, "Connector not found");
     return new Err(new Error("Connector not found"));
   }
-  await connector.update({ pausedAt: new Date() });
+  await connector.markAsPaused();
   await terminateAllWorkflowsForConnectorId(connectorId);
   return new Ok(undefined);
 }

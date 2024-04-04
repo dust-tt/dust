@@ -144,4 +144,12 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       }
     });
   }
+
+  isPaused() {
+    return !!this.pausedAt;
+  }
+
+  async markAsPaused() {
+    return this.update({ pausedAt: new Date() });
+  }
 }

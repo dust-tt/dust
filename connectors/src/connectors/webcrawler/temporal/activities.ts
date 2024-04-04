@@ -415,7 +415,7 @@ export async function getWebsitesToCrawl() {
 
   const connectors = await ConnectorResource.fetchByIds(allConnectorIds);
   const unPausedConnectorIds = connectors
-    .filter((c) => !c.pausedAt)
+    .filter((c) => !c.isPaused())
     .map((c) => c.id);
 
   return unPausedConnectorIds;

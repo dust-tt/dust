@@ -277,7 +277,7 @@ export async function pauseWebcrawlerConnector(
   if (!connector) {
     throw new Error("Connector not found.");
   }
-  await connector.update({ pausedAt: new Date() });
+  await connector.markAsPaused();
   const stopRes = await stopCrawlWebsiteWorkflow(connectorId);
   if (stopRes.isErr()) {
     return stopRes;

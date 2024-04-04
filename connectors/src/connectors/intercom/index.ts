@@ -748,7 +748,7 @@ export async function pauseIntercomConnector(connectorId: ModelId) {
     return new Err(new Error("Connector not found"));
   }
 
-  await connector.update({ pausedAt: new Date() });
+  await connector.markAsPaused();
   const stopRes = await stopIntercomConnector(connectorId);
   if (stopRes.isErr()) {
     return stopRes;

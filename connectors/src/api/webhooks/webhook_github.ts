@@ -140,7 +140,7 @@ const _webhookGithubAPIHandler = async (
 
   const enabledConnectors: ConnectorResource[] = [];
   for (const connector of connectors) {
-    if (connector.pausedAt) {
+    if (connector.isPaused()) {
       logger.info(
         {
           connectorId: connector.id,

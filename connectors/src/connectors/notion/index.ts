@@ -221,7 +221,7 @@ export async function pauseNotionConnector(
     return new Err(new Error("Connector not found"));
   }
 
-  await connector.update({ pausedAt: new Date() });
+  await connector.markAsPaused();
   const stopRes = await stopNotionConnector(connector.id);
   if (stopRes.isErr()) {
     return stopRes;
