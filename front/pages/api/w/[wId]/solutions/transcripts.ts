@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
-import { getGoogleAuthObject } from "@app/lib/solutions/utils/helpers";
+import { getGoogleAuthObject } from "@app/lib/solutions/transcripts/utils/helpers";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
@@ -80,10 +80,7 @@ async function handler(
         provider,
       });
 
-      res.status(200).json({ configuration: transcriptsConfigurationPost, files: null });
-
-      return;
-
+      return res.status(200).json({ configuration: transcriptsConfigurationPost, files: null });
 
     default:
       return apiError(req, res, {

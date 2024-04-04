@@ -104,6 +104,7 @@ async function main() {
 
   await TemplateModel.sync({ alter: true });
 
+  // Solutions - Can be removed at all times if a solution is dropped
   await SolutionsTranscriptsConfiguration.sync({ alter: true });
 
   process.exit(0);

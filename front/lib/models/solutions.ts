@@ -9,7 +9,7 @@ import { DataTypes, Model } from "sequelize";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-import type { SolutionProviderType } from "../solutions/utils/types";
+import type { SolutionProviderType } from "../solutions/transcripts/utils/types";
 
 export class SolutionsTranscriptsConfiguration extends Model<
   InferAttributes<SolutionsTranscriptsConfiguration>,

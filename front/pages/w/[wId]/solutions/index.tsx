@@ -1,16 +1,11 @@
 import {
-  Button,
-  DropdownMenu,
   EmotionLaughIcon,
-  Input,
-  Modal,
   Page,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -22,7 +17,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   gaTrackingId: string;
-}>(async (context, auth) => {
+}>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   if (!owner || !auth.isAdmin() || !subscription) {
