@@ -1,4 +1,4 @@
-import type { SolutionIdType, SolutionProviderType } from "@dust-tt/types";
+import type { SolutionProviderType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -19,7 +19,6 @@ export class SolutionsMeetingsTranscriptsConfiguration extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<User["id"]>;
-  declare solutionId: SolutionIdType;
   declare connectionId: string | null;
   declare provider: SolutionProviderType;
 }
@@ -48,10 +47,6 @@ SolutionsMeetingsTranscriptsConfiguration.init(
         key: "id",
       },
     },
-    solutionId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     connectionId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -66,7 +61,7 @@ SolutionsMeetingsTranscriptsConfiguration.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["userId"] },
-      { fields: ["solutionId", "provider", "connectionId"], unique: true },
+      { fields: ["provider", "connectionId"], unique: true },
     ],
   }
 );

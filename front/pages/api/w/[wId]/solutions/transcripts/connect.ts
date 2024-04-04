@@ -3,21 +3,19 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsMeetingsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetSolutionsResponseBody = {
-  solution: SolutionsMeetingsTranscriptsConfiguration;
+export type GetSolutionsConfigurationResponseBody = {
+  configuration: SolutionsMeetingsTranscriptsConfiguration | null;
 };
-
-const solutionId = "transcripts";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetSolutionsResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>>
 ): Promise<void> {
+  let transcriptsConfiguration: SolutionsMeetingsTranscriptsConfiguration | null;
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
     session,
@@ -36,6 +34,19 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.findOne({
+        attributes: ["id", "provider"],
+        where: {
+          userId: owner.id, 
+          provider: req.query.provider as string,
+        },
+      })
+
+      res.status(200).json({ configuration: transcriptsConfiguration });
+
+      return;
+
     case "POST":
       const { connectionId, provider } = req.body;
       if (!connectionId || !provider) {
@@ -48,14 +59,13 @@ async function handler(
         });
       }
 
-      const solution = await SolutionsMeetingsTranscriptsConfiguration.create({
+      transcriptsConfiguration = await SolutionsMeetingsTranscriptsConfiguration.create({
         userId: owner.id,
-        solutionId,
         connectionId,
         provider,
       });
 
-      res.status(200).json({ solution });
+      res.status(200).json({ configuration: transcriptsConfiguration});
 
       return;
 

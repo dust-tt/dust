@@ -7,7 +7,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import Nango from '@nangohq/frontend';
 import type { InferGetServerSidePropsType } from "next";
-import { useContext, useEffect,useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -57,17 +57,29 @@ export default function SolutionsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
-  const [connectGDriveAction, setConnectGDriveAction] = useState(false);
+  const [isGDriveConnected, setIsGDriveConnected] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
   useEffect(() => {
-    if (copyCount > 0) {
-      const timeout = setTimeout(() => setCopyCount(0), 1000);
-      return () => {
-        clearTimeout(timeout);
-      };
+    // GET /api/w/%5BwId%5D/solutions/transcripts/connect 
+    // This is the API call that fetches the solution configuration
+    // for the transcripts summarizer solution.
+    void fetch(`/api/w/${owner.sId}/solutions/transcripts/connect?provider=google_drive`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then(async (response) => {
+      if (!response.ok) {
+        throw new Error("Failed to fetch solution configuration");
+      }
+      const { configuration } = await response.json();
+      if (configuration?.id) {
+        setIsGDriveConnected(true);
+      }
     }
-  }, [auth]);
+    )
+  }, [owner]);
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
@@ -133,10 +145,10 @@ export default function SolutionsTranscriptsIndex({
             title="Connect Google Drive"
             description="Connect your personal Google Drive so Dust can access your meeting transcripts"
             action={{
-              label: "Connect",
+              label: isGDriveConnected ? "Connected" : "Connect",
               size: "sm",
               icon: CloudArrowLeftRightIcon,
-              disabled: isLoading,
+              disabled: isLoading || isGDriveConnected,
               onClick: async () => {
                 await handleConnectTranscriptsSource();
               },
