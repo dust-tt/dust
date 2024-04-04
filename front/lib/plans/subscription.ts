@@ -1,5 +1,6 @@
-import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { sendUserOperationMessage } from "@dust-tt/types";
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -506,8 +507,13 @@ export async function maybeCancelInactiveTrials(
       );
 
       return;
+    } else {
+      await sendProactiveTrialCancelledEmail(firstAdmin.email);
     }
 
-    await sendProactiveTrialCancelledEmail(firstAdmin.email);
+    await sendUserOperationMessage({
+      logger,
+      message: `Trial for workspace ${workspace.sId} cancelled proactively!`,
+    });
   }
 }
