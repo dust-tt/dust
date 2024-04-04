@@ -158,7 +158,7 @@ async function handler(
         auth
       );
       if (
-        unconsumedInvitations.length >
+        unconsumedInvitations.length >=
         MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
       ) {
         return apiError(req, res, {

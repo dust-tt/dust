@@ -161,6 +161,11 @@ export async function getPendingInvitations(
   if (!owner) {
     return [];
   }
+  if (!auth.isAdmin()) {
+    throw new Error(
+      "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+    );
+  }
 
   const invitations = await MembershipInvitation.findAll({
     where: {
@@ -193,6 +198,11 @@ export async function getRecentPendingOrRevokedInvitations(
   const owner = auth.workspace();
   if (!owner) {
     return [];
+  }
+  if (!auth.isAdmin()) {
+    throw new Error(
+      "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+    );
   }
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
