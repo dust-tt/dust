@@ -28,6 +28,7 @@ import {
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -151,6 +152,7 @@ export async function pauseGithubWebhooks(
     return new Err(new Error("Connector not found"));
   }
   await connector.update({ pausedAt: new Date() });
+  await terminateAllWorkflowsForConnectorId(connectorId);
   return new Ok(undefined);
 }
 

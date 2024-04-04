@@ -30,6 +30,7 @@ import {
   nango_client,
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client.js";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
@@ -651,5 +652,6 @@ export async function pauseSlackWebhooks(connectorId: ModelId) {
   await connector.update({
     pausedAt: new Date(),
   });
+  await terminateAllWorkflowsForConnectorId(connectorId);
   return new Ok(undefined);
 }
