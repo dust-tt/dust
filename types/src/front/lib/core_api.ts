@@ -365,6 +365,8 @@ export class CoreAPI {
         logger.error(
           {
             error: e,
+            errorStr: JSON.stringify(e),
+            errorSource: "createRunStream",
           },
           "Error streaming chunks"
         );

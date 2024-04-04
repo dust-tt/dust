@@ -557,7 +557,14 @@ impl AnthropicLLM {
                     }
                 },
                 Err(error) => {
-                    Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                    Err(ModelError {
+                        message: format!("Error streaming from Anthropic: {:?}", error),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    })?;
                     break 'stream;
                 }
             }
