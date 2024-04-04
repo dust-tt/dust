@@ -17,7 +17,7 @@ const solutions: { title: string; target: string }[] = [
     target: "for_customer",
   },
   {
-    title: "Marketing teams",
+    title: "Marketing & Content",
     target: "for_marketing",
   },
   {
@@ -25,7 +25,7 @@ const solutions: { title: string; target: string }[] = [
     target: "for_people",
   },
   {
-    title: "Sales teams",
+    title: "Sales & Revenue",
     target: "for_sales",
   },
   {

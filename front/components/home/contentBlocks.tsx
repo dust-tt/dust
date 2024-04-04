@@ -2,7 +2,14 @@ import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React from "react";
 
-import { Grid, H2, H3, H4, P } from "@app/components/home/contentComponents";
+import {
+  Grid,
+  H2,
+  H3,
+  H4,
+  H5,
+  P,
+} from "@app/components/home/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
@@ -22,6 +29,57 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       <H4 className="text-white">{title}</H4>
       <P size="sm">{content}</P>
     </div>
+  );
+};
+
+interface BlogBlockProps {
+  children?: React.ReactNode;
+  title: React.ReactNode;
+  content: React.ReactNode;
+  href: string;
+}
+
+export const BlogBlock: React.FC<BlogBlockProps> = ({
+  children,
+  title,
+  content,
+  href,
+}) => {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      className={classNames(
+        "col-span-4 flex flex-col overflow-hidden rounded-2xl bg-slate-100 p-1 drop-shadow-xl",
+        "group transition duration-300 ease-out",
+        "hover:scale-105 hover:bg-white"
+      )}
+    >
+      {children ? (
+        <div className="relative aspect-video overflow-hidden rounded-xl">
+          {React.Children.map(children, (child) => {
+            if (
+              React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
+                child
+              ) &&
+              child.type === "img"
+            ) {
+              return React.cloneElement(child, {
+                className:
+                  "absolute h-full w-full object-cover brightness-100 transition duration-300 ease-out group-hover:brightness-110",
+              });
+            }
+            return child;
+          })}
+        </div>
+      ) : null}
+      <div className="flex flex-col gap-3 p-6">
+        <H5 className="text-slate-900">{title}</H5>
+        <P size="xs" className="text-slate-900">
+          {content}
+        </P>
+      </div>
+    </a>
   );
 };
 
