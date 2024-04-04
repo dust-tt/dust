@@ -7,6 +7,8 @@ import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 
+import { generateModelSId } from "../utils";
+
 interface LegacyProviderInfo {
   provider: UserProviderType;
   providerId: number | string;
