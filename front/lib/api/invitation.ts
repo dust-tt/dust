@@ -11,8 +11,7 @@ import { sign } from "jsonwebtoken";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipInvitation } from "@app/lib/models";
-
-import { generateModelSId } from "../utils";
+import { generateModelSId } from "@app/lib/utils";
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
