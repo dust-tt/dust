@@ -338,6 +338,61 @@ export async function fetchIntercomConversationsForTeamId({
 }
 
 /**
+ * Return the paginated list of Conversation for a given day.
+ * Filtered on closed Conversations.
+ */
+export async function fetchIntercomConversationsForDay({
+  nangoConnectionId,
+  minCreatedAt,
+  maxCreatedAt,
+  cursor = null,
+  pageSize = 20,
+}: {
+  nangoConnectionId: string;
+  minCreatedAt: number;
+  maxCreatedAt: number;
+  cursor: string | null;
+  pageSize?: number;
+}): Promise<{
+  conversations: IntercomConversationType[];
+  pages: {
+    next?: {
+      page: number;
+      starting_after: string;
+    };
+  };
+}> {
+  const response = await queryIntercomAPI({
+    nangoConnectionId,
+    path: `conversations/search`,
+    method: "POST",
+    body: {
+      query: {
+        operator: "AND",
+        value: [
+          {
+            field: "created_at",
+            operator: ">",
+            value: minCreatedAt,
+          },
+          {
+            field: "created_at",
+            operator: "<",
+            value: maxCreatedAt,
+          },
+        ],
+      },
+      pagination: {
+        per_page: pageSize,
+        starting_after: cursor,
+      },
+    },
+  });
+
+  return response;
+}
+
+/**
  * Return the detail of a Conversation.
  */
 export async function fetchIntercomConversation({
