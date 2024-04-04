@@ -2,14 +2,13 @@ import type {
   AgentRecentAuthors,
   LightAgentConfigurationType,
   UserType,
-  UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { getMembers } from "@app/lib/api/workspace";
+import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models";
+import { AgentConfiguration, User } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 
 // We keep the most recent authorIds for 3 days.
@@ -173,14 +172,16 @@ export async function getAgentsRecentAuthors({
     {}
   );
 
-  const authorByUserId: Record<number, UserTypeWithWorkspaces> = (
-    await getMembers(auth, {
-      userIds: removeNulls(
-        Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
-      ),
+  const authorByUserId: Record<number, UserType> = (
+    await User.findAll({
+      where: {
+        id: removeNulls(
+          Array.from(new Set(Object.values(recentAuthorsIdsByAgentId).flat()))
+        ),
+      },
     })
-  ).reduce<Record<number, UserTypeWithWorkspaces>>((acc, member) => {
-    acc[member.id] = member;
+  ).reduce<Record<number, UserType>>((acc, user) => {
+    acc[user.id] = renderUserType(user);
     return acc;
   }, {});
 
@@ -190,7 +191,7 @@ export async function getAgentsRecentAuthors({
       return [DUST_OWNED_ASSISTANTS_AUTHOR_NAME];
     }
     return renderAuthors(
-      recentAuthorIds.map((id) => authorByUserId[id]),
+      removeNulls(recentAuthorIds.map((id) => authorByUserId[id])),
       currentUserId
     );
   });

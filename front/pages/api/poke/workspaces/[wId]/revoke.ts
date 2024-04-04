@@ -2,6 +2,7 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -35,7 +36,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const { userId } = req.body;
-      if (!userId || typeof userId !== "number") {
+      if (!userId || typeof userId !== "string") {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -44,8 +45,20 @@ async function handler(
           },
         });
       }
+
+      const user = await getUserForWorkspace(auth, { userId });
+      if (!user) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+
       const revokeResult = await MembershipResource.revokeMembership({
-        userId,
+        user,
         workspace: owner,
       });
       if (revokeResult.isErr()) {

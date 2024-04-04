@@ -74,7 +74,7 @@ async function handler(
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
         const revokeResult = await MembershipResource.revokeMembership({
-          userId: user.id,
+          user,
           workspace: owner,
         });
         if (revokeResult.isErr()) {
@@ -111,7 +111,7 @@ async function handler(
           });
         }
         const updateRoleResult = await MembershipResource.updateMembershipRole({
-          userId: user.id,
+          user,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.

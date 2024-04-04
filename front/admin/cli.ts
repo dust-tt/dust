@@ -13,6 +13,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { renderUserType } from "@app/lib/api/user";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
@@ -127,7 +128,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  email: ${u.email}`);
 
       const memberships = await MembershipResource.getLatestMemberships({
-        userIds: [u.id],
+        users: [renderUserType(u)],
       });
 
       const workspaces = await Workspace.findAll({

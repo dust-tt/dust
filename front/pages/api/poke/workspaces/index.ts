@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
+import { renderUserType } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription, User, Workspace } from "@app/lib/models";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -131,7 +132,7 @@ async function handler(
           });
           if (users.length) {
             const memberships = await MembershipResource.getLatestMemberships({
-              userIds: users.map((u) => u.id),
+              users: users.map((u) => renderUserType(u)),
             });
             if (memberships.length) {
               conditions.push({

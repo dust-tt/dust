@@ -52,7 +52,7 @@ const MembershipsPage = ({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: m.id,
+          userId: m.sId,
         }),
       });
       if (!r.ok) {

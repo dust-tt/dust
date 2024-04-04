@@ -2,6 +2,7 @@ import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { Op } from "sequelize";
 
+import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfiguration,
@@ -441,32 +442,36 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    if (memberships.length === 1) {
-      // We also delete the user if it has no other workspace.
-      const membership = memberships[0];
-      const membershipsOfUser = await MembershipResource.getLatestMemberships({
-        userIds: [membership.userId],
-        transaction: t,
+    for (const membership of memberships) {
+      const user = await User.findOne({
+        where: {
+          id: membership.userId,
+        },
       });
-      if (membershipsOfUser.length === 1) {
-        const user = await User.findOne({
-          where: {
-            id: membership.userId,
-          },
-        });
-        if (user) {
+
+      if (user) {
+        const membershipsOfUser = await MembershipResource.getLatestMemberships(
+          {
+            users: [renderUserType(user)],
+            transaction: t,
+          }
+        );
+
+        // If the user we're removing the membership of only has one membership, we delete the user.
+        if (membershipsOfUser.length === 1) {
           await UserMetadata.destroy({
             where: {
               userId: user.id,
             },
             transaction: t,
           });
+          logger.info(
+            `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
+          );
           await membership.delete(t);
           await user.destroy({ transaction: t });
         }
-      }
-    } else {
-      for (const membership of memberships) {
+      } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
         await membership.delete(t);
       }
