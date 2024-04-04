@@ -1,6 +1,56 @@
 import type { UserMetadataType, UserType } from "@dust-tt/types";
 
+import type { Authenticator } from "@app/lib/auth";
 import { User, UserMetadata } from "@app/lib/models";
+
+import { MembershipResource } from "../resources/membership_resource";
+
+/**
+ * This function checks that the user had at least one membership in the past for this workspace
+ * otherwise returns null, preventing retrieving user information from their sId.
+ */
+export async function getUserForWorkspace(
+  auth: Authenticator,
+  { userId }: { userId: string }
+): Promise<UserType | null> {
+  const owner = auth.workspace();
+  if (!owner || !(auth.isAdmin() || auth.user()?.sId === userId)) {
+    return null;
+  }
+
+  const user = await User.findOne({
+    where: {
+      sId: userId,
+    },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const membership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      userId: user.id,
+      workspace: owner,
+    });
+
+  if (!membership) {
+    return null;
+  }
+
+  return {
+    sId: user.sId,
+    id: user.id,
+    createdAt: user.createdAt.getTime(),
+    provider: user.provider,
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+    image: user.imageUrl,
+  };
+}
 
 /**
  * Server-side interface to get user metadata.

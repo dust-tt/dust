@@ -48,6 +48,7 @@ export async function getUserFromSession(
   await maybeUpdateFromExternalUser(user, session.user);
 
   return {
+    sId: user.sId,
     id: user.id,
     createdAt: user.createdAt.getTime(),
     provider: user.provider,

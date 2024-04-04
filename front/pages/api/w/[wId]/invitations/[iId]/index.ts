@@ -51,7 +51,8 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.iId === "string")) {
+  const invitationId = req.query.iId;
+  if (!(typeof invitationId === "string")) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -61,7 +62,6 @@ async function handler(
     });
   }
 
-  const invitationId = req.query.iId;
   let invitation = await getInvitation(auth, { invitationId });
   if (!invitation) {
     return apiError(req, res, {

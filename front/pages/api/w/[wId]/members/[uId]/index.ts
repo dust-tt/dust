@@ -1,15 +1,18 @@
-import type { UserType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  UserTypeWithWorkspaces,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { User } from "@app/lib/models";
 import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMemberResponseBody = {
-  member: UserType;
+  member: UserTypeWithWorkspaces;
 };
 
 async function handler(
@@ -44,30 +47,19 @@ async function handler(
     });
   }
 
-  const userId = parseInt(req.query.userId as string);
-  if (isNaN(userId)) {
+  const userId = req.query.uId;
+  if (!(typeof userId === "string")) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "workspace_user_not_found",
-        message: "The user requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `uId` (string) is required.",
       },
     });
   }
 
-  const [user, membership] = await Promise.all([
-    User.findOne({
-      where: {
-        id: userId,
-      },
-    }),
-    MembershipResource.getLatestMembershipOfUserInWorkspace({
-      userId,
-      workspace: owner,
-    }),
-  ]);
-
-  if (!user || !membership) {
+  const user = await getUserForWorkspace(auth, { userId });
+  if (!user) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -82,7 +74,7 @@ async function handler(
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
         const revokeResult = await MembershipResource.revokeMembership({
-          userId,
+          userId: user.id,
           workspace: owner,
         });
         if (revokeResult.isErr()) {
@@ -119,7 +111,7 @@ async function handler(
           });
         }
         const updateRoleResult = await MembershipResource.updateMembershipRole({
-          userId,
+          userId: user.id,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
@@ -162,15 +154,7 @@ async function handler(
       }
 
       const member = {
-        id: user.id,
-        createdAt: user.createdAt.getTime(),
-        provider: user.provider,
-        username: user.username,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-        image: null,
+        ...user,
         workspaces: [w],
       };
 
