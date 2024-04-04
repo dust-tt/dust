@@ -756,6 +756,11 @@ export async function getAgentNames(auth: Authenticator): Promise<string[]> {
 }
 
 async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
+  // Accept static Dust avatars.
+  if (pictureUrl.startsWith("https://dust.tt/static/")) {
+    return true;
+  }
+
   const filename = pictureUrl.split("/").at(-1);
   if (!filename) {
     return false;
