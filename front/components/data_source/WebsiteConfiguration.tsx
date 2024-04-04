@@ -149,7 +149,7 @@ export default function WebsiteConfiguration({
         },
         body: JSON.stringify({
           provider: "webcrawler",
-          connectionId: undefined,
+          connectionId: "none",
           name: dataSourceName,
           configuration: {
             url: dataSourceUrl,
