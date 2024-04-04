@@ -20,6 +20,7 @@ const WHITELISTED_BOT_NAME = [
   "Retool",
   "DustWorkflowTest",
   "dust-email-lists-highlights",
+  "Dust_CrystalBall",
 ];
 
 async function getActiveMemberEmails(
