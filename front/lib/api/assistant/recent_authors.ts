@@ -6,10 +6,10 @@ import type {
 import { removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
+import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration, User } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
-import { renderUserType } from "@app/lib/user";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.

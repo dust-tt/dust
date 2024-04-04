@@ -111,7 +111,7 @@ async function handler(
           });
         }
         const updateRoleResult = await MembershipResource.updateMembershipRole({
-          userId: user.id,
+          user,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
