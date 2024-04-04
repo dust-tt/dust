@@ -91,6 +91,7 @@ const _webhookIntercomAPIHandler = async (
   const connector = await ConnectorResource.fetchById(
     intercomWorskpace.connectorId
   );
+
   if (!connector || connector.type !== "intercom") {
     logger.error(
       {
@@ -101,8 +102,18 @@ const _webhookIntercomAPIHandler = async (
     return res.status(200).end();
   }
 
-  // Check we have the permissions to sync this conversation
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+      },
+      "[Intercom] Received webhook for paused connector, skipping."
+    );
+    return res.status(200).end();
+  }
+
   if (!conversation.team_assignee_id) {
+    // Check we have the permissions to sync this conversation
     logger.info(
       "[Intercom] Received webhook for conversation without team, skipping."
     );

@@ -6,6 +6,7 @@ import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors
 import { GoogleDriveWebhook } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GoogleDriveWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
@@ -40,6 +41,26 @@ const _webhookGoogleDriveAPIHandler = async (
         type: "invalid_request_error",
       },
     });
+  }
+  const connector = await ConnectorResource.fetchById(webhook.connectorId);
+  if (!connector) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        message: "Connector not found",
+        type: "invalid_request_error",
+      },
+    });
+  }
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: webhook.connectorId,
+        webhookId: webhook.webhookId,
+      },
+      "Did not signal a Gdrive webhook to the incremenal sync workflow because the connector is paused"
+    );
+    return res.status(200).end();
   }
 
   const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(

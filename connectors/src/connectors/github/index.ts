@@ -28,6 +28,7 @@ import {
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -140,6 +141,19 @@ export async function stopGithubConnector(
   } catch (err) {
     return new Err(err as Error);
   }
+}
+
+export async function pauseGithubConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+  await connector.markAsPaused();
+  await terminateAllWorkflowsForConnectorId(connectorId);
+  return new Ok(undefined);
 }
 
 export async function resumeGithubConnector(

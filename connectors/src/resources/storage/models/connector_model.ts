@@ -34,6 +34,8 @@ export class ConnectorModel extends Model<
   declare firstSuccessfulSyncTime?: Date;
   declare firstSyncProgress?: string;
   declare lastGCTime: Date | null;
+
+  declare pausedAt?: Date | null;
 }
 
 ConnectorModel.init(
@@ -102,6 +104,10 @@ ConnectorModel.init(
       allowNull: true,
     },
     lastGCTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    pausedAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },

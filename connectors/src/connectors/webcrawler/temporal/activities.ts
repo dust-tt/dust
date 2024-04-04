@@ -413,5 +413,10 @@ export async function getWebsitesToCrawl() {
     allConnectorIds.push(...websites.map((w) => w.connectorId));
   }
 
-  return allConnectorIds;
+  const connectors = await ConnectorResource.fetchByIds(allConnectorIds);
+  const unPausedConnectorIds = connectors
+    .filter((c) => !c.isPaused())
+    .map((c) => c.id);
+
+  return unPausedConnectorIds;
 }

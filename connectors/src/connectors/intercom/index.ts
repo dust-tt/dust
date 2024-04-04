@@ -740,3 +740,19 @@ export async function retrieveIntercomContentNodeParents(
 
   return new Ok(parents);
 }
+
+export async function pauseIntercomConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "[Intercom] Connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsPaused();
+  const stopRes = await stopIntercomConnector(connectorId);
+  if (stopRes.isErr()) {
+    return stopRes;
+  }
+
+  return new Ok(undefined);
+}
