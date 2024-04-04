@@ -1,4 +1,4 @@
-import { removeNulls } from "@dust-tt/types";
+import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import {
@@ -70,6 +70,22 @@ export async function scrubWorkspaceData({
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteDatasources(auth);
+}
+
+export async function pauseAllConnectors({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const dataSources = await getDataSources(auth);
+  const connectorsApi = new ConnectorsAPI(logger);
+  for (const ds of dataSources) {
+    if (!ds.connectorId) {
+      continue;
+    }
+    await connectorsApi.pauseConnector(ds.connectorId);
+  }
 }
 
 async function deleteAllConversations(auth: Authenticator) {

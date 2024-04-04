@@ -3,7 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { scheduleWorkspaceScrubWorkflow } from "@app/scrub_workspace/temporal/workflows";
+import { scheduleWorkspaceScrubWorkflowV2 } from "@app/scrub_workspace/temporal/workflows";
 
 import { QUEUE_NAME } from "./config";
 
@@ -17,7 +17,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
   const workflowId = `schedule-workspace-scrub-${workspaceId}`;
 
   try {
-    await client.workflow.start(scheduleWorkspaceScrubWorkflow, {
+    await client.workflow.start(scheduleWorkspaceScrubWorkflowV2, {
       args: [{ workspaceId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
