@@ -61,8 +61,7 @@ async function handler(
     });
   }
 
-  const invitationId = req.query.iId;
-  let invitation = await getInvitation(auth, { invitationId });
+  let invitation = await getInvitation(auth, { invitationId: req.query.iId });
   if (!invitation) {
     return apiError(req, res, {
       status_code: 404,

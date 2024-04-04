@@ -41,6 +41,7 @@ export type WorkspaceType = LightWorkspaceType & {
 export type UserProviderType = "github" | "google" | null;
 
 export type UserType = {
+  sId: string;
   id: ModelId;
   createdAt: number;
   provider: UserProviderType;

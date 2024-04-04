@@ -426,6 +426,7 @@ export class Authenticator {
   user(): UserType | null {
     return this._user
       ? {
+          sId: this._user.sId,
           id: this._user.id,
           createdAt: this._user.createdAt.getTime(),
           provider: this._user.provider,
