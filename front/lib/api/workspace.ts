@@ -1,7 +1,6 @@
 import type {
   LightWorkspaceType,
   MembershipRoleType,
-  ModelId,
   RoleType,
   SubscriptionType,
   UserTypeWithWorkspaces,
