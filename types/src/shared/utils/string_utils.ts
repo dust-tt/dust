@@ -69,14 +69,3 @@ export function redactString(str: string, n: number) {
   const redacted = "*".repeat(str.length - n) + str.slice(-n);
   return redacted;
 }
-
-/**
- * Returns an ellipsis if the string is too long, so it's never longer than
- * `maxStringLength`.
- * @param str The string to truncate.
- */
-export function ellipsis(str: string, maxStringLength: number) {
-  return str.length > maxStringLength - 3
-    ? `${str.slice(0, maxStringLength - 3)}...`
-    : str;
-}

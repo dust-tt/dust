@@ -130,13 +130,14 @@ export function AssistantPicker({
               >
                 <Item.Avatar
                   key={`assistant-picker-${c.sId}`}
-                  label={ellipsis("@" + c.name, 20)}
+                  label={c.name}
                   visual={c.pictureUrl}
                   hasAction={false}
                   onClick={() => {
                     onItemClick(c);
                     setSearchText("");
                   }}
+                  className="truncate"
                 />
                 <IconButton
                   icon={MoreIcon}
