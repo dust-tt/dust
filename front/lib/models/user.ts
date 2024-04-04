@@ -50,7 +50,7 @@ User.init(
     },
     sId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     provider: {
       type: DataTypes.STRING,

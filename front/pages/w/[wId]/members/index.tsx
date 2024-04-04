@@ -809,7 +809,7 @@ function RevokeInvitationModal({
     invitation: MembershipInvitationType
   ): Promise<void> {
     const res = await fetch(
-      `/api/w/${owner.sId}/invitations/${invitation.id}`,
+      `/api/w/${owner.sId}/invitations/${invitation.sId}`,
       {
         method: "POST",
         headers: {
