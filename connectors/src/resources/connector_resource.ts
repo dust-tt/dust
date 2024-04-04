@@ -1,4 +1,4 @@
-import type { ConnectorProvider, Result } from "@dust-tt/types";
+import type { ConnectorProvider, ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -114,6 +114,18 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return new this(this.model, blob.get());
   }
 
+  static async fetchByIds(ids: ModelId[]) {
+    const blobs = await ConnectorResource.model.findAll({
+      where: {
+        id: ids,
+      },
+    });
+
+    return blobs.map(
+      (b: ConnectorModel) => new ConnectorResource(ConnectorModel, b.get())
+    );
+  }
+
   async delete(): Promise<Result<undefined, Error>> {
     return sequelizeConnection.transaction(async (transaction) => {
       try {
@@ -131,5 +143,13 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         return new Err(err as Error);
       }
     });
+  }
+
+  isPaused() {
+    return !!this.pausedAt;
+  }
+
+  async markAsPaused() {
+    return this.update({ pausedAt: new Date() });
   }
 }

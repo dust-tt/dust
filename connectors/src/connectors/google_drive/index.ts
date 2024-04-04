@@ -63,6 +63,7 @@ import {
   getGoogleCredentials,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 
@@ -824,4 +825,14 @@ export async function googleDriveGarbageCollect(connectorId: ModelId) {
   }
 
   return launchGoogleGarbageCollector(connectorId);
+}
+
+export async function pauseGoogleDriveConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  await connector.markAsPaused();
+  await terminateAllWorkflowsForConnectorId(connectorId);
+  return new Ok(undefined);
 }

@@ -11,6 +11,7 @@ import { getConnectorAPIHandler } from "@connectors/api/get_connector";
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getContentNodesParentsAPIHandler } from "@connectors/api/get_content_node_parents";
 import { getContentNodesAPIHandler } from "@connectors/api/get_content_nodes";
+import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
 import { resumeConnectorAPIHandler } from "@connectors/api/resume_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
@@ -89,6 +90,7 @@ export function startServer(port: number) {
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", getConnectorUpdateAPIHandler);
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
+  app.post("/connectors/pause/:connector_id", pauseConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);

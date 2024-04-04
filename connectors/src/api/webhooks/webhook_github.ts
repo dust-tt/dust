@@ -140,6 +140,16 @@ const _webhookGithubAPIHandler = async (
 
   const enabledConnectors: ConnectorResource[] = [];
   for (const connector of connectors) {
+    if (connector.isPaused()) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          installationId,
+        },
+        "Skipping webhook for Github connector because it is paused."
+      );
+      continue;
+    }
     const connectorState = githubConnectorStates[connector.id];
     if (!connectorState) {
       logger.error(

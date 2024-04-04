@@ -30,6 +30,7 @@ import {
   nango_client,
   nangoDeleteConnection,
 } from "@connectors/lib/nango_client.js";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
@@ -641,4 +642,14 @@ export async function setSlackConfig(
       return new Err(new Error(`Invalid config key ${configKey}`));
     }
   }
+}
+
+export async function pauseSlackConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  await connector.markAsPaused();
+  await terminateAllWorkflowsForConnectorId(connectorId);
+  return new Ok(undefined);
 }

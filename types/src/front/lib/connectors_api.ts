@@ -183,6 +183,20 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async pauseConnector(
+    connectorId: string
+  ): Promise<ConnectorsAPIResponse<undefined>> {
+    const res = await fetch(
+      `${CONNECTORS_API}/connectors/pause/${encodeURIComponent(connectorId)}`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async resumeConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
