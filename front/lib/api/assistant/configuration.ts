@@ -34,6 +34,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFileContentType, getPublicUploadBucket } from "@app/lib/dfs";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
@@ -754,6 +755,20 @@ export async function getAgentNames(auth: Authenticator): Promise<string[]> {
   return agents.map((a) => a.name);
 }
 
+async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
+  const filename = pictureUrl.split("/").at(-1);
+  if (!filename) {
+    return false;
+  }
+
+  const contentType = await getFileContentType("PUBLIC_UPLOAD", filename);
+  if (!contentType) {
+    return false;
+  }
+
+  return contentType.includes("image");
+}
+
 /**
  * Create Agent Configuration
  */
@@ -787,6 +802,13 @@ export async function createAgentConfiguration(
   const user = auth.user();
   if (!user) {
     throw new Error("Unexpected `auth` without `user`.");
+  }
+
+  const isValidPictureUrl = await isSelfHostedImageWithValidContentType(
+    pictureUrl
+  );
+  if (!isValidPictureUrl) {
+    return new Err(new Error("Invalid picture url."));
   }
 
   let version = 0;

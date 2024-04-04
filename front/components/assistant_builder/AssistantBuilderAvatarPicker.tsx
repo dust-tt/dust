@@ -194,6 +194,7 @@ export function AvatarPicker({
         style={{ display: "none" }}
         onChange={onFileChange}
         ref={fileInputRef}
+        accept=".png,.jpg,.jpeg"
       />
 
       <div className="h-full w-full overflow-visible">

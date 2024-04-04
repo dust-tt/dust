@@ -1,8 +1,8 @@
 import { Storage } from "@google-cloud/storage";
 import { IncomingForm } from "formidable";
-import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { uploadToBucket } from "@app/lib/dfs";
 import { withLogging } from "@app/logger/withlogging";
 
 const { DUST_UPLOAD_BUCKET = "", SERVICE_ACCOUNT } = process.env;
@@ -13,45 +13,61 @@ export const config = {
   },
 };
 
+export async function assertIsSelfHostedPictureUrl(pictureUrl: string) {
+  const isSelfHosted = pictureUrl.startsWith(
+    `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/`
+  );
+
+  const storage = new Storage({
+    keyFilename: SERVICE_ACCOUNT,
+  });
+
+  const filename = pictureUrl.split("/").at(-1);
+  if (!filename) {
+    return false;
+  }
+
+  const bucket = storage.bucket(DUST_UPLOAD_BUCKET);
+  const gcsFile = await bucket.file(filename);
+
+  const [metadata] = await gcsFile.getMetadata();
+
+  const isImageContentType =
+    metadata.contentType && metadata.contentType.includes("image");
+
+  return isSelfHosted && isImageContentType;
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<void> {
   if (req.method === "POST") {
     try {
-      const form = new IncomingForm();
-      const [_fields, files] = await form.parse(req);
-      void _fields;
+      const form = new IncomingForm({
+        filter: ({ mimetype }) => {
+          if (!mimetype) {
+            return false;
+          }
 
-      const maybeFiles = files.file;
+          // Only allow uploading image.
+          return mimetype.includes("image");
+        },
+        maxFileSize: 3 * 1024 * 1024, // 3 mb.
+      });
+
+      const [, files] = await form.parse(req);
+
+      const { file: maybeFiles } = files;
 
       if (!maybeFiles) {
         res.status(400).send("No file uploaded.");
         return;
       }
 
-      const file = maybeFiles[0];
+      const [file] = maybeFiles;
 
-      const storage = new Storage({
-        keyFilename: SERVICE_ACCOUNT,
-      });
-
-      const bucket = storage.bucket(DUST_UPLOAD_BUCKET);
-      const gcsFile = await bucket.file(file.newFilename);
-      const fileStream = fs.createReadStream(file.filepath);
-
-      await new Promise((resolve, reject) =>
-        fileStream
-          .pipe(
-            gcsFile.createWriteStream({
-              metadata: {
-                contentType: file.mimetype,
-              },
-            })
-          )
-          .on("error", reject)
-          .on("finish", resolve)
-      );
+      await uploadToBucket("PUBLIC_UPLOAD", file);
 
       const fileUrl = `https://storage.googleapis.com/${DUST_UPLOAD_BUCKET}/${file.newFilename}`;
 
