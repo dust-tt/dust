@@ -162,7 +162,7 @@ MembershipInvitation.init(
     },
     sId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     inviteEmail: {
       type: DataTypes.STRING,

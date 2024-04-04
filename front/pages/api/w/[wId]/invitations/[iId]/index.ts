@@ -2,19 +2,26 @@ import type {
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getInvitation, updateInvitationStatus } from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { MembershipInvitation } from "@app/lib/models";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetMemberInvitationsResponseBody = {
-  invitations: MembershipInvitationType[];
+export type PostMemberInvitationsResponseBody = {
+  invitation: MembershipInvitationType;
 };
+
+export const PostMemberInvitationBodySchema = t.type({
+  status: t.literal("revoked"),
+});
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetMemberInvitationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<PostMemberInvitationsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -44,8 +51,19 @@ async function handler(
     });
   }
 
-  const invitationId = parseInt(req.query.invitationId as string);
-  if (isNaN(invitationId)) {
+  if (!(typeof req.query.iId === "string")) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameters, `iId` (string) is required.",
+      },
+    });
+  }
+
+  const invitationId = req.query.iId;
+  let invitation = await getInvitation(auth, { invitationId });
+  if (!invitation) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -57,47 +75,26 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !typeof (req.body.status === "string") ||
-        // For now we only allow revoking invitations.
-        req.body.status !== "revoked"
-      ) {
+      const bodyValidation = PostMemberInvitationBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              'The request body is invalid, expects { status: "revoked" }.',
+            message: `The request body is invalid: ${pathError}`,
           },
         });
       }
+      const body = bodyValidation.right;
 
-      const invitation = await MembershipInvitation.findOne({
-        where: { id: invitationId },
+      invitation = await updateInvitationStatus(auth, {
+        invitation,
+        status: body.status,
       });
 
-      if (!invitation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "invitation_not_found",
-            message: "The invitation requested was not found.",
-          },
-        });
-      }
-
-      invitation.status = req.body.status;
-      await invitation.save();
       res.status(200).json({
-        invitations: [
-          {
-            id: invitation.id,
-            status: invitation.status,
-            inviteEmail: invitation.inviteEmail,
-            initialRole: invitation.initialRole,
-          },
-        ],
+        invitation,
       });
       return;
 
