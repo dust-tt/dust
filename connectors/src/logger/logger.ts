@@ -28,7 +28,13 @@ const devOptions = {
   transport: {
     target: "pino-pretty",
     options: {
-      errorLikeObjectKeys: ["err", "error", "error_stack", "stack"],
+      errorLikeObjectKeys: [
+        "err",
+        "error",
+        "error_stack",
+        "stack",
+        "apiErrorHandlerCallStack",
+      ],
     },
   },
 };
