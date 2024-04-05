@@ -33,10 +33,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import {
   SlackChannel,
   SlackChatBotMessage,
-  SlackConfiguration,
 } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 import {
   formatMessagesForUpsert,
@@ -65,12 +65,9 @@ export async function botAnswerMessageWithErrorHandling(
   slackMessageTs: string,
   slackThreadTs: string | null
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      slackTeamId: slackTeamId,
-      botEnabled: true,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
+    slackTeamId
+  );
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -162,7 +159,7 @@ async function botAnswerMessage(
   slackMessageTs: string,
   slackThreadTs: string | null,
   connector: ConnectorResource,
-  slackConfig: SlackConfiguration
+  slackConfig: SlackConfigurationResource
 ): Promise<Result<AgentGenerationSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -231,6 +228,7 @@ async function botAnswerMessage(
     threadTs:
       slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
     conversationId: lastSlackChatBotMessage?.conversationId,
+    userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
   const buildContentFragmentRes = await makeContentFragment(
@@ -615,11 +613,9 @@ function _removeCiteMention(message: string): string {
 export async function getBotEnabled(
   connectorId: ModelId
 ): Promise<Result<boolean, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -629,47 +625,6 @@ export async function getBotEnabled(
   }
 
   return new Ok(slackConfig.botEnabled);
-}
-
-export async function toggleSlackbot(
-  connectorId: ModelId,
-  botEnabled: boolean
-): Promise<Result<void, Error>> {
-  const slackConfig = await SlackConfiguration.findOne({
-    where: {
-      connectorId: connectorId,
-    },
-  });
-
-  if (!slackConfig) {
-    return new Err(
-      new Error(
-        `Failed to find a Slack configuration for connector ${connectorId}`
-      )
-    );
-  }
-
-  if (botEnabled) {
-    const otherSlackConfigWithBotEnabled = await SlackConfiguration.findOne({
-      where: {
-        slackTeamId: slackConfig.slackTeamId,
-        botEnabled: true,
-      },
-    });
-
-    if (otherSlackConfigWithBotEnabled) {
-      return new Err(
-        new Error(
-          "Another Dust workspace has already enabled the slack bot for your Slack workspace."
-        )
-      );
-    }
-  }
-
-  slackConfig.botEnabled = botEnabled;
-  await slackConfig.save();
-
-  return new Ok(void 0);
 }
 
 async function makeContentFragment(

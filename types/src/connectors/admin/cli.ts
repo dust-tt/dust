@@ -67,6 +67,7 @@ export const SlackCommandSchema = t.type({
     t.literal("sync-thread"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
+    t.literal("whitelist-bot"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
