@@ -2,7 +2,7 @@ import { continueAsNew,proxyActivities, sleep, workflowInfo } from "@temporalio/
 
 import type * as activities from "./activities";
 
-const { retrieveNewTranscriptsActivity } = proxyActivities<typeof activities>({
+const { retrieveNewTranscriptsActivity, summarizeGoogleDriveTranscriptActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -28,4 +28,12 @@ export async function retrieveNewTranscriptsWorkflow(
     }
     
   } while (workflowInfo().historyLength < 5000);
+}
+
+
+export async function summarizeTranscriptWorkflow(
+  userId: number,
+  fileId: string
+) {
+  await summarizeGoogleDriveTranscriptActivity(userId, fileId);
 }
