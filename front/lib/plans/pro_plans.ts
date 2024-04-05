@@ -30,7 +30,6 @@ if (isDevelopment()) {
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
-    stripeProductId: "prod_OwKvN4XrUwFw5a",
     billingType: "per_seat",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",

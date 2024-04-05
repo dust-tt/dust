@@ -85,26 +85,6 @@ const PlansPage = () => {
       return;
     }
 
-    // check if stripe product id is unique
-    if (editingPlan.stripeProductId) {
-      const plansWithSameStripeProductId = plans?.filter(
-        (plan) =>
-          plan.stripeProductId &&
-          plan.stripeProductId.trim() === editingPlan.stripeProductId?.trim()
-      );
-      if (
-        (editingPlan.isNewPlan && plansWithSameStripeProductId.length > 0) ||
-        (!editingPlan.isNewPlan && plansWithSameStripeProductId.length > 1)
-      ) {
-        sendNotification({
-          title: "Error saving plan",
-          type: "error",
-          description: "Stripe Product ID must be unique",
-        });
-        return;
-      }
-    }
-
     const requestBody: PlanType = toPlanType(editingPlan);
 
     const r = await fetch("/api/poke/plans", {

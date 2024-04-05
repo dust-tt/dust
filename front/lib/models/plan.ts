@@ -32,7 +32,6 @@ export class Plan extends Model<
 
   declare code: string; // unique
   declare name: string;
-  declare stripeProductId: string | null;
   declare billingType: FreeBillingType | PaidBillingType;
   declare trialPeriodDays: number;
   declare canUseProduct: boolean;
@@ -77,10 +76,6 @@ Plan.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    stripeProductId: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
     billingType: {
       type: DataTypes.STRING,
