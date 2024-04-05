@@ -77,14 +77,14 @@ export function ActiveSubscriptionTable({
 }) {
   const activePlan = subscription.plan;
 
-  const [showManageSubscriptionModal, setShowManageSubscriptionModal] =
+  const [showUpgradeDowngradeModal, setShowUpgradeDowngradeModal] =
     useState(false);
 
   return (
     <>
-      <ManageSubscriptionModal
-        show={showManageSubscriptionModal}
-        onClose={() => setShowManageSubscriptionModal(false)}
+      <UpgradeDowngradeModal
+        show={showUpgradeDowngradeModal}
+        onClose={() => setShowUpgradeDowngradeModal(false)}
         owner={owner}
         subscription={subscription}
       />
@@ -96,12 +96,12 @@ export function ActiveSubscriptionTable({
                 Active Subscription:
               </h2>
               <PokeButton
-                aria-label="Manage Subscription"
+                aria-label="Upgrade / Downgrade"
                 variant="outline"
                 size="sm"
-                onClick={() => setShowManageSubscriptionModal(true)}
+                onClick={() => setShowUpgradeDowngradeModal(true)}
               >
-                🔥 Manage Subscription
+                🔥 Upgrade / Downgrade
               </PokeButton>
             </div>
             <PokeTable>
@@ -275,7 +275,7 @@ export function ActiveSubscriptionTable({
   );
 }
 
-function ManageSubscriptionModal({
+function UpgradeDowngradeModal({
   show,
   onClose,
   owner,
@@ -351,7 +351,7 @@ function ManageSubscriptionModal({
       isOpen={show}
       onClose={onClose}
       hasChanged={false}
-      title="Manage Subscription"
+      title="Upgrade / Downgrade Workspace"
       variant="full-screen"
     >
       <Page>
