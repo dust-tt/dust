@@ -244,17 +244,6 @@ async function handler(
                 workspaceSeats: workspaceSeats,
               });
             }
-            const auth = await Authenticator.internalAdminForWorkspace(
-              workspace.sId
-            );
-            const dataSources = await getDataSources(auth);
-            const connectorIds = removeNulls(
-              dataSources.map((ds) => ds.connectorId)
-            );
-            const connectorsApi = new ConnectorsAPI(logger);
-            for (const connectorId of connectorIds) {
-              await connectorsApi.unpauseConnector(connectorId);
-            }
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(
@@ -459,7 +448,17 @@ async function handler(
             const auth = await Authenticator.internalBuilderForWorkspace(
               subscription.workspace.sId
             );
-
+            if (!endDate) {
+              // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
+              const dataSources = await getDataSources(auth);
+              const connectorIds = removeNulls(
+                dataSources.map((ds) => ds.connectorId)
+              );
+              const connectorsApi = new ConnectorsAPI(logger);
+              for (const connectorId of connectorIds) {
+                await connectorsApi.unpauseConnector(connectorId);
+              }
+            }
             // then email admins
             const adminEmails = (
               await getMembers(auth, { roles: ["admin"] })
