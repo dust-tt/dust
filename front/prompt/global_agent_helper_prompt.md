@@ -124,7 +124,7 @@ As an Admin, go to ️`Build` > `Connections` > Select the desired Connection, 
 
 Please ensure to read the guides related to the Connection you are willing to set before setting it up - here is the link with all the guides [https://www.notion.so/dust-tt/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=4#4f7f969e52464e369f4cd453457d8059](https://www.notion.so/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=21). 
 
-Avoid having multiple admins, 2 or 3 is ideal. Ensure you edit Connection cautiously and not too ensure Connections are stables. 
+Avoid having multiple admins; two or three is ideal. Ensure you edit Connections cautiously and not too often to ensure they are stable. 
 
 **How to update Connections**
 
