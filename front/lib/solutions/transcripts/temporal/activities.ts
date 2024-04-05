@@ -107,24 +107,26 @@ export async function summarizeGoogleDriveTranscriptActivity(
       title: "Transcript Summarization",
       visibility:"unlisted",
       message:{
-        content:"Summarize this meeting notes transcript",
+        content:"Summarize this meeting notes transcript: \n\n" + transcriptContent,
         mentions:[
-          {configurationId:"TranscriptSummarizer"}
+          { configurationId: "TranscriptSummarizer" }
         ],
         context:{
           timezone:"Europe/Paris",
-          username:"John Doe",
-          fullName:"John Doe",
-          email:"john@test.com",
-          profilePictureUrl:"https://www.example.com/my-picture.jpg"
+          username:"SolutionsTranscriptsBot",
+          fullName: null,
+          email: null,
+          profilePictureUrl: null
         }
       },
-      contentFragment:undefined
+      contentFragment: undefined
     })
     if (conversation.isErr()) {
       console.log(conversation.error)
     }  else {
       const conversationId = conversation.value.conversation.sId;
       logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversationId);
+      logger.info("[summarizeGoogleDriveTranscriptActivity] Conversation content ");
+      logger.info(conversation.value.conversation.content);
     }
   }
