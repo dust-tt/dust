@@ -1,9 +1,12 @@
-import { ConnectorsAPI } from "@dust-tt/types";
+import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
+import { getDataSources } from "@app/lib/api/data_sources";
+import { renderUserType } from "@app/lib/api/user";
+import { Authenticator } from "@app/lib/auth";
 import { DataSource, EventSchema, User, Workspace } from "@app/lib/models";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
@@ -13,7 +16,6 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { renderUserType } from "@app/lib/api/user";
 
 const { DUST_DATA_SOURCES_BUCKET = "", SERVICE_ACCOUNT } = process.env;
 
@@ -75,6 +77,36 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         workspaceId: w.sId,
       });
       await workspace("show", args);
+      return;
+    }
+
+    case "pause-connectors": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+
+      const w = await Workspace.findOne({
+        where: {
+          sId: args.wId,
+        },
+      });
+      if (!w) {
+        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      }
+
+      const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+      const dataSources = await getDataSources(auth);
+      const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
+      const connectorsApi = new ConnectorsAPI(logger);
+      for (const connectorId of connectorIds) {
+        console.log(`Pausing connectorId=${connectorId}`);
+        const res = await connectorsApi.pauseConnector(connectorId);
+        if (res.isErr()) {
+          throw new Error(res.error.message);
+        }
+      }
+
+      console.log("Connectors paused");
       return;
     }
 
