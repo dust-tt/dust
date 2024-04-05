@@ -15,6 +15,8 @@ RUN npm ci
 
 COPY /front .
 
+ENV NODE_OPTIONS "--enable-source-maps=true"
+
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build

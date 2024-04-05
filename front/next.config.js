@@ -3,7 +3,6 @@ const removeImports = require("next-remove-imports")();
 
 module.exports = removeImports({
   experimental: { esmExternals: false },
-  productionBrowserSourceMaps: true,
   async redirects() {
     return [
       {
