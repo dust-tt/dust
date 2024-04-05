@@ -29,8 +29,12 @@ export function ProductPage({ getReturnToUrl }: ProductPageProps) {
       <TeamSection />
       <FutureSection />
       <Grid>
-        <H2 className="col-span-10 col-start-2 text-emerald-200">
-          How <span className="text-emerald-400">they use&nbsp;Dust</span>
+        <H2
+          className="col-span-10 col-start-2"
+          from="from-green-200"
+          to="to-emerald-400"
+        >
+          How they use&nbsp;Dust
         </H2>
 
         <BlogBlock

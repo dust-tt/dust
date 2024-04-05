@@ -1,9 +1,11 @@
 import React from "react";
 
-import { avatars, DroidItem } from "@app/components/home/components/carousel";
 import {
-  Block,
+  Avatars3D,
+  Block2,
+  ContentAssistantBlock,
   Conversation,
+  DroidItem,
   Handle,
   HeaderContentBlock,
   Message,
@@ -20,11 +22,13 @@ export function ForCustomerSupport() {
         uptitle="Dust for Customer Support"
         title={
           <>
-            <span className="text-sky-200">Help your Support&nbsp;team,</span>
+            Help your Support&nbsp;Team,
             <br />
-            <span className="text-sky-400">help your&nbsp;customers.</span>
+            help your&nbsp;customers.
           </>
         }
+        from="from-sky-300"
+        to="to-blue-500"
         subtitle={
           <>
             Reply faster and increase answer&nbsp;quality
@@ -34,53 +38,69 @@ export function ForCustomerSupport() {
           </>
         }
       />
-
       <Grid>
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-6"
-          )}
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-4">
-              <Block
-                title="Package expert knowledge in easy to use assistants in seconds"
-                color="amber"
-              >
+        <ContentAssistantBlock
+          className="col-span-8 col-start-3"
+          color="sky"
+          content={
+            <>
+              <Block2 title="Package expert knowledge in easy to use assistants in seconds">
                 Build AI assistants based on company knowledge and past support
                 conversations.
-              </Block>
-              <Block
-                title="Understand problems faster, jump to solutions"
-                color="pink"
-              >
+              </Block2>
+              <Block2 title="Understand problems faster, jump to solutions">
                 Understand customer messages faster, in any language. Find
                 informations to resolve issues quickly with semantic search and
                 access to cross company data.
-              </Block>
-            </div>
-            <div>{customerSupportSlides[0]}</div>
-            <Block
-              title="Stay connected to the rest of the company"
-              color="emerald"
-            >
-              Release schedule, technical outage, program maitenance, all
-              accessible in one place.
-            </Block>
-            {customerSupportSlides[2]}
-            <Block title="Write better answers, faster" color="sky">
-              Draft and correct answers following company guidelines and tone of
-              voice in seconds.
-            </Block>
-            <div>
+              </Block2>
+            </>
+          }
+          assistant={customerSupportSlides[0]}
+        />
+        <ContentAssistantBlock
+          className="col-span-4"
+          color="pink"
+          content={
+            <>
+              <Block2
+                title="Stay connected to the rest of the company"
+                className="col-span-6"
+              >
+                Release schedule, technical outage, program maitenance, all
+                accessible in one place.
+              </Block2>
+            </>
+          }
+          assistant={customerSupportSlides[2]}
+        />
+        <ContentAssistantBlock
+          className="col-span-8"
+          color="emerald"
+          content={
+            <>
+              <Block2
+                title={
+                  <>
+                    Write better answers,
+                    <br />
+                    faster
+                  </>
+                }
+              >
+                Draft and correct answers following company guidelines and tone
+                of voice in&nbsp;seconds.
+              </Block2>
+            </>
+          }
+          assistant={
+            <>
               {customerSupportSlides[1]}
               {customerSupportSlides[3]}
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
+      </Grid>
+      <Grid>
         <div
           className={classNames(
             defaultFlexClasses,
@@ -161,28 +181,28 @@ export function ForCustomerSupport() {
 export const customerSupportSlides = [
   <DroidItem
     key="1"
-    avatar={avatars[1]}
+    avatar={Avatars3D[1]}
     name="@supportExpert"
     category="Support"
     question="Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team."
   />,
   <DroidItem
     key="2"
-    avatar={avatars[2]}
+    avatar={Avatars3D[2]}
     name="@customerWrite"
     category="Support"
     question="Draft answers using company tone and voice, support guidelines, and customer messages."
   />,
   <DroidItem
     key="3"
-    avatar={avatars[3]}
+    avatar={Avatars3D[3]}
     name="@productInfo"
     category="Support"
     question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
   />,
   <DroidItem
     key="4"
-    avatar={avatars[5]}
+    avatar={Avatars3D[5]}
     name="@followUpScenario"
     category="Support"
     question="Help anticipate further requests from users and ensure those are covered before answering to a customer."

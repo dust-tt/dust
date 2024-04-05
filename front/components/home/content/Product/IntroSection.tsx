@@ -30,10 +30,10 @@ export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
           )}
         >
           <div className="flex flex-col gap-12">
-            <H1 className="text-red-300">
+            <H1 from="from-red-200" to="to-red-400">
               Cracking
               <br />
-              <span className="text-red-400">team AI productivity</span>
+              team AI productivity
             </H1>
             <H4 className="text-slate-50">
               AI is changing the way we work.

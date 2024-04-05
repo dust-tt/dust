@@ -22,12 +22,12 @@ export function ForPeople() {
         uptitle="Dust for Recruiting and People teams"
         title={
           <>
-            <span className="text-emerald-100">
-              Augment your workflows with AI&nbsp;assistance{" "}
-            </span>
-            <span className="text-emerald-400">accross the&nbsp;board</span>
+            Augment your workflows with AI&nbsp;assistance accross
+            the&nbsp;board
           </>
         }
+        from="from-amber-200"
+        to="to-amber-400"
         subtitle={
           <>
             Onboarding&nbsp;better, Manage&nbsp;feedback, Support

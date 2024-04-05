@@ -21,12 +21,16 @@ export function PricingPage({
       <Grid>
         <div
           // ref={scrollRef4}
-          className="col-span-12 text-center md:pb-6 xl:pb-10"
+          className="col-span-8 col-start-2 md:pb-6 xl:pb-10"
         >
-          <H2 className="pb-4 text-slate-50 md:pb-6 xl:pb-10">
+          <H2
+            className="pb-4 md:pb-6 xl:pb-10"
+            from="from-white"
+            to="to-slate-200"
+          >
             Start with Dust!
             <br />
-            <span className="text-slate-200/50">Meet our pricing plans.</span>
+            Meet our pricing plans.
           </H2>
           <div>
             <Button

@@ -40,11 +40,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl drop-shadow-lg",
-  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl drop-shadow-lg",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl drop-shadow-md",
-  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl drop-shadow-md",
-  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl drop-shadow-md",
+  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl py-2",
+  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl py-2",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1",
+  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl",
+  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl",
 };
 
 interface ContentProps {
@@ -53,12 +53,34 @@ interface ContentProps {
   className?: string;
 }
 
+interface HContentProps {
+  children: ReactNode;
+  className?: string;
+  from?: string;
+  to?: string;
+}
+
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
 
 const createHeadingComponent = (Tag: TagName) => {
-  const Component: React.FC<ContentProps> = ({ children, className = "" }) => {
+  const Component: React.FC<HContentProps> = ({
+    children,
+    from = "",
+    to = "",
+    className = "",
+  }) => {
     return (
-      <Tag className={classNames(className, hClasses[Tag])}>{children}</Tag>
+      <Tag
+        className={classNames(
+          className,
+          hClasses[Tag],
+          from ? "bg-gradient-to-br bg-clip-text text-transparent" : "",
+          from,
+          to
+        )}
+      >
+        {children}
+      </Tag>
     );
   };
   Component.displayName = Tag.toUpperCase();

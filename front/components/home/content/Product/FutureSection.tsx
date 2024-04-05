@@ -21,10 +21,10 @@ export function FutureSection() {
             "xl:col-span-8 xl:col-start-2"
           )}
         >
-          <H2 className="text-pink-500">
+          <H2 from="from-sky-200" to="to-blue-400">
             Future-Proof
             <br />
-            <span className="text-pink-200">your AI&nbsp;Strategy</span>
+            your AI&nbsp;Strategy
           </H2>
           <P size="lg">
             Continuously&nbsp;evolving to&nbsp;meet

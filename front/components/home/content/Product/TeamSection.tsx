@@ -26,10 +26,10 @@ export function TeamSection() {
             "2xl:col-start-3"
           )}
         >
-          <H2 className="text-amber-400">
+          <H2 from="from-amber-200" to="to-amber-400">
             Bring your&nbsp;team
             <br />
-            <span className="text-amber-100">up&nbsp;to&nbsp;speed.</span>
+            up&nbsp;to&nbsp;speed
           </H2>
           <P size="lg">
             Adopting AI is a&nbsp;fundamental shift for&nbsp;your

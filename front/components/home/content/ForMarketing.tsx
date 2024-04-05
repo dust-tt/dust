@@ -17,13 +17,13 @@ export function ForMarketing() {
         uptitle="Dust for Marketing Teams"
         title={
           <>
-            <span className="text-pink-200">Enhance</span>
+            Enhance
             <br />
-            <span className="text-pink-400">
-              Content&nbsp;Production and&nbsp;Creativity
-            </span>
+            Content&nbsp;Production and&nbsp;Creativity
           </>
         }
+        from="from-pink-300"
+        to="to-red-400"
         subtitle={
           <>
             Rapidly generate innovative ideas and high-quality&nbsp;content,
