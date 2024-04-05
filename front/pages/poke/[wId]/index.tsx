@@ -1,10 +1,4 @@
-import {
-  Button,
-  Collapsible,
-  DropdownMenu,
-  Modal,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
   DataSourceType,
@@ -12,7 +6,7 @@ import type {
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -40,7 +34,6 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
-import { usePokePlans } from "@app/lib/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -124,37 +117,9 @@ const WorkspacePage = ({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
-  const sendNotification = useContext(SendNotificationsContext);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-
-  const { plans } = usePokePlans();
-
   const [showDustAppLogsModal, setShowDustAppLogsModal] = React.useState(false);
-
-  const { submit: onDowngrade } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to downgrade this workspace to no plan?"
-      )
-    ) {
-      return;
-    }
-    try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/downgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!r.ok) {
-        throw new Error("Failed to downgrade workspace.");
-      }
-      router.reload();
-    } catch (e) {
-      console.error(e);
-      window.alert("An error occurred while downgrading the workspace.");
-    }
-  });
+  const [showDeleteWorkspaceModal, setShowDeleteWorkspaceModal] =
+    React.useState(false);
 
   const { submit: onWorkspaceUpdate } = useSubmitFunction(
     async (segmentation: WorkspaceSegmentationType) => {
@@ -179,75 +144,6 @@ const WorkspacePage = ({
     }
   );
 
-  const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this workspace? Data will be deleted and THERE IS NO GOING BACK."
-      )
-    ) {
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!r.ok) {
-        const res: { error: { message: string } } = await r.json();
-        throw new Error(res.error.message);
-      }
-      await router.push("/poke?success=workspace-deleted");
-      sendNotification({
-        title: "Succes!",
-        description: "Workspace data deleted.",
-        type: "success",
-      });
-    } catch (e) {
-      console.error(e);
-      window.alert(`We could not delete the workspace:\n${e}`);
-    }
-    setIsLoading(false);
-  });
-
-  const { submit: onUpgradeToPlan } = useSubmitFunction(
-    async (plan: PlanType) => {
-      if (
-        !window.confirm(
-          `Are you sure you want to upgrade ${owner.name} (${owner.sId}) to plan ${plan.name} (${plan.code}) ?.`
-        )
-      ) {
-        return;
-      }
-      try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/upgrade?planCode=${plan.code}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (!r.ok) {
-          throw new Error("Failed to upgrade workspace to plan.");
-        }
-        router.reload();
-      } catch (e) {
-        console.error(e);
-        window.alert(
-          "An error occurred while upgrading the workspace to plan."
-        );
-      }
-    }
-  );
-
-  const workspaceHasManagedDataSources = dataSources.some(
-    (ds) => !!ds.connectorProvider
-  );
-
   return (
     <>
       <DustAppLogsModal
@@ -258,35 +154,52 @@ const WorkspacePage = ({
         owner={owner}
         registry={registry}
       />
+      <DeleteWorkspaceModal
+        show={showDeleteWorkspaceModal}
+        onClose={() => {
+          setShowDeleteWorkspaceModal(false);
+        }}
+        owner={owner}
+        subscription={activeSubscription}
+        dataSources={dataSources}
+      />
+
       <div className="min-h-screen bg-structure-50">
         <PokeNavbar />
-        <div className="ml-8 flex-grow p-6">
-          <div>
-            <span className="pr-2 text-2xl font-bold">{owner.name}</span>
-          </div>
-          <div className="pb-4">
-            <div>
-              <Link
-                href={`/poke/${owner.sId}/memberships`}
-                className="text-xs text-action-400"
-              >
-                View members
-              </Link>
+        <div className="ml-8 p-6">
+          <div className="flex justify-between gap-3">
+            <div className="flex-grow">
+              <span className="text-2xl font-bold">{owner.name}</span>
+              <div>
+                <Link
+                  href={`/poke/${owner.sId}/memberships`}
+                  className="text-xs text-action-400"
+                >
+                  View members
+                </Link>
+              </div>
+              <div>
+                <a
+                  className="cursor-pointer text-xs text-action-400"
+                  onClick={() => {
+                    setShowDustAppLogsModal(true);
+                  }}
+                >
+                  View dust app logs
+                </a>
+              </div>
+              <div>
+                <a
+                  className="cursor-pointer text-xs text-action-400"
+                  onClick={() => {
+                    setShowDeleteWorkspaceModal(true);
+                  }}
+                >
+                  Delete workspace data (GDPR)
+                </a>
+              </div>
             </div>
             <div>
-              <a
-                className="cursor-pointer text-xs text-action-400"
-                onClick={() => {
-                  setShowDustAppLogsModal(true);
-                }}
-              >
-                View dust app logs
-              </a>
-            </div>
-          </div>
-
-          <div className="flex-col justify-center">
-            <div className="mx-2">
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
@@ -312,105 +225,15 @@ const WorkspacePage = ({
                   ))}
                 </DropdownMenu.Items>
               </DropdownMenu>
-
-              <div className="flex flex-col gap-4">
-                {plans && (
-                  <div className="pt-4">
-                    <Collapsible>
-                      <Collapsible.Button label="Manage plan" />
-                      <Collapsible.Panel>
-                        <div className="flex flex-col gap-2 pt-4">
-                          {plans
-                            .filter((p) => p.billingType === "free")
-                            .map((p) => {
-                              return (
-                                <div key={p.code}>
-                                  <Button
-                                    variant="secondary"
-                                    label={`Upgrade to free plan: ${p.code}`}
-                                    onClick={() => onUpgradeToPlan(p)}
-                                    disabled={
-                                      activeSubscription.plan.code === p.code
-                                    }
-                                  />
-                                </div>
-                              );
-                            })}
-                          <div>
-                            <Button
-                              label="Downgrade to NO PLAN"
-                              variant="secondaryWarning"
-                              onClick={onDowngrade}
-                              disabled={
-                                activeSubscription.plan.code ===
-                                  FREE_NO_PLAN_CODE ||
-                                activeSubscription.stripeSubscriptionId !==
-                                  null ||
-                                workspaceHasManagedDataSources
-                              }
-                            />
-                            {activeSubscription.plan.code !==
-                              FREE_NO_PLAN_CODE &&
-                              workspaceHasManagedDataSources && (
-                                <div className="pl-2 pt-4">
-                                  <p className="text-warning mb-4 text-sm">
-                                    Delete managed data sources before
-                                    downgrading.
-                                  </p>
-                                </div>
-                              )}
-                          </div>
-                        </div>
-                      </Collapsible.Panel>
-                    </Collapsible>
-                  </div>
-                )}
-                <div>
-                  <Collapsible>
-                    <Collapsible.Button label="Delete workspace data (GDPR)" />
-                    <Collapsible.Panel>
-                      <div className="flex flex-col gap-2 pt-4">
-                        <div>
-                          {dataSources.length > 0 && (
-                            <p className="text-warning mb-4 text-sm ">
-                              Delete data sources before deleting the workspace.
-                            </p>
-                          )}
-                          {activeSubscription.plan.code !==
-                            FREE_NO_PLAN_CODE && (
-                            <p className="text-warning mb-4 text-sm ">
-                              Downgrade to free test plan before deleting the
-                              workspace.
-                            </p>
-                          )}
-                          {isLoading ? (
-                            <p className="text-warning mb-4 text-sm ">
-                              Deleting workspace data...
-                              <Spinner />
-                            </p>
-                          ) : (
-                            <Button
-                              label="Delete the workspace"
-                              variant="secondaryWarning"
-                              onClick={onDeleteWorkspace}
-                              disabled={
-                                activeSubscription.plan.code !==
-                                  FREE_NO_PLAN_CODE ||
-                                workspaceHasManagedDataSources
-                              }
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </Collapsible.Panel>
-                  </Collapsible>
-                </div>
-              </div>
             </div>
+          </div>
 
-            <div className="flex flex-col space-y-8 pt-4">
-              <ActiveSubscriptionTable subscription={activeSubscription} />
-
+          <div className="flex-col justify-center">
+            <div className="flex flex-col space-y-8">
+              <ActiveSubscriptionTable
+                owner={owner}
+                subscription={activeSubscription}
+              />
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
@@ -481,6 +304,103 @@ function DustAppLogsModal({
             );
           }
         )}
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteWorkspaceModal({
+  show,
+  onClose,
+  owner,
+  subscription,
+  dataSources,
+}: {
+  show: boolean;
+  onClose: () => void;
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  dataSources: DataSourceType[];
+}) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this workspace? Data will be deleted and THERE IS NO GOING BACK."
+      )
+    ) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!r.ok) {
+        const res: { error: { message: string } } = await r.json();
+        throw new Error(res.error.message);
+      }
+      await router.push("/poke?success=workspace-deleted");
+      sendNotification({
+        title: "Success!",
+        description: "Workspace data request successfully sent.",
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e);
+      window.alert(`We could not delete the workspace:\n${e}`);
+    }
+    setIsLoading(false);
+  });
+
+  const workspaceHasManagedDataSources = dataSources.some(
+    (ds) => !!ds.connectorProvider
+  );
+
+  return (
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      hasChanged={false}
+      title="Delete Workspace Data (GDPR)"
+    >
+      <div className="flex flex-col gap-2 pt-4">
+        <div className="flex flex-col gap-2 pt-4">
+          <div>
+            {dataSources.length > 0 && (
+              <p className="text-warning mb-4 text-sm ">
+                Delete data sources before deleting the workspace.
+              </p>
+            )}
+            {subscription.plan.code !== FREE_NO_PLAN_CODE && (
+              <p className="text-warning mb-4 text-sm ">
+                Downgrade workspace before deleting its data.
+              </p>
+            )}
+            {isLoading ? (
+              <p className="text-warning mb-4 text-sm ">
+                Deleting workspace data...
+                <Spinner />
+              </p>
+            ) : (
+              <Button
+                label="Delete the workspace"
+                variant="secondaryWarning"
+                onClick={onDeleteWorkspace}
+                disabled={
+                  subscription.plan.code !== FREE_NO_PLAN_CODE ||
+                  workspaceHasManagedDataSources
+                }
+              />
+            )}
+          </div>
+        </div>
       </div>
     </Modal>
   );
