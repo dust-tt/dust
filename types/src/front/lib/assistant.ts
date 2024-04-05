@@ -47,7 +47,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG = {
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
   displayName: "Claude 3 Opus",
   contextSize: 200000,
-  recommendedTopK: 64,
+  recommendedTopK: 32,
   largeModel: true,
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
@@ -59,7 +59,7 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG = {
   modelId: CLAUDE_3_SONNET_2024029_MODEL_ID,
   displayName: "Claude 3 Sonnet",
   contextSize: 200000,
-  recommendedTopK: 64,
+  recommendedTopK: 32,
   largeModel: true,
   description:
     "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
@@ -71,7 +71,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG = {
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
   displayName: "Claude 3 Haiku",
   contextSize: 200000,
-  recommendedTopK: 64,
+  recommendedTopK: 32,
   largeModel: true,
   description:
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
