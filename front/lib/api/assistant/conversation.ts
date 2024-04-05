@@ -68,7 +68,6 @@ import {
   User,
   UserMessage,
 } from "@app/lib/models";
-import { updateWorkspacePerMonthlyActiveUsersSubscriptionUsage } from "@app/lib/plans/subscription";
 import {
   ContentFragmentResource,
   fileAttachmentLocation,
@@ -78,6 +77,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -881,14 +882,8 @@ export async function* postUserMessage(
       };
     }
   }
-  // If the plan is monthly_active_users, update the workspace usage.
-  // We don't await the result of the function call.
-  if (plan.billingType === "monthly_active_users") {
-    void updateWorkspacePerMonthlyActiveUsersSubscriptionUsage({
-      owner,
-      subscription,
-    });
-  }
+
+  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
 
   // Temporary: we want to monitor if we need to prevent it or not
   async function logIfUserUnknown() {
