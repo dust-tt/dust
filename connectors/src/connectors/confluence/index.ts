@@ -220,6 +220,42 @@ export async function resumeConfluenceConnector(
   }
 }
 
+export async function pauseConfluenceConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsPaused();
+  const r = await stopConfluenceSyncWorkflow(connectorId);
+  if (r.isErr()) {
+    return r;
+  }
+
+  return new Ok(undefined);
+}
+
+export async function unpauseConfluenceConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsUnpaused();
+  const r = await launchConfluenceSyncWorkflow(connectorId, null);
+  if (r.isErr()) {
+    return r;
+  }
+
+  return new Ok(undefined);
+}
+
 export async function cleanupConfluenceConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {

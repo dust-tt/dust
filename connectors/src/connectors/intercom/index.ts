@@ -756,3 +756,29 @@ export async function pauseIntercomConnector(connectorId: ModelId) {
 
   return new Ok(undefined);
 }
+
+export async function unpauseIntercomConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "[Intercom] Connector not found.");
+    return new Err(new Error("Connector not found"));
+  }
+
+  await connector.markAsUnpaused();
+  const teamsIds = await IntercomTeam.findAll({
+    where: {
+      connectorId,
+    },
+    attributes: ["teamId"],
+  });
+  const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
+  const r = await launchIntercomSyncWorkflow({
+    connectorId,
+    teamIds: toBeSignaledTeamIds,
+  });
+  if (r.isErr()) {
+    return r;
+  }
+
+  return new Ok(undefined);
+}
