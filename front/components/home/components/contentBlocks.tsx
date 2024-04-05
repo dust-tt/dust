@@ -263,8 +263,8 @@ interface Bloc2Props {
 export const Block2 = ({ children, title, className = "" }: Bloc2Props) => {
   return (
     <div className={classNames(className, "flex grow basis-0 flex-col gap-3")}>
-      <H4 className="text-slate-900">{title}</H4>
-      <P size="sm" className="text-slate-600">
+      <H5 className="text-slate-900">{title}</H5>
+      <P size="xs" className="text-slate-600">
         {children}
       </P>
     </div>
@@ -276,10 +276,14 @@ export const DroidItem = ({
   question,
   avatar,
   className = "",
+  emoji,
+  avatarBackground = "",
 }: {
   name: string;
   question: string;
-  avatar: {
+  emoji?: string;
+  avatarBackground?: string;
+  avatar?: {
     visual: string;
     background: string;
   };
@@ -287,25 +291,32 @@ export const DroidItem = ({
 }) => {
   return (
     <div className={classNames("flex w-full flex-col gap-2 p-8", className)}>
-      <Hover3D className="relative h-20 w-20 ">
-        <Div3D depth={-10}>
-          <div
-            className="h-20 w-20 rounded-3xl border border-slate-900/20"
-            style={{ background: avatar.background }}
-          />
-        </Div3D>
-        <Div3D depth={30} className="absolute top-0 h-20 w-20">
-          <img
-            src="./static/landing/droids/Droid_Shadow.png"
-            className="h-20 w-20"
-          />
-        </Div3D>
-        <Div3D depth={50} className="absolute top-0 h-20 w-20">
-          <img src={avatar.visual} className="h-20 w-20" />
-        </Div3D>
-      </Hover3D>
-      <H4 className="truncate text-slate-900">{name}</H4>
-      <P size="sm" className="text-slate-700">
+      {emoji ? (
+        <Avatar size="lg" emoji={emoji} backgroundColor={avatarBackground} />
+      ) : null}
+      {avatar ? (
+        <Hover3D className="s-relative s-h-20 s-w-20">
+          <Div3D depth={-10}>
+            <div
+              className="s-h-20 s-w-20 s-rounded-3xl s-border s-border-slate-900/20"
+              style={{ background: avatar.background }}
+            />
+          </Div3D>
+          <Div3D depth={30} className="s-absolute s-top-0 s-h-20 s-w-20">
+            <img
+              src="./static/landing/droids/Droid_Shadow.png"
+              className="s-h-20 s-w-20"
+              alt="Droid Shadow"
+            />
+          </Div3D>
+          <Div3D depth={50} className="s-absolute s-top-0 s-h-20 s-w-20">
+            <img src={avatar.visual} className="s-h-20 s-w-20" alt="Avatar" />
+          </Div3D>
+        </Hover3D>
+      ) : null}
+
+      <H5 className="truncate text-slate-900">{name}</H5>
+      <P size="xs" className="text-slate-700">
         {question}
       </P>
     </div>

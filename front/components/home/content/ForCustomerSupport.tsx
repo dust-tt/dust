@@ -181,30 +181,27 @@ export function ForCustomerSupport() {
 export const customerSupportSlides = [
   <DroidItem
     key="1"
-    avatar={Avatars3D[1]}
+    emoji="🤝"
+    avatarBackground="bg-sky-200"
     name="@supportExpert"
-    category="Support"
     question="Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team."
   />,
   <DroidItem
     key="2"
     avatar={Avatars3D[2]}
     name="@customerWrite"
-    category="Support"
     question="Draft answers using company tone and voice, support guidelines, and customer messages."
   />,
   <DroidItem
     key="3"
     avatar={Avatars3D[3]}
     name="@productInfo"
-    category="Support"
     question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
   />,
   <DroidItem
     key="4"
     avatar={Avatars3D[5]}
     name="@followUpScenario"
-    category="Support"
     question="Help anticipate further requests from users and ensure those are covered before answering to a customer."
   />,
 ];
