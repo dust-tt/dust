@@ -4,7 +4,10 @@ export function makeStructuredDataTableName(name: string, externalId: string) {
   const lowercasedExternalId = externalId.toLowerCase();
   const externalIdPrefix = lowercasedExternalId.substring(0, 4);
   const externalIdSuffix = lowercasedExternalId.slice(-4);
-  return slugify(`${name}_${externalIdPrefix}_${externalIdSuffix}`);
+
+  const truncatedName = name.substring(0, 32);
+
+  return slugify(`${truncatedName}_${externalIdPrefix}_${externalIdSuffix}`);
 }
 
 export class InvalidStructuredDataHeaderError extends Error {}
