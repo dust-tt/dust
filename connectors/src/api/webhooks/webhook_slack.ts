@@ -146,9 +146,18 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations = teamId
-      ? await SlackConfigurationResource.listForTeamId(teamId)
-      : [];
+    if (!teamId) {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing team_id in request body",
+        },
+        status_code: 400,
+      });
+    }
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId
+    );
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
