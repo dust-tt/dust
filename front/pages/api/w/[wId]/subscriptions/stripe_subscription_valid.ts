@@ -23,17 +23,7 @@ async function handler(
     req.query.wId as string
   );
 
-  const stripeSubscriptionId = req.query.stripeSubscriptionId as string;
-  if (!stripeSubscriptionId || typeof stripeSubscriptionId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid request, missing stripeSubscriptionId.",
-      },
-    });
-  }
-
+  // Callers will be either superUsers (from poke) or admins of the workspace (from webhook calls)
   const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
@@ -45,7 +35,6 @@ async function handler(
     });
   }
 
-  // Callers will be either superUsers (from poke) or admins of the workspace (from webhook calls)
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
@@ -53,6 +42,17 @@ async function handler(
         type: "workspace_auth_error",
         message:
           "Only users that are `admins` for the current workspace can access this endpoint.",
+      },
+    });
+  }
+
+  const stripeSubscriptionId = req.query.stripeSubscriptionId as string;
+  if (!stripeSubscriptionId || typeof stripeSubscriptionId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request, missing stripeSubscriptionId.",
       },
     });
   }
