@@ -115,7 +115,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     const blobs = await this.model.findAll({
       where: {
         slackTeamId,
-        botEnabled: true,
       },
     });
 
