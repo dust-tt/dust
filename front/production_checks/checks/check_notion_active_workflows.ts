@@ -10,13 +10,14 @@ interface NotionConnector {
   id: number;
   dataSourceName: string;
   workspaceId: string;
+  pausedAt: Date | null;
 }
 
 async function listAllNotionConnectors() {
   const connectorsReplica = getConnectorReplicaDbConnection();
 
   const notionConnectors: NotionConnector[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
+    `SELECT id, "dataSourceName", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
     }
@@ -63,6 +64,9 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 
   const missingActiveWorkflows: any[] = [];
   for (const notionConnector of notionConnectors) {
+    if (notionConnector.pausedAt) {
+      continue;
+    }
     heartbeat();
 
     const isActive = await areTemporalWorkflowsRunning(client, notionConnector);

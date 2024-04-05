@@ -1,7 +1,7 @@
+import type { ConnectorProvider } from "@dust-tt/types";
 import {
-  makeConfluenceSyncWorkflowId,
-  type ConnectorProvider,
   getIntercomSyncWorkflowId,
+  makeConfluenceSyncWorkflowId,
 } from "@dust-tt/types";
 import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
@@ -14,6 +14,7 @@ interface ConnectorBlob {
   id: number;
   dataSourceName: string;
   workspaceId: string;
+  pausedAt: Date | null;
 }
 
 interface ProviderCheck {
@@ -35,7 +36,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   const connectors: ConnectorBlob[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
+    `SELECT id, "dataSourceName", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
       replacements: {
@@ -83,6 +84,9 @@ export const checkActiveWorkflows: CheckFunction = async (
 
     const missingActiveWorkflows: any[] = [];
     for (const connector of connectors) {
+      if (connector.pausedAt) {
+        continue;
+      }
       heartbeat();
 
       const isActive = await areTemporalWorkflowsRunning(
