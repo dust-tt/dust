@@ -14,7 +14,6 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
-import { JsonViewer } from "@textea/json-viewer";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -25,7 +24,10 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { SubscriptionsDataTable } from "@app/components/poke/subscriptions/table";
+import {
+  ActiveSubscriptionTable,
+  SubscriptionsDataTable,
+} from "@app/components/poke/subscriptions/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -34,7 +36,6 @@ import {
   orderDatasourceByImportance,
 } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { isDevelopment } from "@app/lib/development";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -282,59 +283,39 @@ const WorkspacePage = ({
                 View dust app logs
               </a>
             </div>
-            {activeSubscription.stripeSubscriptionId && (
-              <div>
-                <Link
-                  href={
-                    isDevelopment()
-                      ? `https://dashboard.stripe.com/test/subscriptions/${activeSubscription.stripeSubscriptionId}`
-                      : `https://dashboard.stripe.com/subscriptions/${activeSubscription.stripeSubscriptionId}`
-                  }
-                  target="_blank"
-                  className="text-xs text-action-400"
-                >
-                  View Stripe Subscription
-                </Link>
-              </div>
-            )}
           </div>
 
           <div className="flex-col justify-center">
             <div className="mx-2">
-              <h2 className="text-md mb-4 font-bold">Segmentation:</h2>
-              <div>
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={owner.segmentation ?? "none"}
-                      variant="secondary"
-                      hasMagnifying={false}
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="auto" width={240}>
-                    {[null, "interesting"].map((segment) => (
-                      <DropdownMenu.Item
-                        label={segment ?? "none"}
-                        key={segment ?? "all"}
-                        onClick={() => {
-                          void onWorkspaceUpdate(
-                            segment as WorkspaceSegmentationType
-                          );
-                        }}
-                      ></DropdownMenu.Item>
-                    ))}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-              </div>
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={`Segmentation: ${owner.segmentation ?? "none"}`}
+                    variant="secondary"
+                    hasMagnifying={false}
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="auto" width={240}>
+                  {[null, "interesting"].map((segment) => (
+                    <DropdownMenu.Item
+                      label={segment ?? "none"}
+                      key={segment ?? "all"}
+                      onClick={() => {
+                        void onWorkspaceUpdate(
+                          segment as WorkspaceSegmentationType
+                        );
+                      }}
+                    ></DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Items>
+              </DropdownMenu>
 
-              <h2 className="text-md mb-4 mt-8 font-bold">Plan:</h2>
-              <JsonViewer value={activeSubscription} rootName={false} />
-              <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-4">
                 {plans && (
-                  <div className="pt-8">
+                  <div className="pt-4">
                     <Collapsible>
                       <Collapsible.Button label="Manage plan" />
                       <Collapsible.Panel>
@@ -368,6 +349,16 @@ const WorkspacePage = ({
                                 workspaceHasManagedDataSources
                               }
                             />
+                            {activeSubscription.plan.code !==
+                              FREE_NO_PLAN_CODE &&
+                              workspaceHasManagedDataSources && (
+                                <div className="pl-2 pt-4">
+                                  <p className="text-warning mb-4 text-sm">
+                                    Delete managed data sources before
+                                    downgrading.
+                                  </p>
+                                </div>
+                              )}
                           </div>
                         </div>
                       </Collapsible.Panel>
@@ -415,25 +406,11 @@ const WorkspacePage = ({
                   </Collapsible>
                 </div>
               </div>
-              {activeSubscription.plan.code !== FREE_NO_PLAN_CODE &&
-                workspaceHasManagedDataSources && (
-                  <div className="pl-2 pt-4">
-                    <p className="text-warning mb-4 text-sm">
-                      Delete managed data sources before downgrading.
-                    </p>
-                  </div>
-                )}
             </div>
 
             <div className="flex flex-col space-y-8 pt-4">
-              <SubscriptionsDataTable
-                owner={owner}
-                subscriptions={subscriptions}
-              />
-              <FeatureFlagsDataTable
-                owner={owner}
-                whitelistableFeatures={whitelistableFeatures}
-              />
+              <ActiveSubscriptionTable subscription={activeSubscription} />
+
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
@@ -442,6 +419,14 @@ const WorkspacePage = ({
               <AssistantsDataTable
                 owner={owner}
                 agentConfigurations={agentConfigurations}
+              />
+              <FeatureFlagsDataTable
+                owner={owner}
+                whitelistableFeatures={whitelistableFeatures}
+              />
+              <SubscriptionsDataTable
+                owner={owner}
+                subscriptions={subscriptions}
               />
             </div>
           </div>
