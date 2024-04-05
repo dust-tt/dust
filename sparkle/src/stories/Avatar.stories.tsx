@@ -26,6 +26,7 @@ export const AvatarExample = () => (
       <Avatar size="md" />
       <Avatar size="lg" />
       <Avatar size="xl" />
+      <Avatar size="xxl" />
     </div>
     <div>With name</div>
     <div className="s-flex s-gap-4">
@@ -34,6 +35,7 @@ export const AvatarExample = () => (
       <Avatar size="md" name="Aria Doe" />
       <Avatar size="lg" name="Omar Doe" />
       <Avatar size="xl" name="Omar Doe" />
+      <Avatar size="xxl" name="Omar Doe" />
     </div>
     <div>With emoji</div>
     <div className="s-flex s-gap-4">
@@ -42,6 +44,7 @@ export const AvatarExample = () => (
       <Avatar size="md" emoji="😂" backgroundColor="s-bg-amber-200" />
       <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-slate-200" />
       <Avatar size="xl" emoji="👕" backgroundColor="s-bg-sky-200" />
+      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-sky-200" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />

@@ -4,7 +4,7 @@ import { User } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
-  size?: "xs" | "sm" | "md" | "lg" | "xl" | "auto";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "xxl" | "auto";
   name?: string;
   emoji?: string;
   visual?: string | React.ReactNode;
@@ -60,7 +60,8 @@ const sizeClasses = {
   sm: "s-h-8 s-w-8",
   md: "s-h-10 s-w-10",
   lg: "s-h-16 s-w-16",
-  xl: "s-h-36 s-w-36",
+  xl: "s-h-20 s-w-20",
+  xxl: "s-h-36 s-w-36",
   auto: "s-w-full s-relative",
 };
 
@@ -69,7 +70,8 @@ const roundedClasses = {
   sm: "s-rounded-xl",
   md: "s-rounded-2xl",
   lg: "s-rounded-3xl",
-  xl: "s-rounded-[38px]",
+  xl: "s-rounded-[28px]",
+  xxl: "s-rounded-[38px]",
   auto: "s-rounded-[30%]",
 };
 
@@ -78,7 +80,8 @@ const textSize = {
   sm: "s-text-sm",
   md: "s-text-base",
   lg: "s-text-3xl",
-  xl: "s-text-7xl",
+  xl: "s-text-5xl",
+  xxl: "s-text-7xl",
   auto: "s-text-xl",
 };
 
