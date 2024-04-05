@@ -32,7 +32,6 @@ export function renderPlanFromModel({
   return {
     code: plan.code,
     name: plan.name,
-    billingType: plan.billingType,
     limits: {
       assistant: {
         isSlackBotAllowed: plan.isSlackbotAllowed,
@@ -178,13 +177,6 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
   if (activeSubscription && activeSubscription.planId === newPlan.id) {
     throw new Error(
       `Cannot subscribe to plan ${planCode}: already subscribed.`
-    );
-  }
-
-  // Prevent subscribing if the new plan is not a free plan
-  if (newPlan.billingType !== "free") {
-    throw new Error(
-      `Cannot subscribe to plan ${planCode}: billingType is not "free".`
     );
   }
 

@@ -2,7 +2,6 @@ import {
   Checkbox,
   ConfluenceLogo,
   DriveLogo,
-  DropdownMenu,
   GithubLogo,
   GlobeAltIcon,
   Input,
@@ -10,11 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type {
-  FreeBillingType,
-  PaidBillingType,
-  PlanType,
-} from "@dust-tt/types";
+import type { PlanType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
@@ -36,7 +31,6 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
-  billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
   trialPeriodDays: string | number;
 };
@@ -58,7 +52,6 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
-    billingType: plan.billingType,
     trialPeriodDays: plan.trialPeriodDays,
   };
 };
@@ -100,7 +93,6 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       canUseProduct: true,
     },
-    billingType: editingPlan.billingType,
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
   };
 };
@@ -122,7 +114,6 @@ const getEmptyPlan = (): EditingPlanType => ({
   dataSourcesDocumentsSizeMb: "",
   maxUsers: "",
   isNewPlan: true,
-  billingType: "fixed",
   trialPeriodDays: 0,
 });
 
@@ -138,16 +129,6 @@ export const useEditingPlan = () => {
   }, []);
 
   return { editingPlan, resetEditingPlan, createNewPlan, setEditingPlan };
-};
-
-const BILLING_TYPE_SELECT_CHOICES: Record<
-  FreeBillingType | PaidBillingType,
-  string
-> = {
-  fixed: "Fixed",
-  free: "Free",
-  monthly_active_users: "MAU",
-  per_seat: "Per Seat",
 };
 
 export const PLAN_FIELDS = {
@@ -252,27 +233,11 @@ export const PLAN_FIELDS = {
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
   },
-  billingType: {
-    type: "select",
-    choices: Object.entries(BILLING_TYPE_SELECT_CHOICES).map(
-      ([value, label]) => ({
-        value,
-        label,
-      })
-    ),
-    width: "small",
-    title: "Billing",
-    error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),
-  },
   trialPeriodDays: {
     type: "number",
     width: "small",
     title: "Trial Days",
     error: (plan: EditingPlanType) => {
-      if (plan.billingType === "free") {
-        return null;
-      }
-
       return errorCheckNumber(plan.trialPeriodDays);
     },
   },
@@ -351,46 +316,6 @@ export const Field: React.FC<FieldProps> = ({
               setEditingPlan({ ...editingPlan, [fieldName]: x });
             }}
           />
-        );
-      case "select":
-        return isEditing && !disabled ? (
-          <DropdownMenu className="flex">
-            <DropdownMenu.Button
-              label={
-                field.choices.find(
-                  (choice) => choice.value === editingPlan?.[fieldName]
-                )?.label
-              }
-              disabled={!isEditing || disabled}
-              tooltipPosition="above"
-            />
-            <DropdownMenu.Items origin={"auto"}>
-              {field.choices.map((choice) => {
-                return (
-                  <DropdownMenu.Item
-                    key={choice.value}
-                    onClick={() => {
-                      if (!editingPlan) {
-                        return;
-                      }
-                      setEditingPlan({
-                        ...editingPlan,
-                        [fieldName]: choice.value,
-                      });
-                    }}
-                    label={choice.label}
-                  />
-                );
-              })}
-            </DropdownMenu.Items>
-          </DropdownMenu>
-        ) : (
-          <div>
-            {renderPlanFieldValue(
-              field.choices.find((choice) => choice.value === plan[fieldName])
-                ?.label
-            )}
-          </div>
         );
       default:
         assertNever(field);

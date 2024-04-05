@@ -30,7 +30,6 @@ export type PlanAttributes = Omit<
 export const FREE_NO_PLAN_DATA: PlanAttributes = {
   code: FREE_NO_PLAN_CODE,
   name: "No Plan",
-  billingType: "free",
   maxMessages: 0,
   maxMessagesTimeframe: "lifetime",
   maxUsersInWorkspace: 1,
@@ -57,7 +56,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
   {
     code: FREE_TEST_PLAN_CODE,
     name: "Free",
-    billingType: "free",
     maxMessages: 50,
     maxMessagesTimeframe: "lifetime",
     maxUsersInWorkspace: 1,
@@ -78,7 +76,6 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
   {
     code: FREE_UPGRADED_PLAN_CODE,
     name: "Free Trial",
-    billingType: "free",
     maxMessages: -1,
     maxUsersInWorkspace: -1,
     maxMessagesTimeframe: "lifetime",

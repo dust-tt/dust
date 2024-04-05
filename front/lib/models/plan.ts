@@ -1,14 +1,8 @@
 import type {
-  FreeBillingType,
   MaxMessagesTimeframeType,
-  PaidBillingType,
   SubscriptionStatusType,
 } from "@dust-tt/types";
-import {
-  FREE_BILLING_TYPES,
-  PAID_BILLING_TYPES,
-  SUBSCRIPTION_STATUSES,
-} from "@dust-tt/types";
+import { SUBSCRIPTION_STATUSES } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -32,7 +26,6 @@ export class Plan extends Model<
 
   declare code: string; // unique
   declare name: string;
-  declare billingType: FreeBillingType | PaidBillingType;
   declare trialPeriodDays: number;
   declare canUseProduct: boolean;
 
@@ -76,14 +69,6 @@ Plan.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    billingType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "fixed",
-      validate: {
-        isIn: [[...FREE_BILLING_TYPES, ...PAID_BILLING_TYPES]],
-      },
     },
     trialPeriodDays: {
       type: DataTypes.INTEGER,
