@@ -1,4 +1,5 @@
-import { Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -18,17 +19,31 @@ export async function recordUsageActivity(workspaceId: string) {
     where: {
       workspaceId: workspace.id,
     },
+    include: [Plan],
   });
 
   const logger = mainLogger.child({ workspaceId });
   logger.info({}, "[UsageQueue] Recording usage for worskpace.");
 
-  if (
-    !subscription ||
-    !workspace ||
-    !subscription.stripeSubscriptionId ||
-    !subscription.stripeCustomerId
-  ) {
+  if (!subscription) {
+    throw new Error(
+      "Cannot record usage of subscription: missing subscription."
+    );
+
+    return;
+  }
+
+  // Legacy free test plans don't have a Stripe subscription.
+  if (subscription.plan.code === FREE_TEST_PLAN_CODE) {
+    logger.info(
+      { subscription },
+      "[UsageQueue] Subscription is on free test plan -- skipping reporting usage."
+    );
+
+    return;
+  }
+
+  if (!subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
     throw new Error(
       "Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
     );
