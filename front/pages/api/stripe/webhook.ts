@@ -1,11 +1,12 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
 import { getBackendClient } from "@app/lib/amplitude/node";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -242,6 +243,17 @@ async function handler(
                 plan: plan.code,
                 workspaceSeats: workspaceSeats,
               });
+            }
+            const auth = await Authenticator.internalAdminForWorkspace(
+              workspace.sId
+            );
+            const dataSources = await getDataSources(auth);
+            const connectorIds = removeNulls(
+              dataSources.map((ds) => ds.connectorId)
+            );
+            const connectorsApi = new ConnectorsAPI(logger);
+            for (const connectorId of connectorIds) {
+              await connectorsApi.unpauseConnector(connectorId);
             }
             return res.status(200).json({ success: true });
           } catch (error) {
