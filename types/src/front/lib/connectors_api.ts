@@ -531,6 +531,10 @@ export class ConnectorsAPI {
   private async _resultFromResponse<T>(
     response: Response
   ): Promise<ConnectorsAPIResponse<T>> {
+    // 204 means no content.
+    if (response.status === 204) {
+      return new Ok(undefined as T);
+    }
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
     const text = await response.text();
