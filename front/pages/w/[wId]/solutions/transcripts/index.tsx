@@ -157,13 +157,6 @@ export default function SolutionsTranscriptsIndex({
             }} 
           />
         </Page.Vertical>
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.SectionHeader title="Available Transcripts" />
-          {files?.map((file) => (
-            <Page.P key={file.id}>{file.name}</Page.P>
-          ))}
-        </Page.Vertical>
-
       </AppLayout>
     </>
   );
