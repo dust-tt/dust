@@ -1,4 +1,4 @@
-import type { ConversationType, UserMessageType } from "@dust-tt/types";
+import type { AgentMessageType,ConversationType, UserMessageType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
@@ -92,12 +92,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
     
     const transcriptContent = res.data;    
 
-    console.log('GOT TRANSCRIPT CONTENT');
-    console.log(transcriptContent);
-
-    console.log('SOLUTIONS_WORKSPACE_ID', SOLUTIONS_WORKSPACE_ID);
-    console.log('SOLUTIONS_API_KEY', SOLUTIONS_API_KEY);
-    
     const dust = new DustAPI({
       workspaceId: SOLUTIONS_WORKSPACE_ID as string,
       apiKey: SOLUTIONS_API_KEY as string
@@ -105,34 +99,36 @@ export async function summarizeGoogleDriveTranscriptActivity(
     logger);
   
     let conversation: ConversationType | undefined = undefined;
-    let userMessage: UserMessageType | undefined = undefined;
-    
+    // const userMessage: UserMessageType | undefined = undefined;
+
     const convRes = await dust.createConversation({
-      title: "Transcript Summarization",
-      visibility:"unlisted",
+      title: null,
+      visibility: "unlisted",
       message:{
-        content:"Summarize this meeting notes transcript: \n\n" + transcriptContent,
+        content: "Summarize this meeting notes transcript: \n\n" + transcriptContent,
         mentions:[
-          { configurationId: "TranscriptSummarizer" }
+          { configurationId: "6f89693471" }
         ],
         context:{
           timezone:"Europe/Paris",
-          username:"SolutionsTranscriptsBot",
+          username:"alban",
           fullName: null,
           email: null,
           profilePictureUrl: null
-        }
+        },
       },
-      contentFragment: undefined
+      contentFragment: undefined,
+      isSync: true
     })
     if (convRes.isErr()) {
       console.log(convRes.error)
     }  else {
       conversation = convRes.value.conversation;
-      userMessage = convRes.value.message;
+      // userMessage = convRes.value.message;
+      console.log('CONVERSATION');
+      console.log(conversation.content);
+
       logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversation.sId);
-      logger.info("[summarizeGoogleDriveTranscriptActivity] Conversation content ");
-      logger.info(conversation.content);
     }
 
     if (!conversation) {
@@ -140,29 +136,34 @@ export async function summarizeGoogleDriveTranscriptActivity(
       return;
     }
 
-    const agentMessages = conversation.content
-    .map((versions) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessageType;
+    // console.log('CHECKING AGENT MESSAGES');
 
-  const streamRes = await dust.streamAgentMessageEvents({
-    conversation: conversation,
-    message: agentMessage,
-  });
+    // const agentMessages = conversation.content
+    // .map((versions) => {
+    //   const m = versions[versions.length - 1];
+    //   return m;
+    // })
+    // .filter((m) => {
+    //   return (
+    //     m &&
+    //     m.type === "agent_message" &&
+    //     m.parentMessageId === userMessage?.sId
+    //   );
+    // });
+      
+    // if (agentMessages.length === 0) {
+    //   return new Err(new Error("Failed to retrieve agent message"));
+    // }
+    // const agentMessage = agentMessages[0] as AgentMessageType;
 
-  if (streamRes.isErr()) {
-    return new Err(new Error(streamRes.error.message));
-  }
+    // const streamRes = await dust.streamAgentMessageEvents({
+    //   conversation: conversation,
+    //   message: agentMessage,
+    // });
+
+    // if (streamRes.isErr()) {
+    //   return new Err(new Error(streamRes.error.message));
+    // }
+
+    // console.log('STREAM RES', streamRes.value);
   }
