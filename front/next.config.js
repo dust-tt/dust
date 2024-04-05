@@ -38,7 +38,8 @@ module.exports = removeImports({
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
+            value:
+              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
           },
           {
             key: "Strict-Transport-Security",
