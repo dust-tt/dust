@@ -45,7 +45,7 @@ import {
   SlackMessages,
 } from "@connectors/lib/models/slack";
 import {
-  WebCrawlerConfiguration,
+  WebCrawlerConfigurationModel,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   await IntercomArticle.sync({ alter: true });
   await IntercomTeam.sync({ alter: true });
   await IntercomConversation.sync({ alter: true });
-  await WebCrawlerConfiguration.sync({ alter: true });
+  await WebCrawlerConfigurationModel.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
 

@@ -1,7 +1,7 @@
 import type { Transaction } from "sequelize";
 
 import {
-  WebCrawlerConfiguration,
+  WebCrawlerConfigurationModel,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
@@ -10,19 +10,20 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
 export class WebCrawlerStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: WithCreationAttributes<WebCrawlerConfiguration>,
+    blob: WithCreationAttributes<WebCrawlerConfigurationModel>,
     transaction: Transaction
   ): Promise<void> {
-    await WebCrawlerConfiguration.create(
+    await WebCrawlerConfigurationResource.makeNew(
       {
         ...blob,
         connectorId: connector.id,
       },
-      { transaction }
+      transaction
     );
   }
 
@@ -42,7 +43,7 @@ export class WebCrawlerStrategy implements ConnectorProviderStrategy {
       },
       transaction,
     });
-    await WebCrawlerConfiguration.destroy({
+    await WebCrawlerConfigurationModel.destroy({
       where: {
         connectorId: connector.id,
       },

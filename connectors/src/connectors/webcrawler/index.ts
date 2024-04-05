@@ -18,12 +18,12 @@ import {
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
-  WebCrawlerConfiguration,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import type { ConnectorPermissionRetriever } from "../interface";
@@ -93,9 +93,9 @@ export async function retrieveWebcrawlerConnectorPermissions({
     return new Err(new Error("Connector not found"));
   }
 
-  const webCrawlerConfig = await WebCrawlerConfiguration.findOne({
-    where: { connectorId: connector.id },
-  });
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
   if (!webCrawlerConfig) {
     return new Err(new Error("Webcrawler configuration not found"));
   }
@@ -403,21 +403,21 @@ export async function setWebcrawlerConfiguration(
       new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
     );
   }
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
 
-  await WebCrawlerConfiguration.update(
-    {
-      url: configuration.url,
-      maxPageToCrawl: configuration.maxPageToCrawl,
-      crawlMode: configuration.crawlMode,
-      depth: depth,
-      crawlFrequency: configuration.crawlFrequency,
-    },
-    {
-      where: {
-        connectorId: connector.id,
-      },
-    }
-  );
+  if (!webcrawlerConfig) {
+    return new Err(
+      new Error(`Webcrawler configuration not found for ${connectorId}`)
+    );
+  }
+  await webcrawlerConfig.update({
+    url: configuration.url,
+    maxPageToCrawl: configuration.maxPageToCrawl,
+    crawlMode: configuration.crawlMode,
+    depth: depth,
+    crawlFrequency: configuration.crawlFrequency,
+  });
   const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
   if (stopRes.isErr()) {
     return new Err(stopRes.error);
