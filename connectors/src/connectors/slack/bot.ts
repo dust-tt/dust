@@ -228,6 +228,7 @@ async function botAnswerMessage(
     threadTs:
       slackThreadTs || lastSlackChatBotMessage?.threadTs || slackMessageTs,
     conversationId: lastSlackChatBotMessage?.conversationId,
+    userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
   const buildContentFragmentRes = await makeContentFragment(

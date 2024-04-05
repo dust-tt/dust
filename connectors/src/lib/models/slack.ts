@@ -211,6 +211,7 @@ export class SlackChatBotMessage extends Model<
   declare chatSessionSid: string | null;
   declare completedAt: Date | null;
   declare conversationId: string | null; // conversationId is set only for V2 conversations
+  declare userType: "bot" | "user";
 }
 SlackChatBotMessage.init(
   {
@@ -279,6 +280,10 @@ SlackChatBotMessage.init(
       allowNull: true,
     },
     slackAvatar: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    userType: {
       type: DataTypes.STRING,
       allowNull: true,
     },
