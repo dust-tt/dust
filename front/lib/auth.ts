@@ -129,28 +129,16 @@ export class Authenticator {
 
     if (user && workspace) {
       [role, subscription, flags] = await Promise.all([
-        (async (): Promise<RoleType> => {
-          const membership =
-            await MembershipResource.getActiveMembershipOfUserInWorkspace({
-              user: renderUserType(user),
-              workspace: renderLightWorkspaceType({ workspace }),
-            });
-          return membership &&
-            // TODO(@fontanierh): get rid of the check ?
-            ["admin", "builder", "user"].includes(membership.role)
-            ? (membership.role as RoleType)
-            : "none";
-        })(),
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: renderUserType(user),
+          workspace: renderLightWorkspaceType({ workspace }),
+        }).then((m) => m?.role ?? "none"),
         subscriptionForWorkspace(workspace.sId),
-        (async () => {
-          return (
-            await FeatureFlag.findAll({
-              where: {
-                workspaceId: workspace.id,
-              },
-            })
-          ).map((flag) => flag.name);
-        })(),
+        FeatureFlag.findAll({
+          where: {
+            workspaceId: workspace.id,
+          },
+        }).then((flags) => flags.map((flag) => flag.name)),
       ]);
     }
 
