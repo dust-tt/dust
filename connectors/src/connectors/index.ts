@@ -8,12 +8,14 @@ import { Err, Ok } from "@dust-tt/types";
 import {
   cleanupConfluenceConnector,
   createConfluenceConnector,
+  pauseConfluenceConnector,
   resumeConfluenceConnector,
   retrieveConfluenceConnectorPermissions,
   retrieveConfluenceContentNodeParents,
   retrieveConfluenceContentNodes,
   setConfluenceConnectorPermissions,
   stopConfluenceConnector,
+  unpauseConfluenceConnector,
   updateConfluenceConnector,
 } from "@connectors/connectors/confluence";
 import { launchConfluenceSyncWorkflow } from "@connectors/connectors/confluence/temporal/client";
@@ -29,6 +31,7 @@ import {
   retrieveGithubReposContentNodes,
   setGithubConfig,
   stopGithubConnector,
+  unpauseGithubConnector,
   updateGithubConnector,
 } from "@connectors/connectors/github";
 import {
@@ -42,6 +45,7 @@ import {
   retrieveGoogleDriveContentNodes,
   setGoogleDriveConfig,
   setGoogleDriveConnectorPermissions,
+  unpauseGoogleDriveConnector,
   updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
 import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
@@ -56,6 +60,7 @@ import {
   retrieveIntercomContentNodes,
   setIntercomConnectorPermissions,
   stopIntercomConnector,
+  unpauseIntercomConnector,
   updateIntercomConnector,
 } from "@connectors/connectors/intercom";
 import type {
@@ -71,6 +76,7 @@ import type {
   ConnectorProviderUpdateConfigurationMapping,
   ConnectorResumer,
   ConnectorStopper,
+  ConnectorUnpauser,
   ConnectorUpdater,
   ContentNodeParentsRetriever,
   SyncConnector,
@@ -85,6 +91,7 @@ import {
   retrieveNotionContentNodeParents,
   retrieveNotionContentNodes,
   stopNotionConnector,
+  unpauseNotionConnector,
   updateNotionConnector,
 } from "@connectors/connectors/notion";
 import {
@@ -96,6 +103,7 @@ import {
   retrieveSlackContentNodes,
   setSlackConfig,
   setSlackConnectorPermissions,
+  unpauseSlackConnector,
   updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
@@ -110,6 +118,7 @@ import {
   retrieveWebCrawlerContentNodes,
   setWebcrawlerConfiguration,
   stopWebcrawlerConnector,
+  unpauseWebcrawlerConnector,
 } from "./webcrawler";
 import { launchCrawlWebsiteWorkflow } from "./webcrawler/temporal/client";
 
@@ -368,11 +377,26 @@ export const PAUSE_CONNECTOR_BY_TYPE: Record<
   ConnectorProvider,
   ConnectorPauser
 > = {
-  confluence: stopConfluenceConnector,
+  confluence: pauseConfluenceConnector,
   slack: pauseSlackConnector,
   notion: pauseNotionConnector,
   github: pauseGithubConnector,
   google_drive: pauseGoogleDriveConnector,
   intercom: pauseIntercomConnector,
   webcrawler: pauseWebcrawlerConnector,
+};
+
+// If the connector has webhooks: resume processing them, and trigger a full sync.
+// If the connector has long-running workflows: resume them. If they support "partial resync" do that, otherwise trigger a full sync.
+export const UNPAUSE_CONNECTOR_BY_TYPE: Record<
+  ConnectorProvider,
+  ConnectorUnpauser
+> = {
+  confluence: unpauseConfluenceConnector,
+  slack: unpauseSlackConnector,
+  notion: unpauseNotionConnector,
+  github: unpauseGithubConnector,
+  google_drive: unpauseGoogleDriveConnector,
+  intercom: unpauseIntercomConnector,
+  webcrawler: unpauseWebcrawlerConnector,
 };

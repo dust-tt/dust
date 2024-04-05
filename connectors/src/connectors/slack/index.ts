@@ -653,3 +653,16 @@ export async function pauseSlackConnector(connectorId: ModelId) {
   await terminateAllWorkflowsForConnectorId(connectorId);
   return new Ok(undefined);
 }
+
+export async function unpauseSlackConnector(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector not found with id ${connectorId}`));
+  }
+  await connector.markAsUnpaused();
+  const r = await launchSlackSyncWorkflow(connectorId, null);
+  if (r.isErr()) {
+    return r;
+  }
+  return new Ok(undefined);
+}

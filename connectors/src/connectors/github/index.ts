@@ -156,6 +156,23 @@ export async function pauseGithubConnector(
   return new Ok(undefined);
 }
 
+export async function unpauseGithubConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "Connector not found");
+    return new Err(new Error("Connector not found"));
+  }
+  await connector.markAsUnpaused();
+  await launchGithubFullSyncWorkflow({
+    connectorId,
+    syncCodeOnly: false,
+  });
+
+  return new Ok(undefined);
+}
+
 export async function resumeGithubConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {

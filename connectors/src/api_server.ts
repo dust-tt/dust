@@ -21,6 +21,7 @@ import {
 } from "@connectors/api/slack_channels_linked_with_agent";
 import { stopConnectorAPIHandler } from "@connectors/api/stop_connector";
 import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
+import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
@@ -91,6 +92,7 @@ export function startServer(port: number) {
   app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
   app.post("/connectors/stop/:connector_id", stopConnectorAPIHandler);
   app.post("/connectors/pause/:connector_id", pauseConnectorAPIHandler);
+  app.post("/connectors/unpause/:connector_id", unpauseConnectorAPIHandler);
   app.post("/connectors/resume/:connector_id", resumeConnectorAPIHandler);
   app.delete("/connectors/delete/:connector_id", deleteConnectorAPIHandler);
   app.get("/connectors/:connector_id", getConnectorAPIHandler);

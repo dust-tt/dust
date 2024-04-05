@@ -224,6 +224,21 @@ export async function pauseWebcrawlerConnector(
   return new Ok(undefined);
 }
 
+export async function unpauseWebcrawlerConnector(
+  connectorId: ModelId
+): Promise<Result<undefined, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Connector not found.");
+  }
+  await connector.markAsUnpaused();
+  const startRes = await launchCrawlWebsiteWorkflow(connectorId);
+  if (startRes.isErr()) {
+    return startRes;
+  }
+  return new Ok(undefined);
+}
+
 export async function cleanupWebcrawlerConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
