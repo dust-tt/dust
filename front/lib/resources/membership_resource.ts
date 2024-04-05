@@ -352,7 +352,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // If the membership is not terminated, we update the role in place.
-    // TODO(@fontanierh): check if we want to terminate + create a new membership with new role instead ?
+    // We do not historicize the roles.
     if (!membership.endAt) {
       if (membership.role === newRole) {
         return new Err({ type: "already_on_role" });
