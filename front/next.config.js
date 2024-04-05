@@ -37,8 +37,9 @@ module.exports = removeImports({
         source: "/:path*", // Match all paths
         headers: [
           {
-            key: "X-Frame-Options",
-            value: "DENY",
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
           },
           {
             key: "Strict-Transport-Security",
