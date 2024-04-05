@@ -87,6 +87,7 @@ export function apiError<T>(
       statusCode: apiError.status_code,
       apiError: apiError,
       error: error,
+      apiErrorHandlerCallStack: new Error().stack,
     },
     "API Error"
   );
