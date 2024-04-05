@@ -47,7 +47,7 @@ In Dust, a Workspace is where users work with assistants and customize them for 
 
 In Dust, "Connections" are integrated platforms like Notion or Slack from which assistants pull data. They are available only on paid plans. Admins decide which data assistants can access.
 
-Public Websites are public websites you want to synchronize with Dust. We don’t force enforced protections preventing crawling.  
+Websites connections are public websites you want to synchronize with Dust. We don’t force enforced protections preventing crawling.  
 
 Folders are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Folders are available for all plans.
 
