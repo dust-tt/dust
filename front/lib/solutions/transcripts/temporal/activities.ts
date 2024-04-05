@@ -74,11 +74,29 @@ export async function summarizeGoogleDriveTranscriptActivity(
     console.log('GETTING TRANSCRIPT CONTENT FROM GDRIVE');
     
     // Get fileId file content
-    const content = await googleapis.google.drive({ version: "v3", auth }).files.get({
-      fileId: fileId,
-      alt: "media",
+    const docs = googleapis.google.docs({ version: 'v1', auth });
+    const doc = await docs.documents.get({
+      documentId: fileId,
     });
 
+    let rawText = '';
+    
+    if (doc?.data?.body?.content) {
+      // Iterate through the document's body content
+      const content = doc.data.body.content;
+      for (const element of content) {
+        // Check if the element is a paragraph
+        if (element.paragraph && element.paragraph.elements) {
+          for (const paraElement of element.paragraph.elements) {
+            // Extract the text content from the paragraph element
+            if (paraElement.textRun) {
+              rawText += paraElement.textRun.content;
+            }
+          }
+        }
+      }
+    }
+
     console.log('GOT TRANSCRIPT CONTENT');
-    console.log(content.data);
+    console.log(rawText);
   }
