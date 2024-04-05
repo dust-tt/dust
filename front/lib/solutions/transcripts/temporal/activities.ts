@@ -1,5 +1,6 @@
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
+import { resetExtensions } from "showdown";
 
 import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
@@ -74,29 +75,20 @@ export async function summarizeGoogleDriveTranscriptActivity(
     console.log('GETTING TRANSCRIPT CONTENT FROM GDRIVE');
     
     // Get fileId file content
-    const docs = googleapis.google.docs({ version: 'v1', auth });
-    const doc = await docs.documents.get({
-      documentId: fileId,
+    const res = await googleapis.google.drive({ version: 'v3', auth }).files.export({
+      fileId: fileId,
+      mimeType: "text/plain",
     });
 
-    let rawText = '';
-    
-    if (doc?.data?.body?.content) {
-      // Iterate through the document's body content
-      const content = doc.data.body.content;
-      for (const element of content) {
-        // Check if the element is a paragraph
-        if (element.paragraph && element.paragraph.elements) {
-          for (const paraElement of element.paragraph.elements) {
-            // Extract the text content from the paragraph element
-            if (paraElement.textRun) {
-              rawText += paraElement.textRun.content;
-            }
-          }
-        }
-      }
+    if (res.status !== 200) {
+      logger.error({}, "Error exporting Google document");
+      throw new Error(
+        `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+      );
     }
+    
+    const transcriptContent = res.data;    
 
     console.log('GOT TRANSCRIPT CONTENT');
-    console.log(rawText);
+    console.log(transcriptContent);
   }

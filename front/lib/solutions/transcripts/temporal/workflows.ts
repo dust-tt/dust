@@ -10,7 +10,7 @@ export async function retrieveNewTranscriptsWorkflow(
   userId: number,
   providerId: string
 ) {
-  const SECONDS_INTERVAL_BETWEEN_PULLS = 10;
+  const SECONDS_INTERVAL_BETWEEN_PULLS = 100;
   
   do {
     console.log("Retrieving new transcripts")
