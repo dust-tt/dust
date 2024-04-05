@@ -8,20 +8,7 @@ import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-//Whitelisting a bot will accept any message from this bot.
-// This means that we rely on the bot security measures
-// to not ping Dust from actions done by non verified members of the workspace.
-// Make sure to be explicit about this with users as you whitelist a new bot.
-const WHITELISTED_BOT_NAME = [
-  "Beaver",
-  "feedback-hackaton",
-  "Dust",
-  "Retool",
-  "DustWorkflowTest",
-  "dust-email-lists-highlights",
-  "Dust_CrystalBall",
-];
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -213,19 +200,33 @@ export async function isActiveMemberOfWorkspace(
   return workspaceActiveMemberEmails.includes(slackUserEmail);
 }
 
-function isBotAllowed(slackUserInfo: SlackUserInfo) {
+async function isBotAllowed(
+  connector: ConnectorResource,
+  slackUserInfo: SlackUserInfo
+) {
   const displayName = slackUserInfo.display_name ?? "";
   const realName = slackUserInfo.real_name ?? "";
 
-  const isWhitelistedBotName =
-    WHITELISTED_BOT_NAME.includes(displayName) ||
-    WHITELISTED_BOT_NAME.includes(realName);
+  const names = [displayName, realName].filter((name) => name.length > 0);
 
-  if (!isWhitelistedBotName) {
-    logger.info({ user: slackUserInfo }, "Ignoring bot message");
+  // Whitelisting a bot will accept any message from this bot.
+  // This means that even a non verified user of a given Slack workspace who can trigger a bot
+  // that talks to our bot (@dust) will be able to use the Dust bot.
+  // Make sure to be explicit about this with users as you whitelist a new bot.
+  // Example: non-verified-user -> @AnyWhitelistedBot -> @dust -> Dust answers with potentially private information.
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  const whitelist = await slackConfig?.isBotWhitelisted(names);
+  if (!whitelist) {
+    logger.info(
+      { user: slackUserInfo, connectorId: connector.id },
+      "Ignoring bot message"
+    );
+    return false;
   }
 
-  return isWhitelistedBotName;
+  return true;
 }
 
 interface SlackInfos {
@@ -337,7 +338,7 @@ export async function notifyIfSlackUserIsNotAllowed(
   }
 
   if (slackUserInfo.is_bot) {
-    return isBotAllowed(slackUserInfo);
+    return isBotAllowed(connector, slackUserInfo);
   }
 
   const isAllowed = await isSlackUserAllowed(

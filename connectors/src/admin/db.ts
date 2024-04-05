@@ -38,9 +38,10 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import {
+  SlackBotWhitelistModel,
   SlackChannel,
   SlackChatBotMessage,
-  SlackConfiguration,
+  SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
 import {
@@ -57,10 +58,11 @@ async function main(): Promise<void> {
   await ConfluenceConfiguration.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
   await ConfluenceSpace.sync({ alter: true });
-  await SlackConfiguration.sync({ alter: true });
+  await SlackConfigurationModel.sync({ alter: true });
   await SlackMessages.sync({ alter: true });
   await SlackChannel.sync({ alter: true });
   await SlackChatBotMessage.sync({ alter: true });
+  await SlackBotWhitelistModel.sync({ alter: true });
   await NotionPage.sync({ alter: true });
   await NotionDatabase.sync({ alter: true });
   await NotionConnectorState.sync({ alter: true });

@@ -9,11 +9,12 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { SlackChannel, SlackConfiguration } from "@connectors/lib/models/slack";
+import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -145,11 +146,18 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations = await SlackConfiguration.findAll({
-      where: {
-        slackTeamId: teamId,
-      },
-    });
+    if (!teamId) {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing team_id in request body",
+        },
+        status_code: 400,
+      });
+    }
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId
+    );
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
@@ -195,12 +203,9 @@ const _webhookSlackAPIHandler = async (
             // Ignore message_changed events in private messages
             return res.status(200).send();
           }
-          const slackConfig = await SlackConfiguration.findOne({
-            where: {
-              slackTeamId: teamId,
-              botEnabled: true,
-            },
-          });
+          const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
+            teamId
+          );
           if (!slackConfig) {
             return apiError(req, res, {
               api_error: {

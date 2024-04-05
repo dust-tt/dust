@@ -70,7 +70,6 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
 import { uninstallSlack } from "@connectors/connectors/slack";
-import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
@@ -84,7 +83,6 @@ import {
   IntercomTeam,
 } from "@connectors/lib/models/intercom";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import { SlackConfiguration } from "@connectors/lib/models/slack";
 import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
@@ -92,6 +90,7 @@ import {
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { NANGO_SLACK_CONNECTOR_ID, INTERACTIVE_CLI } = process.env;
@@ -917,7 +916,19 @@ export const slack = async ({
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
-      await throwOnError(toggleSlackbot(connector.id, true));
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (!slackConfig) {
+        throw new Error(
+          `Could not find slack configuration for connector ${connector.id}`
+        );
+      }
+
+      const res = await slackConfig.enableBot();
+      if (res.isErr()) {
+        throw res.error;
+      }
       return { success: true };
     }
 
@@ -983,7 +994,7 @@ export const slack = async ({
         throw new Error("NANGO_SLACK_CONNECTOR_ID is not defined");
       }
 
-      const slackConfigurations = await SlackConfiguration.findAll();
+      const slackConfigurations = await SlackConfigurationResource.listAll();
       const connections = await nango_client().listConnections();
 
       const oneHourAgo = new Date();
@@ -1070,16 +1081,45 @@ export const slack = async ({
           "\n-"
         )}`
       );
-      await SlackConfiguration.update(
-        {
-          whitelistedDomains: whitelistedDomainsArray,
-        },
-        {
-          where: {
-            connectorId: connector.id,
-          },
-        }
+
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
       );
+      if (slackConfig) {
+        await slackConfig.setWhitelistedDomains(whitelistedDomainsArray);
+      }
+
+      return { success: true };
+    }
+
+    case "whitelist-bot": {
+      const { wId, botName } = args;
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!botName) {
+        throw new Error("Missing --botName argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: {
+          workspaceId: `${args.wId}`,
+          type: "slack",
+        },
+      });
+
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      logger.info(`[Admin] Whitelisting following bot for slack: ${botName}`);
+
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (slackConfig) {
+        await slackConfig.whitelistBot(botName);
+      }
 
       return { success: true };
     }
