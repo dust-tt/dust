@@ -1,8 +1,9 @@
+import type { ConversationType, UserMessageType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
-import { Key } from "@app/lib/models";
 import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
@@ -103,7 +104,10 @@ export async function summarizeGoogleDriveTranscriptActivity(
     },
     logger);
   
-    const conversation = await dust.createConversation({
+    let conversation: ConversationType | undefined = undefined;
+    let userMessage: UserMessageType | undefined = undefined;
+    
+    const convRes = await dust.createConversation({
       title: "Transcript Summarization",
       visibility:"unlisted",
       message:{
@@ -121,12 +125,44 @@ export async function summarizeGoogleDriveTranscriptActivity(
       },
       contentFragment: undefined
     })
-    if (conversation.isErr()) {
-      console.log(conversation.error)
+    if (convRes.isErr()) {
+      console.log(convRes.error)
     }  else {
-      const conversationId = conversation.value.conversation.sId;
-      logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversationId);
+      conversation = convRes.value.conversation;
+      userMessage = convRes.value.message;
+      logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversation.sId);
       logger.info("[summarizeGoogleDriveTranscriptActivity] Conversation content ");
-      logger.info(conversation.value.conversation.content);
+      logger.info(conversation.content);
     }
+
+    if (!conversation) {
+      logger.error("[summarizeGoogleDriveTranscriptActivity] No conversation found. Stopping.");
+      return;
+    }
+
+    const agentMessages = conversation.content
+    .map((versions) => {
+      const m = versions[versions.length - 1];
+      return m;
+    })
+    .filter((m) => {
+      return (
+        m &&
+        m.type === "agent_message" &&
+        m.parentMessageId === userMessage?.sId
+      );
+    });
+  if (agentMessages.length === 0) {
+    return new Err(new Error("Failed to retrieve agent message"));
+  }
+  const agentMessage = agentMessages[0] as AgentMessageType;
+
+  const streamRes = await dust.streamAgentMessageEvents({
+    conversation: conversation,
+    message: agentMessage,
+  });
+
+  if (streamRes.isErr()) {
+    return new Err(new Error(streamRes.error.message));
+  }
   }
