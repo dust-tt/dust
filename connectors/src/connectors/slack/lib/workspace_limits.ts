@@ -6,9 +6,9 @@ import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { SlackBotWhitelistModel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -213,13 +213,11 @@ async function isBotAllowed(
   // This means that even a non verified user of a given Slack workspace who can trigger a bot
   // that talks to our bot (@dust) will be able to use the Dust bot.
   // Make sure to be explicit about this with users as you whitelist a new bot.
-  // Example: non-verfied-user -> @AnyWhitelistedBot -> @dust -> Dust answers with potentially private information.
-  const whitelist = await SlackBotWhitelistModel.findOne({
-    where: {
-      connectorId: connector.id,
-      botName: names,
-    },
-  });
+  // Example: non-verified-user -> @AnyWhitelistedBot -> @dust -> Dust answers with potentially private information.
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  const whitelist = await slackConfig?.isBotWhitelisted(names);
   if (!whitelist) {
     logger.info(
       { user: slackUserInfo, connectorId: connector.id },

@@ -2,9 +2,14 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-import { SlackConfigurationModel } from "@connectors/lib/models/slack";
+import {
+  SlackBotWhitelistModel,
+  SlackChannel,
+  SlackConfigurationModel,
+  SlackMessages,
+} from "@connectors/lib/models/slack";
+import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -50,10 +55,10 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
-  static async fetchByConnectorId(id: ModelId) {
+  static async fetchByConnectorId(connectorId: ModelId) {
     const blob = await this.model.findOne({
       where: {
-        connectorId: id,
+        connectorId: connectorId,
       },
     });
     if (!blob) {
@@ -79,6 +84,15 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
+  async isBotWhitelisted(botName: string | string[]): Promise<boolean> {
+    return !!(await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.id,
+        botName: botName,
+      },
+    }));
+  }
+
   static async listAll() {
     const blobs = await SlackConfigurationResource.model.findAll({});
 
@@ -88,7 +102,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
-  static async listForTeamId(slackTeamId: string) {
+  static async listForTeamId(
+    slackTeamId: string
+  ): Promise<SlackConfigurationResource[]> {
     const blobs = await this.model.findAll({
       where: {
         slackTeamId,
@@ -101,20 +117,100 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     );
   }
 
-  async delete(): Promise<Result<undefined, Error>> {
-    return sequelizeConnection.transaction(async (transaction) => {
-      try {
-        await this.model.destroy({
-          where: {
-            id: this.id,
-          },
-          transaction,
-        });
-
-        return new Ok(undefined);
-      } catch (err) {
-        return new Err(err as Error);
+  async enableBot(): Promise<Result<undefined, Error>> {
+    const otherSlackConfigurationWithBotEnabled =
+      await SlackConfigurationModel.findOne({
+        where: {
+          slackTeamId: this.slackTeamId,
+          botEnabled: true,
+        },
+      });
+    if (
+      otherSlackConfigurationWithBotEnabled &&
+      otherSlackConfigurationWithBotEnabled.id !== this.id
+    ) {
+      logger.error(
+        {
+          slackTeamId: this.slackTeamId,
+        },
+        "Another Dust workspace has already enabled the slack bot for your Slack workspace."
+      );
+      return new Err(
+        new Error(
+          "Another Dust workspace has already enabled the slack bot for your Slack workspace."
+        )
+      );
+    }
+    await this.model.update(
+      { botEnabled: true },
+      {
+        where: {
+          id: this.id,
+        },
       }
-    });
+    );
+
+    return new Ok(undefined);
+  }
+
+  async disableBot(): Promise<Result<undefined, Error>> {
+    await this.model.update(
+      { botEnabled: false },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
+
+    return new Ok(undefined);
+  }
+
+  async setWhitelistedDomains(domain: string[]) {
+    await this.model.update(
+      { whitelistedDomains: domain },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
+
+    return new Ok(undefined);
+  }
+  async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
+    try {
+      await SlackChannel.destroy({
+        where: {
+          connectorId: this.id,
+        },
+        transaction,
+      });
+
+      await SlackMessages.destroy({
+        where: {
+          connectorId: this.id,
+        },
+        transaction,
+      });
+
+      await SlackBotWhitelistModel.destroy({
+        where: {
+          connectorId: this.id,
+        },
+        transaction,
+      });
+
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+        transaction,
+      });
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
 }

@@ -70,7 +70,6 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows";
 import { uninstallSlack } from "@connectors/connectors/slack";
-import { toggleSlackbot } from "@connectors/connectors/slack/bot";
 import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors/slack/lib/cli";
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
@@ -917,7 +916,19 @@ export const slack = async ({
       if (!connector) {
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
-      await throwOnError(toggleSlackbot(connector.id, true));
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (!slackConfig) {
+        throw new Error(
+          `Could not find slack configuration for connector ${connector.id}`
+        );
+      }
+
+      const res = await slackConfig.enableBot();
+      if (res.isErr()) {
+        throw res.error;
+      }
       return { success: true };
     }
 
@@ -1075,9 +1086,7 @@ export const slack = async ({
         connector.id
       );
       if (slackConfig) {
-        await slackConfig.update({
-          whitelistedDomains: whitelistedDomainsArray,
-        });
+        await slackConfig.setWhitelistedDomains(whitelistedDomainsArray);
       }
 
       return { success: true };

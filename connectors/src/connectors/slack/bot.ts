@@ -626,42 +626,6 @@ export async function getBotEnabled(
   return new Ok(slackConfig.botEnabled);
 }
 
-export async function toggleSlackbot(
-  connectorId: ModelId,
-  botEnabled: boolean
-): Promise<Result<void, Error>> {
-  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-    connectorId
-  );
-
-  if (!slackConfig) {
-    return new Err(
-      new Error(
-        `Failed to find a Slack configuration for connector ${connectorId}`
-      )
-    );
-  }
-
-  if (botEnabled) {
-    const otherSlackConfigWithBotEnabled =
-      await SlackConfigurationResource.fetchByActiveBot(
-        slackConfig.slackTeamId
-      );
-
-    if (otherSlackConfigWithBotEnabled) {
-      return new Err(
-        new Error(
-          "Another Dust workspace has already enabled the slack bot for your Slack workspace."
-        )
-      );
-    }
-  }
-
-  await slackConfig.update({ botEnabled: botEnabled });
-
-  return new Ok(void 0);
-}
-
 async function makeContentFragment(
   slackClient: WebClient,
   channelId: string,

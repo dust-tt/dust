@@ -14,10 +14,7 @@ import type {
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
-import {
-  getBotEnabled,
-  toggleSlackbot,
-} from "@connectors/connectors/slack/bot";
+import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
@@ -620,8 +617,21 @@ export async function setSlackConfig(
 
   switch (configKey) {
     case "botEnabled": {
-      const res = await toggleSlackbot(connectorId, configValue === "true");
-      return res;
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connectorId
+      );
+      if (!slackConfig) {
+        return new Err(
+          new Error(
+            `Slack configuration not found for connector ${connectorId}`
+          )
+        );
+      }
+      if (configValue === "true") {
+        return slackConfig.enableBot();
+      } else {
+        return slackConfig.disableBot();
+      }
     }
 
     default: {
