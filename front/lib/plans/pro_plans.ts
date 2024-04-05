@@ -45,7 +45,8 @@ if (isDevelopment()) {
     isManagedWebCrawlerAllowed: true,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
-    maxDataSourcesDocumentsSizeMb: 2,
+    // TODO(2024-04-05 flav) Decrease to 2 once GH fix is implemented.
+    maxDataSourcesDocumentsSizeMb: 3,
     trialPeriodDays: 0,
     canUseProduct: true,
   });
