@@ -28,7 +28,10 @@ import {
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
-import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_NO_PLAN_CODE,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 
 interface SubscriptionsDataTableProps {
@@ -375,7 +378,8 @@ function UpgradeDowngradeModal({
         />
         <div>
           {plans
-            .filter((p) => p.code.startsWith("FREE_"))
+            // Daph Uncomment this line when Enteprise billing Form is ready
+            .filter((p) => p.code !== PRO_PLAN_SEAT_29_CODE) // to be replaced with .filter((p) => p.code.startsWith("FREE_"))
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
