@@ -81,32 +81,76 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
     }
 
     case "pause-connectors": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
+      if (!args.wIds && !args.wId) {
+        throw new Error("Missing --wIds argument");
       }
-
-      const w = await Workspace.findOne({
-        where: {
-          sId: args.wId,
-        },
-      });
-      if (!w) {
-        throw new Error(`Workspace not found: wId='${args.wId}'`);
+      if (args.wIds && args.wId) {
+        throw new Error("Cannot use --wIds and --wId together");
       }
+      const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
 
-      const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
-      const dataSources = await getDataSources(auth);
-      const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
-      const connectorsApi = new ConnectorsAPI(logger);
-      for (const connectorId of connectorIds) {
-        console.log(`Pausing connectorId=${connectorId}`);
-        const res = await connectorsApi.pauseConnector(connectorId);
-        if (res.isErr()) {
-          throw new Error(res.error.message);
+      for (const wId of wIds) {
+        console.log(`Pausing connectors for workspace: wId=${wId}`);
+        const w = await Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+        if (!w) {
+          throw new Error(`Workspace not found: wId='${args.wId}'`);
+        }
+
+        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const dataSources = await getDataSources(auth);
+        const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
+        const connectorsApi = new ConnectorsAPI(logger);
+        for (const connectorId of connectorIds) {
+          console.log(`Pausing connectorId=${connectorId}`);
+          const res = await connectorsApi.pauseConnector(connectorId);
+          if (res.isErr()) {
+            throw new Error(res.error.message);
+          }
         }
       }
 
       console.log("Connectors paused");
+      return;
+    }
+
+    case "unpause-connectors": {
+      if (!args.wIds && !args.wId) {
+        throw new Error("Missing --wIds argument");
+      }
+      if (args.wIds && args.wId) {
+        throw new Error("Cannot use --wIds and --wId together");
+      }
+      const wIds: string[] = args.wIds ? args.wIds.split(",") : [args.wId];
+
+      for (const wId of wIds) {
+        const w = await Workspace.findOne({
+          where: {
+            sId: wId,
+          },
+        });
+        if (!w) {
+          throw new Error(`Workspace not found: wId='${args.wId}'`);
+        }
+        console.log(`Unpausing connectors for workspace: wId=${w.sId}`);
+
+        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const dataSources = await getDataSources(auth);
+        const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
+        const connectorsApi = new ConnectorsAPI(logger);
+        for (const connectorId of connectorIds) {
+          console.log(`Unpausing connectorId=${connectorId}`);
+          const res = await connectorsApi.unpauseConnector(connectorId);
+          if (res.isErr()) {
+            throw new Error(res.error.message);
+          }
+        }
+      }
+
+      console.log("Connectors unpaused");
       return;
     }
 
