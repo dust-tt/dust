@@ -447,7 +447,8 @@ export class Authenticator {
     }
 
     const { email, isDustSuperUser = false } = this._user;
-    const isDustInternal = DUST_INTERNAL_EMAIL_REGEXP.test(email);
+    const isDustInternal =
+      isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
 
     return isDustInternal && isDustSuperUser;
   }
