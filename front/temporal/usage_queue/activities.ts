@@ -44,9 +44,16 @@ export async function recordUsageActivity(workspaceId: string) {
   }
 
   if (!subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
-    throw new Error(
-      "Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
+    // TODO(2024-04-05 flav) Uncomment once all workspaces have a valid stripe subscription.
+    // throw new Error(
+    //   "Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
+    // );
+    logger.info(
+      { subscription },
+      "[UsageQueue] Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
     );
+
+    return;
   }
 
   const stripeSubscription = await getStripeSubscription(
