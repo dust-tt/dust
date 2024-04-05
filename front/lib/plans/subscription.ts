@@ -1,5 +1,4 @@
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
 import type Stripe from "stripe";
 
@@ -12,15 +11,9 @@ import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createCheckoutSession,
-  getStripeSubscription,
   updateStripeSubscriptionQuantity,
-  updateStripeSubscriptionUsage,
 } from "@app/lib/plans/stripe";
-import {
-  countActiveSeatsInWorkspace,
-  countActiveUsersInWorkspaceSince,
-} from "@app/lib/plans/workspace_usage";
-import { redisClient } from "@app/lib/redis";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
@@ -402,70 +395,6 @@ export const updateWorkspacePerSeatSubscriptionUsage = async ({
     logger.warn(
       `Error while updating Stripe subscription quantity for workspace ${workspaceId}: ${err}`
     );
-  }
-};
-
-export const updateWorkspacePerMonthlyActiveUsersSubscriptionUsage = async ({
-  owner,
-  subscription,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}): Promise<void> => {
-  let redis = null;
-  try {
-    redis = await redisClient();
-    if (subscription.plan.billingType !== "monthly_active_users") {
-      // We only update the usage for plans with billingType === "monthly_active_users"
-      return;
-    }
-    if (
-      !subscription.stripeSubscriptionId ||
-      !subscription.stripeCustomerId ||
-      !subscription.plan.stripeProductId
-    ) {
-      throw new Error(
-        "Cannot update usage in monthly_active_users subscription: missing Stripe subscription ID or Stripe customer ID."
-      );
-    }
-
-    const redisKey = `workspace:usage:${owner.sId}`;
-    const usageForWorkspace = await redis.get(redisKey);
-    if (usageForWorkspace) {
-      // If already reported usage for this workspace in the last hour we do nothing
-      return;
-    }
-
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-
-    if (!stripeSubscription) {
-      throw new Error(
-        `Cannot update usage in monthly_active_users subscription: Stripe subscription ${subscription.stripeSubscriptionId} not found.`
-      );
-    }
-    const quantity = await countActiveUsersInWorkspaceSince({
-      workspace: owner,
-      since: new Date(stripeSubscription.current_period_start * 1000),
-    });
-    await updateStripeSubscriptionUsage({
-      stripeSubscription,
-      quantity,
-    });
-
-    // We store the usage in Redis to update Stripe only once per hour if mutliple messages are sent
-    await redis.set(redisKey, quantity, {
-      EX: 3600, // 1 hour
-    });
-  } catch (err) {
-    logger.error(
-      `Error while updating Stripe subscription usage for workspace ${owner.sId}: ${err}`
-    );
-  } finally {
-    if (redis) {
-      await redis.quit();
-    }
   }
 };
 
