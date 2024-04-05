@@ -29,9 +29,12 @@ export async function recordUsageActivity(workspaceId: string) {
     !subscription.stripeSubscriptionId ||
     !subscription.stripeCustomerId
   ) {
-    throw new Error(
-      "Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
+    logger.info(
+      {},
+      "[UsageQueue] No subscription found -- skipping reporting usage."
     );
+
+    return;
   }
 
   const stripeSubscription = await getStripeSubscription(
