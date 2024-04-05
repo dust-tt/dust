@@ -99,7 +99,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     logger);
   
     let conversation: ConversationType | undefined = undefined;
-    // const userMessage: UserMessageType | undefined = undefined;
+    let userMessage: UserMessageType | undefined = undefined;
 
     const convRes = await dust.createConversation({
       title: null,
@@ -124,9 +124,9 @@ export async function summarizeGoogleDriveTranscriptActivity(
       console.log(convRes.error)
     }  else {
       conversation = convRes.value.conversation;
-      // userMessage = convRes.value.message;
-      console.log('CONVERSATION');
-      console.log(conversation.content);
+      userMessage = convRes.value.message;
+      // console.log('CONVERSATION');
+      // console.log(conversation.content);
 
       logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversation.sId);
     }
@@ -136,34 +136,63 @@ export async function summarizeGoogleDriveTranscriptActivity(
       return;
     }
 
-    // console.log('CHECKING AGENT MESSAGES');
-
-    // const agentMessages = conversation.content
-    // .map((versions) => {
-    //   const m = versions[versions.length - 1];
-    //   return m;
-    // })
-    // .filter((m) => {
-    //   return (
-    //     m &&
-    //     m.type === "agent_message" &&
-    //     m.parentMessageId === userMessage?.sId
-    //   );
-    // });
+    const agentMessages = conversation.content
+    .map((versions: any) => {
+      const m = versions[versions.length - 1];
+      return m;
+    })
+    .filter((m) => {
+      return (
+        m &&
+        m.type === "agent_message" &&
+        m.parentMessageId === userMessage?.sId
+      );
+    });
       
-    // if (agentMessages.length === 0) {
-    //   return new Err(new Error("Failed to retrieve agent message"));
-    // }
-    // const agentMessage = agentMessages[0] as AgentMessageType;
+    if (agentMessages.length === 0) {
+      return new Err(new Error("Failed to retrieve agent message"));
+    }
+    const agentMessage = agentMessages[0] as AgentMessageType;
 
-    // const streamRes = await dust.streamAgentMessageEvents({
-    //   conversation: conversation,
-    //   message: agentMessage,
-    // });
+    const streamRes = await dust.streamAgentMessageEvents({
+      conversation: conversation,
+      message: agentMessage,
+    });
 
-    // if (streamRes.isErr()) {
-    //   return new Err(new Error(streamRes.error.message));
-    // }
+    if (streamRes.isErr()) {
+      return new Err(new Error(streamRes.error.message));
+    }
 
-    // console.log('STREAM RES', streamRes.value);
+    console.log('Streaming answer...')
+
+    let fullAnswer = "";
+    for await (const event of streamRes.value.eventStream) {
+      switch (event.type) {
+        case "user_message_error": {
+          return new Err(
+            new Error(
+              `User message error: code: ${event.error.code} message: ${event.error.message}`
+            )
+          );
+        }
+  
+        case "agent_error": {
+          return new Err(
+            new Error(
+              `Agent message error: code: ${event.error.code} message: ${event.error.message}`
+            )
+          );
+        }
+        case "generation_tokens": {
+          fullAnswer += event.text;
+          break;
+        }
+       
+        default:
+        // Nothing to do on unsupported events
+      }
+    }
+
+    console.log('FULL ANSWER', fullAnswer);
+    // SEND THIS BY EMAIL TO USER
   }
