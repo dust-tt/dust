@@ -8,6 +8,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { usePokeAgentConfigurations } from "@app/lib/swr";
@@ -42,15 +43,18 @@ export function AssistantsDataTable({
         owner={owner}
       />
       <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-        <a
-          className="mb-4 cursor-pointer text-xs text-action-400"
-          onClick={() => {
-            setShowRestoreAssistantModal(true);
-          }}
-        >
-          restore an assistant
-        </a>
-        <h2 className="text-md mb-4 font-bold">Assistants:</h2>
+        <div className="flex justify-between gap-3">
+          <h2 className="text-md mb-4 flex-grow font-bold">Assistants:</h2>
+          <PokeButton
+            aria-label="Restore an assistant"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRestoreAssistantModal(true)}
+          >
+            🔥 Restore an assistant
+          </PokeButton>
+        </div>
+
         <PokeDataTable
           columns={makeColumnsForAssistants(
             owner,
