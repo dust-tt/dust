@@ -3,7 +3,7 @@ import { slugify } from "./string_utils";
 export function makeStructuredDataTableName(name: string, externalId: string) {
   const lowercasedExternalId = externalId.toLowerCase();
   const externalIdPrefix = lowercasedExternalId.substring(0, 4);
-  const externalIdSuffix = lowercasedExternalId.slice(-4);
+  const externalIdSuffix = lowercasedExternalId.slice(-6);
 
   const truncatedName = name.substring(0, 32);
 
