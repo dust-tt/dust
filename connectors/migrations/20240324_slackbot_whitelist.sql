@@ -22,3 +22,8 @@ INSERT INTO
   slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
 VALUES
   (211, 50, 'dust-email-lists-highlights');
+
+INSERT INTO
+  slack_bots_whitelist("connectorId", "slackConfigurationId", "botName")
+VALUES
+  (589, 137, 'Dust_CrystalBall');
