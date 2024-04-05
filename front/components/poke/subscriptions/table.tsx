@@ -375,7 +375,7 @@ function ManageSubscriptionModal({
         />
         <div>
           {plans
-            .filter((p) => p.billingType === "free")
+            .filter((p) => p.code.startsWith("FREE_"))
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
