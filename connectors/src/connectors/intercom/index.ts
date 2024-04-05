@@ -765,9 +765,16 @@ export async function unpauseIntercomConnector(connectorId: ModelId) {
   }
 
   await connector.markAsUnpaused();
-
+  const teamsIds = await IntercomTeam.findAll({
+    where: {
+      connectorId,
+    },
+    attributes: ["teamId"],
+  });
+  const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
   const r = await launchIntercomSyncWorkflow({
     connectorId,
+    teamIds: toBeSignaledTeamIds,
   });
   if (r.isErr()) {
     return r;
