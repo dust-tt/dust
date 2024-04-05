@@ -65,7 +65,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       return null;
     }
 
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
     return new this(this.model, blob.get());
   }
 
@@ -80,24 +79,32 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       return null;
     }
 
-    // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
     return new this(this.model, blob.get());
   }
 
   async isBotWhitelisted(botName: string | string[]): Promise<boolean> {
     return !!(await SlackBotWhitelistModel.findOne({
       where: {
-        connectorId: this.id,
+        connectorId: this.connectorId,
         botName: botName,
       },
     }));
+  }
+
+  async whitelistBot(botName: string): Promise<Result<undefined, Error>> {
+    await SlackBotWhitelistModel.create({
+      connectorId: this.connectorId,
+      slackConfigurationId: this.id,
+      botName,
+    });
+
+    return new Ok(undefined);
   }
 
   static async listAll() {
     const blobs = await SlackConfigurationResource.model.findAll({});
 
     return blobs.map(
-      // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
       (b) => new SlackConfigurationResource(this.model, b.get())
     );
   }
@@ -178,25 +185,26 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     return new Ok(undefined);
   }
+
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {
       await SlackChannel.destroy({
         where: {
-          connectorId: this.id,
+          connectorId: this.connectorId,
         },
         transaction,
       });
 
       await SlackMessages.destroy({
         where: {
-          connectorId: this.id,
+          connectorId: this.connectorId,
         },
         transaction,
       });
 
       await SlackBotWhitelistModel.destroy({
         where: {
-          connectorId: this.id,
+          connectorId: this.connectorId,
         },
         transaction,
       });

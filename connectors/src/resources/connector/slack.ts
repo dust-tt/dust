@@ -1,10 +1,6 @@
 import type { Transaction } from "sequelize";
 
-import {
-  SlackChannel,
-  SlackConfigurationModel,
-  SlackMessages,
-} from "@connectors/lib/models/slack";
+import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -29,23 +25,16 @@ export class SlackConnectorStrategy implements ConnectorProviderStrategy {
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await SlackChannel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await SlackMessages.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await SlackConfigurationModel.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
+    const config = await SlackConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (!config) {
+      throw new Error(
+        `Slack configuration not found for connector ${connector.id}`
+      );
+    }
+    await config.delete(transaction);
+
+    return;
   }
 }

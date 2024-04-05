@@ -1092,6 +1092,38 @@ export const slack = async ({
       return { success: true };
     }
 
+    case "whitelist-bot": {
+      const { wId, botName } = args;
+      if (!wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!botName) {
+        throw new Error("Missing --botName argument");
+      }
+
+      const connector = await ConnectorModel.findOne({
+        where: {
+          workspaceId: `${args.wId}`,
+          type: "slack",
+        },
+      });
+
+      if (!connector) {
+        throw new Error(`Could not find connector for workspace ${args.wId}`);
+      }
+
+      logger.info(`[Admin] Whitelisting following bot for slack: ${botName}`);
+
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
+      if (slackConfig) {
+        await slackConfig.whitelistBot(botName);
+      }
+
+      return { success: true };
+    }
+
     default:
       throw new Error("Unknown slack command: " + command);
   }

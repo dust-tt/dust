@@ -300,7 +300,7 @@ export class SlackBotWhitelistModel extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare slackConfiguration: ForeignKey<SlackConfigurationModel["id"]>;
+  declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
 
 SlackBotWhitelistModel.init(
