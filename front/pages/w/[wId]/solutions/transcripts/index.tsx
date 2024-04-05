@@ -2,6 +2,7 @@ import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Page,
+  Spinner2
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -59,7 +60,6 @@ export default function SolutionsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGDriveConnected, setIsGDriveConnected] = useState(false);
-  const [files, setFiles] = useState<drive_v3.Schema$File[] | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
 
   useEffect(() => {
@@ -72,15 +72,14 @@ export default function SolutionsTranscriptsIndex({
       if (!response.ok) {
         throw new Error("Failed to fetch solution configuration");
       }
-      const { configuration, files } = await response.json();
+      const { configuration } = await response.json();
       if (configuration?.id) {
         setIsGDriveConnected(true);
       }
-      if (files) {
-        setFiles(files);
-      }
     }
-    )
+    ).finally(() => {
+      setIsLoading(false);
+    })
   }, [owner]);
 
   const handleConnectTranscriptsSource = async () => {

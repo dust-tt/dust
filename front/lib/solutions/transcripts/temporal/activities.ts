@@ -1,13 +1,14 @@
+import { DustAPI } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
-import { resetExtensions } from "showdown";
 
+import { Key } from "@app/lib/models";
 import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
 import mainLogger from "@app/logger/logger";
 
-const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
+const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID, SOLUTIONS_API_KEY, SOLUTIONS_WORKSPACE_ID, NODE_ENV } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
   userId: number,
@@ -50,6 +51,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   userId: number,
   fileId: string
 ) {
+    console.log('NODE ENV', NODE_ENV)
     const logger = mainLogger.child({ userId });
     const providerId = "google_drive";
     if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
@@ -70,12 +72,12 @@ export async function summarizeGoogleDriveTranscriptActivity(
       return;
     }
 
-    const auth = await getGoogleAuth(userId)
+    const googleAuth = await getGoogleAuth(userId)
 
     console.log('GETTING TRANSCRIPT CONTENT FROM GDRIVE');
     
     // Get fileId file content
-    const res = await googleapis.google.drive({ version: 'v3', auth }).files.export({
+    const res = await googleapis.google.drive({ version: 'v3', auth: googleAuth }).files.export({
       fileId: fileId,
       mimeType: "text/plain",
     });
@@ -91,4 +93,39 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
     console.log('GOT TRANSCRIPT CONTENT');
     console.log(transcriptContent);
+
+    console.log('SOLUTIONS_WORKSPACE_ID', SOLUTIONS_WORKSPACE_ID);
+    console.log('SOLUTIONS_API_KEY', SOLUTIONS_API_KEY);
+    
+    const dust = new DustAPI({
+      workspaceId: SOLUTIONS_WORKSPACE_ID as string,
+      apiKey: SOLUTIONS_API_KEY as string
+    },
+    logger);
+  
+    const conversation = await dust.createConversation({
+      title: "My first conversation",
+      visibility:"unlisted",
+      message:{
+        content:"Hello world!",
+        mentions:[
+          {configurationId:"TranscriptSummarizer"}
+        ],
+        context:{
+          timezone:"Europe/Paris",
+          username:"John Doe",
+          fullName:"John Doe",
+          email:"john@test.com",
+          profilePictureUrl:"https://www.example.com/my-picture.jpg"
+        }
+      },
+      contentFragment:undefined
+    })
+    if (conversation.isErr()) {
+      console.log(conversation.error)
+    }  else {
+      console.log(conversation.value)
+    }
+
+    logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation ", conversation);
   }

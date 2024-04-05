@@ -50,7 +50,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 400,
           api_error: {
-            type: "missing_parameters",
+            type: "invalid_request_error",
             message: "The `connectionId` and `provider` parameters are required.",
           },
         });
