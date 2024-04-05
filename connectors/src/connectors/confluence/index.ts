@@ -230,6 +230,10 @@ export async function pauseConfluenceConnector(
   }
 
   await connector.markAsPaused();
+  const r = await stopConfluenceSyncWorkflow(connectorId);
+  if (r.isErr()) {
+    return r;
+  }
 
   return new Ok(undefined);
 }
