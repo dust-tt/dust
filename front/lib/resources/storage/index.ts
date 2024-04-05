@@ -33,3 +33,18 @@ export const frontSequelize = new Sequelize(
     },
   }
 );
+
+let frontReplicaDbInstance: Sequelize | null = null;
+
+export function getFrontReplicaDbConnection() {
+  if (!frontReplicaDbInstance) {
+    frontReplicaDbInstance = new Sequelize(
+      dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
+      {
+        logging: false,
+      }
+    );
+  }
+
+  return frontReplicaDbInstance;
+}

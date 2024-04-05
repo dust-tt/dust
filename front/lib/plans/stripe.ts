@@ -239,25 +239,21 @@ export const updateStripeSubscriptionQuantity = async ({
 
 /**
  * Calls the Stripe API to update the usage of a subscription.
- * Used for our "monthly active users" billing.
+ * Used for our metered prices.
  * For those plans Stripe price is configured with: "Usage type = Metered usage, Aggregation mode = Last value during period"
  * https://stripe.com/docs/products-prices/pricing-models#reporting-usage
  */
-export const updateStripeSubscriptionUsage = async ({
-  stripeSubscription,
-  quantity,
-}: {
-  stripeSubscription: Stripe.Subscription;
-  quantity: number;
-}): Promise<void> => {
-  const subscriptionItemId = stripeSubscription.items.data[0].id;
-  await stripe.subscriptionItems.createUsageRecord(subscriptionItemId, {
+export async function updateStripeActiveUsersForSubscriptionItem(
+  subscriptionItem: Stripe.SubscriptionItem,
+  quantity: number
+) {
+  await stripe.subscriptionItems.createUsageRecord(subscriptionItem.id, {
     // We do not send a timestamp, because we want to use the current time.
     // We use action = "set" to override the previous usage (as opposed to "increment")
     action: "set",
-    quantity: quantity,
+    quantity,
   });
-};
+}
 
 /**
  *
