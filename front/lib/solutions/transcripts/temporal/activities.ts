@@ -104,10 +104,10 @@ export async function summarizeGoogleDriveTranscriptActivity(
     logger);
   
     const conversation = await dust.createConversation({
-      title: "My first conversation",
+      title: "Transcript Summarization",
       visibility:"unlisted",
       message:{
-        content:"Hello world!",
+        content:"Summarize this meeting notes transcript",
         mentions:[
           {configurationId:"TranscriptSummarizer"}
         ],
@@ -124,8 +124,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     if (conversation.isErr()) {
       console.log(conversation.error)
     }  else {
-      console.log(conversation.value)
+      const conversationId = conversation.value.conversation.sId;
+      logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation " + conversationId);
     }
-
-    logger.info("[summarizeGoogleDriveTranscriptActivity] Created conversation ", conversation);
   }
