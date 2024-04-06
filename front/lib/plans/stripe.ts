@@ -329,7 +329,7 @@ export function checkStripeSubscriptionValid(
         };
       }
 
-      if (REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
+      if (!REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
         return {
           valid: false,
           message:
