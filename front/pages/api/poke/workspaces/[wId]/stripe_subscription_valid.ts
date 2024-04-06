@@ -65,7 +65,10 @@ async function handler(
   }
 
   if (req.query.checkSubscriptionUnassigned) {
-    if (typeof req.query.checkSubscriptionUnassigned !== "boolean") {
+    if (
+      typeof req.query.checkSubscriptionUnassigned !== "string" ||
+      !["true", "false"].includes(req.query.checkSubscriptionUnassigned)
+    ) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
@@ -76,7 +79,7 @@ async function handler(
       });
     }
 
-    if (req.query.checkSubscriptionUnassigned) {
+    if (req.query.checkSubscriptionUnassigned === "true") {
       // check if a subscription with the same stripeSubscriptionId is already in our database
       if (await getSubscriptionForStripeId(stripeSubscriptionId)) {
         return apiError(req, res, {
