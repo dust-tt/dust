@@ -3,10 +3,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type Stripe from "stripe";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import type { StripeSubscriptionValidityType } from "@app/lib/plans/stripe";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { apiError, withLogging } from "@app/logger/withlogging";
 import { checkStripeSubscriptionValid } from "@app/lib/plans/stripe";
-import { StripeSubscriptionValidityType } from "@app/lib/plans/stripe";
+import { getSubscriptionForStripeId } from "@app/lib/plans/subscription";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
@@ -61,6 +62,33 @@ async function handler(
         message: `Error while fetching subscription from stripe.\n${error}`,
       },
     });
+  }
+
+  if (req.query.checkSubscriptionUnassigned) {
+    if (typeof req.query.checkSubscriptionUnassigned !== "boolean") {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid request, checkSubscriptionUnassigned must be a boolean.",
+        },
+      });
+    }
+
+    if (req.query.checkSubscriptionUnassigned) {
+      // check if a subscription with the same stripeSubscriptionId is already in our database
+      if (await getSubscriptionForStripeId(stripeSubscriptionId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "A Dust subscription with the same stripeSubscriptionId already exists.",
+          },
+        });
+      }
+    }
   }
 
   switch (req.method) {
