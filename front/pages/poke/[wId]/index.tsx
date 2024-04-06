@@ -123,7 +123,6 @@ const WorkspacePage = ({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
-  const [testSubId, setTestSubId] = React.useState<string>("");
   const sendNotification = useContext(SendNotificationsContext);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
@@ -299,23 +298,7 @@ const WorkspacePage = ({
               </div>
             )}
           </div>
-          <input
-            type="text"
-            value={testSubId}
-            onChange={(e) => setTestSubId(e.target.value)}
-          />
-          <button
-            onClick={async () => {
-              const res = await fetch(
-                `/api/w/${owner.sId}/subscriptions/stripe_subscription_valid?stripeSubscriptionId=${testSubId}`
-              );
-              const json = await res.json();
-              console.log("Route result");
-              console.log(json);
-            }}
-          >
-            Test
-          </button>
+
           <div className="flex-col justify-center">
             <div className="mx-2">
               <h2 className="text-md mb-4 font-bold">Segmentation:</h2>
