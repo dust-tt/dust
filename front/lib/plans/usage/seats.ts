@@ -17,6 +17,7 @@ export async function countActiveSeatsInWorkspace(
   if (!workspace) {
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
+
   return MembershipResource.getMembersCountForWorkspace({
     workspace: renderLightWorkspaceType({ workspace }),
     activeOnly: true,
