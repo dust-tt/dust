@@ -11,9 +11,8 @@ import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createCheckoutSession,
-  updateStripeSubscriptionQuantity,
 } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
@@ -335,67 +334,6 @@ export const getCheckoutUrlForUpgrade = async (
     checkoutUrl,
     plan: renderPlanFromModel({ plan }),
   };
-};
-
-export const updateWorkspacePerSeatSubscriptionUsage = async ({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<void> => {
-  try {
-    const workspace = await Workspace.findOne({
-      where: { sId: workspaceId },
-    });
-    if (!workspace) {
-      throw new Error(
-        "Cannot process update usage in subscription: workspace not found."
-      );
-    }
-
-    const activeSubscription = await Subscription.findOne({
-      where: { workspaceId: workspace.id, status: "active" },
-      include: [
-        {
-          model: Plan,
-          as: "plan",
-          required: true,
-        },
-      ],
-    });
-
-    if (!activeSubscription) {
-      throw new Error(
-        "Cannot process update usage in subscription: workspace has no subscription."
-      );
-    }
-
-    if (activeSubscription.plan.billingType !== "per_seat") {
-      // We only update the usage for plans with billingType === "per_seat"
-      return;
-    }
-    if (
-      !activeSubscription.stripeSubscriptionId ||
-      !activeSubscription.stripeCustomerId ||
-      !activeSubscription.plan.stripeProductId
-    ) {
-      throw new Error(
-        "Cannot update usage in per_seat subscription: missing Stripe subscription ID or Stripe customer ID."
-      );
-    }
-
-    // We update the subscription usage
-    const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
-
-    await updateStripeSubscriptionQuantity({
-      stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
-      stripeProductId: activeSubscription.plan.stripeProductId,
-      quantity: activeSeats,
-    });
-  } catch (err) {
-    logger.warn(
-      `Error while updating Stripe subscription quantity for workspace ${workspaceId}: ${err}`
-    );
-  }
 };
 
 /**

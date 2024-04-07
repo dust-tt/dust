@@ -16,7 +16,7 @@ import {
 import { Plan, Subscription, Workspace } from "@app/lib/models";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
