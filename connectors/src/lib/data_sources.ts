@@ -9,7 +9,7 @@ import {
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
@@ -48,6 +48,25 @@ type UpsertToDataSourceParams = {
   upsertContext: UpsertContext;
   async: boolean;
 };
+
+export class DataSourceQuotaError extends Error {
+  readonly type = "data_source_quota_error";
+
+  constructor(msg: string, readonly parentError: Error) {
+    super(msg);
+  }
+
+  static fromAxiosError(e: AxiosError) {
+    const message =
+      e.response &&
+      "message" in e.response &&
+      typeof e.response.message === "string"
+        ? e.response.message
+        : e.message;
+
+    return new DataSourceQuotaError(message, e);
+  }
+}
 
 export const upsertToDatasource = withRetries(_upsertToDatasource);
 
@@ -111,15 +130,31 @@ async function _upsertToDatasource({
     );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
-    if (axios.isAxiosError(e) && e.config?.data) {
-      e.config.data = "[REDACTED]";
-    }
+
     statsDClient.increment("data_source_upserts_error.count", 1, statsDTags);
     statsDClient.distribution(
       "data_source_upserts_error.duration.distribution",
       elapsed,
       statsDTags
     );
+
+    if (axios.isAxiosError(e) && e.config?.data) {
+      e.config.data = "[REDACTED]";
+
+      switch (e.status) {
+        case 401: {
+          const dataSourceQuotaError = DataSourceQuotaError.fromAxiosError(e);
+
+          localLogger.error(
+            { error: dataSourceQuotaError },
+            "Error uploading document to Dust."
+          );
+
+          throw dataSourceQuotaError;
+        }
+      }
+    }
+
     localLogger.error({ error: e }, "Error uploading document to Dust.");
     throw e;
   }

@@ -23,6 +23,7 @@ import {
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
 import {
+  DataSourceQuotaError,
   deleteFromDataSource,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
@@ -237,26 +238,39 @@ export async function githubUpsertIssueActivity(
   }
 
   // TODO: last commentor, last comment date, issue labels (as tags)
-  await upsertToDatasource({
-    dataSourceConfig,
-    documentId,
-    documentContent: renderedIssue,
-    documentUrl: issue.url,
-    timestampMs: updatedAtTimestamp,
-    tags: tags,
-    // The convention for parents is to use the external id string; it is ok for
-    // repos, but not practical for issues since the external id is the
-    // issue number, which is not guaranteed unique in the workspace.
-    // Therefore as a special case we use getIssueDocumentId() to get a parent string
-    // The repo id from github is globally unique so used as-is, as per
-    // convention to use the external id string.
-    parents: [documentId, `${repoId}-issues`, repoId.toString()],
-    loggerArgs: { ...loggerArgs, provider: "github" },
-    upsertContext: {
-      sync_type: isBatchSync ? "batch" : "incremental",
-    },
-    async: true,
-  });
+  try {
+    await upsertToDatasource({
+      dataSourceConfig,
+      documentId,
+      documentContent: renderedIssue,
+      documentUrl: issue.url,
+      timestampMs: updatedAtTimestamp,
+      tags: tags,
+      // The convention for parents is to use the external id string; it is ok for
+      // repos, but not practical for issues since the external id is the
+      // issue number, which is not guaranteed unique in the workspace.
+      // Therefore as a special case we use getIssueDocumentId() to get a parent string
+      // The repo id from github is globally unique so used as-is, as per
+      // convention to use the external id string.
+      parents: [documentId, `${repoId}-issues`, repoId.toString()],
+      loggerArgs: { ...loggerArgs, provider: "github" },
+      upsertContext: {
+        sync_type: isBatchSync ? "batch" : "incremental",
+      },
+      async: true,
+    });
+  } catch (err) {
+    if (err instanceof DataSourceQuotaError) {
+      localLogger.info(
+        "GitHub issue upsert failed due to data source quota limitation."
+      );
+
+      // Early return.
+      return;
+    }
+
+    throw err;
+  }
 
   const connector = await ConnectorResource.findByDataSourceAndConnection(
     dataSourceConfig,
