@@ -422,7 +422,7 @@ export async function getSubscriptionForStripeId(
 ): Promise<SubscriptionType | null> {
   const res = await Subscription.findOne({
     where: { stripeSubscriptionId },
-    include: [Plan, Workspace],
+    include: [Plan],
   });
 
   if (!res) {
