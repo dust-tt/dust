@@ -2,9 +2,11 @@ import {
   Button,
   Div3D,
   Hover3D,
+  Icon,
   LoginIcon,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
+  MenuIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import type { InferGetServerSidePropsType } from "next";
@@ -171,8 +173,23 @@ export default function Home({
       />
       <Header />
       <ScrollingHeader>
-        <div className="flex h-full w-full items-center gap-10 px-6">
-          <div className="h-[24px] w-[96px]">
+        <div className="flex h-full items-center px-5 md:hidden">
+          <Icon size="md" visual={MenuIcon} className="text-slate-100" />
+          <div className="flex-grow" />
+          <Button
+            variant="tertiary"
+            size="sm"
+            label="Sign in"
+            icon={LoginIcon}
+            onClick={() =>
+              (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
+                router.query
+              )}`)
+            }
+          />
+        </div>
+        <div className="hidden h-full w-full items-center gap-10 px-6 md:flex">
+          <div className="hidden h-[24px] w-[96px] lg:block">
             <Hover3D className="relative h-[24px] w-[96px]">
               <Div3D depth={0} className="h-[24px] w-[96px]">
                 <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
@@ -212,9 +229,9 @@ export default function Home({
       <main className="z-10 flex flex-col items-center">
         <div
           className={classNames(
-            "container flex flex-col",
-            "gap-16 py-24",
-            "md:gap-28 md:py-36",
+            "container flex w-full flex-col",
+            "gap-16 px-6 py-24",
+            "md:py-48",
             "xl:gap-36 xl:pb-96",
             "2xl:gap-48"
           )}

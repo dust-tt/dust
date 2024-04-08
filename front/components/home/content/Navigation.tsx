@@ -28,22 +28,22 @@ const solutions: { title: string; target: string }[] = [
     title: "Recruiting & People",
     target: "for_people",
   },
-  {
-    title: "Sales & Revenue",
-    target: "for_sales",
-  },
-  {
-    title: "Engineering",
-    target: "for_engineering",
-  },
-  {
-    title: "Knowledge Management",
-    target: "for_knowledge",
-  },
-  {
-    title: "Data & Analaytics",
-    target: "for_data",
-  },
+  // {
+  //   title: "Sales & Revenue",
+  //   target: "for_sales",
+  // },
+  // {
+  //   title: "Engineering",
+  //   target: "for_engineering",
+  // },
+  // {
+  //   title: "Knowledge Management",
+  //   target: "for_knowledge",
+  // },
+  // {
+  //   title: "Data & Analaytics",
+  //   target: "for_data",
+  // },
 ];
 
 const devs: { title: string; target: string }[] = [

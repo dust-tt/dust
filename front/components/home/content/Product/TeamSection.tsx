@@ -8,7 +8,7 @@ import {
   Strong,
 } from "@app/components/home/components/contentComponents";
 
-const defaultFlexClasses = "flex flex-col gap-4";
+const defaultFlexClasses = "flex flex-col gap-8";
 
 import { ImgBlock } from "@app/components/home/components/contentBlocks";
 import { classNames } from "@app/lib/utils";
@@ -38,178 +38,196 @@ export function TeamSection() {
             <Strong>Spread good&nbsp;practices and AI&nbsp;knowledge.</Strong>
           </P>
         </div>
-        <ImgBlock
-          title={<>Identify your most creative and driven team&nbsp;members.</>}
-          content={
-            <>
-              Develop your people's skills and encourage sharing in
-              the&nbsp;company.
-            </>
-          }
+        <div
+          className={classNames(
+            "col-span-12",
+            "grid grid-cols-1 gap-x-8 gap-y-20",
+            "md:grid-cols-2 md:gap-y-16",
+            "lg:grid-cols-3"
+          )}
         >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={
+              <>Identify your most creative and driven team&nbsp;members.</>
+            }
+            content={
+              <>
+                Develop your people's skills and encourage sharing in
+                the&nbsp;company.
+              </>
+            }
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/people/people1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/people/people2.png" />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/people/people3.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/people/people4.png" />
-            </Div3D>
-            <Div3D depth={90} className="absolute top-0">
-              <img src="/static/landing/people/people5.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/people/people1.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/people/people2.png" />
+              </Div3D>
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/people/people3.png" />
+              </Div3D>
+              <Div3D depth={60} className="absolute top-0">
+                <img src="/static/landing/people/people4.png" />
+              </Div3D>
+              <Div3D depth={90} className="absolute top-0">
+                <img src="/static/landing/people/people5.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
 
-        <ImgBlock
-          title={<>Ramp-up your team with&nbsp;templates.</>}
-          content={<>Practical examples to apply directly and learn from.</>}
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={<>Ramp-up your team with&nbsp;templates.</>}
+            content={
+              <>
+                Practical examples to&nbsp;apply directly
+                and&nbsp;learn&nbsp;from.
+              </>
+            }
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/templates/template1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/templates/template2.png" />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/templates/template3.png" />
-            </Div3D>
-            <Div3D depth={40} className="absolute top-0">
-              <img src="/static/landing/templates/template4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/templates/template1.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/templates/template2.png" />
+              </Div3D>
+              <Div3D depth={15} className="absolute top-0">
+                <img src="/static/landing/templates/template3.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/templates/template4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
 
-        <ImgBlock
-          title={<>Package powerful workflow in easy to use&nbsp;assistants.</>}
-          content={
-            <>
-              <Strong>
-                <span className="text-emerald-400">@mentions</span>
-              </Strong>{" "}
-              assistants in&nbsp;discussions, use assistants directy Slack.
-            </>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={
+              <>Package powerful workflow in easy to use&nbsp;assistants.</>
+            }
+            content={
+              <>
+                <Strong>
+                  <span className="text-emerald-400">@mentions</span>
+                </Strong>{" "}
+                assistants in&nbsp;discussions, use assistants directy Slack.
+              </>
+            }
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/builder/builder1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/builder/builder2.png" />
-            </Div3D>
-            <Div3D depth={30} className="absolute top-0">
-              <img src="/static/landing/builder/builder3.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0">
-              <img src="/static/landing/builder/builder4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/builder/builder1.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/builder/builder2.png" />
+              </Div3D>
+              <Div3D depth={30} className="absolute top-0">
+                <img src="/static/landing/builder/builder3.png" />
+              </Div3D>
+              <Div3D depth={50} className="absolute top-0">
+                <img src="/static/landing/builder/builder4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
 
-        <ImgBlock
-          title={<>Easily share assistants accross your&nbsp;team.</>}
-          content={
-            <>Spread assistants using Dust's company wide sharing features.</>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={<>Easily share assistants accross your&nbsp;team.</>}
+            content={
+              <>Spread assistants using Dust's company wide sharing features.</>
+            }
           >
-            <Div3D depth={-40}>
-              <img src="/static/landing/sharing/sharing1.png" />
-            </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/sharing/sharing2.png" />
-            </Div3D>
-            <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/sharing/sharing3.png" />
-            </Div3D>
-            <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
-              <img src="/static/landing/sharing/sharing4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-40}>
+                <img src="/static/landing/sharing/sharing1.png" />
+              </Div3D>
+              <Div3D depth={0} className="absolute top-0">
+                <img src="/static/landing/sharing/sharing2.png" />
+              </Div3D>
+              <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
+                <img src="/static/landing/sharing/sharing3.png" />
+              </Div3D>
+              <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
+                <img src="/static/landing/sharing/sharing4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
 
-        <ImgBlock
-          title={<>Manage workspace invitations&nbsp;seamlessly.</>}
-          content={
-            <>
-              Manage your workspace with Single sign-on and easy
-              batch&nbsp;invites.
-            </>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={<>Manage workspace invitations&nbsp;seamlessly.</>}
+            content={
+              <>
+                Manage your workspace with Single sign-on and easy
+                batch&nbsp;invites.
+              </>
+            }
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/member/member1.png" />
-            </Div3D>
-            <Div3D depth={20} className="absolute top-0">
-              <img src="/static/landing/member/member2.png" />
-            </Div3D>
-            <Div3D depth={40} className="absolute top-0">
-              <img src="/static/landing/member/member3.png" />
-            </Div3D>
-            <Div3D depth={70} className="absolute top-0">
-              <img src="/static/landing/member/member4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/member/member1.png" />
+              </Div3D>
+              <Div3D depth={20} className="absolute top-0">
+                <img src="/static/landing/member/member2.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/member/member3.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/member/member4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
 
-        <ImgBlock
-          title={
-            <>
-              Don't change everything; introduce AI within your existing
-              workflow.
-            </>
-          }
-          content={
-            <>Slack integration, Dust's&nbsp;API and&nbsp;Dust&nbsp;Apps.</>
-          }
-        >
-          <Hover3D
-            depth={-20}
-            perspective={1000}
-            className={classNames("relative")}
+          <ImgBlock
+            title={
+              <>
+                Don't change everything; introduce AI within your existing
+                workflow.
+              </>
+            }
+            content={
+              <>Slack integration, Dust's&nbsp;API and&nbsp;Dust&nbsp;Apps.</>
+            }
           >
-            <Div3D depth={-20}>
-              <img src="/static/landing/slack/slack1.png" />
-            </Div3D>
-            <Div3D depth={20} className="absolute top-0">
-              <img src="/static/landing/slack/slack2.png" />
-            </Div3D>
-            <Div3D depth={40} className="absolute top-0">
-              <img src="/static/landing/slack/slack3.png" />
-            </Div3D>
-            <Div3D depth={70} className="absolute top-0">
-              <img src="/static/landing/slack/slack4.png" />
-            </Div3D>
-          </Hover3D>
-        </ImgBlock>
+            <Hover3D
+              depth={-20}
+              perspective={1000}
+              className={classNames("relative")}
+            >
+              <Div3D depth={-20}>
+                <img src="/static/landing/slack/slack1.png" />
+              </Div3D>
+              <Div3D depth={20} className="absolute top-0">
+                <img src="/static/landing/slack/slack2.png" />
+              </Div3D>
+              <Div3D depth={40} className="absolute top-0">
+                <img src="/static/landing/slack/slack3.png" />
+              </Div3D>
+              <Div3D depth={70} className="absolute top-0">
+                <img src="/static/landing/slack/slack4.png" />
+              </Div3D>
+            </Hover3D>
+          </ImgBlock>
+        </div>
       </Grid>
     </>
   );

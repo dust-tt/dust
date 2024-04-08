@@ -1,15 +1,12 @@
 import React from "react";
 
 import {
-  Block2,
+  Block,
   ContentAssistantBlock,
-  Conversation,
   DroidItem,
-  Handle,
   HeaderContentBlock,
-  Message,
 } from "@app/components/home/components/contentBlocks";
-import { Grid, P } from "@app/components/home/components/contentComponents";
+import { Grid } from "@app/components/home/components/contentComponents";
 
 export function ForCustomerSupport() {
   return (
@@ -34,37 +31,39 @@ export function ForCustomerSupport() {
           </>
         }
       />
-      <Grid className="gap-y-8">
+      <Grid>
         <ContentAssistantBlock
           className="col-span-8"
+          layout="vertical"
           color="sky"
           content={
             <>
-              <Block2 title="Package expert knowledge in easy to use assistants in seconds">
+              <Block title="Package expert knowledge in easy to use assistants in seconds">
                 Build AI assistants based on company knowledge and past support
                 conversations.
-              </Block2>
-              <Block2 title="Understand problems faster, jump to solutions">
+              </Block>
+              <Block title="Understand problems faster, jump to solutions">
                 Understand customer messages faster, in any language. Find
                 informations to resolve issues quickly with semantic search and
                 access to cross company data.
-              </Block2>
+              </Block>
             </>
           }
           assistant={customerSupportSlides[0]}
         />
         <ContentAssistantBlock
-          className="col-span-4 mt-12"
+          className="col-span-4"
           color="pink"
+          layout="vertical"
           content={
             <>
-              <Block2
+              <Block
                 title="Stay connected to the rest of the company"
                 className="col-span-6"
               >
                 Release schedule, technical outage, program maitenance, all
                 accessible in one place.
-              </Block2>
+              </Block>
             </>
           }
           assistant={customerSupportSlides[2]}
@@ -72,9 +71,10 @@ export function ForCustomerSupport() {
         <ContentAssistantBlock
           className="col-span-8 col-start-3"
           color="emerald"
+          layout="vertical"
           content={
             <>
-              <Block2
+              <Block
                 title={
                   <>
                     Write better answers,
@@ -85,7 +85,7 @@ export function ForCustomerSupport() {
               >
                 Draft and correct answers following company guidelines and tone
                 of voice in&nbsp;seconds.
-              </Block2>
+              </Block>
             </>
           }
           assistant={
@@ -95,9 +95,7 @@ export function ForCustomerSupport() {
             </>
           }
         />
-      </Grid>
-      <div className="col-span-10 col-start-2 grid grid-cols-6 gap-8">
-        <div className="col-span-3">
+        {/* <div className="col-span-4">
           <Conversation>
             <Message
               type="user"
@@ -149,8 +147,8 @@ export function ForCustomerSupport() {
               <P size="sm">…</P>
             </Message>
           </Conversation>
-        </div>
-      </div>
+        </div> */}
+      </Grid>
     </>
   );
 }

@@ -1,21 +1,17 @@
 import {
   CircleIcon,
-  Div3D,
   HexagonIcon,
-  Hover3D,
   Icon,
   RectangleIcon,
   SquareIcon,
-  Tooltip,
   TriangleIcon,
 } from "@dust-tt/sparkle";
-import type { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
 
-const defaultGridClasses =
-  "grid grid-cols-12 gap-x-8 gap-y-16 px-6 md:px-12 lg:px-20 2xl:px-0";
+const defaultGridClasses = "grid grid-cols-1 sm:grid-cols-6 md:grid-cols-12";
 
 const verticalGridClasses = {
   top: "items-start",
@@ -27,11 +23,13 @@ export const Grid = ({
   children,
   verticalAlign = "top",
   className = "",
+  gap = "gap-8 md:gap-y-16 lg:gap-y-24 gap-x-8",
 }: ContentProps) => (
   <div
     className={classNames(
       className,
       defaultGridClasses,
+      gap,
       verticalGridClasses[verticalAlign]
     )}
   >
@@ -41,8 +39,8 @@ export const Grid = ({
 
 const hClasses = {
   h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl py-2",
-  h2: "font-objektiv text-4xl font-bold tracking-tight lg:text-5xl xl:text-6xl py-2",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1",
+  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2",
+  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-2xl py-1",
   h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl",
   h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl",
 };
@@ -50,6 +48,7 @@ const hClasses = {
 interface ContentProps {
   children: ReactNode;
   verticalAlign?: "top" | "center" | "bottom";
+  gap?: string;
   className?: string;
 }
 
@@ -101,7 +100,7 @@ const pClasses = {
   xxs: "font-objektiv text-xs text-slate-500 md:text-sm leading-relaxed",
   xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
   sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
-  md: "font-objektiv text-base md:text-lg text-slate-300 lg:text-xl drop-shadow leading-relaxed",
+  md: "font-objektiv text-lg md:text-lg text-slate-300 lg:text-xl drop-shadow leading-relaxed",
   lg: "font-objektiv text-lg md:text-xl text-slate-300 lg:text-2xl drop-shadow leading-relaxed",
 };
 
@@ -195,111 +194,3 @@ export const A = ({
 export const Strong = ({ children, className = "" }: ContentProps) => (
   <strong className={classNames(className, "font-semibold")}>{children}</strong>
 );
-
-interface ReactImgProps {
-  children: ReactNode;
-  colorCSS?: string;
-  colorHEX?: string;
-  paddingCSS?: string;
-  className?: string;
-  src?: string;
-  isSmall?: boolean;
-  tooltipLabel?: string;
-}
-
-export const ReactiveImg = ({
-  children,
-  colorCSS = "border-slate-700/40 bg-slate-900/30",
-  colorHEX,
-  paddingCSS = "p-3",
-  className = "",
-  isSmall = false,
-  tooltipLabel,
-}: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveImg. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(singleChild as ReactElement, {
-    className: classNames(
-      singleChild.props.className,
-      "z-10",
-      !isSmall
-        ? "scale-100 transition-all duration-700 ease-out group-hover:scale-105"
-        : "scale-100 transition-all duration-500 ease-out group-hover:scale-125"
-    ),
-  });
-
-  const style = colorHEX
-    ? {
-        backgroundColor: `${colorHEX}88`, // B3 is hexadecimal for 70% opacity
-        borderColor: "#FFFFFF22", // 33 is hexadecimal for 20% opacity
-      }
-    : undefined;
-
-  const image = (
-    <div className={classNames("group", className)}>
-      <div
-        style={style}
-        className={classNames(
-          colorCSS,
-          paddingCSS,
-          "flex rounded-2xl border drop-shadow-[0_25px_25px_rgba(0,0,0,0.5)] backdrop-blur-sm",
-          !isSmall
-            ? "scale-100 transition-all duration-700 ease-out group-hover:scale-105"
-            : "scale-100 transition-all duration-500 ease-out group-hover:scale-110"
-        )}
-      >
-        {modifiedChild}
-      </div>
-    </div>
-  );
-
-  return tooltipLabel ? (
-    <Tooltip label={tooltipLabel}>{image}</Tooltip>
-  ) : (
-    <>{image}</>
-  );
-};
-
-export const ReactiveIcon = ({ children }: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveIcon. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(
-    singleChild as React.ReactElement<any, any>,
-    {
-      className: classNames(
-        singleChild.props.className,
-        "h-8 w-8 md:h-12 md:w-12"
-      ),
-    }
-  );
-  return (
-    <Hover3D
-      attack={0.1}
-      release={1}
-      className={classNames(
-        "rounded-2xl border p-3 shadow-xl",
-        "bg-gradient-to-b from-slate-700/60 to-slate-900/80",
-        "border-stone-700/40"
-      )}
-      depth={-10}
-    >
-      <Div3D depth={30} className="top-0">
-        {modifiedChild}
-      </Div3D>
-    </Hover3D>
-  );
-};

@@ -4,9 +4,8 @@ import React from "react";
 
 import {
   Grid,
-  H2,
+  H1,
   H3,
-  H4,
   H5,
   P,
 } from "@app/components/home/components/contentComponents";
@@ -16,18 +15,20 @@ interface ImgBlockProps {
   children?: React.ReactNode;
   title: React.ReactNode;
   content: React.ReactNode;
+  className?: string;
 }
 
 export const ImgBlock: React.FC<ImgBlockProps> = ({
   children,
   title,
   content,
+  className = "",
 }) => {
   return (
-    <div className="col-span-4 flex flex-col gap-6">
-      {children ? children : null}
-      <H4 className="text-white">{title}</H4>
-      <P size="sm">{content}</P>
+    <div className={classNames("flex flex-col gap-2", className)}>
+      <div className="pr-[20%]">{children ? children : null}</div>
+      <H3 className="text-white">{title}</H3>
+      <P size="md">{content}</P>
     </div>
   );
 };
@@ -50,7 +51,8 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       href={href}
       target="_blank"
       className={classNames(
-        "col-span-4 flex flex-col overflow-hidden rounded-2xl bg-slate-100 drop-shadow-xl",
+        "mx-4 md:mx-0",
+        "flex flex-col overflow-hidden rounded-2xl bg-slate-100 drop-shadow-xl",
         "group transition duration-300 ease-out",
         "hover:scale-105 hover:bg-white"
       )}
@@ -101,7 +103,7 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "flex min-h-[36vh] flex-col justify-end gap-8",
+        "flex h-[50vh] min-h-[300px] flex-col justify-end gap-12",
         "col-span-12",
         "lg:col-span-10 lg:col-start-2",
         "xl:col-span-9 xl:col-start-2",
@@ -111,57 +113,22 @@ export const HeaderContentBlock = ({
       <P size="lg" className="text-slate-500">
         {uptitle}
       </P>
-      <div className="h-4" />
-      <H2 from={from} to={to}>
+      <H1 from={from} to={to}>
         {title}
-      </H2>
-      <H3 className="text-white">{subtitle}</H3>
+      </H1>
+      <P size="lg" className="text-white">
+        {subtitle}
+      </P>
     </div>
   </Grid>
 );
-
-interface BlockProps {
-  children: ReactNode;
-  title: string;
-  color: "pink" | "sky" | "emerald" | "amber";
-  className?: string;
-}
-
-const blockColors = {
-  pink: { block: "bg-pink-300", title: "text-pink-700" },
-  sky: { block: "bg-sky-300", title: "text-sky-700" },
-  emerald: { block: "bg-emerald-300", title: "text-emerald-700" },
-  amber: { block: "bg-amber-300", title: "text-amber-700" },
-};
-
-export const Block = ({
-  children,
-  title,
-  color,
-  className = "",
-}: BlockProps) => {
-  return (
-    <div
-      className={classNames(
-        className,
-        "flex flex-col gap-3 rounded-2xl border border-white/10 p-6  pb-8",
-        blockColors[color].block
-      )}
-    >
-      <H4 className={blockColors[color].title}>{title}</H4>
-      <P size="sm" className="text-slate-900">
-        {children}
-      </P>
-    </div>
-  );
-};
 
 interface ConversationProps {
   children: ReactNode;
 }
 
 export const Conversation = ({ children }: ConversationProps) => {
-  return <div className="flex flex-col gap-4">{children}</div>;
+  return <div className="flex flex-col gap-4 ">{children}</div>;
 };
 
 interface MessageProps {
@@ -173,12 +140,14 @@ interface MessageProps {
 
 const typeClasses = {
   user: {
-    block: "rounded-2xl bg-slate-700/50",
-    label: " text-slate-200",
+    block: "bg-white",
+    label: " text-slate-700",
+    content: "text-slate-900",
   },
   agent: {
-    block: "rounded-2xl bg-sky-700/50 self-end",
+    block: "bg-sky-700/50 self-end",
     label: "text-slate-200",
+    content: "text-slate-200",
   },
 };
 
@@ -186,7 +155,7 @@ export const Message = ({ children, visual, type, name }: MessageProps) => {
   return (
     <div
       className={classNames(
-        "border-box flex w-[80%] w-full flex-col gap-4 border border-white/10 p-6 pb-8 backdrop-blur-lg",
+        "border-box flex w-[80%] w-full flex-col gap-4 rounded-2xl border border-white/10 p-6 pb-8 backdrop-blur-lg",
         typeClasses[type].block
       )}
     >
@@ -194,7 +163,7 @@ export const Message = ({ children, visual, type, name }: MessageProps) => {
         <Avatar size="md" name={name} visual={visual} />
         <div
           className={classNames(
-            "text-base font-semibold",
+            "text-lg font-semibold",
             typeClasses[type].label
           )}
         >
@@ -218,6 +187,7 @@ interface ContentAssistantProps {
   content: ReactNode;
   assistant: ReactNode;
   color: "pink" | "sky" | "emerald" | "amber";
+  layout?: "horizontal" | "vertical" | "column";
   className?: string;
 }
 
@@ -232,19 +202,48 @@ export const ContentAssistantBlock = ({
   content,
   assistant,
   color,
+  layout = "vertical",
   className = "",
 }: ContentAssistantProps) => {
+  let layoutFinal: string;
+  let contentFinal: string;
+  let assistantFinal: string;
+  switch (layout) {
+    case "column":
+      layoutFinal = "flex-col";
+      contentFinal = "flex-col";
+      assistantFinal = "flex-col";
+      break;
+    case "horizontal":
+      layoutFinal = "flex-row";
+      contentFinal = "flex-col";
+      assistantFinal = "flex-col";
+      break;
+    case "vertical":
+      layoutFinal = "flex-col";
+      contentFinal = "flex-row";
+      assistantFinal = "flex-row";
+      break;
+    default:
+      layoutFinal = "flex-col";
+      contentFinal = "flex-row";
+      assistantFinal = "flex-row";
+  }
   return (
     <div
       className={classNames(
         className,
-        "overflow-hidden rounded-[28px] bg-slate-50"
+        "flex overflow-hidden rounded-[28px] bg-slate-50",
+        layoutFinal
       )}
     >
-      <div className="flex flex-row gap-8 p-8">{content}</div>
+      <div className={classNames("flex grow basis-0 gap-8 p-8", contentFinal)}>
+        {content}
+      </div>
       <div
         className={classNames(
-          "p-8l flex flex-row gap-8 border border-slate-800/10 bg-gradient-to-br",
+          "flex grow basis-0 justify-end gap-8 border border-slate-800/10 bg-gradient-to-br p-8",
+          assistantFinal,
           assistantColor[color]
         )}
       >
@@ -254,13 +253,13 @@ export const ContentAssistantBlock = ({
   );
 };
 
-interface Bloc2Props {
+interface BlockProps {
   children: ReactNode;
   title: ReactNode;
   className?: string;
 }
 
-export const Block2 = ({ children, title, className = "" }: Bloc2Props) => {
+export const Block = ({ children, title, className = "" }: BlockProps) => {
   return (
     <div className={classNames(className, "flex grow basis-0 flex-col gap-3")}>
       <H5 className="text-slate-900">{title}</H5>
@@ -290,7 +289,7 @@ export const DroidItem = ({
   className?: string;
 }) => {
   return (
-    <div className={classNames("flex w-full flex-col gap-2 p-8", className)}>
+    <div className={classNames("flex grow basis-0 flex-col gap-2", className)}>
       {emoji ? (
         <Avatar size="xl" emoji={emoji} backgroundColor={avatarBackground} />
       ) : null}
