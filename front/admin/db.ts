@@ -45,9 +45,9 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 async function main() {
@@ -105,7 +105,7 @@ async function main() {
   await TemplateModel.sync({ alter: true });
 
   // Solutions - Can be removed at all times if a solution is dropped
-  await SolutionsTranscriptsConfiguration.sync({ alter: true });
+  await SolutionsTranscriptsConfigurationModel.sync({ alter: true });
 
   process.exit(0);
 }

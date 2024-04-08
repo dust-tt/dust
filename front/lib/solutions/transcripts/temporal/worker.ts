@@ -8,7 +8,7 @@ import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
 
-export async function runSolutionsTranscriptsWorker() {
+export async function runSolutionsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
