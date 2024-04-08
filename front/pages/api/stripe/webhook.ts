@@ -15,7 +15,6 @@ import {
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -190,7 +189,7 @@ async function handler(
               // We block a new subscription if the active one is with payment
               if (
                 activeSubscription &&
-                activeSubscription.plan.code === PRO_PLAN_SEAT_29_CODE
+                activeSubscription.stripeSubscriptionId !== null
               ) {
                 logger.error(
                   {
@@ -199,7 +198,7 @@ async function handler(
                     stripeSubscriptionId,
                     planCode,
                   },
-                  "[Stripe Webhook] Received checkout.session.completed when we already have a pro plan subscription on the workspace. Check on Stripe dashboard."
+                  "[Stripe Webhook] Received checkout.session.completed when we already have a paid subscription on the workspace. Check on Stripe dashboard."
                 );
 
                 return res.status(200).json({
