@@ -62,6 +62,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
+    if (!stripeSubscription) {
+      return {
+        notFound: true,
+      };
+    }
     stripeSubscription;
     trialDaysRemaining = stripeSubscription.trial_end
       ? Math.ceil(
