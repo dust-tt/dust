@@ -1,9 +1,9 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
-  NewEnterpriseSubscriptionType,
+  EnterpriseSubscriptionFormType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { NewEnterpriseSubscriptionSchema, removeNulls } from "@dust-tt/types";
+import { EnterpriseSubscriptionFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import React from "react";
@@ -22,6 +22,13 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import { PokeInput } from "@app/components/poke/shadcn/ui/input";
+import {
+  PokeSelect,
+  PokeSelectContent,
+  PokeSelectItem,
+  PokeSelectTrigger,
+  PokeSelectValue,
+} from "@app/components/poke/shadcn/ui/select";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
@@ -50,8 +57,8 @@ export default function EnterpriseSubscriptionForm({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const form = useForm<NewEnterpriseSubscriptionType>({
-    resolver: ioTsResolver(NewEnterpriseSubscriptionSchema),
+  const form = useForm<EnterpriseSubscriptionFormType>({
+    resolver: ioTsResolver(EnterpriseSubscriptionFormSchema),
     defaultValues: {
       stripeSubscriptionId: "",
       code: "",
@@ -65,6 +72,7 @@ export default function EnterpriseSubscriptionForm({
       isConfluenceAllowed: true,
       isWebCrawlerAllowed: true,
       maxMessages: -1,
+      maxMessagesTimeframe: "lifetime",
       dataSourcesCount: -1,
       dataSourcesDocumentsCount: -1,
       dataSourcesDocumentsSizeMb: 2,
@@ -72,7 +80,7 @@ export default function EnterpriseSubscriptionForm({
     },
   });
 
-  const onSubmit = (values: NewEnterpriseSubscriptionType) => {
+  const onSubmit = (values: EnterpriseSubscriptionFormType) => {
     const cleanedValues = Object.fromEntries(
       removeNulls(
         Object.entries(values).map(([key, value]) => {
@@ -192,6 +200,15 @@ export default function EnterpriseSubscriptionForm({
               type="number"
               placeholder="1000"
             />
+            <SelectField
+              control={form.control}
+              name="maxMessagesTimeframe"
+              title="Max messages timeframe"
+              options={[
+                { value: "lifetime", display: "Lifetime" },
+                { value: "day", display: "Per day" },
+              ]}
+            />
             <InputField
               control={form.control}
               name="dataSourcesCount"
@@ -239,8 +256,8 @@ function InputField({
   type,
   placeholder,
 }: {
-  control: Control<NewEnterpriseSubscriptionType>;
-  name: keyof NewEnterpriseSubscriptionType;
+  control: Control<EnterpriseSubscriptionFormType>;
+  name: keyof EnterpriseSubscriptionFormType;
   title?: string;
   type?: "text" | "number";
   placeholder?: string;
@@ -276,8 +293,8 @@ function CheckboxField({
   name,
   title,
 }: {
-  control: Control<NewEnterpriseSubscriptionType>;
-  name: keyof NewEnterpriseSubscriptionType;
+  control: Control<EnterpriseSubscriptionFormType>;
+  name: keyof EnterpriseSubscriptionFormType;
   title?: string;
   placeholder?: string;
 }) {
@@ -293,6 +310,57 @@ function CheckboxField({
               checked={!!field.value}
               onCheckedChange={field.onChange}
             />
+          </PokeFormControl>
+          <PokeFormMessage />
+        </PokeFormItem>
+      )}
+    />
+  );
+}
+
+interface SelectFieldOption {
+  value: string;
+  display?: string;
+}
+
+function SelectField({
+  control,
+  name,
+  title,
+  options,
+}: {
+  control: Control<EnterpriseSubscriptionFormType>;
+  name: keyof EnterpriseSubscriptionFormType;
+  title?: string;
+  options: SelectFieldOption[];
+}) {
+  return (
+    <PokeFormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <PokeFormItem>
+          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
+          <PokeFormControl>
+            <PokeSelect
+              onValueChange={field.onChange}
+              defaultValue={field.value as string}
+            >
+              <PokeFormControl>
+                <PokeSelectTrigger>
+                  <PokeSelectValue placeholder={title ?? name} />
+                </PokeSelectTrigger>
+              </PokeFormControl>
+              <PokeSelectContent>
+                <div className="bg-slate-100">
+                  {options.map((option) => (
+                    <PokeSelectItem key={option.value} value={option.value}>
+                      {option.display ? option.display : option.value}
+                    </PokeSelectItem>
+                  ))}
+                </div>
+              </PokeSelectContent>
+            </PokeSelect>
           </PokeFormControl>
           <PokeFormMessage />
         </PokeFormItem>

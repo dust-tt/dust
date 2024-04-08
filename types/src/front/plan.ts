@@ -76,7 +76,7 @@ export type SubscriptionType = {
   plan: PlanType;
 };
 
-export const NewEnterpriseSubscriptionSchema = t.type({
+export const EnterpriseSubscriptionFormSchema = t.type({
   stripeSubscriptionId: NonEmptyString,
   code: NonEmptyString,
   name: NonEmptyString,
@@ -89,12 +89,16 @@ export const NewEnterpriseSubscriptionSchema = t.type({
   isConfluenceAllowed: t.boolean,
   isWebCrawlerAllowed: t.boolean,
   maxMessages: t.union([t.number, NumberFromString]),
+  maxMessagesTimeframe: t.keyof({
+    day: null,
+    lifetime: null,
+  }),
   dataSourcesCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
   maxUsers: t.union([t.number, NumberFromString]),
 });
 
-export type NewEnterpriseSubscriptionType = t.TypeOf<
-  typeof NewEnterpriseSubscriptionSchema
+export type EnterpriseSubscriptionFormType = t.TypeOf<
+  typeof EnterpriseSubscriptionFormSchema
 >;

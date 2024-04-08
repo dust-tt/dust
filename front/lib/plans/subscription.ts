@@ -1,5 +1,5 @@
 import type {
-  NewEnterpriseSubscriptionType,
+  EnterpriseSubscriptionFormType,
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
@@ -240,7 +240,7 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
 
 export const pokeUpgradeWorkspaceToEnterprise = async (
   auth: Authenticator,
-  newPlanData: NewEnterpriseSubscriptionType
+  newPlanData: EnterpriseSubscriptionFormType
 ) => {
   console.log(auth, newPlanData);
   throw new Error("Not implemented");
