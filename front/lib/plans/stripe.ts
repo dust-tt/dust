@@ -9,8 +9,8 @@ import { Plan, Subscription } from "@app/lib/models";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
-  SUPPORTED_REPORT_USAGE,
   isSupportedReportUsage,
+  SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
