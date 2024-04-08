@@ -1,4 +1,5 @@
 import type {
+  LightWorkspaceType,
   EnterpriseSubscriptionFormType,
   PlanType,
   SubscriptionType,
@@ -19,7 +20,10 @@ import {
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
-import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
+import {
+  getWorkspaceFirstAdmin,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 
@@ -412,5 +416,26 @@ export async function getSubscriptionForStripeId(
   return renderSubscriptionFromModels({
     plan: res.plan,
     activeSubscription: res,
+  });
+}
+
+export async function getActiveSubscriptionsAndWorkspaces(): Promise<
+  { subscription: SubscriptionType; workspace: LightWorkspaceType }[]
+> {
+  const activeSubscriptions = await Subscription.findAll({
+    where: { status: "active" },
+    include: [Plan, Workspace],
+  });
+
+  return activeSubscriptions.map((subscription) => {
+    return {
+      subscription: renderSubscriptionFromModels({
+        plan: subscription.plan,
+        activeSubscription: subscription,
+      }),
+      workspace: renderLightWorkspaceType({
+        workspace: subscription.workspace,
+      }),
+    };
   });
 }

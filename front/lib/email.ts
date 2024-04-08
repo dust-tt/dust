@@ -2,6 +2,7 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
+import type { LightWorkspaceType } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import logger from "@app/logger/logger";
@@ -91,27 +92,6 @@ export async function sendReactivateSubscriptionEmail(
     <p>The Dust team</p>`,
   };
   return sendEmail(email, reactivateMessage);
-}
-
-export async function sendOpsDowngradeTooMuchDataEmail(
-  workspaceSId: string,
-  datasourcesTooBig: string[]
-): Promise<void> {
-  const opsMessage = {
-    from: {
-      name: "System",
-      email: "ops@dust.tt",
-    },
-    subject: `[OPS - Eng runner] A subscription has been canceled`,
-    html: `<p>Hi Dust ops,</p>
-    <p>The subscription of workspace '${workspaceSId}' was just canceled. They have datasource(s) with more than 50MB data: ${datasourcesTooBig.join(
-      ", "
-    )}</p>
-    Go to the <a href="https://dust.tt/poke/${workspaceSId}">Poke Page</a> and follow the <a href="https://www.notion.so/dust-tt/Runbook-Canceled-subscription-0011ab1afebe467b871b25f572b56a9e?pvs=4">Runbook</a></p>
-    <p>Sincerely,
-    <p>Ourselves</p>`,
-  };
-  return sendEmail("ops@dust.tt", opsMessage);
 }
 
 export async function sendAdminDowngradeTooMuchDataEmail(
@@ -214,4 +194,42 @@ export async function sendProactiveTrialCancelledEmail(
   };
 
   return sendEmail(email, message);
+}
+
+export async function sendOpsEndingSubscriptionsEmail(
+  expiring7daysWorkspaces: LightWorkspaceType[],
+  expiring30daysWorkspaces: LightWorkspaceType[]
+): Promise<void> {
+  const opsMessage = {
+    from: {
+      name: "System",
+      email: "ops@dust.tt",
+    },
+    subject: `[OPS - Eng runner] Subscriptions ending soon`,
+    html: `<p>Hi Dust ops,</p>
+    <p>Some Enterprise subscriptions are soon ending.</p>
+
+    <p>In 7 days:</p>
+    <ul>
+    ${expiring7daysWorkspaces
+      .map(
+        ({ sId, name }) =>
+          `<li><a href="https://dust.tt/poke/${sId}">${name}</a></li>`
+      )
+      .join("")}
+    </ul>
+    
+    <p>In 30 days:</p>
+    <ul>
+    ${expiring30daysWorkspaces
+      .map(
+        ({ sId, name }) =>
+          `<li><a href="https://dust.tt/poke/${sId}">${name}</a></li>`
+      )
+      .join("")}
+    </ul>
+    <p>Sincerely,
+    <p>Ourselves</p>`,
+  };
+  return sendEmail("ops@dust.tt", opsMessage);
 }

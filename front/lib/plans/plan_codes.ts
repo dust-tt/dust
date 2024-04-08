@@ -9,6 +9,15 @@ export const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
 // Current pro plans:
 export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 
+// non-enterprise plans
+export const NON_ENTERPRISE_CODES = [
+  FREE_NO_PLAN_CODE,
+  FREE_UPGRADED_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+  TRIAL_PLAN_CODE,
+  PRO_PLAN_SEAT_29_CODE,
+];
+
 /**
  * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
  */
