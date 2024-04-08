@@ -1,7 +1,6 @@
-import { getNotionWorkflowId, removeNulls } from "@dust-tt/types";
-import type { Client, WorkflowHandle } from "@temporalio/client";
+import { removeNulls } from "@dust-tt/types";
 
-import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { getTemporalClient } from "@app/lib/temporal";
 import type { CheckFunction } from "@app/production_checks/types/check";
 
 const GLOBAL_WORKFLOW_IDS = ["warn_expiring_enterprise_subscriptions"];
@@ -10,10 +9,9 @@ export const checkGlobalWorkflowsActive: CheckFunction = async (
   _checkName,
   logger,
   reportSuccess,
-  reportFailure,
-  heartbeat
+  reportFailure
 ) => {
-  const client = await getTemporalConnectorsNamespaceConnection();
+  const client = await getTemporalClient();
 
   logger.info(`Checking workflows: ${GLOBAL_WORKFLOW_IDS.join(", ")}`);
 

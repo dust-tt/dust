@@ -1,6 +1,6 @@
 import type {
-  LightWorkspaceType,
   EnterpriseSubscriptionFormType,
+  LightWorkspaceType,
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
