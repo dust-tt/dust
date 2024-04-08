@@ -9,6 +9,7 @@ import type {
 import { literal, Op } from "sequelize";
 
 import {
+  WebCrawlerConfigurationHeader,
   WebCrawlerConfigurationModel,
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -107,6 +108,34 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
         },
       }
     );
+  }
+
+  async addCustomeHeader(key: string, value: string) {
+    //regexp to validate http header name
+    const headerNameRegexp = /^[\w-]+$/;
+    if (!headerNameRegexp.test(key)) {
+      return new Error(`Invalid header name ${key}`);
+    }
+    await WebCrawlerConfigurationHeader.upsert({
+      webcrawlerConfigurationId: this.id,
+      key,
+      value,
+    });
+  }
+
+  async getCustomHeaders(): Promise<Record<string, string>> {
+    const result: Record<string, string> = {};
+    const headers = await WebCrawlerConfigurationHeader.findAll({
+      where: {
+        webcrawlerConfigurationId: this.id,
+      },
+    });
+
+    headers.forEach((header) => {
+      result[header.key] = header.value;
+    });
+
+    return result;
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {

@@ -58,6 +58,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 
+  const customHeaders = await webCrawlerConfig.getCustomHeaders();
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
   let crawlingError = 0;
@@ -88,6 +90,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               },
               `Private IP address detected. Skipping.`
             );
+          }
+
+          if (!crawlingContext.request.headers) {
+            crawlingContext.request.headers = {};
+          }
+          for (const ch of Object.entries(customHeaders)) {
+            crawlingContext.request.headers[ch[0]] = ch[1];
           }
         },
       ],

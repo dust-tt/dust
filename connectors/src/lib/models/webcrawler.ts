@@ -87,7 +87,9 @@ export class WebCrawlerConfigurationHeader extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
   declare value: string;
-  declare configurationId: ForeignKey<WebCrawlerConfigurationModel["id"]>;
+  declare webcrawlerConfigurationId: ForeignKey<
+    WebCrawlerConfigurationModel["id"]
+  >;
 }
 
 WebCrawlerConfigurationHeader.init(
@@ -122,11 +124,13 @@ WebCrawlerConfigurationHeader.init(
     indexes: [
       {
         unique: true,
-        fields: ["key", "configurationId"],
+        fields: ["webcrawlerConfigurationId", "key"],
       },
     ],
   }
 );
+
+WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeader);
 
 export class WebCrawlerFolder extends Model<
   InferAttributes<WebCrawlerFolder>,
