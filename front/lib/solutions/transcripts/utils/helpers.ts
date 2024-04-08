@@ -38,7 +38,7 @@ export async function getGoogleAuth(
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
   }
 
-  const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findOne({
+  const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
     attributes: ["id", "connectionId", "provider"],
     where: {
       userId: userId, 

@@ -60,7 +60,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     }
     logger.info("[summarizeGoogleDriveTranscriptActivity] Starting summarization of file ", fileId);
 
-    const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findOne({
+    const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
       attributes: ["id", "connectionId", "provider"],
       where: {
         userId: userId, 

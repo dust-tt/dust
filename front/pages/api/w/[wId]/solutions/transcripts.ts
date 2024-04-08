@@ -36,7 +36,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfigurationGetRes = await SolutionsTranscriptsConfigurationResource.findOne({
+      const transcriptsConfigurationGetRes = await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
         attributes: ["id", "connectionId", "provider"],
         where: {
           userId: owner.id, 
