@@ -5,6 +5,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
@@ -59,6 +60,7 @@ export default function SolutionsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGDriveConnected, setIsGDriveConnected] = useState(false);
+  const [assistantSelected, setAssistantSelected] = useState<LightAgentConfigurationType | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
 
   const { agentConfigurations } = useAgentConfigurations({
@@ -66,9 +68,16 @@ export default function SolutionsTranscriptsIndex({
     agentsGetView: "list",
   });
 
-  console.log('agentConfigurations', agentConfigurations)
-
   const agents = agentConfigurations.filter((a) => a.status === "active");
+
+  const selectAssistant = (assistant: LightAgentConfigurationType) => {
+    setAssistantSelected(assistant);
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: "The assistant that will help you summarize your transcripts has been set to @" + assistant.name,
+    });
+  }
 
   useEffect(() => {
     void fetch(
@@ -159,7 +168,7 @@ export default function SolutionsTranscriptsIndex({
             description="Receive meeting minutes summarized by email automatically"
           />
           <Page.SectionHeader
-            title="Connect Google Drive"
+            title="1. Connect Google Drive"
             description="Connect your personal Google Drive so Dust can access your meeting transcripts"
             action={{
               label: isGDriveConnected ? "Connected" : "Connect",
@@ -175,10 +184,10 @@ export default function SolutionsTranscriptsIndex({
         {!isLoading && isGDriveConnected && (
           <Page.Vertical>
             <Page.Separator />
-            <Page.SectionHeader title="Pick the assistant to process your meeting transcripts" />
+            <Page.SectionHeader title="2. Pick the assistant to process your meeting transcripts" />
             <Page.Horizontal align="stretch" gap="xl">
             <Page.P>
-              The assistant should be configured to summarize the transcripts in
+              The chosen assistant should be configured to summarize the transcripts in
               the way you want.
             </Page.P>
 
@@ -186,11 +195,16 @@ export default function SolutionsTranscriptsIndex({
               owner={owner}
               size="sm"
               onItemClick={(c) => {
-                console.log(c);
+                selectAssistant(c);
               }}
               assistants={agents}
               showBuilderButtons={false}
             />
+            {assistantSelected && (
+              <Page.P>
+                <strong>@{assistantSelected.name}</strong>
+              </Page.P>
+            )}
             </Page.Horizontal>
           </Page.Vertical>
         )}
