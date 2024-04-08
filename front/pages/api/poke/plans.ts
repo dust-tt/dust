@@ -85,29 +85,8 @@ async function handler(
         renderPlanFromModel({ plan })
       );
 
-      const stripeProductIds = plans
-        .filter(
-          (plan): plan is PlanType & { stripeProductId: string } =>
-            !!plan.stripeProductId
-        )
-        .map((plan) => plan.stripeProductId);
-
-      const productById = (
-        await Promise.all(
-          stripeProductIds.map((stripeProductId) => getProduct(stripeProductId))
-        )
-      ).reduce((acc, product) => {
-        acc[product.id] = product;
-        return acc;
-      }, {} as { [key: string]: Stripe.Product });
-
       res.status(200).json({
-        plans: plans.map((plan) => ({
-          ...plan,
-          stripeProduct: plan.stripeProductId
-            ? productById[plan.stripeProductId]
-            : null,
-        })),
+        plans,
       });
       return;
 
@@ -149,7 +128,6 @@ async function handler(
       await Plan.upsert({
         code: body.code,
         name: body.name,
-        stripeProductId: body.stripeProductId,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxMessages: body.limits.assistant.maxMessages,
         maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
@@ -165,7 +143,6 @@ async function handler(
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
-        billingType: body.billingType,
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
       });

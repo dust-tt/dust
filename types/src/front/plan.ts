@@ -37,16 +37,6 @@ export type LimitsType = {
   canUseProduct: boolean;
 };
 
-export const FREE_BILLING_TYPES = ["free"] as const;
-export const PAID_BILLING_TYPES = [
-  "fixed",
-  "monthly_active_users",
-  "per_seat",
-] as const;
-
-export type FreeBillingType = (typeof FREE_BILLING_TYPES)[number];
-export type PaidBillingType = (typeof PAID_BILLING_TYPES)[number];
-
 export const SUBSCRIPTION_STATUSES = [
   "active",
   "ended",
@@ -58,8 +48,6 @@ export type PlanType = {
   code: string;
   name: string;
   limits: LimitsType;
-  stripeProductId: string | null;
-  billingType: FreeBillingType | PaidBillingType;
   trialPeriodDays: number;
 };
 

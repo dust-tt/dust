@@ -21,8 +21,6 @@ export type PlanAttributes = Omit<
 export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   code: ENT_PLAN_FAKE_CODE,
   name: "Entreprise",
-  stripeProductId: null,
-  billingType: "fixed",
   maxMessages: -1,
   maxMessagesTimeframe: "lifetime",
   maxUsersInWorkspace: -1,
