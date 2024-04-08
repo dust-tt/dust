@@ -20,6 +20,7 @@ export type WebCrawlerConfigurationType = {
   crawlMode: CrawlingMode;
   depth: DepthOption;
   crawlFrequency: CrawlingFrequency;
+  headers: Record<string, string>;
 };
 
 export function isDepthOption(value: unknown): value is DepthOption {

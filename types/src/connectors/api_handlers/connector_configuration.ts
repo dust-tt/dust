@@ -20,6 +20,7 @@ export const WebCrawlerConfigurationTypeSchema = t.type({
     t.literal("weekly"),
     t.literal("monthly"),
   ]),
+  headers: t.record(t.string, t.string),
 });
 
 export type ConnectorConfiguration = WebCrawlerConfigurationType | null;

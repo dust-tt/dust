@@ -157,6 +157,7 @@ export default function WebsiteConfiguration({
             depth: maxDepth,
             crawlMode: crawlMode,
             crawlFrequency: selectedCrawlFrequency,
+            headers: {},
           } satisfies WebCrawlerConfigurationType,
         } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
       });
@@ -184,6 +185,7 @@ export default function WebsiteConfiguration({
               depth: maxDepth,
               crawlMode: crawlMode,
               crawlFrequency: selectedCrawlFrequency,
+              headers: {},
             } satisfies WebCrawlerConfigurationType,
           } satisfies UpdateConnectorConfigurationType),
         }
