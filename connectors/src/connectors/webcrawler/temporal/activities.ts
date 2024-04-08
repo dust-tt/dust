@@ -95,8 +95,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           if (!crawlingContext.request.headers) {
             crawlingContext.request.headers = {};
           }
-          for (const ch of Object.entries(customHeaders)) {
-            crawlingContext.request.headers[ch[0]] = ch[1];
+          for (const [header, value] of Object.entries(customHeaders)) {
+            crawlingContext.request.headers[header] = value;
           }
         },
       ],
