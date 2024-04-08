@@ -1,4 +1,8 @@
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  EnterpriseSubscriptionFormType,
+  PlanType,
+  SubscriptionType,
+} from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
 import type Stripe from "stripe";
 
@@ -232,6 +236,14 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
     plan: newPlan,
     activeSubscription: newSubscription,
   });
+};
+
+export const pokeUpgradeWorkspaceToEnterprise = async (
+  auth: Authenticator,
+  newPlanData: EnterpriseSubscriptionFormType
+) => {
+  console.log(auth, newPlanData);
+  throw new Error("Not implemented");
 };
 
 /**
