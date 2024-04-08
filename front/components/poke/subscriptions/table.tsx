@@ -399,12 +399,13 @@ function UpgradeDowngradeModal({
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
         <div>
-          <Button
-            label="Start upgrade to Enterprise plan"
-            variant="secondary"
-            onClick={() => router.push(`/poke/${owner.sId}/enterprise`)}
-            disabled={subscription.plan.code.startsWith("ENT_")}
-          />
+          <Link href={`/poke/${owner.sId}/upgrade_enterprise`}>
+            <Button
+              variant="secondary"
+              label="Start upgrade to Enterprise plan"
+              disabled={subscription.plan.code.startsWith("ENT_")}
+            />
+          </Link>
         </div>
       </Page>
     </Modal>

@@ -41,7 +41,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function NewEnterpriseSubscriptionForm({
+export default function EnterpriseSubscriptionForm({
   owner,
 }: {
   owner: WorkspaceType;
@@ -88,8 +88,7 @@ export default function NewEnterpriseSubscriptionForm({
       )
     );
 
-    void submit();
-    async function submit() {
+    const submit = async () => {
       setIsSubmitting(true);
       try {
         const r = await fetch(
@@ -108,8 +107,6 @@ export default function NewEnterpriseSubscriptionForm({
             `Something went wrong: ${r.status} ${await r.text()}`
           );
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 1000));
         void router.push(`/poke/${owner.sId}`);
       } catch (e) {
         setIsSubmitting(false);
@@ -117,10 +114,12 @@ export default function NewEnterpriseSubscriptionForm({
           setError(e.message);
         }
       }
-    }
+    };
+    void submit();
   };
 
-  console.log("Form errors", form.formState.errors);
+  // If your form does not submit, uncomment the following line to see the form errors
+  //console.log("Form errors", form.formState.errors);
 
   return (
     <div className="min-h-screen bg-structure-50 pb-48">
@@ -138,13 +137,13 @@ export default function NewEnterpriseSubscriptionForm({
               control={form.control}
               name="code"
               title="Plan Code"
-              placeholder="ENT_COMPANY_NAME_PLAN_NAME"
+              placeholder="ENT_Soupinou_MAU10_FLOOR500"
             />
             <InputField
               control={form.control}
               name="name"
               title="Plan Name (user facing)"
-              placeholder="ENT_COMPANY_NAME_PLAN_NAME"
+              placeholder="Soupinou Corp"
             />
             <CheckboxField
               control={form.control}
