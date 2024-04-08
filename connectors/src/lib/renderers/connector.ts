@@ -1,9 +1,6 @@
-import type {
-  ConnectorType,
-  WebCrawlerConfigurationType,
-} from "@dust-tt/types";
-import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
 
+import { renderWebcrawlerConfiguration } from "@connectors/connectors/webcrawler/renderer";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
@@ -41,23 +38,4 @@ async function renderConfiguration(connector: ConnectorResource) {
     default:
       return undefined;
   }
-}
-
-async function renderWebcrawlerConfiguration(
-  webCrawlerConfiguration: WebCrawlerConfigurationResource
-): Promise<WebCrawlerConfigurationType> {
-  const headers = await webCrawlerConfiguration.getCustomHeaders();
-  const redactedHeaders: Record<string, string> = {};
-  for (const key in headers) {
-    // redacting headers values when rendering them because we don't want to expose sensitive information.
-    redactedHeaders[key] = WebCrawlerHeaderRedactedValue;
-  }
-  return {
-    url: webCrawlerConfiguration.url,
-    maxPageToCrawl: webCrawlerConfiguration.maxPageToCrawl,
-    crawlMode: webCrawlerConfiguration.crawlMode,
-    depth: webCrawlerConfiguration.depth,
-    crawlFrequency: webCrawlerConfiguration.crawlFrequency,
-    headers: redactedHeaders,
-  };
 }
