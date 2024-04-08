@@ -248,8 +248,6 @@ export const pokeUpgradeWorkspaceToEnterprise = async (
   const newPlan = await Plan.create({
     code: newPlanData.code,
     name: newPlanData.name,
-    stripeProductId: null,
-    billingType: "free", // Setting free per default but should be killed
     trialPeriodDays: 0,
     isSlackbotAllowed: newPlanData.isSlackbotAllowed,
     isManagedSlackAllowed: newPlanData.isSlackAllowed,
