@@ -50,5 +50,6 @@ async function renderWebcrawlerConfiguration(
     crawlMode: webCrawlerConfiguration.crawlMode,
     depth: webCrawlerConfiguration.depth,
     crawlFrequency: webCrawlerConfiguration.crawlFrequency,
+    headers: await webCrawlerConfiguration.getCustomHeaders(),
   };
 }
