@@ -60,7 +60,8 @@ export default function SolutionsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoading, setIsLoading] = useState(false);
   const [isGDriveConnected, setIsGDriveConnected] = useState(false);
-  const [assistantSelected, setAssistantSelected] = useState<LightAgentConfigurationType | null>(null);
+  const [assistantSelected, setAssistantSelected] =
+    useState<LightAgentConfigurationType | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
 
   const { agentConfigurations } = useAgentConfigurations({
@@ -89,12 +90,14 @@ export default function SolutionsTranscriptsIndex({
       sendNotification({
         type: "success",
         title: "Success!",
-        description: "The assistant that will help you summarize your transcripts has been set to @" + assistant.name,
+        description:
+          "The assistant that will help you summarize your transcripts has been set to @" +
+          assistant.name,
       });
 
       return response;
     });
-  }
+  };
 
   useEffect(() => {
     void fetch(
@@ -116,15 +119,18 @@ export default function SolutionsTranscriptsIndex({
         }
 
         if (configuration?.agentConfigurationId) {
-          setAssistantSelected(agentConfigurations.find((a) => a.sId === configuration.agentConfigurationId));
+          setAssistantSelected(
+            agentConfigurations.find(
+              (a) => a.sId === configuration.agentConfigurationId
+            )
+          );
         }
       })
       .finally(() => {
         setIsLoading(false);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [owner, agents]);
-    
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
@@ -209,25 +215,25 @@ export default function SolutionsTranscriptsIndex({
             <Page.Separator />
             <Page.SectionHeader title="2. Pick the assistant to process your meeting transcripts" />
             <Page.Horizontal align="stretch" gap="xl">
-            <Page.P>
-              The chosen assistant should be configured to summarize the transcripts in
-              the way you want.
-            </Page.P>
-
-            <AssistantPicker
-              owner={owner}
-              size="sm"
-              onItemClick={(c) => {
-                selectAssistant(c);
-              }}
-              assistants={agents}
-              showBuilderButtons={false}
-            />
-            {assistantSelected && (
               <Page.P>
-                <strong>@{assistantSelected.name}</strong>
+                The chosen assistant should be configured to summarize the
+                transcripts in the way you want.
               </Page.P>
-            )}
+
+              <AssistantPicker
+                owner={owner}
+                size="sm"
+                onItemClick={(c) => {
+                  selectAssistant(c);
+                }}
+                assistants={agents}
+                showBuilderButtons={false}
+              />
+              {assistantSelected && (
+                <Page.P>
+                  <strong>@{assistantSelected.name}</strong>
+                </Page.P>
+              )}
             </Page.Horizontal>
           </Page.Vertical>
         )}

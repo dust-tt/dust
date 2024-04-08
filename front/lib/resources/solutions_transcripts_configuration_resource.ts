@@ -62,7 +62,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     const configuration = await SolutionsTranscriptsConfigurationModel.create({
       userId,
       connectionId,
-      provider
+      provider,
     });
 
     return new SolutionsTranscriptsConfigurationResource(
@@ -97,7 +97,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   static async setAgentConfigurationId({
     agentConfigurationId,
     userId,
-    provider
+    provider,
   }: {
     agentConfigurationId: string | null;
     userId: number;
@@ -105,14 +105,15 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }): Promise<
     Result<
       void,
-      {
-        type: "not_found";
-      } | Error
+      | {
+          type: "not_found";
+        }
+      | Error
     >
   > {
     const configuration = await this.findByUserIdAndProvider({
       // all attributes
-      attributes: ['id', 'agentConfigurationId'],
+      attributes: ["id", "agentConfigurationId"],
       where: {
         userId,
         provider,

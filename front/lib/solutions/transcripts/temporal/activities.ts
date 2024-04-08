@@ -16,7 +16,9 @@ import mainLogger from "@app/logger/logger";
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
   SOLUTIONS_API_KEY,
-  SOLUTIONS_WORKSPACE_ID
+  SOLUTIONS_WORKSPACE_ID,
+  SOLUTIONS_TRANSCRIPTS_ASSISTANT,
+  NODE_ENV,
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
@@ -65,7 +67,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
   userId: number,
   fileId: string
 ) {
-
   const logger = mainLogger.child({ userId });
   const providerId = "google_drive";
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
@@ -78,7 +79,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
   const transcriptsConfiguration =
     await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
-      attributes: ["id", "connectionId", "provider"],
+      attributes: ["id", "connectionId", "provider", "agentConfigurationId"],
       where: {
         userId: userId,
         provider: providerId,
@@ -123,8 +124,11 @@ export async function summarizeGoogleDriveTranscriptActivity(
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
-  const configurationId = transcriptsConfiguration.agentConfigurationId;
-  
+  const configurationId =
+    SOLUTIONS_TRANSCRIPTS_ASSISTANT && NODE_ENV == "development"
+      ? SOLUTIONS_TRANSCRIPTS_ASSISTANT
+      : transcriptsConfiguration.agentConfigurationId;
+
   if (!configurationId) {
     logger.error(
       "[summarizeGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."

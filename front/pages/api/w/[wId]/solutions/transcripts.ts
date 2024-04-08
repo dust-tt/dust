@@ -39,7 +39,12 @@ async function handler(
       const transcriptsConfigurationGetRes =
         await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
           {
-            attributes: ["id", "connectionId", "provider", "agentConfigurationId"],
+            attributes: [
+              "id",
+              "connectionId",
+              "provider",
+              "agentConfigurationId",
+            ],
             where: {
               userId: owner.id,
               provider: req.query.provider as SolutionProviderType,
@@ -50,11 +55,11 @@ async function handler(
       return res
         .status(200)
         .json({ configuration: transcriptsConfigurationGetRes });
-        
 
     // Update
     case "PATCH":
-      const { agentConfigurationId: patchAgentId, provider: patchProvider } = req.body;
+      const { agentConfigurationId: patchAgentId, provider: patchProvider } =
+        req.body;
       if (!patchAgentId || !patchProvider) {
         return apiError(req, res, {
           status_code: 400,
@@ -67,13 +72,15 @@ async function handler(
       }
 
       const transcriptsConfigurationPatchRes =
-        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          attributes: ["id", "connectionId", "provider"],
-          where: {
-            userId: owner.id,
-            provider: patchProvider as SolutionProviderType,
+        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
+          {
+            attributes: ["id", "connectionId", "provider"],
+            where: {
+              userId: owner.id,
+              provider: patchProvider as SolutionProviderType,
+            },
           }
-        });
+        );
 
       if (!transcriptsConfigurationPatchRes) {
         return apiError(req, res, {
@@ -86,7 +93,7 @@ async function handler(
       }
 
       await SolutionsTranscriptsConfigurationResource.setAgentConfigurationId({
-        agentConfigurationId: patchAgentId, 
+        agentConfigurationId: patchAgentId,
         provider: patchProvider,
         userId: owner.id,
       });
@@ -94,7 +101,6 @@ async function handler(
       return res
         .status(200)
         .json({ configuration: transcriptsConfigurationPatchRes });
-
 
     // Create
     case "POST":

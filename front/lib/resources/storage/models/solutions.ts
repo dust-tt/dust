@@ -59,7 +59,7 @@ SolutionsTranscriptsConfigurationModel.init(
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
   },
   {
