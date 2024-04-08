@@ -764,6 +764,7 @@ impl DataSource {
                         &points_selector,
                         payload.clone(),
                         None,
+                        None,
                     )
                     .await
                 {
@@ -793,6 +794,7 @@ impl DataSource {
                 None,
                 &points_selector,
                 payload,
+                None,
                 None,
             )
             .await?;
@@ -1022,6 +1024,7 @@ impl DataSource {
                             ..Default::default()
                         }
                         .into()],
+                        min_should: None,
                     }),
                     ..Default::default()
                 })
@@ -1161,6 +1164,7 @@ impl DataSource {
                 ..Default::default()
             }
             .into()],
+            min_should: None,
         }
         .into();
 
@@ -1935,6 +1939,7 @@ impl DataSource {
                 ..Default::default()
             }
             .into()],
+            min_should: None,
         }
         .into();
 
