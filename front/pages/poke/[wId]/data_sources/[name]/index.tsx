@@ -3,8 +3,6 @@ import {
   ContextItem,
   DocumentTextIcon,
   EyeIcon,
-  Icon,
-  InformationCircleIcon,
   Input,
   Page,
   SliderToggle,
@@ -24,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -31,11 +30,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
-import {
-  classNames,
-  formatTimestampToFriendlyDate,
-  timeAgoFrom,
-} from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
@@ -358,39 +353,16 @@ const DataSourcePage = ({
             </div>
           </div>
 
-          {dataSource.editedByUser && dataSource.editedByUser.editedAt && (
-            <div className="flex items-center gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-              <Icon visual={InformationCircleIcon} />
-              The last modification to the connection was made by{" "}
-              {dataSource.editedByUser.fullName} on{" "}
-              {formatTimestampToFriendlyDate(dataSource.editedByUser.editedAt)}.
-            </div>
-          )}
-
           <div className="text-sm font-bold text-action-500">
             <Link href={`/poke/${owner.sId}`}>&laquo; workspace</Link>
           </div>
 
-          {dataSource.connectorId && (
-            <div className="flex flex-col text-sm text-action-500">
-              <Link
-                href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
-              >
-                Temporal: ConnectorId
-              </Link>
-              <Link
-                href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
-              >
-                Datadog: DSSTAT Qdrant search logs
-              </Link>
-            </div>
-          )}
-
-          <div className="my-4 flex flex-col gap-y-4">
-            <JsonViewer value={dataSource} rootName={false} />
-            <JsonViewer value={coreDataSource} rootName={false} />
-            <JsonViewer value={connector} rootName={false} />
-          </div>
+          <ViewDataSourceTable
+            dataSource={dataSource}
+            temporalWorkspace={temporalWorkspace}
+            coreDataSource={coreDataSource}
+            connector={connector}
+          />
 
           {dataSource.connectorProvider === "slack" && (
             <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
@@ -435,43 +407,6 @@ const DataSourcePage = ({
               />
             </div>
           )}
-
-          <div>
-            <p className="mb-2 text-sm font-bold text-gray-600">
-              Last Sync Start:{" "}
-              {connector?.lastSyncStartTime ? (
-                timeAgoFrom(connector?.lastSyncStartTime)
-              ) : (
-                <span className="text-warning-500">never</span>
-              )}
-            </p>
-            <p className="mb-2 text-sm font-bold text-gray-600">
-              Last Sync Finish:{" "}
-              {connector?.lastSyncFinishTime ? (
-                timeAgoFrom(connector?.lastSyncFinishTime)
-              ) : (
-                <span className="text-warning-500">never</span>
-              )}
-            </p>
-            <p className="mb-2 text-sm font-bold text-gray-600">
-              Last Sync Status:{" "}
-              {connector?.lastSyncStatus ? (
-                connector?.lastSyncStatus
-              ) : (
-                <span className="text-warning-500">N/A</span>
-              )}
-            </p>
-            <p className="mb-2 text-sm font-bold text-gray-600">
-              Last Sync Success:{" "}
-              {connector?.lastSyncSuccessfulTime ? (
-                <span className="text-green-600">
-                  {timeAgoFrom(connector?.lastSyncSuccessfulTime)}
-                </span>
-              ) : (
-                <span className="text-warning-600">"Never"</span>
-              )}
-            </p>
-          </div>
 
           <div className="mt-4 flex flex-row">
             {!dataSource.connectorId && (

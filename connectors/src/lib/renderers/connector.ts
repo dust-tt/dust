@@ -20,6 +20,7 @@ export async function renderConnectorType(
     firstSuccessfulSyncTime: connector.firstSuccessfulSyncTime?.getTime(),
     firstSyncProgress: connector.firstSyncProgress,
     configuration: await renderConfiguration(connector),
+    pausedAt: connector.pausedAt,
   };
 }
 
