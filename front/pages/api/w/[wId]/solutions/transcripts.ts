@@ -44,6 +44,7 @@ async function handler(
               "connectionId",
               "provider",
               "agentConfigurationId",
+              "emailToNotify"
             ],
             where: {
               userId: owner.id,

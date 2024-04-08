@@ -254,7 +254,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
   // SEND EMAIL WITH SUMMARY
   const msg = {
-    to: user.email,
+    to: transcriptsConfiguration.emailToNotify || user.email,
     from: "team@dust.tt",
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
     html: `${fullAnswer}<br>` + `The Dust team`,

@@ -66,10 +66,12 @@ export default function SolutionsTranscriptsIndex({
     useState<LightAgentConfigurationType | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
   const [emailToNotify, setEmailToNotify] = useState<string | null>("");
+  const [agentsFetched, setAgentsFetched] = useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
+    sort: "priority"
   });
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
@@ -130,6 +132,13 @@ export default function SolutionsTranscriptsIndex({
   };
 
   useEffect(() => {
+    if (agentConfigurations.length > 0) {
+      setAgentsFetched(true);
+    }
+  }
+  , [agentConfigurations]);
+
+  useEffect(() => {
     void fetch(
       `/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`,
       {
@@ -155,17 +164,21 @@ export default function SolutionsTranscriptsIndex({
             )
           );
         }
+
+        if (configuration?.emailToNotify) {
+          setEmailToNotify(configuration.emailToNotify);
+        }
       })
       .finally(() => {
         setIsLoading(false);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner, agents]);
+  }, [agentsFetched]);
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
     try {
-      // console log all variables in process.env
+
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
@@ -250,7 +263,7 @@ export default function SolutionsTranscriptsIndex({
                     The chosen assistant should be configured to summarize the
                     transcripts in the way you want.{" "}
                     <strong>
-                      Make to instruct it to answer in HTML format
+                      Instruct it to answer in HTML format
                     </strong>{" "}
                     to receive a readable email.
                   </Page.P>
