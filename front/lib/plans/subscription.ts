@@ -14,7 +14,7 @@ import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
-  createCheckoutSession,
+  createProPlanCheckoutSession,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -32,8 +32,6 @@ export function renderPlanFromModel({
   return {
     code: plan.code,
     name: plan.name,
-    stripeProductId: plan.stripeProductId,
-    billingType: plan.billingType,
     limits: {
       assistant: {
         isSlackBotAllowed: plan.isSlackbotAllowed,
@@ -182,13 +180,6 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
     );
   }
 
-  // Prevent subscribing if the new plan is not a free plan
-  if (newPlan.billingType !== "free") {
-    throw new Error(
-      `Cannot subscribe to plan ${planCode}: billingType is not "free".`
-    );
-  }
-
   // Prevent subscribing if the new plan has less users allowed then the current one on the workspace
   if (newPlan.maxUsersInWorkspace !== -1) {
     const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
@@ -257,8 +248,6 @@ export const pokeUpgradeWorkspaceToEnterprise = async (
   const newPlan = await Plan.create({
     code: newPlanData.code,
     name: newPlanData.name,
-    stripeProductId: null,
-    billingType: "free", // Setting free per default but should be killed
     trialPeriodDays: 0,
     isSlackbotAllowed: newPlanData.isSlackbotAllowed,
     isManagedSlackAllowed: newPlanData.isSlackAllowed,
@@ -318,9 +307,9 @@ export const pokeUpgradeWorkspaceToPlan = async (
     );
   }
 
-  if (newPlan.stripeProductId !== null) {
+  if (newPlan.code === PRO_PLAN_SEAT_29_CODE) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}: stripeProductId is not null.`
+      `Cannot subscribe to plan ${planCode}: it is the pro plan which requires a stripe subscription.`
     );
   }
 
@@ -343,47 +332,39 @@ export const getCheckoutUrlForUpgrade = async (
     );
   }
 
-  const planCode = PRO_PLAN_SEAT_29_CODE;
-
-  const plan = await Plan.findOne({
-    where: { code: planCode },
+  const proPlan = await Plan.findOne({
+    where: { code: PRO_PLAN_SEAT_29_CODE },
   });
-  if (!plan) {
-    throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
-  }
-  if (!plan.stripeProductId) {
+  if (!proPlan) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}: no Stripe Product ID.`
-    );
-  }
-  if (plan.billingType === "free") {
-    throw new Error(
-      `Cannot subscribe to plan ${planCode}: billingType is "free".`
+      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: not found.`
     );
   }
 
   const existingSubscription = auth.subscription();
-  if (existingSubscription && existingSubscription.plan.code === plan.code) {
+  if (
+    existingSubscription &&
+    existingSubscription.plan.code === PRO_PLAN_SEAT_29_CODE
+  ) {
     throw new Error(
-      `Cannot subscribe to pro plan ${planCode}: already subscribed.`
+      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed.`
     );
   }
 
   // We enter Stripe Checkout flow
-  const checkoutUrl = await createCheckoutSession({
+  const checkoutUrl = await createProPlanCheckoutSession({
     auth,
-    planCode: plan.code,
   });
 
   if (!checkoutUrl) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
+      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: error while creating Stripe Checkout session (URL is null).`
     );
   }
 
   return {
     checkoutUrl,
-    plan: renderPlanFromModel({ plan }),
+    plan: renderPlanFromModel({ plan: proPlan }),
   };
 };
 

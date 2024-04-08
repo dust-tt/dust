@@ -2,7 +2,6 @@ import {
   Checkbox,
   ConfluenceLogo,
   DriveLogo,
-  DropdownMenu,
   GithubLogo,
   GlobeAltIcon,
   Input,
@@ -10,11 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type {
-  FreeBillingType,
-  PaidBillingType,
-  PlanType,
-} from "@dust-tt/types";
+import type { PlanType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
@@ -22,7 +17,6 @@ import { classNames } from "@app/lib/utils";
 
 export type EditingPlanType = {
   name: string;
-  stripeProductId: string;
   code: string;
   isConfluenceAllowed: boolean;
   isSlackBotAllowed: boolean;
@@ -37,7 +31,6 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
-  billingType: FreeBillingType | PaidBillingType;
   isNewPlan?: boolean;
   trialPeriodDays: string | number;
 };
@@ -45,7 +38,6 @@ export type EditingPlanType = {
 export const fromPlanType = (plan: PlanType): EditingPlanType => {
   return {
     name: plan.name,
-    stripeProductId: plan.stripeProductId || "",
     code: plan.code,
     isConfluenceAllowed: plan.limits.connections.isConfluenceAllowed,
     isSlackBotAllowed: plan.limits.assistant.isSlackBotAllowed,
@@ -60,7 +52,6 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
-    billingType: plan.billingType,
     trialPeriodDays: plan.trialPeriodDays,
   };
 };
@@ -75,7 +66,6 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   return {
     code: editingPlan.code.trim(),
     name: editingPlan.name.trim(),
-    stripeProductId: editingPlan.stripeProductId.trim() || null,
     limits: {
       assistant: {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
@@ -103,14 +93,12 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       canUseProduct: true,
     },
-    billingType: editingPlan.billingType,
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
   };
 };
 
 const getEmptyPlan = (): EditingPlanType => ({
   name: "",
-  stripeProductId: "",
   code: "",
   isConfluenceAllowed: false,
   isSlackBotAllowed: false,
@@ -126,7 +114,6 @@ const getEmptyPlan = (): EditingPlanType => ({
   dataSourcesDocumentsSizeMb: "",
   maxUsers: "",
   isNewPlan: true,
-  billingType: "fixed",
   trialPeriodDays: 0,
 });
 
@@ -144,44 +131,12 @@ export const useEditingPlan = () => {
   return { editingPlan, resetEditingPlan, createNewPlan, setEditingPlan };
 };
 
-const BILLING_TYPE_SELECT_CHOICES: Record<
-  FreeBillingType | PaidBillingType,
-  string
-> = {
-  fixed: "Fixed",
-  free: "Free",
-  monthly_active_users: "MAU",
-  per_seat: "Per Seat",
-};
-
 export const PLAN_FIELDS = {
   name: {
     type: "string",
     width: "medium",
     title: "Name",
     error: (plan: EditingPlanType) => (plan.name ? null : "Name is required"),
-  },
-  stripeProductId: {
-    type: "string",
-    width: "large",
-    title: "Stripe Product ID",
-    targetUrl: (plan: EditingPlanType) =>
-      plan.stripeProductId
-        ? `https://dashboard.stripe.com/products/${plan.stripeProductId}`
-        : null,
-
-    error: (plan: EditingPlanType) => {
-      if (!plan.stripeProductId) {
-        return null;
-      }
-
-      // only alphanumeric and underscore
-      if (!/^[a-zA-Z0-9_]+$/.test(plan.stripeProductId)) {
-        return "Stripe Product ID must only contain alphanumeric characters and underscores";
-      }
-
-      return null;
-    },
   },
   code: {
     type: "string",
@@ -278,27 +233,11 @@ export const PLAN_FIELDS = {
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
   },
-  billingType: {
-    type: "select",
-    choices: Object.entries(BILLING_TYPE_SELECT_CHOICES).map(
-      ([value, label]) => ({
-        value,
-        label,
-      })
-    ),
-    width: "small",
-    title: "Billing",
-    error: (plan: EditingPlanType) => (plan.billingType ? null : "Required"),
-  },
   trialPeriodDays: {
     type: "number",
     width: "small",
     title: "Trial Days",
     error: (plan: EditingPlanType) => {
-      if (plan.billingType === "free") {
-        return null;
-      }
-
       return errorCheckNumber(plan.trialPeriodDays);
     },
   },
@@ -322,11 +261,10 @@ export const Field: React.FC<FieldProps> = ({
   const field = PLAN_FIELDS[fieldName];
   const isImmutable = "immutable" in field && field.immutable;
   const disabled = !editingPlan?.isNewPlan && isImmutable;
-  const targetUrl = "targetUrl" in field && field.targetUrl(plan);
 
   const renderPlanFieldValue = (x: unknown) => {
     let strValue: string = x?.toString() || "";
-    let classes = targetUrl ? "cursor-pointer text-action-600" : "";
+    let classes = "";
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
@@ -339,14 +277,7 @@ export const Field: React.FC<FieldProps> = ({
       }
     }
 
-    return (
-      <div
-        className={classes}
-        onClick={targetUrl ? () => window.open(targetUrl, "_blank") : undefined}
-      >
-        {strValue}
-      </div>
-    );
+    return <div className={classes}>{strValue}</div>;
   };
 
   const fieldNode = (() => {
@@ -386,46 +317,6 @@ export const Field: React.FC<FieldProps> = ({
             }}
           />
         );
-      case "select":
-        return isEditing && !disabled ? (
-          <DropdownMenu className="flex">
-            <DropdownMenu.Button
-              label={
-                field.choices.find(
-                  (choice) => choice.value === editingPlan?.[fieldName]
-                )?.label
-              }
-              disabled={!isEditing || disabled}
-              tooltipPosition="above"
-            />
-            <DropdownMenu.Items origin={"auto"}>
-              {field.choices.map((choice) => {
-                return (
-                  <DropdownMenu.Item
-                    key={choice.value}
-                    onClick={() => {
-                      if (!editingPlan) {
-                        return;
-                      }
-                      setEditingPlan({
-                        ...editingPlan,
-                        [fieldName]: choice.value,
-                      });
-                    }}
-                    label={choice.label}
-                  />
-                );
-              })}
-            </DropdownMenu.Items>
-          </DropdownMenu>
-        ) : (
-          <div>
-            {renderPlanFieldValue(
-              field.choices.find((choice) => choice.value === plan[fieldName])
-                ?.label
-            )}
-          </div>
-        );
       default:
         assertNever(field);
     }
@@ -435,8 +326,6 @@ export const Field: React.FC<FieldProps> = ({
     switch (field.width) {
       case "small":
         return "w-24 min-w-[6rem]";
-      case "large":
-        return "w-72 min-w-[12rem]";
       case "medium":
         return "max-w-48 min-w-[8rem]";
       case "tiny":

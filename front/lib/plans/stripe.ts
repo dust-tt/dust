@@ -1,13 +1,19 @@
 import type { Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
+import { isDevelopment } from "@app/lib/development";
 import { Plan, Subscription } from "@app/lib/models";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
+
+export function getProPlanStripeProductId() {
+  return isDevelopment() ? "prod_OwKvN4XrUwFw5a" : "prod_OwALjyfxfi2mln";
+}
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
@@ -27,18 +33,16 @@ async function getPriceId(productId: string): Promise<string | null> {
 }
 
 /**
- * Calls the Stripe API to create a checkout session for a given workspace/plan.
+ * Calls the Stripe API to create a pro plan checkout session for a given workspace.
  * We return the URL of the checkout session.
  * Once the users has completed the checkout, we will receive an event on our Stripe webhook
  * The `auth` role is not checked, because we allow anyone (even if not logged in or not part of the WS)
  * to go through the checkout process.
  */
-export const createCheckoutSession = async ({
+export const createProPlanCheckoutSession = async ({
   auth,
-  planCode,
 }: {
   auth: Authenticator;
-  planCode: string;
 }): Promise<string | null> => {
   const owner = auth.workspace();
   if (!owner) {
@@ -49,56 +53,19 @@ export const createCheckoutSession = async ({
     throw new Error("No user found");
   }
 
-  const plan = await Plan.findOne({ where: { code: planCode } });
+  const plan = await Plan.findOne({ where: { code: PRO_PLAN_SEAT_29_CODE } });
   if (!plan) {
     throw new Error(
-      `Cannot create checkout session for plan ${planCode}: plan not found.`
-    );
-  }
-  if (!plan.stripeProductId) {
-    throw new Error(
-      `Cannot create checkout session for plan ${planCode}: no Stripe product ID found.`
+      `Cannot create checkout session for plan ${PRO_PLAN_SEAT_29_CODE}: plan not found.`
     );
   }
 
-  if (plan.billingType === "free") {
-    throw new Error(`Cannot subscribe to plan ${planCode}: plan is free.`);
-  }
-
-  const priceId = await getPriceId(plan.stripeProductId);
+  const stripeProductId = getProPlanStripeProductId();
+  const priceId = await getPriceId(stripeProductId);
   if (!priceId) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}: price not found for product ${plan.stripeProductId}.`
+      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: price not found for product ${stripeProductId}.`
     );
-  }
-
-  let item: { price: string; quantity?: number } | null = null;
-
-  switch (plan.billingType) {
-    case "fixed":
-      // For a fixed price, quantity is 1 and will not change.
-      item = {
-        price: priceId,
-        quantity: 1,
-      };
-      break;
-    case "per_seat":
-      // For a metered billing based on the number of seats, we create a line item with quantity = number of users in the workspace.
-      // We will update the quantity of the line item when the number of users changes.
-      item = {
-        price: priceId,
-        quantity: await countActiveSeatsInWorkspace(owner.sId),
-      };
-      break;
-    case "monthly_active_users":
-      // For a metered billing based on the usage, we create a line item with no quantity.
-      // We will notify Stripe of the usage when users are active in the workspace: when they post a message.
-      item = {
-        price: priceId,
-      };
-      break;
-    default:
-      assertNever(plan.billingType);
   }
 
   // Only allow a subscription to have a trial if the workspace never had a
@@ -122,7 +89,7 @@ export const createCheckoutSession = async ({
     customer: auth.subscription()?.stripeCustomerId || undefined,
     subscription_data: {
       metadata: {
-        planCode: planCode,
+        planCode: PRO_PLAN_SEAT_29_CODE,
         workspaceId: owner.sId,
       },
       // If trialPeriodDays is 0, we send "undefined" to Stripe.
@@ -130,10 +97,15 @@ export const createCheckoutSession = async ({
         trialAllowed && plan.trialPeriodDays ? plan.trialPeriodDays : undefined,
     },
     metadata: {
-      planCode: planCode,
+      planCode: PRO_PLAN_SEAT_29_CODE,
       userId: `${user.id}`,
     },
-    line_items: [item],
+    line_items: [
+      {
+        price: priceId,
+        quantity: await countActiveSeatsInWorkspace(owner.sId),
+      },
+    ],
     allow_promotion_codes: true,
     billing_address_collection: "auto",
     automatic_tax: {
@@ -142,7 +114,7 @@ export const createCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${planCode}`,
+    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
     cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",
