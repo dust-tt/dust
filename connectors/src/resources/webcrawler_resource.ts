@@ -1,4 +1,5 @@
 import type { CrawlingFrequency, ModelId, Result } from "@dust-tt/types";
+import type { WebCrawlerConfigurationType } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
   Err,
@@ -56,7 +57,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
   static async makeNew(
     blob: CreationAttributes<WebCrawlerConfigurationModel> & {
-      headers: Record<string, string>;
+      headers: WebCrawlerConfigurationType["headers"];
     },
     transaction: Transaction
   ) {

@@ -1,3 +1,4 @@
+import type { WebCrawlerConfiguration } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
@@ -12,7 +13,7 @@ export class WebCrawlerStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
     blob: WithCreationAttributes<WebCrawlerConfigurationModel> & {
-      headers: Record<string, string>;
+      headers: WebCrawlerConfiguration["headers"];
     },
     transaction: Transaction
   ): Promise<void> {

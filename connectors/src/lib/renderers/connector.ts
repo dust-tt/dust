@@ -49,6 +49,7 @@ async function renderWebcrawlerConfiguration(
   const headers = await webCrawlerConfiguration.getCustomHeaders();
   const redactedHeaders: Record<string, string> = {};
   for (const key in headers) {
+    // redacting headers values when rendering them because we don't want to expose sensitive information.
     redactedHeaders[key] = WebCrawlerHeaderRedactedValue;
   }
   return {
