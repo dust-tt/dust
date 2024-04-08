@@ -8,6 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
+import type * as t from "io-ts";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -23,6 +24,7 @@ import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr";
+import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -92,7 +94,9 @@ const PlansPage = () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(
+        requestBody satisfies t.TypeOf<typeof PlanTypeSchema>
+      ),
     });
     if (!r.ok) {
       sendNotification({
