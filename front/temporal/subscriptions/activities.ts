@@ -3,7 +3,6 @@ import { NON_ENTERPRISE_CODES } from "@app/lib/plans/plan_codes";
 import { getActiveSubscriptionsAndWorkspaces } from "@app/lib/plans/subscription";
 
 export async function warnExpiringEnterpriseSubscriptionsActivity() {
-  // get all subscriptions with an end date in 7 or 14 days
   const activeSubscriptions = await getActiveSubscriptionsAndWorkspaces();
 
   const expiring7daysWorkspaces = activeSubscriptions

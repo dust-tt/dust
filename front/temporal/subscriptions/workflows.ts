@@ -5,8 +5,8 @@ import type * as activities from "@app/temporal/subscriptions/activities";
 const { warnExpiringEnterpriseSubscriptionsActivity } = proxyActivities<
   typeof activities
 >({
-  startToCloseTimeout: "1 hour",
-  heartbeatTimeout: "5 minutes",
+  startToCloseTimeout: "10 minutes",
+  heartbeatTimeout: "10 minutes",
 });
 
 export async function warnExpiringEnterpriseSubscriptionsWorkflow() {

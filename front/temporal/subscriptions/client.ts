@@ -4,9 +4,8 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-
-import { QUEUE_NAME } from "./config";
-import { warnExpiringEnterpriseSubscriptionsWorkflow } from "./workflows";
+import { QUEUE_NAME } from "@app/temporal/subscriptions/config";
+import { warnExpiringEnterpriseSubscriptionsWorkflow } from "@app/temporal/subscriptions/workflows";
 
 export async function launchWarnExpiringWorkflow(): Promise<
   Result<string, Error>
