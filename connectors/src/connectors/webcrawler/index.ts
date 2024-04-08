@@ -57,6 +57,7 @@ export async function createWebcrawlerConnector(
     depth: depth,
     crawlFrequency: configuration.crawlFrequency,
     lastCrawledAt: null,
+    headers: configuration.headers,
   };
 
   const connector = await ConnectorResource.makeNew(
@@ -411,6 +412,7 @@ export async function setWebcrawlerConfiguration(
       new Error(`Webcrawler configuration not found for ${connectorId}`)
     );
   }
+
   await webcrawlerConfig.update({
     url: configuration.url,
     maxPageToCrawl: configuration.maxPageToCrawl,
@@ -418,6 +420,8 @@ export async function setWebcrawlerConfiguration(
     depth: depth,
     crawlFrequency: configuration.crawlFrequency,
   });
+  await webcrawlerConfig.setCustomHeaders(configuration.headers);
+
   const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
   if (stopRes.isErr()) {
     return new Err(stopRes.error);

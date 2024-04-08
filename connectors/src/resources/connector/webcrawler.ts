@@ -11,7 +11,9 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 export class WebCrawlerStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: WithCreationAttributes<WebCrawlerConfigurationModel>,
+    blob: WithCreationAttributes<WebCrawlerConfigurationModel> & {
+      headers: Record<string, string>;
+    },
     transaction: Transaction
   ): Promise<void> {
     await WebCrawlerConfigurationResource.makeNew(

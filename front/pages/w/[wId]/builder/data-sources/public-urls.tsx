@@ -204,14 +204,14 @@ export default function DataSourcesView({
                 </Button.List>
               }
             >
-              <ConnectorSyncingChip
-                initialState={ds.connector}
-                workspaceId={ds.connector.workspaceId}
-                dataSourceName={ds.connector.dataSourceName}
-              />
               <ContextItem.Description>
-                {" "}
-                <br />
+                <div className="pt-1">
+                  <ConnectorSyncingChip
+                    initialState={ds.connector}
+                    workspaceId={ds.connector.workspaceId}
+                    dataSourceName={ds.connector.dataSourceName}
+                  />
+                </div>
               </ContextItem.Description>
             </ContextItem>
           ))}
