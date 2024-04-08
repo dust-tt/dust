@@ -3,11 +3,9 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import Stripe from "stripe";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models";
-import { getProduct } from "@app/lib/plans/stripe";
 import { renderPlanFromModel } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -41,13 +39,6 @@ export const PlanTypeSchema = t.type({
     }),
     canUseProduct: t.boolean,
   }),
-  stripeProductId: t.union([t.string, t.null]),
-  billingType: t.union([
-    t.literal("fixed"),
-    t.literal("monthly_active_users"),
-    t.literal("per_seat"),
-    t.literal("free"),
-  ]),
   trialPeriodDays: t.number,
 });
 
@@ -103,27 +94,6 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-      if (body.stripeProductId) {
-        try {
-          await getProduct(body.stripeProductId);
-        } catch (e) {
-          if (!(e instanceof Stripe.errors.StripeError)) {
-            throw e;
-          }
-          switch (e.type) {
-            case "StripeInvalidRequestError":
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "stripe_invalid_product_id_error",
-                  message: `The stripe product id seems invalid: ${e.message}`,
-                },
-              });
-            default:
-              throw e;
-          }
-        }
-      }
 
       await Plan.upsert({
         code: body.code,
