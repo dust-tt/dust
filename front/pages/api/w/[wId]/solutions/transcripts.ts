@@ -58,8 +58,11 @@ async function handler(
 
     // Update
     case "PATCH":
-      const { agentConfigurationId: patchAgentId, provider: patchProvider, email: emailToNotify } =
-        req.body;
+      const {
+        agentConfigurationId: patchAgentId,
+        provider: patchProvider,
+        email: emailToNotify,
+      } = req.body;
       if (!patchAgentId || !patchProvider) {
         return apiError(req, res, {
           status_code: 400,
@@ -98,7 +101,7 @@ async function handler(
         userId: owner.id,
       });
 
-      if(emailToNotify) {
+      if (emailToNotify) {
         await SolutionsTranscriptsConfigurationResource.setEmailToNotify({
           emailToNotify,
           provider: patchProvider,

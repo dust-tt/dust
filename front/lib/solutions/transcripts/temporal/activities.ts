@@ -21,7 +21,7 @@ const {
   SOLUTIONS_WORKSPACE_ID,
   SOLUTIONS_TRANSCRIPTS_ASSISTANT,
   NODE_ENV,
-  SENDGRID_API_KEY
+  SENDGRID_API_KEY,
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
@@ -80,7 +80,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     );
     return;
   }
-  
+
   if (!SENDGRID_API_KEY) {
     throw new Error("Missing SENDGRID_API_KEY env variable");
   }
@@ -116,14 +116,13 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
   const metadataRes = await drive.files.get({
     fileId: fileId,
-    fields: 'name'
+    fields: "name",
   });
 
-  const contentRes = await drive
-    .files.export({
-      fileId: fileId,
-      mimeType: "text/plain",
-    });
+  const contentRes = await drive.files.export({
+    fileId: fileId,
+    mimeType: "text/plain",
+  });
 
   if (contentRes.status !== 200) {
     logger.error({}, "Error exporting Google document");
@@ -163,7 +162,8 @@ export async function summarizeGoogleDriveTranscriptActivity(
     visibility: "unlisted",
     message: {
       content:
-        "This is a meeting note transcript that you need to summarize. Always answer in HTML format using simple HTML tags: \n\n" + transcriptContent,
+        "This is a meeting note transcript that you need to summarize. Always answer in HTML format using simple HTML tags: \n\n" +
+        transcriptContent,
       mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
@@ -257,9 +257,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     to: user.email,
     from: "team@dust.tt",
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html:
-      `${fullAnswer}<br>` +
-      `The Dust team`,
+    html: `${fullAnswer}<br>` + `The Dust team`,
   };
 
   void sgMail.send(msg).then(() => {
@@ -268,6 +266,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
     );
   });
 
-  console.log('EMAIL SENT :')
-  console.log(msg)
+  console.log("EMAIL SENT :");
+  console.log(msg);
 }
