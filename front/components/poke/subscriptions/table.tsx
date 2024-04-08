@@ -393,8 +393,20 @@ function UpgradeDowngradeModal({
               );
             })}
         </div>
+        <Separator />
+        <Page.SectionHeader
+          title="Upgrade Workspace to a new Enterprise Plan"
+          description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
+        />
+        <div>
+          <Button
+            label="Start upgrade to Enterprise plan"
+            variant="secondary"
+            onClick={() => router.push(`/poke/${owner.sId}/enterprise`)}
+            disabled={subscription.plan.code.startsWith("ENT_")}
+          />
+        </div>
       </Page>
-      ;
     </Modal>
   );
 }
