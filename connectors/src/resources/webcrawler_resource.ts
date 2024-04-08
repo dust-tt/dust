@@ -59,9 +59,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       { transaction }
     );
 
-    const res = new this(this.model, config.get());
-
-    return res;
+    return new this(this.model, config.get());
   }
 
   static async getWebsitesToCrawlConnectorIds() {
