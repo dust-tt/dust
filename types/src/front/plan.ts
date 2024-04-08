@@ -1,3 +1,7 @@
+import * as t from "io-ts";
+import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
+import { NumberFromString } from "io-ts-types/lib/NumberFromString";
+
 export type MaxMessagesTimeframeType = "day" | "lifetime";
 
 /**
@@ -71,3 +75,30 @@ export type SubscriptionType = {
   paymentFailingSince: number | null;
   plan: PlanType;
 };
+
+export const EnterpriseSubscriptionFormSchema = t.type({
+  stripeSubscriptionId: NonEmptyString,
+  code: NonEmptyString,
+  name: NonEmptyString,
+  isSlackbotAllowed: t.boolean,
+  isSlackAllowed: t.boolean,
+  isNotionAllowed: t.boolean,
+  isGoogleDriveAllowed: t.boolean,
+  isGithubAllowed: t.boolean,
+  isIntercomAllowed: t.boolean,
+  isConfluenceAllowed: t.boolean,
+  isWebCrawlerAllowed: t.boolean,
+  maxMessages: t.union([t.number, NumberFromString]),
+  maxMessagesTimeframe: t.keyof({
+    day: null,
+    lifetime: null,
+  }),
+  dataSourcesCount: t.union([t.number, NumberFromString]),
+  dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
+  dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
+  maxUsers: t.union([t.number, NumberFromString]),
+});
+
+export type EnterpriseSubscriptionFormType = t.TypeOf<
+  typeof EnterpriseSubscriptionFormSchema
+>;
