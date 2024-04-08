@@ -4,11 +4,13 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
+import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+import type { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions";
+import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
-  configuration: SolutionsTranscriptsConfiguration | null
+  configuration: SolutionsTranscriptsConfigurationModel | null
 };
 
 async function handler(
@@ -34,15 +36,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfiguration = await SolutionsTranscriptsConfiguration.findOne({
+      const transcriptsConfigurationGetRes = await SolutionsTranscriptsConfigurationResource.findOne({
         attributes: ["id", "connectionId", "provider"],
         where: {
           userId: owner.id, 
-          provider: req.query.provider as string,
+          provider: req.query.provider as SolutionProviderType,
         },
       })
 
-      return res.status(200).json({ configuration: transcriptsConfiguration });
+      return res.status(200).json({ configuration: transcriptsConfigurationGetRes });
 
     case "POST":
       const { connectionId, provider } = req.body;
@@ -56,13 +58,13 @@ async function handler(
         });
       }
 
-      const transcriptsConfigurationPost = await SolutionsTranscriptsConfiguration.create({
+      const transcriptsConfigurationPostRes = await SolutionsTranscriptsConfigurationResource.makeNew({
         userId: owner.id,
         connectionId,
         provider,
       });
 
-      return res.status(200).json({ configuration: transcriptsConfigurationPost });
+      return res.status(200).json({ configuration: transcriptsConfigurationPostRes });
 
     default:
       return apiError(req, res, {

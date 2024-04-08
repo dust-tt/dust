@@ -4,7 +4,7 @@ import { Err } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
-import { SolutionsTranscriptsConfiguration } from "@app/lib/models/solutions";
+import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
 import mainLogger from "@app/logger/logger";
@@ -60,7 +60,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     }
     logger.info("[summarizeGoogleDriveTranscriptActivity] Starting summarization of file ", fileId);
 
-    const transcriptsConfiguration = await SolutionsTranscriptsConfiguration.findOne({
+    const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findOne({
       attributes: ["id", "connectionId", "provider"],
       where: {
         userId: userId, 
