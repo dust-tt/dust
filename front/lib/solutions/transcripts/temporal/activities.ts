@@ -123,16 +123,25 @@ export async function summarizeGoogleDriveTranscriptActivity(
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
+  const configurationId = transcriptsConfiguration.agentConfigurationId;
+  
+  if (!configurationId) {
+    logger.error(
+      "[summarizeGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."
+    );
+    return;
+  }
+
   const convRes = await dust.createConversation({
     title: null,
     visibility: "unlisted",
     message: {
       content:
         "Summarize this meeting notes transcript: \n\n" + transcriptContent,
-      mentions: [{ configurationId: "6f89693471" }],
+      mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
-        username: "alban",
+        username: "solutions-transcript-summarizer",
         fullName: null,
         email: null,
         profilePictureUrl: null,
