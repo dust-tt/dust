@@ -1,5 +1,5 @@
 import type { CrawlingFrequency, ModelId, Result } from "@dust-tt/types";
-import { CrawlingFrequencies, Ok } from "@dust-tt/types";
+import { CrawlingFrequencies, Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -64,7 +64,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return res;
   }
 
-  static async getWebsitesToCrawl() {
+  static async getWebsitesToCrawlConnectorIds() {
     const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
       never: "never",
       daily: "1 day",
@@ -79,6 +79,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       }
       const sql = frequencyToSQLQuery[frequency];
       const websites = await this.model.findAll({
+        attributes: ["connectorId"],
         where: {
           lastCrawledAt: {
             [Op.lt]: literal(`NOW() - INTERVAL '${sql}'`),
@@ -114,7 +115,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     //regexp to validate http header name
     const headerNameRegexp = /^[\w-]+$/;
     if (!headerNameRegexp.test(key)) {
-      return new Error(`Invalid header name ${key}`);
+      return new Err(new Error(`Invalid header name ${key}`));
     }
     await WebCrawlerConfigurationHeader.upsert({
       webcrawlerConfigurationId: this.id,
@@ -148,6 +149,12 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     await WebCrawlerFolder.destroy({
       where: {
         connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    await WebCrawlerConfigurationHeader.destroy({
+      where: {
+        webcrawlerConfigurationId: this.id,
       },
       transaction,
     });

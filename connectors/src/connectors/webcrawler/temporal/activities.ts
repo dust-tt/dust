@@ -54,7 +54,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     connectorId: connector.id,
   });
 
-  // Immeditaley marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
   // in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
 
@@ -387,6 +387,6 @@ export async function webCrawlerGarbageCollector(
   } while (foldersToDelete.length > 0);
 }
 
-export async function getWebsitesToCrawl() {
-  return WebCrawlerConfigurationResource.getWebsitesToCrawl();
+export async function getWebsitesToCrawlConnectorIds() {
+  return WebCrawlerConfigurationResource.getWebsitesToCrawlConnectorIds();
 }

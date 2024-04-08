@@ -26,7 +26,9 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
-const { getWebsitesToCrawl } = proxyActivities<typeof activities>({
+const { getWebsitesToCrawlConnectorIds: getWebsitesToCrawl } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "2 minutes",
 });
 
