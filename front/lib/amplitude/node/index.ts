@@ -25,7 +25,7 @@ import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 
 let BACKEND_CLIENT: Ampli | null = null;

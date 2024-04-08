@@ -5,7 +5,7 @@ import Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -207,33 +207,19 @@ export const getStripeSubscription = async (
  * Used for our "per seat" billing.
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
-export const updateStripeSubscriptionQuantity = async ({
-  stripeSubscriptionId,
-  stripeProductId,
-  quantity,
-}: {
-  stripeSubscriptionId: string;
-  stripeProductId: string;
-  quantity: number;
-}): Promise<void> => {
-  const stripeSubscription = await getStripeSubscription(stripeSubscriptionId);
-  const currentQuantity = stripeSubscription.items.data[0].quantity;
+export const updateStripeQuantityForSubscriptionItem = async (
+  subscriptionItem: Stripe.SubscriptionItem,
+  quantity: number
+): Promise<void> => {
+  const currentQuantity = subscriptionItem.quantity;
 
   if (currentQuantity === quantity) {
     // No need to update the subscription
     return;
   }
 
-  const priceId = await getPriceId(stripeProductId);
-  if (!priceId) {
-    throw new Error(
-      "Cannot update subscription quantity: stripe Price ID not found for this Product id."
-    );
-  }
-
-  const subscriptionItemId = stripeSubscription.items.data[0].id;
-  await stripe.subscriptions.update(stripeSubscriptionId, {
-    items: [{ id: subscriptionItemId, quantity, price: priceId || undefined }],
+  await stripe.subscriptionItems.update(subscriptionItem.id, {
+    quantity,
   });
 };
 

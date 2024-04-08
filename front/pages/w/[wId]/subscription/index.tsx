@@ -34,7 +34,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 
 const { GA_TRACKING_ID = "" } = process.env;

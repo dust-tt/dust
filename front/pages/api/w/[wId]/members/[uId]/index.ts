@@ -7,9 +7,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
@@ -95,9 +95,7 @@ async function handler(
           }
         }
 
-        await updateWorkspacePerSeatSubscriptionUsage({
-          workspaceId: owner.sId,
-        });
+        await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
       } else {
         const role = req.body.role;
         if (!isMembershipRoleType(role)) {

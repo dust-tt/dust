@@ -8,7 +8,7 @@ import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 
-export async function getActiveUsersInWorkspaceForPeriod({
+async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
   since,
   to,
@@ -74,7 +74,7 @@ export async function reportMonthlyActiveUsers(
     );
   }
 
-  const activeUsers = await getActiveUsersInWorkspaceForPeriod({
+  const activeUsers = await countActiveUsersForPeriodInWorkspace({
     messagesPerMonthForMau,
     since: new Date(stripeSubscription.current_period_start * 1000),
     to: new Date(stripeSubscription.current_period_end * 1000),

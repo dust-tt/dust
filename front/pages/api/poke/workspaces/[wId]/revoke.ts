@@ -4,9 +4,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type RevokeUserResponseBody = {
   success: true;
@@ -78,9 +78,8 @@ async function handler(
             assertNever(revokeResult.error.type);
         }
       }
-      await updateWorkspacePerSeatSubscriptionUsage({
-        workspaceId: owner.sId,
-      });
+
+      await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
 
       return res.status(200).json({ success: true });
 
