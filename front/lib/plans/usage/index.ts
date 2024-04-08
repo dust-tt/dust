@@ -3,7 +3,7 @@ import { assertNever, Err, Ok } from "@dust-tt/types";
 import type Stripe from "stripe";
 
 import { reportMonthlyActiveUsers } from "@app/lib/plans/usage/mau";
-import { reportSeatMembers } from "@app/lib/plans/usage/seats";
+import { reportActiveSeats } from "@app/lib/plans/usage/seats";
 import type {
   InvalidRecurringPriceError,
   SupportedReportUsage,
@@ -66,8 +66,8 @@ export async function reportUsageForSubscriptionItems(
 
         break;
 
-      case "SEAT_MEMBER":
-        await reportSeatMembers(item, workspace);
+      case "PER_SEAT":
+        await reportActiveSeats(item, workspace);
         break;
 
       default:

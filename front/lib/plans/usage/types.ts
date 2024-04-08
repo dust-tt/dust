@@ -11,7 +11,7 @@ export const SUPPORTED_REPORT_USAGE = [
   "MAU_1",
   "MAU_5",
   "MAU_10",
-  "SEAT_MEMBER",
+  "PER_SEAT",
 ] as const;
 export type SupportedReportUsage = (typeof SUPPORTED_REPORT_USAGE)[number];
 

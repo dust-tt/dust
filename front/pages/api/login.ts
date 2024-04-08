@@ -416,6 +416,7 @@ export async function createAndLogMembership({
   });
   trackUserMemberships(user).catch(logger.error);
 
+  // Update workspace subscription usage when a new user joins.
   await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 
   return m;

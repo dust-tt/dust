@@ -24,7 +24,7 @@ export async function countActiveSeatsInWorkspace(
   });
 }
 
-export async function reportSeatMembers(
+export async function reportActiveSeats(
   stripeSubscriptionItem: Stripe.SubscriptionItem,
   workspace: LightWorkspaceType
 ): Promise<void> {
