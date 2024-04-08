@@ -1,11 +1,12 @@
-import type { WorkspaceType } from "@dust-tt/types";
+import type { Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { Err, Ok, assertNever } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/workspace_usage";
+import { invalid } from "moment-timezone";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -292,79 +293,71 @@ export async function cancelSubscriptionImmediately({
 }
 
 const REPORT_USAGE_VALUES = ["MAU_1", "MAU_5", "MAU_10", "PER_SEAT"];
-export type StripeSubscriptionValidityType =
-  | { valid: true }
-  | { valid: false; message?: string };
 
 /**
- * Checks that a subscription created in Stripe is usable by Dust
+ * Checks that a subscription created in Stripe is usable by Dust, returns an
+ * error otherwise.
  */
-export function checkStripeSubscriptionValid(
+export function assertStripeSubscriptionValid(
   stripeSubscription: Stripe.Subscription
-): StripeSubscriptionValidityType {
+): Result<true, { invalidity_message: string }> {
   if (stripeSubscription.items.data.length === 0) {
-    return {
-      valid: false,
-      message: "Subscription has no items.",
-    };
+    return new Err({ invalidity_message: "Subscription has no items." });
   }
 
   // very unlikely, so handling is overkill at time of writing
   if (stripeSubscription.items.has_more) {
-    return {
-      valid: false,
-      message: "Subscription has too many items.",
-    };
+    return new Err({
+      invalidity_message: "Subscription has too many items.",
+    });
   }
 
   // All the business logic checks below are validating that the stripe
   // subscription doesn't have a configuration that we don't support
   for (const item of stripeSubscription.items.data) {
-    if (item.deleted) continue;
+    if (item.deleted) {
+      continue;
+    }
+
     if (item.price.recurring) {
       if (item.price.recurring.usage_type !== "metered") {
-        return {
-          valid: false,
-          message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
-        };
+        return new Err({
+          invalidity_message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
+        });
       }
 
       if (!REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
-        return {
-          valid: false,
-          message:
+        return new Err({
+          invalidity_message:
             "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
             JSON.stringify(REPORT_USAGE_VALUES),
-        };
+        });
       }
 
       if (item.price.recurring.aggregate_usage !== "last_during_period") {
-        return {
-          valid: false,
-          message:
+        return new Err({
+          invalidity_message:
             "Subscription recurring price has invalid aggregate_usage, should be last duing period",
-        };
+        });
       }
 
       if (
         item.price.recurring.interval !== "month" ||
         item.price.recurring.interval_count !== 1
       ) {
-        return {
-          valid: false,
-          message:
+        return new Err({
+          invalidity_message:
             "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
-        };
+        });
       }
     }
   }
 
   // the subscription is not active
   if (stripeSubscription.status !== "active") {
-    return {
-      valid: false,
-      message: "Subscription is not active.",
-    };
+    return new Err({
+      invalidity_message: "Subscription is not active.",
+    });
   }
-  return { valid: true };
+  return new Ok(true);
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant

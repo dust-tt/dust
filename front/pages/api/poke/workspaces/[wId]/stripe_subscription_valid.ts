@@ -5,7 +5,7 @@ import type Stripe from "stripe";
 import { Authenticator, getSession } from "@app/lib/auth";
 import type { StripeSubscriptionValidityType } from "@app/lib/plans/stripe";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { checkStripeSubscriptionValid } from "@app/lib/plans/stripe";
+import { assertStripeSubscriptionValid } from "@app/lib/plans/stripe";
 import { getSubscriptionForStripeId } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -79,7 +79,10 @@ async function handler(
       });
     }
 
-    if (req.query.checkSubscriptionUnassigned === "true") {
+    const checkSubscriptionUnassigned =
+      req.query.checkSubscriptionUnassigned === "true";
+
+    if (checkSubscriptionUnassigned) {
       // check if a subscription with the same stripeSubscriptionId is already in our database
       if (await getSubscriptionForStripeId(stripeSubscriptionId)) {
         return apiError(req, res, {
@@ -98,7 +101,7 @@ async function handler(
     case "GET": {
       return res
         .status(200)
-        .json(checkStripeSubscriptionValid(stripeSubscription));
+        .json(assertStripeSubscriptionValid(stripeSubscription));
     }
 
     default:
