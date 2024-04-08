@@ -4,7 +4,12 @@ import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const backfillUsers = async (execute: boolean) => {
-  const users = await User.findAll({});
+  const users = await User.findAll({
+    // @ts-expect-error sId is marked as required in the model, but we are looking for null values
+    where: {
+      sId: null,
+    },
+  });
 
   const chunks: User[][] = [];
   for (let i = 0; i < users.length; i += 16) {
@@ -31,7 +36,12 @@ const backfillUsers = async (execute: boolean) => {
 };
 
 const backfillInvitations = async (execute: boolean) => {
-  const invitations = await MembershipInvitation.findAll({});
+  const invitations = await MembershipInvitation.findAll({
+    // @ts-expect-error sId is marked as required in the model, but we are looking for null values
+    where: {
+      sId: null,
+    },
+  });
 
   const chunks: MembershipInvitation[][] = [];
   for (let i = 0; i < invitations.length; i += 16) {
