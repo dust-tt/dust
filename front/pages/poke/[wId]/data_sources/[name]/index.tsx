@@ -3,8 +3,6 @@ import {
   ContextItem,
   DocumentTextIcon,
   EyeIcon,
-  Icon,
-  InformationCircleIcon,
   Input,
   Page,
   SliderToggle,
@@ -32,11 +30,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
-import {
-  classNames,
-  formatTimestampToFriendlyDate,
-  timeAgoFrom,
-} from "@app/lib/utils";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;

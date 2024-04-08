@@ -1,4 +1,4 @@
-import { Modal, Page } from "@dust-tt/sparkle";
+import { Modal } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   CoreAPIDataSource,
