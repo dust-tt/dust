@@ -387,6 +387,6 @@ export async function webCrawlerGarbageCollector(
   } while (foldersToDelete.length > 0);
 }
 
-export async function getWebsitesToCrawlConnectorIds() {
-  return WebCrawlerConfigurationResource.getWebsitesToCrawlConnectorIds();
+export async function getConnectorIdsForWebsitesToCrawl() {
+  return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
 }

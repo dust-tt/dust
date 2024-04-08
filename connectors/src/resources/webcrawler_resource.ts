@@ -62,7 +62,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return new this(this.model, config.get());
   }
 
-  static async getWebsitesToCrawlConnectorIds() {
+  static async getConnectorIdsForWebsitesToCrawl() {
     const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
       never: "never",
       daily: "1 day",

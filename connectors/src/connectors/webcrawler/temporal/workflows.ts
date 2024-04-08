@@ -26,7 +26,7 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
-const { getWebsitesToCrawlConnectorIds: getWebsitesToCrawl } = proxyActivities<
+const { getConnectorIdsForWebsitesToCrawl } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "2 minutes",
@@ -47,7 +47,7 @@ export function crawlWebsiteWorkflowId(connectorId: ModelId) {
 }
 
 export async function crawlWebsiteSchedulerWorkflow() {
-  const connectorIds = await getWebsitesToCrawl();
+  const connectorIds = await getConnectorIdsForWebsitesToCrawl();
 
   for (const connectorId of connectorIds) {
     await executeChild(crawlWebsiteWorkflow, {
