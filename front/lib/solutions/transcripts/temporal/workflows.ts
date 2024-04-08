@@ -23,7 +23,7 @@ export async function retrieveNewTranscriptsWorkflow(
   do {
     console.log("[START] Retrieving new transcripts");
     await retrieveNewTranscriptsActivity(userId, providerId);
-    console.log(`Sleeping ${SECONDS_INTERVAL_BETWEEN_PULLS/60}m...`);
+    console.log(`Sleeping ${SECONDS_INTERVAL_BETWEEN_PULLS / 60}m...`);
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
 
     if (workflowInfo().historyLength > 4000) {

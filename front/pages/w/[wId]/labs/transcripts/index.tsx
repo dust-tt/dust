@@ -71,7 +71,7 @@ export default function SolutionsTranscriptsIndex({
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
-    sort: "priority"
+    sort: "priority",
   });
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
@@ -135,8 +135,7 @@ export default function SolutionsTranscriptsIndex({
     if (agentConfigurations.length > 0) {
       setAgentsFetched(true);
     }
-  }
-  , [agentConfigurations]);
+  }, [agentConfigurations]);
 
   useEffect(() => {
     void fetch(
@@ -178,7 +177,6 @@ export default function SolutionsTranscriptsIndex({
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
     try {
-
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
@@ -262,10 +260,8 @@ export default function SolutionsTranscriptsIndex({
                   <Page.P>
                     The chosen assistant should be configured to summarize the
                     transcripts in the way you want.{" "}
-                    <strong>
-                      Instruct it to answer in HTML format
-                    </strong>{" "}
-                    to receive a readable email.
+                    <strong>Instruct it to answer in HTML format</strong> to
+                    receive a readable email.
                   </Page.P>
 
                   <AssistantPicker

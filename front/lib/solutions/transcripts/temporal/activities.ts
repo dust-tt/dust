@@ -171,7 +171,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
         profilePictureUrl: null,
       },
     },
-    contentFragment: undefined
+    contentFragment: undefined,
   });
   if (convRes.isErr()) {
     console.log(convRes.error);
