@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
@@ -21,6 +22,7 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
   declare userId: ForeignKey<User["id"]>;
   declare connectionId: string;
   declare provider: SolutionProviderType;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
 }
 
 SolutionsTranscriptsConfigurationModel.init(
@@ -54,6 +56,14 @@ SolutionsTranscriptsConfigurationModel.init(
     provider: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: {
+        model: "agent_configurations",
+        key: "sId",
+      },
     },
   },
   {
