@@ -8,6 +8,10 @@ import { isDevelopment } from "@app/lib/development";
 import { Plan, Subscription } from "@app/lib/models";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import {
+  SUPPORTED_REPORT_USAGE,
+  isSupportedReportUsage,
+} from "@app/lib/plans/usage/types";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -249,8 +253,6 @@ export async function cancelSubscriptionImmediately({
   return true;
 }
 
-const REPORT_USAGE_VALUES = ["MAU_1", "MAU_5", "MAU_10", "PER_SEAT"];
-
 /**
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
@@ -317,11 +319,11 @@ export function assertStripeSubscriptionItemValid({
       });
     }
 
-    if (!REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
+    if (!isSupportedReportUsage(item.price.metadata?.REPORT_USAGE)) {
       return new Err({
         invalidity_message:
           "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
-          JSON.stringify(REPORT_USAGE_VALUES),
+          JSON.stringify(SUPPORTED_REPORT_USAGE),
       });
     }
 
