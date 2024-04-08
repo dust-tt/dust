@@ -72,6 +72,9 @@ export default function SolutionsTranscriptsIndex({
 
   const selectAssistant = (assistant: LightAgentConfigurationType) => {
     setAssistantSelected(assistant);
+
+    
+
     sendNotification({
       type: "success",
       title: "Success!",

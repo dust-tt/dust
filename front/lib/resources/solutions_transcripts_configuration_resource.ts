@@ -62,7 +62,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     const configuration = await SolutionsTranscriptsConfigurationModel.create({
       userId,
       connectionId,
-      provider,
+      provider
     });
 
     return new SolutionsTranscriptsConfigurationResource(
@@ -92,6 +92,45 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
           configuration.get()
         )
       : null;
+  }
+
+  static async setAgentConfigurationId({
+    agentConfigurationId
+  }: {
+    agentConfigurationId: string | null;
+  }): Promise<
+    Result<
+      void,
+      {
+        type: "not_found";
+      } | Error
+    >
+  > {
+    const configuration = await this.fetchById(this.id);
+    if (!configuration) {
+      return new Err({
+        type: "not_found",
+      });
+    }
+
+    if (configuration.agentConfigurationId === agentConfigurationId) {
+      return new Ok(undefined);
+    }
+
+    try {
+      await SolutionsTranscriptsConfigurationModel.update(
+        { agentConfigurationId },
+        {
+          where: {
+            id: this.id,
+          },
+        }
+      );
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {

@@ -16,8 +16,7 @@ import mainLogger from "@app/logger/logger";
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
   SOLUTIONS_API_KEY,
-  SOLUTIONS_WORKSPACE_ID,
-  NODE_ENV,
+  SOLUTIONS_WORKSPACE_ID
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
@@ -45,8 +44,6 @@ export async function retrieveNewTranscriptsActivity(
         fields: "files(id, name)",
       });
 
-    console.log(files.data.files);
-
     if (!files.data.files) {
       logger.info("[retrieveNewTranscripts] No new files found");
       return;
@@ -68,7 +65,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   userId: number,
   fileId: string
 ) {
-  console.log("NODE ENV", NODE_ENV);
+
   const logger = mainLogger.child({ userId });
   const providerId = "google_drive";
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
@@ -97,8 +94,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
   }
 
   const googleAuth = await getGoogleAuth(userId);
-
-  console.log("GETTING TRANSCRIPT CONTENT FROM GDRIVE");
 
   // Get fileId file content
   const res = await googleapis.google
@@ -151,8 +146,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
   } else {
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
-    // console.log('CONVERSATION');
-    // console.log(conversation.content);
 
     logger.info(
       "[summarizeGoogleDriveTranscriptActivity] Created conversation " +

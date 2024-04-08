@@ -22,7 +22,7 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
   declare userId: ForeignKey<User["id"]>;
   declare connectionId: string;
   declare provider: SolutionProviderType;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
 }
 
 SolutionsTranscriptsConfigurationModel.init(
@@ -59,7 +59,7 @@ SolutionsTranscriptsConfigurationModel.init(
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: "agent_configurations",
         key: "sId",
