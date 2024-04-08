@@ -1,6 +1,6 @@
 import {
-  EmotionLaughIcon,
   Page,
+  PaintIcon,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -53,8 +53,8 @@ export default function SolutionsIndex({
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
-            title="Dust Solutions"
-            icon={EmotionLaughIcon}
+            title="Dust Labs"
+            icon={PaintIcon}
             description="Solutions for specific use-cases - try them out and become a Dust co-builder!"
           />
           <Page.Separator />
@@ -66,7 +66,7 @@ export default function SolutionsIndex({
               size: "sm",
               onClick: async () => {
                 await router.push(
-                  `/w/${owner.sId}/solutions/transcripts`
+                  `/w/${owner.sId}/labs/transcripts`
                 );
               },
             }} 

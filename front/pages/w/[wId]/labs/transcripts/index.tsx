@@ -1,21 +1,21 @@
 import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
-  Page,
-  Spinner2
+  Page
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import Nango from '@nangohq/frontend';
-import type { drive_v3 } from "googleapis";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAgentConfigurations } from "@app/lib/swr";
 
 const {
   GA_TRACKING_ID = "",
@@ -61,6 +61,13 @@ export default function SolutionsTranscriptsIndex({
   const [isLoading, setIsLoading] = useState(false);
   const [isGDriveConnected, setIsGDriveConnected] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
+
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: null,
+  });
+  
+  const agents = agentConfigurations.filter((a) => a.status === "active")
 
   useEffect(() => {
     void fetch(`/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`, {
@@ -137,11 +144,10 @@ export default function SolutionsTranscriptsIndex({
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
-            title="Dust solution: Transcripts summarizer"
+            title="Transcripts summarizer"
             icon={ChatBubbleLeftRightIcon}
-            description="Receive meeting minutes summarized by email"
+            description="Receive meeting minutes summarized by email automatically"
           />
-          <Page.Separator />
           <Page.SectionHeader
             title="Connect Google Drive"
             description="Connect your personal Google Drive so Dust can access your meeting transcripts"
@@ -156,6 +162,22 @@ export default function SolutionsTranscriptsIndex({
             }} 
           />
         </Page.Vertical>
+        {!isLoading && isGDriveConnected && (
+          <Page.Vertical>
+            <Page.Separator />
+            <Page.SectionHeader title="Pick the assistant to process your meeting transcripts" />
+            <Page.P>The assistant should be configured to summarize the transcripts in the way you want.</Page.P>
+            <AssistantPicker
+                owner={owner}
+                size="sm"
+                onItemClick={(c) => {
+                  console.log(c);
+                }}
+                assistants={agents}
+                showBuilderButtons={false}
+              />
+          </Page.Vertical>
+        )}
       </AppLayout>
     </>
   );

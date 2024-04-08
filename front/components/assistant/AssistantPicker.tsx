@@ -24,6 +24,7 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
+  showBuilderButtons = true,
   size = "md",
 }: {
   owner: WorkspaceType;
@@ -98,6 +99,8 @@ export function AssistantPicker({
               </>
             }
             bottomBar={
+              <>
+              {showBuilderButtons && (
               <div className="flex border-t border-structure-50 p-2">
                 <Link
                   href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
@@ -120,6 +123,8 @@ export function AssistantPicker({
                   />
                 </Link>
               </div>
+              )}
+              </>
             }
           >
             {searchedAssistants.map((c) => (
