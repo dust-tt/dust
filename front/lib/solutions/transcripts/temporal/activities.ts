@@ -146,7 +146,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   let userMessage: UserMessageType | undefined = undefined;
 
   const configurationId =
-    SOLUTIONS_TRANSCRIPTS_ASSISTANT && NODE_ENV == "development"
+    NODE_ENV == "development" && SOLUTIONS_TRANSCRIPTS_ASSISTANT
       ? SOLUTIONS_TRANSCRIPTS_ASSISTANT
       : transcriptsConfiguration.agentConfigurationId;
 
@@ -161,9 +161,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     title: null,
     visibility: "unlisted",
     message: {
-      content:
-        "This is a meeting note transcript that you need to summarize. Always answer in HTML format using simple HTML tags: \n\n" +
-        transcriptContent,
+      content: transcriptContent as string,
       mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
@@ -173,8 +171,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
         profilePictureUrl: null,
       },
     },
-    contentFragment: undefined,
-    isSync: true,
+    contentFragment: undefined
   });
   if (convRes.isErr()) {
     console.log(convRes.error);
@@ -221,8 +218,6 @@ export async function summarizeGoogleDriveTranscriptActivity(
   if (streamRes.isErr()) {
     return new Err(new Error(streamRes.error.message));
   }
-
-  console.log("Streaming answer...");
 
   let fullAnswer = "";
   for await (const event of streamRes.value.eventStream) {
