@@ -45,6 +45,7 @@ import {
   SlackMessages,
 } from "@connectors/lib/models/slack";
 import {
+  WebCrawlerConfigurationHeader,
   WebCrawlerConfigurationModel,
   WebCrawlerFolder,
   WebCrawlerPage,
@@ -90,6 +91,7 @@ async function main(): Promise<void> {
   await WebCrawlerConfigurationModel.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
+  await WebCrawlerConfigurationHeader.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
