@@ -1,0 +1,203 @@
+import { Modal } from "@dust-tt/sparkle";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+} from "@dust-tt/types";
+import { JsonViewer } from "@textea/json-viewer";
+import Link from "next/link";
+import { useState } from "react";
+
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
+import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+
+export function ViewDataSourceTable({
+  connector,
+  coreDataSource,
+  dataSource,
+  temporalWorkspace,
+}: {
+  connector: ConnectorType | null;
+  coreDataSource: CoreAPIDataSource;
+  dataSource: DataSourceType;
+  temporalWorkspace: string;
+}) {
+  const [showRawObjectsModal, setShowRawObjectsModal] = useState(false);
+
+  const isPaused = connector && connector.pausedAt !== null;
+
+  return (
+    <>
+      <RawObjectsModal
+        connector={connector}
+        coreDataSource={coreDataSource}
+        dataSource={dataSource}
+        onClose={() => setShowRawObjectsModal(false)}
+        show={showRawObjectsModal}
+      />
+      <div className="flex flex-col space-y-8 pt-4">
+        <div className="flex justify-between gap-3">
+          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-md flex-grow pb-4 font-bold">Overview:</h2>
+              <PokeButton
+                aria-label="View raw objects"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRawObjectsModal(true)}
+              >
+                🤓 Show raw objects
+              </PokeButton>
+            </div>
+            <PokeTable>
+              <PokeTableBody>
+                <PokeTableRow>
+                  <PokeTableCell>Name</PokeTableCell>
+                  <PokeTableCell>{dataSource.name}</PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Description</PokeTableCell>
+                  <PokeTableCell>{dataSource.description}</PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Edited by</PokeTableCell>
+                  <PokeTableCell>
+                    {dataSource.editedByUser?.fullName ?? "N/A"}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Edited at</PokeTableCell>
+                  <PokeTableCell>
+                    {dataSource.editedByUser?.editedAt
+                      ? formatTimestampToFriendlyDate(
+                          dataSource.editedByUser.editedAt
+                        )
+                      : "N/A"}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Logs</PokeTableCell>
+                  <PokeTableCell>
+                    <Link
+                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                      target="_blank"
+                      className="text-sm text-action-400"
+                    >
+                      Temporal
+                    </Link>{" "}
+                    /{" "}
+                    <Link
+                      href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
+                      target="_blank"
+                      className="text-sm text-action-400"
+                    >
+                      Datadog
+                    </Link>
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Is Running?</PokeTableCell>
+                  <PokeTableCell>{isPaused ? "❌" : "✅"}</PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Last sync start</PokeTableCell>
+                  <PokeTableCell>
+                    {connector?.lastSyncStartTime ? (
+                      timeAgoFrom(connector?.lastSyncStartTime)
+                    ) : (
+                      <span className="font-bold text-warning-500">never</span>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Last sync finish</PokeTableCell>
+                  <PokeTableCell>
+                    {connector?.lastSyncFinishTime ? (
+                      timeAgoFrom(connector?.lastSyncFinishTime)
+                    ) : (
+                      <span className="font-bold text-warning-500">never</span>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Last sync status</PokeTableCell>
+                  <PokeTableCell>
+                    {connector?.lastSyncStatus ? (
+                      <span className="font-bold">
+                        {connector?.lastSyncStatus}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-warning-500">N/A</span>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>Last sync success</PokeTableCell>
+                  <PokeTableCell>
+                    {connector?.lastSyncSuccessfulTime ? (
+                      <span className="font-bold text-green-600">
+                        {timeAgoFrom(connector?.lastSyncSuccessfulTime)}
+                      </span>
+                    ) : (
+                      <span className="font-bold text-warning-600">
+                        "Never"
+                      </span>
+                    )}
+                  </PokeTableCell>
+                </PokeTableRow>
+              </PokeTableBody>
+            </PokeTable>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function RawObjectsModal({
+  show,
+  onClose,
+  connector,
+  coreDataSource,
+  dataSource,
+}: {
+  show: boolean;
+  onClose: () => void;
+  connector: ConnectorType | null;
+  coreDataSource: CoreAPIDataSource;
+  dataSource: DataSourceType;
+}) {
+  return (
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      hasChanged={false}
+      title="Data source raw objects"
+      variant="dialogue"
+    >
+      <div className="mx-2 my-4 max-h-96 overflow-y-auto">
+        <JsonViewer
+          value={dataSource}
+          rootName={false}
+          defaultInspectDepth={1}
+        />
+        <JsonViewer
+          value={coreDataSource}
+          rootName={false}
+          defaultInspectDepth={1}
+        />
+        <JsonViewer
+          value={connector}
+          rootName={false}
+          defaultInspectDepth={1}
+        />
+      </div>
+    </Modal>
+  );
+}
