@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Spinner2 } from "@dust-tt/sparkle";
 import type {
   EnterpriseSubscriptionFormType,
   WorkspaceType,
@@ -240,7 +240,7 @@ export default function EnterpriseSubscriptionForm({
               placeholder="1000"
             />
             <PokeButton type="submit" variant="outline">
-              {isSubmitting && <Spinner size="sm" />} Submit
+              {isSubmitting && <Spinner2 size="sm" />} Submit
             </PokeButton>
 
             {error && <div className="text-red-500">{error}</div>}
