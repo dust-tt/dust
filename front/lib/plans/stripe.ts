@@ -218,13 +218,6 @@ export const updateStripeQuantityForSubscriptionItem = async (
     return;
   }
 
-  const { id: priceId } = subscriptionItem.price;
-  if (!priceId) {
-    throw new Error(
-      "Cannot update subscription quantity: stripe Price ID not found for this Product id."
-    );
-  }
-
   await stripe.subscriptionItems.update(subscriptionItem.id, {
     quantity,
   });
