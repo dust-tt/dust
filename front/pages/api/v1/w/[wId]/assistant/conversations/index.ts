@@ -77,7 +77,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragment, isSync } =
+      const { title, visibility, message, contentFragment, blocking } =
         bodyValidation.right;
 
       if (contentFragment) {
@@ -149,7 +149,7 @@ async function handler(
               profilePictureUrl: message.context.profilePictureUrl,
             },
           },
-          { resolveAfterFullGeneration: isSync === true }
+          { resolveAfterFullGeneration: blocking === true }
         );
 
         if (messageRes.isErr()) {
