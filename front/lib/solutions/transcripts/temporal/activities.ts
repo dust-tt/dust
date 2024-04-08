@@ -5,9 +5,11 @@ import type {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
+import sgMail from "@sendgrid/mail";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
+import { User } from "@app/lib/models";
 import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
@@ -19,6 +21,7 @@ const {
   SOLUTIONS_WORKSPACE_ID,
   SOLUTIONS_TRANSCRIPTS_ASSISTANT,
   NODE_ENV,
+  SENDGRID_API_KEY
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
@@ -69,6 +72,20 @@ export async function summarizeGoogleDriveTranscriptActivity(
 ) {
   const logger = mainLogger.child({ userId });
   const providerId = "google_drive";
+
+  const user = await User.findByPk(userId);
+  if (!user) {
+    logger.error(
+      "[summarizeGoogleDriveTranscriptActivity] User not found. Stopping."
+    );
+    return;
+  }
+  
+  if (!SENDGRID_API_KEY) {
+    throw new Error("Missing SENDGRID_API_KEY env variable");
+  }
+  sgMail.setApiKey(SENDGRID_API_KEY);
+
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
   }
@@ -95,23 +112,28 @@ export async function summarizeGoogleDriveTranscriptActivity(
   }
 
   const googleAuth = await getGoogleAuth(userId);
+  const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
-  // Get fileId file content
-  const res = await googleapis.google
-    .drive({ version: "v3", auth: googleAuth })
+  const metadataRes = await drive.files.get({
+    fileId: fileId,
+    fields: 'name'
+  });
+
+  const contentRes = await drive
     .files.export({
       fileId: fileId,
       mimeType: "text/plain",
     });
 
-  if (res.status !== 200) {
+  if (contentRes.status !== 200) {
     logger.error({}, "Error exporting Google document");
     throw new Error(
-      `Error exporting Google document. status_code: ${res.status}. status_text: ${res.statusText}`
+      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
     );
   }
 
-  const transcriptContent = res.data;
+  const transcriptTitle = metadataRes.data.name;
+  const transcriptContent = contentRes.data;
 
   const dust = new DustAPI(
     {
@@ -141,7 +163,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     visibility: "unlisted",
     message: {
       content:
-        "Summarize this meeting notes transcript: \n\n" + transcriptContent,
+        "This is a meeting note transcript that you need to summarize. Always answer in HTML format using simple HTML tags: \n\n" + transcriptContent,
       mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
@@ -230,6 +252,22 @@ export async function summarizeGoogleDriveTranscriptActivity(
     }
   }
 
-  console.log("FULL ANSWER", fullAnswer);
-  // SEND THIS BY EMAIL TO USER
+  // SEND EMAIL WITH SUMMARY
+  const msg = {
+    to: user.email,
+    from: "team@dust.tt",
+    subject: `[DUST] Meeting summary - ${transcriptTitle}`,
+    html:
+      `${fullAnswer}<br>` +
+      `The Dust team`,
+  };
+
+  void sgMail.send(msg).then(() => {
+    logger.info(
+      "[summarizeGoogleDriveTranscriptActivity] Email sent with summary"
+    );
+  });
+
+  console.log('EMAIL SENT :')
+  console.log(msg)
 }

@@ -217,14 +217,16 @@ export default function SolutionsTranscriptsIndex({
             <Page.Horizontal align="stretch" gap="xl">
               <Page.P>
                 The chosen assistant should be configured to summarize the
-                transcripts in the way you want.
+                transcripts in the way you want. <strong>Make to instruct it to answer in HTML format</strong> to receive a readable email.
               </Page.P>
 
               <AssistantPicker
                 owner={owner}
                 size="sm"
                 onItemClick={(c) => {
-                  selectAssistant(c);
+                  void selectAssistant(c).then(() => {
+                    console.log("Selected assistant " + c.name);
+                  });
                 }}
                 assistants={agents}
                 showBuilderButtons={false}
