@@ -25,11 +25,11 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models";
 import { Workspace } from "@app/lib/models";
-import { updateWorkspacePerSeatSubscriptionUsage } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -416,9 +416,8 @@ export async function createAndLogMembership({
   });
   trackUserMemberships(user).catch(logger.error);
 
-  // If the user is joining a workspace with a subscription based on per_seat,
-  // we need to update the Stripe subscription quantity.
-  void updateWorkspacePerSeatSubscriptionUsage({ workspaceId: workspace.sId });
+  // Update workspace subscription usage when a new user joins.
+  await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 
   return m;
 }

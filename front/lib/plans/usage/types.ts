@@ -7,7 +7,12 @@ export const REPORT_USAGE_METADATA_KEY = "REPORT_USAGE";
 
 export class InvalidReportUsageError extends Error {}
 
-export const SUPPORTED_REPORT_USAGE = ["MAU_1", "MAU_5", "MAU_10"] as const;
+export const SUPPORTED_REPORT_USAGE = [
+  "MAU_1",
+  "MAU_5",
+  "MAU_10",
+  "PER_SEAT",
+] as const;
 export type SupportedReportUsage = (typeof SUPPORTED_REPORT_USAGE)[number];
 
 export function isSupportedReportUsage(
