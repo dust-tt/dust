@@ -1,11 +1,11 @@
 import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
-  Page
+  Page,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import Nango from '@nangohq/frontend';
+import Nango from "@nangohq/frontend";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
@@ -32,7 +32,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-
 
   if (!owner || !auth.isAdmin() || !subscription) {
     return {
@@ -64,29 +63,35 @@ export default function SolutionsTranscriptsIndex({
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: null,
+    agentsGetView: "list",
   });
-  
-  const agents = agentConfigurations.filter((a) => a.status === "active")
+
+  console.log('agentConfigurations', agentConfigurations)
+
+  const agents = agentConfigurations.filter((a) => a.status === "active");
 
   useEffect(() => {
-    void fetch(`/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then(async (response) => {
-      if (!response.ok) {
-        throw new Error("Failed to fetch solution configuration");
+    void fetch(
+      `/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-      const { configuration } = await response.json();
-      if (configuration?.id) {
-        setIsGDriveConnected(true);
-      }
-    }
-    ).finally(() => {
-      setIsLoading(false);
-    })
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to fetch solution configuration");
+        }
+        const { configuration } = await response.json();
+        if (configuration?.id) {
+          setIsGDriveConnected(true);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [owner]);
 
   const handleConnectTranscriptsSource = async () => {
@@ -95,10 +100,16 @@ export default function SolutionsTranscriptsIndex({
       // console log all variables in process.env
       const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(`solutions-transcripts-${owner.sId}`, provider);
+      const newConnectionId = buildConnectionId(
+        `solutions-transcripts-${owner.sId}`,
+        provider
+      );
       const {
         connectionId: nangoConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(nangoDriveConnectorId, newConnectionId);
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoDriveConnectorId,
+        newConnectionId
+      );
 
       await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
         method: "POST",
@@ -116,22 +127,21 @@ export default function SolutionsTranscriptsIndex({
         sendNotification({
           type: "success",
           title: "Connected Google Drive",
-          description: "Google Drive has been connected successfully."
+          description: "Google Drive has been connected successfully.",
         });
-        
+
         return response;
-      })
+      });
     } catch (error) {
-      console.log(error)
+      console.log(error);
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
-        description: "Could not connect to Google Drive. Please try again."
+        description: "Could not connect to Google Drive. Please try again.",
       });
       setIsLoading(false);
     }
-  }
-  
+  };
 
   return (
     <>
@@ -159,23 +169,29 @@ export default function SolutionsTranscriptsIndex({
               onClick: async () => {
                 await handleConnectTranscriptsSource();
               },
-            }} 
+            }}
           />
         </Page.Vertical>
         {!isLoading && isGDriveConnected && (
           <Page.Vertical>
             <Page.Separator />
             <Page.SectionHeader title="Pick the assistant to process your meeting transcripts" />
-            <Page.P>The assistant should be configured to summarize the transcripts in the way you want.</Page.P>
+            <Page.Horizontal align="stretch" gap="xl">
+            <Page.P>
+              The assistant should be configured to summarize the transcripts in
+              the way you want.
+            </Page.P>
+
             <AssistantPicker
-                owner={owner}
-                size="sm"
-                onItemClick={(c) => {
-                  console.log(c);
-                }}
-                assistants={agents}
-                showBuilderButtons={false}
-              />
+              owner={owner}
+              size="sm"
+              onItemClick={(c) => {
+                console.log(c);
+              }}
+              assistants={agents}
+              showBuilderButtons={false}
+            />
+            </Page.Horizontal>
           </Page.Vertical>
         )}
       </AppLayout>

@@ -1,4 +1,3 @@
-
 import { Nango } from "@nangohq/node";
 import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
@@ -9,7 +8,7 @@ import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/so
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY as string });
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
 
-// Google Auth 
+// Google Auth
 export async function getGoogleAuthObject(
   nangoIntegrationId: string,
   nangoConnectionId: string
@@ -30,24 +29,27 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuth(
-  userId: number
-) {
+export async function getGoogleAuth(userId: number) {
   const providerId = "google_drive";
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
   }
 
-  const transcriptsConfiguration = await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
-    attributes: ["id", "connectionId", "provider"],
-    where: {
-      userId: userId, 
-      provider: providerId,
-    },
-  })
+  const transcriptsConfiguration =
+    await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
+      attributes: ["id", "connectionId", "provider"],
+      where: {
+        userId: userId,
+        provider: providerId,
+      },
+    });
 
-  if (!transcriptsConfiguration) { return; }
+  if (!transcriptsConfiguration) {
+    return;
+  }
 
-  return getGoogleAuthObject(NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string, transcriptsConfiguration.connectionId)
+  return getGoogleAuthObject(
+    NANGO_GOOGLE_DRIVE_CONNECTOR_ID as string,
+    transcriptsConfiguration.connectionId
+  );
 }
-

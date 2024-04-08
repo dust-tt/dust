@@ -1,7 +1,4 @@
-import {
-  Page,
-  PaintIcon,
-} from "@dust-tt/sparkle";
+import { Page, PaintIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -65,11 +62,9 @@ export default function SolutionsIndex({
               label: "Get started",
               size: "sm",
               onClick: async () => {
-                await router.push(
-                  `/w/${owner.sId}/labs/transcripts`
-                );
+                await router.push(`/w/${owner.sId}/labs/transcripts`);
               },
-            }} 
+            }}
           />
         </Page.Vertical>
       </AppLayout>

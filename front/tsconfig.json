@@ -26,7 +26,8 @@
     "**/*.tsx",
     "**/*.jsx",
     "**/*.js",
-    "./.eslintrc.js"
-, "lib/solutions/transcripts/temporal/try.,js"  ],
+    "./.eslintrc.js",
+    "lib/solutions/transcripts/temporal/try.,js"
+  ],
   "exclude": ["node_modules"]
 }

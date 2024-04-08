@@ -1,8 +1,16 @@
-import { continueAsNew,proxyActivities, sleep, workflowInfo } from "@temporalio/workflow";
+import {
+  continueAsNew,
+  proxyActivities,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 import type * as activities from "./activities";
 
-const { retrieveNewTranscriptsActivity, summarizeGoogleDriveTranscriptActivity } = proxyActivities<typeof activities>({
+const {
+  retrieveNewTranscriptsActivity,
+  summarizeGoogleDriveTranscriptActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -11,25 +19,23 @@ export async function retrieveNewTranscriptsWorkflow(
   providerId: string
 ) {
   const SECONDS_INTERVAL_BETWEEN_PULLS = 100;
-  
+
   do {
-    console.log("Retrieving new transcripts")
+    console.log("Retrieving new transcripts");
     await retrieveNewTranscriptsActivity(userId, providerId);
-    console.log("FINISHED Retrieving new transcripts")
-    console.log("Sleeping...")
+    console.log("FINISHED Retrieving new transcripts");
+    console.log("Sleeping...");
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
-    console.log("Done Sleeping")
+    console.log("Done Sleeping");
 
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>(
         userId,
         providerId
-      );  
+      );
     }
-    
   } while (workflowInfo().historyLength < 5000);
 }
-
 
 export async function summarizeTranscriptWorkflow(
   userId: number,

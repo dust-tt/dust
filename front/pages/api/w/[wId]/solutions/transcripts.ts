@@ -1,6 +1,4 @@
-import type {
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -10,12 +8,14 @@ import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSolutionsConfigurationResponseBody = {
-  configuration: SolutionsTranscriptsConfigurationModel | null
+  configuration: SolutionsTranscriptsConfigurationModel | null;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -36,15 +36,20 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfigurationGetRes = await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
-        attributes: ["id", "connectionId", "provider"],
-        where: {
-          userId: owner.id, 
-          provider: req.query.provider as SolutionProviderType,
-        },
-      })
+      const transcriptsConfigurationGetRes =
+        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
+          {
+            attributes: ["id", "connectionId", "provider"],
+            where: {
+              userId: owner.id,
+              provider: req.query.provider as SolutionProviderType,
+            },
+          }
+        );
 
-      return res.status(200).json({ configuration: transcriptsConfigurationGetRes });
+      return res
+        .status(200)
+        .json({ configuration: transcriptsConfigurationGetRes });
 
     case "POST":
       const { connectionId, provider } = req.body;
@@ -53,18 +58,22 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The `connectionId` and `provider` parameters are required.",
+            message:
+              "The `connectionId` and `provider` parameters are required.",
           },
         });
       }
 
-      const transcriptsConfigurationPostRes = await SolutionsTranscriptsConfigurationResource.makeNew({
-        userId: owner.id,
-        connectionId,
-        provider,
-      });
+      const transcriptsConfigurationPostRes =
+        await SolutionsTranscriptsConfigurationResource.makeNew({
+          userId: owner.id,
+          connectionId,
+          provider,
+        });
 
-      return res.status(200).json({ configuration: transcriptsConfigurationPostRes });
+      return res
+        .status(200)
+        .json({ configuration: transcriptsConfigurationPostRes });
 
     default:
       return apiError(req, res, {

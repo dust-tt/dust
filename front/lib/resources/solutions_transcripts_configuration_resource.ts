@@ -27,7 +27,8 @@ import logger from "@app/logger/logger";
 export interface SolutionsTranscriptsConfigurationResource
   extends ReadonlyAttributesType<SolutionsTranscriptsConfigurationModel> {}
 export class SolutionsTranscriptsConfigurationResource extends BaseResource<SolutionsTranscriptsConfigurationModel> {
-  static model: ModelStatic<SolutionsTranscriptsConfigurationModel> = SolutionsTranscriptsConfigurationModel;
+  static model: ModelStatic<SolutionsTranscriptsConfigurationModel> =
+    SolutionsTranscriptsConfigurationModel;
 
   constructor(
     model: ModelStatic<SolutionsTranscriptsConfigurationModel>,
@@ -35,7 +36,6 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   ) {
     super(SolutionsTranscriptsConfigurationModel, blob);
   }
-
 
   static async makeNew({
     userId,
@@ -52,27 +52,28 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
           userId: userId,
           connectionId: connectionId,
           provider: provider,
-        }
+        },
       })
     ) {
       throw new Error(
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
       );
     }
-    const configuration = await SolutionsTranscriptsConfigurationModel.create(
-      {
-        userId,
-        connectionId,
-        provider,
-      }
-    );
+    const configuration = await SolutionsTranscriptsConfigurationModel.create({
+      userId,
+      connectionId,
+      provider,
+    });
 
-    return new SolutionsTranscriptsConfigurationResource(SolutionsTranscriptsConfigurationModel, configuration.get());
+    return new SolutionsTranscriptsConfigurationResource(
+      SolutionsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   static async findByUserIdAndProvider({
     attributes,
-    where
+    where,
   }: {
     attributes: string[];
     where: RequireAtLeastOne<{
@@ -86,7 +87,10 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     });
 
     return configuration
-      ? new SolutionsTranscriptsConfigurationResource(SolutionsTranscriptsConfigurationModel, configuration.get())
+      ? new SolutionsTranscriptsConfigurationResource(
+          SolutionsTranscriptsConfigurationModel,
+          configuration.get()
+        )
       : null;
   }
 
@@ -104,5 +108,4 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       return new Err(err as Error);
     }
   }
-
 }

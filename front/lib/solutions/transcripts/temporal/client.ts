@@ -2,13 +2,16 @@ import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { QUEUE_NAME } from "@app/lib/solutions/transcripts/temporal/config";
-import { retrieveNewTranscriptsWorkflow, summarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/workflows";
+import {
+  retrieveNewTranscriptsWorkflow,
+  summarizeTranscriptWorkflow,
+} from "@app/lib/solutions/transcripts/temporal/workflows";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 export async function launchRetrieveNewTranscriptsWorkflow({
   userId,
-  providerId
+  providerId,
 }: {
   userId: number;
   providerId: string;
@@ -24,7 +27,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
       workflowId: workflowId,
       memo: {
         userId,
-        providerId
+        providerId,
       },
     });
     logger.info(
@@ -46,10 +49,9 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   }
 }
 
-
 export async function launchSummarizeTranscriptWorkflow({
   userId,
-  fileId
+  fileId,
 }: {
   userId: number;
   fileId: string;
@@ -65,7 +67,7 @@ export async function launchSummarizeTranscriptWorkflow({
       workflowId: workflowId,
       memo: {
         userId,
-        fileId
+        fileId,
       },
     });
     logger.info(

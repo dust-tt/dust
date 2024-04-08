@@ -100,30 +100,30 @@ export function AssistantPicker({
             }
             bottomBar={
               <>
-              {showBuilderButtons && (
-              <div className="flex border-t border-structure-50 p-2">
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-                >
-                  <Button
-                    label="Create"
-                    size="xs"
-                    variant="primary"
-                    icon={PlusIcon}
-                    className="mr-2"
-                  />
-                </Link>
-                <div className="s-flex-grow" />
-                <Link href={`/w/${owner.sId}/assistant/assistants`}>
-                  <Button
-                    label="My Assistants"
-                    size="xs"
-                    variant="tertiary"
-                    icon={ListIcon}
-                  />
-                </Link>
-              </div>
-              )}
+                {showBuilderButtons && (
+                  <div className="flex border-t border-structure-50 p-2">
+                    <Link
+                      href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                    >
+                      <Button
+                        label="Create"
+                        size="xs"
+                        variant="primary"
+                        icon={PlusIcon}
+                        className="mr-2"
+                      />
+                    </Link>
+                    <div className="s-flex-grow" />
+                    <Link href={`/w/${owner.sId}/assistant/assistants`}>
+                      <Button
+                        label="My Assistants"
+                        size="xs"
+                        variant="tertiary"
+                        icon={ListIcon}
+                      />
+                    </Link>
+                  </div>
+                )}
               </>
             }
           >
