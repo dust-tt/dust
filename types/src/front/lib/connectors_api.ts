@@ -3,13 +3,11 @@ import {
   AdminResponseType,
 } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
-import {
-  ConnectorConfiguration,
-  UpdateConnectorConfigurationType,
-} from "../../connectors/api_handlers/connector_configuration";
+import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
+import { ConnectorConfiguration } from "../../connectors/webcrawler";
 import { ConnectorProvider } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";

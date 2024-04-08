@@ -3,9 +3,11 @@ import {
   ContentMessage,
   DropdownMenu,
   Input,
+  Modal,
   Page,
   RadioButton,
   TrashIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   CrawlingFrequency,
@@ -73,6 +75,15 @@ export default function WebsiteConfiguration({
     useState<CrawlingFrequency>(
       webCrawlerConfiguration?.crawlFrequency || "monthly"
     );
+  const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
+
+  const existingHeaders = webCrawlerConfiguration?.headers
+    ? Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
+        return { key, value };
+      })
+    : [];
+  const [headers, setHeaders] = useState(existingHeaders);
+
   const { mutate } = useSWRConfig();
 
   const frequencyDisplayText: Record<CrawlingFrequency, string> = {
@@ -157,7 +168,10 @@ export default function WebsiteConfiguration({
             depth: maxDepth,
             crawlMode: crawlMode,
             crawlFrequency: selectedCrawlFrequency,
-            headers: {},
+            headers: headers.reduce((acc, { key, value }) => {
+              if (key && value) acc[key] = value;
+              return acc;
+            }, {} as Record<string, string>),
           } satisfies WebCrawlerConfigurationType,
         } satisfies t.TypeOf<typeof PostManagedDataSourceRequestBodySchema>),
       });
@@ -185,7 +199,10 @@ export default function WebsiteConfiguration({
               depth: maxDepth,
               crawlMode: crawlMode,
               crawlFrequency: selectedCrawlFrequency,
-              headers: {},
+              headers: headers.reduce((acc, { key, value }) => {
+                if (key && value) acc[key] = value;
+                return acc;
+              }, {} as Record<string, string>),
             } satisfies WebCrawlerConfigurationType,
           } satisfies UpdateConnectorConfigurationType),
         }
@@ -247,7 +264,71 @@ export default function WebsiteConfiguration({
       }
       hideSidebar={true}
     >
-      <div className="py-8">
+      <Modal
+        isOpen={advancedSettingsOpened}
+        title={`Advanced settings`}
+        onClose={() => {
+          setAdvancedSettingsOpened(false);
+        }}
+        hasChanged={false}
+        isSaving={false}
+        variant="side-sm"
+      >
+        <Page.Layout direction="vertical" gap="md">
+          <Page.H variant="h3">Custom Headers</Page.H>
+          <Page.P>Add custom request headers for the web crawler.</Page.P>
+          <div className="flex flex-col gap-1 px-1">
+            {headers.map((header, index) => (
+              <div key={index} className="flex gap-2">
+                <Input
+                  placeholder="Header Name"
+                  value={header.key}
+                  name="headerName"
+                  onChange={(value) => {
+                    const newHeaders = [...headers];
+                    newHeaders[index].key = value;
+                    setHeaders(newHeaders);
+                  }}
+                  className="flex-1"
+                />
+                <Input
+                  name="headerValue"
+                  placeholder="Header Value"
+                  value={header.value}
+                  onChange={(value) => {
+                    const newHeaders = [...headers];
+                    newHeaders[index].value = value;
+                    setHeaders(newHeaders);
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  variant="tertiary"
+                  labelVisible={false}
+                  label=""
+                  icon={XMarkIcon}
+                  disabledTooltip={true}
+                  onClick={() => {
+                    const newHeaders = headers.filter((_, i) => i !== index);
+                    setHeaders(newHeaders);
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex">
+            <Button
+              variant="secondary"
+              className="shrink"
+              label="Add Header"
+              onClick={() => {
+                setHeaders([...headers, { key: "", value: "" }]);
+              }}
+            />
+          </div>
+        </Page.Layout>
+      </Modal>
+      <div className="flex flex-col gap-2 py-8">
         <Page.Layout direction="vertical" gap="xl">
           <Page.Layout direction="vertical" gap="md">
             <Page.H variant="h3">Website Entry Point</Page.H>
@@ -408,6 +489,16 @@ export default function WebsiteConfiguration({
               disabled={webCrawlerConfiguration !== null}
             />
           </Page.Layout>
+
+          <div className="flex">
+            <Button
+              label="Advanced settings"
+              variant="secondary"
+              onClick={() => {
+                setAdvancedSettingsOpened(true);
+              }}
+            ></Button>
+          </div>
           {webCrawlerConfiguration && (
             <div className="flex">
               <DropdownMenu>

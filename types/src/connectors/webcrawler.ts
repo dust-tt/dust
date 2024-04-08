@@ -1,3 +1,5 @@
+import * as t from "io-ts";
+
 export const WEBCRAWLER_MAX_DEPTH = 5;
 export const WEBCRAWLER_MAX_PAGES = 512;
 
@@ -14,15 +16,49 @@ export type CrawlingFrequency = (typeof CrawlingFrequencies)[number];
 
 export const DepthOptions = [0, 1, 2, 3, 4, 5] as const;
 export type DepthOption = (typeof DepthOptions)[number];
-export type WebCrawlerConfigurationType = {
-  url: string;
-  maxPageToCrawl: number;
-  crawlMode: CrawlingMode;
-  depth: DepthOption;
-  crawlFrequency: CrawlingFrequency;
-  headers: Record<string, string>;
-};
+export type WebCrawlerConfigurationType = t.TypeOf<
+  typeof WebCrawlerConfigurationTypeSchema
+>;
 
 export function isDepthOption(value: unknown): value is DepthOption {
   return DepthOptions.includes(value as DepthOption);
 }
+
+export const WebCrawlerConfigurationTypeSchema = t.type({
+  url: t.string,
+  depth: t.union([
+    t.literal(0),
+    t.literal(1),
+    t.literal(2),
+    t.literal(3),
+    t.literal(4),
+    t.literal(5),
+  ]),
+  maxPageToCrawl: t.number,
+  crawlMode: t.union([t.literal("child"), t.literal("website")]),
+  crawlFrequency: t.union([
+    t.literal("never"),
+    t.literal("daily"),
+    t.literal("weekly"),
+    t.literal("monthly"),
+  ]),
+  headers: t.record(t.string, t.string),
+});
+
+export type WebCrawlerConfiguration = t.TypeOf<
+  typeof WebCrawlerConfigurationTypeSchema
+>;
+
+export type ConnectorConfiguration = WebCrawlerConfigurationType | null;
+
+export type ConnectorConfigurations = {
+  webcrawler: WebCrawlerConfigurationType;
+  notion: null;
+  slack: null;
+  google_drive: null;
+  github: null;
+  confluence: null;
+  intercom: null;
+};
+
+export const WebCrawlerHeaderRedactedValue = "<REDACTED>";
