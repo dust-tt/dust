@@ -28,10 +28,7 @@ import {
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
-import {
-  FREE_NO_PLAN_CODE,
-  PRO_PLAN_SEAT_29_CODE,
-} from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 
 interface SubscriptionsDataTableProps {
