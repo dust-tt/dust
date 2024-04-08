@@ -59,7 +59,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
       );
     }
-    const newConfiguration = await SolutionsTranscriptsConfigurationModel.create(
+    const configuration = await SolutionsTranscriptsConfigurationModel.create(
       {
         userId,
         connectionId,
@@ -67,7 +67,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       }
     );
 
-    return new SolutionsTranscriptsConfigurationResource(SolutionsTranscriptsConfigurationModel, newConfiguration.get());
+    return new SolutionsTranscriptsConfigurationResource(SolutionsTranscriptsConfigurationModel, configuration.get());
   }
 
   static async findByUserIdAndProvider({
