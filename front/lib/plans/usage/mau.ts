@@ -4,7 +4,7 @@ import { QueryTypes } from "sequelize";
 import type Stripe from "stripe";
 
 import {
-  assertStripeSubscriptionItemValid,
+  assertStripeSubscriptionItemIsValid,
   updateStripeActiveUsersForSubscriptionItem,
 } from "@app/lib/plans/stripe";
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
@@ -59,7 +59,7 @@ export async function reportMonthlyActiveUsers(
   const [, rawMessagesPerMonthForMau] = usage.split("_");
   const messagesPerMonthForMau = parseInt(rawMessagesPerMonthForMau, 10);
 
-  const subscriptionItemValid = assertStripeSubscriptionItemValid({
+  const subscriptionItemValid = assertStripeSubscriptionItemIsValid({
     item: stripeSubscriptionItem,
     recurringRequired: true,
   });

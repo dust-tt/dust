@@ -257,7 +257,7 @@ export async function cancelSubscriptionImmediately({
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
  */
-export function assertStripeSubscriptionValid(
+export function assertStripeSubscriptionIsValid(
   stripeSubscription: Stripe.Subscription
 ): Result<true, { invalidity_message: string }> {
   // very unlikely, so handling is overkill at time of writing
@@ -278,7 +278,7 @@ export function assertStripeSubscriptionValid(
   // All the business logic checks below are validating that the stripe
   // subscription doesn't have a configuration that we don't support
   for (const item of itemsToCheck) {
-    const itemValidation = assertStripeSubscriptionItemValid({ item });
+    const itemValidation = assertStripeSubscriptionItemIsValid({ item });
     if (itemValidation.isErr()) {
       return itemValidation;
     }
@@ -293,7 +293,7 @@ export function assertStripeSubscriptionValid(
   return new Ok(true);
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
 
-export function assertStripeSubscriptionItemValid({
+export function assertStripeSubscriptionItemIsValid({
   item,
   recurringRequired,
 }: {

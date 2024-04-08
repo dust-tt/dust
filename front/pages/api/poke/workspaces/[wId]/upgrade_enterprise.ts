@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
-  assertStripeSubscriptionValid,
+  assertStripeSubscriptionIsValid,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import {
@@ -96,7 +96,7 @@ async function handler(
       }
 
       const assertValidSubscription =
-        assertStripeSubscriptionValid(stripeSubscription);
+        assertStripeSubscriptionIsValid(stripeSubscription);
       if (assertValidSubscription.isErr()) {
         return apiError(req, res, {
           status_code: 400,
