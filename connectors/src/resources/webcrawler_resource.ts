@@ -109,7 +109,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     );
   }
 
-  async addCustomeHeader(key: string, value: string) {
+  async addCustomHeader(
+    key: string,
+    value: string
+  ): Promise<Result<undefined, Error>> {
     //regexp to validate http header name
     const headerNameRegexp = /^[\w-]+$/;
     if (!headerNameRegexp.test(key)) {
@@ -120,6 +123,8 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       key,
       value,
     });
+
+    return new Ok(undefined);
   }
 
   async getCustomHeaders(): Promise<Record<string, string>> {
