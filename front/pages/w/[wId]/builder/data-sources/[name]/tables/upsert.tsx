@@ -414,7 +414,9 @@ export default function TableUpsert({
                   onChange={async (e) => {
                     setUploading(true);
                     const csvFile = e?.target?.files?.[0];
-                    if (!csvFile) return;
+                    if (!csvFile) {
+                      return;
+                    }
                     if (csvFile.size > 50_000_000) {
                       sendNotification({
                         type: "error",

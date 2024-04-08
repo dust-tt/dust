@@ -169,7 +169,9 @@ export default function WebsiteConfiguration({
             crawlMode: crawlMode,
             crawlFrequency: selectedCrawlFrequency,
             headers: headers.reduce((acc, { key, value }) => {
-              if (key && value) acc[key] = value;
+              if (key && value) {
+                acc[key] = value;
+              }
               return acc;
             }, {} as Record<string, string>),
           } satisfies WebCrawlerConfigurationType,
@@ -200,7 +202,9 @@ export default function WebsiteConfiguration({
               crawlMode: crawlMode,
               crawlFrequency: selectedCrawlFrequency,
               headers: headers.reduce((acc, { key, value }) => {
-                if (key && value) acc[key] = value;
+                if (key && value) {
+                  acc[key] = value;
+                }
                 return acc;
               }, {} as Record<string, string>),
             } satisfies WebCrawlerConfigurationType,

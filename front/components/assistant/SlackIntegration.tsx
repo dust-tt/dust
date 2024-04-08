@@ -43,7 +43,9 @@ export function SlackIntegration({
   }, [existingSelection, newSelection]);
 
   const save = async () => {
-    if (newSelection) onSave(newSelection);
+    if (newSelection) {
+      onSave(newSelection);
+    }
   };
 
   const assistantName = assistantHandle

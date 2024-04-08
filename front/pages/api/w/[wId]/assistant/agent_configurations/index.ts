@@ -248,12 +248,13 @@ export async function createOrUpgradeAgentConfiguration(
   agentConfigurationId?: string
 ): Promise<Result<AgentConfigurationType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
-  if (generation)
+  if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
       prompt: generation.prompt,
       model: generation.model,
       temperature: generation.temperature,
     });
+  }
 
   let actionConfig: AgentActionConfigurationType | null = null;
   if (action && action.type === "retrieval_configuration") {

@@ -8,7 +8,9 @@ import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 const { CORE_DATABASE_URI, LIVE } = process.env;
 
 async function main() {
-  if (!CORE_DATABASE_URI) throw new Error("CORE_DATABASE_URI is not defined");
+  if (!CORE_DATABASE_URI) {
+    throw new Error("CORE_DATABASE_URI is not defined");
+  }
 
   const coreSequelize = new Sequelize(CORE_DATABASE_URI, { logging: false });
 

@@ -738,9 +738,11 @@ function SlackBotEnableView({
             <SliderToggle
               size="xs"
               onClick={async () => {
-                if (!plan.limits.assistant.isSlackBotAllowed)
+                if (!plan.limits.assistant.isSlackBotAllowed) {
                   setShowNoSlackBotPopup(true);
-                else await handleSetBotEnabled(!botEnabled);
+                } else {
+                  await handleSetBotEnabled(!botEnabled);
+                }
               }}
               selected={botEnabled}
               disabled={readOnly || !isAdmin || loading}

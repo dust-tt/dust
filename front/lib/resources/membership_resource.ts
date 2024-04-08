@@ -110,7 +110,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
-    if (users && !users.length) return [];
+    if (users && !users.length) {
+      return [];
+    }
 
     // Get all the memberships matching the criteria.
     const memberships = await MembershipModel.findAll({

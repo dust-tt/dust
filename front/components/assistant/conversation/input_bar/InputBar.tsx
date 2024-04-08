@@ -167,7 +167,9 @@ export function AssistantInputBar({
     useCallback(
       async (event) => {
         const file = (event?.target as HTMLInputElement)?.files?.[0];
-        if (!file) return;
+        if (!file) {
+          return;
+        }
         if (file.size > 10_000_000) {
           sendNotification({
             type: "error",

@@ -20,8 +20,12 @@ export function useRegisterUnloadHandlers(
   const router = useRouter();
   useEffect(() => {
     const confirmBrowseAway = () => {
-      if (!editorDirty) return;
-      if (window.confirm(unloadWarning)) return;
+      if (!editorDirty) {
+        return;
+      }
+      if (window.confirm(unloadWarning)) {
+        return;
+      }
 
       router.events.emit("routeChangeError");
       throw "routeChange aborted.";

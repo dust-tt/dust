@@ -402,7 +402,9 @@ async function handler(
           );
           stripeSubscription = event.data.object as Stripe.Subscription;
           const previousAttributes = event.data.previous_attributes;
-          if (!previousAttributes) break; // should not happen by definition of the subscription.updated event
+          if (!previousAttributes) {
+            break;
+          } // should not happen by definition of the subscription.updated event
 
           if (
             stripeSubscription.status === "active" &&
@@ -474,13 +476,15 @@ async function handler(
             }
             // send email to admins
             for (const adminEmail of adminEmails) {
-              if (endDate)
+              if (endDate) {
                 await sendCancelSubscriptionEmail(
                   adminEmail,
                   subscription.workspace.sId,
                   endDate
                 );
-              else await sendReactivateSubscriptionEmail(adminEmail);
+              } else {
+                await sendReactivateSubscriptionEmail(adminEmail);
+              }
             }
           }
           break;
