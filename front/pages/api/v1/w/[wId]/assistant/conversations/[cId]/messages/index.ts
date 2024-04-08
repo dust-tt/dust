@@ -69,7 +69,7 @@ async function handler(
         });
       }
 
-      const { content, context, mentions, isSync } = bodyValidation.right;
+      const { content, context, mentions, blocking } = bodyValidation.right;
 
       const messageRes = await postUserMessageWithPubSub(
         auth,
@@ -79,7 +79,7 @@ async function handler(
           mentions,
           context,
         },
-        { resolveAfterFullGeneration: isSync === true }
+        { resolveAfterFullGeneration: blocking === true }
       );
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);

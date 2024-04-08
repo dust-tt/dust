@@ -13,7 +13,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
     }),
   }),
   t.partial({
-    isSync: t.boolean,
+    blocking: t.boolean,
   }),
 ]);
 
@@ -51,5 +51,5 @@ export const PublicPostConversationsRequestBodySchema = t.intersection([
       t.undefined,
     ]),
   }),
-  t.partial({ isSync: t.boolean }),
+  t.partial({ blocking: t.boolean }),
 ]);

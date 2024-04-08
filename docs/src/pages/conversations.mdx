@@ -340,7 +340,7 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
         An initial user message object. See "Create a New User Message" endpoint body attributes for
         more details.
       </Property>
-      <Property name="isSync" type="boolean">
+      <Property name="blocking" type="boolean">
         When set to true, the conversation will be created synchronously and the response will
         include the full generation data. Default value is false.
       </Property>
@@ -475,7 +475,7 @@ The `agent_error` event is sent whenever an error occured durint the AgentMessag
     ### Optional JSON body attributes
 
     <Properties>
-      <Property name="isSync" type="boolean">
+      <Property name="blocking" type="boolean">
         When set to true, the message will be posted synchronously and the response will
         include agentMessages. Default value is false.
       </Property>
