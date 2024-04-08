@@ -292,7 +292,7 @@ function UpgradeDowngradeModal({
   const { submit: onDowngrade } = useSubmitFunction(async () => {
     if (
       !window.confirm(
-        "Are you sure you want to downgrade this workspace to no plan?"
+        "Confirm workspace downgrade to no plan? This action will pause all connectors and delete data after the retention period expires."
       )
     ) {
       return;
