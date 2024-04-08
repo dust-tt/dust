@@ -384,3 +384,21 @@ export async function maybeCancelInactiveTrials(
     });
   }
 }
+
+export async function getSubscriptionForStripeId(
+  stripeSubscriptionId: string
+): Promise<SubscriptionType | null> {
+  const res = await Subscription.findOne({
+    where: { stripeSubscriptionId },
+    include: [Plan, Workspace],
+  });
+
+  if (!res) {
+    return null;
+  }
+
+  return renderSubscriptionFromModels({
+    plan: res.plan,
+    activeSubscription: res,
+  });
+}

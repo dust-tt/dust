@@ -1,7 +1,7 @@
-import type { WorkspaceType } from "@dust-tt/types";
+import type { Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import Stripe from "stripe";
+import { assertNever, Err, Ok } from "@dust-tt/types";
+import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models";
@@ -272,3 +272,73 @@ export async function cancelSubscriptionImmediately({
 
   return true;
 }
+
+const REPORT_USAGE_VALUES = ["MAU_1", "MAU_5", "MAU_10", "PER_SEAT"];
+
+/**
+ * Checks that a subscription created in Stripe is usable by Dust, returns an
+ * error otherwise.
+ */
+export function assertStripeSubscriptionValid(
+  stripeSubscription: Stripe.Subscription
+): Result<true, { invalidity_message: string }> {
+  if (stripeSubscription.items.data.length === 0) {
+    return new Err({ invalidity_message: "Subscription has no items." });
+  }
+
+  // very unlikely, so handling is overkill at time of writing
+  if (stripeSubscription.items.has_more) {
+    return new Err({
+      invalidity_message: "Subscription has too many items.",
+    });
+  }
+
+  // All the business logic checks below are validating that the stripe
+  // subscription doesn't have a configuration that we don't support
+  for (const item of stripeSubscription.items.data) {
+    if (item.deleted) {
+      continue;
+    }
+
+    if (item.price.recurring) {
+      if (item.price.recurring.usage_type !== "metered") {
+        return new Err({
+          invalidity_message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
+        });
+      }
+
+      if (!REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
+        return new Err({
+          invalidity_message:
+            "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
+            JSON.stringify(REPORT_USAGE_VALUES),
+        });
+      }
+
+      if (item.price.recurring.aggregate_usage !== "last_during_period") {
+        return new Err({
+          invalidity_message:
+            "Subscription recurring price has invalid aggregate_usage, should be last duing period",
+        });
+      }
+
+      if (
+        item.price.recurring.interval !== "month" ||
+        item.price.recurring.interval_count !== 1
+      ) {
+        return new Err({
+          invalidity_message:
+            "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
+        });
+      }
+    }
+  }
+
+  // the subscription is not active
+  if (stripeSubscription.status !== "active") {
+    return new Err({
+      invalidity_message: "Subscription is not active.",
+    });
+  }
+  return new Ok(true);
+} // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
