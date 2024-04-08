@@ -198,8 +198,12 @@ export const getProduct = async (
  */
 export const getStripeSubscription = async (
   stripeSubscriptionId: string
-): Promise<Stripe.Subscription> => {
-  return stripe.subscriptions.retrieve(stripeSubscriptionId);
+): Promise<Stripe.Subscription | null> => {
+  try {
+    return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  } catch (error) {
+    return null;
+  }
 };
 
 /**
