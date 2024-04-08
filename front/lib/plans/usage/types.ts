@@ -23,4 +23,10 @@ export function isSupportedReportUsage(
 
 export type MauReportUsageType = `MAU_${number}`;
 
+export function isMauReportUsage(
+  usage: string | undefined
+): usage is MauReportUsageType {
+  return usage?.startsWith("MAU_") ?? false;
+}
+
 export class InvalidRecurringPriceError extends Error {}

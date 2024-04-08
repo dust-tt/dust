@@ -9,6 +9,7 @@ import { Plan, Subscription } from "@app/lib/models";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
+  isMauReportUsage,
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
@@ -183,8 +184,8 @@ export const getStripeSubscription = async (
 };
 
 /**
- * Calls the Stripe API to update the quantity of a subscription.
- * Used for our "per seat" billing.
+ * Calls the Stripe API to update the quantity of a subscription. Used for
+ * subscription items with prices of type "licensed" (that is, per seat).
  * https://stripe.com/docs/billing/subscriptions/upgrade-downgrade
  */
 export const updateStripeQuantityForSubscriptionItem = async (
@@ -312,26 +313,46 @@ export function assertStripeSubscriptionItemIsValid({
     });
   }
 
-  if (item.price.recurring) {
-    if (item.price.recurring.usage_type !== "metered") {
-      return new Err({
-        invalidity_message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
-      });
-    }
+  const reportUsage = item.price.metadata?.REPORT_USAGE;
 
-    if (!isSupportedReportUsage(item.price.metadata?.REPORT_USAGE)) {
+  if (!item.price.recurring && reportUsage) {
+    return new Err({
+      invalidity_message:
+        "Subscription item has a REPORT_USAGE metadata but the price is not recurring.",
+    });
+  }
+
+  if (item.price.recurring) {
+    if (!isSupportedReportUsage(reportUsage)) {
       return new Err({
         invalidity_message:
-          "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
+          "Subscription recurring price REPORT_USAGE metadata should have values in " +
           JSON.stringify(SUPPORTED_REPORT_USAGE),
       });
     }
 
-    if (item.price.recurring.aggregate_usage !== "last_during_period") {
-      return new Err({
-        invalidity_message:
-          "Subscription recurring price has invalid aggregate_usage, should be last duing period",
-      });
+    if (item.price.recurring.usage_type === "licensed") {
+      if (reportUsage !== "PER_SEAT") {
+        return new Err({
+          invalidity_message:
+            "Subscription recurring price has usage_type 'licensed' but has a REPORT_USAGE different from PER_SEAT.",
+        });
+      }
+    }
+
+    if (item.price.recurring.usage_type === "metered") {
+      if (!isMauReportUsage(item.price.metadata?.REPORT_USAGE)) {
+        return new Err({
+          invalidity_message: `Subscription recurring price has usage_type 'metered' but no valid REPORT_USAGE metadata. REPORT_USAGE should be MAU_{number} (e.g. MAU_1, MAU_5, MAU_10). Got ${reportUsage}`,
+        });
+      }
+
+      if (item.price.recurring.aggregate_usage !== "last_during_period") {
+        return new Err({
+          invalidity_message:
+            "Subscription recurring price with usage_type 'metered' has invalid aggregate_usage, should be last during period",
+        });
+      }
     }
 
     if (
