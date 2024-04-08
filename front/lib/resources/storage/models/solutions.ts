@@ -59,11 +59,7 @@ SolutionsTranscriptsConfigurationModel.init(
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: true,
-      references: {
-        model: "agent_configurations",
-        key: "sId",
-      },
+      allowNull: true
     },
   },
   {

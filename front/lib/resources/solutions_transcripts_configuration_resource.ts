@@ -95,9 +95,13 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }
 
   static async setAgentConfigurationId({
-    agentConfigurationId
+    agentConfigurationId,
+    userId,
+    provider
   }: {
     agentConfigurationId: string | null;
+    userId: number;
+    provider: SolutionProviderType;
   }): Promise<
     Result<
       void,
@@ -106,7 +110,14 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       } | Error
     >
   > {
-    const configuration = await this.fetchById(this.id);
+    const configuration = await this.findByUserIdAndProvider({
+      // all attributes
+      attributes: ['id', 'agentConfigurationId'],
+      where: {
+        userId,
+        provider,
+      },
+    });
     if (!configuration) {
       return new Err({
         type: "not_found",
@@ -122,7 +133,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
         { agentConfigurationId },
         {
           where: {
-            id: this.id,
+            id: configuration.id,
           },
         }
       );

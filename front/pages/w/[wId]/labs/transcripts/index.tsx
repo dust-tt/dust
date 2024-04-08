@@ -70,15 +70,29 @@ export default function SolutionsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const selectAssistant = (assistant: LightAgentConfigurationType) => {
+  const selectAssistant = async (assistant: LightAgentConfigurationType) => {
     setAssistantSelected(assistant);
 
-    
+    await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        agentConfigurationId: assistant.sId,
+        provider: "google_drive",
+      }),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to select assistant");
+      }
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: "The assistant that will help you summarize your transcripts has been set to @" + assistant.name,
+      });
 
-    sendNotification({
-      type: "success",
-      title: "Success!",
-      description: "The assistant that will help you summarize your transcripts has been set to @" + assistant.name,
+      return response;
     });
   }
 
@@ -100,11 +114,17 @@ export default function SolutionsTranscriptsIndex({
         if (configuration?.id) {
           setIsGDriveConnected(true);
         }
+
+        if (configuration?.agentConfigurationId) {
+          setAssistantSelected(agentConfigurations.find((a) => a.sId === configuration.agentConfigurationId));
+        }
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, [owner]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [owner, agents]);
+    
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);

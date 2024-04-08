@@ -39,7 +39,7 @@ async function handler(
       const transcriptsConfigurationGetRes =
         await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
           {
-            attributes: ["id", "connectionId", "provider"],
+            attributes: ["id", "connectionId", "provider", "agentConfigurationId"],
             where: {
               userId: owner.id,
               provider: req.query.provider as SolutionProviderType,
@@ -50,7 +50,53 @@ async function handler(
       return res
         .status(200)
         .json({ configuration: transcriptsConfigurationGetRes });
+        
 
+    // Update
+    case "PATCH":
+      const { agentConfigurationId: patchAgentId, provider: patchProvider } = req.body;
+      if (!patchAgentId || !patchProvider) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The `connectionId` and `provider` parameters are required.",
+          },
+        });
+      }
+
+      const transcriptsConfigurationPatchRes =
+        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
+          attributes: ["id", "connectionId", "provider"],
+          where: {
+            userId: owner.id,
+            provider: patchProvider as SolutionProviderType,
+          }
+        });
+
+      if (!transcriptsConfigurationPatchRes) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "not_found",
+            message: "The configuration was not found.",
+          },
+        });
+      }
+
+      await SolutionsTranscriptsConfigurationResource.setAgentConfigurationId({
+        agentConfigurationId: patchAgentId, 
+        provider: patchProvider,
+        userId: owner.id,
+      });
+
+      return res
+        .status(200)
+        .json({ configuration: transcriptsConfigurationPatchRes });
+
+
+    // Create
     case "POST":
       const { connectionId, provider } = req.body;
       if (!connectionId || !provider) {
