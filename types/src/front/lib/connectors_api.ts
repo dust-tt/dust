@@ -63,6 +63,7 @@ export type ConnectorType = {
   firstSyncProgress?: string;
   errorType?: ConnectorErrorType;
   configuration?: ConnectorConfiguration;
+  pausedAt?: Date | null;
 };
 
 /**
