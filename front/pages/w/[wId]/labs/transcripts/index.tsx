@@ -1,12 +1,13 @@
 import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
-  Page,
-} from "@dust-tt/sparkle";
+  Input,
+  Page} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
+import { debounce } from 'lodash';
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
@@ -63,6 +64,7 @@ export default function SolutionsTranscriptsIndex({
   const [assistantSelected, setAssistantSelected] =
     useState<LightAgentConfigurationType | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
+  const [emailToNotify, setEmailToNotify] = useState<string | null>("");
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -71,9 +73,7 @@ export default function SolutionsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const selectAssistant = async (assistant: LightAgentConfigurationType) => {
-    setAssistantSelected(assistant);
-
+  const updateAssistantConfiguration = async (assistant: LightAgentConfigurationType) => {
     await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
       method: "PATCH",
       headers: {
@@ -81,7 +81,7 @@ export default function SolutionsTranscriptsIndex({
       },
       body: JSON.stringify({
         agentConfigurationId: assistant.sId,
-        provider: "google_drive",
+        provider: "google_drive"
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -94,9 +94,37 @@ export default function SolutionsTranscriptsIndex({
           "The assistant that will help you summarize your transcripts has been set to @" +
           assistant.name,
       });
-
-      return response;
     });
+  };
+
+  const updateEmailToNotify = async (email: string) => {
+      setEmailToNotify(email);
+      await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          agentConfigurationId: assistantSelected?.sId,
+          provider: "google_drive"
+        }),
+      }).then((response) => {
+        if (!response.ok) {
+          throw new Error("Failed to update email");
+        }
+        sendNotification({
+          type: "success",
+          title: "Success!",
+          description:
+            "The email to notify has been set to " + email,
+        });
+      });
+  }
+
+  const selectAssistant = async (assistant: LightAgentConfigurationType) => {
+    setAssistantSelected(assistant);
+    return updateAssistantConfiguration(assistant);
   };
 
   useEffect(() => {
@@ -190,55 +218,70 @@ export default function SolutionsTranscriptsIndex({
         topNavigationCurrent="admin"
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.Header
-            title="Transcripts summarizer"
-            icon={ChatBubbleLeftRightIcon}
-            description="Receive meeting minutes summarized by email automatically"
-          />
-          <Page.SectionHeader
-            title="1. Connect Google Drive"
-            description="Connect your personal Google Drive so Dust can access your meeting transcripts"
-            action={{
-              label: isGDriveConnected ? "Connected" : "Connect",
-              size: "sm",
-              icon: CloudArrowLeftRightIcon,
-              disabled: isLoading || isGDriveConnected,
-              onClick: async () => {
-                await handleConnectTranscriptsSource();
-              },
-            }}
-          />
-        </Page.Vertical>
-        {!isLoading && isGDriveConnected && (
-          <Page.Vertical>
-            <Page.Separator />
-            <Page.SectionHeader title="2. Pick the assistant to process your meeting transcripts" />
-            <Page.Horizontal align="stretch" gap="xl">
-              <Page.P>
-                The chosen assistant should be configured to summarize the
-                transcripts in the way you want. <strong>Make to instruct it to answer in HTML format</strong> to receive a readable email.
-              </Page.P>
-
-              <AssistantPicker
-                owner={owner}
-                size="sm"
-                onItemClick={(c) => {
-                  void selectAssistant(c).then(() => {
-                    console.log("Selected assistant " + c.name);
-                  });
-                }}
-                assistants={agents}
-                showBuilderButtons={false}
-              />
-              {assistantSelected && (
+        <Page>
+          <Page.Layout direction="vertical">
+            <Page.Header
+              title="Transcripts summarizer"
+              icon={ChatBubbleLeftRightIcon}
+              description="Receive meeting minutes summarized by email automatically"
+            />
+            <Page.SectionHeader
+              title="1. Connect Google Drive"
+              description="Connect your personal Google Drive so Dust can access your meeting transcripts"
+              action={{
+                label: isGDriveConnected ? "Connected" : "Connect",
+                size: "sm",
+                icon: CloudArrowLeftRightIcon,
+                disabled: isLoading || isGDriveConnected,
+                onClick: async () => {
+                  await handleConnectTranscriptsSource();
+                },
+              }}
+            />
+          </Page.Layout>
+          {!isLoading && isGDriveConnected && (
+            <><Page.Layout direction="vertical">
+              <Page.SectionHeader title="2. Assistant configuration" />
+              <Page.Layout direction="horizontal">
                 <Page.P>
-                  <strong>@{assistantSelected.name}</strong>
+                  The chosen assistant should be configured to summarize the
+                  transcripts in the way you want. <strong>Make to instruct it to answer in HTML format</strong> to receive a readable email.
                 </Page.P>
-              )}
-            </Page.Horizontal>
-          </Page.Vertical>
-        )}
+
+                <AssistantPicker
+                  owner={owner}
+                  size="sm"
+                  onItemClick={(c) => {
+                    void selectAssistant(c).then(() => {
+                      console.log("Selected assistant " + c.name);
+                    });
+                  } }
+                  assistants={agents}
+                  showBuilderButtons={false} />
+                {assistantSelected && (
+                  <Page.P>
+                    <strong>@{assistantSelected.name}</strong>
+                  </Page.P>
+                )}
+              </Page.Layout>
+            </Page.Layout><Page.Layout direction="vertical">
+                <Page.SectionHeader title="3. Email configuration" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <Page.P>
+                    By default, the assistant will send the summarized transcript to your email. You can chose a different email here.
+                  </Page.P>
+                  {/* <Input placeholder="" name="input" value={emailToNotify} onBlur={(e) => setEmailToNotify(e)} /> */}
+                  {/* Had to put a regular input there because <Input> doesn't like onBlur */}
+                  <input placeholder="Email" 
+                    value={emailToNotify as string} 
+                    onChange={(e) => setEmailToNotify(e.target.value)} 
+                    onBlur={(e) => updateEmailToNotify(e.target.value)} 
+                    className="s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2 s-bg-structure-50 s-text-element-900 s-placeholder-element-600 dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8 s-transition-all s-duration-300 s-ease-out s-ring-structure-200 focus:s-ring-action-300 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
+                  />
+                </Page.Layout>
+              </Page.Layout></>
+          )}
+        </Page>
       </AppLayout>
     </>
   );

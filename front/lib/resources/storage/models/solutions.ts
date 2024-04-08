@@ -23,6 +23,7 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
   declare connectionId: string;
   declare provider: SolutionProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
+  declare emailToNotify: string | null;
 }
 
 SolutionsTranscriptsConfigurationModel.init(
@@ -58,6 +59,10 @@ SolutionsTranscriptsConfigurationModel.init(
       allowNull: false,
     },
     agentConfigurationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    emailToNotify: {
       type: DataTypes.STRING,
       allowNull: true,
     },
