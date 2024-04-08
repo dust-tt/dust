@@ -1,17 +1,10 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  CrawlingFrequency,
-} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import type { ModelId } from "@dust-tt/types";
-import {
-  CrawlingFrequencies,
-  WEBCRAWLER_MAX_DEPTH,
-  WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
+import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration } from "crawlee";
-import { literal, Op } from "sequelize";
+import { Op } from "sequelize";
 import turndown from "turndown";
 
 import {
@@ -31,7 +24,6 @@ import {
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
 import {
-  WebCrawlerConfiguration,
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
@@ -42,6 +34,7 @@ import {
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
 const CONCURRENCY = 4;
 
@@ -50,21 +43,22 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found.`);
   }
-  const webCrawlerConfig = await WebCrawlerConfiguration.findOne({
-    where: {
-      connectorId,
-    },
-  });
+
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
   const childLogger = logger.child({
     connectorId: connector.id,
   });
-  webCrawlerConfig.lastCrawledAt = new Date();
-  // Immeditaley marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
-  // in case of the crawling taking too long or failing.
-  await webCrawlerConfig.save();
+
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
+  // in case of the crawling takes too long or fails.
+  await webCrawlerConfig.markedAsCrawled();
+
+  const customHeaders = await webCrawlerConfig.getCustomHeaders();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
@@ -96,6 +90,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               },
               `Private IP address detected. Skipping.`
             );
+          }
+
+          if (!crawlingContext.request.headers) {
+            crawlingContext.request.headers = {};
+          }
+          for (const [header, value] of Object.entries(customHeaders)) {
+            crawlingContext.request.headers[header] = value;
           }
         },
       ],
@@ -337,11 +338,9 @@ export async function webCrawlerGarbageCollector(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found.`);
   }
-  const webCrawlerConfig = await WebCrawlerConfiguration.findOne({
-    where: {
-      connectorId,
-    },
-  });
+
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
   if (!webCrawlerConfig) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
@@ -388,35 +387,6 @@ export async function webCrawlerGarbageCollector(
   } while (foldersToDelete.length > 0);
 }
 
-export async function getWebsitesToCrawl() {
-  const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
-    never: "never",
-    daily: "1 day",
-    weekly: "1 week",
-    monthly: "1 month",
-  };
-  const allConnectorIds: ModelId[] = [];
-
-  for (const frequency of CrawlingFrequencies) {
-    if (frequency === "never") {
-      continue;
-    }
-    const sql = frequencyToSQLQuery[frequency];
-    const websites = await WebCrawlerConfiguration.findAll({
-      where: {
-        lastCrawledAt: {
-          [Op.lt]: literal(`NOW() - INTERVAL '${sql}'`),
-        },
-        crawlFrequency: frequency,
-      },
-    });
-    allConnectorIds.push(...websites.map((w) => w.connectorId));
-  }
-
-  const connectors = await ConnectorResource.fetchByIds(allConnectorIds);
-  const unPausedConnectorIds = connectors
-    .filter((c) => !c.isPaused())
-    .map((c) => c.id);
-
-  return unPausedConnectorIds;
+export async function getConnectorIdsForWebsitesToCrawl() {
+  return WebCrawlerConfigurationResource.getConnectorIdsForWebsitesToCrawl();
 }

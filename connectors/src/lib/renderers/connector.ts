@@ -3,8 +3,8 @@ import type {
   WebCrawlerConfigurationType,
 } from "@dust-tt/types";
 
-import { WebCrawlerConfiguration } from "@connectors/lib/models/webcrawler";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
 export async function renderConnectorType(
   connector: ConnectorResource
@@ -27,11 +27,9 @@ export async function renderConnectorType(
 async function renderConfiguration(connector: ConnectorResource) {
   switch (connector.type) {
     case "webcrawler": {
-      const config = await WebCrawlerConfiguration.findOne({
-        where: {
-          connectorId: connector.id,
-        },
-      });
+      const config = await WebCrawlerConfigurationResource.fetchByConnectorId(
+        connector.id
+      );
       if (!config) {
         throw new Error(
           `Webcrawler configuration not found for connector ${connector.id}`
@@ -45,7 +43,7 @@ async function renderConfiguration(connector: ConnectorResource) {
 }
 
 async function renderWebcrawlerConfiguration(
-  webCrawlerConfiguration: WebCrawlerConfiguration
+  webCrawlerConfiguration: WebCrawlerConfigurationResource
 ): Promise<WebCrawlerConfigurationType> {
   return {
     url: webCrawlerConfiguration.url,
@@ -53,5 +51,6 @@ async function renderWebcrawlerConfiguration(
     crawlMode: webCrawlerConfiguration.crawlMode,
     depth: webCrawlerConfiguration.depth,
     crawlFrequency: webCrawlerConfiguration.crawlFrequency,
+    headers: await webCrawlerConfiguration.getCustomHeaders(),
   };
 }

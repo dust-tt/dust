@@ -10,9 +10,9 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export class WebCrawlerConfiguration extends Model<
-  InferAttributes<WebCrawlerConfiguration>,
-  InferCreationAttributes<WebCrawlerConfiguration>
+export class WebCrawlerConfigurationModel extends Model<
+  InferAttributes<WebCrawlerConfigurationModel>,
+  InferCreationAttributes<WebCrawlerConfigurationModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -26,7 +26,7 @@ export class WebCrawlerConfiguration extends Model<
   declare lastCrawledAt: Date | null;
 }
 
-WebCrawlerConfiguration.init(
+WebCrawlerConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -76,7 +76,61 @@ WebCrawlerConfiguration.init(
     modelName: "webcrawler_configurations",
   }
 );
-ConnectorModel.hasMany(WebCrawlerConfiguration);
+ConnectorModel.hasMany(WebCrawlerConfigurationModel);
+
+export class WebCrawlerConfigurationHeader extends Model<
+  InferAttributes<WebCrawlerConfigurationHeader>,
+  InferCreationAttributes<WebCrawlerConfigurationHeader>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare key: string;
+  declare value: string;
+  declare webcrawlerConfigurationId: ForeignKey<
+    WebCrawlerConfigurationModel["id"]
+  >;
+}
+
+WebCrawlerConfigurationHeader.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    key: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    value: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "webcrawler_configuration_headers",
+    indexes: [
+      {
+        unique: true,
+        fields: ["webcrawlerConfigurationId", "key"],
+      },
+    ],
+  }
+);
+
+WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeader);
 
 export class WebCrawlerFolder extends Model<
   InferAttributes<WebCrawlerFolder>,
@@ -92,7 +146,9 @@ export class WebCrawlerFolder extends Model<
   declare internalId: string;
   declare lastSeenAt: Date;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
+  declare webcrawlerConfigurationId: ForeignKey<
+    WebCrawlerConfigurationModel["id"]
+  >;
 }
 
 WebCrawlerFolder.init(
@@ -142,7 +198,7 @@ WebCrawlerFolder.init(
   }
 );
 ConnectorModel.hasMany(WebCrawlerFolder);
-WebCrawlerConfiguration.hasMany(WebCrawlerFolder);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerFolder);
 
 export class WebCrawlerPage extends Model<
   InferAttributes<WebCrawlerPage>,
@@ -158,7 +214,9 @@ export class WebCrawlerPage extends Model<
   declare depth: number;
   declare lastSeenAt: Date;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
-  declare webcrawlerConfigurationId: ForeignKey<WebCrawlerConfiguration["id"]>;
+  declare webcrawlerConfigurationId: ForeignKey<
+    WebCrawlerConfigurationModel["id"]
+  >;
 }
 
 WebCrawlerPage.init(
@@ -216,4 +274,4 @@ WebCrawlerPage.init(
   }
 );
 ConnectorModel.hasMany(WebCrawlerPage);
-WebCrawlerConfiguration.hasMany(WebCrawlerPage);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerPage);

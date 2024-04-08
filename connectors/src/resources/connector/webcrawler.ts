@@ -1,28 +1,25 @@
 import type { Transaction } from "sequelize";
 
-import {
-  WebCrawlerConfiguration,
-  WebCrawlerFolder,
-  WebCrawlerPage,
-} from "@connectors/lib/models/webcrawler";
+import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
 export class WebCrawlerStrategy implements ConnectorProviderStrategy {
   async makeNew(
     connector: ConnectorResource,
-    blob: WithCreationAttributes<WebCrawlerConfiguration>,
+    blob: WithCreationAttributes<WebCrawlerConfigurationModel>,
     transaction: Transaction
   ): Promise<void> {
-    await WebCrawlerConfiguration.create(
+    await WebCrawlerConfigurationResource.makeNew(
       {
         ...blob,
         connectorId: connector.id,
       },
-      { transaction }
+      transaction
     );
   }
 
@@ -30,23 +27,14 @@ export class WebCrawlerStrategy implements ConnectorProviderStrategy {
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await WebCrawlerPage.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await WebCrawlerFolder.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await WebCrawlerConfiguration.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
+    const resource = await WebCrawlerConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (!resource) {
+      throw new Error(
+        `No WebCrawlerConfiguration found for connector ${connector.id}`
+      );
+    }
+    await resource.delete(transaction);
   }
 }
