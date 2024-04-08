@@ -142,15 +142,18 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
 };
 
 /**
+ * TODO DAPH RENAME THIS FUNCTION -> WORKS FOR ANY TYPE OF PLAN UNLESS PRO PLAN THAT NEEDS A CHECKOUT SESSION
  * Internal function to subscribe to a new Plan.
  * The new plan must be a free plan because the new subscription is created without Stripe data.
  */
 export const internalSubscribeWorkspaceToFreePlan = async ({
   workspaceId,
   planCode,
+  stripeSubscriptionId,
 }: {
   workspaceId: string;
   planCode: string;
+  stripeSubscriptionId?: string;
 }): Promise<SubscriptionType> => {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceId },
@@ -219,7 +222,7 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
         planId: newPlan.id,
         status: "active",
         startDate: now,
-        stripeCustomerId: activeSubscription?.stripeCustomerId || null,
+        stripeSubscriptionId: stripeSubscriptionId ?? null,
       },
       { transaction: t }
     );
@@ -242,8 +245,44 @@ export const pokeUpgradeWorkspaceToEnterprise = async (
   auth: Authenticator,
   newPlanData: EnterpriseSubscriptionFormType
 ) => {
-  console.log(auth, newPlanData);
-  throw new Error("Not implemented");
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find workspace");
+  }
+
+  if (!auth.isDustSuperUser()) {
+    throw new Error("Cannot upgrade workspace to plan: not allowed.");
+  }
+
+  const newPlan = await Plan.create({
+    code: newPlanData.code,
+    name: newPlanData.name,
+    stripeProductId: null,
+    billingType: "free", // Setting free per default but should be killed
+    trialPeriodDays: 0,
+    isSlackbotAllowed: newPlanData.isSlackbotAllowed,
+    isManagedSlackAllowed: newPlanData.isSlackAllowed,
+    isManagedNotionAllowed: newPlanData.isNotionAllowed,
+    isManagedGoogleDriveAllowed: newPlanData.isGoogleDriveAllowed,
+    isManagedGithubAllowed: newPlanData.isGithubAllowed,
+    isManagedIntercomAllowed: newPlanData.isIntercomAllowed,
+    isManagedConfluenceAllowed: newPlanData.isConfluenceAllowed,
+    isManagedWebCrawlerAllowed: newPlanData.isWebCrawlerAllowed,
+    maxMessages: newPlanData.maxMessages,
+    maxMessagesTimeframe: newPlanData.maxMessagesTimeframe,
+    maxDataSourcesCount: newPlanData.dataSourcesCount,
+    maxDataSourcesDocumentsCount: newPlanData.dataSourcesDocumentsCount,
+    maxDataSourcesDocumentsSizeMb: newPlanData.dataSourcesDocumentsSizeMb,
+    maxUsersInWorkspace: newPlanData.maxUsers,
+    canUseProduct: true,
+  });
+
+  // End the current subscription if any
+  await internalSubscribeWorkspaceToFreePlan({
+    workspaceId: owner.sId,
+    planCode: newPlan.code,
+    stripeSubscriptionId: newPlanData.stripeSubscriptionId,
+  });
 };
 
 /**

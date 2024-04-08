@@ -5,6 +5,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
+import {
+  assertStripeSubscriptionValid,
+  getStripeSubscription,
+} from "@app/lib/plans/stripe";
 import { pokeUpgradeWorkspaceToEnterprise } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -19,7 +23,10 @@ async function handler(
   >
 ): Promise<void> {
   const session = await getSession(req, res);
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const auth = await Authenticator.fromSuperUserSession(
+    session,
+    req.query.wId as string
+  );
 
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
@@ -27,6 +34,17 @@ async function handler(
       api_error: {
         type: "user_not_found",
         message: "Could not find the user.",
+      },
+    });
+  }
+
+  const owner = auth.workspace();
+  if (!owner) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Could not find the workspace.",
       },
     });
   }
@@ -46,16 +64,27 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      const stripeSubscriptionId = body.stripeSubscriptionId;
-
-      // We validate that the stripe subscription is correctly configured
-      const isValidStripeSubscriptionId = stripeSubscriptionId === "soupinou"; // Todo replace with actual stripe subscription id business logic
-      if (!isValidStripeSubscriptionId) {
+      // We validate that the stripe subscription exists and is correctly configured
+      const stripeSubscription = await getStripeSubscription(
+        body.stripeSubscriptionId
+      );
+      if (!stripeSubscription) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The stripe subscription id is invalid.",
+            message: "The Stripe subscription does not exist.",
+          },
+        });
+      }
+      const assertValidSubscription =
+        assertStripeSubscriptionValid(stripeSubscription);
+      if (assertValidSubscription.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: assertValidSubscription.error.invalidity_message,
           },
         });
       }
