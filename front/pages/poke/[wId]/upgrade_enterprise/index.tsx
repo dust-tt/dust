@@ -126,8 +126,10 @@ export default function EnterpriseSubscriptionForm({
     void submit();
   };
 
-  // If your form does not submit, uncomment the following line to see the form errors
-  //console.log("Form errors", form.formState.errors);
+  if (Object.keys(form.formState.errors).length > 0) {
+    // Useful to debug in case you have an error on a field that is not rendered
+    console.log("Form errors", form.formState.errors);
+  }
 
   return (
     <div className="min-h-screen bg-structure-50 pb-48">
