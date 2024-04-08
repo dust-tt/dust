@@ -8,6 +8,10 @@ import { isDevelopment } from "@app/lib/development";
 import { Plan, Subscription } from "@app/lib/models";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import {
+  isSupportedReportUsage,
+  SUPPORTED_REPORT_USAGE,
+} from "@app/lib/plans/usage/types";
 
 const { STRIPE_SECRET_KEY = "", URL = "" } = process.env;
 
@@ -249,19 +253,13 @@ export async function cancelSubscriptionImmediately({
   return true;
 }
 
-const REPORT_USAGE_VALUES = ["MAU_1", "MAU_5", "MAU_10", "PER_SEAT"];
-
 /**
  * Checks that a subscription created in Stripe is usable by Dust, returns an
  * error otherwise.
  */
-export function assertStripeSubscriptionValid(
+export function assertStripeSubscriptionIsValid(
   stripeSubscription: Stripe.Subscription
 ): Result<true, { invalidity_message: string }> {
-  if (stripeSubscription.items.data.length === 0) {
-    return new Err({ invalidity_message: "Subscription has no items." });
-  }
-
   // very unlikely, so handling is overkill at time of writing
   if (stripeSubscription.items.has_more) {
     return new Err({
@@ -269,44 +267,20 @@ export function assertStripeSubscriptionValid(
     });
   }
 
+  const itemsToCheck = stripeSubscription.items.data.filter(
+    (item) => !item.deleted
+  );
+
+  if (itemsToCheck.length === 0) {
+    return new Err({ invalidity_message: "Subscription has no items." });
+  }
+
   // All the business logic checks below are validating that the stripe
   // subscription doesn't have a configuration that we don't support
-  for (const item of stripeSubscription.items.data) {
-    if (item.deleted) {
-      continue;
-    }
-
-    if (item.price.recurring) {
-      if (item.price.recurring.usage_type !== "metered") {
-        return new Err({
-          invalidity_message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
-        });
-      }
-
-      if (!REPORT_USAGE_VALUES.includes(item.price.metadata?.REPORT_USAGE)) {
-        return new Err({
-          invalidity_message:
-            "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
-            JSON.stringify(REPORT_USAGE_VALUES),
-        });
-      }
-
-      if (item.price.recurring.aggregate_usage !== "last_during_period") {
-        return new Err({
-          invalidity_message:
-            "Subscription recurring price has invalid aggregate_usage, should be last duing period",
-        });
-      }
-
-      if (
-        item.price.recurring.interval !== "month" ||
-        item.price.recurring.interval_count !== 1
-      ) {
-        return new Err({
-          invalidity_message:
-            "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
-        });
-      }
+  for (const item of itemsToCheck) {
+    const itemValidation = assertStripeSubscriptionItemIsValid({ item });
+    if (itemValidation.isErr()) {
+      return itemValidation;
     }
   }
 
@@ -318,3 +292,58 @@ export function assertStripeSubscriptionValid(
   }
   return new Ok(true);
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
+
+export function assertStripeSubscriptionItemIsValid({
+  item,
+  recurringRequired,
+}: {
+  item: Stripe.SubscriptionItem;
+  recurringRequired?: boolean;
+}): Result<true, { invalidity_message: string }> {
+  if (!item.price) {
+    return new Err({
+      invalidity_message: "Subscription item has no price.",
+    });
+  }
+
+  if (recurringRequired && !item.price.recurring) {
+    return new Err({
+      invalidity_message: "Price must be recurring.",
+    });
+  }
+
+  if (item.price.recurring) {
+    if (item.price.recurring.usage_type !== "metered") {
+      return new Err({
+        invalidity_message: `Subscription recurring price has invalid usage_type '${item.price.recurring.usage_type}'. Only 'metered' usage_type is allowed.`,
+      });
+    }
+
+    if (!isSupportedReportUsage(item.price.metadata?.REPORT_USAGE)) {
+      return new Err({
+        invalidity_message:
+          "Subscription recurring price should have a REPORT_USAGE metadata with values in " +
+          JSON.stringify(SUPPORTED_REPORT_USAGE),
+      });
+    }
+
+    if (item.price.recurring.aggregate_usage !== "last_during_period") {
+      return new Err({
+        invalidity_message:
+          "Subscription recurring price has invalid aggregate_usage, should be last duing period",
+      });
+    }
+
+    if (
+      item.price.recurring.interval !== "month" ||
+      item.price.recurring.interval_count !== 1
+    ) {
+      return new Err({
+        invalidity_message:
+          "Subscription recurring price has invalid interval, only 1-month intervals are allowed.",
+      });
+    }
+  }
+
+  return new Ok(true);
+}

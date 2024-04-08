@@ -6,10 +6,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import {
-  assertStripeSubscriptionValid,
+  assertStripeSubscriptionIsValid,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
-import { pokeUpgradeWorkspaceToEnterprise } from "@app/lib/plans/subscription";
+import {
+  getSubscriptionForStripeId,
+  pokeUpgradeWorkspaceToEnterprise,
+} from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
@@ -77,8 +80,23 @@ async function handler(
           },
         });
       }
+
+      const subscription = await getSubscriptionForStripeId(
+        stripeSubscription.id
+      );
+
+      if (subscription) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The subscription is already attached to a workspace.",
+          },
+        });
+      }
+
       const assertValidSubscription =
-        assertStripeSubscriptionValid(stripeSubscription);
+        assertStripeSubscriptionIsValid(stripeSubscription);
       if (assertValidSubscription.isErr()) {
         return apiError(req, res, {
           status_code: 400,

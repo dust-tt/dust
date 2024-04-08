@@ -3,7 +3,10 @@ import { Err, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 import type Stripe from "stripe";
 
-import { updateStripeActiveUsersForSubscriptionItem } from "@app/lib/plans/stripe";
+import {
+  assertStripeSubscriptionItemIsValid,
+  updateStripeActiveUsersForSubscriptionItem,
+} from "@app/lib/plans/stripe";
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
@@ -56,20 +59,15 @@ export async function reportMonthlyActiveUsers(
   const [, rawMessagesPerMonthForMau] = usage.split("_");
   const messagesPerMonthForMau = parseInt(rawMessagesPerMonthForMau, 10);
 
-  const { recurring } = stripeSubscriptionItem.price;
-  if (!recurring) {
-    return new Err(
-      new InvalidRecurringPriceError(
-        "MAU Usage base price only supports prices with monthly recurring."
-      )
-    );
-  }
+  const subscriptionItemValid = assertStripeSubscriptionItemIsValid({
+    item: stripeSubscriptionItem,
+    recurringRequired: true,
+  });
 
-  const { interval, interval_count: intervalCount } = recurring;
-  if (interval !== "month" || intervalCount !== 1) {
+  if (subscriptionItemValid.isErr()) {
     return new Err(
       new InvalidRecurringPriceError(
-        `Expected 1 month recurring, found ${intervalCount} ${interval}(s) instead.`
+        subscriptionItemValid.error.invalidity_message
       )
     );
   }
