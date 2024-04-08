@@ -1,11 +1,12 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
 import { getBackendClient } from "@app/lib/amplitude/node";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -21,7 +22,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { launchScheduleWorkspaceScrubWorkflow } from "@app/scrub_workspace/temporal/client";
+import {
+  launchScheduleWorkspaceScrubWorkflow,
+  terminateScheduleWorkspaceScrubWorkflow,
+} from "@app/scrub_workspace/temporal/client";
 
 const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
 
@@ -243,6 +247,9 @@ async function handler(
                 workspaceSeats: workspaceSeats,
               });
             }
+            await unpauseAllConnectorsAndCancelScrub(
+              await Authenticator.internalBuilderForWorkspace(workspace.sId)
+            );
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(
@@ -447,7 +454,10 @@ async function handler(
             const auth = await Authenticator.internalBuilderForWorkspace(
               subscription.workspace.sId
             );
-
+            if (!endDate) {
+              // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
+              await unpauseAllConnectorsAndCancelScrub(auth);
+            }
             // then email admins
             const adminEmails = (
               await getMembers(auth, { roles: ["admin"] })
@@ -602,6 +612,34 @@ function _returnStripeApiError(
       message: `[Stripe Webhook][${event}] ${message}`,
     },
   });
+}
+
+async function unpauseAllConnectorsAndCancelScrub(auth: Authenticator) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Missing workspace on auth.");
+  }
+  const scrubCancelRes = await terminateScheduleWorkspaceScrubWorkflow({
+    workspaceId: owner.sId,
+  });
+  if (scrubCancelRes.isErr()) {
+    logger.error(
+      { panic: true, error: scrubCancelRes.error },
+      "Error terminating scrub workspace workflow."
+    );
+  }
+  const dataSources = await getDataSources(auth);
+  const connectorIds = removeNulls(dataSources.map((ds) => ds.connectorId));
+  const connectorsApi = new ConnectorsAPI(logger);
+  for (const connectorId of connectorIds) {
+    const r = await connectorsApi.unpauseConnector(connectorId);
+    if (r.isErr()) {
+      logger.error(
+        { panic: true, error: r.error },
+        "Error unpausing connector after subscription reactivation."
+      );
+    }
+  }
 }
 
 export default withLogging(handler);
