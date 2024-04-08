@@ -378,8 +378,7 @@ function UpgradeDowngradeModal({
         />
         <div>
           {plans
-            // Daph Uncomment this line when Enteprise billing Form is ready
-            .filter((p) => p.code !== PRO_PLAN_SEAT_29_CODE) // to be replaced with .filter((p) => p.code.startsWith("FREE_"))
+            .filter((p) => p.code.startsWith("FREE_")) // Hack to exclude The Pro and Enteprise plans
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
