@@ -1,4 +1,5 @@
 import type { CrawlingFrequency, ModelId, Result } from "@dust-tt/types";
+import type { WebCrawlerConfigurationType } from "@dust-tt/types";
 import { CrawlingFrequencies, Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -17,6 +18,7 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -49,7 +51,9 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   }
 
   static async makeNew(
-    blob: CreationAttributes<WebCrawlerConfigurationModel>,
+    blob: CreationAttributes<WebCrawlerConfigurationModel> & {
+      headers: WebCrawlerConfigurationType["headers"];
+    },
     transaction: Transaction
   ) {
     const config = await WebCrawlerConfigurationModel.create(
@@ -57,6 +61,19 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
         ...blob,
       },
       { transaction }
+    );
+
+    await WebCrawlerConfigurationHeader.bulkCreate(
+      Object.entries(blob.headers).map(([key, value]) => {
+        return {
+          key: key,
+          value: value,
+          webcrawlerConfigurationId: config.id,
+        };
+      }),
+      {
+        transaction: transaction,
+      }
     );
 
     return new this(this.model, config.get());
@@ -109,19 +126,38 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     );
   }
 
-  async addCustomHeader(
-    key: string,
-    value: string
+  async setCustomHeaders(
+    headers: Record<string, string>
   ): Promise<Result<undefined, Error>> {
     //regexp to validate http header name
     const headerNameRegexp = /^[\w-]+$/;
-    if (!headerNameRegexp.test(key)) {
-      return new Err(new Error(`Invalid header name ${key}`));
+    for (const [key] of Object.entries(headers)) {
+      if (!headerNameRegexp.test(key)) {
+        return new Err(new Error(`Invalid header name ${key}`));
+      }
     }
-    await WebCrawlerConfigurationHeader.upsert({
-      webcrawlerConfigurationId: this.id,
-      key,
-      value,
+    await sequelizeConnection.transaction(async (transaction) => {
+      const headersList = Object.entries(headers);
+      // delete all headers before inserting new ones
+      await WebCrawlerConfigurationHeader.destroy({
+        where: {
+          webcrawlerConfigurationId: this.id,
+        },
+        transaction,
+      });
+      // now insert new headers
+      await WebCrawlerConfigurationHeader.bulkCreate(
+        headersList.map(([key, value]) => {
+          return {
+            key: key,
+            value: value,
+            webcrawlerConfigurationId: this.id,
+          };
+        }),
+        {
+          transaction: transaction,
+        }
+      );
     });
 
     return new Ok(undefined);

@@ -1,8 +1,6 @@
-import type {
-  ConnectorType,
-  WebCrawlerConfigurationType,
-} from "@dust-tt/types";
+import type { ConnectorType } from "@dust-tt/types";
 
+import { renderWebcrawlerConfiguration } from "@connectors/connectors/webcrawler/renderer";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
@@ -40,17 +38,4 @@ async function renderConfiguration(connector: ConnectorResource) {
     default:
       return undefined;
   }
-}
-
-async function renderWebcrawlerConfiguration(
-  webCrawlerConfiguration: WebCrawlerConfigurationResource
-): Promise<WebCrawlerConfigurationType> {
-  return {
-    url: webCrawlerConfiguration.url,
-    maxPageToCrawl: webCrawlerConfiguration.maxPageToCrawl,
-    crawlMode: webCrawlerConfiguration.crawlMode,
-    depth: webCrawlerConfiguration.depth,
-    crawlFrequency: webCrawlerConfiguration.crawlFrequency,
-    headers: await webCrawlerConfiguration.getCustomHeaders(),
-  };
 }
