@@ -10,6 +10,7 @@ import {
   isDepthOption,
   Ok,
   WEBCRAWLER_MAX_PAGES,
+  WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
 
 import {
@@ -420,7 +421,23 @@ export async function setWebcrawlerConfiguration(
     depth: depth,
     crawlFrequency: configuration.crawlFrequency,
   });
-  await webcrawlerConfig.setCustomHeaders(configuration.headers);
+  const existingHeaders = await webcrawlerConfig.getCustomHeaders();
+  const headersForUpdate: Record<string, string> = {};
+  for (const [key, value] of Object.entries(configuration.headers)) {
+    if (value !== WebCrawlerHeaderRedactedValue) {
+      // If the value is not redacted, we use the new value.
+      headersForUpdate[key] = value;
+    } else {
+      // If the value is redacted, we use the existing value from
+      // the database.
+      const existingValue = existingHeaders[key];
+      if (existingValue) {
+        headersForUpdate[key] = existingValue;
+      }
+    }
+  }
+
+  await webcrawlerConfig.setCustomHeaders(headersForUpdate);
 
   const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
   if (stopRes.isErr()) {

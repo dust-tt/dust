@@ -1,11 +1,6 @@
 import type { CrawlingFrequency, ModelId, Result } from "@dust-tt/types";
 import type { WebCrawlerConfigurationType } from "@dust-tt/types";
-import {
-  CrawlingFrequencies,
-  Err,
-  Ok,
-  WebCrawlerHeaderRedactedValue,
-} from "@dust-tt/types";
+import { CrawlingFrequencies, Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -143,29 +138,22 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     }
     await sequelizeConnection.transaction(async (transaction) => {
       const headersList = Object.entries(headers);
-      // delete all headers except the `<REDACTED>` ones, because these are untouched values.
+      // delete all headers before inserting new ones
       await WebCrawlerConfigurationHeader.destroy({
         where: {
           webcrawlerConfigurationId: this.id,
-          key: {
-            [Op.not]: headersList
-              .filter(([, value]) => value === WebCrawlerHeaderRedactedValue)
-              .map(([key]) => key),
-          },
         },
         transaction,
       });
-      // now insert all non <REDACTED> headers
+      // now insert new headers
       await WebCrawlerConfigurationHeader.bulkCreate(
-        headersList
-          .filter(([, value]) => value !== WebCrawlerHeaderRedactedValue)
-          .map(([key, value]) => {
-            return {
-              key: key,
-              value: value,
-              webcrawlerConfigurationId: this.id,
-            };
-          }),
+        headersList.map(([key, value]) => {
+          return {
+            key: key,
+            value: value,
+            webcrawlerConfigurationId: this.id,
+          };
+        }),
         {
           transaction: transaction,
         }
