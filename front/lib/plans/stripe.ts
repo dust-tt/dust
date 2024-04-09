@@ -148,7 +148,7 @@ export const createCustomerPortalSession = async ({
 }): Promise<string | null> => {
   if (!subscription.stripeCustomerId) {
     throw new Error(
-      `No customer ID found for the workspace with id: ${owner.id}`
+      `No customer ID found for the workspace: ${owner.sId}`
     );
   }
 
