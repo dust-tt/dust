@@ -34,12 +34,13 @@ export async function retrieveNewTranscriptsActivity(
   if (providerId == "google_drive") {
     const auth = await getGoogleAuth(userId);
 
-    // Only pull transcripts from the last month
+    // Only pull transcripts from last 7 days
+    // We could do from the last 15 minutes
+    // but we want to avoid missing any if the workflow is down
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 31);
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
     cutoffDate.setHours(0, 0, 0, 0);
 
-    // GET LAST TRANSCRIPTS
     const files = await googleapis.google
       .drive({ version: "v3", auth })
       .files.list({

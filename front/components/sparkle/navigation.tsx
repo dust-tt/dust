@@ -6,12 +6,12 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
+  PaintIcon,
   PaperAirplaneIcon,
   PlanetIcon,
   PuzzleIcon,
   RobotSharedIcon,
-  ShapesIcon,
-} from "@dust-tt/sparkle";
+  ShapesIcon} from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -38,6 +38,7 @@ export type SubNavigationAssistantsId =
   | "personal_assistants"
   | "data_sources_url"
   | "developers"
+  | "labs"
   | "extract";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
@@ -201,6 +202,15 @@ export const subNavigationBuild = ({
         current: current === "developers",
         subMenuLabel: current === "developers" ? subMenuLabel : undefined,
         subMenu: current === "developers" ? subMenu : undefined,
+      },
+      {
+        id: "labs",
+        label: "Labs",
+        icon: PaintIcon,
+        href: `/w/${owner.sId}/builder/labs`,
+        current: current === "labs",
+        subMenuLabel: current === "labs" ? subMenuLabel : undefined,
+        subMenu: current === "labs" ? subMenu : undefined,
       },
     ],
   });

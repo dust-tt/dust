@@ -5,7 +5,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -46,7 +46,7 @@ export default function SolutionsIndex({
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="admin"
-        subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+        subNavigation={subNavigationBuild({ owner, current: "labs" })}
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
@@ -62,7 +62,7 @@ export default function SolutionsIndex({
               label: "Get started",
               size: "sm",
               onClick: async () => {
-                await router.push(`/w/${owner.sId}/labs/transcripts`);
+                await router.push(`/w/${owner.sId}/builder/labs/transcripts`);
               },
             }}
           />

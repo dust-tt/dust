@@ -1,20 +1,18 @@
 import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
-  Input,
   Page,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
-import { debounce } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -229,7 +227,7 @@ export default function SolutionsTranscriptsIndex({
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="admin"
-        subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+        subNavigation={subNavigationBuild({ owner, current: "labs" })}
       >
         <Page>
           <Page.Layout direction="vertical">
