@@ -46,6 +46,7 @@ function prepareSubscriptionsForDisplay(
       id: s.sId ?? "unknown",
       name: s.plan.code,
       status: s.status,
+      stripeSubscriptionId: s.stripeSubscriptionId,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
             s.startDate

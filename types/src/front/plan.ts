@@ -52,10 +52,12 @@ export type PlanType = {
 };
 
 export type SubscriptionType = {
-  // null for FREE_NO_PLAN which is the default plan when there is no Subscription in DB.
+  // `null` for FREE_NO_PLAN which is the default plan when there is no Subscription in DB, which
+  // means the workspace is not accessible.
   sId: string | null;
   status: SubscriptionStatusType;
   trialing: boolean;
+  // `null` means that this is a free plan. Otherwise, it's a paid plan.
   stripeSubscriptionId: string | null;
   stripeCustomerId: string | null;
   startDate: number | null;
