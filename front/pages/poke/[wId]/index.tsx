@@ -18,10 +18,7 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import {
-  ActiveSubscriptionTable,
-  SubscriptionsDataTable,
-} from "@app/components/poke/subscriptions/table";
+import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";

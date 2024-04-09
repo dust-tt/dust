@@ -2,9 +2,9 @@ import { IconButton } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
-type SubscriptionsDisplayType = {
-  sId: string;
-  planCode: string;
+export type SubscriptionsDisplayType = {
+  id: string;
+  name: string;
   status: string;
   startDate: string | null;
   endDate: string | null;
@@ -13,11 +13,11 @@ type SubscriptionsDisplayType = {
 export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayType>[] {
   return [
     {
-      accessorKey: "sId",
+      accessorKey: "id",
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
-            <p>SID</p>
+            <p>Id</p>
             <IconButton
               variant="tertiary"
               icon={ArrowsUpDownIcon}
@@ -30,7 +30,7 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
       },
     },
     {
-      accessorKey: "planCode",
+      accessorKey: "name",
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">

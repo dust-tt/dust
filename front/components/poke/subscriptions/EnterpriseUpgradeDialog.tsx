@@ -178,6 +178,7 @@ export default function EnterpriseUpgradeDialog({
           );
         }
 
+        form.reset();
         setOpen(false);
       } catch (e) {
         setIsSubmitting(false);

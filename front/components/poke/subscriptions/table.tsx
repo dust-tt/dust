@@ -19,13 +19,13 @@ import { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { PokeDialog } from "@app/components/poke/shadcn/ui/dialog";
 import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -41,11 +41,11 @@ interface SubscriptionsDataTableProps {
 function prepareSubscriptionsForDisplay(
   owner: WorkspaceType,
   subscriptions: SubscriptionType[]
-) {
+): SubscriptionsDisplayType[] {
   return subscriptions.map((s) => {
     return {
-      sId: s.sId ?? "unknown",
-      planCode: s.plan.code,
+      id: s.sId ?? "unknown",
+      name: s.plan.code,
       status: s.status,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
