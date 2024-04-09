@@ -146,12 +146,32 @@ export const createCustomerPortalSession = async ({
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }): Promise<string | null> => {
-  if (!subscription.stripeCustomerId) {
-    throw new Error(`No customer ID found for the workspace: ${owner.sId}`);
+  if (!subscription.stripeSubscriptionId) {
+    throw new Error(
+      `No stripeSubscriptionId ID found for the workspace: ${owner.sId}`
+    );
+  }
+
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+
+  if (!stripeSubscription) {
+    throw new Error(
+      `No stripeSubscription found for the workspace: ${owner.sId}`
+    );
+  }
+
+  const stripeCustomerId = stripeSubscription.customer;
+
+  if (!stripeCustomerId || typeof stripeCustomerId !== "string") {
+    throw new Error(
+      `No stripeCustomerId found for the workspace: ${owner.sId}`
+    );
   }
 
   const portalSession = await stripe.billingPortal.sessions.create({
-    customer: subscription.stripeCustomerId,
+    customer: stripeCustomerId,
     return_url: `${URL}/w/${owner.sId}/subscription`,
   });
 
