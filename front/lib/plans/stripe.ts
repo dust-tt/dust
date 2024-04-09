@@ -332,11 +332,22 @@ export function assertStripeSubscriptionItemIsValid({
     }
 
     if (item.price.recurring.usage_type === "licensed") {
-      if (reportUsage !== "PER_SEAT") {
-        return new Err({
-          invalidity_message:
-            "Subscription recurring price has usage_type 'licensed' but has a REPORT_USAGE different from PER_SEAT.",
-        });
+      switch (reportUsage) {
+        case "PER_SEAT":
+          break;
+        case "FIXED":
+          if (item.quantity !== 1) {
+            return new Err({
+              invalidity_message:
+                "Subscription recurring price has REPORT_USAGE set to 'FIXED' but has a quantity different from 1.",
+            });
+          }
+          break;
+        default:
+          return new Err({
+            invalidity_message:
+              "Subscription recurring price has usage_type 'licensed' but has a REPORT_USAGE different from PER_SEAT or FIXED.",
+          });
       }
     }
 

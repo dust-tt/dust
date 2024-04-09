@@ -8,6 +8,7 @@ export const SUPPORTED_REPORT_USAGE = [
   "MAU_5",
   "MAU_10",
   "PER_SEAT",
+  "FIXED",
 ] as const;
 export type SupportedReportUsage = (typeof SUPPORTED_REPORT_USAGE)[number];
 
