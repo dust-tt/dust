@@ -1,4 +1,4 @@
-import { Context } from "@temporalio/activity";
+import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import { getTemporalWorkerConnection } from "@app/lib/temporal";

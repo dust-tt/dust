@@ -1,6 +1,6 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 
-import {
+import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnDeleteParams,
   DocumentsPostProcessHookOnUpsertParams,

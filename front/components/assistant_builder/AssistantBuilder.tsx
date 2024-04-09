@@ -113,13 +113,17 @@ const useNavigationLock = (
 
   useEffect(() => {
     const handleWindowClose = (e: BeforeUnloadEvent) => {
-      if (!isEnabled) return;
+      if (!isEnabled) {
+        return;
+      }
       e.preventDefault();
       return (e.returnValue = warningText);
     };
 
     const handleBrowseAway = (url: string) => {
-      if (!isEnabled) return;
+      if (!isEnabled) {
+        return;
+      }
       if (!window.confirm(warningText)) {
         router.events.emit(
           "routeChangeError",

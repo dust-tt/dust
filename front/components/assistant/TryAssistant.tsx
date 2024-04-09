@@ -126,7 +126,9 @@ export function TryAssistant({
     setConversation(null);
   }, [assistant?.sId, setConversation]);
 
-  if (!user || !assistant) return null;
+  if (!user || !assistant) {
+    return null;
+  }
 
   return (
     <div
@@ -291,7 +293,9 @@ function useTryAssistantCore({
       file: File;
     }
   ) => {
-    if (!user) return;
+    if (!user) {
+      return;
+    }
     const messageData = { input, mentions, contentFragment };
     if (!conversation) {
       const result = await createConversationWithMessage({
@@ -317,7 +321,9 @@ function useTryAssistantCore({
         conversationId: conversation.sId as string,
         messageData,
       });
-      if (result.isOk()) return;
+      if (result.isOk()) {
+        return;
+      }
       sendNotification({
         title: result.error.title,
         description: result.error.message,

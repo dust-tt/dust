@@ -73,7 +73,9 @@ ContextItem.List = function ({
 }: ContextItemListProps) {
   // Ensure all children are of type ContextItem or ContextItem.SectionHeader
   React.Children.forEach(children, (child) => {
-    if (child === null || child === undefined) return;
+    if (child === null || child === undefined) {
+      return;
+    }
     if (
       !React.isValidElement(child) ||
       (child.type !== ContextItem &&

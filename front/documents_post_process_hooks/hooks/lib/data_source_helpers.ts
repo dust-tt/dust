@@ -1,5 +1,5 @@
+import type { Diff } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { Diff } from "@dust-tt/types";
 
 import { diffStrings } from "@app/lib/diff";
 import { DataSource, Workspace } from "@app/lib/models";

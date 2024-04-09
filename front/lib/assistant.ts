@@ -86,16 +86,28 @@ export function compareAgentsForSort(
   b: LightAgentConfigurationType
 ) {
   // Check for 'dust'
-  if (a.sId === GLOBAL_AGENTS_SID.DUST) return -1;
-  if (b.sId === GLOBAL_AGENTS_SID.DUST) return 1;
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
 
   // Check for 'gpt4'
-  if (a.sId === GLOBAL_AGENTS_SID.GPT4) return -1;
-  if (b.sId === GLOBAL_AGENTS_SID.GPT4) return 1;
+  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return 1;
+  }
 
   // Check for agents with non-global 'scope'
-  if (a.scope !== "global" && b.scope === "global") return -1;
-  if (b.scope !== "global" && a.scope === "global") return 1;
+  if (a.scope !== "global" && b.scope === "global") {
+    return -1;
+  }
+  if (b.scope !== "global" && a.scope === "global") {
+    return 1;
+  }
 
   // Check for customOrder (slack, notion, googledrive, github, claude)
   const aIndex = CUSTOM_ORDER.indexOf(a.sId);
@@ -105,8 +117,12 @@ export function compareAgentsForSort(
     return aIndex - bIndex; // Both are in customOrder, sort them accordingly
   }
 
-  if (aIndex !== -1) return -1; // Only a is in customOrder, it comes first
-  if (bIndex !== -1) return 1; // Only b is in customOrder, it comes first
+  if (aIndex !== -1) {
+    return -1;
+  } // Only a is in customOrder, it comes first
+  if (bIndex !== -1) {
+    return 1;
+  } // Only b is in customOrder, it comes first
 
   return 0; // Default: keep the original order
 }

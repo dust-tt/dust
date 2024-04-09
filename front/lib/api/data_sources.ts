@@ -262,8 +262,9 @@ export async function deleteDataSource(
     wId: owner.sId,
     dustAPIProjectId,
   });
-  if (dataSource.connectorProvider)
+  if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
+  }
 
   return new Ok({ success: true });
 }
@@ -280,7 +281,9 @@ async function warnPostDeletion(
         (u) => u.email
       );
       // send email to admins
-      for (const email of adminEmails) await sendGithubDeletionEmail(email);
+      for (const email of adminEmails) {
+        await sendGithubDeletionEmail(email);
+      }
       break;
     default:
       break;

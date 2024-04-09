@@ -3,7 +3,7 @@ import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 import showdown from "showdown";
 
-import {
+import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
 } from "@app/documents_post_process_hooks/hooks";

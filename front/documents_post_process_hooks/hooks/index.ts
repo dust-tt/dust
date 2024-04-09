@@ -109,7 +109,9 @@ export async function getDocumentsPostUpsertHooksToRun(
   const paramsWithVerb = { ...params, verb: "upsert" as const };
 
   for (const hook of DOCUMENTS_POST_PROCESS_HOOKS) {
-    if (!hook.onUpsert) continue;
+    if (!hook.onUpsert) {
+      continue;
+    }
 
     if (await hook.filter(paramsWithVerb)) {
       const debounceMs = hook.getDebounceMs
@@ -137,7 +139,9 @@ export async function getDocumentsPostDeleteHooksToRun(
   const paramsWithVerb = { ...params, verb: "delete" as const };
 
   for (const hook of DOCUMENTS_POST_PROCESS_HOOKS) {
-    if (!hook.onDelete) continue;
+    if (!hook.onDelete) {
+      continue;
+    }
 
     if (await hook.filter(paramsWithVerb)) {
       hooksToRun.push({ type: hook.type });

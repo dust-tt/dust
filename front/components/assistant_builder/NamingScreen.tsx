@@ -56,7 +56,9 @@ async function assistantHandleIsAvailable({
     clearTimeout(checkUsernameTimeout.current);
   }
   // No check needed if the assistant doesn't change name
-  if (handle === initialHandle) return Promise.resolve(true);
+  if (handle === initialHandle) {
+    return Promise.resolve(true);
+  }
   return new Promise((resolve, reject) => {
     checkUsernameTimeout.current = setTimeout(async () => {
       checkUsernameTimeout.current = null;

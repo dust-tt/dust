@@ -41,12 +41,14 @@ export async function getAgentUserListStatus({
 }): Promise<Result<AgentUserListStatus, Error>> {
   const agentConfiguration = await getAgentConfiguration(auth, agentId);
 
-  if (!agentConfiguration)
+  if (!agentConfiguration) {
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
+  }
 
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-  if (!userId || !workspaceId || !auth.isUser())
+  if (!userId || !workspaceId || !auth.isUser()) {
     return new Err(new Error("User or workspace not found"));
+  }
 
   if (agentConfiguration.status !== "active") {
     return new Ok("not-in-list");
@@ -86,12 +88,14 @@ export async function setAgentUserListStatus({
   >
 > {
   const agentConfiguration = await getAgentConfiguration(auth, agentId);
-  if (!agentConfiguration)
+  if (!agentConfiguration) {
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
+  }
 
   const [userId, workspaceId] = [auth.user()?.id, auth.workspace()?.id];
-  if (!userId || !workspaceId || !auth.isUser())
+  if (!userId || !workspaceId || !auth.isUser()) {
     return new Err(new Error("User or workspace not found"));
+  }
 
   if (agentConfiguration.status !== "active") {
     return new Err(new Error("Agent is not active"));

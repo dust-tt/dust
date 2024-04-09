@@ -16,6 +16,7 @@ module.exports = {
     "tailwind.config.js",
   ],
   rules: {
+    curly: ["error", "all"],
     "@typescript-eslint/no-floating-promises": "error",
     "simple-import-sort/imports": [
       "error",

@@ -1,4 +1,4 @@
-import { CoreAPITokenType } from "@dust-tt/types";
+import type { CoreAPITokenType } from "@dust-tt/types";
 
 import {
   findMarkersIndexes,
