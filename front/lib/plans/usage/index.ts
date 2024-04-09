@@ -70,6 +70,10 @@ export async function reportUsageForSubscriptionItems(
         await reportActiveSeats(item, workspace);
         break;
 
+      case "FIXED":
+        // fixed price, nothing to report
+        break;
+
       default:
         assertNever(usageToReport);
     }

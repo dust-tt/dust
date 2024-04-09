@@ -15,7 +15,10 @@ import {
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
 import { Plan, Subscription, Workspace } from "@app/lib/models";
-import { createCustomerPortalSession } from "@app/lib/plans/stripe";
+import {
+  assertStripeSubscriptionIsValid,
+  createCustomerPortalSession,
+} from "@app/lib/plans/stripe";
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -390,6 +393,26 @@ async function handler(
             "[Stripe Webhook] Received charge.dispute.created event. Please make sure the subscription is now marked as 'ended' in our database and canceled on Stripe."
           );
           break;
+
+        case "customer.subscription.created": {
+          const stripeSubscription = event.data.object as Stripe.Subscription;
+          // on the odd chance the change is not compatible with our logic, we panic
+          const validStatus =
+            assertStripeSubscriptionIsValid(stripeSubscription);
+          if (validStatus.isErr()) {
+            logger.error(
+              {
+                panic: true,
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
+                invalidity_message: validStatus.error.invalidity_message,
+              },
+              "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
+            );
+          }
+          break;
+        }
+
         case "customer.subscription.updated":
           // Occurs when the subscription is updated:
           // - when the number of seats changes for a metered billing.
@@ -424,7 +447,6 @@ async function handler(
                 },
               });
             }
-
             await subscription.update({ status: "active", trialing: false });
           } else if (
             // The subscription is canceled (but not yet ended) or reactivated
@@ -486,6 +508,21 @@ async function handler(
                 await sendReactivateSubscriptionEmail(adminEmail);
               }
             }
+          }
+
+          // on the odd chance the change is not compatible with our logic, we panic
+          const validStatus =
+            assertStripeSubscriptionIsValid(stripeSubscription);
+          if (validStatus.isErr()) {
+            logger.error(
+              {
+                panic: true,
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
+                invalidity_message: validStatus.error.invalidity_message,
+              },
+              "[Stripe Webhook] Received customer.subscription.updated event with invalid subscription."
+            );
           }
           break;
 
