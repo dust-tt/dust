@@ -386,12 +386,13 @@ function UpgradeDowngradeModal({
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
         />
         <div>
-          <Button
-            label="Downgrade to NO PLAN"
-            variant="secondaryWarning"
+          <PokeButton
+            variant="destructive"
             onClick={onDowngrade}
             disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
-          />
+          >
+            Downgrade to NO PLAN
+          </PokeButton>
         </div>
         <Separator />
         <Page.SectionHeader
@@ -404,12 +405,13 @@ function UpgradeDowngradeModal({
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
-                  <Button
-                    variant="secondary"
-                    label={`Upgrade to ${p.code}`}
-                    onClick={() => onUpgradeToPlan(p)}
+                  <PokeButton
+                    variant="outline"
                     disabled={subscription.plan.code === p.code}
-                  />
+                    onClick={() => onUpgradeToPlan(p)}
+                  >
+                    Upgrade to {p.code}
+                  </PokeButton>
                 </div>
               );
             })}
@@ -419,10 +421,12 @@ function UpgradeDowngradeModal({
           title="Upgrade Workspace to a new Enterprise Plan"
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
-        <EnterpriseUpgradeDialog
-          disabled={subscription.plan.code.startsWith("ENT_")}
-          owner={owner}
-        />
+        <div>
+          <EnterpriseUpgradeDialog
+            disabled={subscription.plan.code.startsWith("ENT_")}
+            owner={owner}
+          />
+        </div>
       </Page>
     </Modal>
   );
