@@ -17,6 +17,10 @@ export const ElementDialogExample = () => {
       <ElementDialog
         openOnElement={element}
         closeDialogFn={() => setElement(null)}
+        onCancel={(closeDialogFn) => {
+          console.log("canceled!");
+          closeDialogFn();
+        }}
         title="Element Modal title"
         onValidate={(closeDialogFn) => {
           console.log("validated!");

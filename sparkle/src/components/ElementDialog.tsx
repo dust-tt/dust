@@ -8,6 +8,7 @@ type ElementDialogProps<T> = Omit<
 > & {
   openOnElement: T | null;
   onValidate: (closeDialogFn: () => void) => void;
+  onCancel: (closeDialogFn: () => void) => void;
   closeDialogFn: () => void;
 };
 
@@ -15,6 +16,7 @@ export function ElementDialog<T>({
   openOnElement,
   closeDialogFn,
   onValidate,
+  onCancel,
   ...props
 }: ElementDialogProps<T>) {
   const [isClosingTransition, setIsClosingTransition] = useState(false);
@@ -28,7 +30,7 @@ export function ElementDialog<T>({
   return (
     <Dialog
       isOpen={openOnElement !== null && !isClosingTransition}
-      onCancel={transitionOnClose}
+      onCancel={() => onCancel(transitionOnClose)}
       onValidate={() => onValidate(transitionOnClose)}
       {...props}
     />
