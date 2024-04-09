@@ -64,6 +64,23 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
       },
     },
     {
+      accessorKey: "stripeSubscriptionId",
+      cell: ({ row }) => {
+        const sId: string = row.getValue("stripeSubscriptionId");
+
+        return (
+          <a
+            className="font-bold hover:underline"
+            target="_blank"
+            href={`https://dashboard.stripe.com/subscriptions/${sId}`}
+          >
+            {sId}
+          </a>
+        );
+      },
+      header: "stripeSubscriptionId",
+    },
+    {
       accessorKey: "startDate",
       header: ({ column }) => {
         return (
