@@ -209,10 +209,7 @@ export default function SolutionsTranscriptsIndex({
         });
 
         setIsGDriveConnected(true);
-
-        // Start temporal worker
-
-
+        setIsLoading(false);
         return response;
       });
     } catch (error) {
