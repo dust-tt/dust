@@ -7,9 +7,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { trackUserMemberships } from "@app/lib/amplitude/node";
 import { updateUserFullName } from "@app/lib/api/user";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostUserMetadataResponseBody = {
@@ -48,6 +50,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      trackUserMemberships(user).catch((err) => {
+        logger.error(
+          { err: err, userId: user.sId },
+          "Failed to track user memberships"
+        );
+      });
       return res.status(200).json({ user });
 
     case "PATCH":

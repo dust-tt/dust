@@ -5,9 +5,10 @@ import type {
   DataSourceType,
   UserMessageType,
   UserType,
+  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
+import { rateLimiter, removeNulls } from "@dust-tt/types";
 
 import {
   AMPLITUDE_PUBLIC_API_KEY,
@@ -24,9 +25,8 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
+import logger from "@app/logger/logger";
 
 let BACKEND_CLIENT: Ampli | null = null;
 
@@ -51,39 +51,37 @@ export function getBackendClient() {
   return BACKEND_CLIENT;
 }
 
-export async function trackUserMemberships(user: UserType) {
+export async function trackUserMemberships(user: UserTypeWithWorkspaces) {
   const amplitude = getBackendClient();
-  const memberships = user
-    ? await MembershipResource.getActiveMemberships({
-        users: [user],
-      })
-    : [];
   const groups: string[] = [];
-  for (const membership of memberships) {
-    const workspace = await Workspace.findByPk(membership.workspaceId);
-    if (user && workspace) {
-      const groupId = workspace.sId;
+  for (const workspace of user.workspaces) {
+    const groupId = workspace.sId;
 
-      await populateWorkspaceProperties(workspace);
-      groups.push(groupId);
+    await populateWorkspaceProperties(workspace);
+    groups.push(groupId);
+  }
+
+  if (groups.length > 0) {
+    const rateLimiterKey = `amplitude_groups:${user.id}:${groups
+      .sort()
+      .join("_")}`;
+    if (
+      (await rateLimiter({
+        key: rateLimiterKey,
+        maxPerTimeframe: 1,
+        timeframeSeconds: 60 * 60 * 24,
+        logger: logger,
+      })) > 0
+    ) {
+      amplitude.client.setGroup(GROUP_TYPE, groups, {
+        user_id: `user-${user.id}`,
+      });
     }
   }
-  if (groups.length > 0) {
-    amplitude.client.setGroup(GROUP_TYPE, groups, {
-      user_id: `user-${user.id}`,
-    });
-  }
 }
-
-// Workspace does not need to be populated very often,
-// so this is a cheap hack to avoid populating the same workspace multiple times.
-// This will probably change over time when we have a more complicated
-// workspace tracking setup.
-const alreadyPopulatedWorkspaces: Set<string> = new Set();
-export async function populateWorkspaceProperties(workspace: Workspace) {
-  if (alreadyPopulatedWorkspaces.has(workspace.sId)) {
-    return;
-  }
+export async function populateWorkspaceProperties(
+  workspace: UserTypeWithWorkspaces["workspaces"][number]
+) {
   const amplitude = getBackendClient();
 
   const subscription = await subscriptionForWorkspace(workspace.sId);
@@ -92,8 +90,20 @@ export async function populateWorkspaceProperties(workspace: Workspace) {
   groupProperties.set("name", workspace.name);
   groupProperties.set("plan", subscription.plan.code);
   groupProperties.set("memberCount", memberCount);
-  amplitude.client.groupIdentify(GROUP_TYPE, workspace.sId, groupProperties);
-  alreadyPopulatedWorkspaces.add(workspace.sId);
+
+  const rateLimiterKey = `amplitude_workspace:${workspace.sId}:${JSON.stringify(
+    groupProperties
+  )}`;
+  if (
+    (await rateLimiter({
+      key: rateLimiterKey,
+      maxPerTimeframe: 1,
+      timeframeSeconds: 60 * 60 * 24,
+      logger: logger,
+    })) > 0
+  ) {
+    amplitude.client.groupIdentify(GROUP_TYPE, workspace.sId, groupProperties);
+  }
 }
 
 export function trackSignup(user: UserType) {

@@ -7,7 +7,6 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackUserMemberships } from "@app/lib/amplitude/node";
 import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
@@ -27,7 +26,6 @@ import type { MembershipInvitation } from "@app/lib/models";
 import { Workspace } from "@app/lib/models";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -414,7 +412,6 @@ export async function createAndLogMembership({
     user,
     workspace: renderLightWorkspaceType({ workspace }),
   });
-  trackUserMemberships(user).catch(logger.error);
 
   // Update workspace subscription usage when a new user joins.
   await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
