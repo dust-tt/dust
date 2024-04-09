@@ -1,25 +1,18 @@
 import type {
-  LightWorkspaceType,
-  MembershipRoleType,
   RequireAtLeastOne,
   Result,
-  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
-  InferAttributes,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions";
+import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
-import logger from "@app/logger/logger";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -47,7 +47,9 @@ import { ConversationClassification } from "@app/lib/models/conversation_classif
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions";
+// Solutions - Can be removed at all times if a solution is dropped
+import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
+import { SolutionsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/solutions_transcripts_history";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 async function main() {
@@ -106,6 +108,7 @@ async function main() {
 
   // Solutions - Can be removed at all times if a solution is dropped
   await SolutionsTranscriptsConfigurationModel.sync({ alter: true });
+  await SolutionsTranscriptsHistoryModel.sync({ alter: true });
 
   process.exit(0);
 }

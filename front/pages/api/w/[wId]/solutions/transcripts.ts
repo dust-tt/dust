@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
-import type { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions";
+import type { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
 import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
