@@ -607,6 +607,9 @@ Mention.init(
       {
         fields: ["messageId"],
       },
+      {
+        fields: ["agentConfigurationId", "createdAt"],
+      },
     ],
   }
 );
