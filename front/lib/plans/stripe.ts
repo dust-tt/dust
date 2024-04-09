@@ -147,9 +147,7 @@ export const createCustomerPortalSession = async ({
   subscription: SubscriptionType;
 }): Promise<string | null> => {
   if (!subscription.stripeCustomerId) {
-    throw new Error(
-      `No customer ID found for the workspace with id: ${owner.id}`
-    );
+    throw new Error(`No customer ID found for the workspace: ${owner.sId}`);
   }
 
   const portalSession = await stripe.billingPortal.sessions.create({
