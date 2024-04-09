@@ -18,7 +18,9 @@ export class SolutionsTranscriptsHistoryModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare solutionsTranscriptsConfigurationId: ForeignKey<SolutionsTranscriptsConfigurationModel["id"]>;
+  declare solutionsTranscriptsConfigurationId: ForeignKey<
+    SolutionsTranscriptsConfigurationModel["id"]
+  >;
   declare fileId: string;
   declare fileName: string;
 }

@@ -1,12 +1,6 @@
-import type {
-  Result,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type {
-  Attributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
@@ -32,7 +26,7 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   static async makeNew({
     solutionsTranscriptsConfigurationId,
     fileId,
-    fileName
+    fileName,
   }: {
     solutionsTranscriptsConfigurationId: SolutionsTranscriptsConfigurationModel["id"];
     fileId: string;
@@ -41,7 +35,7 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
     if (
       await SolutionsTranscriptsHistoryModel.count({
         where: {
-          fileId: fileId
+          fileId: fileId,
         },
       })
     ) {
@@ -68,7 +62,7 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   }): Promise<SolutionsTranscriptsHistoryResource | null> {
     const history = await SolutionsTranscriptsHistoryModel.findOne({
       where: {
-        fileId
+        fileId,
       },
     });
 
@@ -93,7 +87,7 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   }): Promise<SolutionsTranscriptsHistoryResource[]> {
     const histories = await SolutionsTranscriptsHistoryModel.findAll({
       where: {
-        solutionsTranscriptsConfigurationId
+        solutionsTranscriptsConfigurationId,
       },
       limit,
       order: [["createdAt", sort]],

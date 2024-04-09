@@ -32,8 +32,8 @@ export async function retrieveNewTranscriptsWorkflow(
         providerId
       );
     }
-  // This is to assure that the workflow will stay alive
-  // Linter does not like while(true)
+    // This is to assure that the workflow will stay alive
+    // Linter does not like while(true)
   } while (workflowInfo().historyLength < 5000);
 }
 

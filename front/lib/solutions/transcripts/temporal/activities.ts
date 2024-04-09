@@ -58,7 +58,7 @@ export async function retrieveNewTranscriptsActivity(
 
     files.data.files.forEach(async (file: drive_v3.Schema$File) => {
       const fileId = file.id as string;
-      
+
       // Check in history if we already processed this file
       const history = await SolutionsTranscriptsHistoryResource.findByFileId({
         fileId,

@@ -1,13 +1,6 @@
-import type {
-  RequireAtLeastOne,
-  Result,
-} from "@dust-tt/types";
+import type { RequireAtLeastOne, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type {
-  Attributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
