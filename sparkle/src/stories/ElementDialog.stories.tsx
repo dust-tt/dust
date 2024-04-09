@@ -1,35 +1,41 @@
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { Button, ElementModal, Page } from "../index_with_tw_base";
+import { Button, ElementDialog, Page } from "../index_with_tw_base";
 
 const meta = {
-  title: "Modules/ElementModal",
-  component: ElementModal,
-} satisfies Meta<typeof ElementModal>;
+  title: "Modules/ElementDialog",
+  component: ElementDialog,
+} satisfies Meta<typeof ElementDialog>;
 
 export default meta;
 
-export const ElementModalExample = () => {
+export const ElementDialogExample = () => {
   const [element, setElement] = useState<{ text: string } | null>(null);
   return (
     <Page.Layout gap="md">
-      <ElementModal
+      <ElementDialog
         openOnElement={element}
-        onClose={() => setElement(null)}
-        variant="side-sm"
+        closeDialogFn={() => setElement(null)}
+        onCancel={(closeDialogFn) => {
+          console.log("canceled!");
+          closeDialogFn();
+        }}
         title="Element Modal title"
-        hasChanged={false}
+        onValidate={(closeDialogFn) => {
+          console.log("validated!");
+          closeDialogFn();
+        }}
       >
         <div className="s-flex s-flex-col s-gap-3">
           <div className="s-mt-4 s-flex-none s-text-left">
-            I'm the modal content
+            I'm the dialog content
           </div>
           <div className="s-w-64">
             The text is: <span className="font-bold">{element?.text}</span>
           </div>
         </div>
-      </ElementModal>
+      </ElementDialog>
       <div className="s-flex s-flex-col s-items-start s-gap-3">
         <div className="s-text-lg s-font-bold">Fullscreen</div>
         <Button
