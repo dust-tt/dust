@@ -6,10 +6,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
+
+import type { SolutionsTranscriptsConfigurationModel } from "./solutions_transcripts_configuration";
 
 export class SolutionsTranscriptsHistoryModel extends Model<
   InferAttributes<SolutionsTranscriptsHistoryModel>,
@@ -19,7 +18,7 @@ export class SolutionsTranscriptsHistoryModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare userId: ForeignKey<User["id"]>;
+  declare solutionsTranscriptsConfigurationId: ForeignKey<SolutionsTranscriptsConfigurationModel["id"]>;
   declare fileId: string;
   declare fileName: string;
 }
@@ -41,10 +40,10 @@ SolutionsTranscriptsHistoryModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    userId: {
+    solutionsTranscriptsConfigurationId: {
       type: DataTypes.INTEGER,
       references: {
-        model: "users",
+        model: "solutions_transcripts_configurations",
         key: "id",
       },
     },
@@ -61,7 +60,7 @@ SolutionsTranscriptsHistoryModel.init(
     modelName: "solutions_transcripts_history",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["userId"] },
+      { fields: ["solutionsTranscriptsConfigurationId"] },
       { fields: ["fileId"], unique: true },
     ],
   }

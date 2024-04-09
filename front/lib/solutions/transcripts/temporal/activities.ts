@@ -11,6 +11,7 @@ import * as googleapis from "googleapis";
 
 import { User } from "@app/lib/models";
 import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+import { SolutionsTranscriptsHistoryResource } from "@app/lib/resources/solutions_transcripts_history_resource";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
 import mainLogger from "@app/logger/logger";
@@ -56,6 +57,19 @@ export async function retrieveNewTranscriptsActivity(
 
     files.data.files.forEach(async (file: drive_v3.Schema$File) => {
       const fileId = file.id as string;
+      
+      // Check in history if we already processed this file
+      const history = await SolutionsTranscriptsHistoryResource.findByFileId({
+        fileId,
+      });
+      if (history) {
+        logger.info(
+          "[retrieveNewTranscripts] File already processed. Skipping.",
+          { fileId }
+        );
+        return;
+      }
+
       await launchSummarizeTranscriptWorkflow({ userId, fileId });
     });
   }
@@ -254,13 +268,21 @@ export async function summarizeGoogleDriveTranscriptActivity(
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
     html: `${fullAnswer}<br>` + `The Dust team`,
   };
-
   void sgMail.send(msg).then(() => {
     logger.info(
       "[summarizeGoogleDriveTranscriptActivity] Email sent with summary"
     );
   });
 
-  console.log("EMAIL SENT :");
-  console.log(msg);
+  // CREATE HISTORY RECORD
+  SolutionsTranscriptsHistoryResource.makeNew({
+    solutionsTranscriptsConfigurationId: transcriptsConfiguration.id,
+    fileId,
+    fileName: transcriptTitle as string,
+  }).catch((err) => {
+    logger.error(
+      "[summarizeGoogleDriveTranscriptActivity] Error creating history record",
+      err
+    );
+  });
 }

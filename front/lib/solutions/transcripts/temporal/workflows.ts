@@ -18,20 +18,22 @@ export async function retrieveNewTranscriptsWorkflow(
   userId: number,
   providerId: string
 ) {
+  // 15 minutes
   const SECONDS_INTERVAL_BETWEEN_PULLS = 15 * 60;
 
   do {
-    console.log("[START] Retrieving new transcripts");
     await retrieveNewTranscriptsActivity(userId, providerId);
-    console.log(`Sleeping ${SECONDS_INTERVAL_BETWEEN_PULLS / 60}m...`);
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
 
+    // Temporal becomes slow > 4000 lines so we need to continue as new
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>(
         userId,
         providerId
       );
     }
+  // This is to assure that the workflow will stay alive
+  // Linter does not like while(true)
   } while (workflowInfo().historyLength < 5000);
 }
 
