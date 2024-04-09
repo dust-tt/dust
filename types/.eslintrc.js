@@ -6,6 +6,7 @@ module.exports = {
   ],
   plugins: ["simple-import-sort"],
   rules: {
+    curly: ["error", "all"],
     "simple-import-sort/imports": [
       "error",
       {

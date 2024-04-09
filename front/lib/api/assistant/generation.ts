@@ -277,8 +277,9 @@ export async function constructPrompt(
 
   // Replacement if instructions includes "{ASSISTANTS_LIST}"
   if (instructions.includes("{ASSISTANTS_LIST}")) {
-    if (!auth.isUser())
+    if (!auth.isUser()) {
       throw new Error("Unexpected unauthenticated call to `constructPrompt`");
+    }
     const agents = await getAgentConfigurations({
       auth,
       agentsGetView: auth.user() ? "list" : "all",

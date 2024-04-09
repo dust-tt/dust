@@ -4,7 +4,9 @@ export async function githubAuth(githubAppUrl: string): Promise<string> {
     let authComplete = false;
 
     const popupMessageEventListener = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin) {
+        return;
+      }
 
       if (event.data.type === "installed_or_updated") {
         authComplete = true;

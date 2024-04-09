@@ -34,7 +34,7 @@ export async function sendDataDeletionEmail({
       throw new Error("No workspace found");
     }
     const admins = await getMembers(auth, { roles: ["admin"] });
-    for (const a of admins)
+    for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
         firstName: a.firstName,
@@ -42,6 +42,7 @@ export async function sendDataDeletionEmail({
         remainingDays,
         isLast,
       });
+    }
   } catch (e) {
     logger.error(
       { panic: true, error: e },

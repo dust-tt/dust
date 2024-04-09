@@ -2156,7 +2156,9 @@ async function renderPageSection({
   const orderedParentIds: string[] = [];
   const addNode = (nodeId: string) => {
     const children = blocksByParentId[nodeId];
-    if (!children) return;
+    if (!children) {
+      return;
+    }
     orderedParentIds.push(nodeId);
     for (const child of children) {
       addNode(child.notionBlockId);

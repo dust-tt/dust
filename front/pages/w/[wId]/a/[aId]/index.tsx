@@ -93,7 +93,9 @@ const isRunnable = (
   spec: SpecificationType,
   config: BlockRunConfig
 ) => {
-  if (readOnly) return false;
+  if (readOnly) {
+    return false;
+  }
 
   for (const name in config) {
     for (const key in config[name]) {

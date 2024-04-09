@@ -97,7 +97,9 @@ export function AvatarPicker({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onUpload = async () => {
-    if (isUploadingAvatar) return;
+    if (isUploadingAvatar) {
+      return;
+    }
 
     if (imageRef.current && crop.width && crop.height) {
       const croppedImageUrl = await getCroppedImg(imageRef.current, crop);
@@ -173,7 +175,9 @@ export function AvatarPicker({
 
   const onFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e?.target?.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     setCurrentTab("upload");
     const reader = new FileReader();
     reader.addEventListener("load", () => setSrc(reader.result as string));

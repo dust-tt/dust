@@ -128,7 +128,9 @@ export function filterModelProviders(
   chatOnly: boolean,
   embedOnly: boolean
 ): ReturnType<typeof useProviders>["providers"] {
-  if (!providers) return [];
+  if (!providers) {
+    return [];
+  }
   const candidateModelProviderIds = new Set(
     modelProviders
       .filter(
@@ -143,7 +145,9 @@ export function filterModelProviders(
 export function filterServiceProviders(
   providers: ReturnType<typeof useProviders>["providers"]
 ): ReturnType<typeof useProviders>["providers"] {
-  if (!providers) return [];
+  if (!providers) {
+    return [];
+  }
   return providers.filter((p) =>
     serviceProviders.map((p) => p.providerId).includes(p.providerId)
   );

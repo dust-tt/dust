@@ -56,7 +56,9 @@ const poll = async ({
       return reject(e);
     }
     attempts++;
-    if (interval < maxInterval) interval += increment;
+    if (interval < maxInterval) {
+      interval += increment;
+    }
 
     if (validate(result)) {
       return resolve(result);

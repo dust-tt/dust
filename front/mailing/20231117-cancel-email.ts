@@ -10,7 +10,9 @@ async function main() {
   for (let i = 0; i < emails.length; i++) {
     const email = emails[i];
     console.log("SENDING EMAIL", email);
-    if (LIVE) await sendCancelSubscriptionEmail(email);
+    if (LIVE) {
+      await sendCancelSubscriptionEmail(email);
+    }
   }
 }
 
@@ -35,7 +37,7 @@ export async function sendCancelSubscriptionEmail(
       <p>Please reply to this email if you have any questions.
       <p>The Dust team</p>`,
   };
-  return await sendEmail(email, cancelMessage);
+  return sendEmail(email, cancelMessage);
 }
 
 void main().then(() => {

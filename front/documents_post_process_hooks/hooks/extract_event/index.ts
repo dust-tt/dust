@@ -1,4 +1,4 @@
-import {
+import type {
   DocumentsPostProcessHook,
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
@@ -22,7 +22,7 @@ export const extractEventPostProcessHook: DocumentsPostProcessHook = {
 async function shouldProcessDocument(
   params: DocumentsPostProcessHookFilterParams
 ) {
-  return await shouldProcessExtractEvents(params);
+  return shouldProcessExtractEvents(params);
 }
 
 async function processDocument(params: DocumentsPostProcessHookOnUpsertParams) {

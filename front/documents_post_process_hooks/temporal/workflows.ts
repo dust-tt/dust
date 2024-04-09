@@ -1,4 +1,4 @@
-import { ConnectorProvider } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import type { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";

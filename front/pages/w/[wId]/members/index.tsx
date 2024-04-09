@@ -348,9 +348,14 @@ export default function WorkspaceAdmin({
                     }
                     className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
                     onClick={() => {
-                      if (user.id === item.id) return; // no action on self
-                      if (isInvitation(item)) setInvitationToRevoke(item);
-                      else setChangeRoleMember(item);
+                      if (user.id === item.id) {
+                        return;
+                      } // no action on self
+                      if (isInvitation(item)) {
+                        setInvitationToRevoke(item);
+                      } else {
+                        setChangeRoleMember(item);
+                      }
                     }}
                   >
                     <div className="hidden sm:block">
@@ -553,7 +558,9 @@ function InviteEmailModal({
         isSaving={isSending}
         onSave={async () => {
           const inviteEmailsList = getEmailsList();
-          if (!inviteEmailsList) return;
+          if (!inviteEmailsList) {
+            return;
+          }
           setIsSending(true);
           await handleSendInvitations(inviteEmailsList);
           setIsSending(false);
@@ -815,7 +822,9 @@ function RevokeInvitationModal({
   const { mutate } = useSWRConfig();
   const [isSaving, setIsSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
-  if (!invitation) return null;
+  if (!invitation) {
+    return null;
+  }
 
   async function handleRevokeInvitation(
     invitation: MembershipInvitationType
@@ -943,7 +952,9 @@ function ChangeMemberModal({
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  if (!member) return null;
+  if (!member) {
+    return null;
+  }
 
   return (
     <ElementModal

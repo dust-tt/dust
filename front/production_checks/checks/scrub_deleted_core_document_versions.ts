@@ -1,9 +1,10 @@
 import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
-import pino, { LoggerOptions } from "pino";
+import type { LoggerOptions } from "pino";
+import type pino from "pino";
 import { Sequelize } from "sequelize";
 
-import { CheckFunction } from "../types/check";
+import type { CheckFunction } from "../types/check";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
   process.env;

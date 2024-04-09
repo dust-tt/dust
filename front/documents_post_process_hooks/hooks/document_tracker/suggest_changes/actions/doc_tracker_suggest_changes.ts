@@ -1,7 +1,7 @@
+import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 
 // Part of the new doc tracker pipeline, suggest changes  based on a "source_document" (new incoming doc)
 // and a "target_document" (the tracked doc)

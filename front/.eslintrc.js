@@ -16,6 +16,7 @@ module.exports = {
       }
     ],
     */
+    curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],

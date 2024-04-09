@@ -1,4 +1,4 @@
-import { DocumentsPostProcessHook } from "@app/documents_post_process_hooks/hooks";
+import type { DocumentsPostProcessHook } from "@app/documents_post_process_hooks/hooks";
 import {
   documentTrackerSuggestChangesOnUpsert,
   shouldDocumentTrackerSuggestChangesRun,

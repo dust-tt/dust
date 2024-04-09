@@ -3,7 +3,9 @@ import { Sequelize } from "sequelize";
 const { CORE_DATABASE_URI } = process.env;
 
 async function main() {
-  if (!CORE_DATABASE_URI) throw new Error("CORE_DATABASE_URI is not defined");
+  if (!CORE_DATABASE_URI) {
+    throw new Error("CORE_DATABASE_URI is not defined");
+  }
 
   const coreSequelize = new Sequelize(CORE_DATABASE_URI, { logging: false });
 
@@ -28,7 +30,9 @@ async function main() {
       );
     `)) as [unknown, { rowCount?: number }];
 
-    if (!metaData) throw new Error("metaData is undefined");
+    if (!metaData) {
+      throw new Error("metaData is undefined");
+    }
 
     console.log(`Updated ${metaData.rowCount || 0} records.`);
 

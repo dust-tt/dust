@@ -36,7 +36,9 @@ export function Tooltip({
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
     return () => {
-      if (timerId) window.clearTimeout(timerId);
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
     };
   }, [timerId]);
 

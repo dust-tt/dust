@@ -356,8 +356,12 @@ function TableBlock({ children }: { children: React.ReactNode }) {
 
   const handleCopyTable = () => {
     const getNodeText = (node: ReactNode): string => {
-      if (["string", "number"].includes(typeof node)) return node as string;
-      if (node instanceof Array) return node.map(getNodeText).join("");
+      if (["string", "number"].includes(typeof node)) {
+        return node as string;
+      }
+      if (node instanceof Array) {
+        return node.map(getNodeText).join("");
+      }
       if (node && typeof node === "object" && "props" in node) {
         return getNodeText(node.props.children);
       }

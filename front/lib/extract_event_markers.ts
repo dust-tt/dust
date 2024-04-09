@@ -117,7 +117,9 @@ export function findMarkersIndexes({
   tokens: CoreAPITokenType[];
 }): { start: number; end: number } {
   const markerIndex = fullText.indexOf(marker);
-  if (markerIndex === -1) return { start: -1, end: -1 };
+  if (markerIndex === -1) {
+    return { start: -1, end: -1 };
+  }
 
   let charCount = 0;
   let startIndex = -1;

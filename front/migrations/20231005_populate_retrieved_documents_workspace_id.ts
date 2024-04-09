@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -7,7 +8,6 @@ import {
   RetrievalDocument,
   Workspace,
 } from "@app/lib/models";
-import { ModelId } from "@dust-tt/types";
 
 const { LIVE = false } = process.env;
 

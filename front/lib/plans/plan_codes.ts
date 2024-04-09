@@ -22,6 +22,8 @@ export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
  * Note: We didn't go for isFree or isPayingWorkspace as we have "upgraded" plans that are free.
  */
 export const isUpgraded = (plan: PlanType | null): boolean => {
-  if (!plan) return false;
+  if (!plan) {
+    return false;
+  }
   return plan.code !== FREE_TEST_PLAN_CODE;
 };

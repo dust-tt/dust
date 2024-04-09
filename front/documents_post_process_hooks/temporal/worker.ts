@@ -1,4 +1,4 @@
-import { Context } from "@temporalio/activity";
+import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@app/documents_post_process_hooks/temporal/activities";

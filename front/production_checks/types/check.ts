@@ -1,4 +1,5 @@
-import pino, { LoggerOptions } from "pino";
+import type { LoggerOptions } from "pino";
+import type pino from "pino";
 
 export type CheckFunction = (
   checkName: string,

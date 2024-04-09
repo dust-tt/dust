@@ -509,7 +509,9 @@ async function botAnswerMessage(
         // if the message is too long, we avoid the update entirely (to reduce
         // rate limiting) the previous update will have shown the "..." and the
         // link to continue the conversation so this is fine
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) break;
+        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
+          break;
+        }
 
         finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
@@ -534,10 +536,11 @@ async function botAnswerMessage(
 
         // if the message is too long, when generation is finished we show it
         // is truncated
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH)
+        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
           finalAnswer =
             finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
             "... (message truncated)";
+        }
 
         finalAnswer += `\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
 
