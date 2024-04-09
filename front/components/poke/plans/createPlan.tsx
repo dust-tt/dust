@@ -1,9 +1,6 @@
 import { Spinner2 } from "@dust-tt/sparkle";
-import type {
-  EnterpriseSubscriptionFormType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { EnterpriseSubscriptionFormSchema, removeNulls } from "@dust-tt/types";
+import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
+import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import React from "react";
@@ -29,38 +26,15 @@ import {
   PokeSelectTrigger,
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-    },
-  };
-});
-
-export default function EnterpriseSubscriptionForm({
-  owner,
-}: {
-  owner: WorkspaceType;
-}) {
+export default function CreatePlanForm({ owner }: { owner: WorkspaceType }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const form = useForm<EnterpriseSubscriptionFormType>({
-    resolver: ioTsResolver(EnterpriseSubscriptionFormSchema),
+  const form = useForm<CreatePlanFormType>({
+    resolver: ioTsResolver(CreatePlanFormSchema),
     defaultValues: {
-      stripeSubscriptionId: "",
       code: "",
       name: "",
       isSlackbotAllowed: true,
@@ -80,7 +54,7 @@ export default function EnterpriseSubscriptionForm({
     },
   });
 
-  const onSubmit = (values: EnterpriseSubscriptionFormType) => {
+  const onSubmit = (values: CreatePlanFormType) => {
     const cleanedValues = Object.fromEntries(
       removeNulls(
         Object.entries(values).map(([key, value]) => {
@@ -96,6 +70,7 @@ export default function EnterpriseSubscriptionForm({
       )
     );
 
+    // TODO(2024-04-09 flav) Refactor to use the right endpoint.
     const submit = async () => {
       setIsSubmitting(true);
       try {
@@ -137,12 +112,6 @@ export default function EnterpriseSubscriptionForm({
       <div className="mx-auto h-full max-w-2xl flex-grow flex-col items-center justify-center pt-8">
         <PokeForm {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <InputField
-              control={form.control}
-              name="stripeSubscriptionId"
-              title="Stripe Subscription id"
-              placeholder="sub_1234567890"
-            />
             <InputField
               control={form.control}
               name="code"
@@ -258,8 +227,8 @@ function InputField({
   type,
   placeholder,
 }: {
-  control: Control<EnterpriseSubscriptionFormType>;
-  name: keyof EnterpriseSubscriptionFormType;
+  control: Control<CreatePlanFormType>;
+  name: keyof CreatePlanFormType;
   title?: string;
   type?: "text" | "number";
   placeholder?: string;
@@ -295,8 +264,8 @@ function CheckboxField({
   name,
   title,
 }: {
-  control: Control<EnterpriseSubscriptionFormType>;
-  name: keyof EnterpriseSubscriptionFormType;
+  control: Control<CreatePlanFormType>;
+  name: keyof CreatePlanFormType;
   title?: string;
   placeholder?: string;
 }) {
@@ -331,8 +300,8 @@ function SelectField({
   title,
   options,
 }: {
-  control: Control<EnterpriseSubscriptionFormType>;
-  name: keyof EnterpriseSubscriptionFormType;
+  control: Control<CreatePlanFormType>;
+  name: keyof CreatePlanFormType;
   title?: string;
   options: SelectFieldOption[];
 }) {

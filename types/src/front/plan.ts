@@ -64,8 +64,7 @@ export type SubscriptionType = {
   plan: PlanType;
 };
 
-export const EnterpriseSubscriptionFormSchema = t.type({
-  stripeSubscriptionId: NonEmptyString,
+export const CreatePlanFormSchema = t.type({
   code: NonEmptyString,
   name: NonEmptyString,
   isSlackbotAllowed: t.boolean,
@@ -87,6 +86,13 @@ export const EnterpriseSubscriptionFormSchema = t.type({
   maxUsers: t.union([t.number, NumberFromString]),
 });
 
-export type EnterpriseSubscriptionFormType = t.TypeOf<
-  typeof EnterpriseSubscriptionFormSchema
+export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
+
+export const EnterpriseUpgradeFormSchema = t.type({
+  stripeSubscriptionId: NonEmptyString,
+  planCode: NonEmptyString,
+});
+
+export type EnterpriseUpgradeFormType = t.TypeOf<
+  typeof EnterpriseUpgradeFormSchema
 >;
