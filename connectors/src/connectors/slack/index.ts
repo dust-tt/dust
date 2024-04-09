@@ -367,59 +367,70 @@ export async function retrieveSlackConnectorPermissions({
     permission: ConnectorPermission;
   }[] = [];
 
-  const [remoteChannels, localChannels] = await Promise.all([
-    getChannels(c.id, false),
-    SlackChannel.findAll({
-      where: {
-        connectorId: connectorId,
-      },
-    }),
-  ]);
-  const localChannelsById = localChannels.reduce((acc, ch) => {
-    acc[ch.slackChannelId] = ch;
-    return acc;
-  }, {} as Record<string, SlackChannel>);
+  try {
+    const [remoteChannels, localChannels] = await Promise.all([
+      getChannels(c.id, false),
+      SlackChannel.findAll({
+        where: {
+          connectorId: connectorId,
+        },
+      }),
+    ]);
 
-  for (const remoteChannel of remoteChannels) {
-    if (!remoteChannel.id || !remoteChannel.name) {
-      continue;
+    const localChannelsById = localChannels.reduce((acc, ch) => {
+      acc[ch.slackChannelId] = ch;
+      return acc;
+    }, {} as Record<string, SlackChannel>);
+
+    for (const remoteChannel of remoteChannels) {
+      if (!remoteChannel.id || !remoteChannel.name) {
+        continue;
+      }
+
+      const permissions =
+        localChannelsById[remoteChannel.id]?.permission ||
+        (remoteChannel.is_member ? "write" : "none");
+
+      if (
+        permissionToFilter.length === 0 ||
+        permissionToFilter.includes(permissions)
+      ) {
+        slackChannels.push({
+          slackChannelId: remoteChannel.id,
+          slackChannelName: remoteChannel.name,
+          permission: permissions,
+        });
+      }
     }
 
-    const permissions =
-      localChannelsById[remoteChannel.id]?.permission ||
-      (remoteChannel.is_member ? "write" : "none");
+    const resources: ContentNode[] = slackChannels.map((ch) => ({
+      provider: "slack",
+      internalId: ch.slackChannelId,
+      parentInternalId: null,
+      type: "channel",
+      title: `#${ch.slackChannelName}`,
+      sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
+      expandable: false,
+      permission: ch.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+      dustTableId: null,
+    }));
 
-    if (
-      permissionToFilter.length === 0 ||
-      permissionToFilter.includes(permissions)
-    ) {
-      slackChannels.push({
-        slackChannelId: remoteChannel.id,
-        slackChannelName: remoteChannel.name,
-        permission: permissions,
-      });
+    resources.sort((a, b) => {
+      return a.title.localeCompare(b.title);
+    });
+
+    return new Ok(resources);
+  } catch (e) {
+    if (e instanceof ExternalOauthTokenError) {
+      logger.error({ connectorId }, "Slack token invalid");
+      return new Err(
+        new Error("Slack token invalid. Please re-authorize Slack.")
+      );
     }
+    throw e;
   }
-
-  const resources: ContentNode[] = slackChannels.map((ch) => ({
-    provider: "slack",
-    internalId: ch.slackChannelId,
-    parentInternalId: null,
-    type: "channel",
-    title: `#${ch.slackChannelName}`,
-    sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
-    expandable: false,
-    permission: ch.permission,
-    dustDocumentId: null,
-    lastUpdatedAt: null,
-    dustTableId: null,
-  }));
-
-  resources.sort((a, b) => {
-    return a.title.localeCompare(b.title);
-  });
-
-  return new Ok(resources);
 }
 
 export async function setSlackConnectorPermissions(
