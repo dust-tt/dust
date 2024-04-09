@@ -285,12 +285,6 @@ export function assertStripeSubscriptionIsValid(
     }
   }
 
-  // the subscription is not active
-  if (stripeSubscription.status !== "active") {
-    return new Err({
-      invalidity_message: "Subscription is not active.",
-    });
-  }
   return new Ok(true);
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
 
