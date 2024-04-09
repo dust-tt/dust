@@ -6,7 +6,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
-type ModalProps = {
+export type ModalProps = {
   title: string;
   children: React.ReactNode;
   isOpen: boolean;
