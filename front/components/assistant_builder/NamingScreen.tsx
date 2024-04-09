@@ -29,8 +29,8 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { debounce } from "@app/lib/utils/debounce";
 
 export function removeLeadingAt(handle: string) {
@@ -144,6 +144,7 @@ export default function NamingScreen({
   setEdited: (edited: boolean) => void;
   assistantHandleError: string | null;
 }) {
+  const confirm = useContext(ConfirmContext);
   const sendNotification = useContext(SendNotificationsContext);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
@@ -168,9 +169,7 @@ export default function NamingScreen({
   }, [owner, builderState.instructions, builderState.description]);
 
   useEffect(() => {
-    if (isDevelopmentOrDustWorkspace(owner)) {
-      debounce(nameDebounceHandle, updateNameSuggestions);
-    }
+    debounce(nameDebounceHandle, updateNameSuggestions);
   }, [
     builderState.description,
     builderState.instructions,
@@ -182,7 +181,6 @@ export default function NamingScreen({
 
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionIsGenerated, setDescriptionIsGenerated] = useState(false);
-
   const suggestDescription = useCallback(
     async (fromUserClick?: boolean) => {
       setGeneratingDescription(true);
@@ -235,14 +233,12 @@ export default function NamingScreen({
   );
 
   useEffect(() => {
-    if (isDevelopmentOrDustWorkspace(owner)) {
-      if (
-        !builderState.description?.trim() &&
-        builderState.instructions?.trim() &&
-        !generatingDescription
-      ) {
-        void suggestDescription();
-      }
+    if (
+      !builderState.description?.trim() &&
+      builderState.instructions?.trim() &&
+      !generatingDescription
+    ) {
+      void suggestDescription();
     }
     // Here we only want to run this effect once
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -277,8 +273,7 @@ export default function NamingScreen({
               </div>
             </div>
             {nameSuggestions.status === "ok" &&
-              nameSuggestions.suggestions.length > 0 &&
-              isDevelopmentOrDustWorkspace(owner) && (
+              nameSuggestions.suggestions.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="text-xs font-semibold text-element-800">
                     Suggestions:
@@ -351,7 +346,6 @@ export default function NamingScreen({
           <div>
             <div className="flex gap-1">
               <Page.SectionHeader title="Description" />
-              {generatingDescription && <Spinner2 size="sm" />}
             </div>
             <div className="text-sm font-normal text-element-700">
               Describe for others the assistant’s purpose.{" "}
@@ -380,7 +374,9 @@ export default function NamingScreen({
                 disabled={generatingDescription}
               />
             </div>
-            {isDevelopmentOrDustWorkspace(owner) && (
+            {generatingDescription ? (
+              <Spinner2 size="sm" />
+            ) : (
               <IconButton
                 icon={SparklesIcon}
                 size="md"
@@ -389,9 +385,11 @@ export default function NamingScreen({
                   if (
                     !builderState.description?.trim() ||
                     descriptionIsGenerated ||
-                    confirm(
-                      "Heads up! This will overwrite your current description. Are you sure you want to proceed?"
-                    )
+                    (await confirm({
+                      title: "Double checking",
+                      message:
+                        "Heads up! This will overwrite your current description. Are you sure you want to proceed?",
+                    }))
                   ) {
                     await suggestDescription();
                   }
