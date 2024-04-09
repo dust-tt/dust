@@ -26,6 +26,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
+import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -400,15 +401,10 @@ function UpgradeDowngradeModal({
           title="Upgrade Workspace to a new Enterprise Plan"
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
-        <div>
-          <Link href={`/poke/${owner.sId}/upgrade_enterprise`}>
-            <Button
-              variant="secondary"
-              label="Start upgrade to Enterprise plan"
-              disabled={subscription.plan.code.startsWith("ENT_")}
-            />
-          </Link>
-        </div>
+        <EnterpriseUpgradeDialog
+          disabled={subscription.plan.code.startsWith("ENT_")}
+          owner={owner}
+        />
       </Page>
     </Modal>
   );

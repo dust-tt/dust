@@ -90,3 +90,12 @@ export const EnterpriseSubscriptionFormSchema = t.type({
 export type EnterpriseSubscriptionFormType = t.TypeOf<
   typeof EnterpriseSubscriptionFormSchema
 >;
+
+export const EnterpriseUpgradeFormSchema = t.type({
+  stripeSubscriptionId: NonEmptyString,
+  planCode: NonEmptyString,
+});
+
+export type EnterpriseUpgradeFormType = t.TypeOf<
+  typeof EnterpriseUpgradeFormSchema
+>;
