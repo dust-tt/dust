@@ -46,9 +46,15 @@ function prepareSubscriptionsForDisplay(
       planCode: s.plan.code,
       status: s.status,
       startDate: s.startDate
-        ? new Date(s.startDate).toLocaleDateString()
+        ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
+            s.startDate
+          ).toLocaleTimeString()}`
         : null,
-      endDate: s.endDate ? new Date(s.endDate).toLocaleDateString() : null,
+      endDate: s.endDate
+        ? `${new Date(s.endDate).toLocaleDateString()} ${new Date(
+            s.endDate
+          ).toLocaleTimeString()}`
+        : null,
     };
   });
 }
