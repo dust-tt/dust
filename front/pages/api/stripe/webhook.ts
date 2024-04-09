@@ -397,9 +397,16 @@ async function handler(
         case "customer.subscription.created": {
           const stripeSubscription = event.data.object as Stripe.Subscription;
           // on the odd chance the change is not compatible with our logic, we panic
-          if (assertStripeSubscriptionIsValid(stripeSubscription).isErr()) {
+          const validStatus =
+            assertStripeSubscriptionIsValid(stripeSubscription);
+          if (validStatus.isErr()) {
             logger.error(
-              { panic: true, event },
+              {
+                panic: true,
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
+                invalidity_message: validStatus.error.invalidity_message,
+              },
               "[Stripe Webhook] Received customer.subscription.created event with invalid subscription."
             );
           }
@@ -500,13 +507,19 @@ async function handler(
           }
 
           // on the odd chance the change is not compatible with our logic, we panic
-          if (assertStripeSubscriptionIsValid(stripeSubscription).isErr()) {
+          const validStatus =
+            assertStripeSubscriptionIsValid(stripeSubscription);
+          if (validStatus.isErr()) {
             logger.error(
-              { panic: true, event },
+              {
+                panic: true,
+                event,
+                stripeSubscriptionId: stripeSubscription.id,
+                invalidity_message: validStatus.error.invalidity_message,
+              },
               "[Stripe Webhook] Received customer.subscription.updated event with invalid subscription."
             );
           }
-
           break;
 
         // Occurs when the subscription is canceled by the user or by us.
