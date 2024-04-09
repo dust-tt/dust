@@ -18,6 +18,7 @@ export async function recordUsageActivity(workspaceId: string) {
   const subscription = await Subscription.findOne({
     where: {
       workspaceId: workspace.id,
+      status: "active",
     },
     include: [Plan],
   });
