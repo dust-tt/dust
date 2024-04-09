@@ -90,6 +90,18 @@ export async function launchSlackSyncOneThreadWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+      },
+      "Skipping webhook for Slack connector because it is paused (thread sync)."
+    );
+
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClient();
 
   const workflowId = syncOneThreadDebouncedWorkflowId(
@@ -130,6 +142,18 @@ export async function launchSlackSyncOneMessageWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+      },
+      "Skipping webhook for Slack connector because it is paused (message sync)."
+    );
+
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClient();
 
   const messageTs = parseInt(threadTs as string) * 1000;
