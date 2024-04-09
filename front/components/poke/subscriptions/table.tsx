@@ -1,5 +1,4 @@
 import {
-  Button,
   CloudArrowDownIcon,
   ConfluenceLogo,
   GithubLogo,
@@ -25,7 +24,9 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
 import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
+import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -39,11 +40,11 @@ interface SubscriptionsDataTableProps {
 function prepareSubscriptionsForDisplay(
   owner: WorkspaceType,
   subscriptions: SubscriptionType[]
-) {
+): SubscriptionsDisplayType[] {
   return subscriptions.map((s) => {
     return {
-      sId: s.sId ?? "unknown",
-      planCode: s.plan.code,
+      id: s.sId ?? "unknown",
+      name: s.plan.code,
       status: s.status,
       startDate: s.startDate
         ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
@@ -77,14 +78,17 @@ export function SubscriptionsDataTable({
 export function ActiveSubscriptionTable({
   owner,
   subscription,
+  subscriptions,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  subscriptions: SubscriptionType[];
 }) {
   const activePlan = subscription.plan;
 
   const [showUpgradeDowngradeModal, setShowUpgradeDowngradeModal] =
     useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   return (
     <>
@@ -94,6 +98,12 @@ export function ActiveSubscriptionTable({
         owner={owner}
         subscription={subscription}
       />
+      <SubscriptionsHistoryModal
+        owner={owner}
+        subscriptions={subscriptions}
+        show={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+      />
       <div className="flex flex-col space-y-8 pt-4">
         <div className="flex justify-between gap-3">
           <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
@@ -101,6 +111,14 @@ export function ActiveSubscriptionTable({
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
               </h2>
+              <PokeButton
+                aria-label="History"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistoryModal(true)}
+              >
+                🕰️ History
+              </PokeButton>
               <PokeButton
                 aria-label="Upgrade / Downgrade"
                 variant="outline"
@@ -367,12 +385,13 @@ function UpgradeDowngradeModal({
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
         />
         <div>
-          <Button
-            label="Downgrade to NO PLAN"
-            variant="secondaryWarning"
+          <PokeButton
+            variant="destructive"
             onClick={onDowngrade}
             disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
-          />
+          >
+            Downgrade to NO PLAN
+          </PokeButton>
         </div>
         <Separator />
         <Page.SectionHeader
@@ -385,12 +404,13 @@ function UpgradeDowngradeModal({
             .map((p) => {
               return (
                 <div key={p.code} className="pt-2">
-                  <Button
-                    variant="secondary"
-                    label={`Upgrade to ${p.code}`}
-                    onClick={() => onUpgradeToPlan(p)}
+                  <PokeButton
+                    variant="outline"
                     disabled={subscription.plan.code === p.code}
-                  />
+                    onClick={() => onUpgradeToPlan(p)}
+                  >
+                    Upgrade to {p.code}
+                  </PokeButton>
                 </div>
               );
             })}
@@ -401,15 +421,36 @@ function UpgradeDowngradeModal({
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
         <div>
-          <Link href={`/poke/${owner.sId}/upgrade_enterprise`}>
-            <Button
-              variant="secondary"
-              label="Start upgrade to Enterprise plan"
-              disabled={subscription.plan.code.startsWith("ENT_")}
-            />
-          </Link>
+          <EnterpriseUpgradeDialog
+            disabled={subscription.plan.code.startsWith("ENT_")}
+            owner={owner}
+          />
         </div>
       </Page>
+    </Modal>
+  );
+}
+
+function SubscriptionsHistoryModal({
+  show,
+  onClose,
+  owner,
+  subscriptions,
+}: {
+  show: boolean;
+  onClose: () => void;
+  owner: WorkspaceType;
+  subscriptions: SubscriptionType[];
+}) {
+  return (
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      hasChanged={false}
+      title="Workspace subscriptions history"
+      variant="full-screen"
+    >
+      <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
     </Modal>
   );
 }

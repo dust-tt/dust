@@ -1,5 +1,5 @@
 import type {
-  EnterpriseSubscriptionFormType,
+  EnterpriseUpgradeFormType,
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
@@ -234,43 +234,31 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
 
 export const pokeUpgradeWorkspaceToEnterprise = async (
   auth: Authenticator,
-  newPlanData: EnterpriseSubscriptionFormType
+  enterpriseDetails: EnterpriseUpgradeFormType
 ) => {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Cannot find workspace");
+    throw new Error("Cannot find workspace.");
   }
 
   if (!auth.isDustSuperUser()) {
     throw new Error("Cannot upgrade workspace to plan: not allowed.");
   }
 
-  const newPlan = await Plan.create({
-    code: newPlanData.code,
-    name: newPlanData.name,
-    trialPeriodDays: 0,
-    isSlackbotAllowed: newPlanData.isSlackbotAllowed,
-    isManagedSlackAllowed: newPlanData.isSlackAllowed,
-    isManagedNotionAllowed: newPlanData.isNotionAllowed,
-    isManagedGoogleDriveAllowed: newPlanData.isGoogleDriveAllowed,
-    isManagedGithubAllowed: newPlanData.isGithubAllowed,
-    isManagedIntercomAllowed: newPlanData.isIntercomAllowed,
-    isManagedConfluenceAllowed: newPlanData.isConfluenceAllowed,
-    isManagedWebCrawlerAllowed: newPlanData.isWebCrawlerAllowed,
-    maxMessages: newPlanData.maxMessages,
-    maxMessagesTimeframe: newPlanData.maxMessagesTimeframe,
-    maxDataSourcesCount: newPlanData.dataSourcesCount,
-    maxDataSourcesDocumentsCount: newPlanData.dataSourcesDocumentsCount,
-    maxDataSourcesDocumentsSizeMb: newPlanData.dataSourcesDocumentsSizeMb,
-    maxUsersInWorkspace: newPlanData.maxUsers,
-    canUseProduct: true,
+  const plan = await Plan.findOne({
+    where: {
+      code: enterpriseDetails.planCode,
+    },
   });
+  if (!plan) {
+    throw new Error("The provided plan code does not exist.");
+  }
 
-  // End the current subscription if any
+  // End the current subscription if any.
   await internalSubscribeWorkspaceToFreePlan({
     workspaceId: owner.sId,
-    planCode: newPlan.code,
-    stripeSubscriptionId: newPlanData.stripeSubscriptionId,
+    planCode: plan.code,
+    stripeSubscriptionId: enterpriseDetails.stripeSubscriptionId,
   });
 };
 

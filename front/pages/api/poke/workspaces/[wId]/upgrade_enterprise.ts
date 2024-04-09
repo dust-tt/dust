@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { EnterpriseSubscriptionFormSchema } from "@dust-tt/types";
+import { EnterpriseUpgradeFormSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -54,7 +54,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = EnterpriseSubscriptionFormSchema.decode(req.body);
+      const bodyValidation = EnterpriseUpgradeFormSchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
