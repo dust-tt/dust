@@ -114,7 +114,14 @@ export async function generateDustAppRunParams(
   app: AppType,
   schema: DatasetSchema | null
 ): Promise<Result<DustAppParameters, Error>> {
-  const c = configuration.action;
+  if (configuration.actions.length > 1) {
+    logger.warn(
+      { agentConfigurationId: configuration.sId },
+      "Agent configuration has more than one action, only the first one will be executed."
+    );
+  }
+  const c = configuration.actions.length ? configuration.actions[0] : null;
+
   if (!isDustAppRunConfiguration(c)) {
     throw new Error(
       "Unexpected action configuration received in `generateDustAppRunParams`"
@@ -235,10 +242,16 @@ export async function* runDustApp(
 > {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+    throw new Error("Unexpected unauthenticated call to `runDustApp`");
   }
 
-  const c = configuration.action;
+  if (configuration.actions.length > 1) {
+    logger.warn(
+      { agentConfigurationId: configuration.sId },
+      "Agent configuration has more than one action, only the first one will be executed."
+    );
+  }
+  const c = configuration.actions.length ? configuration.actions[0] : null;
   if (!isDustAppRunConfiguration(c)) {
     throw new Error("Unexpected action configuration received in `runDustApp`");
   }

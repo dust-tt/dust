@@ -1,8 +1,4 @@
-import type {
-  AgentUserListStatus,
-  DustAppRunConfigurationType,
-  TimeframeUnit,
-} from "@dust-tt/types";
+import type { AgentUserListStatus, TimeframeUnit } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
   AgentStatus,
@@ -104,22 +100,22 @@ export class AgentConfiguration extends Model<
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  > | null;
-  declare dustAppRunConfigurationId: ForeignKey<
-    AgentDustAppRunConfiguration["id"]
-  > | null;
+  // declare retrievalConfigurationId: ForeignKey<
+  //   AgentRetrievalConfiguration["id"]
+  // > | null;
+  // declare dustAppRunConfigurationId: ForeignKey<
+  //   AgentDustAppRunConfiguration["id"]
+  // > | null;
 
-  declare tablesQueryConfigurationId: ForeignKey<
-    AgentTablesQueryConfiguration["id"]
-  > | null;
+  // declare tablesQueryConfigurationId: ForeignKey<
+  //   AgentTablesQueryConfiguration["id"]
+  // > | null;
 
   declare author: NonAttribute<User>;
   declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
-  declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
-  declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
-  declare tablesQueryConfiguration: NonAttribute<AgentTablesQueryConfiguration>;
+  // declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
+  // declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
+  // declare tablesQueryConfiguration: NonAttribute<AgentTablesQueryConfiguration>;
 }
 AgentConfiguration.init(
   {
@@ -189,23 +185,6 @@ AgentConfiguration.init(
         },
       },
     ],
-    hooks: {
-      beforeValidate: (agentConfiguration: AgentConfiguration) => {
-        const actionsTypes: (keyof AgentConfiguration)[] = [
-          "retrievalConfigurationId",
-          "dustAppRunConfigurationId",
-          "tablesQueryConfigurationId",
-        ];
-        const nonNullActionTypes = actionsTypes.filter(
-          (field) => agentConfiguration[field] != null
-        );
-        if (nonNullActionTypes.length > 1) {
-          throw new Error(
-            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, tablesQueryConfigurationId can be set"
-          );
-        }
-      },
-    },
   }
 );
 

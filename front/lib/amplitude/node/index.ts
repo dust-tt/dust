@@ -235,13 +235,14 @@ export function trackAssistantCreated(
     return;
   }
   const amplitude = getBackendClient();
+  const action = assistant.actions[0] ?? null;
   const event = new AssistantCreated({
     assistantId: assistant.sId,
     assistantName: assistant.name,
     workspaceName: workspace.name,
     workspaceId: workspace.sId,
     assistantScope: assistant.scope,
-    assistantActionType: assistant.action?.type || "",
+    assistantActionType: action?.type || "",
     assistantVersion: assistant.version,
     assistantModel: assistant.generation?.model.modelId,
   });

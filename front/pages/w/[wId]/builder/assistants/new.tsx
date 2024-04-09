@@ -174,11 +174,12 @@ export default function CreateAssistant({
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
   if (agentConfiguration) {
-    if (isRetrievalConfiguration(agentConfiguration.action)) {
-      if (agentConfiguration.action.query === "none") {
+    const action = agentConfiguration.actions[0] ?? null;
+    if (isRetrievalConfiguration(action)) {
+      if (action.query === "none") {
         if (
-          agentConfiguration.action.relativeTimeFrame === "auto" ||
-          agentConfiguration.action.relativeTimeFrame === "none"
+          action.relativeTimeFrame === "auto" ||
+          action.relativeTimeFrame === "none"
         ) {
           /** Should never happen. Throw loudly if it does */
           throw new Error(
@@ -187,20 +188,20 @@ export default function CreateAssistant({
         }
         actionMode = "RETRIEVAL_EXHAUSTIVE";
         timeFrame = {
-          value: agentConfiguration.action.relativeTimeFrame.duration,
-          unit: agentConfiguration.action.relativeTimeFrame.unit,
+          value: action.relativeTimeFrame.duration,
+          unit: action.relativeTimeFrame.unit,
         };
       }
-      if (agentConfiguration.action.query === "auto") {
+      if (action.query === "auto") {
         actionMode = "RETRIEVAL_SEARCH";
       }
     }
 
-    if (isDustAppRunConfiguration(agentConfiguration.action)) {
+    if (isDustAppRunConfiguration(action)) {
       actionMode = "DUST_APP_RUN";
     }
 
-    if (isTablesQueryConfiguration(agentConfiguration.action)) {
+    if (isTablesQueryConfiguration(action)) {
       actionMode = "TABLES_QUERY";
     }
     if (agentConfiguration.scope === "global") {

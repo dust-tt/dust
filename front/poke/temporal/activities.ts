@@ -257,33 +257,52 @@ export async function deleteAgentsActivity({
           },
           transaction: t,
         });
-      } else if (agent.retrievalConfigurationId) {
-        await AgentDataSourceConfiguration.destroy({
-          where: {
-            retrievalConfigurationId: agent.retrievalConfigurationId,
-          },
-          transaction: t,
-        });
-        await AgentRetrievalConfiguration.destroy({
-          where: {
-            id: agent.retrievalConfigurationId,
-          },
-          transaction: t,
-        });
-      } else if (agent.dustAppRunConfigurationId) {
-        await AgentDustAppRunAction.destroy({
-          where: {
-            dustAppRunConfigurationId: agent.dustAppRunConfigurationId,
-          },
-          transaction: t,
-        });
-        await AgentDustAppRunConfiguration.destroy({
-          where: {
-            id: agent.dustAppRunConfigurationId,
-          },
-          transaction: t,
-        });
       }
+
+      const retrievalConfigurations = await AgentRetrievalConfiguration.findAll(
+        {
+          where: {
+            agentConfigurationId: agent.id,
+          },
+          transaction: t,
+        }
+      );
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          retrievalConfigurationId: {
+            [Op.in]: retrievalConfigurations.map((r) => r.id),
+          },
+        },
+        transaction: t,
+      });
+      await AgentRetrievalConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+      const dustAppRunConfigurations =
+        await AgentDustAppRunConfiguration.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+          },
+          transaction: t,
+        });
+      await AgentDustAppRunAction.destroy({
+        where: {
+          dustAppRunConfigurationId: {
+            [Op.in]: dustAppRunConfigurations.map((r) => r.id),
+          },
+        },
+        transaction: t,
+      });
+      await AgentDustAppRunConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
+      // TODO(@fontanierh): missing tables query here.
       await AgentUserRelation.destroy({
         where: {
           agentConfiguration: agent.sId,

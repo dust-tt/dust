@@ -78,7 +78,8 @@ makeScript(
     console.log(repoToSubPermissions);
 
     for (const a of agents) {
-      const action = a.action;
+      // NOTE: this migration will NOT work with multi-actions
+      const action = a.actions[0] ?? null;
       if (isRetrievalConfiguration(action)) {
         const retrievalConfiguration =
           await AgentRetrievalConfiguration.findOne({

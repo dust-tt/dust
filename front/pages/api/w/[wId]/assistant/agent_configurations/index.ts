@@ -243,7 +243,7 @@ export async function createOrUpgradeAgentConfiguration(
   {
     assistant: {
       generation,
-      action,
+      actions,
       name,
       description,
       scope,
@@ -262,28 +262,36 @@ export async function createOrUpgradeAgentConfiguration(
     });
   }
 
-  let actionConfig: AgentActionConfigurationType | null = null;
-  if (action && action.type === "retrieval_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "retrieval_configuration",
-      query: action.query,
-      relativeTimeFrame: action.relativeTimeFrame,
-      topK: action.topK,
-      dataSources: action.dataSources,
-    });
-  }
-  if (action && action.type === "dust_app_run_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "dust_app_run_configuration",
-      appWorkspaceId: action.appWorkspaceId,
-      appId: action.appId,
-    });
-  }
-  if (action && action.type === "tables_query_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "tables_query_configuration",
-      tables: action.tables,
-    });
+  const actionConfigs: AgentActionConfigurationType[] = [];
+  for (const action of actions) {
+    if (action.type === "retrieval_configuration") {
+      actionConfigs.push(
+        await createAgentActionConfiguration(auth, {
+          type: "retrieval_configuration",
+          query: action.query,
+          relativeTimeFrame: action.relativeTimeFrame,
+          topK: action.topK,
+          dataSources: action.dataSources,
+        })
+      );
+    } else if (action.type === "dust_app_run_configuration") {
+      actionConfigs.push(
+        await createAgentActionConfiguration(auth, {
+          type: "dust_app_run_configuration",
+          appWorkspaceId: action.appWorkspaceId,
+          appId: action.appId,
+        })
+      );
+    } else if (action.type === "tables_query_configuration") {
+      actionConfigs.push(
+        await createAgentActionConfiguration(auth, {
+          type: "tables_query_configuration",
+          tables: action.tables,
+        })
+      );
+    } else {
+      assertNever(action);
+    }
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
@@ -293,7 +301,7 @@ export async function createOrUpgradeAgentConfiguration(
     status,
     scope,
     generation: generationConfig,
-    action: actionConfig,
+    actions: actionConfigs,
     agentConfigurationId,
   });
   if (agentConfigurationRes.isOk()) {

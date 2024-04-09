@@ -262,7 +262,16 @@ export async function constructPrompt(
   } else if (fallbackPrompt) {
     instructions += `\n${fallbackPrompt}`;
   }
-  if (isRetrievalConfiguration(configuration.action)) {
+
+  if (configuration.actions.length > 1) {
+    logger.warn(
+      { agentConfigurationId: configuration.sId },
+      "Agent configuration has more than one action, only the first one will be executed."
+    );
+  }
+  const action = configuration.actions.length ? configuration.actions[0] : null;
+
+  if (isRetrievalConfiguration(action)) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
   if (instructions.length > 0) {

@@ -188,8 +188,18 @@ export async function* runAgent(
   }
 
   // First run the action if a configuration is present.
-  if (fullConfiguration.action !== null) {
-    if (isRetrievalConfiguration(fullConfiguration.action)) {
+  if (fullConfiguration.actions.length > 1) {
+    logger.warn(
+      { agentConfigurationId: configuration.sId },
+      "Agent configuration has more than one action, only the first one will be executed."
+    );
+  }
+  const action = fullConfiguration.actions.length
+    ? fullConfiguration.actions[0]
+    : null;
+
+  if (action !== null) {
+    if (isRetrievalConfiguration(action)) {
       const eventStream = runRetrieval(
         auth,
         fullConfiguration,
@@ -236,7 +246,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(fullConfiguration.action)) {
+    } else if (isDustAppRunConfiguration(action)) {
       const eventStream = runDustApp(
         auth,
         fullConfiguration,
@@ -286,7 +296,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isTablesQueryConfiguration(fullConfiguration.action)) {
+    } else if (isTablesQueryConfiguration(action)) {
       const eventStream = runTablesQuery({
         auth,
         configuration: fullConfiguration,
@@ -335,7 +345,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(fullConfiguration.action);
+      })(action);
     }
   }
 
