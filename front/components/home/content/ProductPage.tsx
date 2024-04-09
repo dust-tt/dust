@@ -1,13 +1,13 @@
 import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
-// import {
-//   Carousel,
-//   CarouselContent,
-//   CarouselItem,
-//   CarouselNext,
-//   CarouselPrevious,
-// } from "@app/components/home/Car";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@app/components/home/Car";
 import { BlogBlock } from "@app/components/home/components/contentBlocks";
 import {
   Grid,
@@ -31,7 +31,7 @@ export function ProductPage({ getReturnToUrl }: ProductPageProps) {
       <FutureSection />
       <Grid>
         <H2
-          className="col-span-10 col-start-2"
+          className="col-span-10 col-start-2 2xl:col-start-3"
           from="from-green-200"
           to="to-emerald-400"
         >
@@ -89,7 +89,6 @@ export function ProductPage({ getReturnToUrl }: ProductPageProps) {
           (post from our users, quotes)
         </H1>
       </Grid>
-      {/*       
       <Grid>
         <Carousel className="col-span-12">
           <CarouselContent>
@@ -169,7 +168,7 @@ export function ProductPage({ getReturnToUrl }: ProductPageProps) {
           <CarouselPrevious label="" />
           <CarouselNext label="" />
         </Carousel>
-      </Grid> */}
+      </Grid>
     </>
   );
 }

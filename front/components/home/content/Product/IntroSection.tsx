@@ -110,7 +110,8 @@ export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
             "col-span-12",
             "grid grid-cols-2 gap-x-2",
             "md:grid-cols-4 md:gap-x-12",
-            "lg:col-span-10 lg:col-start-2"
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-8 xl:col-start-3"
           )}
         >
           <img src="/static/landing/logos/alan.png" />
@@ -123,7 +124,8 @@ export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
             "col-span-12",
             "grid grid-cols-1 gap-12",
             "md:grid-cols-2 md:gap-6",
-            "lg:col-span-10 lg:col-start-2"
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-8 xl:col-start-3"
           )}
         >
           <P size="md" dotCSS="text-amber-300" shape="triangle">

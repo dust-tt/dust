@@ -18,7 +18,8 @@ export function FutureSection() {
           className={classNames(
             "col-span-12 flex flex-col gap-8",
             "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-8 xl:col-start-2"
+            "xl:col-span-8 xl:col-start-2",
+            "2xl:col-start-3"
           )}
         >
           <H2 from="from-sky-200" to="to-blue-400">
@@ -37,7 +38,8 @@ export function FutureSection() {
           className={classNames(
             "col-span-12",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "md:grid-cols-3 md:gap-y-16",
+            "2xl:col-span-10 2xl:col-start-2"
           )}
         >
           <ImgBlock

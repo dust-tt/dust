@@ -43,7 +43,8 @@ export function TeamSection() {
             "col-span-12",
             "grid grid-cols-1 gap-x-8 gap-y-20",
             "md:grid-cols-2 md:gap-y-16",
-            "lg:grid-cols-3"
+            "lg:grid-cols-3",
+            "2xl:col-span-10 2xl:col-start-2"
           )}
         >
           <ImgBlock
