@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+import { launchRetrieveNewTranscriptsWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -133,6 +134,13 @@ async function handler(
           connectionId,
           provider,
         });
+
+      // Start the temporal workflow
+      void launchRetrieveNewTranscriptsWorkflow({ userId: owner.id, providerId: provider }).then(
+        (result) => {
+          console.log(result);
+        }
+      );
 
       return res
         .status(200)

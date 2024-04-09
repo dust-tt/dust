@@ -18,6 +18,8 @@ import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr";
 
+const provider = "google_drive";
+
 const {
   GA_TRACKING_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
@@ -84,7 +86,7 @@ export default function SolutionsTranscriptsIndex({
       },
       body: JSON.stringify({
         agentConfigurationId: assistant.sId,
-        provider: "google_drive",
+        provider,
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -110,7 +112,7 @@ export default function SolutionsTranscriptsIndex({
       body: JSON.stringify({
         email: email,
         agentConfigurationId: assistantSelected?.sId,
-        provider: "google_drive",
+        provider,
       }),
     }).then((response) => {
       if (!response.ok) {
@@ -137,7 +139,7 @@ export default function SolutionsTranscriptsIndex({
 
   useEffect(() => {
     void fetch(
-      `/api/w/${owner.sId}/solutions/transcripts?provider=google_drive`,
+      `/api/w/${owner.sId}/solutions/transcripts?provider=` + provider,
       {
         method: "GET",
         headers: {
@@ -175,7 +177,6 @@ export default function SolutionsTranscriptsIndex({
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
     try {
-      const provider = "google_drive";
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
         `solutions-transcripts-${owner.sId}`,
@@ -206,6 +207,11 @@ export default function SolutionsTranscriptsIndex({
           title: "Connected Google Drive",
           description: "Google Drive has been connected successfully.",
         });
+
+        setIsGDriveConnected(true);
+
+        // Start temporal worker
+
 
         return response;
       });
