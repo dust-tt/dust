@@ -233,6 +233,7 @@ const WorkspacePage = ({
               <ActiveSubscriptionTable
                 owner={owner}
                 subscription={activeSubscription}
+                subscriptions={subscriptions}
               />
               <DataSourceDataTable
                 owner={owner}
@@ -246,10 +247,6 @@ const WorkspacePage = ({
               <FeatureFlagsDataTable
                 owner={owner}
                 whitelistableFeatures={whitelistableFeatures}
-              />
-              <SubscriptionsDataTable
-                owner={owner}
-                subscriptions={subscriptions}
               />
             </div>
           </div>

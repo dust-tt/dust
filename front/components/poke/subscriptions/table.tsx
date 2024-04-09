@@ -19,6 +19,7 @@ import { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { PokeDialog } from "@app/components/poke/shadcn/ui/dialog";
 import {
   PokeTable,
   PokeTableBody,
@@ -78,14 +79,17 @@ export function SubscriptionsDataTable({
 export function ActiveSubscriptionTable({
   owner,
   subscription,
+  subscriptions,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  subscriptions: SubscriptionType[];
 }) {
   const activePlan = subscription.plan;
 
   const [showUpgradeDowngradeModal, setShowUpgradeDowngradeModal] =
     useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   return (
     <>
@@ -95,6 +99,12 @@ export function ActiveSubscriptionTable({
         owner={owner}
         subscription={subscription}
       />
+      <SubscriptionsHistoryModal
+        owner={owner}
+        subscriptions={subscriptions}
+        show={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+      />
       <div className="flex flex-col space-y-8 pt-4">
         <div className="flex justify-between gap-3">
           <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
@@ -102,6 +112,14 @@ export function ActiveSubscriptionTable({
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
               </h2>
+              <PokeButton
+                aria-label="History"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistoryModal(true)}
+              >
+                🕰️ History
+              </PokeButton>
               <PokeButton
                 aria-label="Upgrade / Downgrade"
                 variant="outline"
@@ -406,6 +424,30 @@ function UpgradeDowngradeModal({
           owner={owner}
         />
       </Page>
+    </Modal>
+  );
+}
+
+function SubscriptionsHistoryModal({
+  show,
+  onClose,
+  owner,
+  subscriptions,
+}: {
+  show: boolean;
+  onClose: () => void;
+  owner: WorkspaceType;
+  subscriptions: SubscriptionType[];
+}) {
+  return (
+    <Modal
+      isOpen={show}
+      onClose={onClose}
+      hasChanged={false}
+      title="Workspace subscriptions history"
+      variant="full-screen"
+    >
+      <SubscriptionsDataTable owner={owner} subscriptions={subscriptions} />
     </Modal>
   );
 }
