@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { MouseEvent } from "react";
 import type { UrlObject } from "url";
 
+import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/AppLayout";
 import { NotificationArea } from "@app/components/sparkle/Notification";
 
@@ -64,7 +65,9 @@ export default function RootLayout({
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>
       <UserProvider>
         <SidebarProvider>
-          <NotificationArea>{children}</NotificationArea>
+          <ConfirmPopupArea>
+            <NotificationArea>{children}</NotificationArea>
+          </ConfirmPopupArea>
         </SidebarProvider>
       </UserProvider>
     </SparkleContext.Provider>
