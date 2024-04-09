@@ -103,6 +103,9 @@ export { ElementModal };
 import { Dialog } from "./components/Dialog";
 export { Dialog };
 
+import { ElementDialog } from "./components/ElementDialog";
+export { ElementDialog };
+
 import { Input } from "./components/Input";
 export { Input };
 
