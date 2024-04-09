@@ -8,6 +8,7 @@ export const SUPPORTED_REPORT_USAGE = [
   "MAU_5",
   "MAU_10",
   "PER_SEAT",
+  "FIXED",
 ] as const;
 export type SupportedReportUsage = (typeof SUPPORTED_REPORT_USAGE)[number];
 
@@ -22,5 +23,11 @@ export function isSupportedReportUsage(
  */
 
 export type MauReportUsageType = `MAU_${number}`;
+
+export function isMauReportUsage(
+  usage: string | undefined
+): usage is MauReportUsageType {
+  return usage?.startsWith("MAU_") ?? false;
+}
 
 export class InvalidRecurringPriceError extends Error {}
