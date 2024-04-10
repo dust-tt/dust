@@ -64,7 +64,7 @@ async function handler(
         agentConfigurationId: patchAgentId,
         provider: patchProvider,
         email: emailToNotify,
-        isActive
+        isActive,
       } = req.body;
       if (!patchAgentId || !patchProvider) {
         return apiError(req, res, {
@@ -111,8 +111,8 @@ async function handler(
           userId: owner.id,
         });
       }
-      
-      if(isActive !== undefined) {
+
+      if (isActive !== undefined) {
         await SolutionsTranscriptsConfigurationResource.setIsActive({
           isActive,
           provider: patchProvider,
@@ -120,16 +120,17 @@ async function handler(
         }).then(() => {
           // Start or stop the temporal workflow
           if (isActive) {
-            void launchRetrieveNewTranscriptsWorkflow({ userId: owner.id, providerId: patchProvider }).then(
-              (result) => {
-                console.log(result);
-              }
-            );
+            void launchRetrieveNewTranscriptsWorkflow({
+              userId: owner.id,
+              providerId: patchProvider,
+            }).then((result) => {
+              console.log(result);
+            });
           } else {
             // Stop the workflow
-            console.log('STOP THE WORKFLOW HERE')
+            console.log("STOP THE WORKFLOW HERE");
           }
-        })
+        });
       }
 
       return res
@@ -158,11 +159,12 @@ async function handler(
         });
 
       // Start the temporal workflow
-      void launchRetrieveNewTranscriptsWorkflow({ userId: owner.id, providerId: provider }).then(
-        (result) => {
-          console.log(result);
-        }
-      );
+      void launchRetrieveNewTranscriptsWorkflow({
+        userId: owner.id,
+        providerId: provider,
+      }).then((result) => {
+        console.log(result);
+      });
 
       return res
         .status(200)

@@ -3,7 +3,8 @@ import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Page,
-  SliderToggle} from "@dust-tt/sparkle";
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
@@ -96,19 +97,19 @@ export default function SolutionsTranscriptsIndex({
       });
     });
   };
-  
-  const updateAssistant = async (
-    assistant: LightAgentConfigurationType
-  ) => {
+
+  const updateAssistant = async (assistant: LightAgentConfigurationType) => {
     setAssistantSelected(assistant);
     const data = {
       agentConfigurationId: assistant.sId,
       provider,
     };
-    const successMessage = "The assistant that will help you summarize your transcripts has been set to @" + assistant.name;
+    const successMessage =
+      "The assistant that will help you summarize your transcripts has been set to @" +
+      assistant.name;
     await makePatchRequest(data, successMessage);
   };
-  
+
   const updateEmailToNotify = async (email: string) => {
     setEmailToNotify(email);
     const data = {
@@ -127,17 +128,21 @@ export default function SolutionsTranscriptsIndex({
       agentConfigurationId: assistantSelected?.sId,
       provider,
     };
-    const successMessage = isActive ? "We will start summarizing your transcripts." : "We will no longer summarize your transcripts.";
+    const successMessage = isActive
+      ? "We will start summarizing your transcripts."
+      : "We will no longer summarize your transcripts.";
     await makePatchRequest(data, successMessage);
-  }
+  };
 
-  const handleSelectAssistant = async (assistant: LightAgentConfigurationType) => {
+  const handleSelectAssistant = async (
+    assistant: LightAgentConfigurationType
+  ) => {
     return updateAssistant(assistant);
   };
 
   const handleSetEmailToNotify = async (email: string) => {
     return updateEmailToNotify(email);
-  }
+  };
 
   const handleSetIsActive = async (isActive: boolean) => {
     return updateIsActive(isActive);
@@ -249,18 +254,19 @@ export default function SolutionsTranscriptsIndex({
       >
         <Page>
           <Page.Header
-              title="Transcripts processing"
-              icon={ChatBubbleLeftRightIcon}
-              description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
-            />
+            title="Transcripts processing"
+            icon={ChatBubbleLeftRightIcon}
+            description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
+          />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="1. Connect Google Drive" />
             <Page.Layout direction="horizontal">
               <Page.P>
-              Connect your personal Google Drive so Dust can access your meeting transcripts.
+                Connect your personal Google Drive so Dust can access your
+                meeting transcripts.
               </Page.P>
 
-              <Button 
+              <Button
                 label={isGDriveConnected ? "Connected" : "Connect"}
                 size="sm"
                 icon={CloudArrowLeftRightIcon}
@@ -324,11 +330,12 @@ export default function SolutionsTranscriptsIndex({
                 <Page.SectionHeader title="4. Activate" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <Page.P>
-                    When this is turned on, you will receive a summary of each of your transcripted meetings.
+                    When this is turned on, you will receive a summary of each
+                    of your transcripted meetings.
                   </Page.P>
                   <SliderToggle
                     selected={isActive}
-                    onClick={() => handleSetIsActive(!isActive)} 
+                    onClick={() => handleSetIsActive(!isActive)}
                   />
                 </Page.Layout>
               </Page.Layout>

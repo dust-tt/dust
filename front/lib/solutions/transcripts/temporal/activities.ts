@@ -288,22 +288,19 @@ export async function processGoogleDriveTranscriptActivity(
   });
 }
 
-
 export async function checkIsActiveActivity({
   userId,
-  providerId
+  providerId,
 }: {
   userId: number;
   providerId: string;
 }) {
   const logger = mainLogger.child({});
 
-  const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive(
-    {
-      userId,
-      provider: providerId,
-    }
-  )
+  const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive({
+    userId,
+    provider: providerId,
+  });
   logger.info(
     {
       isActive: isActive,

@@ -229,7 +229,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
           type: "not_found";
         }
       | Error
-    > 
+    >
   > {
     const configuration = await this.findByUserIdAndProvider({
       // all attributes
@@ -260,12 +260,10 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       );
 
       return new Ok(undefined);
-    }
-    catch (err) {
+    } catch (err) {
       return new Err(err as Error);
     }
   }
-
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
