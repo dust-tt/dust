@@ -128,7 +128,7 @@ const InputBarContainer = ({
             icon={AttachmentIcon}
             size="sm"
             disabled={disableAttachment}
-            tooltip="Add a document to the conversation (10MB maximum, only .txt, .pdf, .md, .csv)."
+            tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
             tooltipPosition="above"
             className="flex"
             onClick={() => {
