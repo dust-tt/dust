@@ -220,7 +220,6 @@ function animateExplode() {
 }
 
 function calculateTargetPositions(currentShape = 0) {
-  console.log("currentShape", currentShape);
   targetPositions = []; // Reset the target positions
   targetSize = particuleShapes[currentShape].size;
 

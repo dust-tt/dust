@@ -1,6 +1,4 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import type { ParsedUrlQuery } from "querystring";
 import React from "react";
 
 import {
@@ -12,12 +10,10 @@ import {
 import { classNames } from "@app/lib/utils";
 
 interface IntroSectionProps {
-  getReturnToUrl: (routerQuery: ParsedUrlQuery) => string;
+  postLoginReturnToUrl: string;
 }
 
-export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
-  const router = useRouter();
-
+export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
   const MainVisualImage = () => (
     <Hover3D depth={-20} perspective={1000} className="relative">
       <Div3D depth={-20}>
@@ -86,9 +82,7 @@ export function IntroSection({ getReturnToUrl }: IntroSectionProps) {
                 label="Start with Dust Now"
                 icon={RocketIcon}
                 onClick={() =>
-                  (window.location.href = `/api/auth/login?returnTo=${getReturnToUrl(
-                    router.query
-                  )}`)
+                  (window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`)
                 }
               />
             </div>

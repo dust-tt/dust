@@ -2,7 +2,13 @@ import { Avatar, Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React from "react";
 
-import { Grid, H1, H3, H5, P } from "@app/components/home/ContentComponents";
+import {
+  Grid,
+  H1,
+  H3,
+  H5,
+  P,
+} from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {

@@ -53,12 +53,12 @@ const developers: { title: string; href: string; target?: string }[] = [
   },
 ];
 
-export function Navigation() {
+export function LandingNavigation() {
   return (
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <Link href="/" legacyBehavior passHref>
+          <Link href="/hidden-copy" legacyBehavior passHref>
             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Product
             </NavigationMenuLink>

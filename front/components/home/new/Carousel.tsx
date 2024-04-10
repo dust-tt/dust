@@ -230,8 +230,6 @@ const CarouselNext = React.forwardRef<
 >(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel();
 
-  console.log(">> orientation:", orientation);
-
   return (
     <Button
       // TODO(2024-04-10 flav) Support ref in the Button.
