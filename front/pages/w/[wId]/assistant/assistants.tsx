@@ -106,20 +106,18 @@ export default function MyAssistants({
           }}
         />
         <Button.List>
-          {searchFilteredAssistants.length > 0 && (
-            <Tooltip label="Create your own assistant">
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-              >
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create An Assistant"
-                  size="sm"
-                />
-              </Link>
-            </Tooltip>
-          )}
+          <Tooltip label="Create your own assistant">
+            <Link
+              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+            >
+              <Button
+                variant="primary"
+                icon={PlusIcon}
+                label="Create An Assistant"
+                size="sm"
+              />
+            </Link>
+          </Tooltip>
           <Link href={`/w/${owner.sId}/assistant/gallery`}>
             <Button
               variant="primary"
@@ -179,7 +177,9 @@ function ScopeSection({
           onClick={onAssistantClick(agent)}
         >
           <ContextItem.Description>
-            <div className="text-element-700">{agent.description}</div>
+            <div className="line-clamp-2 text-element-700">
+              {agent.description}
+            </div>
           </ContextItem.Description>
         </ContextItem>
       ))}
