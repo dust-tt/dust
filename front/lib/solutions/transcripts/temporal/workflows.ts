@@ -10,10 +10,13 @@ import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transc
 
 import type * as activities from "./activities";
 
-const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity, checkIsActiveActivity } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "10 minutes",
-  });
+const {
+  retrieveNewTranscriptsActivity,
+  processGoogleDriveTranscriptActivity,
+  checkIsActiveActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+});
 
 export async function retrieveNewTranscriptsWorkflow(
   userId: number,
@@ -25,7 +28,7 @@ export async function retrieveNewTranscriptsWorkflow(
   const isWorkflowActive = true;
 
   while (isWorkflowActive) {
-    if(await checkIsActiveActivity({userId, providerId}) !== true) {
+    if ((await checkIsActiveActivity({ userId, providerId })) !== true) {
       break;
     }
     await retrieveNewTranscriptsActivity(userId, providerId);

@@ -10,7 +10,10 @@ import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transc
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
-export function generateWorkflowId(userId: string, providerId: SolutionsTranscriptsProviderType): string {
+export function generateWorkflowId(
+  userId: string,
+  providerId: SolutionsTranscriptsProviderType
+): string {
   return `solutions-transcripts-retrieve-u${userId}-${providerId}`;
 }
 
@@ -19,7 +22,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   providerId,
 }: {
   userId: number;
-  providerId: SolutionsTranscriptsProviderType
+  providerId: SolutionsTranscriptsProviderType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
   const workflowId = generateWorkflowId(userId.toString(), providerId);

@@ -281,8 +281,6 @@ export async function processGoogleDriveTranscriptActivity(
     fileId,
     fileName: transcriptTitle as string,
   }).catch((err) => {
-    console.log('ERROR')
-    console.log(err)
     logger.error(
       "[processGoogleDriveTranscriptActivity] Error creating history record",
       err
