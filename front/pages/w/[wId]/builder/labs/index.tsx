@@ -45,7 +45,7 @@ export default function SolutionsIndex({
         subscription={subscription}
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="admin"
+        topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({ owner, current: "labs" })}
       >
         <Page.Vertical align="stretch" gap="xl">
