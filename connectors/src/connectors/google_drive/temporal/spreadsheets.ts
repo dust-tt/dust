@@ -3,7 +3,6 @@ import {
   getGoogleSheetTableId,
   getSanitizedHeaders,
   InvalidStructuredDataHeaderError,
-  makeStructuredDataTableName,
 } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
@@ -16,6 +15,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
+import { makeStructuredDataTableName } from "@connectors/lib/structured_data";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
