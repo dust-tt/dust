@@ -6,7 +6,7 @@ import {
   DroidItem,
   HeaderContentBlock,
 } from "@app/components/home/components/contentBlocks";
-import { Grid, H2, P } from "@app/components/home/components/contentComponents";
+import { Grid, H2 } from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
