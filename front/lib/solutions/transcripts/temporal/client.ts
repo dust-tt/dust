@@ -3,8 +3,8 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { QUEUE_NAME } from "@app/lib/solutions/transcripts/temporal/config";
 import {
+  processTranscriptWorkflow,
   retrieveNewTranscriptsWorkflow,
-  summarizeTranscriptWorkflow,
 } from "@app/lib/solutions/transcripts/temporal/workflows";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -52,7 +52,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   }
 }
 
-export async function launchSummarizeTranscriptWorkflow({
+export async function launchProcessTranscriptWorkflow({
   userId,
   fileId,
 }: {
@@ -64,7 +64,7 @@ export async function launchSummarizeTranscriptWorkflow({
   const workflowId = `solutions-transcripts-summarize-u${userId}-f${fileId}`;
 
   try {
-    await client.workflow.start(summarizeTranscriptWorkflow, {
+    await client.workflow.start(processTranscriptWorkflow, {
       args: [userId, fileId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,

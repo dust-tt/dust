@@ -12,7 +12,7 @@ import * as googleapis from "googleapis";
 import { User } from "@app/lib/models";
 import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
 import { SolutionsTranscriptsHistoryResource } from "@app/lib/resources/solutions_transcripts_history_resource";
-import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
+import { launchProcessTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
 import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 import mainLogger from "@app/logger/logger";
@@ -71,7 +71,7 @@ export async function retrieveNewTranscriptsActivity(
         return;
       }
 
-      await launchSummarizeTranscriptWorkflow({ userId, fileId });
+      await launchProcessTranscriptWorkflow({ userId, fileId });
     });
   }
 
@@ -81,7 +81,7 @@ export async function retrieveNewTranscriptsActivity(
   );
 }
 
-export async function summarizeGoogleDriveTranscriptActivity(
+export async function processGoogleDriveTranscriptActivity(
   userId: number,
   fileId: string
 ) {
@@ -91,7 +91,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   const user = await User.findByPk(userId);
   if (!user) {
     logger.error(
-      "[summarizeGoogleDriveTranscriptActivity] User not found. Stopping."
+      "[processGoogleDriveTranscriptActivity] User not found. Stopping."
     );
     return;
   }
@@ -105,7 +105,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
   }
   logger.info(
-    "[summarizeGoogleDriveTranscriptActivity] Starting summarization of file ",
+    "[processGoogleDriveTranscriptActivity] Starting processing of file ",
     fileId
   );
 
@@ -121,7 +121,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   if (!transcriptsConfiguration) {
     logger.info(
       {},
-      "[summarizeGoogleDriveTranscriptActivity] No configuration found. Stopping."
+      "[processGoogleDriveTranscriptActivity] No configuration found. Stopping."
     );
     return;
   }
@@ -167,7 +167,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
   if (!configurationId) {
     logger.error(
-      "[summarizeGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."
+      "[processGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."
     );
     return;
   }
@@ -195,14 +195,14 @@ export async function summarizeGoogleDriveTranscriptActivity(
     userMessage = convRes.value.message;
 
     logger.info(
-      "[summarizeGoogleDriveTranscriptActivity] Created conversation " +
+      "[processGoogleDriveTranscriptActivity] Created conversation " +
         conversation.sId
     );
   }
 
   if (!conversation) {
     logger.error(
-      "[summarizeGoogleDriveTranscriptActivity] No conversation found. Stopping."
+      "[processGoogleDriveTranscriptActivity] No conversation found. Stopping."
     );
     return;
   }
@@ -271,7 +271,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
   };
   void sgMail.send(msg).then(() => {
     logger.info(
-      "[summarizeGoogleDriveTranscriptActivity] Email sent with summary"
+      "[processGoogleDriveTranscriptActivity] Email sent with summary"
     );
   });
 
@@ -282,7 +282,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
     fileName: transcriptTitle as string,
   }).catch((err) => {
     logger.error(
-      "[summarizeGoogleDriveTranscriptActivity] Error creating history record",
+      "[processGoogleDriveTranscriptActivity] Error creating history record",
       err
     );
   });

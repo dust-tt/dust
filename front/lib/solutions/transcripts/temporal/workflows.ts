@@ -12,7 +12,7 @@ import type * as activities from "./activities";
 
 const {
   retrieveNewTranscriptsActivity,
-  summarizeGoogleDriveTranscriptActivity
+  processGoogleDriveTranscriptActivity
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
@@ -51,9 +51,9 @@ export async function retrieveNewTranscriptsWorkflow(
   } while (workflowInfo().historyLength < 5000);
 }
 
-export async function summarizeTranscriptWorkflow(
+export async function processTranscriptWorkflow(
   userId: number,
   fileId: string
 ) {
-  await summarizeGoogleDriveTranscriptActivity(userId, fileId);
+  await processGoogleDriveTranscriptActivity(userId, fileId);
 }
