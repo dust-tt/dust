@@ -43,9 +43,38 @@ async function areTemporalWorkflowsRunning(
       garbageCollectorHandle.describe(),
     ]);
 
-    return descriptions.every(({ status: { name } }) => name === "RUNNING");
+    const histories = await Promise.all([
+      incrementalSyncHandle.fetchHistory(),
+      garbageCollectorHandle.fetchHistory(),
+    ]);
+
+    const latests: (Date | null)[] = histories.map((h) => {
+      let latest: Date | null = null;
+      if (h.events) {
+        h.events.forEach((e) => {
+          if (e.eventTime?.seconds) {
+            // @ts-expect-error eventTime is Long and it works
+            const d = new Date(e.eventTime?.seconds * 1000);
+            if (!latest || d > latest) {
+              latest = d;
+            }
+          }
+        });
+      }
+      return latest;
+    });
+
+    return {
+      isRunning: descriptions.every(
+        ({ status: { name } }) => name === "RUNNING"
+      ),
+      isNotStalled: latests.every(
+        // Check `latest` is less than 1h old.
+        (d) => d && new Date().getTime() - d.getTime() < 60 * 60 * 1000
+      ),
+    };
   } catch (err) {
-    return false;
+    return { isRunning: false, isNotStalled: false };
   }
 }
 
@@ -63,25 +92,38 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
   const missingActiveWorkflows: any[] = [];
+  const stalledWorkflows: any[] = [];
+
   for (const notionConnector of notionConnectors) {
     if (notionConnector.pausedAt) {
       continue;
     }
     heartbeat();
 
-    const isActive = await areTemporalWorkflowsRunning(client, notionConnector);
-    if (!isActive) {
+    const { isRunning, isNotStalled } = await areTemporalWorkflowsRunning(
+      client,
+      notionConnector
+    );
+
+    if (!isRunning) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
       });
+    } else {
+      if (!isNotStalled) {
+        stalledWorkflows.push({
+          connectorId: notionConnector.id,
+          workspaceId: notionConnector.workspaceId,
+        });
+      }
     }
   }
 
   if (missingActiveWorkflows.length > 0) {
     reportFailure(
-      { missingActiveWorkflows },
-      "Missing Notion temporal workflows"
+      { missingActiveWorkflows, stalledWorkflows },
+      "Missing or stalled Notion temporal workflows"
     );
   } else {
     reportSuccess({});
