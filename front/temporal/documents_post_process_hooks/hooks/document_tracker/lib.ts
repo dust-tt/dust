@@ -1,8 +1,8 @@
 import { DustAPI } from "@dust-tt/types";
 
-import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
 import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { TRACKABLE_CONNECTOR_TYPES } from "@app/temporal/documents_post_process_hooks/hooks/document_tracker/consts";
 
 export async function getTrackableDataSources(workspaceId: string): Promise<
   {

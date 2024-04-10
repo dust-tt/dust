@@ -1,15 +1,15 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 
+import { updateTrackedDocuments } from "@app/lib/document_tracker";
+import { TrackedDocument } from "@app/lib/models";
+import mainLogger from "@app/logger/logger";
 import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnDeleteParams,
   DocumentsPostProcessHookOnUpsertParams,
-} from "@app/documents_post_process_hooks/hooks";
-import { TRACKABLE_CONNECTOR_TYPES } from "@app/documents_post_process_hooks/hooks/document_tracker/consts";
-import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import { updateTrackedDocuments } from "@app/lib/document_tracker";
-import { TrackedDocument } from "@app/lib/models";
-import mainLogger from "@app/logger/logger";
+} from "@app/temporal/documents_post_process_hooks/hooks";
+import { TRACKABLE_CONNECTOR_TYPES } from "@app/temporal/documents_post_process_hooks/hooks/document_tracker/consts";
+import { getDatasource } from "@app/temporal/documents_post_process_hooks/hooks/lib/data_source_helpers";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 

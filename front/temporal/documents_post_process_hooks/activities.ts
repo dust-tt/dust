@@ -5,11 +5,11 @@ import type {
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
-import type { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
-import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/documents_post_process_hooks/hooks";
 import { Authenticator } from "@app/lib/auth";
 import { DataSource, Workspace } from "@app/lib/models";
 import logger from "@app/logger/logger";
+import type { DocumentsPostProcessHookType } from "@app/temporal/documents_post_process_hooks/hooks";
+import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/temporal/documents_post_process_hooks/hooks";
 
 export async function runPostUpsertHookActivity(
   dataSourceName: string,

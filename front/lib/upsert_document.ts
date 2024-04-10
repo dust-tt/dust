@@ -16,11 +16,11 @@ import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
-import { getDocumentsPostUpsertHooksToRun } from "@app/documents_post_process_hooks/hooks";
-import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
+import { launchRunPostUpsertHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
+import { getDocumentsPostUpsertHooksToRun } from "@app/temporal/documents_post_process_hooks/hooks";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
