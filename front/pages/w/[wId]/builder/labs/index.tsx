@@ -56,7 +56,7 @@ export default function SolutionsIndex({
           />
           <Page.Separator />
           <Page.SectionHeader
-            title="Transcripts summarizer"
+            title="Transcripts processing"
             description="Summarize your visio calls meeting minutes automatically and receive them by email. Works with Google Meet and Gong.io"
             action={{
               label: "Get started",

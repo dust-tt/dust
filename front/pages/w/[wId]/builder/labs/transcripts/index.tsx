@@ -249,7 +249,7 @@ export default function SolutionsTranscriptsIndex({
       >
         <Page>
           <Page.Header
-              title="Transcripts summarizer"
+              title="Transcripts processing"
               icon={ChatBubbleLeftRightIcon}
               description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
             />
