@@ -1,4 +1,3 @@
-import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import {
@@ -7,7 +6,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/components/home/Caroussel";
+} from "@app/components/home/Carousel";
 import { BlogBlock } from "@app/components/home/components/contentBlocks";
 import {
   Grid,
