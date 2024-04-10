@@ -50,8 +50,8 @@ const subtitleClassNames = {
 const descriptionClassNames = {
   base: "s-font-normal s-mb-1",
   item: "s-text-xs s-text-element-700 s-pl-1 s-line-clamp-3",
-  list: "s-text-base s-text-element-800",
-  gallery: "s-text-base s-text-element-800",
+  list: "s-text-base s-text-element-800 s-line-clamp-3",
+  gallery: "s-text-base s-text-element-800 s-line-clamp-3",
 };
 
 function renderVariantContent(
