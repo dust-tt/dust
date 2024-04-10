@@ -537,8 +537,8 @@ AgentRetrievalConfiguration.init(
         // Validation for Timeframe
         if (retrieval.relativeTimeFrame == "custom") {
           if (
-            retrieval.relativeTimeFrameDuration ||
-            retrieval.relativeTimeFrameUnit
+            !retrieval.relativeTimeFrameDuration ||
+            !retrieval.relativeTimeFrameUnit
           ) {
             throw new Error(
               "Custom relative time frame must have a duration and unit set"
@@ -548,7 +548,7 @@ AgentRetrievalConfiguration.init(
 
         // Validation for TopK
         if (retrieval.topKMode == "custom") {
-          if (retrieval.topK) {
+          if (!retrieval.topK) {
             throw new Error("topK must be set when topKMode is 'custom'");
           }
         } else if (retrieval.topK) {
