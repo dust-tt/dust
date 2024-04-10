@@ -7,6 +7,7 @@ import type {
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
+  assertNever,
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
@@ -25,6 +26,11 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
+import {
+  AgentDustAppRunConfiguration,
+  AgentRetrievalConfiguration,
+  AgentTablesQueryConfiguration,
+} from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -294,6 +300,50 @@ export async function createOrUpgradeAgentConfiguration(
     // We are not tracking draft agents
     if (agentConfigurationRes.value.status === "active") {
       trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
+    }
+    if (actionConfig) {
+      // TODO(@fontanierh) Temporary, to remove.
+      // This is a shadow write while we invert the relationship between configuration and actions.
+      switch (actionConfig.type) {
+        case "retrieval_configuration":
+          await AgentRetrievalConfiguration.update(
+            {
+              agentConfigurationId: agentConfigurationRes.value.id,
+            },
+            {
+              where: {
+                id: actionConfig.id,
+              },
+            }
+          );
+          break;
+        case "tables_query_configuration":
+          await AgentTablesQueryConfiguration.update(
+            {
+              agentConfigurationId: agentConfigurationRes.value.id,
+            },
+            {
+              where: {
+                id: actionConfig.id,
+              },
+            }
+          );
+          break;
+        case "dust_app_run_configuration":
+          await AgentDustAppRunConfiguration.update(
+            {
+              agentConfigurationId: agentConfigurationRes.value.id,
+            },
+            {
+              where: {
+                id: actionConfig.id,
+              },
+            }
+          );
+          break;
+        default:
+          assertNever(actionConfig);
+      }
     }
   }
 

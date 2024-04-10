@@ -41,17 +41,15 @@ import {
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+  AgentUserRelation,
   Conversation,
   DataSource,
   Mention,
   Message,
   Workspace,
 } from "@app/lib/models";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 

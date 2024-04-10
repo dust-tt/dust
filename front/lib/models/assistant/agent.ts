@@ -1,6 +1,7 @@
 import type {
   AgentUserListStatus,
   DustAppRunConfigurationType,
+  TimeframeUnit,
 } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
@@ -16,9 +17,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -230,36 +228,6 @@ AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
 });
 
-// Agent config <> Retrieval config
-AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  as: "retrievalConfiguration",
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  as: "retrievalConfiguration",
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-
-// Agent config <> DustAppRun config
-AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
-  as: "dustAppRunConfiguration",
-  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
-  as: "dustAppRunConfiguration",
-  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
-});
-
-// Agent config <> Tables config
-AgentTablesQueryConfiguration.hasOne(AgentConfiguration, {
-  as: "tablesQueryConfiguration",
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentTablesQueryConfiguration, {
-  as: "tablesQueryConfiguration",
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
-});
-
 // Agent config <> Author
 User.hasMany(AgentConfiguration, {
   foreignKey: { name: "authorId", allowNull: false },
@@ -400,4 +368,298 @@ AgentUserRelation.belongsTo(User, {
 });
 AgentUserRelation.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
+});
+
+// TODO(@fontanierh) TO BE MOVED TO THE tables_query.ts file -- inlined during multi actions migration
+// to avoid circular dependencies
+
+export class AgentTablesQueryConfiguration extends Model<
+  InferAttributes<AgentTablesQueryConfiguration>,
+  InferCreationAttributes<AgentTablesQueryConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+
+  declare sId: string;
+}
+
+AgentTablesQueryConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_tables_query_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+        name: "agent_tables_query_configuration_s_id",
+      },
+    ],
+    sequelize: frontSequelize,
+  }
+);
+
+// DEPERECATED -- AgentConfig -> TablesQueryConfig (1:1)
+AgentTablesQueryConfiguration.hasOne(AgentConfiguration, {
+  as: "tablesQueryConfiguration",
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentTablesQueryConfiguration, {
+  as: "tablesQueryConfiguration",
+  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
+});
+
+// NEW -- AgentConfig -> TablesQueryConfig (1:N)
+AgentConfiguration.hasMany(AgentTablesQueryConfiguration, {
+  // TODO(@fontanierh) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
+  // TODO(@fontanierh) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+
+// TODO(@fontanierh) TO BE MOVED TO THE retrieval.ts file -- inlined during multi actions migration
+// to avoid circular dependencies
+
+export class AgentRetrievalConfiguration extends Model<
+  InferAttributes<AgentRetrievalConfiguration>,
+  InferCreationAttributes<AgentRetrievalConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+
+  declare sId: string;
+
+  declare query: "auto" | "none" | "templated";
+  declare queryTemplate: string | null;
+  declare relativeTimeFrame: "auto" | "none" | "custom";
+  declare relativeTimeFrameDuration: number | null;
+  declare relativeTimeFrameUnit: TimeframeUnit | null;
+  declare topK: number | null;
+  declare topKMode: "auto" | "custom";
+}
+
+AgentRetrievalConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    query: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+    queryTemplate: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    relativeTimeFrame: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+    relativeTimeFrameDuration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    relativeTimeFrameUnit: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    topK: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    topKMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+  },
+  {
+    modelName: "agent_retrieval_configuration",
+    sequelize: frontSequelize,
+    hooks: {
+      beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
+        // Validation for templated Query
+        if (retrieval.query == "templated") {
+          if (!retrieval.queryTemplate) {
+            throw new Error("Must set a template for templated query");
+          }
+        } else if (retrieval.queryTemplate) {
+          throw new Error("Can't set a template without templated query");
+        }
+
+        // Validation for Timeframe
+        if (retrieval.relativeTimeFrame == "custom") {
+          if (
+            retrieval.relativeTimeFrameDuration ||
+            retrieval.relativeTimeFrameUnit
+          ) {
+            throw new Error(
+              "Custom relative time frame must have a duration and unit set"
+            );
+          }
+        }
+
+        // Validation for TopK
+        if (retrieval.topKMode == "custom") {
+          if (retrieval.topK) {
+            throw new Error("topK must be set when topKMode is 'custom'");
+          }
+        } else if (retrieval.topK) {
+          throw new Error("topK must be null when topKMode is not 'custom'");
+        }
+      },
+    },
+  }
+);
+
+// DEPERECATED -- AgentConfig -> RetrievalConfig (1:1)
+AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
+  as: "retrievalConfiguration",
+  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
+});
+
+// NEW -- AgentConfig -> RetrievalConfig (1:N)
+AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
+  // TODO(@fontanierh) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
+  // TODO(@fontanierh) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+
+// TODO(@fontanierh) TO BE MOVED TO THE dust_app_run.ts file -- inlined during multi actions migration
+// to avoid circular dependencies
+
+export class AgentDustAppRunConfiguration extends Model<
+  InferAttributes<AgentDustAppRunConfiguration>,
+  InferCreationAttributes<AgentDustAppRunConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+
+  declare sId: string;
+
+  declare appWorkspaceId: string;
+  declare appId: string;
+}
+
+AgentDustAppRunConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    appWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    appId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_dust_app_run_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+      },
+    ],
+    sequelize: frontSequelize,
+  }
+);
+
+// DEPERECATED -- AgentConfig -> DustAppRunConfig (1:1)
+AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
+  as: "dustAppRunConfiguration",
+  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DustAppRun action set for this Agent
+});
+AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
+  as: "dustAppRunConfiguration",
+  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DustAppRun action set for this Agent
+});
+
+// NEW -- AgentConfig -> DustAppRunConfig (1:N)
+AgentConfiguration.hasMany(AgentDustAppRunConfiguration, {
+  // TODO(@fontanierh): make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
+  // TODO(@fontanierh): make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
 });

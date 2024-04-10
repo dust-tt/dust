@@ -9,65 +9,6 @@ import { DataTypes, Model } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 /**
- * Action DustAppRun Configuration
- */
-export class AgentDustAppRunConfiguration extends Model<
-  InferAttributes<AgentDustAppRunConfiguration>,
-  InferCreationAttributes<AgentDustAppRunConfiguration>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare sId: string;
-
-  declare appWorkspaceId: string;
-  declare appId: string;
-}
-
-AgentDustAppRunConfiguration.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    appWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    appId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "agent_dust_app_run_configuration",
-    indexes: [
-      {
-        unique: true,
-        fields: ["sId"],
-      },
-    ],
-    sequelize: frontSequelize,
-  }
-);
-
-/**
  * DustAppRun Action
  */
 export class AgentDustAppRunAction extends Model<
