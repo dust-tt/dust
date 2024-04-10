@@ -3,7 +3,7 @@ import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
-import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY as string });
 const { NANGO_GOOGLE_DRIVE_CONNECTOR_ID } = process.env;
@@ -36,7 +36,7 @@ export async function getGoogleAuth(userId: number) {
   }
 
   const transcriptsConfiguration =
-    await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
+    await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
       attributes: ["id", "connectionId", "provider"],
       where: {
         userId: userId,

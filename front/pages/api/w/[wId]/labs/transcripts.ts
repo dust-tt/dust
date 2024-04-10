@@ -2,19 +2,19 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
-import { launchRetrieveNewTranscriptsWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
+import { launchRetrieveNewTranscriptsWorkflow } from "@app/lib/labs/temporal/client";
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetSolutionsConfigurationResponseBody = {
-  configuration: SolutionsTranscriptsConfigurationResource | null;
+export type GetLabsTranscriptsConfigurationResponseBody = {
+  configuration: LabsTranscriptsConfigurationResource | null;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetSolutionsConfigurationResponseBody>
+    WithAPIErrorReponse<GetLabsTranscriptsConfigurationResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -37,7 +37,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGetRes =
-        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
+        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider(
           {
             attributes: [
               "id",
@@ -49,7 +49,7 @@ async function handler(
             ],
             where: {
               userId: owner.id,
-              provider: req.query.provider as SolutionsTranscriptsProviderType,
+              provider: req.query.provider as LabsTranscriptsProviderType,
             },
           }
         );
@@ -78,12 +78,12 @@ async function handler(
       }
 
       const transcriptsConfigurationPatchRes =
-        await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider(
+        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider(
           {
             attributes: ["id", "connectionId", "provider"],
             where: {
               userId: owner.id,
-              provider: patchProvider as SolutionsTranscriptsProviderType,
+              provider: patchProvider as LabsTranscriptsProviderType,
             },
           }
         );
@@ -98,14 +98,14 @@ async function handler(
         });
       }
 
-      await SolutionsTranscriptsConfigurationResource.setAgentConfigurationId({
+      await LabsTranscriptsConfigurationResource.setAgentConfigurationId({
         agentConfigurationId: patchAgentId,
         provider: patchProvider,
         userId: owner.id,
       });
 
       if (emailToNotify) {
-        await SolutionsTranscriptsConfigurationResource.setEmailToNotify({
+        await LabsTranscriptsConfigurationResource.setEmailToNotify({
           emailToNotify,
           provider: patchProvider,
           userId: owner.id,
@@ -113,7 +113,7 @@ async function handler(
       }
 
       if (isActive !== undefined) {
-        await SolutionsTranscriptsConfigurationResource.setIsActive({
+        await LabsTranscriptsConfigurationResource.setIsActive({
           isActive,
           provider: patchProvider,
           userId: owner.id,
@@ -152,7 +152,7 @@ async function handler(
       }
 
       const transcriptsConfigurationPostRes =
-        await SolutionsTranscriptsConfigurationResource.makeNew({
+        await LabsTranscriptsConfigurationResource.makeNew({
           userId: owner.id,
           connectionId,
           provider,

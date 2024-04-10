@@ -3,24 +3,24 @@ import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
-import { SolutionsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/solutions_transcripts_history";
+import type { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts_configuration";
+import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts_history";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface SolutionsTranscriptsHistoryResource
-  extends ReadonlyAttributesType<SolutionsTranscriptsHistoryModel> {}
-export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsTranscriptsHistoryModel> {
-  static model: ModelStatic<SolutionsTranscriptsHistoryModel> =
-    SolutionsTranscriptsHistoryModel;
+export interface LabsTranscriptsHistoryResource
+  extends ReadonlyAttributesType<LabsTranscriptsHistoryModel> {}
+export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscriptsHistoryModel> {
+  static model: ModelStatic<LabsTranscriptsHistoryModel> =
+    LabsTranscriptsHistoryModel;
 
   constructor(
-    model: ModelStatic<SolutionsTranscriptsHistoryModel>,
-    blob: Attributes<SolutionsTranscriptsHistoryModel>
+    model: ModelStatic<LabsTranscriptsHistoryModel>,
+    blob: Attributes<LabsTranscriptsHistoryModel>
   ) {
-    super(SolutionsTranscriptsHistoryModel, blob);
+    super(LabsTranscriptsHistoryModel, blob);
   }
 
   static async makeNew({
@@ -28,12 +28,12 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
     fileId,
     fileName,
   }: {
-    configurationId: SolutionsTranscriptsConfigurationModel["id"];
+    configurationId: LabsTranscriptsConfigurationModel["id"];
     fileId: string;
     fileName: string;
-  }): Promise<SolutionsTranscriptsHistoryResource> {
+  }): Promise<LabsTranscriptsHistoryResource> {
     if (
-      await SolutionsTranscriptsHistoryModel.count({
+      await LabsTranscriptsHistoryModel.count({
         where: {
           fileId: fileId,
         },
@@ -43,14 +43,14 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
         `A Solution transcripts history already exists with fileId ${fileId}`
       );
     }
-    const history = await SolutionsTranscriptsHistoryModel.create({
+    const history = await LabsTranscriptsHistoryModel.create({
       configurationId,
       fileId,
       fileName,
     });
 
-    return new SolutionsTranscriptsHistoryResource(
-      SolutionsTranscriptsHistoryModel,
+    return new LabsTranscriptsHistoryResource(
+      LabsTranscriptsHistoryModel,
       history.get()
     );
   }
@@ -58,9 +58,9 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   static async findByFileId({
     fileId,
   }: {
-    fileId: SolutionsTranscriptsHistoryModel["fileId"];
-  }): Promise<SolutionsTranscriptsHistoryResource | null> {
-    const history = await SolutionsTranscriptsHistoryModel.findOne({
+    fileId: LabsTranscriptsHistoryModel["fileId"];
+  }): Promise<LabsTranscriptsHistoryResource | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
         fileId,
       },
@@ -70,8 +70,8 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
       return null;
     }
 
-    return new SolutionsTranscriptsHistoryResource(
-      SolutionsTranscriptsHistoryModel,
+    return new LabsTranscriptsHistoryResource(
+      LabsTranscriptsHistoryModel,
       history.get()
     );
   }
@@ -81,11 +81,11 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
     limit = 20,
     sort = "DESC",
   }: {
-    configurationId: SolutionsTranscriptsConfigurationModel["id"];
+    configurationId: LabsTranscriptsConfigurationModel["id"];
     limit: number;
     sort: "ASC" | "DESC";
-  }): Promise<SolutionsTranscriptsHistoryResource[]> {
-    const histories = await SolutionsTranscriptsHistoryModel.findAll({
+  }): Promise<LabsTranscriptsHistoryResource[]> {
+    const histories = await LabsTranscriptsHistoryModel.findAll({
       where: {
         configurationId,
       },
@@ -95,8 +95,8 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
 
     return histories.map(
       (history) =>
-        new SolutionsTranscriptsHistoryResource(
-          SolutionsTranscriptsHistoryModel,
+        new LabsTranscriptsHistoryResource(
+          LabsTranscriptsHistoryModel,
           history.get()
         )
     );

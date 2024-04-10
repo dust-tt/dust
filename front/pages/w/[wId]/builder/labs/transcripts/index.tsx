@@ -55,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-export default function SolutionsTranscriptsIndex({
+export default function LabsTranscriptsIndex({
   owner,
   subscription,
   gaTrackingId,
@@ -80,7 +80,7 @@ export default function SolutionsTranscriptsIndex({
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
   const makePatchRequest = async (data: any, successMessage: string) => {
-    await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
+    await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -156,7 +156,7 @@ export default function SolutionsTranscriptsIndex({
 
   useEffect(() => {
     void fetch(
-      `/api/w/${owner.sId}/solutions/transcripts?provider=` + provider,
+      `/api/w/${owner.sId}/labs/transcripts?provider=` + provider,
       {
         method: "GET",
         headers: {
@@ -200,7 +200,7 @@ export default function SolutionsTranscriptsIndex({
     try {
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
-        `solutions-transcripts-${owner.sId}`,
+        `labs-transcripts-${owner.sId}`,
         provider
       );
       const {
@@ -210,7 +210,7 @@ export default function SolutionsTranscriptsIndex({
         newConnectionId
       );
 
-      await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
+      await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

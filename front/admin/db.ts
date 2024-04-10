@@ -46,10 +46,10 @@ import {
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+// Labs - Can be removed at all times if a solution is dropped
+import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts_configuration";
+import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts_history";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-// Solutions - Can be removed at all times if a solution is dropped
-import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
-import { SolutionsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/solutions_transcripts_history";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 async function main() {
@@ -106,9 +106,9 @@ async function main() {
 
   await TemplateModel.sync({ alter: true });
 
-  // Solutions - Can be removed at all times if a solution is dropped
-  await SolutionsTranscriptsConfigurationModel.sync({ alter: true });
-  await SolutionsTranscriptsHistoryModel.sync({ alter: true });
+  // Labs - Can be removed at all times if a solution is dropped
+  await LabsTranscriptsConfigurationModel.sync({ alter: true });
+  await LabsTranscriptsHistoryModel.sync({ alter: true });
 
   process.exit(0);
 }

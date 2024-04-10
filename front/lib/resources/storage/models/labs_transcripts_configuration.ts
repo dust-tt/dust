@@ -6,14 +6,14 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 
-export class SolutionsTranscriptsConfigurationModel extends Model<
-  InferAttributes<SolutionsTranscriptsConfigurationModel>,
-  InferCreationAttributes<SolutionsTranscriptsConfigurationModel>
+export class LabsTranscriptsConfigurationModel extends Model<
+  InferAttributes<LabsTranscriptsConfigurationModel>,
+  InferCreationAttributes<LabsTranscriptsConfigurationModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -21,13 +21,13 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare connectionId: string;
-  declare provider: SolutionsTranscriptsProviderType;
+  declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare emailToNotify: string | null;
   declare isActive: boolean;
 }
 
-SolutionsTranscriptsConfigurationModel.init(
+LabsTranscriptsConfigurationModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -74,7 +74,7 @@ SolutionsTranscriptsConfigurationModel.init(
     },
   },
   {
-    modelName: "solutions_transcripts_configuration",
+    modelName: "labs_transcripts_configuration",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["userId"] },

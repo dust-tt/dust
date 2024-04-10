@@ -2,25 +2,25 @@ import type { RequireAtLeastOne, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
+import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts_configuration";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface SolutionsTranscriptsConfigurationResource
-  extends ReadonlyAttributesType<SolutionsTranscriptsConfigurationModel> {}
-export class SolutionsTranscriptsConfigurationResource extends BaseResource<SolutionsTranscriptsConfigurationModel> {
-  static model: ModelStatic<SolutionsTranscriptsConfigurationModel> =
-    SolutionsTranscriptsConfigurationModel;
+export interface LabsTranscriptsConfigurationResource
+  extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
+export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTranscriptsConfigurationModel> {
+  static model: ModelStatic<LabsTranscriptsConfigurationModel> =
+    LabsTranscriptsConfigurationModel;
 
   constructor(
-    model: ModelStatic<SolutionsTranscriptsConfigurationModel>,
-    blob: Attributes<SolutionsTranscriptsConfigurationModel>
+    model: ModelStatic<LabsTranscriptsConfigurationModel>,
+    blob: Attributes<LabsTranscriptsConfigurationModel>
   ) {
-    super(SolutionsTranscriptsConfigurationModel, blob);
+    super(LabsTranscriptsConfigurationModel, blob);
   }
 
   static async makeNew({
@@ -30,10 +30,10 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     userId: number;
     connectionId: string;
-    provider: SolutionsTranscriptsProviderType;
-  }): Promise<SolutionsTranscriptsConfigurationResource> {
+    provider: LabsTranscriptsProviderType;
+  }): Promise<LabsTranscriptsConfigurationResource> {
     if (
-      await SolutionsTranscriptsConfigurationModel.count({
+      await LabsTranscriptsConfigurationModel.count({
         where: {
           userId: userId,
           connectionId: connectionId,
@@ -45,15 +45,15 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
       );
     }
-    const configuration = await SolutionsTranscriptsConfigurationModel.create({
+    const configuration = await LabsTranscriptsConfigurationModel.create({
       userId,
       connectionId,
       provider,
       isActive: false,
     });
 
-    return new SolutionsTranscriptsConfigurationResource(
-      SolutionsTranscriptsConfigurationModel,
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
       configuration.get()
     );
   }
@@ -65,17 +65,17 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     attributes: string[];
     where: RequireAtLeastOne<{
       userId: number;
-      provider: SolutionsTranscriptsProviderType;
+      provider: LabsTranscriptsProviderType;
     }>;
-  }): Promise<SolutionsTranscriptsConfigurationResource | null> {
-    const configuration = await SolutionsTranscriptsConfigurationModel.findOne({
+  }): Promise<LabsTranscriptsConfigurationResource | null> {
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
       attributes,
       where,
     });
 
     return configuration
-      ? new SolutionsTranscriptsConfigurationResource(
-          SolutionsTranscriptsConfigurationModel,
+      ? new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
           configuration.get()
         )
       : null;
@@ -88,7 +88,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     agentConfigurationId: string | null;
     userId: number;
-    provider: SolutionsTranscriptsProviderType;
+    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -117,7 +117,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     }
 
     try {
-      await SolutionsTranscriptsConfigurationModel.update(
+      await LabsTranscriptsConfigurationModel.update(
         { agentConfigurationId },
         {
           where: {
@@ -139,7 +139,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     emailToNotify: string | null;
     userId: number;
-    provider: SolutionsTranscriptsProviderType;
+    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -168,7 +168,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     }
 
     try {
-      await SolutionsTranscriptsConfigurationModel.update(
+      await LabsTranscriptsConfigurationModel.update(
         { emailToNotify },
         {
           where: {
@@ -188,7 +188,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     provider,
   }: {
     userId: number;
-    provider: SolutionsTranscriptsProviderType;
+    provider: LabsTranscriptsProviderType;
   }): Promise<boolean> {
     const configuration = await this.findByUserIdAndProvider({
       // all attributes
@@ -211,7 +211,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     isActive: boolean;
     userId: number;
-    provider: SolutionsTranscriptsProviderType;
+    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -240,7 +240,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     }
 
     try {
-      await SolutionsTranscriptsConfigurationModel.update(
+      await LabsTranscriptsConfigurationModel.update(
         { isActive },
         {
           where: {

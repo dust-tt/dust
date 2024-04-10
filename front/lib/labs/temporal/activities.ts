@@ -9,26 +9,26 @@ import sgMail from "@sendgrid/mail";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
+import { launchProcessTranscriptWorkflow } from "@app/lib/labs/temporal/client";
+import { getGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
-import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
-import { SolutionsTranscriptsHistoryResource } from "@app/lib/resources/solutions_transcripts_history_resource";
-import { launchProcessTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
-import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
+import { LabsTranscriptsHistoryResource } from "@app/lib/resources/labs_transcripts_history_resource";
 import mainLogger from "@app/logger/logger";
 
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-  SOLUTIONS_API_KEY,
-  SOLUTIONS_WORKSPACE_ID,
-  SOLUTIONS_TRANSCRIPTS_ASSISTANT,
+  LABS_API_KEY,
+  LABS_WORKSPACE_ID,
+  LABS_TRANSCRIPTS_ASSISTANT,
   NODE_ENV,
   SENDGRID_API_KEY,
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
   userId: number,
-  providerId: SolutionsTranscriptsProviderType
+  providerId: LabsTranscriptsProviderType
 ) {
   const logger = mainLogger.child({ userId });
 
@@ -60,7 +60,7 @@ export async function retrieveNewTranscriptsActivity(
       const fileId = file.id as string;
 
       // Check in history if we already processed this file
-      const history = await SolutionsTranscriptsHistoryResource.findByFileId({
+      const history = await LabsTranscriptsHistoryResource.findByFileId({
         fileId,
       });
       if (history) {
@@ -110,7 +110,7 @@ export async function processGoogleDriveTranscriptActivity(
   );
 
   const transcriptsConfiguration =
-    await SolutionsTranscriptsConfigurationResource.findByUserIdAndProvider({
+    await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
       attributes: ["id", "connectionId", "provider", "agentConfigurationId"],
       where: {
         userId: userId,
@@ -151,8 +151,8 @@ export async function processGoogleDriveTranscriptActivity(
 
   const dust = new DustAPI(
     {
-      workspaceId: SOLUTIONS_WORKSPACE_ID as string,
-      apiKey: SOLUTIONS_API_KEY as string,
+      workspaceId: LABS_WORKSPACE_ID as string,
+      apiKey: LABS_API_KEY as string,
     },
     logger
   );
@@ -161,8 +161,8 @@ export async function processGoogleDriveTranscriptActivity(
   let userMessage: UserMessageType | undefined = undefined;
 
   const configurationId =
-    NODE_ENV == "development" && SOLUTIONS_TRANSCRIPTS_ASSISTANT
-      ? SOLUTIONS_TRANSCRIPTS_ASSISTANT
+    NODE_ENV == "development" && LABS_TRANSCRIPTS_ASSISTANT
+      ? LABS_TRANSCRIPTS_ASSISTANT
       : transcriptsConfiguration.agentConfigurationId;
 
   if (!configurationId) {
@@ -180,7 +180,7 @@ export async function processGoogleDriveTranscriptActivity(
       mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
-        username: "solutions-transcript-summarizer",
+        username: "labs-transcript-processor",
         fullName: null,
         email: null,
         profilePictureUrl: null,
@@ -276,7 +276,7 @@ export async function processGoogleDriveTranscriptActivity(
   });
 
   // CREATE HISTORY RECORD
-  SolutionsTranscriptsHistoryResource.makeNew({
+  LabsTranscriptsHistoryResource.makeNew({
     configurationId: transcriptsConfiguration.id,
     fileId,
     fileName: transcriptTitle as string,
@@ -293,9 +293,9 @@ export async function checkIsActiveActivity({
   providerId,
 }: {
   userId: number;
-  providerId: SolutionsTranscriptsProviderType;
+  providerId: LabsTranscriptsProviderType;
 }) {
-  const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive({
+  const isActive = await LabsTranscriptsConfigurationResource.getIsActive({
     userId,
     provider: providerId,
   });

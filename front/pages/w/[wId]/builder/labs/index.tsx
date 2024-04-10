@@ -32,7 +32,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-export default function SolutionsIndex({
+export default function LabsIndex({
   owner,
   subscription,
   gaTrackingId,

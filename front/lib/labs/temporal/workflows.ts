@@ -5,8 +5,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-// import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 
 import type * as activities from "./activities";
 
@@ -20,10 +19,10 @@ const {
 
 export async function retrieveNewTranscriptsWorkflow(
   userId: number,
-  providerId: SolutionsTranscriptsProviderType
+  providerId: LabsTranscriptsProviderType
 ) {
   // 15 minutes
-  const SECONDS_INTERVAL_BETWEEN_PULLS = 10;
+  const SECONDS_INTERVAL_BETWEEN_PULLS = 15 * 60;
 
   const isWorkflowActive = true;
 

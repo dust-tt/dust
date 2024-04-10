@@ -8,24 +8,24 @@ import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
-import type { SolutionsTranscriptsConfigurationModel } from "./solutions_transcripts_configuration";
+import type { LabsTranscriptsConfigurationModel } from "./labs_transcripts_configuration";
 
-export class SolutionsTranscriptsHistoryModel extends Model<
-  InferAttributes<SolutionsTranscriptsHistoryModel>,
-  InferCreationAttributes<SolutionsTranscriptsHistoryModel>
+export class LabsTranscriptsHistoryModel extends Model<
+  InferAttributes<LabsTranscriptsHistoryModel>,
+  InferCreationAttributes<LabsTranscriptsHistoryModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare configurationId: ForeignKey<
-    SolutionsTranscriptsConfigurationModel["id"]
+    LabsTranscriptsConfigurationModel["id"]
   >;
   declare fileId: string;
   declare fileName: string;
 }
 
-SolutionsTranscriptsHistoryModel.init(
+LabsTranscriptsHistoryModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -45,7 +45,7 @@ SolutionsTranscriptsHistoryModel.init(
     configurationId: {
       type: DataTypes.INTEGER,
       references: {
-        model: "solutions_transcripts_configurations",
+        model: "labs_transcripts_configurations",
         key: "id",
       },
     },
@@ -59,7 +59,7 @@ SolutionsTranscriptsHistoryModel.init(
     },
   },
   {
-    modelName: "solutions_transcripts_history",
+    modelName: "labs_transcripts_history",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["configurationId"] },

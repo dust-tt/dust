@@ -1,20 +1,20 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { QUEUE_NAME } from "@app/lib/solutions/transcripts/temporal/config";
+import { QUEUE_NAME } from "@app/lib/labs/temporal/config";
 import {
   processTranscriptWorkflow,
   retrieveNewTranscriptsWorkflow,
-} from "@app/lib/solutions/transcripts/temporal/workflows";
-import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
+} from "@app/lib/labs/temporal/workflows";
+import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 export function generateWorkflowId(
   userId: string,
-  providerId: SolutionsTranscriptsProviderType
+  providerId: LabsTranscriptsProviderType
 ): string {
-  return `solutions-transcripts-retrieve-u${userId}-${providerId}`;
+  return `labs-transcripts-retrieve-u${userId}-${providerId}`;
 }
 
 export async function launchRetrieveNewTranscriptsWorkflow({
@@ -22,7 +22,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   providerId,
 }: {
   userId: number;
-  providerId: SolutionsTranscriptsProviderType;
+  providerId: LabsTranscriptsProviderType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
   const workflowId = generateWorkflowId(userId.toString(), providerId);
@@ -65,7 +65,7 @@ export async function launchProcessTranscriptWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `solutions-transcripts-processing-u${userId}-f${fileId}`;
+  const workflowId = `labs-transcripts-processing-u${userId}-f${fileId}`;
 
   try {
     await client.workflow.start(processTranscriptWorkflow, {

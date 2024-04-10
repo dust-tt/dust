@@ -2,7 +2,7 @@
 // Specific solutions types are in their respective folders.
 
 // GENERAL
-export type SolutionsTranscriptsProviderType = "google_drive" | "gong" | null;
+export type LabsTranscriptsProviderType = "google_drive" | "gong" | null;
 
 // NANGO
 export type NangoConnectionId = string;

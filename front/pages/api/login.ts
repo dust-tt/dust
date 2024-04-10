@@ -379,8 +379,6 @@ async function handler(
   }
 
   const u = await getUserFromSession(session);
-
-  console.log("USER", u);
   if (!u || u.workspaces.length === 0) {
     res.redirect("/no-workspace?flow=revoked");
     return;
