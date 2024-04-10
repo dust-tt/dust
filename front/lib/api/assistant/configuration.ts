@@ -38,20 +38,18 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import {
   AgentConfiguration,
   AgentDataSourceConfiguration,
+  AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
+  AgentRetrievalConfiguration,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+  AgentUserRelation,
   Conversation,
   DataSource,
   Mention,
   Message,
   Workspace,
 } from "@app/lib/models";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentDustAppRunConfiguration,
-  AgentRetrievalConfiguration,
-  AgentTablesQueryConfiguration,
-  AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 

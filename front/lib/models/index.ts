@@ -6,13 +6,17 @@ import {
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
   AgentTablesQueryConfiguration,
+  AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import {
@@ -51,6 +55,8 @@ export {
   AgentRetrievalConfiguration,
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+  AgentUserRelation,
   App,
   Clone,
   Conversation,
