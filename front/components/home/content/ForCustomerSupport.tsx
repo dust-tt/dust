@@ -1,7 +1,6 @@
 import React from "react";
 
 import {
-  Avatars3D,
   Block2,
   ContentAssistantBlock,
   Conversation,
@@ -10,10 +9,7 @@ import {
   HeaderContentBlock,
   Message,
 } from "@app/components/home/components/contentBlocks";
-import { Grid, H1, P } from "@app/components/home/components/contentComponents";
-import { classNames } from "@app/lib/utils";
-
-const defaultFlexClasses = "flex flex-col gap-4";
+import { Grid, P } from "@app/components/home/components/contentComponents";
 
 export function ForCustomerSupport() {
   return (
@@ -38,9 +34,9 @@ export function ForCustomerSupport() {
           </>
         }
       />
-      <Grid>
+      <Grid className="gap-y-8">
         <ContentAssistantBlock
-          className="col-span-8 col-start-3"
+          className="col-span-8"
           color="sky"
           content={
             <>
@@ -58,7 +54,7 @@ export function ForCustomerSupport() {
           assistant={customerSupportSlides[0]}
         />
         <ContentAssistantBlock
-          className="col-span-4"
+          className="col-span-4 mt-12"
           color="pink"
           content={
             <>
@@ -74,7 +70,7 @@ export function ForCustomerSupport() {
           assistant={customerSupportSlides[2]}
         />
         <ContentAssistantBlock
-          className="col-span-8"
+          className="col-span-8 col-start-3"
           color="emerald"
           content={
             <>
@@ -100,15 +96,8 @@ export function ForCustomerSupport() {
           }
         />
       </Grid>
-      <Grid>
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-5"
-          )}
-        >
+      <div className="col-span-10 col-start-2 grid grid-cols-6 gap-8">
+        <div className="col-span-3">
           <Conversation>
             <Message
               type="user"
@@ -161,19 +150,7 @@ export function ForCustomerSupport() {
             </Message>
           </Conversation>
         </div>
-      </Grid>
-      <Grid>
-        <H1 className="col-span-12 text-center text-white">
-          Links to Blog articles around Marketing use cases
-        </H1>
-      </Grid>
-      <Grid>
-        <H1 className="col-span-12 text-center text-white">
-          Structured referal specific to Marketing
-          <br />
-          (post from our users, quotes)
-        </H1>
-      </Grid>
+      </div>
     </>
   );
 }
@@ -188,19 +165,22 @@ export const customerSupportSlides = [
   />,
   <DroidItem
     key="2"
-    avatar={Avatars3D[2]}
-    name="@customerWrite"
+    emoji="🖋️"
+    avatarBackground="bg-emerald-200"
+    name="@customerWriter"
     question="Draft answers using company tone and voice, support guidelines, and customer messages."
   />,
   <DroidItem
     key="3"
-    avatar={Avatars3D[3]}
+    emoji="📡"
+    avatarBackground="bg-pink-200"
     name="@productInfo"
     question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
   />,
   <DroidItem
     key="4"
-    avatar={Avatars3D[5]}
+    emoji="🔮"
+    avatarBackground="bg-emerald-200"
     name="@followUpScenario"
     question="Help anticipate further requests from users and ensure those are covered before answering to a customer."
   />,

@@ -173,11 +173,11 @@ interface MessageProps {
 
 const typeClasses = {
   user: {
-    block: "rounded-2xl bg-slate-700/50 mr-20",
+    block: "rounded-2xl bg-slate-700/50",
     label: " text-slate-200",
   },
   agent: {
-    block: "ml-20 rounded-2xl bg-sky-700/50",
+    block: "rounded-2xl bg-sky-700/50 self-end",
     label: "text-slate-200",
   },
 };
@@ -186,7 +186,7 @@ export const Message = ({ children, visual, type, name }: MessageProps) => {
   return (
     <div
       className={classNames(
-        "flex w-full flex-col gap-4 border border-white/10 p-6 pb-8 backdrop-blur-lg",
+        "border-box flex w-[80%] w-full flex-col gap-4 border border-white/10 p-6 pb-8 backdrop-blur-lg",
         typeClasses[type].block
       )}
     >
@@ -264,7 +264,7 @@ export const Block2 = ({ children, title, className = "" }: Bloc2Props) => {
   return (
     <div className={classNames(className, "flex grow basis-0 flex-col gap-3")}>
       <H5 className="text-slate-900">{title}</H5>
-      <P size="xs" className="text-slate-600">
+      <P size="xs" className="max-w-[500px] text-slate-600">
         {children}
       </P>
     </div>
@@ -292,7 +292,7 @@ export const DroidItem = ({
   return (
     <div className={classNames("flex w-full flex-col gap-2 p-8", className)}>
       {emoji ? (
-        <Avatar size="lg" emoji={emoji} backgroundColor={avatarBackground} />
+        <Avatar size="xl" emoji={emoji} backgroundColor={avatarBackground} />
       ) : null}
       {avatar ? (
         <Hover3D className="s-relative s-h-20 s-w-20">
