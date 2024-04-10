@@ -43,7 +43,7 @@ const defaultFlexClasses = "flex flex-col gap-4";
 
 import { Transition } from "@headlessui/react";
 
-import SimpleSlider from "@app/components/home/Carousel";
+import SimpleSlider from "@app/components/home/carousel";
 import Particles from "@app/components/home/particles";
 import ScrollingHeader from "@app/components/home/scrollingHeader";
 import { PricePlans } from "@app/components/PlansTables";
