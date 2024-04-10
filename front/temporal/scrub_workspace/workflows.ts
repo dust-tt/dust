@@ -1,6 +1,6 @@
 import { proxyActivities, sleep } from "@temporalio/workflow";
 
-import type * as activities from "@app/scrub_workspace/temporal/activities";
+import type * as activities from "@app/temporal/scrub_workspace/activities";
 
 const { shouldStillScrubData } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minutes",

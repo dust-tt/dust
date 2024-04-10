@@ -5,8 +5,8 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import type { scheduleWorkspaceScrubWorkflow } from "@app/scrub_workspace/temporal/workflows";
-import { scheduleWorkspaceScrubWorkflowV2 } from "@app/scrub_workspace/temporal/workflows";
+import type { scheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/workflows";
+import { scheduleWorkspaceScrubWorkflowV2 } from "@app/temporal/scrub_workspace/workflows";
 
 import { QUEUE_NAME } from "./config";
 

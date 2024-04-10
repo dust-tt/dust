@@ -4,7 +4,7 @@ import { runPostUpsertHooksWorker } from "@app/documents_post_process_hooks/temp
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runProductionChecksWorker } from "@app/production_checks/temporal/worker";
-import { runScrubWorkspaceQueueWorker } from "@app/scrub_workspace/temporal/worker";
+import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
 
