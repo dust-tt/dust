@@ -6,9 +6,10 @@ import type { APIError } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useEffect } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -78,6 +79,7 @@ export default function SettingsView({
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const confirm = useContext(ConfirmContext);
 
   const formValidation = () => {
     if (appName.length == 0) {
@@ -98,7 +100,13 @@ export default function SettingsView({
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (window.confirm("Are you sure you want to delete this app?")) {
+    if (
+      await confirm({
+        title: "Double checking",
+        message: "Are you sure you want to delete this app?",
+        validateVariant: "primaryWarning",
+      })
+    ) {
       setIsDeleting(true);
       const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
         method: "DELETE",

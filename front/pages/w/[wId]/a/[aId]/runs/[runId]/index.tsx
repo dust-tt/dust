@@ -5,9 +5,10 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import SpecRunView from "@app/components/app/SpecRunView";
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -81,6 +82,7 @@ export default function AppRun({
     app.savedRun
   );
   const [isLoading, setIsLoading] = useState(false);
+  const confirm = useContext(ConfirmContext);
 
   const restore = async () => {
     if (readOnly) {
@@ -88,9 +90,11 @@ export default function AppRun({
     }
 
     if (
-      !confirm(
-        `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`
-      )
+      await confirm({
+        title: "Double checking",
+        message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
+        validateVariant: "primaryWarning",
+      })
     ) {
       return;
     }

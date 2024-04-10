@@ -6,7 +6,9 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useContext } from "react";
 
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -70,9 +72,16 @@ export default function DatasetsView({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const confirm = useContext(ConfirmContext);
 
   const handleDelete = async (datasetName: string) => {
-    if (confirm("Are you sure you want to delete this dataset entirely?")) {
+    if (
+      await confirm({
+        title: "Double checking",
+        message: "Are you sure you want to delete this dataset entirely?",
+        validateVariant: "primaryWarning",
+      })
+    ) {
       await fetch(
         `/api/w/${owner.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {

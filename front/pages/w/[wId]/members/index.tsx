@@ -37,8 +37,11 @@ import { useSWRConfig } from "swr";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import type { ConfirmDataType } from "@app/components/Confirm";
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import type { NotificationType } from "@app/components/sparkle/Notification";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
@@ -63,8 +66,6 @@ import type {
 } from "@app/pages/api/w/[wId]/invitations";
 
 const { GA_TRACKING_ID = "" } = process.env;
-
-const CLOSING_ANIMATION_DURATION = 200;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -126,6 +127,10 @@ export default function WorkspaceAdmin({
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
+
+  const sendNotification = useContext(SendNotificationsContext);
+  const confirm = useContext(ConfirmContext);
+  const { mutate } = useSWRConfig();
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
@@ -227,8 +232,6 @@ export default function WorkspaceAdmin({
 
     const [changeRoleMember, setChangeRoleMember] =
       useState<UserTypeWithWorkspaces | null>(null);
-    const [invitationToRevoke, setInvitationToRevoke] =
-      useState<MembershipInvitationType | null>(null);
 
     function isInvitation(
       arg: MembershipInvitationType | UserType
@@ -286,11 +289,6 @@ export default function WorkspaceAdmin({
           members={members}
           plan={plan}
         />
-        <RevokeInvitationModal
-          invitation={invitationToRevoke}
-          onClose={() => setInvitationToRevoke(null)}
-          owner={owner}
-        />
         <ChangeMemberModal
           member={changeRoleMember}
           onClose={() => setChangeRoleMember(null)}
@@ -347,12 +345,18 @@ export default function WorkspaceAdmin({
                         : `member-${item.id}`
                     }
                     className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                    onClick={() => {
+                    onClick={async () => {
                       if (user.id === item.id) {
                         return;
                       } // no action on self
                       if (isInvitation(item)) {
-                        setInvitationToRevoke(item);
+                        await revokeInvitation({
+                          owner,
+                          invitation: item,
+                          mutate,
+                          sendNotification,
+                          confirm,
+                        });
                       } else {
                         setChangeRoleMember(item);
                       }
@@ -454,21 +458,10 @@ function InviteEmailModal({
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [invitationsSegmentation, setInvitationsSegmentation] = useState<{
-    activeSameRole: UserTypeWithWorkspaces[];
-    activeDifferentRole: UserTypeWithWorkspaces[];
-    revoked: UserTypeWithWorkspaces[];
-    notInWorkspace: string[];
-  }>({
-    activeSameRole: [],
-    activeDifferentRole: [],
-    revoked: [],
-    notInWorkspace: [],
-  });
   const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
+  const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
-  const [showReinviteUsersModal, setShowReinviteUsersModal] = useState(false);
 
   function getEmailsList(): string[] | null {
     const inviteEmailsList = inviteEmails
@@ -524,30 +517,78 @@ function InviteEmailModal({
         (e) => !members.find((m) => m.email === e)
       ),
     };
-    setInvitationsSegmentation(invitesByCase);
-    if (!shouldWarnAboutExistingMembers(invitesByCase)) {
-      await sendInvitations({
-        owner,
-        emails: invitesByCase.notInWorkspace,
-        invitationRole,
+
+    const { notInWorkspace, activeDifferentRole, revoked } = invitesByCase;
+
+    const ReinviteUsersMessage = (
+      <div className="mt-6 flex flex-col gap-6 px-2">
+        {revoked.length > 0 && (
+          <div>
+            <div>
+              The user(s) below were previously revoked from your workspace.
+              Reinstating them will also immediately reinstate their
+              conversation history on Dust.
+            </div>
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
+              {revoked.map((user) => (
+                <div
+                  key={user.email}
+                >{`- ${user.fullName} (${user.email})`}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        {activeDifferentRole.length > 0 && (
+          <div>
+            <div>
+              The user(s) below are already in your workspace with a different
+              role. Moving forward will change their role to{" "}
+              <span className="font-bold">{displayRole(invitationRole)}</span>.
+            </div>
+            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
+              {activeDifferentRole.map((user) => (
+                <div key={user.email}>{`- ${
+                  user.fullName
+                } (current role: ${displayRole(
+                  user.workspaces[0].role
+                )})`}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>Do you want to proceed?</div>
+      </div>
+    );
+
+    if (
+      !shouldWarnAboutExistingMembers(invitesByCase) ||
+      (await confirm({
+        title: "Some users are already in the workspace",
+        message: ReinviteUsersMessage,
+        validateLabel: "Yes, proceed",
+        validateVariant: "primaryWarning",
+      }))
+    ) {
+      await handleMembersRoleChange({
+        members: [...activeDifferentRole, ...revoked],
+        role: invitationRole,
         mutate,
         sendNotification,
       });
+      await sendInvitations({
+        owner,
+        emails: notInWorkspace,
+        invitationRole,
+        sendNotification,
+      });
+      await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
-    } else {
-      setShowReinviteUsersModal(true);
     }
   }
 
   return (
     <>
-      <ReinviteUsersModal
-        owner={owner}
-        show={showReinviteUsersModal}
-        onClose={() => setShowReinviteUsersModal(false)}
-        invitationsSegmentation={invitationsSegmentation}
-        role={invitationRole}
-      />
       <Modal
         isOpen={showModal}
         onClose={onClose}
@@ -630,115 +671,6 @@ function ProPlanBillingNotice() {
   );
 }
 
-function ReinviteUsersModal({
-  owner,
-  show,
-  onClose,
-  invitationsSegmentation,
-  role,
-}: {
-  owner: WorkspaceType;
-  show: boolean;
-  onClose: (show: boolean) => void;
-  invitationsSegmentation: {
-    activeSameRole: UserTypeWithWorkspaces[];
-    activeDifferentRole: UserTypeWithWorkspaces[];
-    revoked: UserTypeWithWorkspaces[];
-    notInWorkspace: string[];
-  };
-  role: ActiveRoleType;
-}) {
-  const { mutate } = useSWRConfig();
-  const sendNotification = useContext(SendNotificationsContext);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const { notInWorkspace, activeDifferentRole, revoked } =
-    invitationsSegmentation;
-
-  return (
-    <Modal
-      isOpen={show}
-      onClose={() => onClose(false)}
-      hasChanged={false}
-      title="Some users are already in the workspace"
-      variant="dialogue"
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        {revoked.length > 0 && (
-          <div>
-            <div>
-              The user(s) below were previously revoked from your workspace.
-              Reinstating them will also immediately reinstate their
-              conversation history on Dust.
-            </div>
-            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
-              {revoked.map((user) => (
-                <div
-                  key={user.email}
-                >{`- ${user.fullName} (${user.email})`}</div>
-              ))}
-            </div>
-          </div>
-        )}
-        {activeDifferentRole.length > 0 && (
-          <div>
-            <div>
-              The user(s) below are already in your workspace with a different
-              role. Moving forward will change their role to{" "}
-              <span className="font-bold">{displayRole(role)}</span>.
-            </div>
-            <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
-              {activeDifferentRole.map((user) => (
-                <div key={user.email}>{`- ${
-                  user.fullName
-                } (current role: ${displayRole(
-                  user.workspaces[0].role
-                )})`}</div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div>Do you want to proceed?</div>
-        <div className="flex gap-2">
-          <Button
-            variant="tertiary"
-            label="Cancel"
-            onClick={() => onClose(false)}
-          />
-          <Button
-            variant="primaryWarning"
-            label={isSaving ? "Applying changes..." : "Yes, proceed"}
-            onClick={async () => {
-              setIsSaving(true);
-              await handleMembersRoleChange({
-                members: [...activeDifferentRole, ...revoked],
-                role,
-                mutate,
-                sendNotification,
-              });
-              await sendInvitations({
-                owner,
-                emails: notInWorkspace,
-                invitationRole: role,
-                mutate,
-                sendNotification,
-              });
-              onClose(false);
-              await mutate(`/api/w/${owner.sId}/invitations`);
-              /* Delay to let react close the modal before cleaning isSaving, to
-               * avoid the user seeing the button change label again during the closing animation */
-              setTimeout(() => {
-                setIsSaving(false);
-              }, CLOSING_ANIMATION_DURATION);
-            }}
-          />
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 function DomainAutoJoinModal({
   domain,
   domainAutoJoinEnabled,
@@ -810,87 +742,53 @@ function DomainAutoJoinModal({
   );
 }
 
-function RevokeInvitationModal({
-  onClose,
-  invitation,
+async function revokeInvitation({
   owner,
+  invitation,
+  mutate,
+  sendNotification,
+  confirm,
 }: {
-  onClose: () => void;
-  invitation: MembershipInvitationType | null;
+  invitation: MembershipInvitationType;
   owner: WorkspaceType;
+  mutate: any;
+  sendNotification: (notificationData: NotificationType) => void;
+  confirm: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
-  const { mutate } = useSWRConfig();
-  const [isSaving, setIsSaving] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
-  if (!invitation) {
-    return null;
+  if (
+    !(await confirm({
+      title: "Revoke invitation",
+      message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
+      validateLabel: "Yes, revoke",
+      validateVariant: "primaryWarning",
+    }))
+  ) {
+    return;
   }
 
-  async function handleRevokeInvitation(
-    invitation: MembershipInvitationType
-  ): Promise<void> {
-    const res = await fetch(
-      `/api/w/${owner.sId}/invitations/${invitation.sId}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: "revoked",
-        }),
-      }
-    );
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Revoke failed",
-        description: "Failed to revoke member's invitation.",
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Invitation revoked",
-        description: `Invitation revoked for ${invitation.inviteEmail}.`,
-      });
-      await mutate(`/api/w/${owner.sId}/invitations`);
-    }
+  const res = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      status: "revoked",
+    }),
+  });
+  if (!res.ok) {
+    sendNotification({
+      type: "error",
+      title: "Revoke failed",
+      description: "Failed to revoke member's invitation.",
+    });
+  } else {
+    sendNotification({
+      type: "success",
+      title: "Invitation revoked",
+      description: `Invitation revoked for ${invitation.inviteEmail}.`,
+    });
+    await mutate(`/api/w/${owner.sId}/invitations`);
   }
-
-  return (
-    <ElementModal
-      openOnElement={invitation}
-      onClose={onClose}
-      hasChanged={false}
-      title="Revoke invitation"
-      isSaving={isSaving}
-      variant="dialogue"
-    >
-      <div className="mt-6 flex flex-col gap-6 px-2">
-        <div>
-          Revoke invitation for user with email{" "}
-          <span className="font-bold">{invitation?.inviteEmail}</span>?
-        </div>
-        <div className="flex gap-2">
-          <Button variant="tertiary" label="Cancel" onClick={onClose} />
-          <Button
-            variant="primaryWarning"
-            label={isSaving ? "Revoking..." : "Yes, revoke"}
-            onClick={async () => {
-              setIsSaving(true);
-              await handleRevokeInvitation(invitation);
-              onClose();
-              /* Delay to let react close the modal before cleaning isSaving, to
-               * avoid the user seeing the button change label again during the closing animation */
-              setTimeout(() => {
-                setIsSaving(false);
-              }, CLOSING_ANIMATION_DURATION);
-            }}
-          />
-        </div>
-      </div>
-    </ElementModal>
-  );
 }
 
 async function handleMembersRoleChange({
@@ -1101,13 +999,11 @@ async function sendInvitations({
   owner,
   emails,
   invitationRole,
-  mutate,
   sendNotification,
 }: {
   owner: WorkspaceType;
   emails: string[];
   invitationRole: ActiveRoleType;
-  mutate?: any;
   sendNotification: any;
 }) {
   const body: PostInvitationRequestBody = emails.map((email) => ({
@@ -1148,10 +1044,10 @@ async function sendInvitations({
         title: "Invites sent",
         description: `${emails.length} new invites sent.`,
       });
-      await mutate(`/api/w/${owner.sId}/invitations`);
     }
   }
 }
+
 const ROLES_DATA: Record<
   ActiveRoleType,
   { description: string; color: "red" | "amber" | "emerald" | "slate" }

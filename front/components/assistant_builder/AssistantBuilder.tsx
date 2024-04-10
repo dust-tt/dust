@@ -26,7 +26,7 @@ import {
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -46,6 +46,7 @@ import type {
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -107,9 +108,16 @@ const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
 
 const useNavigationLock = (
   isEnabled = true,
-  warningText = "You have unsaved changes - are you sure you wish to leave this page?"
+  warningData = {
+    title: "Double checking",
+    message:
+      "You have unsaved changes - are you sure you wish to leave this page?",
+    validation: "primaryWarning",
+  }
 ) => {
   const router = useRouter();
+  const confirm = useContext(ConfirmContext);
+  const isNavigatingAway = React.useRef<boolean>(false);
 
   useEffect(() => {
     const handleWindowClose = (e: BeforeUnloadEvent) => {
@@ -117,24 +125,33 @@ const useNavigationLock = (
         return;
       }
       e.preventDefault();
-      return (e.returnValue = warningText);
+      return (e.returnValue = warningData);
     };
 
     const handleBrowseAway = (url: string) => {
       if (!isEnabled) {
         return;
       }
-      if (!window.confirm(warningText)) {
-        router.events.emit(
-          "routeChangeError",
-          new Error("Navigation cancelled by the user"),
-          url
-        );
-        // This is required, otherwise the URL will change.
-        history.pushState(null, "", document.location.href);
-        // And this is required to actually cancel the navigation.
-        throw "Navigation cancelled by the user (this is not an error)";
+      if (isNavigatingAway.current) {
+        return;
       }
+      router.events.emit(
+        "routeChangeError",
+        new Error("Navigation paused to await confirmation by user"),
+        url
+      );
+      // This is required, otherwise the URL will change.
+      history.pushState(null, "", document.location.href);
+
+      void confirm(warningData).then((result) => {
+        if (result) {
+          isNavigatingAway.current = true;
+          void router.push(url);
+        }
+      });
+
+      // And this is required to actually cancel the navigation.
+      throw "Navigation paused to await confirmation by user";
     };
 
     // We need both for different browsers.
@@ -145,7 +162,7 @@ const useNavigationLock = (
       window.removeEventListener("beforeunload", handleWindowClose);
       router.events.off("routeChangeStart", handleBrowseAway);
     };
-  }, [isEnabled, warningText, router.events, router.asPath]);
+  }, [isEnabled, warningData, router.events, router.asPath, confirm, router]);
 };
 
 const screens = {
