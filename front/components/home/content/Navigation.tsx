@@ -1,11 +1,12 @@
-import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
-import React from "react";
+"use client";
 
-import {
-  A,
-  H4,
-  Strong,
-} from "@app/components/home/components/contentComponents";
+import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import * as React from "react";
+
+import { H4, Strong } from "@app/components/home/components/contentComponents";
+import { classNames } from "@app/lib/utils";
+
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -13,222 +14,158 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-} from "@app/components/home/components/NavigationMenu";
+  navigationMenuTriggerStyle,
+} from "../components/NavigationMenu";
 
-const solutions: { title: string; target: string }[] = [
+const solutions: { title: string; href: string }[] = [
   {
     title: "Customer Support",
-    target: "for_customer",
+    href: "/solutions/customer-support",
   },
   {
     title: "Marketing & Content",
-    target: "for_marketing",
+    href: "/solutions/marketing-content",
   },
   {
     title: "Recruiting & People",
-    target: "for_people",
+    href: "/solutions/recruiting-people",
   },
-  // {
-  //   title: "Sales & Revenue",
-  //   target: "for_sales",
-  // },
-  // {
-  //   title: "Engineering",
-  //   target: "for_engineering",
-  // },
-  // {
-  //   title: "Knowledge Management",
-  //   target: "for_knowledge",
-  // },
-  // {
-  //   title: "Data & Analaytics",
-  //   target: "for_data",
-  // },
 ];
 
-const devs: { title: string; target: string }[] = [
+const developers: { title: string; href: string; target?: string }[] = [
   {
     title: "Dust for engineers",
-    target: "for_engineering",
+    href: "/developers",
   },
   {
     title: "Building Dust apps",
-    target: "dust_apps",
+    href: "/developers/dust-apps",
   },
   {
-    title: "Platform Doc",
-    target: "https://docs.dust.tt",
+    title: "Documentation",
+    href: "https://docs.dust.tt",
+    target: "_blank",
   },
   {
     title: "Github Repo",
-    target: "https://github.com/dust-tt/dust",
+    href: "https://github.com/dust-tt/dust",
+    target: "_blank",
   },
 ];
 
-interface ListItemProps extends React.ComponentPropsWithoutRef<"a"> {
-  target: string;
-  title: string;
-  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => Promise<void>;
-}
-
-const ListItem = React.forwardRef<React.ElementRef<"a">, ListItemProps>(
-  ({ title, onClick, target }, ref) => {
-    const isExternalLink = target && target.startsWith("http");
-    console.log("isExternalLink", isExternalLink);
-
-    const handleClick = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-      if (!isExternalLink && onClick) {
-        event.preventDefault();
-        await onClick(event);
-      }
-    };
-
-    return (
-      <li>
-        <NavigationMenuLink asChild>
-          <a
-            ref={ref}
-            onClick={handleClick}
-            href={isExternalLink ? target : `/?${target}`}
-            target={isExternalLink ? "_blank" : undefined}
-            rel={isExternalLink ? "noopener noreferrer" : undefined}
-          >
-            <div className="s-flex s-items-center s-gap-1.5 s-text-slate-50">
-              <Icon
-                className="text-slate-500"
-                visual={ChevronRightIcon}
-                size="md"
-              />
-              <A variant="tertiary">{title}</A>
-            </div>
-          </a>
-        </NavigationMenuLink>
-      </li>
-    );
-  }
-);
-ListItem.displayName = "ListItem";
-
-export function Navigation({
-  currentPage,
-  onPageChange,
-}: {
-  currentPage: string;
-  onPageChange: (page: string) => void;
-}) {
+export function Navigation() {
   return (
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuLink onClick={() => onPageChange("product")}>
-            <A
-              variant={currentPage === "product" ? "secondary" : "tertiary"}
-              className="pr-2"
-            >
+          <Link href="/" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Product
-            </A>
-          </NavigationMenuLink>
+            </NavigationMenuLink>
+          </Link>
         </NavigationMenuItem>
         <NavigationMenuItem>
           <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
+            <ul className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               <H4 className="col-span-2 text-white">Dust for…</H4>
-              {solutions.map((solution, index) => (
+              {solutions.map((item) => (
                 <ListItem
-                  key={index}
-                  title={solution.title}
-                  target={solution.target}
-                  onClick={async (event) => {
-                    event.preventDefault();
-                    await onPageChange(solution.target);
-                  }}
+                  key={item.title}
+                  title={item.title}
+                  href={item.href}
                 />
               ))}
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Developpers</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Developers</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid gap-4 p-6 pb-8 lg:w-[560px] lg:grid-cols-2">
+            <ul className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               <H4 className="col-span-2 text-white">Build with Dust</H4>
-              {devs.map((dev, index) => (
+              {developers.map((item) => (
                 <ListItem
-                  key={index}
-                  title={dev.title}
-                  target={dev.target}
-                  onClick={async (event) => {
-                    if (dev.target && !dev.target.startsWith("http")) {
-                      event.preventDefault();
-                      await onPageChange(dev.target);
-                    }
-                  }}
+                  key={item.title}
+                  title={item.title}
+                  href={item.href}
+                  target={item.target}
                 />
               ))}
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuLink onClick={() => onPageChange("pricing")}>
-            <A
-              variant={currentPage === "pricing" ? "secondary" : "tertiary"}
-              className="pr-2"
-            >
+          <Link href="/pricing" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Pricing
-            </A>
-          </NavigationMenuLink>
+            </NavigationMenuLink>
+          </Link>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuLink onClick={() => onPageChange("security")}>
-            <A
-              variant={currentPage === "security" ? "secondary" : "tertiary"}
-              className="pr-2"
-            >
+          <Link href="/security" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Security
-            </A>
-          </NavigationMenuLink>
+            </NavigationMenuLink>
+          </Link>
         </NavigationMenuItem>
         <NavigationMenuItem>
           <NavigationMenuTrigger>More</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="grid gap-4 p-6 pb-8 text-white lg:w-[580px] lg:grid-cols-3">
+            <div className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] lg:grid-cols-3">
               <H4 className="col-span-3 text-white">All about Dust</H4>
-
               <ul className="flex flex-col gap-4">
-                <Strong>Careers</Strong>
+                <Strong className="text-white">Careers</Strong>
                 <ListItem
-                  target="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
+                  href="https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/"
                   title="Jobs"
+                  target="_blank"
                 />
                 <ListItem
-                  target="https://www.linkedin.com/company/dust-tt/"
+                  href="https://www.linkedin.com/company/dust-tt/"
                   title="LinkedIn"
+                  target="_blank"
                 />
               </ul>
               <ul className="flex flex-col gap-4">
-                <Strong>About</Strong>
-                <ListItem target="https://blog.dust.tt/" title="Blog" />
-                <ListItem target="https://x.com/dust4ai" title="@dust4ai" />
-                <ListItem target="https://github.com/dust-tt" title="GitHub" />
+                <Strong className="text-white">About</Strong>
+                <ListItem
+                  href="https://blog.dust.tt/"
+                  target="_blank"
+                  title="Blog"
+                />
+                <ListItem
+                  href="https://x.com/dust4ai"
+                  title="@dust4ai"
+                  target="_blank"
+                />
+                <ListItem
+                  href="https://github.com/dust-tt"
+                  title="GitHub"
+                  target="_blank"
+                />
               </ul>
               <ul className="flex flex-col gap-4">
-                <Strong>Legal</Strong>
+                <Strong className="text-white">Legal</Strong>
                 <ListItem
-                  target="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
+                  href="https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084"
                   title="Privacy Policy"
+                  target="_blank"
                 />
                 <ListItem
-                  target="https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb"
+                  href="https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb"
                   title="Terms of Use"
+                  target="_blank"
                 />
                 <ListItem
-                  target="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
+                  href="https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1"
                   title="Legal Notice"
+                  target="_blank"
                 />
                 <ListItem
-                  target="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
+                  href="https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec"
                   title="Cookie Notice"
+                  target="_blank"
                 />
               </ul>
             </div>
@@ -238,3 +175,29 @@ export function Navigation({
     </NavigationMenu>
   );
 }
+
+const ListItem = React.forwardRef<
+  React.ElementRef<"a">,
+  React.ComponentPropsWithoutRef<"a">
+>(({ className = "", title, ...props }, ref) => {
+  return (
+    <li>
+      <NavigationMenuLink asChild>
+        <a
+          ref={ref}
+          className={classNames(
+            "hover:bg-accent focus:bg-accent block select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500",
+            className
+          )}
+          {...props}
+        >
+          <div className="flex items-center gap-1.5">
+            <Icon className="" visual={ChevronRightIcon} size="md" />
+            <div className="text-md font-medium leading-none">{title}</div>
+          </div>
+        </a>
+      </NavigationMenuLink>
+    </li>
+  );
+});
+ListItem.displayName = "ListItem";
