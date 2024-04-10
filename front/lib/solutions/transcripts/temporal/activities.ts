@@ -39,7 +39,6 @@ export async function retrieveNewTranscriptsActivity(
     // but we want to avoid missing any if the workflow is down
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 1);
-    cutoffDate.setHours(0, 0, 0, 0);
 
     const files = await googleapis.google
       .drive({ version: "v3", auth })

@@ -2,6 +2,7 @@ import {
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Page,
+  SliderToggle
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -67,6 +68,7 @@ export default function SolutionsTranscriptsIndex({
   const sendNotification = useContext(SendNotificationsContext);
   const [emailToNotify, setEmailToNotify] = useState<string | null>("");
   const [agentsFetched, setAgentsFetched] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -126,7 +128,11 @@ export default function SolutionsTranscriptsIndex({
     });
   };
 
-  const selectAssistant = async (assistant: LightAgentConfigurationType) => {
+  const handleSetIsSyncing = async (isSyncing: boolean) => {
+    setIsSyncing(isSyncing);
+  };
+
+  const handleSelectAssistant = async (assistant: LightAgentConfigurationType) => {
     setAssistantSelected(assistant);
     return updateAssistantConfiguration(assistant);
   };
@@ -237,11 +243,11 @@ export default function SolutionsTranscriptsIndex({
             <Page.Header
               title="Transcripts summarizer"
               icon={ChatBubbleLeftRightIcon}
-              description="Receive meeting minutes summarized by email automatically"
+              description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
             />
             <Page.SectionHeader
               title="1. Connect Google Drive"
-              description="Connect your personal Google Drive so Dust can access your meeting transcripts"
+              description="Connect your personal Google Drive so Dust can access your meeting transcripts."
               action={{
                 label: isGDriveConnected ? "Connected" : "Connect",
                 size: "sm",
@@ -269,7 +275,7 @@ export default function SolutionsTranscriptsIndex({
                     owner={owner}
                     size="sm"
                     onItemClick={(c) => {
-                      void selectAssistant(c).then(() => {
+                      void handleSelectAssistant(c).then(() => {
                         console.log("Selected assistant " + c.name);
                       });
                     }}
@@ -299,6 +305,18 @@ export default function SolutionsTranscriptsIndex({
                     onChange={(e) => setEmailToNotify(e.target.value)}
                     onBlur={(e) => updateEmailToNotify(e.target.value)}
                     className="s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2 s-bg-structure-50 s-text-element-900 s-placeholder-element-600 dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8 s-transition-all s-duration-300 s-ease-out s-ring-structure-200 focus:s-ring-action-300 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
+                  />
+                </Page.Layout>
+              </Page.Layout>
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="4. Start syncing" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <Page.P>
+                    When this is turned on, you will receive a summary of each of your transcripted meetings.
+                  </Page.P>
+                  <SliderToggle
+                    selected={isSyncing}
+                    onClick={() => handleSetIsSyncing(!isSyncing)} 
                   />
                 </Page.Layout>
               </Page.Layout>
