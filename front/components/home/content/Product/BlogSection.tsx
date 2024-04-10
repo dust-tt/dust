@@ -6,14 +6,14 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/components/home/Carousel";
-import { BlogBlock } from "@app/components/home/components/contentBlocks";
+} from "@app/components/home/new/Carousel";
+import { BlogBlock } from "@app/components/home/new/ContentBlocks";
 import {
   Grid,
   H2,
   P,
   Strong,
-} from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function BlogSection() {

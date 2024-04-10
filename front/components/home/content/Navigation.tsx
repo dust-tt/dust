@@ -4,7 +4,7 @@ import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";
 
-import { H4, Strong } from "@app/components/home/components/contentComponents";
+import { H4, Strong } from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 import {
@@ -15,7 +15,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "../components/NavigationMenu";
+} from "../new/NavigationMenu";
 
 const solutions: { title: string; href: string }[] = [
   {

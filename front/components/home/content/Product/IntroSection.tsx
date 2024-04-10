@@ -8,7 +8,7 @@ import {
   H1,
   P,
   Strong,
-} from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface IntroSectionProps {

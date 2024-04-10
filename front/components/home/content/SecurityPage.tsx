@@ -5,7 +5,7 @@ import {
   H2,
   P,
   Strong,
-} from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentComponents";
 
 export function SecurityPage() {
   return (

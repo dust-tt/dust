@@ -1,13 +1,13 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
-import { ImgBlock } from "@app/components/home/components/contentBlocks";
+import { ImgBlock } from "@app/components/home/new/ContentBlocks";
 import {
   Grid,
   H2,
   P,
   Strong,
-} from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function FutureSection() {

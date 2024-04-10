@@ -5,8 +5,8 @@ import {
   ContentAssistantBlock,
   DroidItem,
   HeaderContentBlock,
-} from "@app/components/home/components/contentBlocks";
-import { Grid } from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 
 export function ForCustomerSupport() {
   return (

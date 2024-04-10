@@ -6,11 +6,11 @@ import {
   H2,
   P,
   Strong,
-} from "@app/components/home/components/contentComponents";
+} from "@app/components/home/new/ContentComponents";
 
 const defaultFlexClasses = "flex flex-col gap-8";
 
-import { ImgBlock } from "@app/components/home/components/contentBlocks";
+import { ImgBlock } from "@app/components/home/new/ContentBlocks";
 import { classNames } from "@app/lib/utils";
 
 export function TeamSection() {
