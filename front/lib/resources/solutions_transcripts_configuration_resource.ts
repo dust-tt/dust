@@ -49,6 +49,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       userId,
       connectionId,
       provider,
+      isActive: false,
     });
 
     return new SolutionsTranscriptsConfigurationResource(
@@ -188,15 +189,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     userId: number;
     provider: SolutionsTranscriptsProviderType;
-  }): Promise<
-    Result<
-      boolean,
-      | {
-          type: "not_found";
-        }
-      | Error
-    >
-  > {
+  }): Promise<boolean> {
     const configuration = await this.findByUserIdAndProvider({
       // all attributes
       attributes: ["id", "isActive"],
@@ -206,12 +199,9 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
       },
     });
     if (!configuration) {
-      return new Err({
-        type: "not_found",
-      });
+      return false;
     }
-
-    return new Ok(configuration.isActive);
+    return configuration.isActive;
   }
 
   static async setIsActive({

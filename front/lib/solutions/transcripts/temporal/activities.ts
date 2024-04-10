@@ -281,6 +281,8 @@ export async function processGoogleDriveTranscriptActivity(
     fileId,
     fileName: transcriptTitle as string,
   }).catch((err) => {
+    console.log('ERROR')
+    console.log(err)
     logger.error(
       "[processGoogleDriveTranscriptActivity] Error creating history record",
       err
@@ -293,19 +295,11 @@ export async function checkIsActiveActivity({
   providerId,
 }: {
   userId: number;
-  providerId: string;
+  providerId: SolutionsTranscriptsProviderType;
 }) {
-  const logger = mainLogger.child({});
-
   const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive({
     userId,
     provider: providerId,
   });
-  logger.info(
-    {
-      isActive: isActive,
-    },
-    "[checkIfSyncIsActiveActivity] isActive"
-  );
   return isActive;
 }

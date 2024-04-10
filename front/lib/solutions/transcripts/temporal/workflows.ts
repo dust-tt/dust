@@ -5,12 +5,12 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+// import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
 import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 
 import type * as activities from "./activities";
 
-const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity } =
+const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity, checkIsActiveActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
   });
@@ -20,19 +20,14 @@ export async function retrieveNewTranscriptsWorkflow(
   providerId: SolutionsTranscriptsProviderType
 ) {
   // 15 minutes
-  const SECONDS_INTERVAL_BETWEEN_PULLS = 15 * 60;
+  const SECONDS_INTERVAL_BETWEEN_PULLS = 10;
 
-  do {
-    const isActive =
-      await SolutionsTranscriptsConfigurationResource.getIsActive({
-        userId,
-        provider: providerId,
-      });
+  const isWorkflowActive = true;
 
-    if (!isActive) {
+  while (isWorkflowActive) {
+    if(await checkIsActiveActivity({userId, providerId}) !== true) {
       break;
     }
-
     await retrieveNewTranscriptsActivity(userId, providerId);
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
 
@@ -43,9 +38,7 @@ export async function retrieveNewTranscriptsWorkflow(
         providerId
       );
     }
-    // This is to assure that the workflow will stay alive
-    // Linter does not like while(true)
-  } while (workflowInfo().historyLength < 5000);
+  }
 }
 
 export async function processTranscriptWorkflow(
