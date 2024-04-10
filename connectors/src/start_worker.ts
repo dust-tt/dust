@@ -1,5 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import { setupGlobalErrorHandler } from "@dust-tt/types";
+import { setFlagsFromString } from "v8";
+import { runInNewContext } from "vm";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -28,7 +30,41 @@ const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
 
 const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];
 
+function logMemoryUsage(worker: string) {
+  setFlagsFromString("--expose_gc");
+  const gc = runInNewContext("gc");
+  const now = Date.now();
+
+  gc();
+  const gcDurationMs = Date.now() - now;
+  // now get the current process memory usage
+  const mem = process.memoryUsage();
+  logger.info(
+    {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+
+      host: process.env.HOSTNAME,
+      gcDurationMs: gcDurationMs,
+      worker: worker,
+    },
+    "Memory usage"
+  );
+}
+
 async function runWorkers(workers: ConnectorProvider[]) {
+  if (workers.length === 1) {
+    const worker = workers[0];
+    if (worker) {
+      // get a first data point after 1 minute of process warm up.
+      setTimeout(() => {
+        logMemoryUsage(worker);
+      }, 60 * 1000);
+      // Get a data point every 30 minutes.
+      setInterval(() => {
+        logMemoryUsage(worker);
+      }, 60 * 30 * 1000);
+    }
+  }
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>
       logger.error(errorFromAny(err), `Error running ${worker} worker.`)
