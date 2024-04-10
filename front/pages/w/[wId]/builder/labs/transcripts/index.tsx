@@ -177,7 +177,7 @@ export default function SolutionsTranscriptsIndex({
           setAssistantSelected(
             agentConfigurations.find(
               (a) => a.sId === configuration.agentConfigurationId
-            )
+            ) || null
           );
         }
 
