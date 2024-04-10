@@ -1,5 +1,6 @@
 "use client";
 
+import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
 import * as React from "react";
@@ -49,7 +50,7 @@ const Carousel = React.forwardRef<
       opts,
       setApi,
       plugins,
-      className,
+      className = "",
       children,
       ...props
     },
@@ -59,8 +60,6 @@ const Carousel = React.forwardRef<
       {
         ...opts,
         axis: orientation === "horizontal" ? "x" : "y",
-        align: "start",
-        loop: true,
       },
       plugins
     );
@@ -136,10 +135,7 @@ const Carousel = React.forwardRef<
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
-          className={classNames(
-            "relative border-l border-r border-white/10",
-            className ? className : ""
-          )}
+          className={classNames("relative", className)}
           role="region"
           aria-roledescription="carousel"
           {...props}
@@ -155,7 +151,7 @@ Carousel.displayName = "Carousel";
 const CarouselContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+>(({ className = "", ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel();
 
   return (
@@ -164,8 +160,8 @@ const CarouselContent = React.forwardRef<
         ref={ref}
         className={classNames(
           "flex",
-          orientation === "horizontal" ? "-ml-0" : "-mt-4 flex-col",
-          className ? className : ""
+          orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+          className
         )}
         {...props}
       />
@@ -177,7 +173,7 @@ CarouselContent.displayName = "CarouselContent";
 const CarouselItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => {
+>(({ className = "", ...props }, ref) => {
   const { orientation } = useCarousel();
 
   return (
@@ -186,9 +182,9 @@ const CarouselItem = React.forwardRef<
       role="group"
       aria-roledescription="slide"
       className={classNames(
-        "min-w-0 shrink-0 grow-0",
-        orientation === "horizontal" ? "pl-0" : "pt-4",
-        className ? className : ""
+        "min-w-0 shrink-0 grow-0 basis-full",
+        orientation === "horizontal" ? "pl-4" : "pt-4",
+        className
       )}
       {...props}
     />
@@ -196,60 +192,75 @@ const CarouselItem = React.forwardRef<
 });
 CarouselItem.displayName = "CarouselItem";
 
-// const CarouselPrevious = React.forwardRef<
-//   HTMLButtonElement,
-//   React.ComponentProps<typeof Button>
-// >(({ className, ...props }) => {
-//   const { orientation, scrollPrev, canScrollPrev } = useCarousel();
+const CarouselPrevious = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<typeof Button>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+>(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+  const { orientation, scrollPrev, canScrollPrev } = useCarousel();
 
-//   return (
-//     <Button
-//       variant="secondary"
-//       className={classNames(
-//         "absolute  h-8 w-8 rounded-full",
-//         orientation === "horizontal"
-//           ? "-left-12 top-1/2 -translate-y-1/2"
-//           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
-//         className ? className : ""
-//       )}
-//       disabled={!canScrollPrev}
-//       label="Prev"
-//       onClick={scrollPrev}
-//       {...props}
-//     />
-//   );
-// });
-// CarouselPrevious.displayName = "CarouselPrevious";
+  return (
+    <Button
+      // TODO(2024-04-10 flav) Support ref in the Button.
+      // ref={ref}
+      variant={variant}
+      size={size}
+      labelVisible={false}
+      icon={ChevronLeftIcon}
+      disabledTooltip={true}
+      className={classNames(
+        "absolute rounded-full",
+        orientation === "horizontal"
+          ? "-top-6 right-1/2 -translate-x-1/4 -translate-y-1/2"
+          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
+        className
+      )}
+      disabled={!canScrollPrev}
+      onClick={scrollPrev}
+      {...props}
+    />
+  );
+});
+CarouselPrevious.displayName = "CarouselPrevious";
 
-// const CarouselNext = React.forwardRef<
-//   HTMLButtonElement,
-//   React.ComponentProps<typeof Button>
-// >(({ className, label, ...props }) => {
-//   const { orientation, scrollNext, canScrollNext } = useCarousel();
+const CarouselNext = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<typeof Button>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+>(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+  const { orientation, scrollNext, canScrollNext } = useCarousel();
 
-//   return (
-//     <Button
-//       className={classNames(
-//         "absolute h-8 w-8 rounded-full",
-//         orientation === "horizontal"
-//           ? "-right-12 top-1/2 -translate-y-1/2"
-//           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
-//         className ? className : ""
-//       )}
-//       disabled={!canScrollNext}
-//       label="Next"
-//       onClick={scrollNext}
-//       {...props}
-//     />
-//   );
-// });
-// CarouselNext.displayName = "CarouselNext";
+  console.log(">> orientation:", orientation);
+
+  return (
+    <Button
+      // TODO(2024-04-10 flav) Support ref in the Button.
+      // ref={ref}
+      variant={variant}
+      size={size}
+      labelVisible={false}
+      icon={ChevronRightIcon}
+      disabledTooltip={true}
+      className={classNames(
+        "absolute rounded-full",
+        orientation === "horizontal"
+          ? "-top-6 left-1/2 -translate-y-1/2 translate-x-1/4"
+          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
+        className
+      )}
+      disabled={!canScrollNext}
+      onClick={scrollNext}
+      {...props}
+    />
+  );
+});
+CarouselNext.displayName = "CarouselNext";
 
 export {
   Carousel,
   type CarouselApi,
   CarouselContent,
   CarouselItem,
-  // CarouselNext,
-  // CarouselPrevious,
+  CarouselNext,
+  CarouselPrevious,
 };

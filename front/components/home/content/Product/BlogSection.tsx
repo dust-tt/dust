@@ -5,6 +5,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@app/components/home/Caroussel";
 import { BlogBlock } from "@app/components/home/components/contentBlocks";
 import {
@@ -37,22 +39,10 @@ export function BlogSection() {
           <Strong>improve their&nbsp;workflows</Strong>.
         </P>
       </div>
-      <div className="col-span-12 flex flex-col items-center gap-4">
-        <div className="flex gap-3">
-          <Button
-            icon={ChevronLeftIcon}
-            label="Previous"
-            labelVisible={false}
-            variant="tertiary"
-          />
-          <Button
-            icon={ChevronRightIcon}
-            label="Next"
-            labelVisible={false}
-            variant="tertiary"
-          />
-        </div>
+      <div className="col-span-12 mt-6 flex flex-col items-center gap-4">
         <Carousel className="col-span-12">
+          <CarouselPrevious label="previous" />
+          <CarouselNext label="next" />
           <CarouselContent>
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock
