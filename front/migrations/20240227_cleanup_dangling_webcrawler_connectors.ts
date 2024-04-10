@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 
 import { DataSource } from "@app/lib/models";
 import logger from "@app/logger/logger";
-import { getConnectorReplicaDbConnection } from "@app/production_checks/lib/utils";
+import { getConnectorReplicaDbConnection } from "@app/temporal/production_checks/lib/utils";
 
 async function main() {
   const { LIVE } = process.env;

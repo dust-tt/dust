@@ -1,11 +1,11 @@
 import { QueryTypes } from "sequelize";
 
-import { getCoreDocuments } from "@app/production_checks/lib/managed_ds";
+import { getCoreDocuments } from "@app/temporal/production_checks/lib/managed_ds";
 import {
   getConnectorReplicaDbConnection,
   getFrontReplicaDbConnection,
-} from "@app/production_checks/lib/utils";
-import type { CheckFunction } from "@app/production_checks/types/check";
+} from "@app/temporal/production_checks/lib/utils";
+import type { CheckFunction } from "@app/temporal/production_checks/types/check";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   checkName,

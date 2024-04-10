@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
 
-import config from "@app/production_checks/lib/config";
+import config from "@app/temporal/production_checks/lib/config";
 
 // Variables to hold the singleton instances.
 let connectorReplicaDbInstance: Sequelize | null = null;

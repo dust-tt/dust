@@ -7,8 +7,8 @@ import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
-import { getConnectorReplicaDbConnection } from "@app/production_checks/lib/utils";
-import type { CheckFunction } from "@app/production_checks/types/check";
+import { getConnectorReplicaDbConnection } from "@app/temporal/production_checks/lib/utils";
+import type { CheckFunction } from "@app/temporal/production_checks/types/check";
 
 interface ConnectorBlob {
   id: number;

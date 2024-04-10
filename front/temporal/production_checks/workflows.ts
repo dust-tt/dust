@@ -1,6 +1,6 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type * as activities from "@app/production_checks/temporal/activities";
+import type * as activities from "@app/temporal/production_checks/activities";
 
 const { runAllChecksActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 hour",
