@@ -1,9 +1,9 @@
 import {
+  Button,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Page,
-  SliderToggle
-} from "@dust-tt/sparkle";
+  SliderToggle} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
@@ -97,7 +97,7 @@ export default function SolutionsTranscriptsIndex({
     });
   };
   
-  const updateAssistantConfiguration = async (
+  const updateAssistant = async (
     assistant: LightAgentConfigurationType
   ) => {
     setAssistantSelected(assistant);
@@ -132,7 +132,7 @@ export default function SolutionsTranscriptsIndex({
   }
 
   const handleSelectAssistant = async (assistant: LightAgentConfigurationType) => {
-    return updateAssistantConfiguration(assistant);
+    return updateAssistant(assistant);
   };
 
   const handleSetEmailToNotify = async (email: string) => {
@@ -178,6 +178,10 @@ export default function SolutionsTranscriptsIndex({
 
         if (configuration?.emailToNotify) {
           setEmailToNotify(configuration.emailToNotify);
+        }
+
+        if (configuration?.isActive !== undefined) {
+          setIsActive(configuration.isActive);
         }
       })
       .finally(() => {
@@ -244,25 +248,28 @@ export default function SolutionsTranscriptsIndex({
         subNavigation={subNavigationBuild({ owner, current: "labs" })}
       >
         <Page>
-          <Page.Layout direction="vertical">
-            <Page.Header
+          <Page.Header
               title="Transcripts summarizer"
               icon={ChatBubbleLeftRightIcon}
               description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
             />
-            <Page.SectionHeader
-              title="1. Connect Google Drive"
-              description="Connect your personal Google Drive so Dust can access your meeting transcripts."
-              action={{
-                label: isGDriveConnected ? "Connected" : "Connect",
-                size: "sm",
-                icon: CloudArrowLeftRightIcon,
-                disabled: isLoading || isGDriveConnected,
-                onClick: async () => {
+          <Page.Layout direction="vertical">
+            <Page.SectionHeader title="1. Connect Google Drive" />
+            <Page.Layout direction="horizontal">
+              <Page.P>
+              Connect your personal Google Drive so Dust can access your meeting transcripts.
+              </Page.P>
+
+              <Button 
+                label={isGDriveConnected ? "Connected" : "Connect"}
+                size="sm"
+                icon={CloudArrowLeftRightIcon}
+                disabled={isLoading || isGDriveConnected}
+                onClick={async () => {
                   await handleConnectTranscriptsSource();
-                },
-              }}
-            />
+                }}
+              />
+            </Page.Layout>
           </Page.Layout>
           {!isLoading && isGDriveConnected && (
             <>

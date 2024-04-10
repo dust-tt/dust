@@ -9,6 +9,10 @@ import {
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
+export function generateWorkflowId(userId: string, providerId: string): string {
+  return `solutions-transcripts-retrieve-u${userId}-${providerId}`;
+}
+
 export async function launchRetrieveNewTranscriptsWorkflow({
   userId,
   providerId,
@@ -17,8 +21,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   providerId: string;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-
-  const workflowId = `solutions-transcripts-retrieve-u${userId}-${providerId}`;
+  const workflowId = generateWorkflowId(userId.toString(), providerId);
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {

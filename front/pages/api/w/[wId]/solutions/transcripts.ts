@@ -113,12 +113,23 @@ async function handler(
       }
       
       if(isActive !== undefined) {
-        console.log('SET isActive', isActive)
         await SolutionsTranscriptsConfigurationResource.setIsActive({
           isActive,
           provider: patchProvider,
           userId: owner.id,
-        });
+        }).then(() => {
+          // Start or stop the temporal workflow
+          if (isActive) {
+            void launchRetrieveNewTranscriptsWorkflow({ userId: owner.id, providerId: patchProvider }).then(
+              (result) => {
+                console.log(result);
+              }
+            );
+          } else {
+            // Stop the workflow
+            console.log('STOP THE WORKFLOW HERE')
+          }
+        })
       }
 
       return res
