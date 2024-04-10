@@ -166,26 +166,6 @@ export function ActiveSubscriptionTable({
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
-                  <PokeTableCell>Stripe Customer Id</PokeTableCell>
-                  <PokeTableCell>
-                    {subscription.stripeCustomerId ? (
-                      <Link
-                        href={
-                          isDevelopment()
-                            ? `https://dashboard.stripe.com/test/customers/${subscription.stripeCustomerId}`
-                            : `https://dashboard.stripe.com/customers/${subscription.stripeCustomerId}`
-                        }
-                        target="_blank"
-                        className="text-xs text-action-400"
-                      >
-                        {subscription.stripeCustomerId}
-                      </Link>
-                    ) : (
-                      "No customer id"
-                    )}
-                  </PokeTableCell>
-                </PokeTableRow>
-                <PokeTableRow>
                   <PokeTableCell>Start Date</PokeTableCell>
                   <PokeTableCell>
                     {subscription.startDate
