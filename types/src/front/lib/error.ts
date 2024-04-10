@@ -67,7 +67,7 @@ export type APIErrorType =
   | "table_not_found"
   // Templates:
   | "template_not_found"
-  // Solutions: Transcripts
+  // Labs:
   | "configuration_not_found";
 
 export type APIError = {
