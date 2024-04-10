@@ -29,6 +29,13 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
  * Calls the Stripe API to get the price ID for a given product ID.
  */
 async function getPriceId(productId: string): Promise<string | null> {
+  // Return the default price if set
+  const product = await stripe.products.retrieve(productId);
+  if (product.default_price && typeof product.default_price === "string") {
+    return product.default_price;
+  }
+
+  // Otherwise, return the first active price
   const prices = await stripe.prices.list({ product: productId, active: true });
   if (prices.data.length > 0) {
     const [firstActivePrice] = prices.data;
