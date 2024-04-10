@@ -45,6 +45,7 @@ async function handler(
               "provider",
               "agentConfigurationId",
               "emailToNotify",
+              "isActive",
             ],
             where: {
               userId: owner.id,
@@ -63,6 +64,7 @@ async function handler(
         agentConfigurationId: patchAgentId,
         provider: patchProvider,
         email: emailToNotify,
+        isActive
       } = req.body;
       if (!patchAgentId || !patchProvider) {
         return apiError(req, res, {
@@ -105,6 +107,15 @@ async function handler(
       if (emailToNotify) {
         await SolutionsTranscriptsConfigurationResource.setEmailToNotify({
           emailToNotify,
+          provider: patchProvider,
+          userId: owner.id,
+        });
+      }
+      
+      if(isActive !== undefined) {
+        console.log('SET isActive', isActive)
+        await SolutionsTranscriptsConfigurationResource.setIsActive({
+          isActive,
           provider: patchProvider,
           userId: owner.id,
         });

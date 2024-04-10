@@ -276,7 +276,7 @@ export async function summarizeGoogleDriveTranscriptActivity(
 
   // CREATE HISTORY RECORD
   SolutionsTranscriptsHistoryResource.makeNew({
-    solutionsTranscriptsConfigurationId: transcriptsConfiguration.id,
+    configurationId: transcriptsConfiguration.id,
     fileId,
     fileName: transcriptTitle as string,
   }).catch((err) => {

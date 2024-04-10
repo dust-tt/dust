@@ -24,6 +24,7 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
   declare provider: SolutionProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare emailToNotify: string | null;
+  declare isActive: boolean;
 }
 
 SolutionsTranscriptsConfigurationModel.init(
@@ -65,6 +66,11 @@ SolutionsTranscriptsConfigurationModel.init(
     emailToNotify: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

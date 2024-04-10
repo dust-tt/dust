@@ -24,11 +24,11 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   }
 
   static async makeNew({
-    solutionsTranscriptsConfigurationId,
+    configurationId,
     fileId,
     fileName,
   }: {
-    solutionsTranscriptsConfigurationId: SolutionsTranscriptsConfigurationModel["id"];
+    configurationId: SolutionsTranscriptsConfigurationModel["id"];
     fileId: string;
     fileName: string;
   }): Promise<SolutionsTranscriptsHistoryResource> {
@@ -44,7 +44,7 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
       );
     }
     const history = await SolutionsTranscriptsHistoryModel.create({
-      solutionsTranscriptsConfigurationId,
+      configurationId,
       fileId,
       fileName,
     });
@@ -77,17 +77,17 @@ export class SolutionsTranscriptsHistoryResource extends BaseResource<SolutionsT
   }
 
   static async listByConfigurationId({
-    solutionsTranscriptsConfigurationId,
+    configurationId,
     limit = 20,
     sort = "DESC",
   }: {
-    solutionsTranscriptsConfigurationId: SolutionsTranscriptsConfigurationModel["id"];
+    configurationId: SolutionsTranscriptsConfigurationModel["id"];
     limit: number;
     sort: "ASC" | "DESC";
   }): Promise<SolutionsTranscriptsHistoryResource[]> {
     const histories = await SolutionsTranscriptsHistoryModel.findAll({
       where: {
-        solutionsTranscriptsConfigurationId,
+        configurationId,
       },
       limit,
       order: [["createdAt", sort]],

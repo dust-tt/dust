@@ -68,7 +68,7 @@ export default function SolutionsTranscriptsIndex({
   const sendNotification = useContext(SendNotificationsContext);
   const [emailToNotify, setEmailToNotify] = useState<string | null>("");
   const [agentsFetched, setAgentsFetched] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -78,63 +78,69 @@ export default function SolutionsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
+  const makePatchRequest = async (data: any, successMessage: string) => {
+    await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to update");
+      }
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: successMessage,
+      });
+    });
+  };
+  
   const updateAssistantConfiguration = async (
     assistant: LightAgentConfigurationType
   ) => {
-    await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        agentConfigurationId: assistant.sId,
-        provider,
-      }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("Failed to select assistant");
-      }
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description:
-          "The assistant that will help you summarize your transcripts has been set to @" +
-          assistant.name,
-      });
-    });
+    setAssistantSelected(assistant);
+    const data = {
+      agentConfigurationId: assistant.sId,
+      provider,
+    };
+    const successMessage = "The assistant that will help you summarize your transcripts has been set to @" + assistant.name;
+    await makePatchRequest(data, successMessage);
   };
-
+  
   const updateEmailToNotify = async (email: string) => {
     setEmailToNotify(email);
-    await fetch(`/api/w/${owner.sId}/solutions/transcripts`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email,
-        agentConfigurationId: assistantSelected?.sId,
-        provider,
-      }),
-    }).then((response) => {
-      if (!response.ok) {
-        throw new Error("Failed to update email");
-      }
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: "The email to notify has been set to " + email,
-      });
-    });
+    const data = {
+      email: email,
+      agentConfigurationId: assistantSelected?.sId,
+      provider,
+    };
+    const successMessage = "The email to notify has been set to " + email;
+    await makePatchRequest(data, successMessage);
   };
 
-  const handleSetIsSyncing = async (isSyncing: boolean) => {
-    setIsSyncing(isSyncing);
-  };
+  const updateIsActive = async (isActive: boolean) => {
+    setIsActive(isActive);
+    const data = {
+      isActive,
+      agentConfigurationId: assistantSelected?.sId,
+      provider,
+    };
+    const successMessage = isActive ? "We will start summarizing your transcripts." : "We will no longer summarize your transcripts.";
+    await makePatchRequest(data, successMessage);
+  }
 
   const handleSelectAssistant = async (assistant: LightAgentConfigurationType) => {
-    setAssistantSelected(assistant);
     return updateAssistantConfiguration(assistant);
+  };
+
+  const handleSetEmailToNotify = async (email: string) => {
+    return updateEmailToNotify(email);
+  }
+
+  const handleSetIsActive = async (isActive: boolean) => {
+    return updateIsActive(isActive);
   };
 
   useEffect(() => {
@@ -219,7 +225,6 @@ export default function SolutionsTranscriptsIndex({
         return response;
       });
     } catch (error) {
-      console.log(error);
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
@@ -302,21 +307,21 @@ export default function SolutionsTranscriptsIndex({
                   <input
                     placeholder="Email"
                     value={emailToNotify as string}
-                    onChange={(e) => setEmailToNotify(e.target.value)}
+                    onChange={(e) => handleSetEmailToNotify(e.target.value)}
                     onBlur={(e) => updateEmailToNotify(e.target.value)}
                     className="s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2 s-bg-structure-50 s-text-element-900 s-placeholder-element-600 dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8 s-transition-all s-duration-300 s-ease-out s-ring-structure-200 focus:s-ring-action-300 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
                   />
                 </Page.Layout>
               </Page.Layout>
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="4. Start syncing" />
+                <Page.SectionHeader title="4. Activate" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <Page.P>
                     When this is turned on, you will receive a summary of each of your transcripted meetings.
                   </Page.P>
                   <SliderToggle
-                    selected={isSyncing}
-                    onClick={() => handleSetIsSyncing(!isSyncing)} 
+                    selected={isActive}
+                    onClick={() => handleSetIsActive(!isActive)} 
                   />
                 </Page.Layout>
               </Page.Layout>

@@ -182,6 +182,59 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     }
   }
 
+  static async setIsActive({
+    isActive,
+    userId,
+    provider,
+  }: {
+    isActive: boolean;
+    userId: number;
+    provider: SolutionProviderType;
+  }): Promise<
+    Result<
+      void,
+      | {
+          type: "not_found";
+        }
+      | Error
+    > 
+  > {
+    const configuration = await this.findByUserIdAndProvider({
+      // all attributes
+      attributes: ["id", "isActive"],
+      where: {
+        userId,
+        provider,
+      },
+    });
+    if (!configuration) {
+      return new Err({
+        type: "not_found",
+      });
+    }
+
+    if (configuration.isActive === isActive) {
+      return new Ok(undefined);
+    }
+
+    try {
+      await SolutionsTranscriptsConfigurationModel.update(
+        { isActive },
+        {
+          where: {
+            id: configuration.id,
+          },
+        }
+      );
+
+      return new Ok(undefined);
+    }
+    catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({

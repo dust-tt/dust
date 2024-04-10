@@ -18,7 +18,7 @@ export class SolutionsTranscriptsHistoryModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare solutionsTranscriptsConfigurationId: ForeignKey<
+  declare configurationId: ForeignKey<
     SolutionsTranscriptsConfigurationModel["id"]
   >;
   declare fileId: string;
@@ -42,7 +42,7 @@ SolutionsTranscriptsHistoryModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    solutionsTranscriptsConfigurationId: {
+    configurationId: {
       type: DataTypes.INTEGER,
       references: {
         model: "solutions_transcripts_configurations",
@@ -62,7 +62,7 @@ SolutionsTranscriptsHistoryModel.init(
     modelName: "solutions_transcripts_history",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["solutionsTranscriptsConfigurationId"] },
+      { fields: ["configurationId"] },
       { fields: ["fileId"], unique: true },
     ],
   }
