@@ -5,23 +5,37 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/solutions_transcripts_configuration_resource";
+import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
+
 import type * as activities from "./activities";
 
 const {
   retrieveNewTranscriptsActivity,
-  summarizeGoogleDriveTranscriptActivity,
+  summarizeGoogleDriveTranscriptActivity
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
 export async function retrieveNewTranscriptsWorkflow(
   userId: number,
-  providerId: string
+  providerId: SolutionsTranscriptsProviderType
 ) {
   // 15 minutes
   const SECONDS_INTERVAL_BETWEEN_PULLS = 15 * 60;
 
   do {
+    const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive(
+      {
+        userId,
+        provider: providerId,
+      }
+    )
+
+    if (!isActive) {
+      break;
+    }
+
     await retrieveNewTranscriptsActivity(userId, providerId);
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
 

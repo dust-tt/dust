@@ -14,6 +14,7 @@ import { SolutionsTranscriptsConfigurationResource } from "@app/lib/resources/so
 import { SolutionsTranscriptsHistoryResource } from "@app/lib/resources/solutions_transcripts_history_resource";
 import { launchSummarizeTranscriptWorkflow } from "@app/lib/solutions/transcripts/temporal/client";
 import { getGoogleAuth } from "@app/lib/solutions/transcripts/utils/helpers";
+import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 import mainLogger from "@app/logger/logger";
 
 const {
@@ -27,7 +28,7 @@ const {
 
 export async function retrieveNewTranscriptsActivity(
   userId: number,
-  providerId: string
+  providerId: SolutionsTranscriptsProviderType
 ) {
   const logger = mainLogger.child({ userId });
 
@@ -285,4 +286,29 @@ export async function summarizeGoogleDriveTranscriptActivity(
       err
     );
   });
+}
+
+
+export async function checkIsActiveActivity({
+  userId,
+  providerId
+}: {
+  userId: number;
+  providerId: string;
+}) {
+  const logger = mainLogger.child({});
+
+  const isActive = await SolutionsTranscriptsConfigurationResource.getIsActive(
+    {
+      userId,
+      provider: providerId,
+    }
+  )
+  logger.info(
+    {
+      isActive: isActive,
+    },
+    "[checkIfSyncIsActiveActivity] isActive"
+  );
+  return isActive;
 }

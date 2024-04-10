@@ -5,7 +5,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SolutionsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/solutions_transcripts_configuration";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
+import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -30,7 +30,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     userId: number;
     connectionId: string;
-    provider: SolutionProviderType;
+    provider: SolutionsTranscriptsProviderType;
   }): Promise<SolutionsTranscriptsConfigurationResource> {
     if (
       await SolutionsTranscriptsConfigurationModel.count({
@@ -64,7 +64,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     attributes: string[];
     where: RequireAtLeastOne<{
       userId: number;
-      provider: SolutionProviderType;
+      provider: SolutionsTranscriptsProviderType;
     }>;
   }): Promise<SolutionsTranscriptsConfigurationResource | null> {
     const configuration = await SolutionsTranscriptsConfigurationModel.findOne({
@@ -87,7 +87,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     agentConfigurationId: string | null;
     userId: number;
-    provider: SolutionProviderType;
+    provider: SolutionsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -138,7 +138,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     emailToNotify: string | null;
     userId: number;
-    provider: SolutionProviderType;
+    provider: SolutionsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -182,6 +182,38 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
     }
   }
 
+  static async getIsActive({
+    userId,
+    provider,
+  }: {
+    userId: number;
+    provider: SolutionsTranscriptsProviderType;
+  }): Promise<
+    Result<
+      boolean,
+      | {
+          type: "not_found";
+        }
+      | Error
+    >
+  > {
+    const configuration = await this.findByUserIdAndProvider({
+      // all attributes
+      attributes: ["id", "isActive"],
+      where: {
+        userId,
+        provider,
+      },
+    });
+    if (!configuration) {
+      return new Err({
+        type: "not_found",
+      });
+    }
+
+    return new Ok(configuration.isActive);
+  }
+
   static async setIsActive({
     isActive,
     userId,
@@ -189,7 +221,7 @@ export class SolutionsTranscriptsConfigurationResource extends BaseResource<Solu
   }: {
     isActive: boolean;
     userId: number;
-    provider: SolutionProviderType;
+    provider: SolutionsTranscriptsProviderType;
   }): Promise<
     Result<
       void,

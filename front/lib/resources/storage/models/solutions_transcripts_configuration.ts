@@ -9,7 +9,7 @@ import { DataTypes, Model } from "sequelize";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { SolutionProviderType } from "@app/lib/solutions/transcripts/utils/types";
+import type { SolutionsTranscriptsProviderType } from "@app/lib/solutions/transcripts/utils/types";
 
 export class SolutionsTranscriptsConfigurationModel extends Model<
   InferAttributes<SolutionsTranscriptsConfigurationModel>,
@@ -21,7 +21,7 @@ export class SolutionsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare connectionId: string;
-  declare provider: SolutionProviderType;
+  declare provider: SolutionsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare emailToNotify: string | null;
   declare isActive: boolean;
