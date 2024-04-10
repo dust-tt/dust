@@ -349,15 +349,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const generationConfigIds = agentConfigurations
     .filter((a) => a.generationConfigurationId !== null)
     .map((a) => a.generationConfigurationId as number);
-  // const retrievalConfigIds = agentConfigurations
-  //   .filter((a) => a.retrievalConfigurationId !== null)
-  //   .map((a) => a.retrievalConfigurationId as number);
-  // const dustAppRunConfigIds = agentConfigurations
-  //   .filter((a) => a.dustAppRunConfigurationId !== null)
-  //   .map((a) => a.dustAppRunConfigurationId as number);
-  // const tablesQueryConfigurationsIds = agentConfigurations
-  //   .filter((a) => a.tablesQueryConfigurationId !== null)
-  //   .map((a) => a.tablesQueryConfigurationId as number);
 
   function keyById<T extends { id: number }>(list: T[]): Record<number, T> {
     return _.keyBy(list, "id");
