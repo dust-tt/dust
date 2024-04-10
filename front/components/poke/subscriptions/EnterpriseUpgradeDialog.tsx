@@ -2,6 +2,7 @@ import { Spinner2 } from "@dust-tt/sparkle";
 import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { useRouter } from "next/router";
 import { useState } from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
@@ -132,6 +133,7 @@ export default function EnterpriseUpgradeDialog({
   const [open, setOpen] = useState(false);
 
   const { plans } = usePokePlans();
+  const router = useRouter();
 
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
@@ -180,6 +182,7 @@ export default function EnterpriseUpgradeDialog({
 
         form.reset();
         setOpen(false);
+        router.reload();
       } catch (e) {
         setIsSubmitting(false);
         if (e instanceof Error) {
