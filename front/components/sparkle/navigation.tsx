@@ -203,35 +203,37 @@ export const subNavigationBuild = ({
         current: current === "developers",
         subMenuLabel: current === "developers" ? subMenuLabel : undefined,
         subMenu: current === "developers" ? subMenu : undefined,
-      },
-      {
-        id: "labs",
-        label: "Labs",
-        icon: PaintIcon,
-        href: `/w/${owner.sId}/builder/labs`,
-        current: current === "labs",
-        subMenuLabel: current === "labs" ? subMenuLabel : undefined,
-        subMenu: current === "labs" ? subMenu : undefined,
-      },
+      }
     ],
   });
 
+  const extraMenus = [{
+    id: "labs",
+    label: "Labs",
+    icon: PaintIcon,
+    href: `/w/${owner.sId}/builder/labs`,
+    current: current === "labs",
+    subMenuLabel: current === "labs" ? subMenuLabel : undefined,
+    subMenu: current === "labs" ? subMenu : undefined,
+  }];
+
   if (isDevelopmentOrDustWorkspace(owner)) {
-    nav.push({
-      id: "lab",
-      label: "Lab (Dust Only)",
-      variant: "secondary",
-      menus: [
-        {
-          id: "extract",
-          label: "Extract",
-          icon: ArrowUpOnSquareIcon,
-          href: `/w/${owner.sId}/u/extract`,
-          current: current === "extract",
-        },
-      ],
+    extraMenus.push({
+      id: "extract",
+      label: "Extract (Dust Only)",
+      icon: ArrowUpOnSquareIcon,
+      href: `/w/${owner.sId}/u/extract`,
+      current: current === "extract",
+      subMenuLabel: undefined,
+      subMenu: undefined
     });
   }
+  nav.push({
+    id: "lab",
+    label: "Advanced ",
+    variant: "secondary",
+    menus: extraMenus as SparkleAppLayoutNavigation[]
+  });
 
   return nav;
 };
