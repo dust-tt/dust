@@ -7,6 +7,7 @@ import {
   AgentMessage,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
+  AgentTablesQueryConfiguration,
   App,
   Clone,
   Conversation,
@@ -36,7 +37,6 @@ import {
 } from "@app/lib/models";
 import {
   AgentTablesQueryAction,
-  AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
