@@ -21,7 +21,7 @@ import { launchRunPostUpsertHooksWorkflow } from "@app/documents_post_process_ho
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { launchUpsertDocumentWorkflow } from "@app/upsert_queue/temporal/client";
+import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 

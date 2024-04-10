@@ -5,8 +5,8 @@ import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runProductionChecksWorker } from "@app/production_checks/temporal/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/scrub_workspace/temporal/worker";
+import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
-import { runUpsertQueueWorker } from "@app/upsert_queue/temporal/worker";
 
 setupGlobalErrorHandler(logger);
 
