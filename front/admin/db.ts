@@ -7,6 +7,9 @@ import {
   AgentMessage,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
   App,
   Clone,
   Conversation,
@@ -34,11 +37,6 @@ import {
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models";
-import {
-  AgentTablesQueryAction,
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentUserRelation,
   GlobalAgentSettings,
