@@ -207,33 +207,43 @@ export const subNavigationBuild = ({
     ],
   });
 
-  const extraMenus = [{
-    id: "labs",
-    label: "Labs",
-    icon: PaintIcon,
-    href: `/w/${owner.sId}/builder/labs`,
-    current: current === "labs",
-    subMenuLabel: current === "labs" ? subMenuLabel : undefined,
-    subMenu: current === "labs" ? subMenu : undefined,
-  }];
+  const hasDevOrOwnerAccess = isDevelopmentOrDustWorkspace(owner)
+  const hasLabsAccess = owner.flags?.some((flag: string) => flag.startsWith("labs_"));
+  const hasAdvancedAccess = hasDevOrOwnerAccess || hasLabsAccess;
+  const advancedMenus = []
 
-  if (isDevelopmentOrDustWorkspace(owner)) {
-    extraMenus.push({
-      id: "extract",
-      label: "Extract (Dust Only)",
-      icon: ArrowUpOnSquareIcon,
-      href: `/w/${owner.sId}/u/extract`,
-      current: current === "extract",
-      subMenuLabel: undefined,
-      subMenu: undefined
+  if (hasAdvancedAccess) {
+    if (hasLabsAccess) {
+      advancedMenus.push({
+        id: "labs",
+        label: "Labs",
+        icon: PaintIcon,
+        href: `/w/${owner.sId}/builder/labs`,
+        current: current === "labs",
+        subMenuLabel: current === "labs" ? subMenuLabel : undefined,
+        subMenu: current === "labs" ? subMenu : undefined,
+      });
+    }
+
+    if (hasDevOrOwnerAccess) {
+      advancedMenus.push({
+        id: "extract",
+        label: "Extract (Dust Only)",
+        icon: ArrowUpOnSquareIcon,
+        href: `/w/${owner.sId}/u/extract`,
+        current: current === "extract",
+        subMenuLabel: undefined,
+        subMenu: undefined
+      });
+    }
+
+    nav.push({
+      id: "lab",
+      label: "Advanced",
+      variant: "secondary",
+      menus: advancedMenus as SparkleAppLayoutNavigation[]
     });
   }
-  nav.push({
-    id: "lab",
-    label: "Advanced ",
-    variant: "secondary",
-    menus: extraMenus as SparkleAppLayoutNavigation[]
-  });
 
   return nav;
 };
