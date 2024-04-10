@@ -161,9 +161,7 @@ const ListVariantContent = ({
             descriptionClassNames.list
           )}
         >
-          {description.length < 200
-            ? description
-            : description.slice(0, 200) + "..."}
+          {description}
         </div>
       </div>
     </div>
