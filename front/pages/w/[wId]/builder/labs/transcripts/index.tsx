@@ -314,8 +314,8 @@ export default function SolutionsTranscriptsIndex({
                   <input
                     placeholder="Email"
                     value={emailToNotify as string}
-                    onChange={(e) => handleSetEmailToNotify(e.target.value)}
-                    onBlur={(e) => updateEmailToNotify(e.target.value)}
+                    onChange={(e) => setEmailToNotify(e.target.value)}
+                    onBlur={(e) => handleSetEmailToNotify(e.target.value)}
                     className="s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2 s-bg-structure-50 s-text-element-900 s-placeholder-element-600 dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8 s-transition-all s-duration-300 s-ease-out s-ring-structure-200 focus:s-ring-action-300 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
                   />
                 </Page.Layout>
