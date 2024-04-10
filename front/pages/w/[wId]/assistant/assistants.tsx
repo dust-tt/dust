@@ -177,10 +177,8 @@ function ScopeSection({
           onClick={onAssistantClick(agent)}
         >
           <ContextItem.Description>
-            <div className="text-element-700">
-              {agent.description.length < 200
-                ? agent.description
-                : agent.description.slice(0, 200) + "..."}
+            <div className="line-clamp-2 text-element-700">
+              {agent.description}
             </div>
           </ContextItem.Description>
         </ContextItem>
