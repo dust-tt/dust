@@ -38,6 +38,7 @@ interface BlogBlockProps {
   title: React.ReactNode;
   content: React.ReactNode;
   href: string;
+  className?: string;
 }
 
 export const BlogBlock: React.FC<BlogBlockProps> = ({
@@ -45,16 +46,17 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
   title,
   content,
   href,
+  className = "",
 }) => {
   return (
     <a
       href={href}
       target="_blank"
       className={classNames(
-        "mx-4 md:mx-0",
-        "flex flex-col overflow-hidden rounded-2xl bg-slate-100 drop-shadow-xl",
+        className,
+        "flex flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
         "group transition duration-300 ease-out",
-        "hover:scale-105 hover:bg-white"
+        "scale-100 hover:scale-100 hover:bg-white"
       )}
     >
       {children ? (
@@ -105,7 +107,8 @@ export const HeaderContentBlock = ({
       className={classNames(
         "flex h-[50vh] min-h-[300px] flex-col justify-end gap-12",
         "col-span-12",
-        "lg:col-span-10 lg:col-start-2",
+        "sm:col-span-12",
+        "lg:col-span-8 lg:col-start-2",
         "xl:col-span-9 xl:col-start-2",
         "2xl:col-start-3"
       )}
@@ -187,7 +190,7 @@ interface ContentAssistantProps {
   content: ReactNode;
   assistant: ReactNode;
   color: "pink" | "sky" | "emerald" | "amber";
-  layout?: "horizontal" | "vertical" | "column";
+  layout?: string;
   className?: string;
 }
 
@@ -198,6 +201,74 @@ const assistantColor = {
   amber: "from-amber-200 to-amber-300",
 };
 
+const getLayoutClasses = (layout: string) => {
+  const defaultLayout = "vertical";
+  const layoutItems = layout ? layout.split(" ") : [defaultLayout];
+
+  const layoutClasses: Record<string, string> = {
+    layoutFinal: "",
+    contentFinal: "",
+    assistantFinal: "",
+  };
+
+  layoutItems.forEach((layoutItem) => {
+    const [breakpoint, direction] = layoutItem.split(":");
+    const breakpointClass =
+      breakpoint !== "column" &&
+      breakpoint !== "vertical" &&
+      breakpoint !== "horizontal"
+        ? `${breakpoint}:`
+        : "";
+
+    switch (direction || layoutItem) {
+      case "column":
+        layoutClasses.layoutFinal += `${breakpointClass}flex-col `;
+        layoutClasses.contentFinal += `${breakpointClass}flex-col `;
+        layoutClasses.assistantFinal += `${breakpointClass}flex-col `;
+        break;
+      case "horizontal":
+        layoutClasses.layoutFinal += `${breakpointClass}flex-row `;
+        layoutClasses.contentFinal += `${breakpointClass}flex-col `;
+        layoutClasses.assistantFinal += `${breakpointClass}flex-col `;
+        break;
+      case "vertical":
+        layoutClasses.layoutFinal += `${breakpointClass}flex-col `;
+        layoutClasses.contentFinal += `${breakpointClass}flex-row `;
+        layoutClasses.assistantFinal += `${breakpointClass}flex-row `;
+        break;
+      default:
+        layoutClasses.layoutFinal += `${breakpointClass}flex-col `;
+        layoutClasses.contentFinal += `${breakpointClass}flex-row `;
+        layoutClasses.assistantFinal += `${breakpointClass}flex-row `;
+    }
+  });
+
+  // Sort the classes based on breakpoints
+  Object.keys(layoutClasses).forEach((key) => {
+    layoutClasses[key] = layoutClasses[key]
+      .trim()
+      .split(" ")
+      .sort((a, b) => {
+        const breakpointOrder: Record<string, number> = {
+          sm: 1,
+          md: 2,
+          lg: 3,
+          xl: 4,
+          "2xl": 5,
+        };
+        const aBreakpoint = a.split(":")[0];
+        const bBreakpoint = b.split(":")[0];
+        return (
+          (breakpointOrder[aBreakpoint] || 0) -
+          (breakpointOrder[bBreakpoint] || 0)
+        );
+      })
+      .join(" ");
+  });
+
+  return layoutClasses;
+};
+
 export const ContentAssistantBlock = ({
   content,
   assistant,
@@ -205,30 +276,9 @@ export const ContentAssistantBlock = ({
   layout = "vertical",
   className = "",
 }: ContentAssistantProps) => {
-  let layoutFinal: string;
-  let contentFinal: string;
-  let assistantFinal: string;
-  switch (layout) {
-    case "column":
-      layoutFinal = "flex-col";
-      contentFinal = "flex-col";
-      assistantFinal = "flex-col";
-      break;
-    case "horizontal":
-      layoutFinal = "flex-row";
-      contentFinal = "flex-col";
-      assistantFinal = "flex-col";
-      break;
-    case "vertical":
-      layoutFinal = "flex-col";
-      contentFinal = "flex-row";
-      assistantFinal = "flex-row";
-      break;
-    default:
-      layoutFinal = "flex-col";
-      contentFinal = "flex-row";
-      assistantFinal = "flex-row";
-  }
+  const { layoutFinal, contentFinal, assistantFinal } =
+    getLayoutClasses(layout);
+
   return (
     <div
       className={classNames(

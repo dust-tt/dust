@@ -11,7 +11,7 @@ import React from "react";
 
 import { classNames } from "@app/lib/utils";
 
-const defaultGridClasses = "grid grid-cols-1 sm:grid-cols-6 md:grid-cols-12";
+const defaultGridClasses = "grid grid-cols-1 sm:grid-cols-12";
 
 const verticalGridClasses = {
   top: "items-start",

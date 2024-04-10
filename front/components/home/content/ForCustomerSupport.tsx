@@ -31,7 +31,7 @@ export function ForCustomerSupport() {
           </>
         }
       />
-      <Grid>
+      <Grid gap="gap-8">
         <ContentAssistantBlock
           className="col-span-8"
           layout="vertical"

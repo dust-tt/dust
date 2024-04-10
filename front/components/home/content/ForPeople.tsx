@@ -1,13 +1,12 @@
 import React from "react";
 
-import { avatars } from "@app/components/home/components/carousel";
 import {
   Block,
   ContentAssistantBlock,
   DroidItem,
   HeaderContentBlock,
 } from "@app/components/home/components/contentBlocks";
-import { Grid, H3, P } from "@app/components/home/components/contentComponents";
+import { Grid, H2, P } from "@app/components/home/components/contentComponents";
 import { classNames } from "@app/lib/utils";
 
 const defaultFlexClasses = "flex flex-col gap-4";
@@ -19,8 +18,9 @@ export function ForPeople() {
         uptitle="Dust for Recruiting and People teams"
         title={
           <>
-            Augment your workflows with AI&nbsp;assistance accross
-            the&nbsp;board
+            Augment your&nbsp;team's producity,
+            <br />
+            provide great insights to your&nbsp;company.
           </>
         }
         from="from-amber-200"
@@ -33,29 +33,25 @@ export function ForPeople() {
           </>
         }
       />
-      <Grid>
+      <Grid gap="gap-8">
         <div
-          // ref={scrollRef1}
           className={classNames(
             defaultFlexClasses,
             "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-4"
+            "sm:col-span-10",
+            "lg:col-span-4",
+            "xl:col-span-4 xl:col-start-2"
           )}
         >
-          <H3 className="text-white">
+          <H2 className="text-white">
             Share knowledge better,
             <br />
             free time for you.
-          </H3>
-          <P size="md">
-            Guide your team with a knowledge base and stop being a perpetual
-            help desk. Focus on maintaining internal resources updated once and
-            for all.
-          </P>
+          </H2>
         </div>
         <ContentAssistantBlock
-          className="col-span-8"
+          className="col-span-12 lg:col-span-8 xl:col-span-6"
+          layout="column sm:vertical"
           color="sky"
           content={
             <>
@@ -77,22 +73,22 @@ export function ForPeople() {
           </>
         />
       </Grid>
-      <Grid>
+      <Grid gap="gap-8">
         <div
-          // ref={scrollRef1}
           className={classNames(
             defaultFlexClasses,
             "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-4"
+            "sm:col-span-10",
+            "lg:col-span-4",
+            "xl:col-start-2"
           )}
         >
-          <H3 className="text-white">Help your people grow grow.</H3>
-          <P size="md">Performance take less time and yield better results.</P>
+          <H2 className="text-white">Help your people grow.</H2>
         </div>
         <ContentAssistantBlock
-          className="col-span-8"
-          color="sky"
+          className="col-span-12 lg:col-span-8 xl:col-span-6"
+          layout="column sm:vertical"
+          color="emerald"
           content={
             <>
               <Block title="Better data">
@@ -110,8 +106,9 @@ export function ForPeople() {
           assistant=<></>
         />
         <ContentAssistantBlock
-          className="col-span-12"
-          color="sky"
+          className="col-span-12 xl:col-span-10 xl:col-start-2"
+          color="pink"
+          layout="column sm:vertical"
           content={
             <>
               <Block title="Better analysis">
@@ -135,26 +132,22 @@ export function ForPeople() {
       </Grid>
 
       {/* HIRING */}
-      <Grid>
+      <Grid gap="gap-8">
         <div
-          // ref={scrollRef1}
           className={classNames(
             defaultFlexClasses,
             "col-span-12",
-            "lg:col-span-10 lg:col-start-2",
-            "xl:col-span-4"
+            "sm:col-span-10",
+            "lg:col-span-4",
+            "xl:col-start-3"
           )}
         >
-          <H3 className="text-white">Boost your team hiring efforts.</H3>
-          <P size="md">
-            Reduce time to hire by providing fast guidance to hiring managers,
-            assistance with writing job descriptions and communicate with
-            candidates, analyse candidates answer better and faster.
-          </P>
+          <H2 className="text-white">Boost your team hiring&nbsp;efforts.</H2>
         </div>
         <ContentAssistantBlock
-          className="col-span-8"
-          color="sky"
+          className="col-span-12 lg:col-span-8 xl:col-span-6 xl:col-start-1"
+          layout="column sm:vertical"
+          color="amber"
           content={
             <>
               <Block title="Level your team up on hiring">
@@ -164,6 +157,19 @@ export function ForPeople() {
                 read through candidates subtext. Score a candidate’s take-home
                 answers with your rubric in mind.
               </Block>
+            </>
+          }
+          assistant=<>
+            {peopleSlides[2]}
+            {peopleSlides[3]}
+          </>
+        />
+        <ContentAssistantBlock
+          className="col-span-12 xl:col-span-6"
+          layout="column sm:vertical"
+          color="sky"
+          content={
+            <>
               <Block title="Make AI work for you">
                 Analyse candidate’s CV in a second Extract information from
                 texts, normalise lists of emails and names, batch write content.
@@ -174,10 +180,8 @@ export function ForPeople() {
             </>
           }
           assistant=<>
-            {peopleSlides[0]}
-            {peopleSlides[1]}
-            {peopleSlides[3]}
             {peopleSlides[4]}
+            {peopleSlides[5]}
           </>
         />
       </Grid>
@@ -188,10 +192,10 @@ export function ForPeople() {
 export const peopleSlides = [
   <DroidItem
     key="0"
-    emoji="🧑‍🍼"
+    emoji="🌱"
     avatarBackground="bg-sky-200"
     name="@onboardingBuddy"
-    question="…"
+    question="Your friendly guide to help new team members feel welcomed, informed, and integrated from day one."
   />,
   <DroidItem
     key="1"
@@ -202,25 +206,29 @@ export const peopleSlides = [
   />,
   <DroidItem
     key="2"
-    avatar={avatars[3]}
+    emoji="🖋️"
+    avatarBackground="bg-amber-200"
     name="@hiringOps"
     question="Draft job descriptions, emails, social media coms based on company standards."
   />,
   <DroidItem
     key="3"
-    avatar={avatars[5]}
+    emoji="🔬"
+    avatarBackground="bg-amber-200"
     name="@interviewReading"
     question="Help read and analyse candidate expert according to company principles."
   />,
   <DroidItem
     key="4"
-    avatar={avatars[6]}
+    emoji="💬"
+    avatarBackground="bg-sky-200"
     name="@hiringQuestions"
     question="Draft questions depending on the role, type of interview and stage in the process."
   />,
   <DroidItem
     key="5"
-    avatar={avatars[9]}
+    emoji="🧐"
+    avatarBackground="bg-sky-200"
     name="@candidate"
     question="Summarize available information about a candidate based on Company DB."
   />,

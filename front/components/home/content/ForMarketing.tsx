@@ -31,7 +31,7 @@ export function ForMarketing() {
         }
       />
 
-      <Grid>
+      <Grid gap="gap-8">
         <ContentAssistantBlock
           className="col-span-10 col-start-2"
           color="sky"
