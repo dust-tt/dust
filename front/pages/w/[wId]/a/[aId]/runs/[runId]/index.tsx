@@ -90,11 +90,11 @@ export default function AppRun({
     }
 
     if (
-      await confirm({
+      !(await confirm({
         title: "Double checking",
         message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
         validateVariant: "primaryWarning",
-      })
+      }))
     ) {
       return;
     }
