@@ -11,6 +11,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const backfillActionConfigs = async (execute: boolean) => {
   const retrievalConfigs = await AgentRetrievalConfiguration.findAll({
+    // @ts-expect-error agentConfigurationId is marked as required in the model, but we are looking for null values
     where: {
       agentConfigurationId: null,
     },
@@ -25,7 +26,7 @@ const backfillActionConfigs = async (execute: boolean) => {
       chunk.map(async (rc) => {
         const agent = await AgentConfiguration.findOne({
           where: {
-            retrievalConfigurationId: rc.id,
+            retrievalConfigurationId: rc.id as number,
           },
         });
         if (!agent) {
@@ -43,6 +44,7 @@ const backfillActionConfigs = async (execute: boolean) => {
   }
 
   const tablesQueryConfigs = await AgentTablesQueryConfiguration.findAll({
+    // @ts-expect-error agentConfigurationId is marked as required in the model, but we are looking for null values
     where: {
       agentConfigurationId: null,
     },
@@ -77,6 +79,7 @@ const backfillActionConfigs = async (execute: boolean) => {
   }
 
   const dustAppRunConfigs = await AgentDustAppRunConfiguration.findAll({
+    // @ts-expect-error agentConfigurationId is marked as required in the model, but we are looking for null values
     where: {
       agentConfigurationId: null,
     },

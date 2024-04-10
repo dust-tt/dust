@@ -309,48 +309,50 @@ export async function createOrUpgradeAgentConfiguration(
     if (agentConfigurationRes.value.status === "active") {
       trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
     }
-    if (actionConfig) {
+    if (actionConfigs.length) {
       // TODO(@fontanierh) Temporary, to remove.
       // This is a shadow write while we invert the relationship between configuration and actions.
-      switch (actionConfig.type) {
-        case "retrieval_configuration":
-          await AgentRetrievalConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
+      for (const actionConfig of actionConfigs) {
+        switch (actionConfig.type) {
+          case "retrieval_configuration":
+            await AgentRetrievalConfiguration.update(
+              {
+                agentConfigurationId: agentConfigurationRes.value.id,
               },
-            }
-          );
-          break;
-        case "tables_query_configuration":
-          await AgentTablesQueryConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
+              {
+                where: {
+                  id: actionConfig.id,
+                },
+              }
+            );
+            break;
+          case "tables_query_configuration":
+            await AgentTablesQueryConfiguration.update(
+              {
+                agentConfigurationId: agentConfigurationRes.value.id,
               },
-            }
-          );
-          break;
-        case "dust_app_run_configuration":
-          await AgentDustAppRunConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
+              {
+                where: {
+                  id: actionConfig.id,
+                },
+              }
+            );
+            break;
+          case "dust_app_run_configuration":
+            await AgentDustAppRunConfiguration.update(
+              {
+                agentConfigurationId: agentConfigurationRes.value.id,
               },
-            }
-          );
-          break;
-        default:
-          assertNever(actionConfig);
+              {
+                where: {
+                  id: actionConfig.id,
+                },
+              }
+            );
+            break;
+          default:
+            assertNever(actionConfig);
+        }
       }
     }
   }

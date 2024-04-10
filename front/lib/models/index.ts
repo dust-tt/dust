@@ -7,13 +7,15 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
   AgentConfiguration,
   AgentDustAppRunConfiguration,
   AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
-  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
