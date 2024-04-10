@@ -302,7 +302,8 @@ export async function createOrUpgradeAgentConfiguration(
       trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
     }
     if (actionConfig) {
-      // TODO(@fontanierh) Temporary to remove.
+      // TODO(@fontanierh) Temporary, to remove.
+      // This is a shadow write while we invert the relationship between configuration and actions.
       switch (actionConfig.type) {
         case "retrieval_configuration":
           await AgentRetrievalConfiguration.update(
