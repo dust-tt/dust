@@ -29,7 +29,7 @@ async function fetchPrometheusMetrics(
         "api-key": QDRANT_MONITORING_API_KEY,
       },
     });
-    const metricLines = response.data.trim().split("\n");
+    const metricLines: string[] = response.data.trim().split("\n");
 
     // Parse and update metric values.
     metricLines.forEach((line) => {
