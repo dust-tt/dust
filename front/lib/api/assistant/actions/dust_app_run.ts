@@ -115,9 +115,9 @@ export async function generateDustAppRunParams(
   app: AppType,
   schema: DatasetSchema | null
 ): Promise<Result<DustAppParameters, Error>> {
-  const action = deprecatedGetFirstActionConfiguration(configuration);
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
-  if (!isDustAppRunConfiguration(action)) {
+  if (!isDustAppRunConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `generateDustAppRunParams`"
     );
