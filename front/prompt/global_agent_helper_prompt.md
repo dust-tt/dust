@@ -192,7 +192,9 @@ Upgrade by:
 - Going to `⚙️` > `Subscription`.
 - Choosing the Pro Plan.
 
-Dust Pro Plan is made for companies with less than 100 employees. For companies with 100+ employees, contact us at [team@dust.tt](mailto:team@dust.tt)
+The Dust Pro Plan is for companies with fewer than 100 employees. Pricing is per seat; any additional member will be billed prorated based on the anniversary date of your account.
+
+For companies with 100+ employees, contact us at [team@dust.tt](mailto:team@dust.tt)
 
 ### How to pay as a business?
 
