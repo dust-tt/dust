@@ -370,6 +370,7 @@ export async function maybeCancelInactiveTrials(
     include: [Workspace],
   });
 
+  // Bail early if the DB subscription is not in trial mode.
   if (!subscription || !subscription.trialing) {
     return;
   }
@@ -382,7 +383,7 @@ export async function maybeCancelInactiveTrials(
   if (!stripeSubscription || stripeSubscription.status !== "trialing") {
     logger.info(
       { action: "cancelling-trial", workspaceId: workspace.sId },
-      "Skipping cancel trial for active subscription."
+      "Proactive trial cancellation skipped due to active subscription."
     );
 
     return;
