@@ -1,7 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 
+import type { DocumentsPostProcessHookType } from "@app/lib/documents_post_process_hooks/hooks";
 import { getTemporalClient } from "@app/lib/temporal";
-import type { DocumentsPostProcessHookType } from "@app/temporal/documents_post_process_hooks/hooks";
 import { newUpsertSignal } from "@app/temporal/documents_post_process_hooks/signals";
 import {
   runPostDeleteHoosWorkflow,

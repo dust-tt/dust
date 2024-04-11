@@ -3,6 +3,14 @@ import sgMail from "@sendgrid/mail";
 import { Op } from "sequelize";
 import showdown from "showdown";
 
+import type {
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/lib/documents_post_process_hooks/hooks";
+import {
+  getDatasource,
+  getDocumentDiff,
+} from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
 import {
   DataSource,
   DocumentTrackerChangeSuggestion,
@@ -11,14 +19,6 @@ import {
   Workspace,
 } from "@app/lib/models";
 import mainLogger from "@app/logger/logger";
-import type {
-  DocumentsPostProcessHookFilterParams,
-  DocumentsPostProcessHookOnUpsertParams,
-} from "@app/temporal/documents_post_process_hooks/hooks";
-import {
-  getDatasource,
-  getDocumentDiff,
-} from "@app/temporal/documents_post_process_hooks/hooks/lib/data_source_helpers";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
 import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";

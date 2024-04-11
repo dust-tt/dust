@@ -1,8 +1,8 @@
-import type { DocumentsPostProcessHook } from "@app/temporal/documents_post_process_hooks/hooks";
+import type { DocumentsPostProcessHook } from "@app/lib/documents_post_process_hooks/hooks";
 import {
   documentTrackerSuggestChangesOnUpsert,
   shouldDocumentTrackerSuggestChangesRun,
-} from "@app/temporal/documents_post_process_hooks/hooks/document_tracker/suggest_changes/lib";
+} from "@app/lib/documents_post_process_hooks/hooks/document_tracker/suggest_changes/lib";
 
 // this hook is meant to suggest changes to tracked documents
 // based on new information that has been added to other documents

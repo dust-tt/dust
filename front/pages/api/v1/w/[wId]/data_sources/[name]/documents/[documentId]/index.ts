@@ -17,6 +17,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
@@ -25,7 +26,6 @@ import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
-import { getDocumentsPostDeleteHooksToRun } from "@app/temporal/documents_post_process_hooks/hooks";
 
 export const config = {
   api: {

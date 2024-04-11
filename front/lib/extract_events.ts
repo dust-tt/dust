@@ -1,6 +1,11 @@
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import type {
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/lib/documents_post_process_hooks/hooks";
+import { getDatasource } from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
 import {
   _getMaxTextContentToProcess,
   _runExtractEventApp,
@@ -15,11 +20,6 @@ import { EventSchema, ExtractedEvent } from "@app/lib/models";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";
-import type {
-  DocumentsPostProcessHookFilterParams,
-  DocumentsPostProcessHookOnUpsertParams,
-} from "@app/temporal/documents_post_process_hooks/hooks";
-import { getDatasource } from "@app/temporal/documents_post_process_hooks/hooks/lib/data_source_helpers";
 
 const { URL } = process.env;
 

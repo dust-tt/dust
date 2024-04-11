@@ -1,9 +1,9 @@
-import type { DocumentsPostProcessHook } from "@app/temporal/documents_post_process_hooks/hooks";
+import type { DocumentsPostProcessHook } from "@app/lib/documents_post_process_hooks/hooks";
 import {
   documentTrackerUpdateTrackedDocumentsOnDelete,
   documentTrackerUpdateTrackedDocumentsOnUpsert,
   shouldDocumentTrackerUpdateTrackedDocumentsRun,
-} from "@app/temporal/documents_post_process_hooks/hooks/document_tracker/update_tracked_documents/lib";
+} from "@app/lib/documents_post_process_hooks/hooks/document_tracker/update_tracked_documents/lib";
 
 // This hook is meant to update the TrackedDocuments table based on
 // DUST_TRACK tags seen in documents. It should run on upserts, and on deletes (to cleanup)

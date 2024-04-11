@@ -1,13 +1,13 @@
+import type {
+  DocumentsPostProcessHook,
+  DocumentsPostProcessHookFilterParams,
+  DocumentsPostProcessHookOnUpsertParams,
+} from "@app/lib/documents_post_process_hooks/hooks";
 import {
   processExtractEvents,
   shouldProcessExtractEvents,
 } from "@app/lib/extract_events";
 import mainLogger from "@app/logger/logger";
-import type {
-  DocumentsPostProcessHook,
-  DocumentsPostProcessHookFilterParams,
-  DocumentsPostProcessHookOnUpsertParams,
-} from "@app/temporal/documents_post_process_hooks/hooks";
 
 const logger = mainLogger.child({
   postUpsertHook: "extract_event",
