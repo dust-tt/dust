@@ -65,7 +65,8 @@ export default function LandingLayout({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
         setCurrentShape(
-          (prevShape) => (prevShape - 1) % particuleShapes.length
+          (prevShape) =>
+            (prevShape - 1 + particuleShapes.length) % particuleShapes.length
         );
       } else if (event.key === "ArrowRight") {
         setCurrentShape(
