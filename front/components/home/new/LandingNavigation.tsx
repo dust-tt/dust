@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as React from "react";
 
 import { H4, Strong } from "@app/components/home/new/ContentComponents";
+import { menuConfig } from "@app/components/home/new/menu/config";
 import { classNames } from "@app/lib/utils";
 
 import {
@@ -15,100 +16,48 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "../new/NavigationMenu";
-
-const solutions: { title: string; href: string }[] = [
-  {
-    title: "Customer Support",
-    href: "/solutions/customer-support",
-  },
-  {
-    title: "Marketing & Content",
-    href: "/solutions/marketing-content",
-  },
-  {
-    title: "Recruiting & People",
-    href: "/solutions/recruiting-people",
-  },
-];
-
-const developers: { title: string; href: string; target?: string }[] = [
-  {
-    title: "Dust for engineers",
-    href: "/developers",
-  },
-  {
-    title: "Building Dust apps",
-    href: "/developers/dust-apps",
-  },
-  {
-    title: "Documentation",
-    href: "https://docs.dust.tt",
-    target: "_blank",
-  },
-  {
-    title: "Github Repo",
-    href: "https://github.com/dust-tt/dust",
-    target: "_blank",
-  },
-];
+} from "./NavigationMenu";
 
 export function LandingNavigation() {
   return (
     <NavigationMenu>
       <NavigationMenuList>
-        <NavigationMenuItem>
-          <Link href="/hidden-copy" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Product
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-              <H4 className="col-span-2 text-white">Dust for…</H4>
-              {solutions.map((item) => (
-                <ListItem
-                  key={item.title}
-                  title={item.title}
-                  href={item.href}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger>Developers</NavigationMenuTrigger>
-          <NavigationMenuContent>
-            <ul className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-              <H4 className="col-span-2 text-white">Build with Dust</H4>
-              {developers.map((item) => (
-                <ListItem
-                  key={item.title}
-                  title={item.title}
+        {menuConfig.mainNav.map((item, index) => {
+          return (
+            <NavigationMenuItem key={index}>
+              {item.href ? (
+                <Link
                   href={item.href}
                   target={item.target}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <Link href="/pricing" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Pricing
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <Link href="/security" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Security
-            </NavigationMenuLink>
-          </Link>
-        </NavigationMenuItem>
+                  legacyBehavior
+                  passHref
+                >
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    {item.title}
+                  </NavigationMenuLink>
+                </Link>
+              ) : (
+                <React.Fragment key={index}>
+                  <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-4 p-6 pb-8 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+                      <H4 className="col-span-2 text-white">{item.label}</H4>
+                      {item.items &&
+                        item.items.map((item) => (
+                          <ListItem
+                            key={item.title}
+                            title={item.title}
+                            href={item.href}
+                          />
+                        ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </React.Fragment>
+              )}
+            </NavigationMenuItem>
+          );
+        })}
+
         <NavigationMenuItem>
           <NavigationMenuTrigger>More</NavigationMenuTrigger>
           <NavigationMenuContent>

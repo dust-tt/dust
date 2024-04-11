@@ -17,8 +17,9 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
-import { LandingNavigation } from "@app/components/home/content/LandingNavigation";
 import { A } from "@app/components/home/new/ContentComponents";
+import { LandingNavigation } from "@app/components/home/new/LandingNavigation";
+import { MobileNavigation } from "@app/components/home/new/MobileNavigation";
 import Particles, { particuleShapes } from "@app/components/home/new/Particles";
 import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
 import { trackPageView } from "@app/lib/amplitude/browser";
@@ -93,7 +94,7 @@ export default function LandingLayout({
       <Header />
       <ScrollingHeader>
         <div className="flex h-full items-center px-5 md:hidden">
-          <Icon size="md" visual={MenuIcon} className="text-slate-100" />
+          <MobileNavigation />
           <div className="flex-grow" />
           <Button
             variant="tertiary"
@@ -138,8 +139,7 @@ export default function LandingLayout({
         <div
           className={classNames(
             "container flex w-full flex-col",
-            "gap-16 px-6 py-24",
-            "md:py-48",
+            "gap-16 px-6 py-24 py-48",
             "xl:gap-36 xl:pb-96",
             "2xl:gap-48"
           )}
