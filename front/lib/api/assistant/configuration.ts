@@ -53,6 +53,7 @@ import {
 } from "@app/lib/models";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -176,13 +177,6 @@ async function fetchGlobalAgentConfigurationForView(
 }
 
 // Workspace agent configurations.
-
-// function byId<T extends { id: number }>(list: T[]): Record<string, T> {
-//   return list.reduce((acc, item) => {
-//     acc[item.id] = item;
-//     return acc;
-//   }, {} as Record<number, T>);
-// }
 
 async function fetchAgentConfigurationsForView(
   auth: Authenticator,
@@ -742,9 +736,11 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
   return contentType.includes("image");
 }
 
-/**
- * Create Agent Configuration
- */
+type AgentConfigurationWithoutActionsType = Omit<
+  AgentConfigurationType,
+  "actions"
+>;
+
 export async function createAgentConfiguration(
   auth: Authenticator,
   {
@@ -754,7 +750,6 @@ export async function createAgentConfiguration(
     status,
     scope,
     generation,
-    actions,
     agentConfigurationId,
   }: {
     name: string;
@@ -763,10 +758,9 @@ export async function createAgentConfiguration(
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
     generation: AgentGenerationConfigurationType | null;
-    actions: AgentActionConfigurationType[];
     agentConfigurationId?: string;
   }
-): Promise<Result<AgentConfigurationType, Error>> {
+): Promise<Result<AgentConfigurationWithoutActionsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -864,14 +858,6 @@ export async function createAgentConfiguration(
             workspaceId: owner.id,
             generationConfigurationId: generation?.id || null,
             authorId: user.id,
-            // // We know here that these are one that we created and not a "global virtual" one so we're
-            // // good to set the foreign key.
-            // retrievalConfigurationId:
-            //   action?.type === "retrieval_configuration" ? action?.id : null,
-            // dustAppRunConfigurationId:
-            //   action?.type === "dust_app_run_configuration" ? action?.id : null,
-            // tablesQueryConfigurationId:
-            //   action?.type === "tables_query_configuration" ? action?.id : null,
           },
           {
             transaction: t,
@@ -883,7 +869,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: AgentConfigurationType = {
+    const agentConfiguration: AgentConfigurationWithoutActionsType = {
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
@@ -895,7 +881,6 @@ export async function createAgentConfiguration(
       description: agent.description,
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      actions,
       generation: generation,
     };
 
@@ -918,9 +903,42 @@ export async function createAgentConfiguration(
   }
 }
 
-/**
- * Archive Agent Configuration
- */
+// TODO(@fontanierh) Temporary, to remove.
+// This is a shadow write while we invert the relationship between configuration and actions.
+export async function deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration(
+  actions: AgentActionConfigurationType[],
+  agentConfiguration: AgentConfigurationWithoutActionsType
+): Promise<void> {
+  if (actions.length > 1) {
+    logger.info(
+      "Multiple actions found. Only the first action will be shadow written on the agent configuration."
+    );
+  }
+  const firstActionConfig = actions.length ? actions[0] : null;
+  if (firstActionConfig) {
+    await AgentConfiguration.update(
+      firstActionConfig.type === "retrieval_configuration"
+        ? {
+            retrievalConfigurationId: firstActionConfig.id,
+          }
+        : firstActionConfig.type === "tables_query_configuration"
+        ? {
+            tablesQueryConfigurationId: firstActionConfig.id,
+          }
+        : firstActionConfig.type === "dust_app_run_configuration"
+        ? {
+            dustAppRunConfigurationId: firstActionConfig.id,
+          }
+        : assertNever(firstActionConfig),
+      {
+        where: {
+          id: agentConfiguration.id,
+        },
+      }
+    );
+  }
+}
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
@@ -979,9 +997,6 @@ export async function restoreAgentConfiguration(
   return affectedCount > 0;
 }
 
-/**
- * Create Agent Generation Configuration
- */
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
@@ -1047,7 +1062,8 @@ export async function createAgentActionConfiguration(
           dataSourceId: string;
           tableId: string;
         }>;
-      }
+      },
+  agentConfiguration: AgentConfigurationWithoutActionsType
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1074,6 +1090,7 @@ export async function createAgentActionConfiguration(
             : null,
           topK: action.topK !== "auto" ? action.topK : null,
           topKMode: action.topK === "auto" ? "auto" : "custom",
+          agentConfigurationId: agentConfiguration.id,
         },
         { transaction: t }
       );
@@ -1098,6 +1115,7 @@ export async function createAgentActionConfiguration(
       sId: generateModelSId(),
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
+      agentConfigurationId: agentConfiguration.id,
     });
 
     return {
@@ -1112,6 +1130,7 @@ export async function createAgentActionConfiguration(
       const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
         {
           sId: generateModelSId(),
+          agentConfigurationId: agentConfiguration.id,
         },
         { transaction: t }
       );
@@ -1337,4 +1356,16 @@ export async function setAgentScope(
   await agent.save();
 
   return new Ok({ agentId, scope });
+}
+
+// Should only be called when we need to cleanup the agent configuration
+// right after creating it due to an error.
+export async function unsafeHardDeleteAgentConfiguration(
+  agentConfiguration: AgentConfigurationWithoutActionsType
+): Promise<void> {
+  await AgentConfiguration.destroy({
+    where: {
+      id: agentConfiguration.id,
+    },
+  });
 }
