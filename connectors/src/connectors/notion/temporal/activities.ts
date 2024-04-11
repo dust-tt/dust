@@ -67,6 +67,7 @@ import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
 import { makeStructuredDataTableName } from "@connectors/lib/structured_data";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -770,6 +771,8 @@ export async function garbageCollect({
   let stillAccessibleDatabasesCount = 0;
 
   for (const [i, x] of resourcesToCheck.entries()) {
+    await heartbeat();
+
     const iterationLogger = localLogger.child({
       pageId: x.resourceType === "page" ? x.resourceId : undefined,
       databaseId: x.resourceType === "database" ? x.resourceId : undefined,

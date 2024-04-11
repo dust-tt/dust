@@ -10,6 +10,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -107,7 +108,8 @@ export async function updateAllParentsFields(
   connectorId: ModelId,
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  memoizationKey?: string
+  memoizationKey?: string,
+  shouldHeartbeat = false
 ): Promise<number> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -160,6 +162,9 @@ export async function updateAllParentsFields(
           documentId: `notion-${pageId}`,
           parents,
         });
+        if (shouldHeartbeat) {
+          await heartbeat();
+        }
       })
     );
   }
