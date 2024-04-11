@@ -290,6 +290,7 @@ export default function WorkspaceAdmin({
           plan={plan}
         />
         <ChangeMemberModal
+          owner={owner}
           member={changeRoleMember}
           onClose={() => setChangeRoleMember(null)}
         />
@@ -560,11 +561,11 @@ function InviteEmailModal({
         <div>Do you want to proceed?</div>
       </div>
     );
-    const existingMembersArePresent =
+    const hasExistingMembers =
       activeDifferentRole.length > 0 || revoked.length > 0;
 
     const shouldProceedWithInvites =
-      !existingMembersArePresent ||
+      !hasExistingMembers ||
       (await confirm({
         title: "Some users are already in the workspace",
         message: ReinviteUsersMessage,
@@ -573,20 +574,22 @@ function InviteEmailModal({
       }));
 
     if (shouldProceedWithInvites) {
-      if (existingMembersArePresent) {
-        await handleMembersRoleChange({
-          members: [...activeDifferentRole, ...revoked],
-          role: invitationRole,
-          sendNotification,
-        });
-      }
       await sendInvitations({
         owner,
         emails: notInWorkspace,
         invitationRole,
         sendNotification,
       });
-      await mutate(`/api/w/${owner.sId}/members`);
+
+      if (hasExistingMembers) {
+        await handleMembersRoleChange({
+          members: [...activeDifferentRole, ...revoked],
+          role: invitationRole,
+          sendNotification,
+        });
+        await mutate(`/api/w/${owner.sId}/members`);
+      }
+
       await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
     }
@@ -841,9 +844,11 @@ async function handleMembersRoleChange({
 function ChangeMemberModal({
   onClose,
   member,
+  owner,
 }: {
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
+  owner: WorkspaceType;
 }) {
   assert(
     member?.workspaces[0].role !== "none",
@@ -881,7 +886,7 @@ function ChangeMemberModal({
           role: selectedRole,
           sendNotification,
         });
-        await mutate(`/api/w/${member.workspaces[0].sId}/members`);
+        await mutate(`/api/w/${owner.sId}/members`);
         closeModalFn();
       }}
       saveLabel="Update role"
@@ -935,7 +940,7 @@ function ChangeMemberModal({
             role: "none",
             sendNotification,
           });
-          await mutate(`/api/w/${member.workspaces[0].sId}/members`);
+          await mutate(`/api/w/${owner.sId}/members`);
           setRevokeMemberModalOpen(false);
           onClose();
         }}
