@@ -5,6 +5,12 @@ import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
+// Assuming one cached workflows takes 2MB on average,
+// we can cache 292 workflows in 4096MB, which is the max heap size
+// we give to our temporal workers.
+// Add some margin to it, so we don't hit the limit, and we get to 200.
+export const TEMPORAL_MAXED_CACHED_WORKFLOWS = 200;
+
 // This is a singleton connection to the Temporal server.
 let TEMPORAL_CLIENT: Client | undefined;
 
