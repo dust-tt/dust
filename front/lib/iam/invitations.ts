@@ -4,6 +4,7 @@ import { verify } from "jsonwebtoken";
 
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitation } from "@app/lib/models";
+import logger from "@app/logger/logger";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;
 
@@ -11,9 +12,27 @@ export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined
 ): Promise<Result<MembershipInvitation | null, AuthFlowError>> {
   if (inviteToken && typeof inviteToken === "string") {
-    const decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
-      membershipInvitationId: number;
-    };
+    let decodedToken: { membershipInvitationId: number } | null = null;
+    try {
+      decodedToken = verify(inviteToken, DUST_INVITE_TOKEN_SECRET) as {
+        membershipInvitationId: number;
+      };
+    } catch (e) {
+      // Log the error and continue as we test `deodedToken` is not null below.
+      logger.error(
+        {
+          error: e,
+        },
+        "Error while verifying invite token"
+      );
+    }
+    if (!decodedToken) {
+      return new Err(
+        new AuthFlowError(
+          "The invite token is invalid, please ask your admin to resend an invitation."
+        )
+      );
+    }
 
     const membershipInvite = await MembershipInvitation.findOne({
       where: {
