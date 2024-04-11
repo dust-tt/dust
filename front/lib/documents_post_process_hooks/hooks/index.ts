@@ -1,12 +1,12 @@
 import type { ConnectorProvider, UpsertContext } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS } from "@app/lib/documents_post_process_hooks/hooks/consts";
 import {
   documentTrackerSuggestChangesPostProcessHook,
   documentTrackerUpdateTrackedDocumentsPostProcessHook,
 } from "@app/lib/documents_post_process_hooks/hooks/document_tracker";
 import { extractEventPostProcessHook } from "@app/lib/documents_post_process_hooks/hooks/extract_event";
+import { DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS } from "@app/lib/documents_post_process_hooks/hooks/types";
 
 export const DOCUMENTS_POST_PROCESS_HOOK_TYPES = [
   "document_tracker_update_tracked_documents",
