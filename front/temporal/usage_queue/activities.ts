@@ -29,17 +29,15 @@ export async function recordUsageActivity(workspaceId: string) {
   if (!subscription) {
     // The workspace likely downgraded during the debouncing period of usage reporting.
     logger.info(
-      { workspaceId },
       "[UsageQueue] Cannot record usage of subscription: missing subscription."
     );
-
     return;
   }
 
   // Legacy free test plans don't have a Stripe subscription.
   if (subscription.plan.code === FREE_TEST_PLAN_CODE) {
     logger.info(
-      { subscription, workspaceId },
+      { subscription },
       "[UsageQueue] Subscription is on free test plan -- skipping reporting usage."
     );
 
@@ -52,7 +50,7 @@ export async function recordUsageActivity(workspaceId: string) {
     //   "Cannot record usage of subscription: missing Stripe subscription Id or Stripe customer Id."
     // );
     logger.info(
-      { subscription, workspaceId },
+      { subscription },
       "[UsageQueue] Cannot record usage of subscription: missing Stripe subscription Id."
     );
 
