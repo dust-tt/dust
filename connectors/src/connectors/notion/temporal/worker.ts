@@ -4,7 +4,10 @@ import { Worker } from "@temporalio/worker";
 import * as activities from "@connectors/connectors/notion/temporal/activities";
 import { NotionCastKnownErrorsInterceptor } from "@connectors/connectors/notion/temporal/cast_known_errors";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
-import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
+import {
+  getTemporalWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
@@ -18,6 +21,7 @@ export async function runNotionWorker() {
     reuseV8Context: true,
     namespace,
     maxConcurrentActivityTaskExecutions: 16,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
