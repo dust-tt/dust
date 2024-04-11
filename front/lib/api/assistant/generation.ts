@@ -27,6 +27,7 @@ import {
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
@@ -263,15 +264,9 @@ export async function constructPrompt(
     instructions += `\n${fallbackPrompt}`;
   }
 
-  if (configuration.actions.length > 1) {
-    logger.warn(
-      { agentConfigurationId: configuration.sId },
-      "Agent configuration has more than one action, only the first one will be executed."
-    );
-  }
-  const action = configuration.actions.length ? configuration.actions[0] : null;
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
-  if (isRetrievalConfiguration(action)) {
+  if (isRetrievalConfiguration(actionConfig)) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
   if (instructions.length > 0) {

@@ -1,5 +1,4 @@
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationType,
   AppType,
   CoreAPITable,
@@ -18,6 +17,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
 
@@ -38,13 +38,7 @@ export async function buildInitialState({
     isSelectAll: boolean;
   }[] = [];
 
-  let action: AgentActionConfigurationType | null = null;
-  if (config.actions.length > 1) {
-    logger.warn("Multiple actions in assistant builder are not supported yet");
-  }
-  if (config.actions.length) {
-    action = config.actions[0];
-  }
+  const action = deprecatedGetFirstActionConfiguration(config);
 
   if (isRetrievalConfiguration(action)) {
     for (const ds of action.dataSources) {

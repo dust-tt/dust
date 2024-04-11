@@ -1,5 +1,6 @@
 import { ConnectorsAPI, isRetrievalConfiguration } from "@dust-tt/types";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -79,7 +80,7 @@ makeScript(
 
     for (const a of agents) {
       // NOTE: this migration will NOT work with multi-actions
-      const action = a.actions[0] ?? null;
+      const action = deprecatedGetFirstActionConfiguration(a);
       if (isRetrievalConfiguration(action)) {
         const retrievalConfiguration =
           await AgentRetrievalConfiguration.findOne({

@@ -27,6 +27,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
@@ -187,16 +188,7 @@ export async function* runAgent(
     );
   }
 
-  // First run the action if a configuration is present.
-  if (fullConfiguration.actions.length > 1) {
-    logger.warn(
-      { agentConfigurationId: configuration.sId },
-      "Agent configuration has more than one action, only the first one will be executed."
-    );
-  }
-  const action = fullConfiguration.actions.length
-    ? fullConfiguration.actions[0]
-    : null;
+  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
 
   if (action !== null) {
     if (isRetrievalConfiguration(action)) {

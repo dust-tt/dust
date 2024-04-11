@@ -20,6 +20,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -85,15 +86,9 @@ export async function generateTablesQueryAppParams(
     Error
   >
 > {
-  if (configuration.actions.length > 1) {
-    logger.warn(
-      { agentConfigurationId: configuration.sId },
-      "Agent configuration has more than one action, only the first one will be executed."
-    );
-  }
-  const c = configuration.actions.length ? configuration.actions[0] : null;
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
-  if (!isTablesQueryConfiguration(c)) {
+  if (!isTablesQueryConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `runQueryTables`"
     );
@@ -141,15 +136,9 @@ export async function* runTablesQuery({
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  if (configuration.actions.length > 1) {
-    logger.warn(
-      { agentConfigurationId: configuration.sId },
-      "Agent configuration has more than one action, only the first one will be executed."
-    );
-  }
-  const c = configuration.actions.length ? configuration.actions[0] : null;
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
-  if (!isTablesQueryConfiguration(c)) {
+  if (!isTablesQueryConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `runQueryTables`"
     );
@@ -202,7 +191,7 @@ export async function* runTablesQuery({
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-query-tables"].config
   );
-  const tables = c.tables.map((t) => ({
+  const tables = actionConfig.tables.map((t) => ({
     workspace_id: t.workspaceId,
     table_id: t.tableId,
     data_source_id: t.dataSourceId,

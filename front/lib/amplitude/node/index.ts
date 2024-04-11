@@ -10,6 +10,7 @@ import type {
 } from "@dust-tt/types";
 import { rateLimiter, removeNulls } from "@dust-tt/types";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,
@@ -235,7 +236,7 @@ export function trackAssistantCreated(
     return;
   }
   const amplitude = getBackendClient();
-  const action = assistant.actions[0] ?? null;
+  const action = deprecatedGetFirstActionConfiguration(assistant);
   const event = new AssistantCreated({
     assistantId: assistant.sId,
     assistantName: assistant.name,

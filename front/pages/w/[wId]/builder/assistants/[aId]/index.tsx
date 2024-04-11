@@ -22,6 +22,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -137,7 +138,7 @@ export default function EditAssistant({
 
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
-  const action = agentConfiguration.actions[0] ?? null;
+  const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
   if (isRetrievalConfiguration(action)) {
     if (action.query === "none") {
