@@ -203,14 +203,16 @@ export const subNavigationBuild = ({
         current: current === "developers",
         subMenuLabel: current === "developers" ? subMenuLabel : undefined,
         subMenu: current === "developers" ? subMenu : undefined,
-      }
+      },
     ],
   });
 
-  const hasDevOrOwnerAccess = isDevelopmentOrDustWorkspace(owner)
-  const hasLabsAccess = owner.flags?.some((flag: string) => flag.startsWith("labs_"));
+  const hasDevOrOwnerAccess = isDevelopmentOrDustWorkspace(owner);
+  const hasLabsAccess = owner.flags?.some((flag: string) =>
+    flag.startsWith("labs_")
+  );
   const hasAdvancedAccess = hasDevOrOwnerAccess || hasLabsAccess;
-  const advancedMenus = []
+  const advancedMenus = [];
 
   if (hasAdvancedAccess) {
     if (hasLabsAccess) {
@@ -233,7 +235,7 @@ export const subNavigationBuild = ({
         href: `/w/${owner.sId}/u/extract`,
         current: current === "extract",
         subMenuLabel: undefined,
-        subMenu: undefined
+        subMenu: undefined,
       });
     }
 
@@ -241,7 +243,7 @@ export const subNavigationBuild = ({
       id: "lab",
       label: "Advanced",
       variant: "secondary",
-      menus: advancedMenus as SparkleAppLayoutNavigation[]
+      menus: advancedMenus as SparkleAppLayoutNavigation[],
     });
   }
 

@@ -18,9 +18,7 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare configurationId: ForeignKey<
-    LabsTranscriptsConfigurationModel["id"]
-  >;
+  declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
   declare fileId: string;
   declare fileName: string;
 }

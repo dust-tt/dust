@@ -37,22 +37,20 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGetRes =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider(
-          {
-            attributes: [
-              "id",
-              "connectionId",
-              "provider",
-              "agentConfigurationId",
-              "emailToNotify",
-              "isActive",
-            ],
-            where: {
-              userId: owner.id,
-              provider: req.query.provider as LabsTranscriptsProviderType,
-            },
-          }
-        );
+        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
+          attributes: [
+            "id",
+            "connectionId",
+            "provider",
+            "agentConfigurationId",
+            "emailToNotify",
+            "isActive",
+          ],
+          where: {
+            userId: owner.id,
+            provider: req.query.provider as LabsTranscriptsProviderType,
+          },
+        });
 
       return res
         .status(200)
@@ -78,15 +76,13 @@ async function handler(
       }
 
       const transcriptsConfigurationPatchRes =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider(
-          {
-            attributes: ["id", "connectionId", "provider"],
-            where: {
-              userId: owner.id,
-              provider: patchProvider as LabsTranscriptsProviderType,
-            },
-          }
-        );
+        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
+          attributes: ["id", "connectionId", "provider"],
+          where: {
+            userId: owner.id,
+            provider: patchProvider as LabsTranscriptsProviderType,
+          },
+        });
 
       if (!transcriptsConfigurationPatchRes) {
         return apiError(req, res, {

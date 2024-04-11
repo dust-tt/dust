@@ -155,15 +155,12 @@ export default function LabsTranscriptsIndex({
   }, [agentConfigurations]);
 
   useEffect(() => {
-    void fetch(
-      `/api/w/${owner.sId}/labs/transcripts?provider=` + provider,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    )
+    void fetch(`/api/w/${owner.sId}/labs/transcripts?provider=` + provider, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch solution configuration");
