@@ -30,8 +30,8 @@ export async function generateMockAgentConfigurationFromTemplate(
   return new Ok({
     actions: removeNulls([getAction(template.presetAction)]),
     description: template.description ?? "",
+    instructions: template.presetInstructions ?? "",
     generation: {
-      prompt: template.presetInstructions ?? "",
       model: {
         providerId: template.presetProviderId,
         modelId: template.presetModelId,

@@ -191,7 +191,7 @@ export default function EditAssistant({
         scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
-        instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
+        instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
         avatarUrl: agentConfiguration.pictureUrl,
         generationSettings: agentConfiguration.generation
           ? {

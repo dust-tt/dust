@@ -46,6 +46,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
   assistant: t.type({
     name: t.string,
     description: t.string,
+    instructions: t.union([t.string, t.null]),
     pictureUrl: t.string,
     status: t.union([
       t.literal("active"),
@@ -120,7 +121,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     generation: t.union([
       t.null,
       t.type({
-        prompt: t.string,
         // enforce that the model is a supported model
         // the modelId and providerId are checked together, so
         // (gpt-4, anthropic) won't pass

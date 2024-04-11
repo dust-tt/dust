@@ -54,7 +54,6 @@ export type AgentActionSpecification = {
 
 export type AgentGenerationConfigurationType = {
   id: ModelId;
-  prompt: string;
   model: SupportedModel;
   temperature: number;
 };
@@ -155,6 +154,8 @@ export type LightAgentConfigurationType = {
   // Global agents have a null authorId, others have a non-null authorId
   versionAuthorId: ModelId | null;
 
+  instructions: string | null;
+
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 
@@ -184,7 +185,6 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
 export interface TemplateAgentConfigurationType {
   // If undefined, no text generation.
   generation: {
-    prompt: string;
     model: SupportedModel;
     temperature: number;
   } | null;
@@ -193,5 +193,6 @@ export interface TemplateAgentConfigurationType {
   scope: AgentConfigurationScope;
   description: string;
   actions: AgentActionConfigurationType[];
+  instructions: string | null;
   isTemplate: true;
 }

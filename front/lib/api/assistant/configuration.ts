@@ -532,7 +532,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
       generation = {
         id: generationConfig.id,
-        prompt: generationConfig.prompt,
         temperature: generationConfig.temperature,
         model,
       };
@@ -548,6 +547,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
+      instructions: agent.instructions,
       status: agent.status,
       actions,
       generation,
@@ -881,6 +881,7 @@ export async function createAgentConfiguration(
       userListStatus: null,
       name: agent.name,
       description: agent.description,
+      instructions: agent.instructions,
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       generation: generation,
@@ -966,11 +967,9 @@ export async function restoreAgentConfiguration(
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
-    prompt,
     model,
     temperature,
   }: {
-    prompt: string;
     model: SupportedModel;
     temperature: number;
   }
@@ -989,7 +988,7 @@ export async function createAgentGenerationConfiguration(
   }
 
   const genConfig = await AgentGenerationConfiguration.create({
-    prompt: prompt,
+    prompt: "Deprecated", // @todo Daph remove this field
     providerId: model.providerId,
     modelId: model.modelId,
     temperature: temperature,
@@ -997,7 +996,6 @@ export async function createAgentGenerationConfiguration(
 
   return {
     id: genConfig.id,
-    prompt: genConfig.prompt,
     temperature: genConfig.temperature,
     model,
   };

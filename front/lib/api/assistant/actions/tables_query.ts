@@ -217,7 +217,7 @@ export async function* runTablesQuery({
     [
       {
         question: input.question,
-        instructions: configuration.generation?.prompt,
+        instructions: configuration.instructions,
       },
     ]
   );
