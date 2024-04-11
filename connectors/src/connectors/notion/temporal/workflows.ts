@@ -15,12 +15,12 @@ import type * as activities from "@connectors/connectors/notion/temporal/activit
 
 const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
+  heartbeatTimeout: "5 minute",
 });
 
-const { upsertDatabaseInConnectorsDb, updateParentsFields } = proxyActivities<
-  typeof activities
->({
+const { updateParentsFields } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
+  heartbeatTimeout: "5 minute",
 });
 
 const {
@@ -33,6 +33,7 @@ const {
   clearWorkflowCache,
   getDiscoveredResourcesFromCache,
   upsertDatabaseStructuredDataFromCache,
+  upsertDatabaseInConnectorsDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
