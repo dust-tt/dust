@@ -3,6 +3,7 @@ import axios from "axios";
 import { Agent } from "https";
 import { z } from "zod";
 import * as fs from "fs";
+import { collectMetricsFromQdrant } from "./qdrant";
 
 /**
  * This service polls the Temporal Cloud Prometheus endpoint and submits the metrics to Datadog.
@@ -317,13 +318,22 @@ const main = async () => {
       )
     ).flat(2);
 
-    console.log({ level: "info", message: "Submitting metrics to Datadog" });
+    console.log({
+      level: "info",
+      message: "Submitting Temporal metrics to Datadog",
+    });
     await datadogMetricsApi.submitMetrics({
       body: { series: [...countSeries, ...guageSeries] },
     });
 
-    console.log({ level: "info", message: "Pausing for 20s" });
-    await setTimeoutAsync(20 * 1000);
+    console.log({
+      level: "info",
+      message: "Submitting Qdrant metrics to Datadog",
+    });
+    await collectMetricsFromQdrant();
+
+    console.log({ level: "info", message: "Pausing for 60s" });
+    await setTimeoutAsync(60 * 1000);
   }
 };
 
