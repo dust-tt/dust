@@ -561,21 +561,7 @@ function InviteEmailModal({
       </div>
     );
 
-    if (
-      !shouldWarnAboutExistingMembers(invitesByCase) ||
-      (await confirm({
-        title: "Some users are already in the workspace",
-        message: ReinviteUsersMessage,
-        validateLabel: "Yes, proceed",
-        validateVariant: "primaryWarning",
-      }))
-    ) {
-      await handleMembersRoleChange({
-        members: [...activeDifferentRole, ...revoked],
-        role: invitationRole,
-        mutate,
-        sendNotification,
-      });
+    if (!shouldWarnAboutExistingMembers(invitesByCase)) {
       await sendInvitations({
         owner,
         emails: notInWorkspace,
@@ -584,6 +570,25 @@ function InviteEmailModal({
       });
       await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
+    } else {
+      const shouldProceed = await confirm({
+        title: "Some users are already in the workspace",
+        message: ReinviteUsersMessage,
+        validateLabel: "Yes, proceed",
+        validateVariant: "primaryWarning",
+      });
+
+      if (shouldProceed) {
+        await handleMembersRoleChange({
+          members: [...activeDifferentRole, ...revoked],
+          role: invitationRole,
+          mutate,
+          sendNotification,
+        });
+
+        await mutate(`/api/w/${owner.sId}/invitations`);
+        onClose();
+      }
     }
   }
 
