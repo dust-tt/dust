@@ -186,7 +186,7 @@ export default function Home({
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]">
+      <div className="duration-[1000ms] fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition">
         <Particles
           scrollRef0={scrollRef0}
           scrollRef1={scrollRef1}
