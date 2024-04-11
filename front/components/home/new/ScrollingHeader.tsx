@@ -11,10 +11,10 @@ interface ScrollingHeaderProps {
 }
 
 const ScrollingHeader = ({ children }: ScrollingHeaderProps) => {
-  const [isScrolled1, setIsScrolled1] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const checkScroll = useCallback(() => {
-    setIsScrolled1(window.scrollY > SCROLL_LIMIT_1);
+    setIsScrolled(window.scrollY > SCROLL_LIMIT_1);
   }, []);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ const ScrollingHeader = ({ children }: ScrollingHeaderProps) => {
   // Combine them depending on state
   const combinedClasses = classNames(
     baseClasses,
-    isScrolled1 ? scrolledClasses : idleClasses
+    isScrolled ? scrolledClasses : idleClasses
   );
 
   return (

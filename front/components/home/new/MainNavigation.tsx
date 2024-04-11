@@ -18,9 +18,9 @@ import {
   navigationMenuTriggerStyle,
 } from "./NavigationMenu";
 
-export function LandingNavigation() {
+export function MainNavigation() {
   return (
-    <NavigationMenu>
+    <NavigationMenu className="mr-4 hidden md:flex">
       <NavigationMenuList>
         {menuConfig.mainNav.map((item, index) => {
           return (

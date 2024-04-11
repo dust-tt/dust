@@ -2,11 +2,9 @@ import {
   Button,
   Div3D,
   Hover3D,
-  Icon,
   LoginIcon,
   LogoHorizontalColorLogoLayer1,
   LogoHorizontalColorLogoLayer2,
-  MenuIcon,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import Head from "next/head";
@@ -18,7 +16,7 @@ import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { A } from "@app/components/home/new/ContentComponents";
-import { LandingNavigation } from "@app/components/home/new/LandingNavigation";
+import { MainNavigation } from "@app/components/home/new/MainNavigation";
 import { MobileNavigation } from "@app/components/home/new/MobileNavigation";
 import Particles, { particuleShapes } from "@app/components/home/new/Particles";
 import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
@@ -93,20 +91,7 @@ export default function LandingLayout({
     <RootLayout>
       <Header />
       <ScrollingHeader>
-        <div className="flex h-full items-center px-5 md:hidden">
-          <MobileNavigation />
-          <div className="flex-grow" />
-          <Button
-            variant="tertiary"
-            size="sm"
-            label="Sign in"
-            icon={LoginIcon}
-            onClick={() => {
-              window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
-            }}
-          />
-        </div>
-        <div className="hidden h-full w-full items-center gap-10 px-6 md:flex">
+        <div className="flex h-full w-full items-center gap-10 px-6">
           <div className="hidden h-[24px] w-[96px] lg:block">
             <Hover3D className="relative h-[24px] w-[96px]">
               <Div3D depth={0} className="h-[24px] w-[96px]">
@@ -117,17 +102,19 @@ export default function LandingLayout({
               </Div3D>
             </Hover3D>
           </div>
-          <LandingNavigation />
-          <div className="flex-grow" />
-          <Button
-            variant="tertiary"
-            size="sm"
-            label="Sign in"
-            icon={LoginIcon}
-            onClick={() => {
-              window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
-            }}
-          />
+          <MobileNavigation />
+          <MainNavigation />
+          <div className="flex flex-grow justify-end">
+            <Button
+              variant="tertiary"
+              size="sm"
+              label="Sign in"
+              icon={LoginIcon}
+              onClick={() => {
+                window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`;
+              }}
+            />
+          </div>
         </div>
       </ScrollingHeader>
       {/* Keeping the background dark */}
