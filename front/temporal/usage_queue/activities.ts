@@ -31,14 +31,13 @@ export async function recordUsageActivity(workspaceId: string) {
     logger.info(
       "[UsageQueue] Cannot record usage of subscription: missing subscription."
     );
-
     return;
   }
 
   // Legacy free test plans don't have a Stripe subscription.
   if (subscription.plan.code === FREE_TEST_PLAN_CODE) {
     logger.info(
-      { subscription},
+      { subscription },
       "[UsageQueue] Subscription is on free test plan -- skipping reporting usage."
     );
 
