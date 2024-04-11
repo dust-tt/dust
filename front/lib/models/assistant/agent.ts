@@ -28,6 +28,8 @@ export class AgentGenerationConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+
   declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
   declare modelId: string;
