@@ -40,11 +40,12 @@ async function fetchPrometheusMetrics(
           metric: `qdrant.${metricName.replace("_", ".")}`,
           points: [
             {
-              timestamp: Date.now(),
+              timestamp: Math.floor(Date.now() / 1000),
               value: parseFloat(metricValue),
             },
           ],
-          tags: ["qdrant", `cluster:${clusterName}`],
+          tags: ["resource:qdrant", `cluster:${clusterName}`],
+          type: 3,
         });
       }
     });
