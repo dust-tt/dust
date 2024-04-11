@@ -5,7 +5,7 @@ import { QueryTypes } from "sequelize";
 import {
   getCoreReplicaDbConnection,
   getFrontReplicaDbConnection,
-} from "@app/temporal/production_checks/lib/utils";
+} from "@app/lib/production_checks/utils";
 
 export type CoreDSDocument = {
   id: number;

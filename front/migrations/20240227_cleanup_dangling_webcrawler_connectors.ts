@@ -2,8 +2,8 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import { DataSource } from "@app/lib/models";
+import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
 import logger from "@app/logger/logger";
-import { getConnectorReplicaDbConnection } from "@app/temporal/production_checks/lib/utils";
 
 async function main() {
   const { LIVE } = process.env;

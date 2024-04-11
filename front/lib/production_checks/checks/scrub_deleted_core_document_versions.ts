@@ -4,7 +4,7 @@ import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { Sequelize } from "sequelize";
 
-import type { CheckFunction } from "../types/check";
+import type { CheckFunction } from "../types";
 
 const { CORE_DATABASE_URI, SERVICE_ACCOUNT, DUST_DATA_SOURCES_BUCKET } =
   process.env;

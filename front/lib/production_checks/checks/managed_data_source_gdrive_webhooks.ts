@@ -1,7 +1,7 @@
 import { QueryTypes } from "sequelize";
 
-import { getConnectorReplicaDbConnection } from "@app/temporal/production_checks/lib/utils";
-import type { CheckFunction } from "@app/temporal/production_checks/types/check";
+import type { CheckFunction } from "@app/lib/production_checks/types";
+import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
 
 export const managedDataSourceGdriveWebhooksCheck: CheckFunction = async (
   checkName,

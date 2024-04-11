@@ -1,8 +1,8 @@
 import { Nango } from "@nangohq/node";
 import { QueryTypes } from "sequelize";
 
-import { getConnectorReplicaDbConnection } from "@app/temporal/production_checks/lib/utils";
-import type { CheckFunction } from "@app/temporal/production_checks/types/check";
+import type { CheckFunction } from "@app/lib/production_checks/types";
+import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
 
 const { NANGO_SECRET_KEY, NANGO_SLACK_CONNECTOR_ID } = process.env;
 
