@@ -419,7 +419,6 @@ AgentConfiguration.hasMany(AgentTablesQueryConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
-  // TODO(@fontanierh) make it non-nullable
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
