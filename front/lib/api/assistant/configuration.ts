@@ -53,7 +53,6 @@ import {
 } from "@app/lib/models";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
-import logger from "@app/logger/logger";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -736,7 +735,7 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
   return contentType.includes("image");
 }
 
-type AgentConfigurationWithoutActionsType = Omit<
+export type AgentConfigurationWithoutActionsType = Omit<
   AgentConfigurationType,
   "actions"
 >;
@@ -900,42 +899,6 @@ export async function createAgentConfiguration(
       return new Err(new Error("An agent with this name already exists."));
     }
     throw error;
-  }
-}
-
-// TODO(@fontanierh) Temporary, to remove.
-// This is a shadow write while we invert the relationship between configuration and actions.
-export async function deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration(
-  actions: AgentActionConfigurationType[],
-  agentConfiguration: AgentConfigurationWithoutActionsType
-): Promise<void> {
-  if (actions.length > 1) {
-    logger.info(
-      "Multiple actions found. Only the first action will be shadow written on the agent configuration."
-    );
-  }
-  const firstActionConfig = actions.length ? actions[0] : null;
-  if (firstActionConfig) {
-    await AgentConfiguration.update(
-      firstActionConfig.type === "retrieval_configuration"
-        ? {
-            retrievalConfigurationId: firstActionConfig.id,
-          }
-        : firstActionConfig.type === "tables_query_configuration"
-        ? {
-            tablesQueryConfigurationId: firstActionConfig.id,
-          }
-        : firstActionConfig.type === "dust_app_run_configuration"
-        ? {
-            dustAppRunConfigurationId: firstActionConfig.id,
-          }
-        : assertNever(firstActionConfig),
-      {
-        where: {
-          id: agentConfiguration.id,
-        },
-      }
-    );
   }
 }
 
