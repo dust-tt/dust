@@ -384,6 +384,8 @@ export async function maybeCancelInactiveTrials(
       { action: "cancelling-trial", workspaceId: workspace.sId },
       "Skipping cancel trial for active subscription."
     );
+
+    return;
   }
 
   const isWorkspaceActive = await checkWorkspaceActivity(workspace);
