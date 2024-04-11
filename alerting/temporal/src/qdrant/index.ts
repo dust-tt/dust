@@ -1,7 +1,6 @@
 import axios from "axios";
 
 import { client, v2 } from "@datadog/datadog-api-client";
-import { Agent } from "https";
 import assert from "assert";
 
 const { QDRANT_CLUSTERS, QDRANT_MONITORING_API_KEY } = process.env;
@@ -19,10 +18,6 @@ configuration.setServerVariables({
 const datadogMetricsApi = new v2.MetricsApi(configuration);
 const qdrantClusters = QDRANT_CLUSTERS.split(",");
 
-const httpsAgent = new Agent({
-  key: QDRANT_MONITORING_API_KEY,
-});
-
 async function fetchPrometheusMetrics(
   clusterName: string
 ): Promise<v2.MetricSeries[]> {
@@ -30,7 +25,9 @@ async function fetchPrometheusMetrics(
 
   try {
     const response = await axios.get(`${clusterName}:6333/metrics`, {
-      httpsAgent,
+      headers: {
+        "api-key": QDRANT_MONITORING_API_KEY,
+      },
     });
     const metricLines = response.data.trim().split("\n");
 
@@ -40,10 +37,10 @@ async function fetchPrometheusMetrics(
 
       if (metricName === "collections_total") {
         metrics.push({
-          metric: metricName,
+          metric: `qdrant.${metricName.replace("_", ".")}`,
           points: [
             {
-              timestamp: Date.now() / 1000,
+              timestamp: Date.now(),
               value: parseFloat(metricValue),
             },
           ],
