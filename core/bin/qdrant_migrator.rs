@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
@@ -9,10 +7,17 @@ use dust::{
     stores::{postgres, store::Store},
     utils,
 };
+use futures::StreamExt;
+use futures::TryStreamExt;
 use qdrant_client::{
     prelude::Payload,
     qdrant::{self, PointId, ScrollPoints},
 };
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use std::str::FromStr;
+use tokio_stream::{self as stream};
 
 #[derive(Debug, Subcommand)]
 enum Commands {
@@ -59,6 +64,11 @@ enum Commands {
         data_source_id: String,
         cluster: String,
     },
+    #[command(arg_required_else_help = true)]
+    #[command(about = "Migrate a set of collections from a JSONL file to a new cluster \
+                       (!!! creates, shadow writes, migrates, \
+                        and deletes collection from original cluster)", long_about = None)]
+    MigrateFile { json_path: String, cluster: String },
 }
 
 async fn show(
@@ -210,6 +220,7 @@ async fn clear_shadow_write(
     qdrant_clients: QdrantClients,
     project_id: i64,
     data_source_id: String,
+    ask_confirmation: bool,
 ) -> Result<()> {
     let project = project::Project::new_from_id(project_id);
     let mut ds = match store.load_data_source(&project, &data_source_id).await? {
@@ -229,20 +240,22 @@ async fn clear_shadow_write(
         .result
     {
         Some(info) => {
-            // confirm
-            match utils::confirm(&format!(
-                "[DANGER] Are you sure you want to delete this qdrant \
+            if ask_confirmation {
+                // confirm
+                match utils::confirm(&format!(
+                    "[DANGER] Are you sure you want to delete this qdrant \
                   shadow_write_cluster collection? \
                   (this is definitive) points_count={:?} shadow_write_cluster={}",
-                info.points_count,
-                match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
-                    Some(cluster) => cluster.to_string(),
-                    None => "none".to_string(),
+                    info.points_count,
+                    match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+                        Some(cluster) => cluster.to_string(),
+                        None => "none".to_string(),
+                    }
+                    .to_string(),
+                ))? {
+                    true => (),
+                    false => Err(anyhow!("Aborted"))?,
                 }
-                .to_string(),
-            ))? {
-                true => (),
-                false => Err(anyhow!("Aborted"))?,
             }
         }
         None => Err(anyhow!("Qdrant collection not found"))?,
@@ -462,6 +475,7 @@ async fn migrate(
     project_id: i64,
     data_source_id: String,
     target_cluster: String,
+    ask_confirmation: bool,
 ) -> Result<()> {
     let project = project::Project::new_from_id(project_id);
     let ds = match store.load_data_source(&project, &data_source_id).await? {
@@ -482,16 +496,18 @@ async fn migrate(
     )
     .await?;
 
-    // Confirm this is the migration we want.
-    match utils::confirm(&format!(
-        "Do you confirm `set_shadow_write` + `migrate_shadow_write`: \
+    if ask_confirmation {
+        // Confirm this is the migration we want.
+        match utils::confirm(&format!(
+            "Do you confirm `set_shadow_write` + `migrate_shadow_write`: \
          ds={} from_cluster={} target_cluster={}?",
-        ds.qdrant_collection(),
-        from_cluster,
-        target_cluster,
-    ))? {
-        true => (),
-        false => Err(anyhow!("Aborted"))?,
+            ds.qdrant_collection(),
+            from_cluster,
+            target_cluster,
+        ))? {
+            true => (),
+            false => Err(anyhow!("Aborted"))?,
+        }
     }
 
     set_shadow_write(
@@ -557,16 +573,18 @@ async fn migrate(
         tokio::time::sleep(tokio::time::Duration::from_secs(8)).await;
     }
 
-    // Confirm we're ready to commit.
-    match utils::confirm(&format!(
-        "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
+    if ask_confirmation {
+        // Confirm we're ready to commit.
+        match utils::confirm(&format!(
+            "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
          ds={} from_cluster={} target_cluster={}?",
-        ds.qdrant_collection(),
-        from_cluster,
-        target_cluster,
-    ))? {
-        true => (),
-        false => Err(anyhow!("Aborted"))?,
+            ds.qdrant_collection(),
+            from_cluster,
+            target_cluster,
+        ))? {
+            true => (),
+            false => Err(anyhow!("Aborted"))?,
+        }
     }
 
     commit_shadow_write(
@@ -582,6 +600,7 @@ async fn migrate(
         qdrant_clients.clone(),
         project_id,
         data_source_id.clone(),
+        ask_confirmation,
     )
     .await?;
 
@@ -599,6 +618,62 @@ async fn migrate(
         project_id,
         data_source_id.clone(),
     )
+    .await?;
+
+    Ok(())
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MigrationRecord {
+    project_id: i64,
+    data_source_id: String,
+}
+
+async fn migrate_file(
+    store: Box<dyn Store + Sync + Send>,
+    qdrant_clients: QdrantClients,
+    json_path: String,
+    target_cluster: String,
+) -> Result<()> {
+    let file = File::open(json_path)?;
+    let reader = BufReader::new(file);
+    let records = reader
+        .lines()
+        .map(|line| {
+            // Each line is a JSON
+            let line = line?;
+            serde_json::from_str(&line).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        })
+        .collect::<Result<Vec<MigrationRecord>, std::io::Error>>()?;
+
+    match utils::confirm(&format!(
+        "Do you confirm you want to migrate {} collections: \
+         target_cluster={}?",
+        records.len(),
+        target_cluster,
+    ))? {
+        true => (),
+        false => Err(anyhow!("Aborted"))?,
+    }
+
+    stream::iter(records.into_iter().map(|record| {
+        let store = store.clone();
+        let target_cluster = target_cluster.clone();
+        let qdrant_clients = qdrant_clients.clone();
+        async move {
+            migrate(
+                store,
+                qdrant_clients,
+                record.project_id,
+                record.data_source_id,
+                target_cluster,
+                false,
+            )
+            .await
+        }
+    }))
+    .buffer_unordered(1)
+    .try_collect::<Vec<_>>()
     .await?;
 
     Ok(())
@@ -653,7 +728,7 @@ fn main() -> Result<()> {
             } => {
                 // This is the most dangerous command of all as it is the only one to actually
                 // delete data in an unrecoverable way.
-                clear_shadow_write(store, qdrant_clients, project_id, data_source_id).await
+                clear_shadow_write(store, qdrant_clients, project_id, data_source_id, true).await
             }
             Commands::MigrateShadowWrite {
                 project_id,
@@ -667,7 +742,20 @@ fn main() -> Result<()> {
                 project_id,
                 data_source_id,
                 cluster,
-            } => migrate(store, qdrant_clients, project_id, data_source_id, cluster).await,
+            } => {
+                migrate(
+                    store,
+                    qdrant_clients,
+                    project_id,
+                    data_source_id,
+                    cluster,
+                    true,
+                )
+                .await
+            }
+            Commands::MigrateFile { json_path, cluster } => {
+                migrate_file(store, qdrant_clients, json_path, cluster).await
+            }
         }
     });
 
