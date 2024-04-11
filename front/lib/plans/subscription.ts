@@ -15,6 +15,7 @@ import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
+  getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -360,20 +361,34 @@ export const getCheckoutUrlForUpgrade = async (
  * Proactively cancel inactive trials.
  */
 export async function maybeCancelInactiveTrials(
-  stripeSubscription: Stripe.Subscription
+  eventStripeSubscription: Stripe.Subscription
 ) {
-  const { id: stripeSubscriptionId } = stripeSubscription;
+  const { id: stripeSubscriptionId } = eventStripeSubscription;
 
   const subscription = await Subscription.findOne({
     where: { stripeSubscriptionId },
     include: [Workspace],
   });
 
+  // Bail early if the DB subscription is not in trial mode.
   if (!subscription || !subscription.trialing) {
     return;
   }
 
   const { workspace } = subscription;
+
+  // This function can get called if the subscription is upgraded before the end of the trial.
+  // Ensure that the Stripe subscription still has a status set to `trialing`.
+  const stripeSubscription = await getStripeSubscription(stripeSubscriptionId);
+  if (!stripeSubscription || stripeSubscription.status !== "trialing") {
+    logger.info(
+      { action: "cancelling-trial", workspaceId: workspace.sId },
+      "Proactive trial cancellation skipped due to active subscription."
+    );
+
+    return;
+  }
+
   const isWorkspaceActive = await checkWorkspaceActivity(workspace);
 
   if (!isWorkspaceActive) {
