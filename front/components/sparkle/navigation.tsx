@@ -1,6 +1,6 @@
 import {
   ArrowUpOnSquareIcon,
-  ChatBubbleLeftRightIcon,
+  BookOpenIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -216,7 +216,7 @@ export const subNavigationBuild = ({
       betaMenus.push({
         id: "transcripts",
         label: "Transcripts Processing",
-        icon: ChatBubbleLeftRightIcon,
+        icon: BookOpenIcon,
         href: `/w/${owner.sId}/builder/labs/transcripts`,
         current: current === "transcripts",
         subMenuLabel: current === "transcripts" ? subMenuLabel : undefined,
@@ -224,7 +224,7 @@ export const subNavigationBuild = ({
       });
     }
 
-    if (owner.flags.includes("labs_extract")) {
+    if (owner.flags.includes("labs_extract") || isDevelopmentOrDustWorkspace(owner)) {
       betaMenus.push({
         id: "extract",
         label: "Extract",
