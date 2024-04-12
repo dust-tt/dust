@@ -64,7 +64,7 @@ export async function driveObjectToDustType(
       trashed: file.trashed ? file.trashed : false,
       size: file.size ? parseInt(file.size, 10) : null,
       driveId: await getMyDriveIdCached(authCredentials),
-      inSharedDrive: false,
+      isInSharedDrive: false,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()
         : undefined,
@@ -95,7 +95,7 @@ export async function driveObjectToDustType(
       trashed: false,
       size: null,
       driveId: file.id,
-      inSharedDrive: true,
+      isInSharedDrive: true,
       capabilities: {
         canDownload: false,
       },
@@ -112,7 +112,7 @@ export async function driveObjectToDustType(
       trashed: file.trashed ? file.trashed : false,
       size: file.size ? parseInt(file.size, 10) : null,
       driveId: file.driveId,
-      inSharedDrive: true,
+      isInSharedDrive: true,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()
         : undefined,

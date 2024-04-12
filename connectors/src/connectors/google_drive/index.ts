@@ -572,9 +572,22 @@ export async function setGoogleDriveConnectorPermissions(
     }
   }
 
-  const webhooksRes = await registerWebhooksForAllDrives(connector, 0);
+  const webhooksRes = await registerWebhooksForAllDrives({
+    connector,
+    marginMs: 0,
+  });
   if (webhooksRes.isErr()) {
-    return webhooksRes;
+    const firstError = webhooksRes.error[0];
+    if (firstError) {
+      return new Err(
+        new Error(
+          "Error registering webhooks. First error message: " +
+            firstError.message
+        )
+      );
+    } else {
+      return new Err(new Error("Error registering webhooks."));
+    }
   }
   if (shouldFullSync) {
     const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);

@@ -15,7 +15,7 @@ export type GoogleDriveObjectType = {
   updatedAtMs?: number;
   webViewLink?: string;
   driveId: string;
-  inSharedDrive: boolean;
+  isInSharedDrive: boolean;
 };
 export type GoogleDriveFolderType = {
   id: string;

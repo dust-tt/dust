@@ -874,9 +874,30 @@ export const google_drive = async ({
         );
       }
 
-      const res = await registerWebhooksForAllDrives(connector, 0);
+      const res = await registerWebhooksForAllDrives({
+        connector,
+        marginMs: 0,
+      });
       if (res.isErr()) {
         throw res.error;
+      }
+      return { success: true };
+    }
+    case "register-all-webhooks": {
+      const connectors = await ConnectorResource.listByType("google_drive", {});
+      for (const connector of connectors) {
+        const res = await registerWebhooksForAllDrives({
+          connector,
+          marginMs: 0,
+        });
+        if (res.isErr()) {
+          // error registering for this webhook, but we need to keep going
+          // for the other ones.
+          logger.error(
+            { connectorId: connector.id, error: res.error },
+            `Failed to register webhooks for connector`
+          );
+        }
       }
       return { success: true };
     }

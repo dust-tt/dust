@@ -269,7 +269,7 @@ export async function incrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig,
   driveId: string,
-  sharedDrive: boolean,
+  isSharedDrive: boolean,
   startSyncTs: number,
   nextPageToken?: string
 ): Promise<string | undefined> {
@@ -286,7 +286,11 @@ export async function incrementalSync(
       throw new Error(`Connector ${connectorId} not found`);
     }
     if (!nextPageToken) {
-      nextPageToken = await getSyncPageToken(connectorId, driveId, sharedDrive);
+      nextPageToken = await getSyncPageToken(
+        connectorId,
+        driveId,
+        isSharedDrive
+      );
     }
     const config = await GoogleDriveConfig.findOne({
       where: {
@@ -307,7 +311,7 @@ export async function incrementalSync(
       pageSize: 100,
       fields: "*",
     };
-    if (sharedDrive) {
+    if (isSharedDrive) {
       opts = {
         ...opts,
         driveId: driveId,
@@ -440,7 +444,7 @@ export async function incrementalSync(
 export async function getSyncPageToken(
   connectorId: ModelId,
   driveId: string,
-  sharedDrive: boolean
+  isSharedDrive: boolean
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -459,7 +463,7 @@ export async function getSyncPageToken(
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
     let opts = {};
-    if (sharedDrive) {
+    if (isSharedDrive) {
       opts = {
         driveId: driveId,
         supportsAllDrives: true,
@@ -632,30 +636,30 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
           await wh.update({
             renewAt: literal("NOW() + INTERVAL '2 hour'"),
           });
-          continue;
+        } else {
+          logger.error(
+            {
+              error: e,
+              connectorId: wh.connectorId,
+              workspaceId: connector.workspaceId,
+            },
+            `Failed to renew webhook`
+          );
+          const tags = [
+            `connector_id:${wh.connectorId}`,
+            `workspaceId:${connector.workspaceId}`,
+          ];
+          statsDClient.increment(
+            "google_drive_renew_webhook_errors.count",
+            1,
+            tags
+          );
+          // Do not delete the webhook object but push it down the line in 2h so that it does not get
+          // picked up by the loop calling rewnewOneWebhook.
+          await wh.update({
+            renewAt: literal("NOW() + INTERVAL '2 hour'"),
+          });
         }
-        logger.error(
-          {
-            error: e,
-            connectorId: wh.connectorId,
-            workspaceId: connector.workspaceId,
-          },
-          `Failed to renew webhook`
-        );
-        const tags = [
-          `connector_id:${wh.connectorId}`,
-          `workspaceId:${connector.workspaceId}`,
-        ];
-        statsDClient.increment(
-          "google_drive_renew_webhook_errors.count",
-          1,
-          tags
-        );
-        // Do not delete the webhook object but push it down the line in 2h so that it does not get
-        // picked up by the loop calling rewnewOneWebhook.
-        await wh.update({
-          renewAt: literal("NOW() + INTERVAL '2 hour'"),
-        });
       }
     }
   }

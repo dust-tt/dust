@@ -33,20 +33,23 @@ import type { ConnectorModel } from "@connectors/resources/storage/models/connec
 
 const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
-export async function registerWebhooksForAllDrives(
-  connector: ConnectorResource,
-  marginMs: number
-): Promise<Result<undefined, Error>> {
+export async function registerWebhooksForAllDrives({
+  connector,
+  marginMs,
+}: {
+  connector: ConnectorResource;
+  marginMs: number;
+}): Promise<Result<undefined, Error[]>> {
   const driveIdsToSync = await getDrivesIdsToSync(connector.id);
   const allRes = await Promise.all(
     driveIdsToSync.map((driveId) => {
       return ensureWebhookForDriveId(connector, driveId, marginMs);
     })
   );
-  for (const res of allRes) {
-    if (res.isErr()) {
-      return res;
-    }
+
+  const allErrors = allRes.flatMap((res) => (res.isErr() ? [res.error] : []));
+  if (allErrors.length > 0) {
+    return new Err(allErrors);
   }
 
   return new Ok(undefined);
@@ -74,7 +77,7 @@ export async function ensureWebhookForDriveId(
     const res = await registerWebhook(
       connector,
       driveId,
-      remoteFile.inSharedDrive
+      remoteFile.isInSharedDrive
     );
     if (res.isErr()) {
       return res;
@@ -100,7 +103,7 @@ export async function registerWebhook(
   // TODO(2024-02-14 flav) Remove ConnectorModel once fully bundled in `ConnectorResource`.
   connector: ConnectorResource | ConnectorModel,
   driveId: string,
-  sharedDrive: boolean
+  isSharedDrive: boolean
 ): Promise<
   Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
 > {
@@ -117,7 +120,7 @@ export async function registerWebhook(
   const syncPageToken = await getSyncPageToken(
     connector.id,
     driveId,
-    sharedDrive
+    isSharedDrive
   );
   const webhookURL = `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive/${connector.id}`;
   const expiration = new Date().getTime() + GOOGLE_DRIVE_WEBHOOK_LIFE_MS;
