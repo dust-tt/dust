@@ -327,11 +327,6 @@ export async function createOrUpgradeAgentConfiguration(
     throw e;
   }
 
-  await deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration(
-    actionConfigs,
-    agentConfigurationRes.value
-  );
-
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
     actions: actionConfigs,
