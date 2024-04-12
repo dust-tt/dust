@@ -90,7 +90,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
 interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle: ReactNode;
-  uptitle: string;
+  uptitle?: string;
   from: string;
   to: string;
 }
@@ -105,7 +105,8 @@ export const HeaderContentBlock = ({
   <Grid>
     <div
       className={classNames(
-        "flex h-[50vh] min-h-[300px] flex-col justify-end gap-12",
+        "flex  flex-col justify-end gap-12",
+        uptitle ? "h-[50vh] min-h-[300px]" : "h-[40vh] min-h-[240px]",
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",
@@ -113,9 +114,11 @@ export const HeaderContentBlock = ({
         "2xl:col-start-3"
       )}
     >
-      <P size="lg" className="text-slate-500">
-        {uptitle}
-      </P>
+      {uptitle && (
+        <P size="lg" className="text-slate-500">
+          {uptitle}
+        </P>
+      )}
       <H1 from={from} to={to}>
         {title}
       </H1>
