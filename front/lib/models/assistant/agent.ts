@@ -100,7 +100,7 @@ export class AgentConfiguration extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<User["id"]>;
 
-  declare maxToolsUseForRun: number;
+  declare maxToolsUsePerRun: number;
 
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
@@ -157,7 +157,7 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    maxToolsUseForRun: {
+    maxToolsUsePerRun: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,

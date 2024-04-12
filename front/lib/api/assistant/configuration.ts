@@ -746,7 +746,7 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
-    maxToolsUseForRun,
+    maxToolsUsePerRun,
     pictureUrl,
     status,
     scope,
@@ -756,7 +756,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxToolsUseForRun: number;
+    maxToolsUsePerRun: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -858,7 +858,7 @@ export async function createAgentConfiguration(
             name,
             description,
             instructions,
-            maxToolsUseForRun,
+            maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
             generationConfigurationId: generation?.id || null,
