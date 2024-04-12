@@ -15,7 +15,6 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { max } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { trackAssistantCreated } from "@app/lib/amplitude/node";
@@ -252,8 +251,6 @@ export async function createOrUpgradeAgentConfiguration(
   }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
   agentConfigurationId?: string
 ): Promise<Result<AgentConfigurationType, Error>> {
-  let maxToolsUseForRun = actions.length;
-
   let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
@@ -261,8 +258,10 @@ export async function createOrUpgradeAgentConfiguration(
       model: generation.model,
       temperature: generation.temperature,
     });
-    maxToolsUseForRun += 1;
   }
+
+  // @todo FIX MULTI ACTIONS
+  const maxToolsUseForRun = actions.length + (generationConfig ? 1 : 0);
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
