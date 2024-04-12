@@ -1,6 +1,6 @@
 "use client";
 
-import { IconButton, MenuIcon } from "@dust-tt/sparkle";
+import { ChevronRightIcon, IconButton, MenuIcon } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
@@ -23,7 +23,10 @@ export function MobileNavigation() {
         <SheetTrigger asChild>
           <IconButton size="md" icon={MenuIcon} className="text-slate-100" />
         </SheetTrigger>
-        <SheetContent side="left" className="bg-slate-900 pr-0">
+        <SheetContent
+          side="left"
+          className="rounded-br-xl rounded-tr-xl border border-slate-300/20 bg-slate-800 pr-0"
+        >
           <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
             <div className="flex flex-col space-y-2">
               {menuConfig.mainNav.map((item, index) => (
@@ -33,12 +36,12 @@ export function MobileNavigation() {
                       key={item.href}
                       href={item.href}
                       onOpenChange={setOpen}
-                      className="hover:bg-accent focus:bg-accent block select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"
+                      className="font-semibold"
                     >
                       {item.title}
                     </MobileLink>
                   ) : (
-                    <h4 className="block select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none">
+                    <h4 className="block select-none space-y-1 rounded-md font-semibold leading-none text-slate-200 no-underline outline-none">
                       {item.title}
                     </h4>
                   )}
@@ -46,11 +49,8 @@ export function MobileNavigation() {
                     item.items.map((item) => (
                       <React.Fragment key={item.href}>
                         {item.href ? (
-                          <MobileLink
-                            href={item.href}
-                            onOpenChange={setOpen}
-                            className="hover:bg-accent focus:bg-accent text-md block select-none space-y-1 rounded-md pl-4 font-normal leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"
-                          >
+                          <MobileLink href={item.href} onOpenChange={setOpen}>
+                            <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
                             {item.title}
                           </MobileLink>
                         ) : (
@@ -87,7 +87,11 @@ function MobileLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
-      className={classNames(className)}
+      className={classNames(
+        className,
+        "flex select-none items-center gap-1 rounded-md leading-none text-slate-200 no-underline outline-none transition-colors",
+        "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"
+      )}
       {...props}
     >
       {children}
