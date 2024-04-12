@@ -258,8 +258,8 @@ export async function constructPrompt(
   context += "}\n";
 
   let instructions = "";
-  if (configuration.generation) {
-    instructions += `\n${configuration.generation.prompt}`;
+  if (configuration.instructions) {
+    instructions += `\n${configuration.instructions}`;
   } else if (fallbackPrompt) {
     instructions += `\n${fallbackPrompt}`;
   }

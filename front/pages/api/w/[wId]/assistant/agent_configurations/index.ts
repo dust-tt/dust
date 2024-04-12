@@ -243,6 +243,7 @@ export async function createOrUpgradeAgentConfiguration(
       actions,
       name,
       description,
+      instructions,
       scope,
       pictureUrl,
       status,
@@ -253,7 +254,7 @@ export async function createOrUpgradeAgentConfiguration(
   let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: generation.prompt,
+      prompt: instructions || "", // @todo Daph remove this field
       model: generation.model,
       temperature: generation.temperature,
     });
@@ -262,7 +263,7 @@ export async function createOrUpgradeAgentConfiguration(
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
-    instructions: generation?.prompt ?? null,
+    instructions: instructions ?? null,
     pictureUrl,
     status,
     scope,

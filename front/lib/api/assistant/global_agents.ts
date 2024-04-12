@@ -104,13 +104,13 @@ async function _getHelperGlobalAgent(
     versionAuthorId: null,
     name: "help",
     description: "Help on how to use Dust",
+    instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: "active",
     userListStatus: "in-list",
     scope: "global",
     generation: {
       id: -1,
-      prompt: prompt,
       model,
       temperature: 0.2,
     },
@@ -132,13 +132,13 @@ async function _getGPT35TurboGlobalAgent({
     versionAuthorId: null,
     name: "gpt3.5-turbo",
     description: GPT_3_5_TURBO_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -163,13 +163,13 @@ async function _getGPT4GlobalAgent({
     versionAuthorId: null,
     name: "gpt4",
     description: GPT_4_TURBO_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
@@ -195,13 +195,13 @@ async function _getClaudeInstantGlobalAgent({
     versionAuthorId: null,
     name: "claude-instant",
     description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
@@ -232,13 +232,13 @@ async function _getClaude2GlobalAgent({
     versionAuthorId: null,
     name: "claude-2",
     description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
@@ -264,20 +264,20 @@ async function _getClaude3HaikuGlobalAgent({
     versionAuthorId: null,
     name: "claude-3-haiku",
     description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
+    instructions:
+      "Your name is claude-3-haiku, but you are not meant to generate haikus." +
+      " Users will mention you using @claude-3-haiku, but this does not mean" +
+      " they are asking you to generate a haiku. Just answer their questions" +
+      " and ignore the fact that they are referring to you as claude-3-haiku." +
+      " Do not ever talk about haikus or the fact that you have been asked to" +
+      " never generate haikus. Just answer the questions as if they were not" +
+      " mentioning haikus at all.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt:
-        "Your name is claude-3-haiku, but you are not meant to generate haikus." +
-        " Users will mention you using @claude-3-haiku, but this does not mean" +
-        " they are asking you to generate a haiku. Just answer their questions" +
-        " and ignore the fact that they are referring to you as claude-3-haiku." +
-        " Do not ever talk about haikus or the fact that you have been asked to" +
-        " never generate haikus. Just answer the questions as if they were not" +
-        " mentioning haikus at all.",
       model: {
         providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
@@ -308,14 +308,14 @@ async function _getClaude3SonnetGlobalAgent({
     versionAuthorId: null,
     name: "claude-3-sonnet",
     description: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.description,
+    instructions:
+      "Your name is claude-3-sonnet, but that does not mean you're expected to generate sonnets unless instructed.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt:
-        "Your name is claude-3-sonnet, but that does not mean you're expected to generate sonnets unless instructed.",
       model: {
         providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -346,13 +346,13 @@ async function _getClaude3OpusGlobalAgent({
     versionAuthorId: null,
     name: "claude-3",
     description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
@@ -383,13 +383,13 @@ async function _getMistralLargeGlobalAgent({
     versionAuthorId: null,
     name: "mistral-large",
     description: MISTRAL_LARGE_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
         modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
@@ -420,13 +420,13 @@ async function _getMistralMediumGlobalAgent({
     versionAuthorId: null,
     name: "mistral-medium",
     description: MISTRAL_MEDIUM_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
         modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
@@ -451,13 +451,13 @@ async function _getMistralSmallGlobalAgent({
     versionAuthorId: null,
     name: "mistral-small",
     description: MISTRAL_SMALL_MODEL_CONFIG.description,
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: "",
       model: {
         providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
         modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
@@ -487,13 +487,13 @@ async function _getGeminiProGlobalAgent({
     versionAuthorId: null,
     name: "gemini-pro",
     description: GEMINI_PRO_DEFAULT_MODEL_CONFIG.description,
+    instructions: `Never start your messages with "[assistant:"`,
     pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     generation: {
       id: -1,
-      prompt: `Never start your messages with "[assistant:"`,
       model: {
         providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
         modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
@@ -516,8 +516,8 @@ async function _getManagedDataSourceAgent(
     agentId,
     name,
     description,
+    instructions,
     pictureUrl,
-    prompt,
     dataSources,
   }: {
     settings: GlobalAgentSettings | null;
@@ -525,8 +525,8 @@ async function _getManagedDataSourceAgent(
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     description: string;
+    instructions: string | null;
     pictureUrl: string;
-    prompt: string;
     dataSources: DataSourceType[];
   }
 ): Promise<AgentConfigurationType | null> {
@@ -547,6 +547,7 @@ async function _getManagedDataSourceAgent(
       versionAuthorId: null,
       name: name,
       description,
+      instructions: null,
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
@@ -569,6 +570,7 @@ async function _getManagedDataSourceAgent(
       versionAuthorId: null,
       name: name,
       description,
+      instructions: null,
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
@@ -586,13 +588,13 @@ async function _getManagedDataSourceAgent(
     versionAuthorId: null,
     name: name,
     description,
+    instructions,
     pictureUrl,
     status: "active",
     scope: "global",
     userListStatus: "in-list",
     generation: {
       id: -1,
-      prompt,
       model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
@@ -641,7 +643,7 @@ async function _getGoogleDriveGlobalAgent(
     name: "googledrive",
     description: "An assistant with context on your Google Drives.",
     pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
-    prompt:
+    instructions:
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
     dataSources,
@@ -665,7 +667,7 @@ async function _getSlackGlobalAgent(
     name: "slack",
     description: "An assistant with context on your Slack Channels.",
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
-    prompt:
+    instructions:
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
     dataSources,
@@ -690,7 +692,7 @@ async function _getGithubGlobalAgent(
     description:
       "An assistant with context on your Github Issues and Discussions.",
     pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
-    prompt:
+    instructions:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
     dataSources,
@@ -714,7 +716,7 @@ async function _getNotionGlobalAgent(
     name: "notion",
     description: "An assistant with context on your Notion Spaces.",
     pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
-    prompt:
+    instructions:
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
     dataSources,
@@ -738,7 +740,7 @@ async function _getIntercomGlobalAgent(
     name: "intercom",
     description: "An assistant with context on your Intercom Help Center data.",
     pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
-    prompt:
+    instructions:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
     dataSources,
@@ -771,6 +773,7 @@ async function _getDustGlobalAgent(
       versionAuthorId: null,
       name,
       description,
+      instructions: null,
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
@@ -801,6 +804,7 @@ async function _getDustGlobalAgent(
       versionAuthorId: null,
       name,
       description,
+      instructions: null,
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
@@ -818,15 +822,15 @@ async function _getDustGlobalAgent(
     versionAuthorId: null,
     name,
     description,
+    instructions:
+      "Assist the user based on the retrieved data from their workspace." +
+      `\n${BREVITY_PROMPT}`,
     pictureUrl,
     status: "active",
     scope: "global",
     userListStatus: "in-list",
     generation: {
       id: -1,
-      prompt:
-        "Assist the user based on the retrieved data from their workspace." +
-        `\n${BREVITY_PROMPT}`,
       model: !auth.isUpgraded()
         ? {
             providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
