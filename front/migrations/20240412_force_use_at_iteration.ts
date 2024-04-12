@@ -18,9 +18,6 @@ import { makeScript } from "@app/scripts/helpers";
 
 const backfillAgentConfigurations = async (execute: boolean) => {
   const agents = await AgentConfiguration.findAll({
-    where: {
-      instructions: null,
-    },
     include: [
       {
         model: AgentGenerationConfiguration,
