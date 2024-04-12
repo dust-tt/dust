@@ -56,6 +56,7 @@ export type AgentGenerationConfigurationType = {
   id: ModelId;
   model: SupportedModel;
   temperature: number;
+  forceUseAtIteration: number | null;
 };
 
 /**
@@ -187,6 +188,7 @@ export interface TemplateAgentConfigurationType {
   generation: {
     model: SupportedModel;
     temperature: number;
+    forceUseAtIteration: number | null;
   } | null;
 
   name: string;

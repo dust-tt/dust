@@ -256,21 +256,28 @@ export async function createOrUpgradeAgentConfiguration({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >["assistant"];
   agentConfigurationId?: string;
+  // TODO(@fontanierh): We'll remove this mode once we switch to multi-actions.
+  // For now, this allows to keep the forceUseAtIteration backwards compatibility logic in a single place.
   legacySingleActionMode: boolean;
 }): Promise<Result<AgentConfigurationType, Error>> {
   if (legacySingleActionMode && actions.length > 1) {
     throw new Error("Only one action is supported in legacy mode.");
   }
 
-  let forceGenerationAtIteration: number | null = null;
-  let forceSingleActionAtIteration: number | null = null;
+  let legacyForceGenerationAtIteration: number | null = null;
+  let legacyForceSingleActionAtIteration: number | null = null;
 
   if (legacySingleActionMode) {
     if (actions.length) {
-      forceSingleActionAtIteration = 0;
-      forceGenerationAtIteration = 1;
+      if (actions[0].forceUseAtIteration || generation?.forceUseAtIteration) {
+        throw new Error(
+          "Explicit forceUseAtIteration is not supported in legacy mode."
+        );
+      }
+      legacyForceSingleActionAtIteration = 0;
+      legacyForceGenerationAtIteration = 1;
     } else {
-      forceGenerationAtIteration = 0;
+      legacyForceGenerationAtIteration = 0;
     }
   }
 
@@ -281,7 +288,8 @@ export async function createOrUpgradeAgentConfiguration({
       prompt: instructions || "", // @todo Daph remove this field
       model: generation.model,
       temperature: generation.temperature,
-      forceUseAtIteration: forceGenerationAtIteration,
+      forceUseAtIteration:
+        generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
     });
   }
 
@@ -330,7 +338,9 @@ export async function createOrUpgradeAgentConfiguration({
               relativeTimeFrame: action.relativeTimeFrame,
               topK: action.topK,
               dataSources: action.dataSources,
-              forceUseAtIteration: forceSingleActionAtIteration,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -343,7 +353,9 @@ export async function createOrUpgradeAgentConfiguration({
               type: "dust_app_run_configuration",
               appWorkspaceId: action.appWorkspaceId,
               appId: action.appId,
-              forceUseAtIteration: forceSingleActionAtIteration,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -355,7 +367,9 @@ export async function createOrUpgradeAgentConfiguration({
             {
               type: "tables_query_configuration",
               tables: action.tables,
-              forceUseAtIteration: forceSingleActionAtIteration,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )

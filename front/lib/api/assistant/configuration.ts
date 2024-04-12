@@ -486,6 +486,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
+          forceUseAtIteration: retrievalConfig.forceUseAtIteration,
         });
       }
 
@@ -497,6 +498,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
+          forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
         });
       }
 
@@ -513,6 +515,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
             workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
             tableId: tablesQueryConfigTable.tableId,
           })),
+          forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
         });
       }
     }
@@ -545,6 +548,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
         id: generationConfig.id,
         temperature: generationConfig.temperature,
         model,
+        forceUseAtIteration: generationConfig.forceUseAtIteration,
       };
     }
 
@@ -1020,6 +1024,7 @@ export async function createAgentGenerationConfiguration(
     id: genConfig.id,
     temperature: genConfig.temperature,
     model,
+    forceUseAtIteration,
   };
 }
 
@@ -1095,6 +1100,7 @@ export async function createAgentActionConfiguration(
         relativeTimeFrame: action.relativeTimeFrame,
         topK: action.topK,
         dataSources: action.dataSources,
+        forceUseAtIteration: action.forceUseAtIteration,
       };
     });
   } else if (action.type === "dust_app_run_configuration") {
@@ -1112,6 +1118,7 @@ export async function createAgentActionConfiguration(
       type: "dust_app_run_configuration",
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
+      forceUseAtIteration: action.forceUseAtIteration,
     };
   } else if (action.type === "tables_query_configuration") {
     return frontSequelize.transaction(async (t) => {
@@ -1142,6 +1149,7 @@ export async function createAgentActionConfiguration(
         sId: tablesQueryConfig.sId,
         type: "tables_query_configuration",
         tables: action.tables,
+        forceUseAtIteration: action.forceUseAtIteration,
       };
     });
   } else {

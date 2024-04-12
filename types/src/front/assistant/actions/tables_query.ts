@@ -10,6 +10,7 @@ export type TablesQueryConfigurationType = {
     dataSourceId: string;
     tableId: string;
   }>;
+  forceUseAtIteration: number | null;
 };
 
 export type TablesQueryActionType = {

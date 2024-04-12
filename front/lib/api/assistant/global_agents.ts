@@ -113,6 +113,7 @@ async function _getHelperGlobalAgent(
       id: -1,
       model,
       temperature: 0.2,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -144,6 +145,7 @@ async function _getGPT35TurboGlobalAgent({
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -176,6 +178,7 @@ async function _getGPT4GlobalAgent({
       },
 
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -207,6 +210,7 @@ async function _getClaudeInstantGlobalAgent({
         modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -244,6 +248,7 @@ async function _getClaude2GlobalAgent({
         modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -283,6 +288,7 @@ async function _getClaude3HaikuGlobalAgent({
         modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -321,6 +327,7 @@ async function _getClaude3SonnetGlobalAgent({
         modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -358,6 +365,7 @@ async function _getClaude3OpusGlobalAgent({
         modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -395,6 +403,7 @@ async function _getMistralLargeGlobalAgent({
         modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -432,6 +441,7 @@ async function _getMistralMediumGlobalAgent({
         modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -463,6 +473,7 @@ async function _getMistralSmallGlobalAgent({
         modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -499,6 +510,7 @@ async function _getGeminiProGlobalAgent({
         modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
       },
       temperature: 0.7,
+      forceUseAtIteration: 0,
     },
     actions: [],
   };
@@ -605,6 +617,7 @@ async function _getManagedDataSourceAgent(
             modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
           },
       temperature: 0.4,
+      forceUseAtIteration: 1,
     },
     actions: [
       {
@@ -621,6 +634,7 @@ async function _getManagedDataSourceAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
+        forceUseAtIteration: 0,
       },
     ],
   };
@@ -841,6 +855,7 @@ async function _getDustGlobalAgent(
             modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
           },
       temperature: 0.4,
+      forceUseAtIteration: 1,
     },
     actions: [
       {
@@ -855,6 +870,7 @@ async function _getDustGlobalAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
+        forceUseAtIteration: 0,
       },
     ],
   };
