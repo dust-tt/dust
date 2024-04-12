@@ -68,5 +68,6 @@ export type ProcessActionType = {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
   };
+  schema: ProcessSchemaPropertyType[];
   outputs: unknown[] | null;
 };

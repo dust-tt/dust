@@ -321,6 +321,7 @@ export async function* runRetrieval(
     relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
     relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfig.sId,
+    schema: actionConfig.schema,
   });
 
   yield {
@@ -336,6 +337,7 @@ export async function* runRetrieval(
         relativeTimeFrame: params.relativeTimeFrame,
         query: params.query,
       },
+      schema: action.schema,
       outputs: null,
     },
   };
@@ -518,6 +520,7 @@ export async function* runRetrieval(
         relativeTimeFrame: params.relativeTimeFrame,
         query: params.query,
       },
+      schema: action.schema,
       outputs,
     },
   };

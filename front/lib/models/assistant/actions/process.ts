@@ -116,6 +116,7 @@ export class AgentProcessAction extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
+  declare schema: ProcessSchemaPropertyType[];
   declare outputs: unknown[] | null;
 }
 AgentProcessAction.init(
@@ -150,6 +151,10 @@ AgentProcessAction.init(
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    schema: {
+      type: DataTypes.JSONB,
+      allowNull: false,
     },
     outputs: {
       type: DataTypes.JSONB,
