@@ -98,7 +98,6 @@ export const createProPlanCheckoutSession = async ({
     mode: "subscription",
     client_reference_id: owner.sId,
     customer_email: user.email,
-    customer: auth.subscription()?.stripeCustomerId || undefined,
     subscription_data: {
       metadata: {
         planCode: PRO_PLAN_SEAT_29_CODE,

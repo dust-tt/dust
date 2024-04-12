@@ -78,7 +78,6 @@ export function renderSubscriptionFromModels({
     trialing: activeSubscription?.trialing === true,
     sId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
-    stripeCustomerId: activeSubscription?.stripeCustomerId || null,
     startDate: activeSubscription?.startDate?.getTime() || null,
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:

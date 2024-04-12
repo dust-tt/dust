@@ -59,7 +59,6 @@ export type SubscriptionType = {
   trialing: boolean;
   // `null` means that this is a free plan. Otherwise, it's a paid plan.
   stripeSubscriptionId: string | null;
-  stripeCustomerId: string | null;
   startDate: number | null;
   endDate: number | null;
   paymentFailingSince: number | null;
