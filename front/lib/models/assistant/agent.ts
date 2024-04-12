@@ -32,7 +32,7 @@ export class AgentGenerationConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare prompt: string;
+  declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
   declare modelId: string;
   declare temperature: number;
@@ -95,7 +95,10 @@ export class AgentConfiguration extends Model<
   declare status: AgentStatus;
   declare scope: Exclude<AgentConfigurationScope, "global">;
   declare name: string;
+
   declare description: string;
+  declare instructions: string | null;
+
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -164,6 +167,10 @@ AgentConfiguration.init(
     description: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     pictureUrl: {
       type: DataTypes.TEXT,
