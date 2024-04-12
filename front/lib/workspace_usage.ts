@@ -43,8 +43,10 @@ export async function unsafeGetUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
         CASE
-            WHEN ac."retrievalConfigurationId" IS NOT NULL THEN 'retrieval'
-            WHEN ac."dustAppRunConfigurationId" IS NOT NULL THEN 'dustAppRun'
+            WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'retrieval'
+            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'tablesQuery'
+            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") > 0 THEN 'dustAppRun'
+            WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") > 1 THEN 'multiActions'
             ELSE NULL
         END AS "actionType",
         CASE
@@ -71,10 +73,18 @@ export async function unsafeGetUsageData(
     LEFT JOIN
         "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
     LEFT JOIN
+        "agent_retrieval_configurations" arc ON ac."id" = arc."agentConfigurationId"
+    LEFT JOIN
+        "agent_tables_query_configurations" atqc ON ac."id" = atqc."agentConfigurationId"
+    LEFT JOIN
+        "agent_dust_app_run_configurations" adarc ON ac."id" = adarc."agentConfigurationId"
+    LEFT JOIN
         "messages" p ON m."parentId" = p."id"
     WHERE
         w."sId" = :wId AND
         m."createdAt" >= :startDate AND m."createdAt" <= :endDate
+    GROUP BY
+        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id"
     ORDER BY
         m."createdAt" DESC
     `,
