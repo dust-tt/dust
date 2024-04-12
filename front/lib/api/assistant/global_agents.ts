@@ -114,7 +114,7 @@ async function _getHelperGlobalAgent(
       model,
       temperature: 0.2,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -145,7 +145,7 @@ async function _getGPT35TurboGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -177,7 +177,7 @@ async function _getGPT4GlobalAgent({
 
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -208,7 +208,7 @@ async function _getClaudeInstantGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -245,7 +245,7 @@ async function _getClaude2GlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -284,7 +284,7 @@ async function _getClaude3HaikuGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -322,7 +322,7 @@ async function _getClaude3SonnetGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -359,7 +359,7 @@ async function _getClaude3OpusGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -396,7 +396,7 @@ async function _getMistralLargeGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -433,7 +433,7 @@ async function _getMistralMediumGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -464,7 +464,7 @@ async function _getMistralSmallGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -500,7 +500,7 @@ async function _getGeminiProGlobalAgent({
       },
       temperature: 0.7,
     },
-    action: null,
+    actions: [],
   };
 }
 
@@ -552,7 +552,7 @@ async function _getManagedDataSourceAgent(
       scope: "global",
       userListStatus: "not-in-list",
       generation: null,
-      action: null,
+      actions: [],
     };
   }
 
@@ -574,7 +574,7 @@ async function _getManagedDataSourceAgent(
       scope: "global",
       userListStatus: "not-in-list",
       generation: null,
-      action: null,
+      actions: [],
     };
   }
 
@@ -604,21 +604,23 @@ async function _getManagedDataSourceAgent(
           },
       temperature: 0.4,
     },
-    action: {
-      id: -1,
-      sId: agentId + "-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: "auto",
-      dataSources: filteredDataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        // We use prodCredentials to make sure we are using the right workspaceId. In development
-        // this is the production Dust use case, in production this is the auth's workspace.
-        workspaceId: prodCredentials.workspaceId,
-        filter: { tags: null, parents: null },
-      })),
-    },
+    actions: [
+      {
+        id: -1,
+        sId: agentId + "-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: filteredDataSources.map((ds) => ({
+          dataSourceId: ds.name,
+          // We use prodCredentials to make sure we are using the right workspaceId. In development
+          // this is the production Dust use case, in production this is the auth's workspace.
+          workspaceId: prodCredentials.workspaceId,
+          filter: { tags: null, parents: null },
+        })),
+      },
+    ],
   };
 }
 
@@ -774,7 +776,7 @@ async function _getDustGlobalAgent(
       scope: "global",
       userListStatus: "not-in-list",
       generation: null,
-      action: null,
+      actions: [],
     };
   }
 
@@ -804,7 +806,7 @@ async function _getDustGlobalAgent(
       scope: "global",
       userListStatus: "not-in-list",
       generation: null,
-      action: null,
+      actions: [],
     };
   }
 
@@ -836,19 +838,21 @@ async function _getDustGlobalAgent(
           },
       temperature: 0.4,
     },
-    action: {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST + "-action",
-      type: "retrieval_configuration",
-      query: "auto",
-      relativeTimeFrame: "auto",
-      topK: "auto",
-      dataSources: dataSources.map((ds) => ({
-        dataSourceId: ds.name,
-        workspaceId: prodCredentials.workspaceId,
-        filter: { tags: null, parents: null },
-      })),
-    },
+    actions: [
+      {
+        id: -1,
+        sId: GLOBAL_AGENTS_SID.DUST + "-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: dataSources.map((ds) => ({
+          dataSourceId: ds.name,
+          workspaceId: prodCredentials.workspaceId,
+          filter: { tags: null, parents: null },
+        })),
+      },
+    ],
   };
 }
 

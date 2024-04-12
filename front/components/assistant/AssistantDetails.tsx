@@ -205,35 +205,39 @@ export function AssistantDetails({
       "This assistant has no instructions."
     );
 
-  const ActionSection = ({
-    action,
+  const ActionsSection = ({
+    actions,
   }: {
-    action: AgentConfigurationType["action"];
+    actions: AgentConfigurationType["actions"];
   }) =>
-    action ? (
-      isDustAppRunConfiguration(action) ? (
-        <div className="flex flex-col gap-2">
-          <div className="text-lg font-bold text-element-800">Action</div>
-          <DustAppSection dustApp={action} owner={owner} />
-        </div>
-      ) : isRetrievalConfiguration(action) ? (
-        <div className="flex flex-col gap-2">
-          <div className="text-lg font-bold text-element-800">
-            Data source(s)
-          </div>
-          <DataSourcesSection
-            owner={owner}
-            dataSources={dataSources}
-            dataSourceConfigurations={action.dataSources}
-          />
-        </div>
-      ) : isTablesQueryConfiguration(action) ? (
-        <div className="flex flex-col gap-2">
-          <div className="text-lg font-bold text-element-800">Tables</div>
-          <TablesQuerySection tablesQueryConfig={action} />
-        </div>
-      ) : null
-    ) : null;
+    !!actions.length && (
+      <>
+        {actions.map((action, index) =>
+          isDustAppRunConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">Action</div>
+              <DustAppSection dustApp={action} owner={owner} />
+            </div>
+          ) : isRetrievalConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">
+                Data source(s)
+              </div>
+              <DataSourcesSection
+                owner={owner}
+                dataSources={dataSources}
+                dataSourceConfigurations={action.dataSources}
+              />
+            </div>
+          ) : isTablesQueryConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">Tables</div>
+              <TablesQuerySection tablesQueryConfig={action} />
+            </div>
+          ) : null
+        )}
+      </>
+    );
 
   return (
     <ElementModal
@@ -246,7 +250,7 @@ export function AssistantDetails({
       <div className="flex flex-col gap-5 pt-6 text-sm text-element-700">
         <DescriptionSection />
         <InstructionsSection />
-        <ActionSection action={agentConfiguration?.action || null} />
+        <ActionsSection actions={agentConfiguration?.actions ?? []} />
       </div>
     </ElementModal>
   );

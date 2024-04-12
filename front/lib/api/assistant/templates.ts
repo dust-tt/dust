@@ -12,6 +12,7 @@ import {
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   Err,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
@@ -27,7 +28,7 @@ export async function generateMockAgentConfigurationFromTemplate(
   }
 
   return new Ok({
-    action: getAction(template.presetAction),
+    actions: removeNulls([getAction(template.presetAction)]),
     description: template.description ?? "",
     generation: {
       prompt: template.presetInstructions ?? "",

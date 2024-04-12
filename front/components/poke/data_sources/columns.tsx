@@ -119,14 +119,13 @@ async function deleteDataSource(
   dataSourceName: string,
   reload: () => void
 ) {
-  const retrievalAgents = agentConfigurations.filter((a) => {
-    if (isRetrievalConfiguration(a.action)) {
-      return a.action.dataSources.some(
-        (ds) => ds.dataSourceId === dataSourceName
-      );
-    }
-    return false;
-  });
+  const retrievalAgents = agentConfigurations.filter((agt) =>
+    agt.actions.some(
+      (a) =>
+        isRetrievalConfiguration(a) &&
+        a.dataSources.some((ds) => ds.dataSourceId === dataSourceName)
+    )
+  );
   if (retrievalAgents.length > 0) {
     window.alert(
       "Please archive agents using this data source first: " +

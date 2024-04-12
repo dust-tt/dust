@@ -27,6 +27,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
@@ -187,9 +188,10 @@ export async function* runAgent(
     );
   }
 
-  // First run the action if a configuration is present.
-  if (fullConfiguration.action !== null) {
-    if (isRetrievalConfiguration(fullConfiguration.action)) {
+  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
+
+  if (action !== null) {
+    if (isRetrievalConfiguration(action)) {
       const eventStream = runRetrieval(
         auth,
         fullConfiguration,
@@ -236,7 +238,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(fullConfiguration.action)) {
+    } else if (isDustAppRunConfiguration(action)) {
       const eventStream = runDustApp(
         auth,
         fullConfiguration,
@@ -286,7 +288,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isTablesQueryConfiguration(fullConfiguration.action)) {
+    } else if (isTablesQueryConfiguration(action)) {
       const eventStream = runTablesQuery({
         auth,
         configuration: fullConfiguration,
@@ -335,7 +337,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(fullConfiguration.action);
+      })(action);
     }
   }
 
