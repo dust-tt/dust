@@ -42,7 +42,7 @@ export function TeamSection() {
           className={classNames(
             "col-span-12",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-2 md:gap-y-16",
+            "md:grid-cols-2 md:gap-y-28",
             "lg:grid-cols-3",
             "2xl:col-span-10 2xl:col-start-2"
           )}
@@ -82,7 +82,7 @@ export function TeamSection() {
           </ImgBlock>
 
           <ImgBlock
-            title={<>Ramp-up your team with&nbsp;templates.</>}
+            title={<>Ramp up your team with&nbsp;templates.</>}
             content={
               <>
                 Practical examples to&nbsp;apply directly
@@ -112,14 +112,15 @@ export function TeamSection() {
 
           <ImgBlock
             title={
-              <>Package powerful workflow in easy to use&nbsp;assistants.</>
+              <>Package powerful workflow in easy-to-use&nbsp;assistants.</>
             }
             content={
               <>
                 <Strong>
                   <span className="text-emerald-400">@mentions</span>
                 </Strong>{" "}
-                assistants in&nbsp;discussions, use assistants directy Slack.
+                assistants in&nbsp;discussions, or&nbsp;use assistants directy
+                Slack.
               </>
             }
           >
@@ -144,9 +145,9 @@ export function TeamSection() {
           </ImgBlock>
 
           <ImgBlock
-            title={<>Easily share assistants accross your&nbsp;team.</>}
+            title={<>Easily share assistants across your&nbsp;team.</>}
             content={
-              <>Spread assistants using Dust's company wide sharing features.</>
+              <>Spread assistants using Dust's company-wide sharing features.</>
             }
           >
             <Hover3D
@@ -173,7 +174,7 @@ export function TeamSection() {
             title={<>Manage workspace invitations&nbsp;seamlessly.</>}
             content={
               <>
-                Manage your workspace with Single sign-on and easy
+                Control your workspace with Single Sign-On (SSO) and easy
                 batch&nbsp;invites.
               </>
             }
@@ -201,12 +202,12 @@ export function TeamSection() {
           <ImgBlock
             title={
               <>
-                Don't change everything; introduce AI within your existing
-                workflow.
+                Don't change everything; Let AI fit in your
+                existing&nbsp;workflow.
               </>
             }
             content={
-              <>Slack integration, Dust's&nbsp;API and&nbsp;Dust&nbsp;Apps.</>
+              <>Use Slack integration, Dust's&nbsp;API, and Dust&nbsp;Apps.</>
             }
           >
             <Hover3D

@@ -29,8 +29,8 @@ export function FutureSection() {
           </H2>
           <P size="lg">
             Continuously&nbsp;evolving to&nbsp;meet
-            your&nbsp;changing&nbsp;needs, Dust&nbsp;offers access
-            the&nbsp;market's leading&nbsp;models and support of&nbsp;multiple
+            your&nbsp;changing&nbsp;needs, Dust&nbsp;offers access to{" "}
+            the&nbsp;market's leading&nbsp;models and support for&nbsp;multiple
             sources of&nbsp;data.
           </P>
         </div>
@@ -46,8 +46,8 @@ export function FutureSection() {
             title={<>Your own knowledge base continuously in&nbsp;sync.</>}
             content={
               <>
-                Notion, Slack, GitHub, Google&nbsp;Drive, Intercom, Confluence
-                and&nbsp;more…
+                Notion, Slack, GitHub (…) and your&nbsp;own custom integrations
+                with the&nbsp;Dust&nbsp;API.
               </>
             }
           >
@@ -71,7 +71,7 @@ export function FutureSection() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Switch to the&nbsp;new best model any&nbsp;seconds.</>}
+            title={<>Switch to the&nbsp;new best model in&nbsp;seconds.</>}
             content={
               <>
                 Proprietary and&nbsp;open-source models suited
@@ -103,7 +103,7 @@ export function FutureSection() {
             title={<>A modular, extensible&nbsp;platform.</>}
             content={
               <>
-                <Strong>Developers and tinkerers friendly&nbsp;platform</Strong>{" "}
+                Developer- and tinkerer-friendly&nbsp;platform designed
                 to&nbsp;build custom actions and&nbsp;application orchestration
                 to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
               </>

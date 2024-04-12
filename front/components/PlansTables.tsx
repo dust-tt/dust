@@ -176,7 +176,7 @@ export function ProPriceTable({
       title="Pro"
       price={getPriceWithCurrency(PRO_PLAN_29_COST)}
       color="sky"
-      priceLabel="/ month / user"
+      priceLabel="/ month / user, excl. tax"
       size={size}
       magnified={false}
     >
@@ -250,7 +250,7 @@ export function PricePlans({
   size = "sm",
   isTabs = false,
   className = "",
-  flexCSS = "mx-4 flex flex-row md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
+  flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
   onClickEnterprisePlan,

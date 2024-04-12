@@ -2,7 +2,8 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import { PricePlans } from "@app/components/PlansTables";
@@ -54,33 +55,34 @@ export default function Pricing() {
           setShowContactUsDrawer(false);
         }}
       />
-      <Grid>
-        <div
-          // ref={scrollRef4}
-          className="col-span-8 col-start-2 md:pb-6 xl:pb-10"
-        >
-          <H2
-            className="pb-4 md:pb-6 xl:pb-10"
-            from="from-white"
-            to="to-slate-200"
-          >
+      <HeaderContentBlock
+        title={
+          <>
             Start with Dust!
             <br />
             Meet our pricing plans.
-          </H2>
-          <div>
-            <Button
-              variant="primary"
-              size="md"
-              label="Start with Dust Now"
-              icon={RocketIcon}
-              onClick={() => {
-                window.location.href = "/api/auth/login";
-              }}
-            />
-          </div>
-        </div>
-        <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
+          </>
+        }
+        from="from-sky-200"
+        to="to-blue-400"
+        subtitle={
+          <>
+            <div className="s-dark">
+              <Button
+                variant="secondary"
+                size="lg"
+                label="Start with Dust Pro, 15 Days free trial"
+                icon={RocketIcon}
+                onClick={() => {
+                  window.location.href = "/api/auth/login";
+                }}
+              />
+            </div>
+          </>
+        }
+      />
+      <Grid>
+        <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
           <PricePlans
             display="landing"
             size="xs"

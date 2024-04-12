@@ -73,8 +73,7 @@ export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
               AI is changing the way we work.
               <br />
               Break down knowledge silos, augment your&nbsp;workflows with
-              data&nbsp;augmented, customizable and
-              secure&nbsp;AI&nbsp;assistants.
+              data-augmented, customizable and secure&nbsp;AI&nbsp;assistants.
             </P>
             <div>
               <Button

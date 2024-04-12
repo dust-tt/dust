@@ -25,10 +25,14 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   className = "",
 }) => {
   return (
-    <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="pr-[20%]">{children ? children : null}</div>
-      <H3 className="text-white">{title}</H3>
-      <P size="md">{content}</P>
+    <div className={classNames("flex flex-col gap-12", className)}>
+      <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
+        {children ? children : null}
+      </div>
+      <div className="flex flex-col gap-1">
+        <H3 className="text-white">{title}</H3>
+        <P size="md">{content}</P>
+      </div>
     </div>
   );
 };

@@ -770,7 +770,7 @@ export default function Home({
               <div>
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="lg"
                   label="Start with Dust Now"
                   icon={RocketIcon}
                   onClick={() =>
@@ -781,7 +781,7 @@ export default function Home({
                 />
               </div>
             </div>
-            <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
+            <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
               <PricePlans
                 display="landing"
                 size="xs"

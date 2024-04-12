@@ -34,11 +34,11 @@ export function BlogSection() {
           Customer Stories
         </H2>
         <P size="lg">
-          Discover how Dust is used by our customers to{" "}
-          <Strong>improve their&nbsp;workflows</Strong>.
+          Discover how our customers use&nbsp;Dust to&nbsp;improve
+          their&nbsp;workflows.
         </P>
       </div>
-      <div className="col-span-12 mt-6 flex flex-col items-center gap-4">
+      <div className="col-span-12 mt-12 flex flex-col items-center gap-4">
         <Carousel className="col-span-12">
           <CarouselPrevious label="previous" />
           <CarouselNext label="next" />
