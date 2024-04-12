@@ -28,7 +28,6 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration } from "@app/lib/deprecated_action_configurations_server_only";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
