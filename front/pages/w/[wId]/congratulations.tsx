@@ -10,10 +10,9 @@ import { useRouter } from "next/router";
 import { useRef } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
+import config from "@app/lib/api/config";
 import { getUserMetadata } from "@app/lib/api/user";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-
-const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -55,8 +54,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       defaultExpertise: expertise?.value || "",
       defaultAdminInterest: adminInterest?.value || "",
       conversationId,
-      baseUrl: URL,
-      gaTrackingId: GA_TRACKING_ID,
+      baseUrl: config.getAppUrl(),
+      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

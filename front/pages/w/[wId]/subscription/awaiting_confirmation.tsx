@@ -5,21 +5,14 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
-import { PRO_PLAN_29_COST } from "@app/lib/client/subscription";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
-
-const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  trialDaysRemaining: number | null;
-  gaTrackingId: string;
-  workspaceSeats: number;
-  estimatedMonthlyBilling: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -30,8 +23,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  let trialDaysRemaining = null;
-  if (subscription.trialing && subscription.stripeSubscriptionId) {
+  if (subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
     );
@@ -41,25 +33,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
     stripeSubscription;
-    trialDaysRemaining = stripeSubscription.trial_end
-      ? Math.ceil(
-          (stripeSubscription.trial_end * 1000 - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
-      : null;
   }
-  const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const estimatedMonthlyBilling = PRO_PLAN_29_COST * workspaceSeats;
 
   return {
     props: {
       owner,
       subscription,
-      trialDaysRemaining,
-      gaTrackingId: GA_TRACKING_ID,
+      gaTrackingId: config.getGaTrackingId(),
       user,
-      workspaceSeats,
-      estimatedMonthlyBilling,
     },
   };
 });
@@ -75,8 +56,8 @@ export default function Subscription({
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
         // Then we remove the query params to avoid going through this logic again.
-        void router.push(
-          { pathname: `/w/${owner.sId}/congratulation` },
+        void router.replace(
+          { pathname: `/w/${owner.sId}/congratulations` },
           undefined,
           {
             shallow: true,

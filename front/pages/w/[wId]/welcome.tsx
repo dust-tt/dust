@@ -116,7 +116,7 @@ export default function Welcome({
       }
     }
     await router.push(
-      `/w/${owner.sId}/congratulation?${
+      `/w/${owner.sId}/congratulations?${
         conversationId ? `cId=${conversationId}` : ""
       }`
     );
