@@ -23,10 +23,10 @@ import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentDustAppRunAction } from "@app/lib/models";
 import logger from "@app/logger/logger";
 
