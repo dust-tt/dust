@@ -745,6 +745,7 @@ export async function createAgentConfiguration(
   {
     name,
     description,
+    instructions,
     pictureUrl,
     status,
     scope,
@@ -753,6 +754,7 @@ export async function createAgentConfiguration(
   }: {
     name: string;
     description: string;
+    instructions: string | null;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -853,6 +855,7 @@ export async function createAgentConfiguration(
             scope,
             name,
             description,
+            instructions,
             pictureUrl,
             workspaceId: owner.id,
             generationConfigurationId: generation?.id || null,

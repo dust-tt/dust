@@ -263,6 +263,7 @@ export async function createOrUpgradeAgentConfiguration(
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
+    instructions: generation?.prompt ?? null,
     pictureUrl,
     status,
     scope,
