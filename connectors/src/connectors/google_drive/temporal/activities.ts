@@ -99,6 +99,7 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
   return ids;
 }
 
+// Get the list of drives that have folders selected for sync.
 export async function getDrivesIdsToSync(
   connectorId: ModelId
 ): Promise<string[]> {
@@ -596,7 +597,6 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
     limit: pageSize,
   });
   logger.info({ count: webhooks.length }, `Renewing webhooks`);
-  // return;
 
   for (const wh of webhooks) {
     const connector = await ConnectorResource.fetchById(wh.connectorId);

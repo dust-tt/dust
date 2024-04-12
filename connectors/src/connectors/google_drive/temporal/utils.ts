@@ -54,6 +54,7 @@ export async function driveObjectToDustType(
   }
   const drive = await getDriveClient(authCredentials);
   if (!file.driveId) {
+    // There is no driveId, the object is stored in "My Drive".
     return {
       id: file.id as string,
       name: file.name,
@@ -76,7 +77,6 @@ export async function driveObjectToDustType(
       },
     };
   } else if (file.driveId == file.id) {
-    console.log("file.driveId == file.id", file.driveId, file.id);
     // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
     const driveRes = await drive.drives.get({
       driveId: file.id as string,
@@ -102,6 +102,7 @@ export async function driveObjectToDustType(
       },
     };
   } else {
+    // We are dealing with a file in a shared drive.
     return {
       id: file.id as string,
       name: file.name,

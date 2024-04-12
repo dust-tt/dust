@@ -577,7 +577,10 @@ export async function setGoogleDriveConnectorPermissions(
     return webhooksRes;
   }
   if (shouldFullSync) {
-    await launchGoogleDriveFullSyncWorkflow(connectorId, null);
+    const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
+    if (res.isErr()) {
+      return res;
+    }
   }
 
   return new Ok(undefined);
