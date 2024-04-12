@@ -8,7 +8,8 @@ import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/email";
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";

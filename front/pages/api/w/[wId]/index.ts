@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostWorkspaceResponseBody = {

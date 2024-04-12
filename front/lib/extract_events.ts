@@ -16,7 +16,7 @@ import {
   getUniqueMarkersWithoutSuffix,
   hasExtractEventMarker,
 } from "@app/lib/extract_event_markers";
-import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { logOnSlack } from "@app/logger/slack_debug_logger";

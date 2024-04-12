@@ -8,7 +8,8 @@ import { CoreAPI } from "@dust-tt/types";
 import type { DocumentsPostProcessHookType } from "@app/documents_post_process_hooks/hooks";
 import { DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE } from "@app/documents_post_process_hooks/hooks";
 import { Authenticator } from "@app/lib/auth";
-import { DataSource, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
+import { Workspace } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 
 export async function runPostUpsertHookActivity(

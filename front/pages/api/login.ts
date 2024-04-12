@@ -22,8 +22,8 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import type { MembershipInvitation } from "@app/lib/models";
-import { Workspace } from "@app/lib/models";
+import type { MembershipInvitation } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";

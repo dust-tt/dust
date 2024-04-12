@@ -1,4 +1,6 @@
-import { User, UserMessage, Workspace } from "@app/lib/models";
+import { UserMessage } from "@app/lib/models/assistant/conversation";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 
 async function main() {

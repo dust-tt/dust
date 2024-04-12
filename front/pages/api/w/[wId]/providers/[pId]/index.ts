@@ -2,7 +2,7 @@ import type { ProviderType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Provider } from "@app/lib/models";
+import { Provider } from "@app/lib/models/apps";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostProviderResponseBody = {

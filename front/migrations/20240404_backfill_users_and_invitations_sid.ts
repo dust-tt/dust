@@ -1,4 +1,5 @@
-import { MembershipInvitation, User } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
+import { MembershipInvitation } from "@app/lib/models/workspace";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";

@@ -4,42 +4,41 @@ import { Op } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
+import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
-  AgentConfiguration,
-  AgentDataSourceConfiguration,
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
-  AgentGenerationConfiguration,
-  AgentMessage,
+} from "@app/lib/models/assistant/actions/dust_app_run";
+import {
+  AgentDataSourceConfiguration,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
-  App,
-  Clone,
-  Conversation,
-  Dataset,
-  DataSource,
-  Key,
-  MembershipInvitation,
-  Message,
-  Provider,
   RetrievalDocument,
   RetrievalDocumentChunk,
-  Run,
-  Subscription,
-  User,
-  UserMessage,
-  UserMetadata,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/actions/retrieval";
 import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
 import {
+  AgentMessage,
+  Conversation,
   ConversationParticipant,
   Mention,
+  Message,
   MessageReaction,
+  UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { DataSource } from "@app/lib/models/data_source";
+import { Subscription } from "@app/lib/models/plan";
+import { User, UserMetadata } from "@app/lib/models/user";
+import {
+  Key,
+  MembershipInvitation,
+  Workspace,
+} from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";

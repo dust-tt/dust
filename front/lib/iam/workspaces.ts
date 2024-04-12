@@ -1,5 +1,5 @@
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { generateModelSId } from "@app/lib/utils";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 

@@ -2,7 +2,8 @@ import type { Diff } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
 import { diffStrings } from "@app/lib/diff";
-import { DataSource, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
+import { Workspace } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 
 export async function getPreviousDocumentVersion({

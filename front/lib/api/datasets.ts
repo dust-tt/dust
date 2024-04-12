@@ -3,7 +3,7 @@ import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { Dataset } from "@app/lib/models";
+import { Dataset } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 
 export async function getDatasets(

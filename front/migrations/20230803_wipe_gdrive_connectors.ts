@@ -2,7 +2,7 @@ import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
-import { DataSource } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
 import logger from "@app/logger/logger";
 
 const { CONNECTORS_DB = "" } = process.env;

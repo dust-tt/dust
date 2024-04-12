@@ -1,7 +1,8 @@
 import { Op } from "sequelize";
 
+import { Workspace } from "@app/lib/models/workspace";
+
 //import { planForWorkspace } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models";
 
 async function main() {
   console.log("Fetching Upgraded Worspaces...");

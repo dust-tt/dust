@@ -1,4 +1,4 @@
-import { EventSchema } from "@app/lib/models";
+import { EventSchema } from "@app/lib/models/extract";
 import { new_id } from "@app/lib/utils";
 
 async function main() {

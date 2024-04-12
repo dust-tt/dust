@@ -12,7 +12,12 @@ import { Op } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message, User, UserMessage } from "@app/lib/models";
+import {
+  AgentMessage,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
+import { User } from "@app/lib/models/user";
 
 async function fetchAllUsersById(
   userIds: ModelId[]

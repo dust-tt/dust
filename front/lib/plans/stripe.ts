@@ -5,7 +5,7 @@ import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { isDevelopment } from "@app/lib/development";
-import { Plan, Subscription } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {

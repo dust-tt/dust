@@ -3,7 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
 import { AuthFlowError } from "@app/lib/iam/errors";
-import { MembershipInvitation } from "@app/lib/models";
+import { MembershipInvitation } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 
 const { DUST_INVITE_TOKEN_SECRET = "" } = process.env;

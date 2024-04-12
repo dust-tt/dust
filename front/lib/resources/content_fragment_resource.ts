@@ -9,7 +9,7 @@ import type {
 
 import appConfig from "@app/lib/api/config";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { Message } from "@app/lib/models";
+import { Message } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";

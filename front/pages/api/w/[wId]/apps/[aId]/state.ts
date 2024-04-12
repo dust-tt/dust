@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Op } from "sequelize";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { App } from "@app/lib/models";
+import { App } from "@app/lib/models/apps";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostStateResponseBody = {

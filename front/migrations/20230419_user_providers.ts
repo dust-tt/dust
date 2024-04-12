@@ -1,4 +1,4 @@
-import { User } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
 
 async function main() {
   const users = await User.findAll();

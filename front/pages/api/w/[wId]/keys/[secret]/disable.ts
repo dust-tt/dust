@@ -2,7 +2,7 @@ import type { KeyType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Key } from "@app/lib/models";
+import { Key } from "@app/lib/models/workspace";
 import { withLogging } from "@app/logger/withlogging";
 
 export type PostKeysResponseBody = {

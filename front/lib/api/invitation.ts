@@ -11,7 +11,7 @@ import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { MembershipInvitation } from "@app/lib/models";
+import { MembershipInvitation } from "@app/lib/models/workspace";
 import { generateModelSId } from "@app/lib/utils";
 
 sgMail.setApiKey(config.getSendgridApiKey());

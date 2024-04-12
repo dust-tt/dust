@@ -3,7 +3,8 @@ import { formatUserFullName } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Key, User } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
+import { Key } from "@app/lib/models/workspace";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
 

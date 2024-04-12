@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { App, Provider, Run } from "@app/lib/models";
+import { App, Provider, Run } from "@app/lib/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

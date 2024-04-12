@@ -1,13 +1,13 @@
 import type { ModelId } from "@dust-tt/types";
 import { Op } from "sequelize";
 
+import { RetrievalDocument } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentMessage,
   Conversation,
   Message,
-  RetrievalDocument,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { Workspace } from "@app/lib/models/workspace";
 
 const { LIVE = false } = process.env;
 

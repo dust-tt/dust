@@ -1,4 +1,5 @@
-import { AgentConfiguration, User } from "@app/lib/models";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { User } from "@app/lib/models/user";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 
 async function main() {

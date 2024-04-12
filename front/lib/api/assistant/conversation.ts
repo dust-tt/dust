@@ -65,9 +65,9 @@ import {
   ConversationParticipant,
   Mention,
   Message,
-  User,
   UserMessage,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { User } from "@app/lib/models/user";
 import {
   ContentFragmentResource,
   fileAttachmentLocation,

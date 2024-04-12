@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { Message } from "@app/lib/models";
+import { Message } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 

@@ -7,7 +7,10 @@ import readline from "readline";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
-import { DataSource, EventSchema, User, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
+import { EventSchema } from "@app/lib/models/extract";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import {
   internalSubscribeWorkspaceToFreeNoPlan,

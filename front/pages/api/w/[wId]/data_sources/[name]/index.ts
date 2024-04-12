@@ -7,7 +7,7 @@ import {
   MANAGED_DS_DELETABLE_AS_BUILDER,
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DataSource } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetOrPostDataSourceResponseBody = {

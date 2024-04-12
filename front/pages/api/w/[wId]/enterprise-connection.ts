@@ -13,7 +13,7 @@ import {
   getEnterpriseConnectionForWorkspace,
 } from "@app/lib/api/enterprise_connection";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

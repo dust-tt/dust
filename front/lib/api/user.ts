@@ -1,7 +1,7 @@
 import type { UserMetadataType, UserType } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { User, UserMetadata } from "@app/lib/models";
+import { User, UserMetadata } from "@app/lib/models/user";
 
 import { MembershipResource } from "../resources/membership_resource";
 

@@ -27,7 +27,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
-import { AgentDustAppRunAction } from "@app/lib/models";
+import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import logger from "@app/logger/logger";
 
 import { getApp } from "../../app";
