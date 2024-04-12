@@ -98,6 +98,7 @@ export const createProPlanCheckoutSession = async ({
     mode: "subscription",
     client_reference_id: owner.sId,
     customer_email: user.email,
+    payment_method_types: ["card"],
     subscription_data: {
       metadata: {
         planCode: PRO_PLAN_SEAT_29_CODE,
