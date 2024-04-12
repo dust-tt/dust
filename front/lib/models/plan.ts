@@ -170,7 +170,7 @@ export class Subscription extends Model<
   declare planId: ForeignKey<Plan["id"]>;
   declare plan: NonAttribute<Plan>;
 
-  declare stripeCustomerId: string | null;
+  declare stripeCustomerId: string | null; // To be removed Daph
   declare stripeSubscriptionId: string | null;
 }
 Subscription.init(
