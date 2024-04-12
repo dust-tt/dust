@@ -6,7 +6,6 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  PaintIcon,
   PaperAirplaneIcon,
   PlanetIcon,
   PuzzleIcon,
@@ -39,7 +38,7 @@ export type SubNavigationAssistantsId =
   | "personal_assistants"
   | "data_sources_url"
   | "developers"
-  | "labs"
+  | "transcripts"
   | "extract";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
@@ -71,7 +70,7 @@ export type SparkleAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "assistants" | "data_sources" | "workspace" | "developers" | "lab";
+  id: "assistants" | "data_sources" | "workspace" | "developers" | "beta";
   label: string | null;
   variant: "primary" | "secondary";
   menus: SparkleAppLayoutNavigation[];
@@ -207,43 +206,41 @@ export const subNavigationBuild = ({
     ],
   });
 
-  const hasDevOrOwnerAccess = isDevelopmentOrDustWorkspace(owner);
-  const hasLabsAccess = owner.flags?.some((flag: string) =>
+  const hasBetaAccess = owner.flags?.some((flag: string) =>
     flag.startsWith("labs_")
   );
-  const hasAdvancedAccess = hasDevOrOwnerAccess || hasLabsAccess;
-  const advancedMenus = [];
+  const betaMenus = [];
 
-  if (hasAdvancedAccess) {
-    if (hasLabsAccess) {
-      advancedMenus.push({
-        id: "labs",
-        label: "Labs",
-        icon: PaintIcon,
-        href: `/w/${owner.sId}/builder/labs`,
-        current: current === "labs",
-        subMenuLabel: current === "labs" ? subMenuLabel : undefined,
-        subMenu: current === "labs" ? subMenu : undefined,
+  if (hasBetaAccess) {
+    if (owner.flags.includes("labs_transcripts")) {
+      betaMenus.push({
+        id: "transcripts",
+        label: "Transcripts Processing",
+        icon: ChatBubbleLeftRightIcon,
+        href: `/w/${owner.sId}/builder/labs/transcripts`,
+        current: current === "transcripts",
+        subMenuLabel: current === "transcripts" ? subMenuLabel : undefined,
+        subMenu: current === "transcripts" ? subMenu : undefined,
       });
     }
 
-    if (hasDevOrOwnerAccess) {
-      advancedMenus.push({
+    if (owner.flags.includes("labs_extract")) {
+      betaMenus.push({
         id: "extract",
-        label: "Extract (Dust Only)",
+        label: "Extract",
         icon: ArrowUpOnSquareIcon,
-        href: `/w/${owner.sId}/u/extract`,
+        href: `/w/${owner.sId}/builder/labs/extract`,
         current: current === "extract",
-        subMenuLabel: undefined,
-        subMenu: undefined,
+        subMenuLabel: current === "extract" ? subMenuLabel : undefined,
+        subMenu: current === "extract" ? subMenu : undefined,
       });
     }
 
     nav.push({
-      id: "lab",
-      label: "Advanced",
+      id: "beta",
+      label: "Beta",
       variant: "secondary",
-      menus: advancedMenus as SparkleAppLayoutNavigation[],
+      menus: betaMenus as SparkleAppLayoutNavigation[],
     });
   }
 

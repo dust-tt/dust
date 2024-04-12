@@ -247,7 +247,7 @@ export default function LabsTranscriptsIndex({
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="admin"
-        subNavigation={subNavigationBuild({ owner, current: "labs" })}
+        subNavigation={subNavigationBuild({ owner, current: "transcripts" })}
       >
         <Page>
           <Page.Header
