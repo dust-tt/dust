@@ -2,9 +2,9 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  Input,
   Page,
-  SliderToggle,
-} from "@dust-tt/sparkle";
+  SliderToggle} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
@@ -140,8 +140,10 @@ export default function LabsTranscriptsIndex({
     return updateAssistant(assistant);
   };
 
-  const handleSetEmailToNotify = async (email: string) => {
-    return updateEmailToNotify(email);
+  const handleSaveEmailToNotify = async () => {
+    if (emailToNotify) {
+      return updateEmailToNotify(emailToNotify);
+    }
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
@@ -312,14 +314,13 @@ export default function LabsTranscriptsIndex({
                     transcript to your email. You can chose a different email
                     here.
                   </Page.P>
-                  {/* <Input placeholder="" name="input" value={emailToNotify} onBlur={(e) => setEmailToNotify(e)} /> */}
-                  {/* Had to put a regular input there because <Input> doesn't like onBlur */}
-                  <input
-                    placeholder="Email"
-                    value={emailToNotify as string}
-                    onChange={(e) => setEmailToNotify(e.target.value)}
-                    onBlur={(e) => handleSetEmailToNotify(e.target.value)}
-                    className="s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2 s-bg-structure-50 s-text-element-900 s-placeholder-element-600 dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-600-dark s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8 s-transition-all s-duration-300 s-ease-out s-ring-structure-200 focus:s-ring-action-300 dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
+                  <Input placeholder="Type email" name="input" value={emailToNotify} onChange={(e) => setEmailToNotify(e)} />
+                  <Button
+                    label="Save"
+                    size="sm"
+                    onClick={async () => {
+                      await handleSaveEmailToNotify();
+                    }}
                   />
                 </Page.Layout>
               </Page.Layout>
