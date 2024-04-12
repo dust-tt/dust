@@ -196,10 +196,10 @@ export function AssistantDetails({
   );
 
   const InstructionsSection = () =>
-    agentConfiguration.generation?.prompt ? (
+    agentConfiguration.instructions ? (
       <div className="flex flex-col gap-2">
         <div className="text-lg font-bold text-element-800">Instructions</div>
-        <ReactMarkdown>{agentConfiguration.generation.prompt}</ReactMarkdown>
+        <ReactMarkdown>{agentConfiguration.instructions}</ReactMarkdown>
       </div>
     ) : (
       "This assistant has no instructions."

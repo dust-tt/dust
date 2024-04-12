@@ -60,7 +60,7 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
-                      {a.generation?.prompt}
+                      {a.instructions}
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">model:</div>

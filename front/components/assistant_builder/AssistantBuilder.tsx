@@ -710,11 +710,11 @@ export async function submitAssistantBuilderForm({
         name: removeLeadingAt(handle),
         pictureUrl: avatarUrl,
         description: description,
+        instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         actions: removeNulls([actionParam]),
         generation: {
-          prompt: instructions.trim(),
           model: builderState.generationSettings.modelSettings,
           temperature: builderState.generationSettings.temperature,
         },

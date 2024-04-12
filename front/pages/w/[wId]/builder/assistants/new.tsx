@@ -238,7 +238,7 @@ export default function CreateAssistant({
                 "isTemplate" in agentConfiguration ? "" : "_Copy"
               }`,
               description: agentConfiguration.description,
-              instructions: agentConfiguration.generation?.prompt || "", // TODO we don't support null in the UI yet
+              instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
               avatarUrl: null,
               generationSettings: agentConfiguration.generation
                 ? {
