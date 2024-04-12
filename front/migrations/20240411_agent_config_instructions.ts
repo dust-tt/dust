@@ -9,7 +9,7 @@ const backfillAgentConfiguration = async (
   agent: AgentConfiguration,
   execute: boolean
 ): Promise<void> => {
-  const prompt = agent.generationConfiguration?.prompt;
+  const prompt = null; //const prompt = agent.generationConfiguration?.prompt;
   if (!prompt) {
     logger.info(`Skipping agent (no generation configuration) ${agent.id}`);
     return;
@@ -55,5 +55,8 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
+  throw new Error(
+    "Can't be run anymore since we've revmoved the prompt field from the agent generation configuration"
+  );
   await backfillAgentConfigurations(execute);
 });
