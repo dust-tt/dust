@@ -20,6 +20,7 @@ import {
   Err,
   isProcessConfiguration,
   Ok,
+  renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -31,11 +32,11 @@ import {
 } from "@app/lib/api/assistant/actions/retrieval";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { constructPrompt } from "@app/lib/api/assistant/generation";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 
 /**
  * Model rendering of process actions.
@@ -294,18 +295,19 @@ export async function* runRetrieval(
 
   const params = paramsRes.value;
   const model = configuration.generation?.model;
-  let contextSize = 32000;
+
+  let contextSize = 16384;
   if (!model) {
     logger.warn(
       {
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
       },
-      "Process is executed, but there is no model. Defaulting contextSize to 32000."
+      "Process is executed, but there is no model. Defaulting contextSize to 16384."
     );
   } else {
     const supportedModel = getSupportedModelConfig(model);
-    topK = supportedModel.recommendedTopK;
+    contextSize = supportedModel.contextSize;
   }
 
   // const model = configuration.generation?.model;
@@ -406,8 +408,9 @@ export async function* runRetrieval(
   const res = await runActionStreamed(auth, "assistant-v2-process", config, [
     {
       query: params.query,
+      context_size: contextSize,
       prompt,
-      // Add schema
+      schema: renderSchemaPropertiesAsJSONSchema(actionConfig.schema),
     },
   ]);
 
