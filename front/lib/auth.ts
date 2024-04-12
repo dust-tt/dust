@@ -521,7 +521,6 @@ export async function subscriptionForWorkspace(
       "sId",
       "startDate",
       "status",
-      "stripeCustomerId",
       "stripeSubscriptionId",
       "trialing",
     ],
