@@ -27,7 +27,6 @@ import {
   Ok,
 } from "@dust-tt/types";
 
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
 import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
@@ -39,6 +38,7 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
 /**

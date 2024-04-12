@@ -17,8 +17,8 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { tableKey } from "@app/lib/client/tables_query";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
 export async function buildInitialState({
