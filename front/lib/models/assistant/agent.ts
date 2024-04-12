@@ -28,7 +28,6 @@ export class AgentGenerationConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
   declare modelId: string;
   declare temperature: number;
@@ -49,10 +48,6 @@ AgentGenerationConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    prompt: {
-      type: DataTypes.TEXT,
-      allowNull: false,
     },
     providerId: {
       type: DataTypes.STRING,
