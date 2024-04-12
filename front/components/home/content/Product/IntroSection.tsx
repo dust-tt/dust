@@ -4,6 +4,7 @@ import React from "react";
 import {
   Grid,
   H1,
+  H4,
   P,
   Strong,
 } from "@app/components/home/new/ContentComponents";
@@ -101,17 +102,26 @@ export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
         </div>
         <div
           className={classNames(
-            "col-span-12",
-            "grid grid-cols-2 gap-x-2",
-            "md:grid-cols-4 md:gap-x-12",
+            "col-span-12 flex flex-col items-center py-8",
             "lg:col-span-10 lg:col-start-2",
             "xl:col-span-8 xl:col-start-3"
           )}
         >
-          <img src="/static/landing/logos/alan.png" />
-          <img src="/static/landing/logos/qonto.png" />
-          <img src="/static/landing/logos/pennylane.png" />
-          <img src="/static/landing/logos/payfit.png" />
+          <H4 className="w-full text-center text-white">
+            Trusted by 100+ organizations, including:
+          </H4>
+          <div
+            className={classNames(
+              "max-w-[400px] sm:w-full sm:max-w-none",
+              "grid grid-cols-2 gap-x-2",
+              "md:grid-cols-4 md:gap-x-12"
+            )}
+          >
+            <img src="/static/landing/logos/alan.png" />
+            <img src="/static/landing/logos/qonto.png" />
+            <img src="/static/landing/logos/pennylane.png" />
+            <img src="/static/landing/logos/payfit.png" />
+          </div>
         </div>
         <div
           className={classNames(
