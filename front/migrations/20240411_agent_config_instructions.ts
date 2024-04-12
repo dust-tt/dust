@@ -1,7 +1,7 @@
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 

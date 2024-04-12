@@ -28,7 +28,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { AgentGenerationConfiguration } from "@app/lib/models";
+import { AgentGenerationConfiguration } from "@app/lib/models/assistant/agent";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

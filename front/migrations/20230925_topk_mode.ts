@@ -1,4 +1,4 @@
-import { AgentRetrievalConfiguration } from "@app/lib/models";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 
 async function main() {
   console.log("Setting topK to null for all auto topKMode configurations...");

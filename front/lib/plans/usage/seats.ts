@@ -1,7 +1,7 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type Stripe from "stripe";
 
-import { Workspace } from "@app/lib/models";
+import { Workspace } from "@app/lib/models/workspace";
 import { updateStripeQuantityForSubscriptionItem } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";

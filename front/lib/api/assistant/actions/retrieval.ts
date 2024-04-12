@@ -34,7 +34,7 @@ import {
   AgentRetrievalAction,
   RetrievalDocument,
   RetrievalDocumentChunk,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 

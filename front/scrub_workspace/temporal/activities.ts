@@ -15,7 +15,7 @@ import {
   Conversation,
   Message,
   UserMessage,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
 import logger from "@app/logger/logger";
 
 export async function sendDataDeletionEmail({

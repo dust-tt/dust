@@ -1,4 +1,4 @@
-import { ExtractedEvent } from "@app/lib/models";
+import { ExtractedEvent } from "@app/lib/models/extract";
 import { new_id } from "@app/lib/utils";
 
 async function main() {

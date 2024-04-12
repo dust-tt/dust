@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
 
-import { App, Run } from "@app/lib/models";
+import { App, Run } from "@app/lib/models/apps";
 
 const { CORE_DATABASE_URI } = process.env;
 

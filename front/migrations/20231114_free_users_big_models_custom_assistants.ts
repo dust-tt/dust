@@ -1,4 +1,4 @@
-import { AgentGenerationConfiguration } from "@app/lib/models";
+import { AgentGenerationConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 const { LIVE } = process.env;
