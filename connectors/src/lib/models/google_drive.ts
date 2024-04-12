@@ -305,6 +305,7 @@ export class GoogleDriveWebhook extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare webhookId: string;
+  declare driveId: string;
   declare renewedByWebhookId: string | null;
   declare expiresAt: Date;
   declare renewAt: Date | null;
@@ -332,6 +333,10 @@ GoogleDriveWebhook.init(
       allowNull: false,
     },
     webhookId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    driveId: {
       type: DataTypes.STRING,
       allowNull: false,
     },

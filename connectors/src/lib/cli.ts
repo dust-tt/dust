@@ -42,7 +42,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { registerWebhook } from "@connectors/connectors/google_drive/lib";
+import { registerWebhooksForAllDrives } from "@connectors/connectors/google_drive/lib";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -867,11 +867,9 @@ export const google_drive = async ({
         throw new Error("Missing --dataSourceName argument");
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
-        },
+      const connector = await ConnectorResource.findByDataSourceAndConnection({
+        workspaceId: args.wId,
+        dataSourceName: args.dataSourceName,
       });
       if (!connector) {
         throw new Error(
@@ -879,16 +877,9 @@ export const google_drive = async ({
         );
       }
 
-      const webhookInfo = await registerWebhook(connector);
-      if (webhookInfo.isErr()) {
-        throw webhookInfo.error;
-      } else {
-        await GoogleDriveWebhook.create({
-          webhookId: webhookInfo.value.id,
-          expiresAt: new Date(webhookInfo.value.expirationTsMs),
-          renewAt: new Date(webhookInfo.value.expirationTsMs),
-          connectorId: connector.id,
-        });
+      const res = await registerWebhooksForAllDrives(connector, 0);
+      if (res.isErr()) {
+        throw res.error;
       }
       return { success: true };
     }
