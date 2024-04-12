@@ -1,6 +1,7 @@
 import {
   ArrowUpOnSquareIcon,
   BookOpenIcon,
+  ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,

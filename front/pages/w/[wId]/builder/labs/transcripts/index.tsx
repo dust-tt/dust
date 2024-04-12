@@ -1,6 +1,6 @@
 import {
+  BookOpenIcon,
   Button,
-  ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Page,
   SliderToggle,
@@ -246,13 +246,13 @@ export default function LabsTranscriptsIndex({
         subscription={subscription}
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="admin"
+        topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({ owner, current: "transcripts" })}
       >
         <Page>
           <Page.Header
             title="Transcripts processing"
-            icon={ChatBubbleLeftRightIcon}
+            icon={BookOpenIcon}
             description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
           />
           <Page.Layout direction="vertical">
