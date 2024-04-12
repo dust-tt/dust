@@ -61,6 +61,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-v2-process": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "953b79fe89",
+      appHash:
+        "3b634a84930020a7a18d3b32f4c5f5cd85690bf4958127ba51061fb101edea33",
+    },
+    config: {
+      DATASOURCE: {
+        data_sources: [],
+        top_k: 128,
+        filter: { tags: null, parents: null, timestamp: null },
+        use_cache: false,
+      },
+    },
+  },
   "assistant-v2-generator": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

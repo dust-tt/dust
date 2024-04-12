@@ -96,6 +96,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   dust_app_run_configuration: "Run Dust app",
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
+  process_configuration: "Process data sources",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(

@@ -5,6 +5,10 @@ import {
 import { AgentActionConfigurationType } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import {
+  ProcessActionType,
+  ProcessConfigurationType,
+} from "../../assistant/actions/process";
+import {
   RetrievalActionType,
   RetrievalConfigurationType,
 } from "../../assistant/actions/retrieval";
@@ -47,4 +51,16 @@ export function isRetrievalActionType(
   arg: AgentActionType
 ): arg is RetrievalActionType {
   return arg.type === "retrieval_action";
+}
+
+export function isProcessConfiguration(
+  arg: AgentActionConfigurationType | null
+): arg is ProcessConfigurationType {
+  return arg !== null && arg.type && arg.type === "process_configuration";
+}
+
+export function isProcessActionType(
+  arg: AgentActionType
+): arg is ProcessActionType {
+  return arg.type === "process_action";
 }
