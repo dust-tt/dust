@@ -261,13 +261,13 @@ export async function createOrUpgradeAgentConfiguration(
   }
 
   // @todo FIX MULTI ACTIONS
-  const maxToolsUseForRun = actions.length + (generationConfig ? 1 : 0);
+  const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
     instructions: instructions ?? null,
-    maxToolsUseForRun,
+    maxToolsUsePerRun,
     pictureUrl,
     status,
     scope,
