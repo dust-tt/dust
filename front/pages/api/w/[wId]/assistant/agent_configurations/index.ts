@@ -197,10 +197,11 @@ async function handler(
         });
       }
 
-      const agentConfigurationRes = await createOrUpgradeAgentConfiguration(
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        bodyValidation.right
-      );
+        assistant: bodyValidation.right.assistant,
+        legacySingleActionMode: true,
+      });
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -235,23 +236,54 @@ export default withLogging(handler);
  * a new agent configuration. In both cases, it will return the new agent
  * configuration.
  **/
-export async function createOrUpgradeAgentConfiguration(
-  auth: Authenticator,
-  {
-    assistant: {
-      generation,
-      actions,
-      name,
-      description,
-      instructions,
-      scope,
-      pictureUrl,
-      status,
-    },
-  }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
-  agentConfigurationId?: string
-): Promise<Result<AgentConfigurationType, Error>> {
+export async function createOrUpgradeAgentConfiguration({
+  auth,
+  assistant: {
+    actions,
+    generation,
+    name,
+    description,
+    pictureUrl,
+    status,
+    scope,
+    instructions,
+  },
+  agentConfigurationId,
+  legacySingleActionMode,
+}: {
+  auth: Authenticator;
+  assistant: t.TypeOf<
+    typeof PostOrPatchAgentConfigurationRequestBodySchema
+  >["assistant"];
+  agentConfigurationId?: string;
+  legacySingleActionMode: boolean;
+}): Promise<Result<AgentConfigurationType, Error>> {
+  if (legacySingleActionMode && actions.length > 1) {
+    throw new Error("Only one action is supported in legacy mode.");
+  }
+
+  let forceGenerationAtIteration: number | null = null;
+  let forceSingleActionAtIteration: number | null = null;
+
+  if (legacySingleActionMode) {
+    if (actions.length) {
+      forceSingleActionAtIteration = 0;
+      forceGenerationAtIteration = 1;
+    } else {
+      forceGenerationAtIteration = 0;
+    }
+  }
+
   let generationConfig: AgentGenerationConfigurationType | null = null;
+
+  if (generation) {
+    generationConfig = await createAgentGenerationConfiguration(auth, {
+      prompt: instructions || "", // @todo Daph remove this field
+      model: generation.model,
+      temperature: generation.temperature,
+      forceUseAtIteration: forceGenerationAtIteration,
+    });
+  }
 
   // @todo FIX MULTI ACTIONS
   const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
@@ -298,6 +330,7 @@ export async function createOrUpgradeAgentConfiguration(
               relativeTimeFrame: action.relativeTimeFrame,
               topK: action.topK,
               dataSources: action.dataSources,
+              forceUseAtIteration: forceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -310,6 +343,7 @@ export async function createOrUpgradeAgentConfiguration(
               type: "dust_app_run_configuration",
               appWorkspaceId: action.appWorkspaceId,
               appId: action.appId,
+              forceUseAtIteration: forceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -321,6 +355,7 @@ export async function createOrUpgradeAgentConfiguration(
             {
               type: "tables_query_configuration",
               tables: action.tables,
+              forceUseAtIteration: forceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )

@@ -984,12 +984,15 @@ export async function createAgentGenerationConfiguration(
     prompt, // @todo Daph remove this field
     model,
     temperature,
+    agentConfiguration,
+    forceUseAtIteration,
   }: {
     prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
-  },
-  agentConfiguration: AgentConfigurationWithoutActionsType
+    agentConfiguration: AgentConfigurationWithoutActionsType;
+    forceUseAtIteration: number | null;
+  }
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1010,6 +1013,7 @@ export async function createAgentGenerationConfiguration(
     modelId: model.modelId,
     temperature: temperature,
     agentConfigurationId: agentConfiguration.id,
+    forceUseAtIteration: forceUseAtIteration,
   });
 
   return {
@@ -1024,7 +1028,7 @@ export async function createAgentGenerationConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action:
+  action: (
     | {
         type: "retrieval_configuration";
         query: RetrievalQuery;
@@ -1044,7 +1048,10 @@ export async function createAgentActionConfiguration(
           dataSourceId: string;
           tableId: string;
         }>;
-      },
+      }
+  ) & {
+    forceUseAtIteration: number | null;
+  },
   agentConfiguration: AgentConfigurationWithoutActionsType
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
@@ -1070,6 +1077,7 @@ export async function createAgentActionConfiguration(
           topK: action.topK !== "auto" ? action.topK : null,
           topKMode: action.topK === "auto" ? "auto" : "custom",
           agentConfigurationId: agentConfiguration.id,
+          forceUseAtIteration: action.forceUseAtIteration,
         },
         { transaction: t }
       );
@@ -1095,6 +1103,7 @@ export async function createAgentActionConfiguration(
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
       agentConfigurationId: agentConfiguration.id,
+      forceUseAtIteration: action.forceUseAtIteration,
     });
 
     return {
@@ -1110,6 +1119,7 @@ export async function createAgentActionConfiguration(
         {
           sId: generateModelSId(),
           agentConfigurationId: agentConfiguration.id,
+          forceUseAtIteration: action.forceUseAtIteration,
         },
         { transaction: t }
       );

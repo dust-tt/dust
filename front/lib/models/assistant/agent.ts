@@ -35,7 +35,7 @@ export class AgentGenerationConfiguration extends Model<
   declare modelId: string;
   declare temperature: number;
 
-  declare force_use_at_iteration: number | null;
+  declare forceUseAtIteration: number | null;
 }
 AgentGenerationConfiguration.init(
   {
@@ -71,7 +71,7 @@ AgentGenerationConfiguration.init(
       allowNull: false,
       defaultValue: 0.7,
     },
-    force_use_at_iteration: {
+    forceUseAtIteration: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
