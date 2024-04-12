@@ -17,6 +17,7 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 
+// TODO(@pr) move it to actions/ folder
 /**
  * Configuration of Agent generation.
  */
@@ -27,6 +28,8 @@ export class AgentGenerationConfiguration extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
 
   declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
@@ -198,7 +201,7 @@ AgentConfiguration.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-// Agent config <> Generation config
+// DEPERECATED -- AgentConfig -> GenerationConfig (1:1)
 AgentGenerationConfiguration.hasOne(AgentConfiguration, {
   as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
@@ -206,6 +209,18 @@ AgentGenerationConfiguration.hasOne(AgentConfiguration, {
 AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
   as: "generationConfiguration",
   foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
+});
+
+// NEW -- AgentConfig -> GenerationConfig (1:N)
+AgentConfiguration.hasMany(AgentGenerationConfiguration, {
+  // TODO(@pr) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
+});
+AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
+  // TODO(@pr) make it non-nullable
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+  onDelete: "CASCADE",
 });
 
 // Agent config <> Author
