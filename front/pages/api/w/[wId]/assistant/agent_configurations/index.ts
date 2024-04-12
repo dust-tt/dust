@@ -28,6 +28,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { AgentGenerationConfiguration } from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -277,6 +278,20 @@ export async function createOrUpgradeAgentConfiguration(
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;
+  }
+
+  // TODO(pr) - temporary backfill until genConfig is created after agentConfig
+  if (generationConfig) {
+    await AgentGenerationConfiguration.update(
+      {
+        agentConfigurationId: agentConfigurationRes.value.id,
+      },
+      {
+        where: {
+          id: generationConfig.id,
+        },
+      }
+    );
   }
 
   const actionConfigs: AgentActionConfigurationType[] = [];
