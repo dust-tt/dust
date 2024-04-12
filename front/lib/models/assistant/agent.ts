@@ -189,23 +189,6 @@ AgentConfiguration.init(
         },
       },
     ],
-    hooks: {
-      beforeValidate: (agentConfiguration: AgentConfiguration) => {
-        const actionsTypes: (keyof AgentConfiguration)[] = [
-          "retrievalConfigurationId",
-          "dustAppRunConfigurationId",
-          "tablesQueryConfigurationId",
-        ];
-        const nonNullActionTypes = actionsTypes.filter(
-          (field) => agentConfiguration[field] != null
-        );
-        if (nonNullActionTypes.length > 1) {
-          throw new Error(
-            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, tablesQueryConfigurationId can be set"
-          );
-        }
-      },
-    },
   }
 );
 
@@ -381,7 +364,7 @@ export class AgentTablesQueryConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
   declare sId: string;
 }
@@ -433,14 +416,10 @@ AgentConfiguration.belongsTo(AgentTablesQueryConfiguration, {
 
 // NEW -- AgentConfig -> TablesQueryConfig (1:N)
 AgentConfiguration.hasMany(AgentTablesQueryConfiguration, {
-  // TODO(@fontanierh) make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
-  // TODO(@fontanierh) make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
 // TODO(@fontanierh) TO BE MOVED TO THE retrieval.ts file -- inlined during multi actions migration
@@ -454,7 +433,7 @@ export class AgentRetrievalConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
   declare sId: string;
 
@@ -571,14 +550,10 @@ AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
 
 // NEW -- AgentConfig -> RetrievalConfig (1:N)
 AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
-  // TODO(@fontanierh) make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
-  // TODO(@fontanierh) make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
 // TODO(@fontanierh) TO BE MOVED TO THE dust_app_run.ts file -- inlined during multi actions migration
@@ -592,7 +567,7 @@ export class AgentDustAppRunConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
   declare sId: string;
 
@@ -654,12 +629,8 @@ AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
 
 // NEW -- AgentConfig -> DustAppRunConfig (1:N)
 AgentConfiguration.hasMany(AgentDustAppRunConfiguration, {
-  // TODO(@fontanierh): make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
-  // TODO(@fontanierh): make it non-nullable
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "CASCADE",
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
 });

@@ -9,6 +9,7 @@ import type {
 import {
   assertNever,
   GetAgentConfigurationsQuerySchema,
+  Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -16,6 +17,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration } from "@app/lib/action_configurations";
 import { trackAssistantCreated } from "@app/lib/amplitude/node";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -23,14 +25,10 @@ import {
   createAgentConfiguration,
   createAgentGenerationConfiguration,
   getAgentConfigurations,
+  unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
-import {
-  AgentDustAppRunConfiguration,
-  AgentRetrievalConfiguration,
-  AgentTablesQueryConfiguration,
-} from "@app/lib/models";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -243,7 +241,7 @@ export async function createOrUpgradeAgentConfiguration(
   {
     assistant: {
       generation,
-      action,
+      actions,
       name,
       description,
       scope,
@@ -262,30 +260,6 @@ export async function createOrUpgradeAgentConfiguration(
     });
   }
 
-  let actionConfig: AgentActionConfigurationType | null = null;
-  if (action && action.type === "retrieval_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "retrieval_configuration",
-      query: action.query,
-      relativeTimeFrame: action.relativeTimeFrame,
-      topK: action.topK,
-      dataSources: action.dataSources,
-    });
-  }
-  if (action && action.type === "dust_app_run_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "dust_app_run_configuration",
-      appWorkspaceId: action.appWorkspaceId,
-      appId: action.appId,
-    });
-  }
-  if (action && action.type === "tables_query_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "tables_query_configuration",
-      tables: action.tables,
-    });
-  }
-
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
@@ -293,59 +267,79 @@ export async function createOrUpgradeAgentConfiguration(
     status,
     scope,
     generation: generationConfig,
-    action: actionConfig,
     agentConfigurationId,
   });
-  if (agentConfigurationRes.isOk()) {
-    // We are not tracking draft agents
-    if (agentConfigurationRes.value.status === "active") {
-      trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
-    }
-    if (actionConfig) {
-      // TODO(@fontanierh) Temporary, to remove.
-      // This is a shadow write while we invert the relationship between configuration and actions.
-      switch (actionConfig.type) {
-        case "retrieval_configuration":
-          await AgentRetrievalConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
-              },
-            }
-          );
-          break;
-        case "tables_query_configuration":
-          await AgentTablesQueryConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
-              },
-            }
-          );
-          break;
-        case "dust_app_run_configuration":
-          await AgentDustAppRunConfiguration.update(
-            {
-              agentConfigurationId: agentConfigurationRes.value.id,
-            },
-            {
-              where: {
-                id: actionConfig.id,
-              },
-            }
-          );
-          break;
-        default:
-          assertNever(actionConfig);
-      }
-    }
+
+  if (agentConfigurationRes.isErr()) {
+    return agentConfigurationRes;
   }
 
-  return agentConfigurationRes;
+  const actionConfigs: AgentActionConfigurationType[] = [];
+
+  try {
+    for (const action of actions) {
+      if (action.type === "retrieval_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "retrieval_configuration",
+              query: action.query,
+              relativeTimeFrame: action.relativeTimeFrame,
+              topK: action.topK,
+              dataSources: action.dataSources,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else if (action.type === "dust_app_run_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "dust_app_run_configuration",
+              appWorkspaceId: action.appWorkspaceId,
+              appId: action.appId,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else if (action.type === "tables_query_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "tables_query_configuration",
+              tables: action.tables,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else {
+        assertNever(action);
+      }
+    }
+  } catch (e) {
+    // If we fail to create an action, we should delete the agent configuration
+    // we just created and re-throw the error.
+    await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+    throw e;
+  }
+
+  await deprecatedMaybeShadowWriteFirstActionOnAgentConfiguration(
+    actionConfigs,
+    agentConfigurationRes.value
+  );
+
+  const agentConfiguration: AgentConfigurationType = {
+    ...agentConfigurationRes.value,
+    actions: actionConfigs,
+  };
+
+  // We are not tracking draft agents
+  if (agentConfigurationRes.value.status === "active") {
+    trackAssistantCreated(auth, { assistant: agentConfiguration });
+  }
+
+  return new Ok(agentConfiguration);
 }

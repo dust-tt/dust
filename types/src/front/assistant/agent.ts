@@ -176,9 +176,9 @@ export type LightAgentConfigurationType = {
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
-  // If undefined, no action performed, otherwise the action is
-  // performed (potentially NoOp eg autoSkip above).
-  action: AgentActionConfigurationType | null;
+  // If empty, no actions are performed, otherwise the actions are
+  // performed.
+  actions: AgentActionConfigurationType[];
 };
 
 export interface TemplateAgentConfigurationType {
@@ -192,6 +192,6 @@ export interface TemplateAgentConfigurationType {
   name: string;
   scope: AgentConfigurationScope;
   description: string;
-  action: AgentActionConfigurationType | null;
+  actions: AgentActionConfigurationType[];
   isTemplate: true;
 }

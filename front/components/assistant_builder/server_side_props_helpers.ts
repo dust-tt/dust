@@ -17,6 +17,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
 
@@ -37,8 +38,10 @@ export async function buildInitialState({
     isSelectAll: boolean;
   }[] = [];
 
-  if (isRetrievalConfiguration(config.action)) {
-    for (const ds of config.action.dataSources) {
+  const action = deprecatedGetFirstActionConfiguration(config);
+
+  if (isRetrievalConfiguration(action)) {
+    for (const ds of action.dataSources) {
       selectedResources.push({
         dataSourceName: ds.dataSourceId,
         resources: ds.filter.parents?.in ?? null,
@@ -88,9 +91,9 @@ export async function buildInitialState({
   let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
     null;
 
-  if (isDustAppRunConfiguration(config.action)) {
+  if (isDustAppRunConfiguration(action)) {
     for (const app of dustApps) {
-      if (app.sId === config.action.appId) {
+      if (app.sId === action.appId) {
         dustAppConfiguration = {
           app,
         };
@@ -102,12 +105,9 @@ export async function buildInitialState({
   let tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"] =
     {};
 
-  if (
-    isTablesQueryConfiguration(config.action) &&
-    config.action.tables.length
-  ) {
+  if (isTablesQueryConfiguration(action) && action.tables.length) {
     const coreAPITables: CoreAPITable[] = await Promise.all(
-      config.action.tables.map(async (t) => {
+      action.tables.map(async (t) => {
         const dataSource = dataSourceByName[t.dataSourceId];
         const coreAPITable = await coreAPI.getTable({
           projectId: dataSource.dustAPIProjectId,
@@ -123,7 +123,7 @@ export async function buildInitialState({
       })
     );
 
-    tablesQueryConfiguration = config.action.tables.reduce((acc, curr, i) => {
+    tablesQueryConfiguration = action.tables.reduce((acc, curr, i) => {
       const table = coreAPITables[i];
       const key = tableKey(curr);
       return {

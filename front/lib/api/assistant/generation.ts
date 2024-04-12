@@ -27,6 +27,7 @@ import {
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
@@ -262,7 +263,10 @@ export async function constructPrompt(
   } else if (fallbackPrompt) {
     instructions += `\n${fallbackPrompt}`;
   }
-  if (isRetrievalConfiguration(configuration.action)) {
+
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (isRetrievalConfiguration(actionConfig)) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
   if (instructions.length > 0) {

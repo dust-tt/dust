@@ -22,6 +22,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -137,11 +138,13 @@ export default function EditAssistant({
 
   let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
-  if (isRetrievalConfiguration(agentConfiguration.action)) {
-    if (agentConfiguration.action.query === "none") {
+  const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
+
+  if (isRetrievalConfiguration(action)) {
+    if (action.query === "none") {
       if (
-        agentConfiguration.action.relativeTimeFrame === "auto" ||
-        agentConfiguration.action.relativeTimeFrame === "none"
+        action.relativeTimeFrame === "auto" ||
+        action.relativeTimeFrame === "none"
       ) {
         /** Should never happen. Throw loudly if it does */
         throw new Error(
@@ -150,20 +153,20 @@ export default function EditAssistant({
       }
       actionMode = "RETRIEVAL_EXHAUSTIVE";
       timeFrame = {
-        value: agentConfiguration.action.relativeTimeFrame.duration,
-        unit: agentConfiguration.action.relativeTimeFrame.unit,
+        value: action.relativeTimeFrame.duration,
+        unit: action.relativeTimeFrame.unit,
       };
     }
-    if (agentConfiguration.action.query === "auto") {
+    if (action.query === "auto") {
       actionMode = "RETRIEVAL_SEARCH";
     }
   }
 
-  if (isDustAppRunConfiguration(agentConfiguration.action)) {
+  if (isDustAppRunConfiguration(action)) {
     actionMode = "DUST_APP_RUN";
   }
 
-  if (isTablesQueryConfiguration(agentConfiguration.action)) {
+  if (isTablesQueryConfiguration(action)) {
     actionMode = "TABLES_QUERY";
   }
   if (agentConfiguration.scope === "global") {
