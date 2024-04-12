@@ -6,8 +6,63 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
+
+export class AgentTablesQueryConfiguration extends Model<
+  InferAttributes<AgentTablesQueryConfiguration>,
+  InferCreationAttributes<AgentTablesQueryConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
+  declare sId: string;
+}
+
+AgentTablesQueryConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_tables_query_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+        name: "agent_tables_query_configuration_s_id",
+      },
+    ],
+    sequelize: frontSequelize,
+  }
+);
+
+AgentConfiguration.hasMany(AgentTablesQueryConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 export class AgentTablesQueryConfigurationTable extends Model<
   InferAttributes<AgentTablesQueryConfigurationTable>,

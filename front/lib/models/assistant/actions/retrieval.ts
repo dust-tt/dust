@@ -8,9 +8,129 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { frontSequelize } from "@app/lib/resources/storage";
+
+export class AgentRetrievalConfiguration extends Model<
+  InferAttributes<AgentRetrievalConfiguration>,
+  InferCreationAttributes<AgentRetrievalConfiguration>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
+  declare sId: string;
+
+  declare query: "auto" | "none" | "templated";
+  declare queryTemplate: string | null;
+  declare relativeTimeFrame: "auto" | "none" | "custom";
+  declare relativeTimeFrameDuration: number | null;
+  declare relativeTimeFrameUnit: TimeframeUnit | null;
+  declare topK: number | null;
+  declare topKMode: "auto" | "custom";
+}
+
+AgentRetrievalConfiguration.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    query: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+    queryTemplate: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    relativeTimeFrame: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+    relativeTimeFrameDuration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    relativeTimeFrameUnit: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    topK: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    topKMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "auto",
+    },
+  },
+  {
+    modelName: "agent_retrieval_configuration",
+    sequelize: frontSequelize,
+    hooks: {
+      beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
+        // Validation for templated Query
+        if (retrieval.query == "templated") {
+          if (!retrieval.queryTemplate) {
+            throw new Error("Must set a template for templated query");
+          }
+        } else if (retrieval.queryTemplate) {
+          throw new Error("Can't set a template without templated query");
+        }
+
+        // Validation for Timeframe
+        if (retrieval.relativeTimeFrame == "custom") {
+          if (
+            !retrieval.relativeTimeFrameDuration ||
+            !retrieval.relativeTimeFrameUnit
+          ) {
+            throw new Error(
+              "Custom relative time frame must have a duration and unit set"
+            );
+          }
+        }
+
+        // Validation for TopK
+        if (retrieval.topKMode == "custom") {
+          if (!retrieval.topK) {
+            throw new Error("topK must be set when topKMode is 'custom'");
+          }
+        } else if (retrieval.topK) {
+          throw new Error("topK must be null when topKMode is not 'custom'");
+        }
+      },
+    },
+  }
+);
+
+AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 /**
  * Configuration of Datasources used for Retrieval Action.
