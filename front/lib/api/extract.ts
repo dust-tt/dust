@@ -5,7 +5,7 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { sortedEventProperties } from "@app/lib/extract_events_properties";
-import { EventSchema, ExtractedEvent } from "@app/lib/models";
+import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
 import { generateModelSId } from "@app/lib/utils";
 
 function _getEventSchemaType(schema: EventSchema): EventSchemaType {

@@ -8,7 +8,8 @@ import { Sequelize } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration, User } from "@app/lib/models";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { User } from "@app/lib/models/user";
 import { safeRedisClient } from "@app/lib/redis";
 
 // We keep the most recent authorIds for 3 days.

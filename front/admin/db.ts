@@ -1,48 +1,51 @@
+import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import {
-  AgentConfiguration,
-  AgentDataSourceConfiguration,
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
-  AgentGenerationConfiguration,
-  AgentMessage,
+} from "@app/lib/models/assistant/actions/dust_app_run";
+import {
+  AgentDataSourceConfiguration,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
-  App,
-  Clone,
-  Conversation,
-  ConversationParticipant,
-  Dataset,
-  DataSource,
-  DocumentTrackerChangeSuggestion,
-  EventSchema,
-  ExtractedEvent,
-  Key,
-  MembershipInvitation,
-  Mention,
-  Message,
-  MessageReaction,
-  Plan,
-  Provider,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-  Run,
-  Subscription,
-  TrackedDocument,
-  User,
-  UserMessage,
-  UserMetadata,
-  Workspace,
-  WorkspaceHasDomain,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/actions/tables_query";
 import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import {
+  AgentMessage,
+  Conversation,
+  ConversationParticipant,
+  Mention,
+  Message,
+  MessageReaction,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
+import { DataSource } from "@app/lib/models/data_source";
+import {
+  DocumentTrackerChangeSuggestion,
+  TrackedDocument,
+} from "@app/lib/models/doc_tracker";
+import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { User, UserMetadata } from "@app/lib/models/user";
+import {
+  Key,
+  MembershipInvitation,
+  Workspace,
+  WorkspaceHasDomain,
+} from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";

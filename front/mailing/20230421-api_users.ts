@@ -1,8 +1,5 @@
 import sgMail from "@sendgrid/mail";
 
-// import { User } from "@app/lib/models";
-// import { legacyUserToWorkspace } from "@app/pages/api/v1/legacy_user_to_workspace.js";
-
 const { SENDGRID_API_KEY = "" } = process.env;
 sgMail.setApiKey(SENDGRID_API_KEY);
 

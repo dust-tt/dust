@@ -4,8 +4,8 @@ import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 type SupportedModelIds = SupportedModel["modelId"];

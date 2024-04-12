@@ -4,8 +4,8 @@ import { Err } from "@dust-tt/types";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 
 const { LIVE, WORKSPACE } = process.env;
 

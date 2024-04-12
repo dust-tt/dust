@@ -36,21 +36,27 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
-  AgentConfiguration,
   AgentDataSourceConfiguration,
-  AgentDustAppRunConfiguration,
-  AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
   AgentUserRelation,
+} from "@app/lib/models/assistant/agent";
+import {
   Conversation,
-  DataSource,
   Mention,
   Message,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { DataSource } from "@app/lib/models/data_source";
+import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 

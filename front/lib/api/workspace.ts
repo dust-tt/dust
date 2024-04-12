@@ -10,7 +10,8 @@ import type {
 } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { User, Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 

@@ -1,6 +1,6 @@
 import type { SubscriptionType } from "@dust-tt/types";
 
-import type { Plan, Subscription } from "@app/lib/models";
+import type { Plan, Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 
 // These limits are applied to all plans during the trial period.

@@ -1,9 +1,13 @@
 import { isMessageClassification, MESSAGE_CLASSES } from "@dust-tt/types";
 import OpenAI from "openai";
 
-import { UserMessage } from "@app/lib/models";
-import { Conversation, Message, Workspace } from "@app/lib/models";
+import {
+  Conversation,
+  Message,
+  UserMessage,
+} from "@app/lib/models/assistant/conversation";
 import { ConversationClassification } from "@app/lib/models/conversation_classification";
+import { Workspace } from "@app/lib/models/workspace";
 
 function cleanupAssistantMentions(message: string) {
   let shouldContinue = true;

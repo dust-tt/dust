@@ -13,7 +13,7 @@ import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
-import { Workspace, WorkspaceHasDomain } from "@app/lib/models";
+import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 

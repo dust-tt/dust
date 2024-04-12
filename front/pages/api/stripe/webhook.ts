@@ -14,7 +14,8 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
