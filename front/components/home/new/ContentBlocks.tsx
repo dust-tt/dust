@@ -106,7 +106,7 @@ export const HeaderContentBlock = ({
     <div
       className={classNames(
         "flex  flex-col justify-end gap-12",
-        uptitle ? "h-[50vh] min-h-[300px]" : "h-[40vh] min-h-[240px]",
+        uptitle ? "h-[50vh] min-h-[300px]" : "h-[36vh] min-h-[240px]",
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",

@@ -70,7 +70,7 @@ export default function Security() {
           </>
         }
       />
-      <Grid gap="gap-12">
+      <Grid gap="gap-8">
         <div
           className={classNames(
             "col-span-12",
@@ -105,7 +105,7 @@ export default function Security() {
       </Grid>
       <Grid gap="gap-8">
         <H2
-          className="col-span-10 col-start-2"
+          className="col-span-12 lg:col-span-10 lg:col-start-2"
           from="from-sky-200"
           to="to-blue-400"
         >
@@ -114,7 +114,7 @@ export default function Security() {
           and Trust Center
         </H2>
 
-        <div className="col-span-4 flex flex-col gap-2 text-white">
+        <div className="col-span-12 flex flex-col gap-2 text-white md:col-span-4">
           <div className="flex aspect-[16/9] w-full items-center justify-start">
             <img
               src="/static/landing/security/soc2.svg"
@@ -127,7 +127,7 @@ export default function Security() {
             our customers data secure.
           </P>
         </div>
-        <div className="col-span-4 flex flex-col gap-2 text-white">
+        <div className="col-span-12 flex  flex-col gap-2 text-white md:col-span-4">
           <div className="flex aspect-[16/9] w-full items-center justify-start">
             <img
               src="/static/landing/security/gdpr.svg"
@@ -140,7 +140,7 @@ export default function Security() {
             EU’s General Data Protection Regulation (GDPR)
           </P>
         </div>
-        <div className="col-span-4 flex flex-col gap-2 text-white">
+        <div className="col-span-12 flex  flex-col gap-2 text-white md:col-span-4">
           <div className="flex aspect-[16/9] w-full items-center justify-start">
             <img
               src="/static/landing/security/vanta.svg"
