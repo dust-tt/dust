@@ -191,7 +191,9 @@ const BasicEventPropsEditor = ({
       />
       <Button
         onClick={() =>
-          router.push(`/w/${owner.sId}/builder/labs/extract/templates/${event.schema.sId}`)
+          router.push(
+            `/w/${owner.sId}/builder/labs/extract/templates/${event.schema.sId}`
+          )
         }
         label="Back"
         variant="secondary"

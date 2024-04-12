@@ -4,7 +4,8 @@ import {
   CloudArrowLeftRightIcon,
   Input,
   Page,
-  SliderToggle} from "@dust-tt/sparkle";
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
@@ -314,7 +315,12 @@ export default function LabsTranscriptsIndex({
                     transcript to your email. You can chose a different email
                     here.
                   </Page.P>
-                  <Input placeholder="Type email" name="input" value={emailToNotify} onChange={(e) => setEmailToNotify(e)} />
+                  <Input
+                    placeholder="Type email"
+                    name="input"
+                    value={emailToNotify}
+                    onChange={(e) => setEmailToNotify(e)}
+                  />
                   <Button
                     label="Save"
                     size="sm"

@@ -225,7 +225,10 @@ export const subNavigationBuild = ({
       });
     }
 
-    if (owner.flags.includes("labs_extract") || isDevelopmentOrDustWorkspace(owner)) {
+    if (
+      owner.flags.includes("labs_extract") ||
+      isDevelopmentOrDustWorkspace(owner)
+    ) {
       betaMenus.push({
         id: "extract",
         label: "Extract",

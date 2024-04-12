@@ -213,7 +213,9 @@ export function ExtractEventSchemaForm({
               }}
             />
             <Button
-              onClick={() => router.push(`/w/${owner.sId}/builder/labs/extract`)}
+              onClick={() =>
+                router.push(`/w/${owner.sId}/builder/labs/extract`)
+              }
               label="Cancel"
               variant="secondary"
             />
