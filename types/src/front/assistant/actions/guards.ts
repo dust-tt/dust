@@ -2,20 +2,20 @@ import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
-import { AgentActionConfigurationType } from "../../../front/assistant/agent";
-import { AgentActionType } from "../../../front/assistant/conversation";
 import {
   ProcessActionType,
   ProcessConfigurationType,
-} from "../../assistant/actions/process";
+} from "../../../front/assistant/actions/process";
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
-} from "../../assistant/actions/retrieval";
+} from "../../../front/assistant/actions/retrieval";
 import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
-} from "../../assistant/actions/tables_query";
+} from "../../../front/assistant/actions/tables_query";
+import { AgentActionConfigurationType } from "../../../front/assistant/agent";
+import { AgentActionType } from "../../../front/assistant/conversation";
 
 export function isTablesQueryConfiguration(
   arg: AgentActionConfigurationType | null
