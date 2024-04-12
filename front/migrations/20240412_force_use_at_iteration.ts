@@ -62,6 +62,17 @@ const backfillAgentConfigurations = async (execute: boolean) => {
     for (const aId of c) {
       const generation = generationConfigByAgentId[aId];
       const actions = actionsByAgentId[aId] ?? [];
+      if (execute) {
+        const nbFixedIterations = (generation ? 1 : 0) + actions.length;
+        await AgentConfiguration.update(
+          { maxToolsUsePerRun: nbFixedIterations },
+          {
+            where: {
+              id: aId,
+            },
+          }
+        );
+      }
       if (!generation) {
         logger.info(`Skipping agent (no generation configuration) ${aId}`);
         continue;
