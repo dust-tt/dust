@@ -735,7 +735,7 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
   return contentType.includes("image");
 }
 
-export type AgentConfigurationWithoutActionsType = Omit<
+type AgentConfigurationWithoutActionsType = Omit<
   AgentConfigurationType,
   "actions"
 >;
