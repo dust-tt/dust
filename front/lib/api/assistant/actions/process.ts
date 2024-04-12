@@ -35,6 +35,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 
 /**
  * Model rendering of process actions.
@@ -292,6 +293,20 @@ export async function* runRetrieval(
   }
 
   const params = paramsRes.value;
+  const model = configuration.generation?.model;
+  let contextSize = 32000;
+  if (!model) {
+    logger.warn(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+      },
+      "Process is executed, but there is no model. Defaulting contextSize to 32000."
+    );
+  } else {
+    const supportedModel = getSupportedModelConfig(model);
+    topK = supportedModel.recommendedTopK;
+  }
 
   // const model = configuration.generation?.model;
 
