@@ -74,10 +74,7 @@ import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
 import { GithubConnectorState } from "@connectors/lib/models/github";
-import {
-  GoogleDriveFiles,
-  GoogleDriveWebhook,
-} from "@connectors/lib/models/google_drive";
+import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import {
   IntercomConversation,
   IntercomTeam,

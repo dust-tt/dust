@@ -1,7 +1,6 @@
 import { cacheWithRedis } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import { auth } from "googleapis/build/src/apis/abusiveexperiencereport";
 import { OAuth2Client } from "googleapis-common";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";

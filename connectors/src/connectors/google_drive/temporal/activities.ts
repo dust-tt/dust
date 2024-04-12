@@ -8,14 +8,8 @@ import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { literal, Op } from "sequelize";
 
-import {
-  ensureWebhookForDriveId,
-  registerWebhooksForAllDrives,
-} from "@connectors/connectors/google_drive/lib";
-import {
-  GOOGLE_DRIVE_WEBHOOK_LIFE_MS,
-  GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS,
-} from "@connectors/connectors/google_drive/lib/config";
+import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
+import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
