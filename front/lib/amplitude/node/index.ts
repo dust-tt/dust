@@ -10,7 +10,6 @@ import type {
 } from "@dust-tt/types";
 import { rateLimiter, removeNulls } from "@dust-tt/types";
 
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,
@@ -26,6 +25,7 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import logger from "@app/logger/logger";
 

@@ -25,11 +25,11 @@ import { isRetrievalConfiguration } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/action_configurations";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
