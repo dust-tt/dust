@@ -967,9 +967,11 @@ export async function restoreAgentConfiguration(
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
+    prompt, // @todo Daph remove this field
     model,
     temperature,
   }: {
+    prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
   }
@@ -988,7 +990,7 @@ export async function createAgentGenerationConfiguration(
   }
 
   const genConfig = await AgentGenerationConfiguration.create({
-    prompt: "Deprecated", // @todo Daph remove this field
+    prompt: prompt, // @todo Daph remove this field
     providerId: model.providerId,
     modelId: model.modelId,
     temperature: temperature,
