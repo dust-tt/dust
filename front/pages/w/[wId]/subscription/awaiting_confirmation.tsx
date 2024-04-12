@@ -98,10 +98,13 @@ export default function Subscription({
         <BarHeader title={"Dust"} className="ml-10 lg:ml-0" />
       </div>
       <Page>
-        <div className="flex	 items-center	justify-center gap-2">
+        <div className="flex h-full w-full flex-col	items-center justify-center gap-2">
           <div>
-            <Spinner2 />
-          </div>{" "}
+            <Spinner2 size="xl" />
+          </div>
+          <div>
+            <Page.P>Processing</Page.P>
+          </div>
         </div>
       </Page>
     </>
