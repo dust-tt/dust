@@ -28,7 +28,6 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { AgentGenerationConfiguration } from "@app/lib/models/assistant/agent";
 import { safeRedisClient } from "@app/lib/redis";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -253,13 +252,6 @@ export async function createOrUpgradeAgentConfiguration(
   agentConfigurationId?: string
 ): Promise<Result<AgentConfigurationType, Error>> {
   let generationConfig: AgentGenerationConfigurationType | null = null;
-  if (generation) {
-    generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: instructions || "", // @todo Daph remove this field
-      model: generation.model,
-      temperature: generation.temperature,
-    });
-  }
 
   // @todo FIX MULTI ACTIONS
   const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
@@ -280,17 +272,15 @@ export async function createOrUpgradeAgentConfiguration(
     return agentConfigurationRes;
   }
 
-  // TODO(pr) - temporary backfill until genConfig is created after agentConfig
-  if (generationConfig) {
-    await AgentGenerationConfiguration.update(
+  if (generation) {
+    generationConfig = await createAgentGenerationConfiguration(
+      auth,
       {
-        agentConfigurationId: agentConfigurationRes.value.id,
+        prompt: instructions || "", // @todo Daph remove this field
+        model: generation.model,
+        temperature: generation.temperature,
       },
-      {
-        where: {
-          id: generationConfig.id,
-        },
-      }
+      agentConfigurationRes.value
     );
   }
 

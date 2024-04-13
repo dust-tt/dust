@@ -33,10 +33,11 @@ async function updateWorkspaceAssistants(wId: string) {
 
   const agentConfigurations = await AgentConfiguration.findAll({
     where: { workspaceId: w.id },
+    include: [AgentGenerationConfiguration],
   });
 
   for (const c of agentConfigurations) {
-    if (!c.generationConfigurationId) {
+    if (!c.generationConfiguration) {
       console.log(
         "Skipping agent (no generation configuration)",
         c.sId,
@@ -44,16 +45,7 @@ async function updateWorkspaceAssistants(wId: string) {
       );
       continue;
     }
-
-    const g = await AgentGenerationConfiguration.findOne({
-      where: { id: c.generationConfigurationId },
-    });
-
-    if (!g) {
-      throw new Error(
-        `Generation configuration ${c.generationConfigurationId} not found`
-      );
-    }
+    const g = c.generationConfiguration;
 
     if (FROM_MODELS.includes(g.modelId)) {
       if (LIVE) {

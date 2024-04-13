@@ -18,10 +18,11 @@ async function updateWorkspaceAssistants(
 ) {
   const agentConfigurations = await AgentConfiguration.findAll({
     where: { workspaceId },
+    include: [AgentGenerationConfiguration],
   });
 
   for (const ac of agentConfigurations) {
-    if (!ac.generationConfigurationId) {
+    if (!ac.generationConfiguration.id) {
       console.log(
         `Skipping  ${ac.name}(${ac.sId}): (no generation configuration).`
       );
@@ -29,12 +30,12 @@ async function updateWorkspaceAssistants(
     }
 
     const generationConfiguration = await AgentGenerationConfiguration.findOne({
-      where: { id: ac.generationConfigurationId },
+      where: { id: ac.generationConfiguration.id },
     });
 
     if (!generationConfiguration) {
       throw new Error(
-        `Generation configuration ${ac.generationConfigurationId} not found.`
+        `Generation configuration ${ac.generationConfiguration.id} not found.`
       );
     }
 

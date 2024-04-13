@@ -3,12 +3,13 @@ import * as _ from "lodash";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const backfillActionConfigs = async (execute: boolean) => {
   const generationConfigs = await AgentGenerationConfiguration.findAll({
+    // @ts-expect-error nullability will be enforced after migration, cf deploy plan of pr #4712
     where: {
       agentConfigurationId: null,
     },

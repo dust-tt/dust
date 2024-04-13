@@ -345,13 +345,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
-  const generationConfigIds = agentConfigurations
-    .filter((a) => a.generationConfigurationId !== null)
-    .map((a) => a.generationConfigurationId as number);
 
-  function keyById<T extends { id: number }>(list: T[]): Record<number, T> {
-    return _.keyBy(list, "id");
-  }
   function groupByAgentConfigurationId<
     T extends { agentConfigurationId: number }
   >(list: T[]): Record<number, T[]> {
@@ -365,11 +359,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tablesQueryConfigs,
     agentUserRelations,
   ] = await Promise.all([
-    generationConfigIds.length > 0
-      ? AgentGenerationConfiguration.findAll({
-          where: { id: { [Op.in]: generationConfigIds } },
-        }).then(keyById)
-      : Promise.resolve({} as Record<number, AgentGenerationConfiguration>),
+    AgentGenerationConfiguration.findAll({
+      where: { agentConfigurationId: { [Op.in]: configurationIds } },
+    }).then(groupByAgentConfigurationId),
     variant === "full"
       ? AgentRetrievalConfiguration.findAll({
           where: { agentConfigurationId: { [Op.in]: configurationIds } },
@@ -526,9 +518,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     let generation: AgentGenerationConfigurationType | null = null;
 
-    if (agent.generationConfigurationId) {
-      const generationConfig =
-        generationConfigs[agent.generationConfigurationId];
+    if (generationConfigs[agent.id].length > 1) {
+      throw new Error(
+        "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
+      );
+    }
+
+    const generationConfig =
+      generationConfigs[agent.id].length === 1
+        ? generationConfigs[agent.id][0]
+        : null;
+
+    if (generationConfig) {
       const model = {
         providerId: generationConfig.providerId,
         modelId: generationConfig.modelId,
@@ -983,7 +984,8 @@ export async function createAgentGenerationConfiguration(
     prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
-  }
+  },
+  agentConfiguration: AgentConfigurationWithoutActionsType
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1003,6 +1005,7 @@ export async function createAgentGenerationConfiguration(
     providerId: model.providerId,
     modelId: model.modelId,
     temperature: temperature,
+    agentConfigurationId: agentConfiguration.id,
   });
 
   return {
