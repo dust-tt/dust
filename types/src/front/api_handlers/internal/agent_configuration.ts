@@ -62,13 +62,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       t.union([
         t.type({
           type: t.literal("retrieval_configuration"),
-          query: t.union([
-            t.type({
-              template: t.string,
-            }),
-            t.literal("auto"),
-            t.literal("none"),
-          ]),
+          query: t.union([t.literal("auto"), t.literal("none")]),
           relativeTimeFrame: t.union([
             t.literal("auto"),
             t.literal("none"),
