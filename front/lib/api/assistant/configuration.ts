@@ -518,16 +518,19 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
     let generation: AgentGenerationConfigurationType | null = null;
 
-    if (generationConfigs[agent.id].length > 1) {
-      throw new Error(
-        "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
-      );
-    }
-
-    const generationConfig =
-      generationConfigs[agent.id].length === 1
-        ? generationConfigs[agent.id][0]
-        : null;
+    const generationConfig = (() => {
+      switch (generationConfigs[agent.id]?.length) {
+        case 0:
+        case undefined:
+          return null;
+        case 1:
+          return generationConfigs[agent.id][0];
+        default:
+          throw new Error(
+            "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
+          );
+      }
+    })();
 
     if (generationConfig) {
       const model = {
