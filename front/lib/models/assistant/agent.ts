@@ -191,6 +191,14 @@ AgentConfiguration.init(
   }
 );
 
+// AgentGenerationConfiguration <> AgentConfiguration
+AgentConfiguration.hasMany(AgentGenerationConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+
 //  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
   foreignKey: { name: "workspaceId", allowNull: false },
@@ -198,15 +206,6 @@ Workspace.hasMany(AgentConfiguration, {
 });
 AgentConfiguration.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
-});
-
-AgentConfiguration.hasMany(AgentGenerationConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
 });
 
 // Agent config <> Author
