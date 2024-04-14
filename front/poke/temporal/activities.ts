@@ -240,8 +240,8 @@ export async function deleteAgentsActivity({
     where: {
       workspaceId: workspace.id,
     },
-    include: [AgentGenerationConfiguration],
   });
+
   await frontSequelize.transaction(async (t) => {
     await GlobalAgentSettings.destroy({
       where: {
@@ -250,14 +250,12 @@ export async function deleteAgentsActivity({
       transaction: t,
     });
     for (const agent of agents) {
-      if (agent.generationConfiguration) {
-        await AgentGenerationConfiguration.destroy({
-          where: {
-            id: agent.generationConfiguration.id,
-          },
-          transaction: t,
-        });
-      }
+      await AgentGenerationConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
 
       const retrievalConfigurations = await AgentRetrievalConfiguration.findAll(
         {

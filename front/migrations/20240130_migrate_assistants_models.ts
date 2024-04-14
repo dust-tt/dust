@@ -33,11 +33,15 @@ async function updateWorkspaceAssistants(wId: string) {
 
   const agentConfigurations = await AgentConfiguration.findAll({
     where: { workspaceId: w.id },
-    include: [AgentGenerationConfiguration],
   });
 
   for (const c of agentConfigurations) {
-    if (!c.generationConfiguration) {
+    const genConfigs = await AgentGenerationConfiguration.findAll({
+      where: {
+        agentConfigurationId: c.id,
+      },
+    });
+    if (genConfigs.length === 0) {
       console.log(
         "Skipping agent (no generation configuration)",
         c.sId,
@@ -45,7 +49,14 @@ async function updateWorkspaceAssistants(wId: string) {
       );
       continue;
     }
-    const g = c.generationConfiguration;
+
+    if (genConfigs.length > 1) {
+      throw new Error(
+        "Unexpected: legacy migration, agents could not have multiple generation configurations at the time"
+      );
+    }
+
+    const g = genConfigs[0];
 
     if (FROM_MODELS.includes(g.modelId)) {
       if (LIVE) {

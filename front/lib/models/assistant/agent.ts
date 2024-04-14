@@ -109,8 +109,8 @@ export class AgentConfiguration extends Model<
   > | null;
 
   declare author: NonAttribute<User>;
-  declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
 }
+
 AgentConfiguration.init(
   {
     id: {

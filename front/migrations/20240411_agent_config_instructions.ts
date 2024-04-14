@@ -9,7 +9,25 @@ const backfillAgentConfiguration = async (
   agent: AgentConfiguration,
   execute: boolean
 ): Promise<void> => {
-  const prompt = agent.generationConfiguration?.prompt;
+  const genConfigs = await AgentGenerationConfiguration.findAll({
+    where: {
+      id: agent.id,
+    },
+    attributes: ["prompt"],
+  });
+
+  if (genConfigs.length > 1) {
+    throw new Error(
+      "Unexpected: legacy migration in which there could not be multiple generation configurations per agent"
+    );
+  }
+
+  if (genConfigs.length === 0) {
+    logger.info(`Skipping agent (no generation configuration) ${agent.id}`);
+    return;
+  }
+
+  const prompt = genConfigs[0].prompt;
   if (!prompt) {
     logger.info(`Skipping agent (no generation configuration) ${agent.id}`);
     return;
@@ -28,13 +46,6 @@ const backfillAgentConfigurations = async (execute: boolean) => {
     where: {
       instructions: null,
     },
-    include: [
-      {
-        model: AgentGenerationConfiguration,
-        as: "generationConfiguration",
-        attributes: ["prompt"],
-      },
-    ],
   });
 
   // Split agents into chunks of 16
