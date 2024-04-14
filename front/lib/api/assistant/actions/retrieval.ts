@@ -225,13 +225,6 @@ export async function generateRetrievalParams(
     relativeTimeFrame = actionConfig.relativeTimeFrame;
   }
 
-  if (actionConfig.query !== "none" && actionConfig.query !== "auto") {
-    query = actionConfig.query.template.replace(
-      "_USER_MESSAGE_",
-      userMessage.content
-    );
-  }
-
   const spec = await retrievalActionSpecification(actionConfig);
 
   if (spec.inputs.length > 0) {

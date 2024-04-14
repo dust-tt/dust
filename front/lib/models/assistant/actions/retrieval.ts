@@ -24,8 +24,7 @@ export class AgentRetrievalConfiguration extends Model<
 
   declare sId: string;
 
-  declare query: "auto" | "none" | "templated";
-  declare queryTemplate: string | null;
+  declare query: "auto" | "none";
   declare relativeTimeFrame: "auto" | "none" | "custom";
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
@@ -59,10 +58,6 @@ AgentRetrievalConfiguration.init(
       allowNull: false,
       defaultValue: "auto",
     },
-    queryTemplate: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
     relativeTimeFrame: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -91,15 +86,6 @@ AgentRetrievalConfiguration.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
-        // Validation for templated Query
-        if (retrieval.query == "templated") {
-          if (!retrieval.queryTemplate) {
-            throw new Error("Must set a template for templated query");
-          }
-        } else if (retrieval.queryTemplate) {
-          throw new Error("Can't set a template without templated query");
-        }
-
         // Validation for Timeframe
         if (retrieval.relativeTimeFrame == "custom") {
           if (

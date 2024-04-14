@@ -9,7 +9,7 @@ export type RetrievalParamsEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  dataSources: "all" | DataSourceConfiguration[];
+  dataSources: DataSourceConfiguration[];
   action: RetrievalActionType;
 };
 

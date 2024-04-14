@@ -19,7 +19,6 @@ import {
   assertNever,
   Err,
   isSupportedModel,
-  isTemplatedQuery,
   isTimeFrame,
   Ok,
 } from "@dust-tt/types";
@@ -474,7 +473,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: retrievalConfig.id,
           sId: retrievalConfig.sId,
           type: "retrieval_configuration",
-          query: renderRetrievalQueryType(retrievalConfig),
+          query: retrievalConfig.query,
           relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
           topK,
           dataSources: dataSourcesConfig.map((dsConfig) => {
@@ -1050,10 +1049,7 @@ export async function createAgentActionConfiguration(
       const retrievalConfig = await AgentRetrievalConfiguration.create(
         {
           sId: generateModelSId(),
-          query: isTemplatedQuery(action.query) ? "templated" : action.query,
-          queryTemplate: isTemplatedQuery(action.query)
-            ? action.query.template
-            : null,
+          query: action.query,
           relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
             ? "custom"
             : action.relativeTimeFrame,
@@ -1150,18 +1146,6 @@ function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
     timeframe = "none";
   }
   return timeframe;
-}
-
-function renderRetrievalQueryType(action: AgentRetrievalConfiguration) {
-  let query: RetrievalQuery = "auto";
-  if (action.query === "templated" && action.queryTemplate) {
-    query = {
-      template: action.queryTemplate,
-    };
-  } else if (action.query === "none") {
-    query = "none";
-  }
-  return query;
 }
 
 /**
