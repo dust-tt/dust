@@ -1,3 +1,7 @@
+throw new Error(
+  "Legacy migration script, does not make sense after deletion of generationConfigurationId field, kept for history"
+);
+/*
 import * as _ from "lodash";
 
 import {
@@ -50,3 +54,4 @@ const backfillGenerationConfigs = async (execute: boolean) => {
 makeScript({}, async ({ execute }) => {
   await backfillGenerationConfigs(execute);
 });
+*/
