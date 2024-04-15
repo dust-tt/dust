@@ -77,6 +77,12 @@ export default function InputBlock({
               />
             </>
           ) : null}
+
+          {block.config && block.config.dataset ? (
+            <div className="flex items-center">
+              <div className="ml-1 text-gray-400">{block.config.dataset}</div>
+            </div>
+          ) : null}
         </div>
       </div>
     </Block>
