@@ -3,6 +3,7 @@ import React from "react";
 
 import { ImgBlock } from "@app/components/home/new/ContentBlocks";
 import {
+  A,
   Grid,
   H2,
   P,
@@ -105,7 +106,15 @@ export function FutureSection() {
               <>
                 Developer- and tinkerer-friendly&nbsp;platform designed
                 to&nbsp;build custom actions and&nbsp;application orchestration
-                to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.
+                to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.{" "}
+                <A
+                  href="/solutions/dust-platform"
+                  target="_blank"
+                  variant="primary"
+                >
+                  More about Dust's&nbsp;Platform
+                </A>
+                .
               </>
             }
           >

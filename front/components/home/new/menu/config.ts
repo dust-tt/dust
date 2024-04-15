@@ -42,15 +42,15 @@ export const menuConfig: DocsConfig = {
       label: "Build with Dust",
       items: [
         {
+          title: "Dust Platform",
+          href: "/solutions/dust-platform",
+        },
+        {
           title: "Dust for engineers",
           href: "/developers",
         },
         {
-          title: "Building Dust apps",
-          href: "/developers/dust-apps",
-        },
-        {
-          title: "Documentation",
+          title: "Platform Documentation",
           href: "https://docs.dust.tt",
           target: "_blank",
         },
