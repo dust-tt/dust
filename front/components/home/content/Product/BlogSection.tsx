@@ -34,7 +34,7 @@ export function BlogSection() {
         </P>
       </div>
       <div className="col-span-12 mt-12 flex flex-col items-center gap-4">
-        <Carousel className="col-span-12">
+        <Carousel className="w-full">
           <CarouselPrevious label="previous" />
           <CarouselNext label="next" />
           <CarouselContent>
