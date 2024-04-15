@@ -11,7 +11,7 @@ import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
 import { launchProcessTranscriptWorkflow } from "@app/lib/labs/temporal/client";
-import { getGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
+import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
@@ -34,7 +34,7 @@ export async function retrieveNewTranscriptsActivity(
   const logger = mainLogger.child({ userId });
 
   if (providerId == "google_drive") {
-    const auth = await getGoogleAuth(userId);
+    const auth = await getGoogleAuthFromUserTranscriptConfiguration(userId);
 
     // Only pull transcripts from last day
     // We could do from the last 15 minutes
@@ -127,7 +127,7 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const googleAuth = await getGoogleAuth(userId);
+  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(userId);
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
   const metadataRes = await drive.files.get({

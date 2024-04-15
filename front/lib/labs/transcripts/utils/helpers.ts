@@ -29,7 +29,7 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuth(userId: number) {
+export async function getGoogleAuthFromUserTranscriptConfiguration(userId: number) {
   const providerId = "google_drive";
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
