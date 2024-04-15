@@ -1,6 +1,7 @@
 import type {
   AgentMessageType,
   ConversationType,
+  ModelId,
   UserMessageType,
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -27,7 +28,7 @@ const {
 } = process.env;
 
 export async function retrieveNewTranscriptsActivity(
-  userId: number,
+  userId: ModelId,
   providerId: LabsTranscriptsProviderType
 ) {
   const logger = mainLogger.child({ userId });

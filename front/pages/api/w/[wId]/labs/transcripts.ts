@@ -119,9 +119,7 @@ async function handler(
             void launchRetrieveNewTranscriptsWorkflow({
               userId: owner.id,
               providerId: patchProvider,
-            }).then((result) => {
-              console.log(result);
-            });
+            })
           } else {
             // Stop the workflow
             console.log("STOP THE WORKFLOW HERE");

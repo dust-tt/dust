@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
@@ -18,7 +19,7 @@ const {
 });
 
 export async function retrieveNewTranscriptsWorkflow(
-  userId: number,
+  userId: ModelId,
   providerId: LabsTranscriptsProviderType
 ) {
   // 15 minutes
