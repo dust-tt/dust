@@ -74,12 +74,13 @@ export async function retrieveNewTranscriptsActivity(
 
       await launchProcessTranscriptWorkflow({ userId, fileId });
     });
+  } else {
+    // throw error
+    logger.error(
+      "[retrieveNewTranscripts] Provider not supported. Stopping.",
+      { providerId }
+    );
   }
-
-  logger.info(
-    {},
-    "[retrieveNewTranscripts] Successful run retrieveNewTranscriptsActivity"
-  );
 }
 
 export async function processGoogleDriveTranscriptActivity(
