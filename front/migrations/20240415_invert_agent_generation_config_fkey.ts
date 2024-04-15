@@ -7,7 +7,7 @@ import {
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const backfillActionConfigs = async (execute: boolean) => {
+const backfillGenerationConfigs = async (execute: boolean) => {
   const generationConfigs = await AgentGenerationConfiguration.findAll({
     where: {
       agentConfigurationId: null,
@@ -47,5 +47,5 @@ const backfillActionConfigs = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
-  await backfillActionConfigs(execute);
+  await backfillGenerationConfigs(execute);
 });
