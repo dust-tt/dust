@@ -125,6 +125,7 @@ WebCrawlerConfigurationHeader.init(
       {
         unique: true,
         fields: ["webcrawlerConfigurationId", "key"],
+        name: "wch_webcrawlerConfigurationId_key",
       },
     ],
   }
