@@ -4,25 +4,19 @@ import {
   Page,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import { getUserMetadata } from "@app/lib/api/user";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
   owner: WorkspaceType;
-  isAdmin: boolean;
-  defaultExpertise: string;
-  defaultAdminInterest: string;
   conversationId: string | null;
   gaTrackingId: string;
-  baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
@@ -35,11 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       },
     };
   }
-  const isAdmin = auth.isAdmin();
-  const expertise = await getUserMetadata(user, "expertise");
-  const adminInterest = isAdmin
-    ? await getUserMetadata(user, "interest")
-    : null;
 
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.
@@ -48,13 +37,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user,
       owner,
-      isAdmin,
-      defaultExpertise: expertise?.value || "",
-      defaultAdminInterest: adminInterest?.value || "",
       conversationId,
-      baseUrl: config.getAppUrl(),
       gaTrackingId: config.getGaTrackingId(),
     },
   };
