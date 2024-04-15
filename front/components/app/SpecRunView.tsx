@@ -16,7 +16,7 @@ import Code from "./blocks/Code";
 import Curl from "./blocks/Curl";
 import Data from "./blocks/Data";
 import DataSource from "./blocks/DataSource";
-import Input from "./blocks/Input";
+import InputBlock from "./blocks/InputBlock";
 import LLM from "./blocks/LLM";
 import { Map, Reduce } from "./blocks/MapReduce";
 import Search from "./blocks/Search";
@@ -81,7 +81,7 @@ export default function SpecRunView({
           switch (block.type) {
             case "input":
               return (
-                <Input
+                <InputBlock
                   key={idx}
                   block={block}
                   owner={owner}

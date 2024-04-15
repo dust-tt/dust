@@ -11,7 +11,7 @@ import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
 
-export default function Input({
+export default function InputBlock({
   owner,
   app,
   spec,
