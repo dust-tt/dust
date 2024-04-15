@@ -21,33 +21,31 @@ async function updateWorkspaceAssistants(
   });
 
   for (const ac of agentConfigurations) {
-    if (!ac.generationConfigurationId) {
+    const generationConfigurations = await AgentGenerationConfiguration.findAll(
+      {
+        where: { agentConfigurationId: ac.id },
+      }
+    );
+
+    if (generationConfigurations.length === 0) {
       console.log(
         `Skipping  ${ac.name}(${ac.sId}): (no generation configuration).`
       );
       continue;
     }
 
-    const generationConfiguration = await AgentGenerationConfiguration.findOne({
-      where: { id: ac.generationConfigurationId },
-    });
+    for (const generationConfiguration of generationConfigurations) {
+      if (generationConfiguration.modelId === fromModel) {
+        if (execute) {
+          await generationConfiguration.update({ modelId: toModel });
+        }
 
-    if (!generationConfiguration) {
-      throw new Error(
-        `Generation configuration ${ac.generationConfigurationId} not found.`
-      );
-    }
-
-    if (generationConfiguration.modelId === fromModel) {
-      if (execute) {
-        await generationConfiguration.update({ modelId: toModel });
+        console.log(
+          `${execute ? "" : "[DRYRUN]"} Updated ${ac.name}(${ac.sId}) from ${
+            generationConfiguration.modelId
+          } to ${toModel}.`
+        );
       }
-
-      console.log(
-        `${execute ? "" : "[DRYRUN]"} Updated ${ac.name}(${ac.sId}) from ${
-          generationConfiguration.modelId
-        } to ${toModel}.`
-      );
     }
   }
 }
