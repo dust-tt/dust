@@ -28,7 +28,7 @@ export class AgentGenerationConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
 
   declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
@@ -193,10 +193,10 @@ AgentConfiguration.init(
 
 // AgentGenerationConfiguration <> AgentConfiguration
 AgentConfiguration.hasMany(AgentGenerationConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
 });
 AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
 });
 
 //  Agent config <> Workspace
