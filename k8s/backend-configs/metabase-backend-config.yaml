@@ -7,3 +7,4 @@ spec:
     enabled: true
     oauthclientCredentials:
       secretName: iap-creds
+  timeoutSec: 600
