@@ -152,9 +152,7 @@ async function handler(
       void launchRetrieveNewTranscriptsWorkflow({
         userId: owner.id,
         providerId: provider,
-      }).then((result) => {
-        console.log(result);
-      });
+      })
 
       return res
         .status(200)
