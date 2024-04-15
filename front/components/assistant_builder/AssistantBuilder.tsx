@@ -18,13 +18,7 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import {
-  assertNever,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-  isBuilder,
-  removeNulls,
-} from "@dust-tt/types";
+import { assertNever, isBuilder, removeNulls } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -47,6 +41,7 @@ import type {
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
+import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
@@ -55,7 +50,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
@@ -82,29 +76,6 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   template: FetchAssistantTemplateResponse | null;
-};
-
-const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
-  actionMode: "GENERIC",
-  dataSourceConfigurations: {},
-  timeFrame: {
-    value: 1,
-    unit: "month",
-  },
-  dustAppConfiguration: null,
-  tablesQueryConfiguration: {},
-  handle: null,
-  scope: "private",
-  description: null,
-  instructions: null,
-  avatarUrl: null,
-  generationSettings: {
-    modelSettings: {
-      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-    },
-    temperature: 0.7,
-  },
 };
 
 const useNavigationLock = (
@@ -215,19 +186,12 @@ export default function AssistantBuilder({
           scope: initialBuilderState.scope,
           instructions: initialBuilderState.instructions,
           avatarUrl: initialBuilderState.avatarUrl,
-          generationSettings: initialBuilderState.generationSettings ?? {
-            ...DEFAULT_ASSISTANT_STATE.generationSettings,
-          },
+          modelConfiguration: initialBuilderState.modelConfiguration,
+          generationConfiguration: initialBuilderState.generationConfiguration,
         }
       : {
           ...DEFAULT_ASSISTANT_STATE,
           scope: defaultScope,
-          generationSettings: {
-            ...DEFAULT_ASSISTANT_STATE.generationSettings,
-            modelSettings: !isUpgraded(plan)
-              ? GPT_3_5_TURBO_MODEL_CONFIG
-              : GPT_4_TURBO_MODEL_CONFIG,
-          },
         }
   );
 
@@ -714,10 +678,8 @@ export async function submitAssistantBuilderForm({
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         actions: removeNulls([actionParam]),
-        generation: {
-          model: builderState.generationSettings.modelSettings,
-          temperature: builderState.generationSettings.temperature,
-        },
+        model: builderState.modelConfiguration,
+        generation: builderState.generationConfiguration,
       },
     };
 

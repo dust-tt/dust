@@ -535,7 +535,7 @@ export async function* runRetrieval(
 
   const params = paramsRes.value;
 
-  const model = configuration.generation?.model;
+  const model = configuration.model;
 
   let topK = 16;
 

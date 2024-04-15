@@ -64,7 +64,7 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">model:</div>
-                      {JSON.stringify(a.generation?.model, null, 2)}
+                      {JSON.stringify(a.model, null, 2)}
                     </div>
                     {a.actions.map((action, index) =>
                       isRetrievalConfiguration(action) ? (

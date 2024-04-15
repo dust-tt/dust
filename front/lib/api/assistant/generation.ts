@@ -325,9 +325,9 @@ export async function* runGeneration(
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
-  const c = configuration.generation;
+  const model = configuration.model;
 
-  if (!c) {
+  if (!model) {
     yield {
       type: "generation_error",
       created: Date.now(),
@@ -341,8 +341,6 @@ export async function* runGeneration(
     };
     return;
   }
-
-  const { model } = c;
 
   if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
@@ -358,7 +356,7 @@ export async function* runGeneration(
     return;
   }
 
-  const contextSize = getSupportedModelConfig(c.model).contextSize;
+  const contextSize = getSupportedModelConfig(model).contextSize;
 
   const MIN_GENERATION_TOKENS = 2048;
 
@@ -397,7 +395,7 @@ export async function* runGeneration(
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = c.temperature;
+  config.MODEL.temperature = model.temperature;
 
   // This is the console.log you want to uncomment to generate inputs for the generator app.
   // console.log(
@@ -412,7 +410,6 @@ export async function* runGeneration(
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
       model: model,
-      temperature: c.temperature,
     },
     "[ASSISTANT_TRACE] Generation exection"
   );

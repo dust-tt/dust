@@ -114,12 +114,12 @@ export function InstructionScreen({
         <div className="self-end">
           <AdvancedSettings
             plan={plan}
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
+            modelConfiguration={builderState.modelConfiguration}
+            setModelConfiguration={(modelConfiguration) => {
               setEdited(true);
               setBuilderState((state) => ({
                 ...state,
-                generationSettings,
+                modelConfiguration,
               }));
             }}
           />
@@ -148,18 +148,16 @@ export function InstructionScreen({
 
 function AdvancedSettings({
   plan,
-  generationSettings,
-  setGenerationSettings,
+  modelConfiguration,
+  setModelConfiguration,
 }: {
   plan: PlanType;
-  generationSettings: AssistantBuilderState["generationSettings"];
-  setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
+  modelConfiguration: AssistantBuilderState["modelConfiguration"];
+  setModelConfiguration: (
+    newModelConfig: AssistantBuilderState["modelConfiguration"]
   ) => void;
 }) {
-  const supportedModelConfig = getSupportedModelConfig(
-    generationSettings.modelSettings
-  );
+  const supportedModelConfig = getSupportedModelConfig(modelConfiguration);
   if (!supportedModelConfig) {
     // unreachable
     alert("Unsupported model");
@@ -186,8 +184,7 @@ function AdvancedSettings({
                   type="select"
                   labelVisible={true}
                   label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
+                    getSupportedModelConfig(modelConfiguration).displayName
                   }
                   variant="secondary"
                   hasMagnifying={false}
@@ -205,13 +202,13 @@ function AdvancedSettings({
                       description={modelConfig.shortDescription}
                       label={modelConfig.displayName}
                       onClick={() => {
-                        setGenerationSettings({
-                          ...generationSettings,
-                          modelSettings: {
+                        setModelConfiguration({
+                          ...modelConfiguration,
+                          ...({
                             modelId: modelConfig.modelId,
                             providerId: modelConfig.providerId,
                             // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel,
+                          } as SupportedModel),
                         });
                       }}
                     />
@@ -231,7 +228,7 @@ function AdvancedSettings({
                   labelVisible={true}
                   label={
                     getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
+                      modelConfiguration.temperature
                     ).label
                   }
                   variant="secondary"
@@ -245,8 +242,8 @@ function AdvancedSettings({
                     key={label}
                     label={label}
                     onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
+                      setModelConfiguration({
+                        ...modelConfiguration,
                         temperature: value,
                       });
                     }}

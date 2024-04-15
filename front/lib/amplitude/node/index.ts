@@ -139,9 +139,7 @@ export function trackUserMessage({
     mentionsCount: userMessage.mentions.length,
     conversationId,
     generationModels: removeNulls(
-      agentMessages.map(
-        (am) => am.configuration.generation?.model.modelId || null
-      )
+      agentMessages.map((am) => am.configuration.model.modelId || null)
     ),
     // We are mostly interested in tracking the usage of non global agents,
     // so if there is at least one non global agent in the list, that's enough to set
@@ -245,7 +243,7 @@ export function trackAssistantCreated(
     assistantScope: assistant.scope,
     assistantActionType: action?.type || "",
     assistantVersion: assistant.version,
-    assistantModel: assistant.generation?.model.modelId,
+    assistantModel: assistant.model.modelId,
   });
   amplitude.track(
     `user-${userId}`,

@@ -240,12 +240,8 @@ export default function CreateAssistant({
               description: agentConfiguration.description,
               instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
               avatarUrl: null,
-              generationSettings: agentConfiguration.generation
-                ? {
-                    modelSettings: agentConfiguration.generation.model,
-                    temperature: agentConfiguration.generation.temperature,
-                  }
-                : null,
+              modelConfiguration: agentConfiguration.model,
+              generationConfiguration: agentConfiguration.generation,
             }
           : null
       }

@@ -223,7 +223,8 @@ export function usePreviewAssistant({
         tablesQueryConfiguration: builderState.tablesQueryConfiguration,
         scope: "private",
         dataSourceConfigurations: builderState.dataSourceConfigurations,
-        generationSettings: builderState.generationSettings,
+        modelConfiguration: builderState.modelConfiguration,
+        generationConfiguration: builderState.generationConfiguration,
       },
 
       agentConfigurationId: null,
@@ -251,7 +252,8 @@ export function usePreviewAssistant({
     builderState.dustAppConfiguration,
     builderState.tablesQueryConfiguration,
     builderState.dataSourceConfigurations,
-    builderState.generationSettings,
+    builderState.modelConfiguration,
+    builderState.generationConfiguration,
   ]);
 
   useEffect(() => {

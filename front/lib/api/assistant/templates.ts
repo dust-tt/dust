@@ -31,14 +31,17 @@ export async function generateMockAgentConfigurationFromTemplate(
     actions: removeNulls([getAction(template.presetAction)]),
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
-    generation: {
-      model: {
+    model: {
+      ...({
         providerId: template.presetProviderId,
         modelId: template.presetModelId,
-      } as SupportedModel,
+      } as SupportedModel),
       temperature:
         ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
       forceUseAtIteration: 1,
+    },
+    generation: {
+      forceUseAtIteration: 0,
     },
     name: template.handle,
     scope: flow === "personal_assistants" ? "private" : "workspace",

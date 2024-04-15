@@ -52,10 +52,11 @@ export type AgentActionSpecification = {
  * Agent Message configuration
  */
 
-export type AgentGenerationConfigurationType = {
-  id: ModelId;
-  model: SupportedModel;
+export type AgentModelConfigurationType = SupportedModel & {
   temperature: number;
+};
+
+export type AgentGenerationConfigurationType = {
   forceUseAtIteration: number | null;
 };
 
@@ -156,6 +157,7 @@ export type LightAgentConfigurationType = {
   versionAuthorId: ModelId | null;
 
   instructions: string | null;
+  model: AgentModelConfigurationType;
 
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
@@ -185,12 +187,8 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
 
 export interface TemplateAgentConfigurationType {
   // If undefined, no text generation.
-  generation: {
-    model: SupportedModel;
-    temperature: number;
-    forceUseAtIteration: number | null;
-  } | null;
-
+  generation: AgentGenerationConfigurationType | null;
+  model: AgentModelConfigurationType;
   name: string;
   scope: AgentConfigurationScope;
   description: string;

@@ -4,6 +4,7 @@ import type {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentMention,
+  AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
   AgentUserListStatus,
@@ -520,8 +521,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
     }
 
-    let generation: AgentGenerationConfigurationType | null = null;
-
     const generationConfig = (() => {
       switch (generationConfigs[agent.id]?.length) {
         case 0:
@@ -536,20 +535,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
     })();
 
-    if (generationConfig) {
-      const model = {
-        providerId: generationConfig.providerId,
-        modelId: generationConfig.modelId,
-      };
-      if (!isSupportedModel(model)) {
-        throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
-      }
-      generation = {
-        id: generationConfig.id,
-        temperature: generationConfig.temperature,
-        model,
-        forceUseAtIteration: generationConfig.forceUseAtIteration,
-      };
+    // Checking the model data are valid
+    const modelConfig = {
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+    };
+    if (!isSupportedModel(modelConfig)) {
+      throw new Error(
+        `Unknown model ${modelConfig.providerId}/${modelConfig.modelId}`
+      );
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -565,7 +559,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
       instructions: agent.instructions,
       status: agent.status,
       actions,
-      generation,
+      model: {
+        ...modelConfig,
+        temperature: agent.temperature,
+      },
+      generation: generationConfig
+        ? {
+            forceUseAtIteration: generationConfig.forceUseAtIteration,
+          }
+        : null,
       versionAuthorId: agent.authorId,
     };
 
@@ -765,6 +767,7 @@ export async function createAgentConfiguration(
     pictureUrl,
     status,
     scope,
+    model,
     generation,
     agentConfigurationId,
   }: {
@@ -775,6 +778,7 @@ export async function createAgentConfiguration(
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
+    model: AgentModelConfigurationType;
     generation: AgentGenerationConfigurationType | null;
     agentConfigurationId?: string;
   }
@@ -873,10 +877,13 @@ export async function createAgentConfiguration(
             name,
             description,
             instructions,
+            modelId: model.modelId,
+            providerId: model.providerId,
+            temperature: model.temperature,
             maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
-            generationConfigurationId: generation?.id || null,
+            generationConfigurationId: null,
             authorId: user.id,
           },
           {
@@ -885,6 +892,14 @@ export async function createAgentConfiguration(
         );
       }
     );
+
+    const agentModel = {
+      ...({
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+      } as SupportedModel),
+      temperature: agent.temperature,
+    };
 
     /*
      * Final rendering.
@@ -902,7 +917,8 @@ export async function createAgentConfiguration(
       instructions: agent.instructions,
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      generation: generation,
+      model: agentModel,
+      generation,
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({
@@ -985,15 +1001,13 @@ export async function restoreAgentConfiguration(
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
-    prompt, // @todo Daph remove this field
+    prompt,
     model,
-    temperature,
     agentConfiguration,
     forceUseAtIteration,
   }: {
     prompt: string; // @todo Daph remove this field
-    model: SupportedModel;
-    temperature: number;
+    model: AgentModelConfigurationType;
     agentConfiguration: AgentConfigurationWithoutActionsType;
     forceUseAtIteration: number | null;
   }
@@ -1007,23 +1021,20 @@ export async function createAgentGenerationConfiguration(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  if (temperature < 0) {
+  if (model.temperature < 0) {
     throw new Error("Temperature must be positive.");
   }
 
-  const genConfig = await AgentGenerationConfiguration.create({
+  await AgentGenerationConfiguration.create({
     prompt: prompt, // @todo Daph remove this field
     providerId: model.providerId,
     modelId: model.modelId,
-    temperature: temperature,
+    temperature: model.temperature,
     agentConfigurationId: agentConfiguration.id,
     forceUseAtIteration: forceUseAtIteration,
   });
 
   return {
-    id: genConfig.id,
-    temperature: genConfig.temperature,
-    model,
     forceUseAtIteration,
   };
 }

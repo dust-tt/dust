@@ -8,7 +8,9 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  Err,
   GetAgentConfigurationsQuerySchema,
+  isSupportedModel,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
@@ -240,6 +242,7 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant: {
     actions,
+    model,
     generation,
     name,
     description,
@@ -294,6 +297,7 @@ export async function createOrUpgradeAgentConfiguration({
     pictureUrl,
     status,
     scope,
+    model,
     generation: generationConfig,
     agentConfigurationId,
   });
@@ -302,11 +306,14 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
+  if (!isSupportedModel(model)) {
+    return new Err(new Error("Unsupported model"));
+  }
+
   if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
       prompt: instructions || "", // @todo Daph remove this field
-      model: generation.model,
-      temperature: generation.temperature,
+      model,
       agentConfiguration: agentConfigurationRes.value,
       forceUseAtIteration:
         generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,

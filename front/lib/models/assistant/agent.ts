@@ -13,6 +13,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -30,12 +31,11 @@ export class AgentGenerationConfiguration extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
 
-  declare prompt: string; // @daph to deprecate for multi-actions
-  declare providerId: string;
-  declare modelId: string;
-  declare temperature: number;
-
   declare forceUseAtIteration: number | null;
+  declare prompt: string; // @todo MULTI_ACTIONS remove @daph
+  declare providerId: string; // @todo MULTI_ACTIONS remove @daph
+  declare modelId: string; // @todo MULTI_ACTIONS remove @daph
+  declare temperature: number; // @todo MULTI_ACTIONS remove @daph
 }
 AgentGenerationConfiguration.init(
   {
@@ -101,9 +101,12 @@ export class AgentConfiguration extends Model<
   declare name: string;
 
   declare description: string;
-  declare instructions: string | null;
-
   declare pictureUrl: string;
+
+  declare instructions: string | null;
+  declare providerId: string;
+  declare modelId: string;
+  declare temperature: number;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<User["id"]>;
@@ -161,18 +164,33 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    pictureUrl: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
     instructions: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.providerId,
+    },
+    modelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.modelId,
+    },
+    temperature: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.temperature,
     },
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1,
-    },
-    pictureUrl: {
-      type: DataTypes.TEXT,
-      allowNull: false,
     },
   },
   {

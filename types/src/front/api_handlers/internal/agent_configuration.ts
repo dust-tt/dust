@@ -119,23 +119,23 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     ),
     generation: t.union([
       t.null,
-      t.intersection([
-        t.type({
-          // enforce that the model is a supported model
-          // the modelId and providerId are checked together, so
-          // (gpt-4, anthropic) won't pass
-          model: new t.Type<SupportedModel>(
-            "SupportedModel",
-            isSupportedModel,
-            (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-            t.identity
-          ),
-          temperature: t.number,
-        }),
-        t.partial({
-          forceUseAtIteration: t.union([t.number, t.null]),
-        }),
-      ]),
+      t.partial({
+        forceUseAtIteration: t.union([t.number, t.null]),
+      }),
+    ]),
+    model: t.intersection([
+      // enforce that the model is a supported model
+      // the modelId and providerId are checked together, so
+      // (gpt-4, anthropic) won't pass
+      new t.Type<SupportedModel>(
+        "SupportedModel",
+        isSupportedModel,
+        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+        t.identity
+      ),
+      t.type({
+        temperature: t.number,
+      }),
     ]),
   }),
 });
