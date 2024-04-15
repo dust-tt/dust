@@ -60,7 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
-export default function Congratulation({
+export default function Congratulations({
   owner,
   conversationId,
   gaTrackingId,
@@ -69,9 +69,9 @@ export default function Congratulation({
   const referentRef = useRef<HTMLDivElement>(null);
   const redirectToApp = async () => {
     if (conversationId) {
-      await router.push(`/w/${owner.sId}/assistant/${conversationId}`);
+      await router.replace(`/w/${owner.sId}/assistant/${conversationId}`);
     } else {
-      await router.push(`/w/${owner.sId}/assistant/new`);
+      await router.replace(`/w/${owner.sId}/assistant/new`);
     }
   };
   return (
