@@ -114,15 +114,11 @@ async function handler(
           provider: patchProvider,
           userId: owner.id,
         }).then(() => {
-          // Start or stop the temporal workflow
           if (isActive) {
             void launchRetrieveNewTranscriptsWorkflow({
               userId: owner.id,
               providerId: patchProvider,
             })
-          } else {
-            // Stop the workflow
-            console.log("STOP THE WORKFLOW HERE");
           }
         });
       }
