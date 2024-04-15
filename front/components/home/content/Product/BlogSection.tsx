@@ -8,12 +8,7 @@ import {
   CarouselPrevious,
 } from "@app/components/home/new/Carousel";
 import { BlogBlock } from "@app/components/home/new/ContentBlocks";
-import {
-  Grid,
-  H2,
-  P,
-  Strong,
-} from "@app/components/home/new/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function BlogSection() {
