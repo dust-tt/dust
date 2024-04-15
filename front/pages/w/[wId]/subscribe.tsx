@@ -121,55 +121,57 @@ export default function Subscribe({
         />
       </div>
       <Page>
-        {isAdmin ? (
-          <Page.Horizontal>
-            <Page.Vertical sizing="grow" gap="lg">
-              <Page.Header
-                icon={CreditCardIcon}
-                title="Setting up your subscription"
-              />
-              <Page.P>
-                <span className="font-bold">
-                  You can try the Pro plan for free for two weeks.
-                </span>
-              </Page.P>
-              <Page.P>
-                After your trial ends, you will be charged monthly. You can
-                cancel at any time.
-              </Page.P>
-              <Button
-                variant="primary"
-                label="Start your trial"
-                icon={CreditCardIcon}
-                size="md"
-                onClick={() => {
-                  void handleSubscribePlan();
-                }}
-              ></Button>
-            </Page.Vertical>
-            <Page.Vertical sizing="grow">
-              <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
-            </Page.Vertical>
-          </Page.Horizontal>
-        ) : (
-          <Page.Horizontal>
-            <Page.Vertical sizing="grow" gap="lg">
-              <Page.Header icon={LockIcon} title="Workspace locked" />
-              <Page.P>
-                <span className="font-bold">
-                  The subscription for this workspace is not active.
-                </span>
-              </Page.P>
-              <Page.P>
-                To unlock premium features, your workspace needs to be upgraded
-                by an admin.
-              </Page.P>
-            </Page.Vertical>
-            <Page.Vertical sizing="grow">
-              <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
-            </Page.Vertical>
-          </Page.Horizontal>
-        )}
+        <div className="flex h-full flex-col justify-center">
+          {isAdmin ? (
+            <Page.Horizontal>
+              <Page.Vertical sizing="grow" gap="lg">
+                <Page.Header
+                  icon={CreditCardIcon}
+                  title="Setting up your subscription"
+                />
+                <Page.P>
+                  <span className="font-bold">
+                    You can try the Pro plan for free for two weeks.
+                  </span>
+                </Page.P>
+                <Page.P>
+                  After your trial ends, you will be charged monthly. You can
+                  cancel at any time.
+                </Page.P>
+                <Button
+                  variant="primary"
+                  label="Start your trial"
+                  icon={CreditCardIcon}
+                  size="md"
+                  onClick={() => {
+                    void handleSubscribePlan();
+                  }}
+                ></Button>
+              </Page.Vertical>
+              <Page.Vertical sizing="grow">
+                <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
+              </Page.Vertical>
+            </Page.Horizontal>
+          ) : (
+            <Page.Horizontal>
+              <Page.Vertical sizing="grow" gap="lg">
+                <Page.Header icon={LockIcon} title="Workspace locked" />
+                <Page.P>
+                  <span className="font-bold">
+                    The subscription for this workspace is not active.
+                  </span>
+                </Page.P>
+                <Page.P>
+                  To unlock premium features, your workspace needs to be
+                  upgraded by an admin.
+                </Page.P>
+              </Page.Vertical>
+              <Page.Vertical sizing="grow">
+                <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
+              </Page.Vertical>
+            </Page.Horizontal>
+          )}
+        </div>
       </Page>
     </>
   );
