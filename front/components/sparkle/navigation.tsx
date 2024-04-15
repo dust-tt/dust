@@ -210,7 +210,7 @@ export const subNavigationBuild = ({
   const hasBetaAccess = owner.flags?.some((flag: string) =>
     flag.startsWith("labs_")
   );
-  const betaMenus = [];
+  const betaMenus: SparkleAppLayoutNavigation[] = [];
 
   if (hasBetaAccess) {
     if (owner.flags.includes("labs_transcripts")) {
@@ -244,7 +244,7 @@ export const subNavigationBuild = ({
       id: "beta",
       label: "Beta",
       variant: "secondary",
-      menus: betaMenus as SparkleAppLayoutNavigation[],
+      menus: betaMenus,
     });
   }
 

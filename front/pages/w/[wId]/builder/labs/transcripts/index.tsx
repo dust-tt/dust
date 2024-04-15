@@ -298,7 +298,7 @@ export default function LabsTranscriptsIndex({
                       });
                     }}
                     assistants={agents}
-                    showBuilderButtons={false}
+                    showBottomBarButtons={false}
                   />
                   {assistantSelected && (
                     <Page.P>
