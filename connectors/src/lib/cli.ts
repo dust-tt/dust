@@ -42,7 +42,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { registerWebhook } from "@connectors/connectors/google_drive/lib";
+import { registerWebhooksForAllDrives } from "@connectors/connectors/google_drive/lib";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleDriveRenewWebhooksWorkflow,
@@ -74,10 +74,7 @@ import { maybeLaunchSlackSyncWorkflowForChannelId } from "@connectors/connectors
 import { launchSlackSyncOneThreadWorkflow } from "@connectors/connectors/slack/temporal/client";
 import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
 import { GithubConnectorState } from "@connectors/lib/models/github";
-import {
-  GoogleDriveFiles,
-  GoogleDriveWebhook,
-} from "@connectors/lib/models/google_drive";
+import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import {
   IntercomConversation,
   IntercomTeam,
@@ -867,11 +864,9 @@ export const google_drive = async ({
         throw new Error("Missing --dataSourceName argument");
       }
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
-        },
+      const connector = await ConnectorResource.findByDataSourceAndConnection({
+        workspaceId: args.wId,
+        dataSourceName: args.dataSourceName,
       });
       if (!connector) {
         throw new Error(
@@ -879,16 +874,30 @@ export const google_drive = async ({
         );
       }
 
-      const webhookInfo = await registerWebhook(connector);
-      if (webhookInfo.isErr()) {
-        throw webhookInfo.error;
-      } else {
-        await GoogleDriveWebhook.create({
-          webhookId: webhookInfo.value.id,
-          expiresAt: new Date(webhookInfo.value.expirationTsMs),
-          renewAt: new Date(webhookInfo.value.expirationTsMs),
-          connectorId: connector.id,
+      const res = await registerWebhooksForAllDrives({
+        connector,
+        marginMs: 0,
+      });
+      if (res.isErr()) {
+        throw res.error;
+      }
+      return { success: true };
+    }
+    case "register-all-webhooks": {
+      const connectors = await ConnectorResource.listByType("google_drive", {});
+      for (const connector of connectors) {
+        const res = await registerWebhooksForAllDrives({
+          connector,
+          marginMs: 0,
         });
+        if (res.isErr()) {
+          // error registering for this webhook, but we need to keep going
+          // for the other ones.
+          logger.error(
+            { connectorId: connector.id, error: res.error },
+            `Failed to register webhooks for connector`
+          );
+        }
       }
       return { success: true };
     }

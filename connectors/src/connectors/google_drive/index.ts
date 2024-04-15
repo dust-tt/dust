@@ -5,7 +5,7 @@ import type { GaxiosResponse } from "googleapis-common";
 import {
   getLocalParents,
   isDriveObjectExpandable,
-  registerWebhook,
+  registerWebhooksForAllDrives,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -13,7 +13,6 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
   GoogleDriveFolders,
-  GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import logger from "@connectors/logger/logger";
@@ -132,31 +131,7 @@ export async function createGoogleDriveConnector(
     googleDriveConfigurationBlob
   );
 
-  try {
-    const webhookInfo = await registerWebhook(connector);
-    if (webhookInfo.isErr()) {
-      await connector.delete();
-      throw webhookInfo.error;
-    } else {
-      await GoogleDriveWebhook.create({
-        webhookId: webhookInfo.value.id,
-        expiresAt: new Date(webhookInfo.value.expirationTsMs),
-        renewAt: new Date(webhookInfo.value.expirationTsMs),
-        connectorId: connector.id,
-      });
-    }
-
-    return new Ok(connector.id.toString());
-  } catch (err) {
-    await connector.delete();
-    logger.error(
-      {
-        err,
-      },
-      "Error creating Google Drive connector"
-    );
-    return new Err(new Error("Error creating Google Drive connector"));
-  }
+  return new Ok(connector.id.toString());
 }
 
 export async function updateGoogleDriveConnector(
@@ -597,8 +572,28 @@ export async function setGoogleDriveConnectorPermissions(
     }
   }
 
+  const webhooksRes = await registerWebhooksForAllDrives({
+    connector,
+    marginMs: 0,
+  });
+  if (webhooksRes.isErr()) {
+    const firstError = webhooksRes.error[0];
+    if (firstError) {
+      return new Err(
+        new Error(
+          "Error registering webhooks. First error message: " +
+            firstError.message
+        )
+      );
+    } else {
+      return new Err(new Error("Error registering webhooks."));
+    }
+  }
   if (shouldFullSync) {
-    await launchGoogleDriveFullSyncWorkflow(connectorId, null);
+    const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
+    if (res.isErr()) {
+      return res;
+    }
   }
 
   return new Ok(undefined);

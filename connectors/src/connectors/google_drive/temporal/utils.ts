@@ -1,3 +1,4 @@
+import { cacheWithRedis } from "@dust-tt/types";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 import { OAuth2Client } from "googleapis-common";
@@ -11,6 +12,31 @@ import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 export function getDocumentId(driveFileId: string): string {
   return `gdrive-${driveFileId}`;
 }
+
+async function _getMyDriveId(auth_credentials: OAuth2Client) {
+  const drive = await getDriveClient(auth_credentials);
+  const myDriveRes = await drive.files.get({ fileId: "root", fields: "id" });
+  if (myDriveRes.status !== 200) {
+    throw new Error(
+      `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
+    );
+  }
+  if (!myDriveRes.data.id) {
+    throw new Error("My drive id is undefined");
+  }
+
+  return myDriveRes.data.id;
+}
+export const getMyDriveIdCached = cacheWithRedis(
+  _getMyDriveId,
+  (auth_credentials: OAuth2Client) => {
+    if (!auth_credentials.credentials.access_token) {
+      throw new Error("No access token in auth credentials");
+    }
+    return auth_credentials.credentials.access_token;
+  },
+  60 * 10 * 1000 // 10 minutes
+);
 
 export async function driveObjectToDustType(
   file: drive_v3.Schema$File,
@@ -26,7 +52,30 @@ export async function driveObjectToDustType(
     throw new Error("Invalid file. File is: " + JSON.stringify(file));
   }
   const drive = await getDriveClient(authCredentials);
-  if (file.driveId == file.id) {
+  if (!file.driveId) {
+    // There is no driveId, the object is stored in "My Drive".
+    return {
+      id: file.id as string,
+      name: file.name,
+      parent: file.parents && file.parents[0] ? file.parents[0] : null,
+      mimeType: file.mimeType,
+      webViewLink: file.webViewLink ? file.webViewLink : undefined,
+      createdAtMs: new Date(file.createdTime).getTime(),
+      trashed: file.trashed ? file.trashed : false,
+      size: file.size ? parseInt(file.size, 10) : null,
+      driveId: await getMyDriveIdCached(authCredentials),
+      isInSharedDrive: false,
+      updatedAtMs: file.modifiedTime
+        ? new Date(file.modifiedTime).getTime()
+        : undefined,
+      lastEditor: file.lastModifyingUser
+        ? { displayName: file.lastModifyingUser.displayName as string }
+        : undefined,
+      capabilities: {
+        canDownload: file.capabilities.canDownload,
+      },
+    };
+  } else if (file.driveId == file.id) {
     // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
     const driveRes = await drive.drives.get({
       driveId: file.id as string,
@@ -45,11 +94,14 @@ export async function driveObjectToDustType(
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: false,
       size: null,
+      driveId: file.id,
+      isInSharedDrive: true,
       capabilities: {
         canDownload: false,
       },
     };
   } else {
+    // We are dealing with a file in a shared drive.
     return {
       id: file.id as string,
       name: file.name,
@@ -59,6 +111,8 @@ export async function driveObjectToDustType(
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: file.trashed ? file.trashed : false,
       size: file.size ? parseInt(file.size, 10) : null,
+      driveId: file.driveId,
+      isInSharedDrive: true,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()
         : undefined,

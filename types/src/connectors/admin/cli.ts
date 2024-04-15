@@ -53,6 +53,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("start-incremental-sync"),
     t.literal("skip-file"),
     t.literal("register-webhook"),
+    t.literal("register-all-webhooks"),
   ]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
