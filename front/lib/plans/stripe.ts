@@ -126,7 +126,7 @@ export const createProPlanCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
+    success_url: `${URL}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
     cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",

@@ -48,7 +48,7 @@ export function QuickStartGuide({
   return (
     <Modal
       isOpen={show}
-      variant="full-screen"
+      variant="side-md"
       hasChanged={false}
       onClose={onClose}
       title="Quick Guide"
