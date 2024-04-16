@@ -1,4 +1,4 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type { ModelId, WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { RateLimitError } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
@@ -33,16 +33,28 @@ const _webhookGoogleDriveAPIHandler = async (
       webhookId: channelId,
     },
   });
-  if (!webhook) {
+
+  let connectorId: ModelId | null = null;
+  let webhookId: string | null = null;
+  if (webhook) {
+    connectorId = webhook.connectorId;
+    webhookId = webhook.webhookId;
+  } else if (
+    req.params.connector_id &&
+    typeof req.params.connector_id === "string"
+  ) {
+    connectorId = parseInt(req.params.connector_id);
+  }
+  if (!connectorId) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        message: "Webhook not found",
+        message: "Could not determine connectorId from webhook",
         type: "invalid_request_error",
       },
     });
   }
-  const connector = await ConnectorResource.fetchById(webhook.connectorId);
+  const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return apiError(req, res, {
       status_code: 404,
@@ -55,8 +67,8 @@ const _webhookGoogleDriveAPIHandler = async (
   if (connector.isPaused()) {
     logger.info(
       {
-        connectorId: webhook.connectorId,
-        webhookId: webhook.webhookId,
+        connectorId: connectorId,
+        webhookId: webhookId,
       },
       "Did not signal a Gdrive webhook to the incremenal sync workflow because the connector is paused"
     );
@@ -64,15 +76,15 @@ const _webhookGoogleDriveAPIHandler = async (
   }
 
   const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
-    webhook.connectorId
+    connectorId
   );
 
   if (workflowRes.isErr()) {
     if (workflowRes.error instanceof RateLimitError) {
       logger.info(
         {
-          connectorId: webhook.connectorId,
-          webhookId: webhook.webhookId,
+          connectorId: connectorId,
+          webhookId: webhookId,
         },
         "Did not signal a Gdrive webhook to the incremenal sync workflow because of rate limit"
       );

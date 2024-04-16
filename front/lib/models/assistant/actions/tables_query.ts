@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -16,7 +17,11 @@ export class AgentTablesQueryConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
   declare sId: string;
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentTablesQueryConfiguration.init(
@@ -40,6 +45,10 @@ AgentTablesQueryConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_tables_query_configuration",
@@ -53,6 +62,13 @@ AgentTablesQueryConfiguration.init(
     sequelize: frontSequelize,
   }
 );
+
+AgentConfiguration.hasMany(AgentTablesQueryConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentTablesQueryConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 export class AgentTablesQueryConfigurationTable extends Model<
   InferAttributes<AgentTablesQueryConfigurationTable>,

@@ -191,10 +191,11 @@ export function RemoveAssistantFromWorkspaceDialog({
           assistant: {
             name: agentConfiguration.name,
             description: agentConfiguration.description,
+            instructions: agentConfiguration.instructions,
             pictureUrl: agentConfiguration.pictureUrl,
             status: "active",
             scope: "published",
-            action: detailedConfig.action,
+            actions: detailedConfig.actions,
             generation: agentConfiguration.generation,
           },
         };

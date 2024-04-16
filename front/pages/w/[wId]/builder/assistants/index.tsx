@@ -320,7 +320,9 @@ function AgentViewForScope({
           }
         >
           <ContextItem.Description>
-            <div className="text-element-700">{agent.description}</div>
+            <div className="line-clamp-2 text-element-700">
+              {agent.description}
+            </div>
           </ContextItem.Description>
         </ContextItem>
       ))}

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { DataSource, Workspace } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
+import { Workspace } from "@app/lib/models/workspace";
 import { withLogging } from "@app/logger/withlogging";
 
 const { DUST_REGISTRY_SECRET } = process.env;

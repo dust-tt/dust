@@ -11,13 +11,13 @@ import {
   getDatasource,
   getDocumentDiff,
 } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
+import { DataSource } from "@app/lib/models/data_source";
 import {
-  DataSource,
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
-  User,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/doc_tracker";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import mainLogger from "@app/logger/logger";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";

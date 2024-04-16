@@ -1,16 +1,15 @@
 import type { DustAppParameters } from "@dust-tt/types";
 import type {
   CreationOptional,
+  ForeignKey,
   InferAttributes,
   InferCreationAttributes,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-/**
- * Action DustAppRun Configuration
- */
 export class AgentDustAppRunConfiguration extends Model<
   InferAttributes<AgentDustAppRunConfiguration>,
   InferCreationAttributes<AgentDustAppRunConfiguration>
@@ -19,10 +18,14 @@ export class AgentDustAppRunConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
   declare sId: string;
 
   declare appWorkspaceId: string;
   declare appId: string;
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentDustAppRunConfiguration.init(
@@ -54,6 +57,10 @@ AgentDustAppRunConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_dust_app_run_configuration",
@@ -66,6 +73,13 @@ AgentDustAppRunConfiguration.init(
     sequelize: frontSequelize,
   }
 );
+
+AgentConfiguration.hasMany(AgentDustAppRunConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentDustAppRunConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 /**
  * DustAppRun Action

@@ -1,4 +1,5 @@
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
@@ -27,10 +28,10 @@ export async function recordUsageActivity(workspaceId: string) {
   logger.info({}, "[UsageQueue] Recording usage for worskpace.");
 
   if (!subscription) {
-    throw new Error(
-      "Cannot record usage of subscription: missing subscription."
+    // The workspace likely downgraded during the debouncing period of usage reporting.
+    logger.info(
+      "[UsageQueue] Cannot record usage of subscription: missing subscription."
     );
-
     return;
   }
 

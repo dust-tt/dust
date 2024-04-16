@@ -37,6 +37,7 @@ import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
@@ -257,12 +258,15 @@ export async function constructPrompt(
   context += "}\n";
 
   let instructions = "";
-  if (configuration.generation) {
-    instructions += `\n${configuration.generation.prompt}`;
+  if (configuration.instructions) {
+    instructions += `\n${configuration.instructions}`;
   } else if (fallbackPrompt) {
     instructions += `\n${fallbackPrompt}`;
   }
-  if (isRetrievalConfiguration(configuration.action)) {
+
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (isRetrievalConfiguration(actionConfig)) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
   if (instructions.length > 0) {

@@ -8,7 +8,8 @@ import StatsD from "hot-shots";
 import PQueue from "p-queue";
 import { literal, Op } from "sequelize";
 
-import { registerWebhook } from "@connectors/connectors/google_drive/lib";
+import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
+import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -22,6 +23,7 @@ import {
   getAuthObject,
   getDocumentId,
   getDriveClient,
+  getMyDriveIdCached,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
@@ -38,7 +40,6 @@ import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
@@ -62,17 +63,10 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
   const drive = await getDriveClient(connector.connectionId);
 
   let nextPageToken: string | undefined | null = undefined;
+  const authCredentials = await getAuthObject(connector.connectionId);
   const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
-  const myDriveRes = await drive.files.get({ fileId: "root" });
-  if (myDriveRes.status !== 200) {
-    throw new Error(
-      `Error getting my drive. status_code: ${myDriveRes.status}. status_text: ${myDriveRes.statusText}`
-    );
-  }
-  if (!myDriveRes.data.id) {
-    throw new Error("My drive id is undefined");
-  }
-  ids.push({ id: myDriveRes.data.id, name: "My Drive", sharedDrive: false });
+  const myDriveId = await getMyDriveIdCached(authCredentials);
+  ids.push({ id: myDriveId, name: "My Drive", sharedDrive: false });
   do {
     const res: GaxiosResponse<drive_v3.Schema$DriveList> =
       await drive.drives.list({
@@ -97,6 +91,38 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
   } while (nextPageToken);
 
   return ids;
+}
+
+// Get the list of drives that have folders selected for sync.
+export async function getDrivesIdsToSync(
+  connectorId: ModelId
+): Promise<string[]> {
+  const selectedFolders = await GoogleDriveFolders.findAll({
+    where: {
+      connectorId: connectorId,
+    },
+  });
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const authCredentials = await getAuthObject(connector.connectionId);
+  const driveIds = new Set<string>();
+
+  for (const folder of selectedFolders) {
+    const remoteFolder = await getGoogleDriveObject(
+      authCredentials,
+      folder.folderId
+    );
+    if (remoteFolder) {
+      if (!remoteFolder.driveId) {
+        throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
+      }
+      driveIds.add(remoteFolder.driveId);
+    }
+  }
+
+  return [...driveIds];
 }
 
 export async function syncFiles(
@@ -243,7 +269,7 @@ export async function incrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig,
   driveId: string,
-  sharedDrive: boolean,
+  isSharedDrive: boolean,
   startSyncTs: number,
   nextPageToken?: string
 ): Promise<string | undefined> {
@@ -260,7 +286,11 @@ export async function incrementalSync(
       throw new Error(`Connector ${connectorId} not found`);
     }
     if (!nextPageToken) {
-      nextPageToken = await getSyncPageToken(connectorId, driveId, sharedDrive);
+      nextPageToken = await getSyncPageToken(
+        connectorId,
+        driveId,
+        isSharedDrive
+      );
     }
     const config = await GoogleDriveConfig.findOne({
       where: {
@@ -281,7 +311,7 @@ export async function incrementalSync(
       pageSize: 100,
       fields: "*",
     };
-    if (sharedDrive) {
+    if (isSharedDrive) {
       opts = {
         ...opts,
         driveId: driveId,
@@ -411,10 +441,10 @@ export async function incrementalSync(
   }
 }
 
-async function getSyncPageToken(
+export async function getSyncPageToken(
   connectorId: ModelId,
   driveId: string,
-  sharedDrive: boolean
+  isSharedDrive: boolean
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -433,7 +463,7 @@ async function getSyncPageToken(
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
     let opts = {};
-    if (sharedDrive) {
+    if (isSharedDrive) {
       opts = {
         driveId: driveId,
         supportsAllDrives: true,
@@ -555,8 +585,11 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
   const webhooks = await GoogleDriveWebhook.findAll({
     where: {
       renewAt: {
-        [Op.lt]: literal("now() + INTERVAL '1 hour'"),
+        [Op.lt]: new Date(
+          new Date().getTime() + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+        ),
       },
+
       renewedByWebhookId: null,
     },
     limit: pageSize,
@@ -564,108 +597,82 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
   logger.info({ count: webhooks.length }, `Renewing webhooks`);
 
   for (const wh of webhooks) {
-    // Renew each webhook.
-    await renewOneWebhook(wh.id);
+    const connector = await ConnectorResource.fetchById(wh.connectorId);
+    if (connector) {
+      try {
+        const res = await ensureWebhookForDriveId(
+          connector,
+          wh.driveId,
+          GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+        );
+        if (res.isErr()) {
+          // Throwing here to centralize error handling in the catch block
+          // below.
+          throw res.error;
+        }
+        if (res.value) {
+          // marking the previous webhook as renewed by the new one.
+          await wh.update({
+            renewedByWebhookId: res.value,
+          });
+        }
+      } catch (e) {
+        if (
+          e instanceof ExternalOauthTokenError ||
+          (e instanceof HTTPError &&
+            e.message === "The caller does not have permission")
+        ) {
+          await syncFailed(connector.id, "oauth_token_revoked");
+          logger.error(
+            {
+              error: e,
+              connectorId: wh.connectorId,
+              workspaceId: connector.workspaceId,
+            },
+            `Failed to renew webhook: Oauth token revoked .`
+          );
+          // Do not delete the webhook object but push it down the line in 2h so that it does not get
+          // picked up by the loop calling rewnewOneWebhook.
+          await wh.update({
+            renewAt: literal("NOW() + INTERVAL '2 hour'"),
+          });
+        } else {
+          logger.error(
+            {
+              error: e,
+              connectorId: wh.connectorId,
+              workspaceId: connector.workspaceId,
+            },
+            `Failed to renew webhook`
+          );
+          const tags = [
+            `connector_id:${wh.connectorId}`,
+            `workspaceId:${connector.workspaceId}`,
+          ];
+          statsDClient.increment(
+            "google_drive_renew_webhook_errors.count",
+            1,
+            tags
+          );
+          // Do not delete the webhook object but push it down the line in 2h so that it does not get
+          // picked up by the loop calling rewnewOneWebhook.
+          await wh.update({
+            renewAt: literal("NOW() + INTERVAL '2 hour'"),
+          });
+        }
+      }
+    }
   }
-
   // Clean up webhooks pointers that expired more than 1 day ago.
   await GoogleDriveWebhook.destroy({
     where: {
       expiresAt: {
         [Op.lt]: literal("now() - INTERVAL '1 day'"),
       },
-      renewedByWebhookId: {
-        [Op.not]: null,
-      },
     },
     limit: pageSize,
   });
-
   return webhooks.length;
-}
-
-export async function renewOneWebhook(webhookId: ModelId) {
-  const wh = await GoogleDriveWebhook.findByPk(webhookId);
-  if (!wh) {
-    throw new Error(`Webhook ${webhookId} not found`);
-  }
-
-  const connector = await ConnectorResource.fetchById(wh.connectorId);
-
-  if (connector) {
-    try {
-      const webhookInfo = await registerWebhook(connector);
-      if (webhookInfo.isErr()) {
-        throw webhookInfo.error;
-      } else {
-        await sequelizeConnection.transaction(async (t) => {
-          const freshWebhook = await GoogleDriveWebhook.create(
-            {
-              webhookId: webhookInfo.value.id,
-              expiresAt: new Date(webhookInfo.value.expirationTsMs),
-              renewAt: new Date(webhookInfo.value.expirationTsMs),
-              connectorId: connector.id,
-            },
-            { transaction: t }
-          );
-          await wh.update(
-            {
-              renewedByWebhookId: freshWebhook.webhookId,
-            },
-            {
-              transaction: t,
-            }
-          );
-        });
-      }
-    } catch (e) {
-      if (
-        e instanceof ExternalOauthTokenError ||
-        (e instanceof HTTPError &&
-          e.message === "The caller does not have permission")
-      ) {
-        await syncFailed(connector.id, "oauth_token_revoked");
-        logger.error(
-          {
-            error: e,
-            connectorId: wh.connectorId,
-            workspaceId: connector.workspaceId,
-            id: wh.id,
-          },
-          `Failed to renew webhook: Oauth token revoked .`
-        );
-        // Do not delete the webhook object but push it down the line in 2h so that it does not get
-        // picked up by the loop calling rewnewOneWebhook.
-        await wh.update({
-          renewAt: literal("NOW() + INTERVAL '2 hour'"),
-        });
-        return;
-      }
-
-      logger.error(
-        {
-          error: e,
-          connectorId: wh.connectorId,
-          workspaceId: connector.workspaceId,
-          id: wh.id,
-        },
-        `Failed to renew webhook`
-      );
-      const tags = [
-        `connector_id:${wh.connectorId}`,
-        `workspaceId:${connector.workspaceId}`,
-      ];
-      statsDClient.increment(
-        "google_drive_renew_webhook_errors.count",
-        1,
-        tags
-      );
-      // retry in two hours in case of failure
-      await wh.update({
-        renewAt: literal("NOW() + INTERVAL '2 hour'"),
-      });
-    }
-  }
 }
 
 export async function populateSyncTokens(connectorId: ModelId) {
