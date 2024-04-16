@@ -192,14 +192,13 @@ export async function* runAgent(
   const action = await pickAction(auth, fullConfiguration, conversation);
 
   if (action !== null) {
-    for await (const event of runAction(
-      auth,
-      fullConfiguration,
+    for await (const event of runAction(auth, {
+      configuration: fullConfiguration,
       conversation,
       userMessage,
       agentMessage,
-      action
-    )) {
+      action,
+    })) {
       yield event;
     }
   }
@@ -284,29 +283,30 @@ async function pickAction(
   void auth;
   void conversation;
 
-  const action = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (action !== null) {
-    return action;
-  }
-
-  return null;
+  return deprecatedGetFirstActionConfiguration(configuration);
 }
 
 async function* runAction(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType,
-  action: AgentActionConfigurationType
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+    action,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+    action: AgentActionConfigurationType;
+  }
 ): AsyncGenerator<
   AgentErrorEvent | AgentActionEvent | AgentActionSuccessEvent,
   void
 > {
   if (isRetrievalConfiguration(action)) {
-    const eventStream = runRetrieval({
-      auth,
+    const eventStream = runRetrieval(auth, {
       configuration,
       conversation,
       userMessage,
@@ -352,8 +352,7 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const eventStream = runDustApp({
-      auth,
+    const eventStream = runDustApp(auth, {
       configuration,
       conversation,
       userMessage,
@@ -402,8 +401,7 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(action)) {
-    const eventStream = runTablesQuery({
-      auth,
+    const eventStream = runTablesQuery(auth, {
       configuration,
       conversation,
       userMessage,

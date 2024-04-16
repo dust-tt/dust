@@ -112,19 +112,20 @@ export async function generateTablesQueryAppParams(
 /**
  * Run the TablesQuery app.
  */
-export async function* runTablesQuery({
-  auth,
-  configuration,
-  conversation,
-  userMessage,
-  agentMessage,
-}: {
-  auth: Authenticator;
-  configuration: AgentConfigurationType;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentMessage: AgentMessageType;
-}): AsyncGenerator<
+export async function* runTablesQuery(
+  auth: Authenticator,
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+  }
+): AsyncGenerator<
   | TablesQueryErrorEvent
   | TablesQuerySuccessEvent
   | TablesQueryParamsEvent
