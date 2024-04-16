@@ -40,11 +40,8 @@ export async function getGoogleAuthFromUserTranscriptConfiguration(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-      attributes: ["id", "connectionId", "provider"],
-      where: {
-        userId: userId,
-        provider: providerId,
-      },
+      userId: userId,
+      provider: providerId,
     });
 
   if (!transcriptsConfiguration) {

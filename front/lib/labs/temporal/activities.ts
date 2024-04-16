@@ -115,11 +115,8 @@ export async function processGoogleDriveTranscriptActivity(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-      attributes: ["id", "connectionId", "provider", "agentConfigurationId"],
-      where: {
-        userId: userId,
-        provider: providerId,
-      },
+      userId: userId,
+      provider: providerId,
     });
 
   if (!transcriptsConfiguration) {

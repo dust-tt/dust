@@ -38,18 +38,8 @@ async function handler(
     case "GET":
       const transcriptsConfigurationGetRes =
         await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          attributes: [
-            "id",
-            "connectionId",
-            "provider",
-            "agentConfigurationId",
-            "emailToNotify",
-            "isActive",
-          ],
-          where: {
-            userId: owner.id,
-            provider: req.query.provider as LabsTranscriptsProviderType,
-          },
+          userId: owner.id,
+          provider: req.query.provider as LabsTranscriptsProviderType,
         });
 
       return res
@@ -77,11 +67,8 @@ async function handler(
 
       const transcriptsConfigurationPatchRes =
         await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          attributes: ["id", "connectionId", "provider"],
-          where: {
-            userId: owner.id,
-            provider: patchProvider as LabsTranscriptsProviderType,
-          },
+          userId: owner.id,
+          provider: patchProvider as LabsTranscriptsProviderType,
         });
 
       if (!transcriptsConfigurationPatchRes) {

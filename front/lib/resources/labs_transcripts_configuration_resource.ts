@@ -59,18 +59,17 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async findByUserIdAndProvider({
-    attributes,
-    where,
+    userId,
+    provider,
   }: {
-    attributes: string[];
-    where: RequireAtLeastOne<{
-      userId: number;
-      provider: LabsTranscriptsProviderType;
-    }>;
+    userId: number;
+    provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
-      attributes,
-      where,
+      where: {
+        userId,
+        provider,
+      },
     });
 
     return configuration
@@ -99,12 +98,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     >
   > {
     const configuration = await this.findByUserIdAndProvider({
-      // all attributes
-      attributes: ["id", "agentConfigurationId"],
-      where: {
         userId,
-        provider,
-      },
+        provider
     });
     if (!configuration) {
       return new Err({
@@ -150,12 +145,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     >
   > {
     const configuration = await this.findByUserIdAndProvider({
-      // all attributes
-      attributes: ["id", "emailToNotify"],
-      where: {
-        userId,
-        provider,
-      },
+      userId,
+      provider,
     });
     if (!configuration) {
       return new Err({
@@ -191,12 +182,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider: LabsTranscriptsProviderType;
   }): Promise<boolean> {
     const configuration = await this.findByUserIdAndProvider({
-      // all attributes
-      attributes: ["id", "isActive"],
-      where: {
-        userId,
-        provider,
-      },
+      userId,
+      provider,
     });
     if (!configuration) {
       return false;
@@ -222,12 +209,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     >
   > {
     const configuration = await this.findByUserIdAndProvider({
-      // all attributes
-      attributes: ["id", "isActive"],
-      where: {
-        userId,
-        provider,
-      },
+      userId,
+      provider,
     });
     if (!configuration) {
       return new Err({
