@@ -64,13 +64,13 @@ export default function Pricing() {
           </>
         }
         from="from-sky-200"
-        to="to-blue-400"
+        to="to-blue-500"
         subtitle={
           <>
-            <div className="s-dark">
+            <div>
               <Button
-                variant="secondary"
-                size="lg"
+                variant="primary"
+                size="md"
                 label="Start with Dust Pro, 15 Days free trial"
                 icon={RocketIcon}
                 onClick={() => {
