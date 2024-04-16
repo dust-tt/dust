@@ -536,6 +536,26 @@ async function _getManagedDataSourceAgent(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
+  if (!auth.isUpgraded()) {
+    return {
+      id: -1,
+      sId: agentId,
+      version: 0,
+      versionCreatedAt: null,
+      versionAuthorId: null,
+      name: name,
+      description,
+      instructions: null,
+      pictureUrl,
+      status: "disabled_free_workspace",
+      scope: "global",
+      userListStatus: "not-in-list",
+      model: DEFAULT_ASSISTANT_STATE.modelConfiguration,
+      generation: null,
+      actions: [],
+    };
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
   // Check if deactivated by an admin

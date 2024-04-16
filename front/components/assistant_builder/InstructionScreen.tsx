@@ -20,7 +20,6 @@ import type {
   PlanType,
   Result,
   SUPPORTED_MODEL_CONFIGS,
-  SupportedModel,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import {
@@ -32,6 +31,7 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  isSupportedModel,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -195,21 +195,25 @@ function AdvancedSettings({
                 <div className="z-[120]">
                   {USED_MODEL_CONFIGS.filter(
                     (m) => !(m.largeModel && !isUpgraded(plan))
-                  ).map((modelConfig) => (
+                  ).map((modelConfig: ModelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}
                       icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
                       description={modelConfig.shortDescription}
                       label={modelConfig.displayName}
                       onClick={() => {
-                        setModelConfiguration({
-                          ...modelConfiguration,
-                          ...({
-                            modelId: modelConfig.modelId,
-                            providerId: modelConfig.providerId,
-                            // safe because the SupportedModel is derived from the SUPPORTED_MODEL_CONFIGS array
-                          } as SupportedModel),
-                        });
+                        const selectedModel = {
+                          providerId: modelConfig.providerId,
+                          modelId: modelConfig.modelId,
+                        };
+                        if (isSupportedModel(selectedModel)) {
+                          setModelConfiguration({
+                            ...modelConfiguration,
+                            ...modelConfig,
+                          });
+                        } else {
+                          console.error("Unsupported model"); // unreachable
+                        }
                       }}
                     />
                   ))}

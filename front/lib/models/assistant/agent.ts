@@ -175,17 +175,17 @@ AgentConfiguration.init(
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.providerId,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.providerId, // @todo MULTI_ACTIONS remove @daph
     },
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.modelId,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.modelId, // @todo MULTI_ACTIONS remove @daph
     },
     temperature: {
       type: DataTypes.FLOAT,
       allowNull: false,
-      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.temperature,
+      defaultValue: DEFAULT_ASSISTANT_STATE.modelConfiguration.temperature, // @todo MULTI_ACTIONS remove @daph
     },
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,

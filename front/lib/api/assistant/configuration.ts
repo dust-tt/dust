@@ -13,7 +13,6 @@ import type {
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
-  SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -894,12 +893,14 @@ export async function createAgentConfiguration(
     );
 
     const agentModel = {
-      ...({
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-      } as SupportedModel),
-      temperature: agent.temperature,
+      providerId: agent.providerId,
+      modelId: agent.modelId,
     };
+    if (!isSupportedModel(agentModel)) {
+      throw new Error(
+        `Unknown model ${agentModel.providerId}/${agentModel.modelId}.`
+      );
+    }
 
     /*
      * Final rendering.
@@ -917,7 +918,10 @@ export async function createAgentConfiguration(
       instructions: agent.instructions,
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      model: agentModel,
+      model: {
+        ...agentModel,
+        temperature: agent.temperature,
+      },
       generation,
     };
 

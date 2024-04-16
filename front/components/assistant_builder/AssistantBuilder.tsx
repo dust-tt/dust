@@ -18,7 +18,12 @@ import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
-import { assertNever, isBuilder, removeNulls } from "@dust-tt/types";
+import {
+  assertNever,
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  isBuilder,
+  removeNulls,
+} from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -50,6 +55,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
@@ -166,6 +172,15 @@ export default function AssistantBuilder({
   );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
+
+  let modelConfiguration = initialBuilderState?.modelConfiguration ?? null;
+  if (modelConfiguration && !isUpgraded(plan)) {
+    modelConfiguration = {
+      providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+      modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    };
+  }
 
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState

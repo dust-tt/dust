@@ -4,13 +4,13 @@ import type {
   DustAppRunConfigurationType,
   Result,
   RetrievalConfigurationType,
-  SupportedModel,
   TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   Err,
+  isSupportedModel,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -27,21 +27,26 @@ export async function generateMockAgentConfigurationFromTemplate(
     return new Err(new Error("Template not found"));
   }
 
+  const presetModel = {
+    providerId: template.presetProviderId,
+    modelId: template.presetModelId,
+  };
+
+  if (!isSupportedModel(presetModel)) {
+    return new Err(new Error("Unsupported model"));
+  }
+
   return new Ok({
     actions: removeNulls([getAction(template.presetAction)]),
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
     model: {
-      ...({
-        providerId: template.presetProviderId,
-        modelId: template.presetModelId,
-      } as SupportedModel),
+      ...presetModel,
       temperature:
         ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
-      forceUseAtIteration: 1,
     },
     generation: {
-      forceUseAtIteration: 0,
+      forceUseAtIteration: null,
     },
     name: template.handle,
     scope: flow === "personal_assistants" ? "private" : "workspace",
