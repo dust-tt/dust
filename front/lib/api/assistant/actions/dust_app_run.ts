@@ -222,13 +222,19 @@ export async function renderDustAppRunActionByModelId(
 // to fail, in which case an error event will be emitted and the AgentDustAppRunAction won't have
 // any output associated. The error is expected to be stored by the caller on the parent agent
 // message.
-export async function* runDustApp(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
+export async function* runDustApp({
+  auth,
+  configuration,
+  conversation,
+  userMessage,
+  agentMessage,
+}: {
+  auth: Authenticator;
+  configuration: AgentConfigurationType;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentMessage: AgentMessageType;
+}): AsyncGenerator<
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
   | DustAppRunSuccessEvent

@@ -481,13 +481,19 @@ const getRefs = () => {
 // to be stored (once the query params are infered) but for the retrieval to fail, in which case an
 // error event will be emitted and the AgentRetrievalAction won't have any documents associated. The
 // error is expected to be stored by the caller on the parent agent message.
-export async function* runRetrieval(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
+export async function* runRetrieval({
+  auth,
+  configuration,
+  conversation,
+  userMessage,
+  agentMessage,
+}: {
+  auth: Authenticator;
+  configuration: AgentConfigurationType;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentMessage: AgentMessageType;
+}): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
   void
 > {
