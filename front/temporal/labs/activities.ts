@@ -36,6 +36,11 @@ export async function retrieveNewTranscriptsActivity(
   if (providerId == "google_drive") {
     const auth = await getGoogleAuthFromUserTranscriptConfiguration(userId);
 
+    if (!auth) {
+      logger.error("[retrieveNewTranscripts] No Google auth found. Stopping.");
+      return;
+    }
+
     // Only pull transcripts from last day
     // We could do from the last 15 minutes
     // but we want to avoid missing any if the workflow is down
