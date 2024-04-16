@@ -79,6 +79,12 @@ AgentGenerationConfiguration.init(
   {
     modelName: "agent_generation_configuration",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+    ],
   }
 );
 
