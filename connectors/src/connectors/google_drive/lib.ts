@@ -62,6 +62,7 @@ export async function ensureWebhookForDriveId(
 ): Promise<Result<string | undefined, Error>> {
   const webhook = await GoogleDriveWebhook.findOne({
     where: {
+      connectorId: connector.id,
       driveId: driveId,
       expiresAt: {
         [Op.gt]: new Date(new Date().getTime() + marginMs),

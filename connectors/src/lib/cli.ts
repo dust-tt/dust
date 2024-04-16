@@ -886,6 +886,13 @@ export const google_drive = async ({
     case "register-all-webhooks": {
       const connectors = await ConnectorResource.listByType("google_drive", {});
       for (const connector of connectors) {
+        if (connector.errorType !== null) {
+          logger.info(
+            { connectorId: connector.id, errorType: connector.errorType },
+            "Skipping connector with error"
+          );
+          continue;
+        }
         const res = await registerWebhooksForAllDrives({
           connector,
           marginMs: 0,
