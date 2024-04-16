@@ -1,4 +1,5 @@
 import type {
+  BlockRunConfig,
   DustAppRunBlockEvent,
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
@@ -19,7 +20,7 @@ import type {
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
+import { assertNever, isDustAppRunConfiguration } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
@@ -111,10 +112,20 @@ export async function generateDustAppRunParams(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
-  userMessage: UserMessageType,
-  app: AppType,
-  schema: DatasetSchema | null
-): Promise<Result<DustAppParameters, Error>> {
+  userMessage: UserMessageType
+): Promise<
+  Result<
+    { parameters: DustAppParameters; app: AppType; appConfig: BlockRunConfig },
+    | {
+        type: "app_not_found";
+      }
+    | { type: "schema_not_found"; datasetName: string | null }
+    | {
+        type: "spec_error" | "generate_inputs_error";
+        error: Error;
+      }
+  >
+> {
   const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
   if (!isDustAppRunConfiguration(actionConfig)) {
@@ -123,9 +134,35 @@ export async function generateDustAppRunParams(
     );
   }
 
+  const app = await getApp(auth, actionConfig.appId);
+  if (!app) {
+    return new Err({ type: "app_not_found" });
+  }
+
+  // Parse the specifiaction of the app.
+  const appSpec = JSON.parse(
+    app.savedSpecification || `[]`
+  ) as SpecificationType;
+
+  const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
+
+  let schema: DatasetSchema | null = null;
+
+  const inputSpec = appSpec.find((b) => b.type === "input");
+  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
+  const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
+
+  if (datasetName) {
+    // We have a dataset name we need to find associated schema.
+    schema = await getDatasetSchema(auth, app, datasetName);
+    if (!schema) {
+      return new Err({ type: "schema_not_found", datasetName });
+    }
+  }
+
   const specRes = await dustAppRunActionSpecification(app, schema);
   if (specRes.isErr()) {
-    return new Err(specRes.error);
+    return new Err({ type: "spec_error", error: specRes.error });
   }
 
   if (specRes.value.inputs.length > 0) {
@@ -157,17 +194,22 @@ export async function generateDustAppRunParams(
         if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
           inputs[k.name] = rawInputs[k.name];
         } else {
-          return new Err(
-            new Error(
+          return new Err({
+            type: "generate_inputs_error",
+            error: new Error(
               `Failed to generate input ${k.name} (expected type ${
                 k.type
               }, got ${rawInputs[k.name]})`
-            )
-          );
+            ),
+          });
         }
       }
 
-      return new Ok(inputs);
+      return new Ok({
+        parameters: inputs,
+        app,
+        appConfig,
+      });
     }
     logger.error(
       {
@@ -179,10 +221,18 @@ export async function generateDustAppRunParams(
       "Error generating DustAppRun action inputs"
     );
 
-    return new Err(rawInputsRes.error);
+    // return new Err(rawInputsRes.error);
+    return new Err({
+      type: "generate_inputs_error",
+      error: rawInputsRes.error,
+    });
   }
 
-  return new Ok({});
+  return new Ok({
+    parameters: {},
+    app,
+    appConfig,
+  });
 }
 
 /**
@@ -268,38 +318,27 @@ export async function* runDustApp(
     return;
   }
 
-  const app = await getApp(auth, actionConfig.appId);
-  if (!app) {
-    yield {
-      type: "dust_app_run_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "dust_app_run_app_error",
-        message: `Failed to retrieve Dust app ${actionConfig.appWorkspaceId}/${actionConfig.appId}`,
-      },
-    };
-    return;
-  }
+  const paramsRes = await generateDustAppRunParams(
+    auth,
+    configuration,
+    conversation,
+    userMessage
+  );
 
-  // Parse the specifiaction of the app.
-  const appSpec = JSON.parse(
-    app.savedSpecification || `[]`
-  ) as SpecificationType;
-
-  const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
-
-  let schema: DatasetSchema | null = null;
-
-  const inputSpec = appSpec.find((b) => b.type === "input");
-  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
-  const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
-
-  if (datasetName) {
-    // We have a dataset name we need to find associated schema.
-    schema = await getDatasetSchema(auth, app, datasetName);
-    if (!schema) {
+  if (paramsRes.isErr()) {
+    if (paramsRes.error.type === "app_not_found") {
+      yield {
+        type: "dust_app_run_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "dust_app_run_app_error",
+          message: `Failed to retrieve Dust app ${actionConfig.appWorkspaceId}/${actionConfig.appId}`,
+        },
+      };
+      return;
+    } else if (paramsRes.error.type === "schema_not_found") {
       yield {
         type: "dust_app_run_error",
         created: Date.now(),
@@ -308,38 +347,41 @@ export async function* runDustApp(
         error: {
           code: "dust_app_run_app_schema_error",
           message:
-            `Failed to retrieve schema for Dust app: ${actionConfig.appWorkspaceId}/${actionConfig.appId} dataset=${datasetName}` +
+            `Failed to retrieve schema for Dust app: ${actionConfig.appWorkspaceId}/${actionConfig.appId} dataset=${paramsRes.error.datasetName}` +
             " (make sure you have set descriptions in your app input block dataset)",
         },
       };
       return;
+    } else if (paramsRes.error.type === "spec_error") {
+      yield {
+        type: "dust_app_run_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "dust_app_run_spec_error",
+          message: `Error parsing Dust app specification: ${paramsRes.error.error.message}`,
+        },
+      };
+      return;
+    } else if (paramsRes.error.type === "generate_inputs_error") {
+      yield {
+        type: "dust_app_run_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "dust_app_run_generate_inputs_error",
+          message: `Error generating Dust app inputs: ${paramsRes.error.error.message}`,
+        },
+      };
+      return;
+    } else {
+      assertNever(paramsRes.error.type);
     }
   }
 
-  const paramsRes = await generateDustAppRunParams(
-    auth,
-    configuration,
-    conversation,
-    userMessage,
-    app,
-    schema
-  );
-
-  if (paramsRes.isErr()) {
-    yield {
-      type: "dust_app_run_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "dust_app_run_parameters_generation_error",
-        message: `Error generating parameters for Dust App run: ${paramsRes.error.message}`,
-      },
-    };
-    return;
-  }
-
-  const params = paramsRes.value;
+  const { parameters: params, app, appConfig } = paramsRes.value;
 
   // Create the AgentDustAppRunAction object in the database and yield an event for the generation
   // of the params. We store the action here as the params have been generated, if an error occurs

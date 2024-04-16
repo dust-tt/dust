@@ -17,6 +17,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
@@ -29,9 +30,18 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
-import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
-import { runTablesQuery } from "@app/lib/api/assistant/actions/tables_query";
+import {
+  generateDustAppRunParams,
+  runDustApp,
+} from "@app/lib/api/assistant/actions/dust_app_run";
+import {
+  generateRetrievalParams,
+  runRetrieval,
+} from "@app/lib/api/assistant/actions/retrieval";
+import {
+  generateTablesQueryAppParams,
+  runTablesQuery,
+} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
@@ -189,7 +199,11 @@ export async function* runAgent(
     );
   }
 
-  const action = await pickAction(auth, fullConfiguration, conversation);
+  const action = await pickAction(auth, {
+    configuration: fullConfiguration,
+    conversation,
+    userMessage,
+  });
 
   if (action !== null) {
     for await (const event of runAction(auth, {
@@ -274,16 +288,63 @@ export async function* runAgent(
 
 async function pickAction(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType
+  {
+    configuration,
+    conversation,
+    userMessage,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+  }
 ): Promise<AgentActionConfigurationType | null> {
   // TODO(@fontanierh): This is a placeholder for the action selection logic.
   // This will be replaced by the multi-actions "pick tool" logic.
   // This should also include the inputs-generation logic (generating the arguments for the action)
   void auth;
   void conversation;
+  void userMessage;
 
-  return deprecatedGetFirstActionConfiguration(configuration);
+  const action = deprecatedGetFirstActionConfiguration(configuration);
+  if (!action) {
+    return null;
+  }
+  const actionWithParams = (() => {
+    switch (action.type) {
+      case "tables_query_configuration":
+        return {
+          action,
+          params: generateTablesQueryAppParams(
+            auth,
+            configuration,
+            conversation,
+            userMessage
+          ),
+        };
+      case "dust_app_run_configuration":
+        return {
+          action,
+          params: generateDustAppRunParams(
+            auth,
+            configuration,
+            conversation,
+            userMessage
+          ),
+        };
+      case "retrieval_configuration":
+        return {
+          action,
+          params: generateRetrievalParams(
+            auth,
+            configuration,
+            conversation,
+            userMessage
+          ),
+        };
+      default:
+        assertNever(action);
+    }
+  })();
 }
 
 async function* runAction(

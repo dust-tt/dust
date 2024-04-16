@@ -70,22 +70,19 @@ function getTablesQueryAppSpecification() {
   };
 }
 
+export type GenerateTablesQueryParamsSuccessOutput = {
+  [key: string]: string | number | boolean;
+};
+
 /**
  * Generate the parameters for the TablesQuery app.
  */
-export async function generateTablesQueryAppParams(
+export async function generateTablesQueryParams(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType
-): Promise<
-  Result<
-    {
-      [key: string]: string | number | boolean;
-    },
-    Error
-  >
-> {
+): Promise<Result<GenerateTablesQueryParamsSuccessOutput, Error>> {
   const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
   if (!isTablesQueryConfiguration(actionConfig)) {

@@ -190,6 +190,12 @@ export async function retrievalActionSpecification(
   };
 }
 
+export type GenerateRetrievalParamsSuccessOutput = {
+  query: string | null;
+  relativeTimeFrame: TimeFrame | null;
+  topK: number | "auto";
+};
+
 /// Generates retrieval parameters given the agent configuration and the conversation context,
 /// potentially generating the query and relative time frame.
 export async function generateRetrievalParams(
@@ -197,16 +203,7 @@ export async function generateRetrievalParams(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType
-): Promise<
-  Result<
-    {
-      query: string | null;
-      relativeTimeFrame: TimeFrame | null;
-      topK: number | "auto";
-    },
-    Error
-  >
-> {
+): Promise<Result<GenerateRetrievalParamsSuccessOutput, Error>> {
   const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
 
   if (!isRetrievalConfiguration(actionConfig)) {
