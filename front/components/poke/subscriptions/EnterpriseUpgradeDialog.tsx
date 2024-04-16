@@ -200,7 +200,7 @@ export default function EnterpriseUpgradeDialog({
           🏢 Upgrade to Enterprise
         </PokeButton>
       </PokeDialogTrigger>
-      <PokeDialogContent className="bg-structure-50 sm:max-w-[425px]">
+      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
         <PokeDialogHeader>
           <PokeDialogTitle>Upgrade {owner.name} to Enterprise.</PokeDialogTitle>
           <PokeDialogDescription>
@@ -223,7 +223,7 @@ export default function EnterpriseUpgradeDialog({
                       .filter((plan) => plan.code.startsWith("ENT_"))
                       .map((plan) => ({
                         value: plan.code,
-                        display: plan.name,
+                        display: `${plan.name} (${plan.code})`,
                       }))}
                   />
                 </div>
