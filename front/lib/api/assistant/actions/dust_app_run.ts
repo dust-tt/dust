@@ -224,10 +224,17 @@ export async function renderDustAppRunActionByModelId(
 // message.
 export async function* runDustApp(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+  }
 ): AsyncGenerator<
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent

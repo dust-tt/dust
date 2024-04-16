@@ -1,4 +1,5 @@
 import type {
+  AgentActionConfigurationType,
   AgentActionEvent,
   AgentActionSpecification,
   AgentActionSuccessEvent,
@@ -188,156 +189,17 @@ export async function* runAgent(
     );
   }
 
-  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
+  const action = await pickAction(auth, fullConfiguration, conversation);
 
   if (action !== null) {
-    if (isRetrievalConfiguration(action)) {
-      const eventStream = runRetrieval(
-        auth,
-        fullConfiguration,
-        conversation,
-        userMessage,
-        agentMessage
-      );
-
-      for await (const event of eventStream) {
-        switch (event.type) {
-          case "retrieval_params":
-            yield event;
-            break;
-          case "retrieval_error":
-            yield {
-              type: "agent_error",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: event.error.code,
-                message: event.error.message,
-              },
-            };
-            return;
-          case "retrieval_success":
-            yield {
-              type: "agent_action_success",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              action: event.action,
-            };
-
-            // We stitch the action into the agent message. The conversation is expected to include
-            // the agentMessage object, updating this object will update the conversation as well.
-            agentMessage.action = event.action;
-            break;
-
-          default:
-            ((event: never) => {
-              logger.error("Unknown `runAgent` event type", event);
-            })(event);
-            return;
-        }
-      }
-    } else if (isDustAppRunConfiguration(action)) {
-      const eventStream = runDustApp(
-        auth,
-        fullConfiguration,
-        conversation,
-        userMessage,
-        agentMessage
-      );
-
-      for await (const event of eventStream) {
-        switch (event.type) {
-          case "dust_app_run_params":
-            yield event;
-            break;
-          case "dust_app_run_error":
-            yield {
-              type: "agent_error",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: event.error.code,
-                message: event.error.message,
-              },
-            };
-            return;
-          case "dust_app_run_block":
-            yield event;
-            break;
-          case "dust_app_run_success":
-            yield {
-              type: "agent_action_success",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              action: event.action,
-            };
-
-            // We stitch the action into the agent message. The conversation is expected to include
-            // the agentMessage object, updating this object will update the conversation as well.
-            agentMessage.action = event.action;
-            break;
-
-          default:
-            ((event: never) => {
-              logger.error("Unknown `runAgent` event type", event);
-            })(event);
-            return;
-        }
-      }
-    } else if (isTablesQueryConfiguration(action)) {
-      const eventStream = runTablesQuery({
-        auth,
-        configuration: fullConfiguration,
-        conversation,
-        userMessage,
-        agentMessage,
-      });
-      for await (const event of eventStream) {
-        switch (event.type) {
-          case "tables_query_params":
-          case "tables_query_output":
-            yield event;
-            break;
-          case "tables_query_error":
-            yield {
-              type: "agent_error",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: event.error.code,
-                message: event.error.message,
-              },
-            };
-            return;
-          case "tables_query_success":
-            yield {
-              type: "agent_action_success",
-              created: event.created,
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              action: event.action,
-            };
-
-            // We stitch the action into the agent message. The conversation is expected to include
-            // the agentMessage object, updating this object will update the conversation as well.
-            agentMessage.action = event.action;
-            break;
-          default:
-            ((event: never) => {
-              logger.error("Unknown `runAgent` event type", event);
-            })(event);
-            return;
-        }
-      }
-    } else {
-      ((a: never) => {
-        throw new Error(`Unexpected action type: ${a}`);
-      })(action);
+    for await (const event of runAction(auth, {
+      configuration: fullConfiguration,
+      conversation,
+      userMessage,
+      agentMessage,
+      action,
+    })) {
+      yield event;
     }
   }
 
@@ -408,4 +270,184 @@ export async function* runAgent(
     messageId: agentMessage.sId,
     message: agentMessage,
   };
+}
+
+async function pickAction(
+  auth: Authenticator,
+  configuration: AgentConfigurationType,
+  conversation: ConversationType
+): Promise<AgentActionConfigurationType | null> {
+  // TODO(@fontanierh): This is a placeholder for the action selection logic.
+  // This will be replaced by the multi-actions "pick tool" logic.
+  // This should also include the inputs-generation logic (generating the arguments for the action)
+  void auth;
+  void conversation;
+
+  return deprecatedGetFirstActionConfiguration(configuration);
+}
+
+async function* runAction(
+  auth: Authenticator,
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+    action,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+    action: AgentActionConfigurationType;
+  }
+): AsyncGenerator<
+  AgentErrorEvent | AgentActionEvent | AgentActionSuccessEvent,
+  void
+> {
+  if (isRetrievalConfiguration(action)) {
+    const eventStream = runRetrieval(auth, {
+      configuration,
+      conversation,
+      userMessage,
+      agentMessage,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "retrieval_params":
+          yield event;
+          break;
+        case "retrieval_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "retrieval_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+          break;
+
+        default:
+          ((event: never) => {
+            logger.error("Unknown `runAgent` event type", event);
+          })(event);
+          return;
+      }
+    }
+  } else if (isDustAppRunConfiguration(action)) {
+    const eventStream = runDustApp(auth, {
+      configuration,
+      conversation,
+      userMessage,
+      agentMessage,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "dust_app_run_params":
+          yield event;
+          break;
+        case "dust_app_run_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "dust_app_run_block":
+          yield event;
+          break;
+        case "dust_app_run_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+          break;
+
+        default:
+          ((event: never) => {
+            logger.error("Unknown `runAgent` event type", event);
+          })(event);
+          return;
+      }
+    }
+  } else if (isTablesQueryConfiguration(action)) {
+    const eventStream = runTablesQuery(auth, {
+      configuration,
+      conversation,
+      userMessage,
+      agentMessage,
+    });
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "tables_query_params":
+        case "tables_query_output":
+          yield event;
+          break;
+        case "tables_query_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "tables_query_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+          break;
+        default:
+          ((event: never) => {
+            logger.error("Unknown `runAgent` event type", event);
+          })(event);
+          return;
+      }
+    }
+  } else {
+    ((a: never) => {
+      throw new Error(`Unexpected action type: ${a}`);
+    })(action);
+  }
 }
