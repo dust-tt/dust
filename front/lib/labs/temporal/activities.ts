@@ -57,29 +57,31 @@ export async function retrieveNewTranscriptsActivity(
       return;
     }
 
-    files.data.files.forEach(async (file: drive_v3.Schema$File) => {
-      const fileId = file.id as string;
+    const transcriptsWorkflowPromises = files.data.files.map(
+      async (file: drive_v3.Schema$File) => {
+        const fileId = file.id as string;
+        return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
+          (history) => {
+            if (history) {
+              logger.info(
+                "[retrieveNewTranscripts] File already processed. Skipping.",
+                { fileId }
+              );
+              return;
+            }
 
-      // Check in history if we already processed this file
-      const history = await LabsTranscriptsHistoryResource.findByFileId({
-        fileId,
-      });
-      if (history) {
-        logger.info(
-          "[retrieveNewTranscripts] File already processed. Skipping.",
-          { fileId }
+            return launchProcessTranscriptWorkflow({ userId, fileId });
+          }
         );
-        return;
       }
+    );
 
-      await launchProcessTranscriptWorkflow({ userId, fileId });
-    });
+    await Promise.all(transcriptsWorkflowPromises);
   } else {
     // throw error
-    logger.error(
-      "[retrieveNewTranscripts] Provider not supported. Stopping.",
-      { providerId }
-    );
+    logger.error("[retrieveNewTranscripts] Provider not supported. Stopping.", {
+      providerId,
+    });
   }
 }
 

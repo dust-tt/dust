@@ -118,7 +118,7 @@ async function handler(
             void launchRetrieveNewTranscriptsWorkflow({
               userId: owner.id,
               providerId: patchProvider,
-            })
+            });
           }
         });
       }
@@ -147,12 +147,6 @@ async function handler(
           connectionId,
           provider,
         });
-
-      // Start the temporal workflow
-      void launchRetrieveNewTranscriptsWorkflow({
-        userId: owner.id,
-        providerId: provider,
-      })
 
       return res
         .status(200)

@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
@@ -29,7 +30,9 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuthFromUserTranscriptConfiguration(userId: number) {
+export async function getGoogleAuthFromUserTranscriptConfiguration(
+  userId: ModelId
+) {
   const providerId = "google_drive";
   if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
     throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
