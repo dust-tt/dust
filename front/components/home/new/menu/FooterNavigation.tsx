@@ -71,6 +71,7 @@ function FooterLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
+      shallow={true}
       {...props}
     >
       <A variant="tertiary" className="text-sm">
