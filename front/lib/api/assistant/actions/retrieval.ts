@@ -483,10 +483,17 @@ const getRefs = () => {
 // error is expected to be stored by the caller on the parent agent message.
 export async function* runRetrieval(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+  }
 ): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
   void
