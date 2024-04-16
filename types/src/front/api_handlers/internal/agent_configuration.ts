@@ -59,73 +59,83 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
       t.literal("private"),
     ]),
     actions: t.array(
-      t.union([
-        t.type({
-          type: t.literal("retrieval_configuration"),
-          query: t.union([t.literal("auto"), t.literal("none")]),
-          relativeTimeFrame: t.union([
-            t.literal("auto"),
-            t.literal("none"),
-            t.type({
-              duration: t.number,
-              unit: TimeframeUnitCodec,
-            }),
-          ]),
-          topK: t.union([t.number, t.literal("auto")]),
-          dataSources: t.array(
-            t.type({
-              dataSourceId: t.string,
-              workspaceId: t.string,
-              filter: t.type({
-                tags: t.union([
-                  t.type({
-                    in: t.array(t.string),
-                    not: t.array(t.string),
-                  }),
-                  t.null,
-                ]),
-                parents: t.union([
-                  t.type({
-                    in: t.array(t.string),
-                    not: t.array(t.string),
-                  }),
-                  t.null,
-                ]),
+      t.intersection([
+        t.union([
+          t.type({
+            type: t.literal("retrieval_configuration"),
+            query: t.union([t.literal("auto"), t.literal("none")]),
+            relativeTimeFrame: t.union([
+              t.literal("auto"),
+              t.literal("none"),
+              t.type({
+                duration: t.number,
+                unit: TimeframeUnitCodec,
               }),
-            })
-          ),
-        }),
-        t.type({
-          type: t.literal("dust_app_run_configuration"),
-          appWorkspaceId: t.string,
-          appId: t.string,
-        }),
-        t.type({
-          type: t.literal("tables_query_configuration"),
-          tables: t.array(
-            t.type({
-              workspaceId: t.string,
-              dataSourceId: t.string,
-              tableId: t.string,
-            })
-          ),
+            ]),
+            topK: t.union([t.number, t.literal("auto")]),
+            dataSources: t.array(
+              t.type({
+                dataSourceId: t.string,
+                workspaceId: t.string,
+                filter: t.type({
+                  tags: t.union([
+                    t.type({
+                      in: t.array(t.string),
+                      not: t.array(t.string),
+                    }),
+                    t.null,
+                  ]),
+                  parents: t.union([
+                    t.type({
+                      in: t.array(t.string),
+                      not: t.array(t.string),
+                    }),
+                    t.null,
+                  ]),
+                }),
+              })
+            ),
+          }),
+          t.type({
+            type: t.literal("dust_app_run_configuration"),
+            appWorkspaceId: t.string,
+            appId: t.string,
+          }),
+          t.type({
+            type: t.literal("tables_query_configuration"),
+            tables: t.array(
+              t.type({
+                workspaceId: t.string,
+                dataSourceId: t.string,
+                tableId: t.string,
+              })
+            ),
+          }),
+        ]),
+        t.partial({
+          forceUseAtIteration: t.union([t.number, t.null]),
         }),
       ])
     ),
     generation: t.union([
       t.null,
-      t.type({
-        // enforce that the model is a supported model
-        // the modelId and providerId are checked together, so
-        // (gpt-4, anthropic) won't pass
-        model: new t.Type<SupportedModel>(
-          "SupportedModel",
-          isSupportedModel,
-          (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-          t.identity
-        ),
-        temperature: t.number,
-      }),
+      t.intersection([
+        t.type({
+          // enforce that the model is a supported model
+          // the modelId and providerId are checked together, so
+          // (gpt-4, anthropic) won't pass
+          model: new t.Type<SupportedModel>(
+            "SupportedModel",
+            isSupportedModel,
+            (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+            t.identity
+          ),
+          temperature: t.number,
+        }),
+        t.partial({
+          forceUseAtIteration: t.union([t.number, t.null]),
+        }),
+      ]),
     ]),
   }),
 });

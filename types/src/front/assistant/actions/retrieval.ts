@@ -60,6 +60,8 @@ export type RetrievalConfigurationType = {
   query: RetrievalQuery;
   relativeTimeFrame: RetrievalTimeframe;
   topK: number | "auto";
+
+  forceUseAtIteration: number | null;
 };
 
 /**

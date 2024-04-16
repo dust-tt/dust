@@ -38,6 +38,7 @@ export async function generateMockAgentConfigurationFromTemplate(
       } as SupportedModel,
       temperature:
         ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
+      forceUseAtIteration: 1,
     },
     name: template.handle,
     scope: flow === "personal_assistants" ? "private" : "workspace",
@@ -59,6 +60,7 @@ function getAction(action: ActionPreset): AgentActionConfigurationType | null {
         sId: "template",
         topK: "auto",
         type: "retrieval_configuration",
+        forceUseAtIteration: 0,
       } satisfies RetrievalConfigurationType;
 
     case "tables_query_configuration":
@@ -67,6 +69,7 @@ function getAction(action: ActionPreset): AgentActionConfigurationType | null {
         sId: "template",
         tables: [],
         type: "tables_query_configuration",
+        forceUseAtIteration: 0,
       } satisfies TablesQueryConfigurationType;
 
     case "dust_app_run_configuration":
@@ -76,6 +79,7 @@ function getAction(action: ActionPreset): AgentActionConfigurationType | null {
         type: "dust_app_run_configuration",
         appWorkspaceId: "template",
         appId: "template",
+        forceUseAtIteration: 0,
       } satisfies DustAppRunConfigurationType;
 
     default:
