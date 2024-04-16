@@ -399,7 +399,7 @@ export async function upsertArticle({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
-    logger.error(
+    logger.warn(
       { ...loggerArgs, connectorId, articleId: article.id },
       "[Intercom] Article has no content. Skipping sync."
     );
