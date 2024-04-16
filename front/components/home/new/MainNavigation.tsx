@@ -127,8 +127,8 @@ export function MainNavigation() {
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a"> & { href: string }
->(({ className = "", title, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"a"> & { href?: string }
+>(({ className = "", href = "", title, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink asChild>
@@ -139,6 +139,7 @@ const ListItem = React.forwardRef<
             className
           )}
           shallow={true}
+          href={href}
           {...props}
         >
           <div className="flex items-center gap-1.5">
