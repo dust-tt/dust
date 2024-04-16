@@ -82,6 +82,7 @@ AgentGenerationConfiguration.init(
     indexes: [
       {
         fields: ["agentConfigurationId"],
+        concurrently: true,
       },
     ],
   }
