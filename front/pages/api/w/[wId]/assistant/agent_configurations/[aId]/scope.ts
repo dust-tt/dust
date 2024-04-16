@@ -125,17 +125,16 @@ async function handler(
         }
       }
 
-      const result = await createOrUpgradeAgentConfiguration(
+      const result = await createOrUpgradeAgentConfiguration({
         auth,
-        {
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-          },
+        assistant: {
+          ...assistant,
+          scope: bodyValidation.right.scope,
+          status: assistant.status as AgentStatus,
         },
-        assistant.sId
-      );
+        agentConfigurationId: assistant.sId,
+        legacySingleActionMode: true,
+      });
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,

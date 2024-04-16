@@ -108,11 +108,12 @@ async function handler(
           },
         });
       }
-      const agentConfiguration = await createOrUpgradeAgentConfiguration(
+      const agentConfiguration = await createOrUpgradeAgentConfiguration({
         auth,
-        bodyValidation.right,
-        req.query.aId as string
-      );
+        assistant: bodyValidation.right.assistant,
+        agentConfigurationId: req.query.aId as string,
+        legacySingleActionMode: true,
+      });
       if (agentConfiguration.isErr()) {
         return apiError(req, res, {
           status_code: 500,

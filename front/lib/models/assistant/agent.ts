@@ -34,6 +34,8 @@ export class AgentGenerationConfiguration extends Model<
   declare providerId: string;
   declare modelId: string;
   declare temperature: number;
+
+  declare forceUseAtIteration: number | null;
 }
 AgentGenerationConfiguration.init(
   {
@@ -68,6 +70,10 @@ AgentGenerationConfiguration.init(
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0.7,
+    },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

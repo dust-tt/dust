@@ -30,6 +30,8 @@ export class AgentRetrievalConfiguration extends Model<
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number | null;
   declare topKMode: "auto" | "custom";
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentRetrievalConfiguration.init(
@@ -79,6 +81,10 @@ AgentRetrievalConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "auto",
+    },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

@@ -20,6 +20,8 @@ export class AgentTablesQueryConfiguration extends Model<
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
   declare sId: string;
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentTablesQueryConfiguration.init(
@@ -42,6 +44,10 @@ AgentTablesQueryConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {
