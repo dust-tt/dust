@@ -283,16 +283,6 @@ export async function createOrUpgradeAgentConfiguration({
 
   let generationConfig: AgentGenerationConfigurationType | null = null;
 
-  if (generation) {
-    generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: instructions || "", // @todo Daph remove this field
-      model: generation.model,
-      temperature: generation.temperature,
-      forceUseAtIteration:
-        generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
-    });
-  }
-
   // @todo FIX MULTI ACTIONS
   const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
 
@@ -313,15 +303,14 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   if (generation) {
-    generationConfig = await createAgentGenerationConfiguration(
-      auth,
-      {
-        prompt: instructions || "", // @todo Daph remove this field
-        model: generation.model,
-        temperature: generation.temperature,
-      },
-      agentConfigurationRes.value
-    );
+    generationConfig = await createAgentGenerationConfiguration(auth, {
+      prompt: instructions || "", // @todo Daph remove this field
+      model: generation.model,
+      temperature: generation.temperature,
+      agentConfiguration: agentConfigurationRes.value,
+      forceUseAtIteration:
+        generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
+    });
   }
 
   const actionConfigs: AgentActionConfigurationType[] = [];

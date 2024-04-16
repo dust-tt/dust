@@ -1,13 +1,13 @@
-import { assertNever } from "@dust-tt/types";
+import { assertNever, removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
-import { AgentConfiguration } from "@app/lib/models";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import {
-  AgentDustAppRunConfiguration,
-  AgentRetrievalConfiguration,
-  AgentTablesQueryConfiguration,
-} from "@app/lib/models";
-import { AgentGenerationConfiguration } from "@app/lib/models";
+  AgentConfiguration,
+  AgentGenerationConfiguration,
+} from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -17,21 +17,11 @@ import { makeScript } from "@app/scripts/helpers";
 // If there is no action, the generation's will be 0.
 
 const backfillAgentConfigurations = async (execute: boolean) => {
-  const agents = await AgentConfiguration.findAll({
-    include: [
-      {
-        model: AgentGenerationConfiguration,
-        as: "generationConfiguration",
-      },
-    ],
-  });
-  const generationConfigByAgentId: Record<
+  const generations = await AgentGenerationConfiguration.findAll();
+  const generationConfigsByAgentId: Record<
     number,
-    AgentGenerationConfiguration
-  > = {};
-  for (const agent of agents) {
-    generationConfigByAgentId[agent.id] = agent.generationConfiguration;
-  }
+    AgentGenerationConfiguration[]
+  > = _.groupBy(generations, "agentConfigurationId");
 
   const retrievalConfigs = await AgentRetrievalConfiguration.findAll();
   const tablesQueryConfigs = await AgentTablesQueryConfiguration.findAll();
@@ -51,8 +41,8 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 
   const allAgentIds: number[] = Array.from(
     new Set<number>([
-      ...Object.keys(actionsByAgentId).map(Number),
-      ...Object.keys(generationConfigByAgentId).map(Number),
+      ...removeNulls(Object.keys(actionsByAgentId).map(Number)),
+      ...removeNulls(Object.keys(generationConfigsByAgentId)).map(Number),
     ])
   );
 
@@ -60,10 +50,16 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 
   for (const c of chunks) {
     for (const aId of c) {
-      const generation = generationConfigByAgentId[aId];
+      const generations = generationConfigsByAgentId[aId] ?? [];
       const actions = actionsByAgentId[aId] ?? [];
+      if (generations.length > 1) {
+        throw new Error("Unreachable: agent has multiple generations");
+      }
+      logger.info(
+        `Backfilling max tools use per run for agent ${aId}... [execute: ${execute}]`
+      );
       if (execute) {
-        const nbFixedIterations = (generation ? 1 : 0) + actions.length;
+        const nbFixedIterations = (generations.length ? 1 : 0) + actions.length;
         await AgentConfiguration.update(
           { maxToolsUsePerRun: nbFixedIterations },
           {
@@ -73,12 +69,16 @@ const backfillAgentConfigurations = async (execute: boolean) => {
           }
         );
       }
-      if (!generation) {
-        logger.info(`Skipping agent (no generation configuration) ${aId}`);
+      if (!generations.length) {
+        logger.info(
+          `Skipping forceUseAtIteration backfill for agent ${aId} (no generation configuration)`
+        );
         continue;
       }
       if (actions.length > 1) {
-        logger.info("Agent has multiple actions, skipping");
+        logger.info(
+          `Skipping forceUseAtIteration backfill for agent ${aId} (multiple actions)`
+        );
         continue;
       }
       let forceUseAtIteration = 0;
@@ -132,7 +132,7 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 
         forceUseAtIteration += 1;
       }
-
+      const generation = generations[0];
       logger.info(
         `Backfilling generation configuration ${generation.id} for agent ${aId} with forceUseAtIteration... [execute: ${execute}]`
       );
