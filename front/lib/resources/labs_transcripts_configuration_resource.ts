@@ -98,8 +98,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     >
   > {
     const configuration = await this.findByUserIdAndProvider({
-        userId,
-        provider
+      userId,
+      provider,
     });
     if (!configuration) {
       return new Err({
