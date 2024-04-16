@@ -16,8 +16,8 @@ import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { A } from "@app/components/home/new/ContentComponents";
-import { MainNavigation } from "@app/components/home/new/MainNavigation";
-import { MobileNavigation } from "@app/components/home/new/MobileNavigation";
+import { MainNavigation } from "@app/components/home/new/menu/MainNavigation";
+import { MobileNavigation } from "@app/components/home/new/menu/MobileNavigation";
 import Particles, { particuleShapes } from "@app/components/home/new/Particles";
 import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
 import { trackPageView } from "@app/lib/amplitude/browser";

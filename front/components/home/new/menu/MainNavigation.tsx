@@ -48,6 +48,7 @@ export function MainNavigation() {
                             key={item.title}
                             title={item.title}
                             href={item.href}
+                            target={item.target}
                           />
                         ))}
                     </ul>
