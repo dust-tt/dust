@@ -9,9 +9,10 @@ import {
   Tooltip,
   TriangleIcon,
 } from "@dust-tt/sparkle";
-import classNames from "classnames";
 import type { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
 import React from "react";
+
+import { classNames } from "@app/lib/utils";
 
 const defaultGridClasses =
   "grid grid-cols-12 gap-x-6 gap-y-8 px-6 md:px-12 lg:px-20 2xl:px-0";

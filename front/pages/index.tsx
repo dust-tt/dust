@@ -186,7 +186,7 @@ export default function Home({
       {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       {/* Particle system */}
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-[1000ms]">
+      <div className="duration-[1000ms] fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition">
         <Particles
           scrollRef0={scrollRef0}
           scrollRef1={scrollRef1}
@@ -770,7 +770,7 @@ export default function Home({
               <div>
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="lg"
                   label="Start with Dust Now"
                   icon={RocketIcon}
                   onClick={() =>
@@ -781,7 +781,7 @@ export default function Home({
                 />
               </div>
             </div>
-            <div className="s-dark col-span-12 flex flex-row justify-center lg:px-2 2xl:px-24">
+            <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">
               <PricePlans
                 display="landing"
                 size="xs"
