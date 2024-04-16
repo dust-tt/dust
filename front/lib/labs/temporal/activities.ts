@@ -190,7 +190,11 @@ export async function processGoogleDriveTranscriptActivity(
     contentFragment: undefined,
   });
   if (convRes.isErr()) {
-    console.log(convRes.error);
+    logger.error(
+      "[processGoogleDriveTranscriptActivity] Error creating conversation",
+      convRes.error
+    );
+    return new Err(new Error(convRes.error.message));
   } else {
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
