@@ -127,24 +127,25 @@ export function MainNavigation() {
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
+  React.ComponentPropsWithoutRef<"a"> & { href: string }
 >(({ className = "", title, ...props }, ref) => {
   return (
     <li>
       <NavigationMenuLink asChild>
-        <a
+        <Link
           ref={ref}
           className={classNames(
             "hover:bg-accent focus:bg-accent block select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500",
             className
           )}
+          shallow={true}
           {...props}
         >
           <div className="flex items-center gap-1.5">
             <Icon className="" visual={ChevronRightIcon} size="md" />
             <div className="text-md font-medium leading-none">{title}</div>
           </div>
-        </a>
+        </Link>
       </NavigationMenuLink>
     </li>
   );
