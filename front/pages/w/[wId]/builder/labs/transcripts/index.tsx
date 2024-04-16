@@ -251,6 +251,7 @@ export default function LabsTranscriptsIndex({
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({ owner, current: "transcripts" })}
+        pageTitle="Dust - Transcripts processing"
       >
         <Page>
           <Page.Header
