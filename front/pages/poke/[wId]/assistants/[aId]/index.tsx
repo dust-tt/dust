@@ -60,37 +60,46 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
-                      {a.generation?.prompt}
+                      {a.instructions}
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">model:</div>
                       {JSON.stringify(a.generation?.model, null, 2)}
                     </div>
-                    {a.action && isRetrievalConfiguration(a.action) && (
-                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Data Sources:</div>
-                        {JSON.stringify(a.action.dataSources, null, 2)}
-                      </div>
-                    )}
-                    {a.action && isDustAppRunConfiguration(a.action) && (
-                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Dust app:</div>
-                        <div>
-                          {a.action.appWorkspaceId}/{a.action.appId}
+                    {a.actions.map((action, index) =>
+                      isRetrievalConfiguration(action) ? (
+                        <div
+                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
+                          key={`action-${index}`}
+                        >
+                          <div className="font-bold">Data Sources:</div>
+                          {JSON.stringify(action.dataSources, null, 2)}
                         </div>
-                      </div>
-                    )}
-                    {a.action && isTablesQueryConfiguration(a.action) && (
-                      <div className="mb-2 ml-4 flex-col text-sm text-gray-600">
-                        <div className="font-bold">Tables:</div>
-                        {a.action.tables.map((t) => (
-                          <div
-                            key={`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`}
-                          >
-                            {t.workspaceId}/{t.dataSourceId}/{t.tableId}
+                      ) : isDustAppRunConfiguration(action) ? (
+                        <div
+                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
+                          key={`action-${index}`}
+                        >
+                          <div className="font-bold">Dust app:</div>
+                          <div>
+                            {action.appWorkspaceId}/{action.appId}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ) : isTablesQueryConfiguration(action) ? (
+                        <div
+                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
+                          key={`action-${index}`}
+                        >
+                          <div className="font-bold">Tables:</div>
+                          {action.tables.map((t) => (
+                            <div
+                              key={`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`}
+                            >
+                              {t.workspaceId}/{t.dataSourceId}/{t.tableId}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null
                     )}
                   </div>
                 </ContextItem.Description>

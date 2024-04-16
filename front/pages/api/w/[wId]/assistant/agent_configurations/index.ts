@@ -7,7 +7,9 @@ import type {
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
+  assertNever,
   GetAgentConfigurationsQuerySchema,
+  Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -22,6 +24,7 @@ import {
   createAgentConfiguration,
   createAgentGenerationConfiguration,
   getAgentConfigurations,
+  unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -194,10 +197,11 @@ async function handler(
         });
       }
 
-      const agentConfigurationRes = await createOrUpgradeAgentConfiguration(
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        bodyValidation.right
-      );
+        assistant: bodyValidation.right.assistant,
+        legacySingleActionMode: true,
+      });
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -232,70 +236,153 @@ export default withLogging(handler);
  * a new agent configuration. In both cases, it will return the new agent
  * configuration.
  **/
-export async function createOrUpgradeAgentConfiguration(
-  auth: Authenticator,
-  {
-    assistant: {
-      generation,
-      action,
-      name,
-      description,
-      scope,
-      pictureUrl,
-      status,
-    },
-  }: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema>,
-  agentConfigurationId?: string
-): Promise<Result<AgentConfigurationType, Error>> {
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-  if (generation) {
-    generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: generation.prompt,
-      model: generation.model,
-      temperature: generation.temperature,
-    });
-  }
-
-  let actionConfig: AgentActionConfigurationType | null = null;
-  if (action && action.type === "retrieval_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "retrieval_configuration",
-      query: action.query,
-      relativeTimeFrame: action.relativeTimeFrame,
-      topK: action.topK,
-      dataSources: action.dataSources,
-    });
-  }
-  if (action && action.type === "dust_app_run_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "dust_app_run_configuration",
-      appWorkspaceId: action.appWorkspaceId,
-      appId: action.appId,
-    });
-  }
-  if (action && action.type === "tables_query_configuration") {
-    actionConfig = await createAgentActionConfiguration(auth, {
-      type: "tables_query_configuration",
-      tables: action.tables,
-    });
-  }
-
-  const agentConfigurationRes = await createAgentConfiguration(auth, {
+export async function createOrUpgradeAgentConfiguration({
+  auth,
+  assistant: {
+    actions,
+    generation,
     name,
     description,
     pictureUrl,
     status,
     scope,
-    generation: generationConfig,
-    action: actionConfig,
-    agentConfigurationId,
-  });
-  if (agentConfigurationRes.isOk()) {
-    // We are not tracking draft agents
-    if (agentConfigurationRes.value.status === "active") {
-      trackAssistantCreated(auth, { assistant: agentConfigurationRes.value });
+    instructions,
+  },
+  agentConfigurationId,
+  legacySingleActionMode,
+}: {
+  auth: Authenticator;
+  assistant: t.TypeOf<
+    typeof PostOrPatchAgentConfigurationRequestBodySchema
+  >["assistant"];
+  agentConfigurationId?: string;
+  // TODO(@fontanierh): We'll remove this mode once we switch to multi-actions.
+  // For now, this allows to keep the forceUseAtIteration backwards compatibility logic in a single place.
+  legacySingleActionMode: boolean;
+}): Promise<Result<AgentConfigurationType, Error>> {
+  if (legacySingleActionMode && actions.length > 1) {
+    throw new Error("Only one action is supported in legacy mode.");
+  }
+
+  let legacyForceGenerationAtIteration: number | null = null;
+  let legacyForceSingleActionAtIteration: number | null = null;
+
+  if (legacySingleActionMode) {
+    if (actions.length) {
+      if (actions[0].forceUseAtIteration || generation?.forceUseAtIteration) {
+        throw new Error(
+          "Explicit forceUseAtIteration is not supported in legacy mode."
+        );
+      }
+      legacyForceSingleActionAtIteration = 0;
+      legacyForceGenerationAtIteration = 1;
+    } else {
+      legacyForceGenerationAtIteration = 0;
     }
   }
 
-  return agentConfigurationRes;
+  let generationConfig: AgentGenerationConfigurationType | null = null;
+
+  // @todo FIX MULTI ACTIONS
+  const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
+
+  const agentConfigurationRes = await createAgentConfiguration(auth, {
+    name,
+    description,
+    instructions: instructions ?? null,
+    maxToolsUsePerRun,
+    pictureUrl,
+    status,
+    scope,
+    generation: generationConfig,
+    agentConfigurationId,
+  });
+
+  if (agentConfigurationRes.isErr()) {
+    return agentConfigurationRes;
+  }
+
+  if (generation) {
+    generationConfig = await createAgentGenerationConfiguration(auth, {
+      prompt: instructions || "", // @todo Daph remove this field
+      model: generation.model,
+      temperature: generation.temperature,
+      agentConfiguration: agentConfigurationRes.value,
+      forceUseAtIteration:
+        generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
+    });
+  }
+
+  const actionConfigs: AgentActionConfigurationType[] = [];
+
+  try {
+    for (const action of actions) {
+      if (action.type === "retrieval_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "retrieval_configuration",
+              query: action.query,
+              relativeTimeFrame: action.relativeTimeFrame,
+              topK: action.topK,
+              dataSources: action.dataSources,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else if (action.type === "dust_app_run_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "dust_app_run_configuration",
+              appWorkspaceId: action.appWorkspaceId,
+              appId: action.appId,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else if (action.type === "tables_query_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "tables_query_configuration",
+              tables: action.tables,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else {
+        assertNever(action);
+      }
+    }
+  } catch (e) {
+    // If we fail to create an action, we should delete the agent configuration
+    // we just created and re-throw the error.
+    await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+    throw e;
+  }
+
+  const agentConfiguration: AgentConfigurationType = {
+    ...agentConfigurationRes.value,
+    actions: actionConfigs,
+  };
+
+  // We are not tracking draft agents
+  if (agentConfigurationRes.value.status === "active") {
+    trackAssistantCreated(auth, { assistant: agentConfiguration });
+  }
+
+  return new Ok(agentConfiguration);
 }

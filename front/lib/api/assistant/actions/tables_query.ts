@@ -23,6 +23,7 @@ import {
 import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
@@ -85,8 +86,9 @@ export async function generateTablesQueryAppParams(
     Error
   >
 > {
-  const c = configuration.action;
-  if (!isTablesQueryConfiguration(c)) {
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (!isTablesQueryConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `runQueryTables`"
     );
@@ -133,8 +135,10 @@ export async function* runTablesQuery({
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
-  const c = configuration.action;
-  if (!isTablesQueryConfiguration(c)) {
+
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (!isTablesQueryConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `runQueryTables`"
     );
@@ -187,7 +191,7 @@ export async function* runTablesQuery({
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-query-tables"].config
   );
-  const tables = c.tables.map((t) => ({
+  const tables = actionConfig.tables.map((t) => ({
     workspace_id: t.workspaceId,
     table_id: t.tableId,
     data_source_id: t.dataSourceId,
@@ -213,7 +217,7 @@ export async function* runTablesQuery({
     [
       {
         question: input.question,
-        instructions: configuration.generation?.prompt,
+        instructions: configuration.instructions,
       },
     ]
   );

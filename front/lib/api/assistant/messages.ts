@@ -21,16 +21,16 @@ import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import {
-  AgentDustAppRunAction,
   AgentMessage,
-  AgentTablesQueryAction,
   Conversation,
   Mention,
   Message,
-  User,
   UserMessage,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { User } from "@app/lib/models/user";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 

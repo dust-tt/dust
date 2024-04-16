@@ -11,12 +11,12 @@ import { getUsersWithAgentInListCount } from "@app/lib/api/assistant/user_relati
 import { getMembersCount } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  Conversation as DBConversation,
+  Conversation,
   Mention,
   Message,
   UserMessage,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { Workspace } from "@app/lib/models/workspace";
 import { redisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 30 days period.
@@ -150,7 +150,7 @@ async function populateUsageIfNeeded({
               required: true,
             },
             {
-              model: DBConversation,
+              model: Conversation,
               as: "conversation",
               required: true,
               where: {

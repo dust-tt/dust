@@ -4,8 +4,8 @@ import { Err } from "@dust-tt/types";
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 
 const { LIVE, WORKSPACE } = process.env;
 
@@ -36,7 +36,12 @@ async function updateWorkspaceAssistants(wId: string) {
   });
 
   for (const c of agentConfigurations) {
-    if (!c.generationConfigurationId) {
+    const genConfigs = await AgentGenerationConfiguration.findAll({
+      where: {
+        agentConfigurationId: c.id,
+      },
+    });
+    if (genConfigs.length === 0) {
       console.log(
         "Skipping agent (no generation configuration)",
         c.sId,
@@ -45,15 +50,13 @@ async function updateWorkspaceAssistants(wId: string) {
       continue;
     }
 
-    const g = await AgentGenerationConfiguration.findOne({
-      where: { id: c.generationConfigurationId },
-    });
-
-    if (!g) {
+    if (genConfigs.length > 1) {
       throw new Error(
-        `Generation configuration ${c.generationConfigurationId} not found`
+        "Unexpected: legacy migration, agents could not have multiple generation configurations at the time"
       );
     }
+
+    const g = genConfigs[0];
 
     if (FROM_MODELS.includes(g.modelId)) {
       if (LIVE) {

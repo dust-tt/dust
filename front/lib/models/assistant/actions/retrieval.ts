@@ -8,12 +8,10 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { DataSource } from "@app/lib/models/data_source";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-/**
- * Action Retrieval configuration
- */
 export class AgentRetrievalConfiguration extends Model<
   InferAttributes<AgentRetrievalConfiguration>,
   InferCreationAttributes<AgentRetrievalConfiguration>
@@ -22,15 +20,18 @@ export class AgentRetrievalConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
+
   declare sId: string;
 
-  declare query: "auto" | "none" | "templated";
-  declare queryTemplate: string | null;
+  declare query: "auto" | "none";
   declare relativeTimeFrame: "auto" | "none" | "custom";
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number | null;
   declare topKMode: "auto" | "custom";
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentRetrievalConfiguration.init(
@@ -59,10 +60,6 @@ AgentRetrievalConfiguration.init(
       allowNull: false,
       defaultValue: "auto",
     },
-    queryTemplate: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
     relativeTimeFrame: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -85,26 +82,21 @@ AgentRetrievalConfiguration.init(
       allowNull: false,
       defaultValue: "auto",
     },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_retrieval_configuration",
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
-        // Validation for templated Query
-        if (retrieval.query == "templated") {
-          if (retrieval.queryTemplate === null) {
-            throw new Error("Must set a template for templated query");
-          }
-        } else if (retrieval.queryTemplate !== null) {
-          throw new Error("Can't set a template without templated query");
-        }
-
         // Validation for Timeframe
         if (retrieval.relativeTimeFrame == "custom") {
           if (
-            retrieval.relativeTimeFrameDuration === null ||
-            retrieval.relativeTimeFrameUnit === null
+            !retrieval.relativeTimeFrameDuration ||
+            !retrieval.relativeTimeFrameUnit
           ) {
             throw new Error(
               "Custom relative time frame must have a duration and unit set"
@@ -114,16 +106,23 @@ AgentRetrievalConfiguration.init(
 
         // Validation for TopK
         if (retrieval.topKMode == "custom") {
-          if (retrieval.topK === null) {
+          if (!retrieval.topK) {
             throw new Error("topK must be set when topKMode is 'custom'");
           }
-        } else if (retrieval.topK !== null) {
+        } else if (retrieval.topK) {
           throw new Error("topK must be null when topKMode is not 'custom'");
         }
       },
     },
   }
 );
+
+AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
 
 /**
  * Configuration of Datasources used for Retrieval Action.

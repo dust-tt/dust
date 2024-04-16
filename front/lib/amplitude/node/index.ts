@@ -25,6 +25,7 @@ import {
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { subscriptionForWorkspace } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import logger from "@app/logger/logger";
 
@@ -235,13 +236,14 @@ export function trackAssistantCreated(
     return;
   }
   const amplitude = getBackendClient();
+  const action = deprecatedGetFirstActionConfiguration(assistant);
   const event = new AssistantCreated({
     assistantId: assistant.sId,
     assistantName: assistant.name,
     workspaceName: workspace.name,
     workspaceId: workspace.sId,
     assistantScope: assistant.scope,
-    assistantActionType: assistant.action?.type || "",
+    assistantActionType: action?.type || "",
     assistantVersion: assistant.version,
     assistantModel: assistant.generation?.model.modelId,
   });

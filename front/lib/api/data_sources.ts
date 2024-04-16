@@ -15,7 +15,8 @@ import {
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
-import { DataSource, User } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
+import { User } from "@app/lib/models/user";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 

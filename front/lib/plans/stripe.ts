@@ -5,7 +5,7 @@ import { Stripe } from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
 import { isDevelopment } from "@app/lib/development";
-import { Plan, Subscription } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
@@ -29,6 +29,13 @@ const stripe = new Stripe(STRIPE_SECRET_KEY, {
  * Calls the Stripe API to get the price ID for a given product ID.
  */
 async function getPriceId(productId: string): Promise<string | null> {
+  // Return the default price if set
+  const product = await stripe.products.retrieve(productId);
+  if (product.default_price && typeof product.default_price === "string") {
+    return product.default_price;
+  }
+
+  // Otherwise, return the first active price
   const prices = await stripe.prices.list({ product: productId, active: true });
   if (prices.data.length > 0) {
     const [firstActivePrice] = prices.data;
@@ -91,7 +98,7 @@ export const createProPlanCheckoutSession = async ({
     mode: "subscription",
     client_reference_id: owner.sId,
     customer_email: user.email,
-    customer: auth.subscription()?.stripeCustomerId || undefined,
+    payment_method_types: ["card"],
     subscription_data: {
       metadata: {
         planCode: PRO_PLAN_SEAT_29_CODE,
@@ -119,7 +126,7 @@ export const createProPlanCheckoutSession = async ({
     tax_id_collection: {
       enabled: true,
     },
-    success_url: `${URL}/w/${owner.sId}/subscription?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
+    success_url: `${URL}/w/${owner.sId}/subscription/payment_processing?type=succeeded&session_id={CHECKOUT_SESSION_ID}&plan_code=${PRO_PLAN_SEAT_29_CODE}`,
     cancel_url: `${URL}/w/${owner.sId}/subscription?type=cancelled`,
     consent_collection: {
       terms_of_service: "required",

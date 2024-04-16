@@ -7,7 +7,10 @@ import type {
 } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { Message, MessageReaction } from "@app/lib/models";
+import {
+  Message,
+  MessageReaction,
+} from "@app/lib/models/assistant/conversation";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.

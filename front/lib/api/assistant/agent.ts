@@ -38,6 +38,7 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
 /**
@@ -187,9 +188,10 @@ export async function* runAgent(
     );
   }
 
-  // First run the action if a configuration is present.
-  if (fullConfiguration.action !== null) {
-    if (isRetrievalConfiguration(fullConfiguration.action)) {
+  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
+
+  if (action !== null) {
+    if (isRetrievalConfiguration(action)) {
       const eventStream = runRetrieval(
         auth,
         fullConfiguration,
@@ -236,7 +238,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isDustAppRunConfiguration(fullConfiguration.action)) {
+    } else if (isDustAppRunConfiguration(action)) {
       const eventStream = runDustApp(
         auth,
         fullConfiguration,
@@ -286,7 +288,7 @@ export async function* runAgent(
             return;
         }
       }
-    } else if (isTablesQueryConfiguration(fullConfiguration.action)) {
+    } else if (isTablesQueryConfiguration(action)) {
       const eventStream = runTablesQuery({
         auth,
         configuration: fullConfiguration,
@@ -335,7 +337,7 @@ export async function* runAgent(
     } else {
       ((a: never) => {
         throw new Error(`Unexpected action type: ${a}`);
-      })(fullConfiguration.action);
+      })(action);
     }
   }
 

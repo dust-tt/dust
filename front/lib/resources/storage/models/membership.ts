@@ -7,7 +7,8 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { User, Workspace } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class MembershipModel extends Model<

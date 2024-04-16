@@ -78,7 +78,9 @@ export const AssistantPreviewExample = () => (
       />
       <AssistantPreview
         title={"SQLGod"}
-        description={"OpenAI's most powerful and recent model (128k context)."}
+        description={
+          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here"
+        }
         onClick={() => console.log("clicked")}
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Pink_2.jpg"}
         subtitle={"Pauline Pham, Henry Fontanier"}
@@ -127,7 +129,9 @@ export const AssistantPreviewExample = () => (
       />
       <AssistantPreview
         title={"salesFr"}
-        description={"OpenAI's most powerful and recent model (128k context)."}
+        description={
+          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here"
+        }
         pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
         subtitle={"Stanislas Polu"}
         variant={"list"}
@@ -155,7 +159,9 @@ export const AssistantPreviewExample = () => (
     <div className="s-grid s-grid-cols-2">
       <AssistantPreview
         title={"gpt4"}
-        description={"OpenAI's most powerful and recent model (128k context)."}
+        description={
+          "OpenAI's most powerful and recent model (128k context). With a very long description that starts to repeat itself here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here here"
+        }
         onClick={() => console.log("clicked")}
         pictureUrl="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
         subtitle="Stanislas Polu, Pauline Pham"

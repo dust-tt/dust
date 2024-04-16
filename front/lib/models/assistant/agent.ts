@@ -1,7 +1,4 @@
-import type {
-  AgentUserListStatus,
-  DustAppRunConfigurationType,
-} from "@dust-tt/types";
+import type { AgentUserListStatus } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
   AgentStatus,
@@ -16,9 +13,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -34,10 +28,14 @@ export class AgentGenerationConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare prompt: string;
+  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"] | null>;
+
+  declare prompt: string; // @daph to deprecate for multi-actions
   declare providerId: string;
   declare modelId: string;
   declare temperature: number;
+
+  declare forceUseAtIteration: number | null;
 }
 AgentGenerationConfiguration.init(
   {
@@ -73,6 +71,10 @@ AgentGenerationConfiguration.init(
       allowNull: false,
       defaultValue: 0.7,
     },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_generation_configuration",
@@ -97,32 +99,24 @@ export class AgentConfiguration extends Model<
   declare status: AgentStatus;
   declare scope: Exclude<AgentConfigurationScope, "global">;
   declare name: string;
+
   declare description: string;
+  declare instructions: string | null;
+
   declare pictureUrl: string;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare authorId: ForeignKey<User["id"]>;
 
+  declare maxToolsUsePerRun: number;
+
   declare generationConfigurationId: ForeignKey<
     AgentGenerationConfiguration["id"]
   > | null;
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  > | null;
-  declare dustAppRunConfigurationId: ForeignKey<
-    AgentDustAppRunConfiguration["id"]
-  > | null;
-
-  declare tablesQueryConfigurationId: ForeignKey<
-    AgentTablesQueryConfiguration["id"]
-  > | null;
 
   declare author: NonAttribute<User>;
-  declare generationConfiguration: NonAttribute<AgentGenerationConfiguration>;
-  declare retrievalConfiguration: NonAttribute<AgentRetrievalConfiguration>;
-  declare dustAppRunConfiguration: NonAttribute<DustAppRunConfigurationType>;
-  declare tablesQueryConfiguration: NonAttribute<AgentTablesQueryConfiguration>;
 }
+
 AgentConfiguration.init(
   {
     id: {
@@ -167,6 +161,15 @@ AgentConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    instructions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    maxToolsUsePerRun: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
     pictureUrl: {
       type: DataTypes.TEXT,
       allowNull: false,
@@ -191,25 +194,16 @@ AgentConfiguration.init(
         },
       },
     ],
-    hooks: {
-      beforeValidate: (agentConfiguration: AgentConfiguration) => {
-        const actionsTypes: (keyof AgentConfiguration)[] = [
-          "retrievalConfigurationId",
-          "dustAppRunConfigurationId",
-          "tablesQueryConfigurationId",
-        ];
-        const nonNullActionTypes = actionsTypes.filter(
-          (field) => agentConfiguration[field] != null
-        );
-        if (nonNullActionTypes.length > 1) {
-          throw new Error(
-            "Only one of retrievalConfigurationId, dustAppRunConfigurationId, tablesQueryConfigurationId can be set"
-          );
-        }
-      },
-    },
   }
 );
+
+// AgentGenerationConfiguration <> AgentConfiguration
+AgentConfiguration.hasMany(AgentGenerationConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+});
+AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
+  foreignKey: { name: "agentConfigurationId", allowNull: true },
+});
 
 //  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
@@ -218,46 +212,6 @@ Workspace.hasMany(AgentConfiguration, {
 });
 AgentConfiguration.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
-});
-
-// Agent config <> Generation config
-AgentGenerationConfiguration.hasOne(AgentConfiguration, {
-  as: "generationConfiguration",
-  foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
-});
-AgentConfiguration.belongsTo(AgentGenerationConfiguration, {
-  as: "generationConfiguration",
-  foreignKey: { name: "generationConfigurationId", allowNull: true }, // null = no generation set for this Agent
-});
-
-// Agent config <> Retrieval config
-AgentRetrievalConfiguration.hasOne(AgentConfiguration, {
-  as: "retrievalConfiguration",
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  as: "retrievalConfiguration",
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true }, // null = no retrieval action set for this Agent
-});
-
-// Agent config <> DustAppRun config
-AgentDustAppRunConfiguration.hasOne(AgentConfiguration, {
-  as: "dustAppRunConfiguration",
-  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentDustAppRunConfiguration, {
-  as: "dustAppRunConfiguration",
-  foreignKey: { name: "dustAppRunConfigurationId", allowNull: true }, // null = no DutsAppRun action set for this Agent
-});
-
-// Agent config <> Tables config
-AgentTablesQueryConfiguration.hasOne(AgentConfiguration, {
-  as: "tablesQueryConfiguration",
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
-});
-AgentConfiguration.belongsTo(AgentTablesQueryConfiguration, {
-  as: "tablesQueryConfiguration",
-  foreignKey: { name: "tablesQueryConfigurationId", allowNull: true }, // null = no Tables action set for this Agent
 });
 
 // Agent config <> Author
