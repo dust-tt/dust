@@ -85,13 +85,14 @@ const ListItem = React.forwardRef<
   return (
     <li>
       <NavigationMenuLink asChild>
-        <a
+        <Link
           ref={ref}
           className={classNames(
             "hover:bg-accent focus:bg-accent block cursor-pointer select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-300",
             className
           )}
           href={href}
+          shallow={true}
           {...props}
         >
           <div className="flex h-6 items-center gap-0.5">
@@ -104,7 +105,7 @@ const ListItem = React.forwardRef<
               {title}
             </div>
           </div>
-        </a>
+        </Link>
       </NavigationMenuLink>
     </li>
   );
