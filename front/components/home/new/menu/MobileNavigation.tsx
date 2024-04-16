@@ -36,6 +36,7 @@ export function MobileNavigation() {
                       key={item.href}
                       href={item.href}
                       onOpenChange={setOpen}
+                      isExternal={item.isExternal}
                     >
                       {item.title}
                     </MobileLink>
@@ -50,7 +51,11 @@ export function MobileNavigation() {
                     item.items.map((item) => (
                       <React.Fragment key={item.href}>
                         {item.href ? (
-                          <MobileLink href={item.href} onOpenChange={setOpen}>
+                          <MobileLink
+                            href={item.href}
+                            onOpenChange={setOpen}
+                            isExternal={item.isExternal}
+                          >
                             <ChevronRightIcon className="h-5 w-5 text-slate-500" />{" "}
                             {item.title}
                           </MobileLink>
@@ -72,15 +77,17 @@ export function MobileNavigation() {
 }
 
 interface MobileLinkProps extends LinkProps {
-  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
+  isExternal?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function MobileLink({
   href,
   onOpenChange,
   children,
+  isExternal,
   ...props
 }: MobileLinkProps) {
   return (
@@ -89,7 +96,7 @@ function MobileLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
-      shallow={true}
+      shallow={!isExternal}
       className={classNames(
         "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-50 no-underline outline-none transition-colors",
         "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"

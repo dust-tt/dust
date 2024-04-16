@@ -1,7 +1,7 @@
 interface NavItem {
   title: string;
   href?: string;
-  target?: string;
+  isExternal?: boolean;
   label?: string;
   rows?: number;
 }
@@ -21,12 +21,12 @@ export const CareersMenuConfig: MenuConfig = {
     {
       title: "Jobs",
       href: "https://www.notion.so/dust-tt/Jobs-a67e20f0dc2942fdb77971b73251466e/",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "LinkedIn",
       href: "https://www.linkedin.com/company/dust-tt/",
-      target: "_blank",
+      isExternal: true,
     },
   ],
 };
@@ -37,12 +37,12 @@ export const AboutMenuConfig: MenuConfig = {
     {
       title: "Blog",
       href: "https://blog.dust.tt/",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "@dust4ai",
       href: "https://x.com/dust4ai",
-      target: "_blank",
+      isExternal: true,
     },
   ],
 };
@@ -53,22 +53,22 @@ export const LegalMenuConfig: MenuConfig = {
     {
       title: "Privacy Policy",
       href: "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "Terms of Use",
       href: "https://dust-tt.notion.site/Website-Terms-of-Use-ff8665f52c454e0daf02195ec0d6bafb",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "Legal Notice",
       href: "https://dust-tt.notion.site/Legal-Notice-58b453f74d634ef7bb807d29a59b3db1",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "Cookie Notice",
       href: "https://dust-tt.notion.site/Cookie-Notice-ec63a7fb72104a7babff1bf413e2c1ec",
-      target: "_blank",
+      isExternal: true,
     },
   ],
 };
@@ -128,12 +128,12 @@ export const DevelopersMenuConfig: MenuConfig = {
     {
       title: "Platform Documentation",
       href: "https://docs.dust.tt",
-      target: "_blank",
+      isExternal: true,
     },
     {
       title: "Github Repo",
       href: "https://github.com/dust-tt/dust",
-      target: "_blank",
+      isExternal: true,
     },
   ],
 };

@@ -28,7 +28,7 @@ export function MainNavigation() {
               {item.href ? (
                 <Link
                   href={item.href}
-                  target={item.target}
+                  target={item.isExternal ? "_blank" : undefined}
                   legacyBehavior
                   passHref
                 >
@@ -54,7 +54,7 @@ export function MainNavigation() {
                               key={item.title}
                               title={item.title}
                               href={item.href}
-                              target={item.target}
+                              isExternal={item.isExternal}
                             />
                           ))}
                       </ul>
@@ -72,8 +72,8 @@ export function MainNavigation() {
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className = "", title, href, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<"a"> & { isExternal?: boolean }
+>(({ className = "", title, href, isExternal, ...props }, ref) => {
   if (!href) {
     return (
       <li>
@@ -92,7 +92,8 @@ const ListItem = React.forwardRef<
             className
           )}
           href={href}
-          shallow={true}
+          target={isExternal ? "_blank" : undefined}
+          shallow={!isExternal}
           {...props}
         >
           <div className="flex h-6 items-center gap-0.5">

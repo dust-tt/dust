@@ -23,7 +23,11 @@ export function FooterNavigation() {
               className="col-span-6 flex flex-col space-y-2 sm:col-span-4 md:col-span-2"
             >
               {item.href ? (
-                <FooterLink key={item.href} href={item.href}>
+                <FooterLink
+                  key={item.href}
+                  href={item.href}
+                  isExternal={item.isExternal}
+                >
                   {item.title}
                 </FooterLink>
               ) : (
@@ -37,7 +41,9 @@ export function FooterNavigation() {
                 item.items.map((item) => (
                   <React.Fragment key={item.href}>
                     {item.href ? (
-                      <FooterLink href={item.href}>{item.title}</FooterLink>
+                      <FooterLink href={item.href} isExternal={item.isExternal}>
+                        {item.title}
+                      </FooterLink>
                     ) : (
                       <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
                         {item.title}
@@ -57,12 +63,14 @@ interface FooterLinkProps extends LinkProps {
   onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
+  isExternal?: boolean;
 }
 
 function FooterLink({
   href,
   onOpenChange,
   children,
+  isExternal,
   ...props
 }: FooterLinkProps) {
   return (
@@ -71,7 +79,7 @@ function FooterLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
-      shallow={true}
+      shallow={!isExternal}
       {...props}
     >
       <A variant="tertiary" className="text-sm">
