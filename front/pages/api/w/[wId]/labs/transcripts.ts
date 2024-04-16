@@ -2,10 +2,10 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { launchRetrieveNewTranscriptsWorkflow } from "@app/lib/labs/temporal/client";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchRetrieveNewTranscriptsWorkflow } from "@app/temporal/labs/client";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;

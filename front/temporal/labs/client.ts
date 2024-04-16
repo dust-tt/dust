@@ -1,14 +1,14 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { QUEUE_NAME } from "@app/lib/labs/temporal/config";
-import {
-  processTranscriptWorkflow,
-  retrieveNewTranscriptsWorkflow,
-} from "@app/lib/labs/temporal/workflows";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import { QUEUE_NAME } from "@app/temporal/labs/config";
+import {
+  processTranscriptWorkflow,
+  retrieveNewTranscriptsWorkflow,
+} from "@app/temporal/labs/workflows";
 
 export function generateWorkflowId(
   userId: string,

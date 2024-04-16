@@ -10,13 +10,13 @@ import sgMail from "@sendgrid/mail";
 import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
-import { launchProcessTranscriptWorkflow } from "@app/lib/labs/temporal/client";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 import { LabsTranscriptsHistoryResource } from "@app/lib/resources/labs_transcripts_history_resource";
 import mainLogger from "@app/logger/logger";
+import { launchProcessTranscriptWorkflow } from "@app/temporal/labs/client";
 
 const {
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
