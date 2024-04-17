@@ -42,7 +42,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 6 },
+    props: { gaTrackingId: config.getGaTrackingId(), shape: 9 },
   };
 });
 

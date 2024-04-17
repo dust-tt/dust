@@ -52,17 +52,16 @@ export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
 
   return (
     <>
-      <Grid className="min-h-[60vh]" gap="gap-y-8">
+      <Grid className="pt-[24vh]" gap="gap-y-8 gap-x-12">
         <div
           className={classNames(
             "col-span-12",
             "flex flex-col gap-8",
             "md:col-span-6",
-            "xl:col-span-5",
-            "2xl:col-start-2"
+            "2xl:col-span-5 2xl:col-start-2"
           )}
         >
-          <div className="flex flex-col gap-8 lg:gap-12">
+          <div className="flex flex-col gap-8">
             <H1 from="from-red-200" to="to-red-400">
               Cracking
               <br />
@@ -91,10 +90,9 @@ export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
         <div
           className={classNames(
             "col-span-12 hidden",
-            "md:col-span-6 md:block md:pt-8",
-            "lg:p-0",
-            "xl:col-span-7",
-            "2xl:col-span-6"
+            "md:col-span-6 md:block md:pt-4",
+            "xl:col-span-6",
+            "md:pt-2 2xl:col-span-6"
           )}
         >
           {MainVisualImage()}

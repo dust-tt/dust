@@ -175,7 +175,7 @@ export function ProPriceTable({
     <PriceTable
       title="Pro"
       price={getPriceWithCurrency(PRO_PLAN_29_COST)}
-      color="sky"
+      color="emerald"
       priceLabel="/ month / user, excl. tax"
       size={size}
       magnified={false}

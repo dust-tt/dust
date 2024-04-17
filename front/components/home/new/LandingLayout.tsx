@@ -16,6 +16,7 @@ import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { A } from "@app/components/home/new/ContentComponents";
+import { FooterNavigation } from "@app/components/home/new/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/new/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/new/menu/MobileNavigation";
 import Particles, { particuleShapes } from "@app/components/home/new/Particles";
@@ -127,9 +128,9 @@ export default function LandingLayout({
         <div
           className={classNames(
             "container flex w-full flex-col",
-            "gap-16 px-6 py-24 py-48",
-            "xl:gap-36 xl:pb-96",
-            "2xl:gap-48"
+            "gap-16 px-6 py-24 pb-12",
+            "xl:gap-28",
+            "2xl:gap-36"
           )}
         >
           {children}
@@ -164,6 +165,7 @@ export default function LandingLayout({
             </Script>
           </>
         )}
+        <FooterNavigation />
       </main>
     </RootLayout>
   );
