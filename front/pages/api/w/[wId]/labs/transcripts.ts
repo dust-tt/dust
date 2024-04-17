@@ -42,6 +42,16 @@ async function handler(
           provider: req.query.provider as LabsTranscriptsProviderType,
         });
 
+      if(!transcriptsConfigurationGet) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "configuration_not_found",
+            message: "The configuration was not found.",
+          },
+        });
+      }
+
       return res
         .status(200)
         .json({ configuration: transcriptsConfigurationGet });
@@ -90,7 +100,7 @@ async function handler(
       if (isActive !== undefined) {
         await transcriptsConfigurationPatchResource.setIsActive({isActive})
         if (isActive) {
-          void launchRetrieveTranscriptsWorkflow({
+          await launchRetrieveTranscriptsWorkflow({
             userId: owner.id,
             providerId: patchProvider,
           });

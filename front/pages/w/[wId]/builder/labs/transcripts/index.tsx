@@ -163,7 +163,7 @@ export default function LabsTranscriptsIndex({
     })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error("Failed to fetch solution configuration");
+          return; // No configuration found yet
         }
         const { configuration } = await response.json();
         if (configuration?.id) {
@@ -192,6 +192,36 @@ export default function LabsTranscriptsIndex({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentsFetched]);
 
+  const saveGoogleDriveConnection = async (connectionId: string) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        connectionId,
+        provider,
+      }),
+    })
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Google Drive",
+        description: "Could not connect to Google Drive. Please try again.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Connected Google Drive",
+        description: "Google Drive has been connected successfully.",
+      });
+      setIsGDriveConnected(true);
+    }
+    setIsLoading(false);
+    return response;
+  }
+
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
     try {
@@ -207,29 +237,7 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId: nangoConnectionId,
-          provider,
-        }),
-      }).then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to connect Google Drive");
-        }
-        sendNotification({
-          type: "success",
-          title: "Connected Google Drive",
-          description: "Google Drive has been connected successfully.",
-        });
-
-        setIsGDriveConnected(true);
-        setIsLoading(false);
-        return response;
-      });
+      await saveGoogleDriveConnection(nangoConnectionId);
     } catch (error) {
       sendNotification({
         type: "error",
