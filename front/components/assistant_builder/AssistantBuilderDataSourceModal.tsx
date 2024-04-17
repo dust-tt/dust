@@ -67,12 +67,16 @@ export default function AssistantBuilderDataSourceModal({
     useState<DataSourceType | null>(null);
   const [selectedResources, setSelectedResources] = useState<ContentNode[]>([]);
   const [isSelectAll, setIsSelectAll] = useState(false);
+  const [selectedFolders, setSelectedFolders] = useState<DataSourceType[]>([]);
+  const [selectedWebsites, setSelectedWebsites] = useState<DataSourceType[]>(
+    []
+  );
 
   // Hack to filter out Folders from the list of data sources
   const [shouldDisplayFoldersScreen, setShouldDisplayFoldersScreen] =
     useState(false);
   const allFolders = dataSources.filter((ds) => !ds.connectorProvider);
-  const selectedFolders = Object.values(dataSourceConfigurations)
+  const alreadySelectedFolders = Object.values(dataSourceConfigurations)
     .map((config) => {
       return config.dataSource;
     })
@@ -84,7 +88,7 @@ export default function AssistantBuilderDataSourceModal({
   const allWebsites = dataSources.filter(
     (ds) => ds.connectorProvider === "webcrawler"
   );
-  const selectedWebsites = Object.values(dataSourceConfigurations)
+  const alreadySelectedWebsites = Object.values(dataSourceConfigurations)
     .map((config) => {
       return config.dataSource;
     })
@@ -93,6 +97,8 @@ export default function AssistantBuilderDataSourceModal({
   const onReset = () => {
     setSelectedDataSource(null);
     setSelectedResources([]);
+    setSelectedFolders([]);
+    setSelectedWebsites([]);
     setIsSelectAll(false);
   };
 
@@ -106,24 +112,43 @@ export default function AssistantBuilderDataSourceModal({
   };
 
   const onSaveLocal = ({ isSelectAll }: { isSelectAll: boolean }) => {
-    if (shouldDisplayFoldersScreen || shouldDisplayWebsitesScreen) {
-      // We can just close the modal since the folders & websites are instantly saved
-      onClose();
-      return;
-    }
-
-    if (!selectedDataSource) {
-      throw new Error("Cannot save an incomplete configuration");
-    }
-
-    if (selectedResources.length || isSelectAll) {
-      onSave({
-        dataSource: selectedDataSource,
-        selectedResources,
-        isSelectAll,
-      });
+    if (shouldDisplayFoldersScreen) {
+      for (const f of allFolders) {
+        if (selectedFolders.some((folder) => folder.name === f.name)) {
+          onSave({
+            dataSource: f,
+            selectedResources: [],
+            isSelectAll: true,
+          });
+        } else {
+          onDelete(f.name);
+        }
+      }
+    } else if (shouldDisplayWebsitesScreen) {
+      for (const w of allWebsites) {
+        if (selectedWebsites.some((website) => website.name === w.name)) {
+          onSave({
+            dataSource: w,
+            selectedResources: [],
+            isSelectAll: true,
+          });
+        } else {
+          onDelete(w.name);
+        }
+      }
     } else {
-      onDelete(selectedDataSource.name);
+      if (!selectedDataSource) {
+        throw new Error("Cannot save an incomplete configuration");
+      }
+      if (selectedResources.length || isSelectAll) {
+        onSave({
+          dataSource: selectedDataSource,
+          selectedResources,
+          isSelectAll,
+        });
+      } else {
+        onDelete(selectedDataSource.name);
+      }
     }
 
     onClose();
@@ -144,7 +169,11 @@ export default function AssistantBuilderDataSourceModal({
         }
       }}
       onSave={() => onSaveLocal({ isSelectAll })}
-      hasChanged={selectedDataSource !== null}
+      hasChanged={
+        selectedDataSource !== null ||
+        shouldDisplayFoldersScreen ||
+        shouldDisplayWebsitesScreen
+      }
       variant="full-screen"
       title="Manage data sources selection"
     >
@@ -166,9 +195,11 @@ export default function AssistantBuilderDataSourceModal({
               }}
               onPickFolders={() => {
                 setShouldDisplayFoldersScreen(true);
+                setSelectedFolders(alreadySelectedFolders);
               }}
               onPickWebsites={() => {
                 setShouldDisplayWebsitesScreen(true);
+                setSelectedWebsites(alreadySelectedWebsites);
               }}
             />
           )}
@@ -179,8 +210,19 @@ export default function AssistantBuilderDataSourceModal({
             type="folder"
             dataSources={allFolders}
             selectedDataSources={selectedFolders}
-            onSave={onSave}
-            onDelete={onDelete}
+            onSelectChange={(ds, selected) => {
+              if (selected) {
+                setSelectedFolders((currentFolders) => {
+                  return [...currentFolders, ds];
+                });
+              } else {
+                setSelectedFolders((currentFolders) => {
+                  return currentFolders.filter(
+                    (folder) => folder.name !== ds.name
+                  );
+                });
+              }
+            }}
           />
         )}
 
@@ -190,8 +232,19 @@ export default function AssistantBuilderDataSourceModal({
             owner={owner}
             dataSources={allWebsites}
             selectedDataSources={selectedWebsites}
-            onSave={onSave}
-            onDelete={onDelete}
+            onSelectChange={(ds, selected) => {
+              if (selected) {
+                setSelectedWebsites((currentWebsites) => {
+                  return [...currentWebsites, ds];
+                });
+              } else {
+                setSelectedWebsites((currentWebsites) => {
+                  return currentWebsites.filter(
+                    (website) => website.name !== ds.name
+                  );
+                });
+              }
+            }}
           />
         )}
 
@@ -448,15 +501,13 @@ function FolderOrWebsiteResourceSelector({
   type,
   dataSources,
   selectedDataSources,
-  onSave,
-  onDelete,
+  onSelectChange,
 }: {
   owner: WorkspaceType;
   type: "folder" | "website";
   dataSources: DataSourceType[];
   selectedDataSources: DataSourceType[];
-  onSave: (params: AssistantBuilderDataSourceConfiguration) => void;
-  onDelete: (name: string) => void;
+  onSelectChange: (ds: DataSourceType, selected: boolean) => void;
 }) {
   const [query, setQuery] = useState<string>("");
 
@@ -512,18 +563,7 @@ function FolderOrWebsiteResourceSelector({
                       checked={isSelected}
                       partialChecked={false}
                       onChange={(checked) => {
-                        const isSelected = selectedDataSources.some(
-                          (selectedDs) => selectedDs.name === ds.name
-                        );
-                        if (checked && !isSelected) {
-                          onSave({
-                            dataSource: ds,
-                            selectedResources: [],
-                            isSelectAll: true,
-                          });
-                        } else if (!checked && isSelected) {
-                          onDelete(ds.name);
-                        }
+                        onSelectChange(ds, checked);
                       }}
                     />
                   </div>
