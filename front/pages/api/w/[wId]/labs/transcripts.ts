@@ -36,7 +36,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfigurationGetRes =
+      const transcriptsConfigurationGet =
         await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
           userId: owner.id,
           provider: req.query.provider as LabsTranscriptsProviderType,
@@ -44,7 +44,7 @@ async function handler(
 
       return res
         .status(200)
-        .json({ configuration: transcriptsConfigurationGetRes });
+        .json({ configuration: transcriptsConfigurationGet });
 
     // Update
     case "PATCH":

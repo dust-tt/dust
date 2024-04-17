@@ -100,8 +100,8 @@ export async function processGoogleDriveTranscriptActivity(
   }
 
   logger.info(
-    "[processGoogleDriveTranscriptActivity] Starting processing of file ",
-    fileId
+    fileId,
+    "[processGoogleDriveTranscriptActivity] Starting processing of file "
   );
 
   const transcriptsConfiguration =
@@ -132,7 +132,7 @@ export async function processGoogleDriveTranscriptActivity(
   });
 
   if (contentRes.status !== 200) {
-    logger.error({}, "Error exporting Google document");
+    logger.error({ error: contentRes.statusText }, "Error exporting Google document");
     throw new Error(
       `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
     );
@@ -149,8 +149,6 @@ export async function processGoogleDriveTranscriptActivity(
     },
     logger
   );
-
-  let conversation: ConversationType;
 
   const configurationId = config.getLabsTranscriptsAssistantId()
       ? config.getLabsTranscriptsAssistantId()
@@ -187,13 +185,14 @@ export async function processGoogleDriveTranscriptActivity(
       convRes.error
     );
     return new Err(new Error(convRes.error.message));
-  } else {
-    conversation = convRes.value.conversation;
-    logger.info(
-      "[processGoogleDriveTranscriptActivity] Created conversation " +
-        conversation.sId
-    );
-  }
+  } 
+
+  const conversation = convRes.value.conversation;
+  logger.info(
+    "[processGoogleDriveTranscriptActivity] Created conversation " +
+      conversation.sId
+  );
+  
 
   if (!conversation) {
     logger.error(
@@ -220,17 +219,22 @@ export async function processGoogleDriveTranscriptActivity(
       "[processGoogleDriveTranscriptActivity] Email sent with summary"
     );
   });
+  
+  const hasExistingHistory = await LabsTranscriptsHistoryResource.findByFileId({
+    fileId,
+  });
 
-  // CREATE HISTORY RECORD
-  LabsTranscriptsHistoryResource.makeNew({
+  if (hasExistingHistory) {
+    logger.info(
+      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
+    );
+    return;
+  }
+
+  await LabsTranscriptsHistoryResource.makeNew({
     configurationId: transcriptsConfiguration.id,
     fileId,
     fileName: transcriptTitle,
-  }).catch((err) => {
-    logger.error(
-      "[processGoogleDriveTranscriptActivity] Error creating history record",
-      err
-    );
   });
 }
 

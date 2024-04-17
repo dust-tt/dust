@@ -25,16 +25,7 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
 
   static async makeNew(blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">): Promise<LabsTranscriptsHistoryResource> {
     const { configurationId, fileId, fileName } = blob;
-    const hasExistingHistory = await LabsTranscriptsHistoryModel.count({ 
-      where: {
-        fileId: fileId,
-      },
-    })
-      if (hasExistingHistory) {
-      throw new Error(
-        `A Solution transcripts history already exists with fileId ${fileId}`
-      );
-    }
+
     const history = await LabsTranscriptsHistoryModel.create({
       configurationId,
       fileId,
