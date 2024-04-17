@@ -27,8 +27,8 @@ export const PostLabsTranscriptsConfigurationBodySchema = t.type({
 export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
   agentConfigurationId: t.string,
   provider: acceptableProviders,
-  email: t.string,
-  isActive: t.boolean,
+  email: t.union([t.string, t.undefined]),
+  isActive: t.union([t.boolean, t.undefined]),
 });
 
 async function handler(
