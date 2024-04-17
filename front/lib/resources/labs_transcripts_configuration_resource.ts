@@ -5,7 +5,7 @@ import type { CreationAttributes } from "sequelize";
 
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts_configuration";
+import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

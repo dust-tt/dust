@@ -115,7 +115,7 @@ async function handler(
         });
       }
 
-      const transcriptsConfigurationPostRes =
+      const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId: owner.id,
           connectionId,
@@ -124,7 +124,7 @@ async function handler(
 
       return res
         .status(200)
-        .json({ configuration: transcriptsConfigurationPostRes });
+        .json({ configuration: transcriptsConfigurationPostResource });
 
     default:
       return apiError(req, res, {
