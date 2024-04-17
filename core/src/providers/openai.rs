@@ -155,6 +155,20 @@ pub struct OpenAIToolCall {
     pub function: OpenAIToolCallFunction,
 }
 
+impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
+    type Error = anyhow::Error;
+
+    fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
+        Ok(OpenAIToolCall {
+            r#type: OpenAIToolType::Function,
+            function: OpenAIToolCallFunction {
+                name: cf.name.clone(),
+                arguments: cf.arguments.clone(),
+            },
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: ChatMessageRole,
@@ -196,6 +210,7 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             Some(tc) => {
                 // We only take the first tool call suggestion.
                 if tc.len() > 0 {
+                    // TODO: Use trait.
                     Some(ChatFunctionCall {
                         name: tc[0].function.name.clone(),
                         arguments: tc[0].function.arguments.clone(),
@@ -212,6 +227,22 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             role,
             name: None,
             function_call,
+        })
+    }
+}
+
+impl TryFrom<&ChatMessage> for OpenAIChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        Ok(OpenAIChatMessage {
+            content: cm.content.clone(),
+            name: cm.name.clone(),
+            role: cm.role.clone(),
+            tool_calls: match cm.function_call.as_ref() {
+                Some(fc) => Some(vec![OpenAIToolCall::try_from(fc)?]),
+                None => None,
+            },
         })
     }
 }
@@ -1189,7 +1220,7 @@ async fn streamed_chat_completion_with_tools(
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
-    messages: &Vec<ChatMessage>,
+    messages: &Vec<OpenAIChatMessage>,
     tools: Vec<OpenAITool>,
     tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
@@ -1480,6 +1511,7 @@ async fn streamed_chat_completion_with_tools(
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
+                                            // TODO: Use trait.
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
@@ -1541,7 +1573,7 @@ async fn chat_completion_with_tools(
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
-    messages: &Vec<ChatMessage>,
+    messages: &Vec<OpenAIChatMessage>,
     tools: Vec<OpenAITool>,
     tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
@@ -1828,7 +1860,7 @@ impl OpenAILLM {
         println!("FUNCTIONS: {:?} {:?}", function_call, functions);
         println!("TOOLS: {:?} {:?}", tool_choice, tools);
 
-        println!("EVENT_SEND: {:?}", event_sender);
+        let openai_messages = self.to_openai_messages(messages)?;
 
         let c = match event_sender {
             Some(_) => {
@@ -1837,7 +1869,7 @@ impl OpenAILLM {
                     self.api_key.clone().unwrap(),
                     openai_org_id,
                     Some(self.id.clone()),
-                    messages,
+                    &openai_messages,
                     tools,
                     tool_choice,
                     temperature,
@@ -1868,7 +1900,7 @@ impl OpenAILLM {
                     self.api_key.clone().unwrap(),
                     openai_org_id,
                     Some(self.id.clone()),
-                    messages,
+                    &openai_messages,
                     tools,
                     tool_choice,
                     temperature,
@@ -1908,6 +1940,16 @@ impl OpenAILLM {
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
         })
+    }
+
+    fn to_openai_messages(
+        &self,
+        messages: &Vec<ChatMessage>,
+    ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
+        messages
+            .iter()
+            .map(|m| OpenAIChatMessage::try_from(m))
+            .collect::<Result<Vec<_>>>()
     }
 }
 
