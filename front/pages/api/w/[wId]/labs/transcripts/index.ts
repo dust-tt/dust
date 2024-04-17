@@ -1,4 +1,7 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -10,6 +13,23 @@ import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
+
+export const acceptableProviders = t.union([
+  t.literal("google_drive"),
+  t.literal("gong"),
+]);
+
+export const PostLabsTranscriptsConfigurationBodySchema = t.type({
+  connectionId: t.string,
+  provider: acceptableProviders,
+});
+
+export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
+  agentConfigurationId: t.string,
+  provider: acceptableProviders,
+  email: t.string,
+  isActive: t.boolean,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -68,22 +88,29 @@ async function handler(
 
     // Update
     case "PATCH":
+      const patchBodyValidation =
+        PatchLabsTranscriptsConfigurationBodySchema.decode(req.body);
+
+      if (isLeft(patchBodyValidation)) {
+        const pathError = reporter.formatValidationErrors(
+          patchBodyValidation.left
+        );
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
       const {
         agentConfigurationId: patchAgentId,
         provider: patchProvider,
         email: emailToNotify,
         isActive,
-      } = req.body;
-      if (!patchAgentId || !patchProvider) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The `connectionId` and `provider` parameters are required.",
-          },
-        });
-      }
+      } = patchBodyValidation.right;
 
       const transcriptsConfigurationPatchResource =
         await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
@@ -127,17 +154,22 @@ async function handler(
 
     // Create
     case "POST":
-      const { connectionId, provider } = req.body;
-      if (!connectionId || !provider) {
+      const bodyValidation = PostLabsTranscriptsConfigurationBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The `connectionId` and `provider` parameters are required.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
+
+      const { connectionId, provider } = bodyValidation.right;
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
