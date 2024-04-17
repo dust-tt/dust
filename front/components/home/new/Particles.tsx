@@ -2,10 +2,8 @@ import { useEffect } from "react";
 import * as THREE from "three";
 
 let speed = 0.08;
-// const postExplodeSpeed = 0.03;
 const postExplodeSpeed = 0.03;
 const particleSize = 0.008; // Size of the particles
-let targetSize = particleSize; // initial target size
 
 interface ParticulesProps {
   currentShape: number;
@@ -43,17 +41,19 @@ export default function Particules({ currentShape }: ParticulesProps) {
 }
 
 export const particuleShapes = [
-  { name: "grid", opacity: 1, size: particleSize },
-  { name: "wave", opacity: 1, size: particleSize },
-  { name: "bigSphere", opacity: 1, size: particleSize },
-  { name: "sphere", opacity: 1, size: particleSize },
-  { name: "cube", opacity: 1, size: particleSize },
-  { name: "bigCube", opacity: 1, size: particleSize },
-  { name: "torus", opacity: 1, size: particleSize },
-  { name: "pyramid", opacity: 1, size: particleSize },
-  { name: "octahedron", opacity: 1, size: particleSize },
-  { name: "cone", opacity: 1, size: particleSize },
-  { name: "icosahedron", opacity: 1, size: particleSize },
+  { name: "grid" },
+  { name: "wave" },
+  { name: "bigSphere" },
+  { name: "cube" },
+  { name: "cube" },
+  { name: "bigCube" },
+  { name: "torus" },
+  { name: "sphere" },
+  { name: "pyramid" },
+  { name: "octahedron" },
+  { name: "cone" },
+  { name: "icosahedron" },
+  { name: "galaxy" },
 ];
 
 let scene: THREE.Scene;
@@ -152,21 +152,6 @@ function onWindowResize() {
 }
 
 function animate() {
-  // Get the current size
-  const currentSize = (particleSystem.material as THREE.PointsMaterial).size;
-
-  // Calculate the difference between the current size and the target size
-  const sizeDifference = targetSize - currentSize;
-
-  // If the difference is too small, directly set to targetSize to avoid endless tiny oscillations
-  if (Math.abs(sizeDifference) < 0.001) {
-    (particleSystem.material as THREE.PointsMaterial).size = targetSize;
-  } else {
-    // Gradually change the size
-    (particleSystem.material as THREE.PointsMaterial).size +=
-      sizeDifference * 0.01; // 0.01 is the speed of size change, adjust this value to your need
-  }
-
   requestAnimationFrame(animate);
   if (rotationActive) {
     particleSystem.rotation.x += 0.0;
@@ -253,10 +238,9 @@ function animateExplode() {
     }
   }
 }
+
 function calculateTargetPositions(currentShape = 0) {
   targetPositions = []; // Reset the target positions
-  targetSize = particuleShapes[currentShape].size;
-
   for (let i = 0; i < numParticles; i++) {
     let targetPosition = { x: 0, y: 0, z: 0 }; // Initialize targetPosition with default values
 
@@ -292,7 +276,7 @@ function calculateTargetPositions(currentShape = 0) {
       case "octahedron":
         targetPosition = calculateOctahedronPosition(
           i,
-          geometricObjectSize * 1.5
+          geometricObjectSize * 4
         );
         break;
       case "tetrahedron":
@@ -313,6 +297,9 @@ function calculateTargetPositions(currentShape = 0) {
           geometricObjectSize * 3,
           geometricObjectSize * 12
         );
+        break;
+      case "galaxy":
+        targetPosition = calculateGalaxyPosition(i, geometricObjectSize * 0.2);
         break;
       default:
         console.log("Not a known shape");
@@ -440,6 +427,7 @@ function calculateTorusPosition(
   const targetPositionZ = tubeRadius * Math.sin(tubeAngle);
   return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
 }
+
 function calculatePyramidPosition(i: number, pyramidSize: number) {
   const vertices = [
     [-1, -1, -1],
@@ -518,44 +506,45 @@ function calculateConePosition(i: number, radius: number, height: number) {
   return { x, y, z };
 }
 
-function calculateOctahedronPosition(i: number, size: number) {
-  const segments = Math.ceil(Math.sqrt(numParticles / 8));
-  const face = Math.floor(i / ((segments * (segments + 1)) / 2));
-  const row = Math.floor(
-    Math.sqrt(2 * (i % ((segments * (segments + 1)) / 2)))
-  );
-  const col = (i % ((segments * (segments + 1)) / 2)) - (row * (row + 1)) / 2;
+function calculateOctahedronPosition(i: number, octahedronSize: number) {
+  const vertices = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ];
 
-  let targetPositionX = 0;
-  let targetPositionY = 0;
-  let targetPositionZ = 0;
+  const faces = [
+    [0, 2, 4],
+    [0, 4, 3],
+    [0, 3, 5],
+    [0, 5, 2],
+    [1, 4, 2],
+    [1, 3, 4],
+    [1, 5, 3],
+    [1, 2, 5],
+  ];
 
-  const u = col / (segments - 1);
-  const v = row / (segments - 1);
+  const faceIndex = Math.floor(i / (numParticles / faces.length));
+  const face = faces[faceIndex];
 
-  switch (face) {
-    case 0: // Top Front
-      targetPositionX = (u - 0.5) * size;
-      targetPositionY = (0.5 - v) * size;
-      targetPositionZ = (u + v - 0.5) * size;
-      break;
-    case 1: // Top Back
-      targetPositionX = (0.5 - u) * size;
-      targetPositionY = (0.5 - v) * size;
-      targetPositionZ = (1.5 - u - v) * size;
-      break;
-    case 2: // Bottom Front
-      targetPositionX = (u - 0.5) * size;
-      targetPositionY = (v - 0.5) * size;
-      targetPositionZ = (0.5 - u - v) * size;
-      break;
-    case 3: // Bottom Back
-      targetPositionX = (0.5 - u) * size;
-      targetPositionY = (v - 0.5) * size;
-      targetPositionZ = (u + v - 1.5) * size;
-      break;
-  }
+  const r1 = Math.random();
+  const r2 = Math.random();
 
+  const power = 2; // Adjust this value to control the accumulation around the edges
+  const u = 1 - Math.pow(r1, power);
+  const v = Math.pow(r1, power) * (1 - Math.pow(r2, power));
+  const w = Math.pow(r1, power) * Math.pow(r2, power);
+
+  const v1 = vertices[face[0]];
+  const v2 = vertices[face[1]];
+  const v3 = vertices[face[2]];
+
+  const targetPositionX = (u * v1[0] + v * v2[0] + w * v3[0]) * octahedronSize;
+  const targetPositionY = (u * v1[1] + v * v2[1] + w * v3[1]) * octahedronSize;
+  const targetPositionZ = (u * v1[2] + v * v2[2] + w * v3[2]) * octahedronSize;
   return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
 }
 
@@ -636,64 +625,26 @@ function calculateIcosahedronPosition(i: number, icosahedronSize: number) {
   return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
 }
 
-// function calculateIcosahedronPosition(i: number, icosahedronSize: number) {
-//   const t = (1 + Math.sqrt(5)) / 2;
+function calculateGalaxyPosition(i: number, radius: number) {
+  const numArms = 4;
+  const armAngleOffset = (Math.PI * 2) / numArms;
+  const armPoints = 100;
+  const armSpread = 0.2;
+  const armIndex = i % numArms;
+  const armAngle = armIndex * armAngleOffset;
+  const armPointIndex = Math.floor(i / numArms);
+  const t = armPointIndex / armPoints;
 
-//   const vertices = [
-//     [-1, t, 0],
-//     [1, t, 0],
-//     [-1, -t, 0],
-//     [1, -t, 0],
-//     [0, -1, t],
-//     [0, 1, t],
-//     [0, -1, -t],
-//     [0, 1, -t],
-//     [t, 0, -1],
-//     [t, 0, 1],
-//     [-t, 0, -1],
-//     [-t, 0, 1],
-//   ];
+  const angle = -(t * Math.PI) / 10 + armAngle;
+  const distance = t * radius;
 
-//   const faces = [
-//     [0, 11, 5],
-//     [0, 5, 1],
-//     [0, 1, 7],
-//     [0, 7, 10],
-//     [0, 10, 11],
-//     [1, 5, 9],
-//     [5, 11, 4],
-//     [11, 10, 2],
-//     [10, 7, 6],
-//     [7, 1, 8],
-//     [3, 9, 4],
-//     [3, 4, 2],
-//     [3, 2, 6],
-//     [3, 6, 8],
-//     [3, 8, 9],
-//     [4, 9, 5],
-//     [2, 4, 11],
-//     [6, 2, 10],
-//     [8, 6, 7],
-//     [9, 8, 1],
-//   ];
+  const armOffsetX = (Math.random() - 0.5) * distance * armSpread;
+  const armOffsetY = (Math.random() - 0.5) * distance * armSpread;
+  const armOffsetZ = (Math.random() - 0.5) * distance * armSpread;
 
-//   const faceIndex = Math.floor(i / (numParticles / faces.length));
-//   const face = faces[faceIndex];
+  const targetPositionX = Math.cos(angle) * distance + armOffsetX;
+  const targetPositionY = Math.sin(angle) * distance + armOffsetY;
+  const targetPositionZ = armOffsetZ;
 
-//   const v1 = vertices[face[0]];
-//   const v2 = vertices[face[1]];
-//   const v3 = vertices[face[2]];
-
-//   const r1 = Math.random();
-//   const r2 = Math.random();
-//   const sqrt_r1 = Math.sqrt(r1);
-
-//   const u = 1 - sqrt_r1;
-//   const v = sqrt_r1 * (1 - r2);
-//   const w = sqrt_r1 * r2;
-
-//   const targetPositionX = (u * v1[0] + v * v2[0] + w * v3[0]) * icosahedronSize;
-//   const targetPositionY = (u * v1[1] + v * v2[1] + w * v3[1]) * icosahedronSize;
-//   const targetPositionZ = (u * v1[2] + v * v2[2] + w * v3[2]) * icosahedronSize;
-//   return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
-// }
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
