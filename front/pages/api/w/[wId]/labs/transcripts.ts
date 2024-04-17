@@ -65,13 +65,13 @@ async function handler(
         });
       }
 
-      const transcriptsConfigurationPatchRes =
+      const transcriptsConfigurationPatchResource =
         await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
           userId: owner.id,
           provider: patchProvider as LabsTranscriptsProviderType,
         });
 
-      if (!transcriptsConfigurationPatchRes) {
+      if (!transcriptsConfigurationPatchResource) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -81,38 +81,25 @@ async function handler(
         });
       }
 
-      await LabsTranscriptsConfigurationResource.setAgentConfigurationId({
-        agentConfigurationId: patchAgentId,
-        provider: patchProvider,
-        userId: owner.id,
-      });
+      await transcriptsConfigurationPatchResource.setAgentConfigurationId({agentConfigurationId: patchAgentId});
 
       if (emailToNotify) {
-        await LabsTranscriptsConfigurationResource.setEmailToNotify({
-          emailToNotify,
-          provider: patchProvider,
-          userId: owner.id,
-        });
+        await transcriptsConfigurationPatchResource.setEmailToNotify({emailToNotify});
       }
 
       if (isActive !== undefined) {
-        await LabsTranscriptsConfigurationResource.setIsActive({
-          isActive,
-          provider: patchProvider,
-          userId: owner.id,
-        }).then(() => {
-          if (isActive) {
-            void launchRetrieveNewTranscriptsWorkflow({
-              userId: owner.id,
-              providerId: patchProvider,
-            });
-          }
-        });
+        await transcriptsConfigurationPatchResource.setIsActive({isActive})
+        if (isActive) {
+          void launchRetrieveNewTranscriptsWorkflow({
+            userId: owner.id,
+            providerId: patchProvider,
+          });
+        }
       }
 
       return res
         .status(200)
-        .json({ configuration: transcriptsConfigurationPatchRes });
+        .json({ configuration: transcriptsConfigurationPatchResource });
 
     // Create
     case "POST":

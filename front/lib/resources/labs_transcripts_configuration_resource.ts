@@ -73,14 +73,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  static async setAgentConfigurationId({
+  async setAgentConfigurationId({
     agentConfigurationId,
-    userId,
-    provider,
   }: {
     agentConfigurationId: string | null;
-    userId: ModelId;
-    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -90,17 +86,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       | Error
     >
   > {
-    const configuration = await this.findByUserIdAndProvider({
-      userId,
-      provider,
-    });
-    if (!configuration) {
-      return new Err({
-        type: "not_found",
-      });
-    }
 
-    if (configuration.agentConfigurationId === agentConfigurationId) {
+    if (this.agentConfigurationId === agentConfigurationId) {
       return new Ok(undefined);
     }
 
@@ -109,7 +96,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         { agentConfigurationId },
         {
           where: {
-            id: configuration.id,
+            id: this.id,
           },
         }
       );
@@ -120,14 +107,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     }
   }
 
-  static async setEmailToNotify({
-    emailToNotify,
-    userId,
-    provider,
+  async setEmailToNotify({
+    emailToNotify
   }: {
     emailToNotify: string | null;
-    userId: ModelId;
-    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -137,17 +120,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       | Error
     >
   > {
-    const configuration = await this.findByUserIdAndProvider({
-      userId,
-      provider,
-    });
-    if (!configuration) {
-      return new Err({
-        type: "not_found",
-      });
-    }
-
-    if (configuration.emailToNotify === emailToNotify) {
+    if (this.emailToNotify === emailToNotify) {
       return new Ok(undefined);
     }
 
@@ -156,7 +129,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         { emailToNotify },
         {
           where: {
-            id: configuration.id,
+            id: this.id,
           },
         }
       );
@@ -184,14 +157,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return configuration.isActive;
   }
 
-  static async setIsActive({
-    isActive,
-    userId,
-    provider,
+  async setIsActive({
+    isActive
   }: {
     isActive: boolean;
-    userId: ModelId;
-    provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
       void,
@@ -201,17 +170,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       | Error
     >
   > {
-    const configuration = await this.findByUserIdAndProvider({
-      userId,
-      provider,
-    });
-    if (!configuration) {
-      return new Err({
-        type: "not_found",
-      });
-    }
-
-    if (configuration.isActive === isActive) {
+    
+    if (this.isActive === isActive) {
       return new Ok(undefined);
     }
 
@@ -220,7 +180,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         { isActive },
         {
           where: {
-            id: configuration.id,
+            id: this.id,
           },
         }
       );
