@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
+import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 
