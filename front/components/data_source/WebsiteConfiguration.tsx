@@ -153,6 +153,7 @@ export default function WebsiteConfiguration({
   const handleCreate = async () => {
     setIsSaving(true);
     if (webCrawlerConfiguration === null) {
+      const sanitizedDataSourceUrl = dataSourceUrl.trim();
       const res = await fetch(`/api/w/${owner.sId}/data_sources/managed`, {
         method: "POST",
         headers: {
@@ -163,7 +164,7 @@ export default function WebsiteConfiguration({
           connectionId: "none",
           name: dataSourceName,
           configuration: {
-            url: dataSourceUrl,
+            url: sanitizedDataSourceUrl,
             maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
             depth: maxDepth,
             crawlMode: crawlMode,

@@ -50,9 +50,9 @@ export async function createWebcrawlerConnector(
       new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
     );
   }
-
+  const url = configuration.url.trim();
   const webCrawlerConfigurationBlob = {
-    url: configuration.url,
+    url,
     maxPageToCrawl: configuration.maxPageToCrawl,
     crawlMode: configuration.crawlMode,
     depth: depth,
