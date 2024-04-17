@@ -1,7 +1,7 @@
 import type { ModelId, Result } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/labs/config";

@@ -1,3 +1,4 @@
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -7,7 +8,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";

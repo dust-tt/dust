@@ -1,9 +1,9 @@
 import type { ModelId, Result } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import type { CreationAttributes } from "sequelize";
 
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";

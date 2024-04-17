@@ -1,11 +1,11 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";

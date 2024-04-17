@@ -1,4 +1,5 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
@@ -8,7 +9,6 @@ import apiConfig from "@app/lib/api/config";
 import { sendEmail } from "@app/lib/email";
 import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
 import {
   LabsTranscriptsConfigurationResource,

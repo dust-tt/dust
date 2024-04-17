@@ -1,12 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
-
-import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 
 import type * as activities from "./activities";
 
