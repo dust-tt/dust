@@ -11,8 +11,11 @@ const SvgPencilSquare = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M6.414 15.89 16.556 5.748l-1.414-1.414L5 14.476v1.414h1.414Zm.829 2H3v-4.243L15 1.5l4.23 4.248L7.243 17.89ZM3 19.89h18v2H3v-2Z"
+      fillRule="evenodd"
+      d="m13.5 6.5 4 4 3-3-4-4-3 3ZM7 20.996 3 21v-4l9.5-9.5 4 4L7 20.996Zm6.671-9.496-7.5 7.497L5 18.998v-1.17l7.5-7.5 1.171 1.172Z"
+      clipRule="evenodd"
     />
+    <path fill="currentColor" d="M3 19h18v2H3v-2Z" />
   </svg>
 );
 export default SvgPencilSquare;
