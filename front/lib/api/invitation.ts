@@ -192,12 +192,18 @@ export async function getPendingInvitations(
  * @returns MenbershipInvitation[] members of the workspace
  */
 
-export async function getRecentPendingOrRevokedInvitations(
+export async function getRecentPendingAndRevokedInvitations(
   auth: Authenticator
-): Promise<MembershipInvitationType[]> {
+): Promise<{
+  pending: MembershipInvitationType[];
+  revoked: MembershipInvitationType[];
+}> {
   const owner = auth.workspace();
   if (!owner) {
-    return [];
+    return {
+      pending: [],
+      revoked: [],
+    };
   }
   if (!auth.isAdmin()) {
     throw new Error(
@@ -216,13 +222,50 @@ export async function getRecentPendingOrRevokedInvitations(
     },
   });
 
-  return invitations.map((i) => {
-    return {
+  const groupedInvitations: Record<
+    "pending" | "revoked",
+    MembershipInvitationType[]
+  > = {
+    revoked: [],
+    pending: [],
+  };
+
+  for (const i of invitations) {
+    const status = i.status as "pending" | "revoked";
+    groupedInvitations[status].push({
       sId: i.sId,
       id: i.id,
-      status: i.status,
+      status,
       inviteEmail: i.inviteEmail,
       initialRole: i.initialRole,
-    };
-  });
+    });
+  }
+
+  return groupedInvitations;
+}
+
+export async function batchUnrevokeInvitations(
+  auth: Authenticator,
+  invitationIds: string[]
+) {
+  const owner = auth.workspace();
+  if (!owner || !auth.isAdmin()) {
+    throw new Error(
+      "Only users that are `admins` for the current workspace can see membership invitations or modify them."
+    );
+  }
+
+  await MembershipInvitation.update(
+    {
+      status: "pending",
+    },
+    {
+      where: {
+        sId: {
+          [Op.in]: invitationIds,
+        },
+        workspaceId: owner.id,
+      },
+    }
+  );
 }
