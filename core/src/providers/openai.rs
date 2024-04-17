@@ -136,6 +136,9 @@ pub struct OpenAIToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIToolCall {
+    // TODO:
+    // id: Option<String>,
+    r#type: OpenAIToolType,
     pub function: OpenAIToolCallFunction,
 }
 
@@ -710,7 +713,7 @@ async fn streamed_chat_completion(
         });
     }
 
-    // println!("BODY: {}", body.to_string());
+    println!("BODY(streaming): {}", body.to_string());
 
     let client = builder
         .body(body.to_string())
@@ -779,7 +782,7 @@ async fn streamed_chat_completion(
                             }
                         };
 
-                        // println!("CHUNK: {:?}", chunk);
+                        println!("CHUNK: {:?}", chunk);
 
                         // Only stream if choices is length 1 but should always be the case.
                         match event_sender.as_ref() {
@@ -805,6 +808,7 @@ async fn streamed_chat_completion(
                                         },
                                     };
 
+                                    // TODO: Should we keep this around? Yes for function_call.
                                     // If we a `function_call.name` in the delta object we stream a
                                     // "function_call" event.
                                     match chunk.choices[0].delta.get("function_call") {
@@ -930,45 +934,63 @@ async fn streamed_chat_completion(
                     },
                 };
 
-                // TODO:
-                // match a.choices[j].delta.get("function_call") {
-                //     None => (),
-                //     Some(function_call) => {
-                //         match function_call.get("name") {
-                //             Some(Value::String(s)) => {
-                //                 if !c.choices[j].message.function_call.is_some() {
-                //                     c.choices[j].message.function_call = Some(ChatFunctionCall {
-                //                         name: s.clone(),
-                //                         arguments: String::new(),
-                //                     });
-                //                 }
-                //             }
-                //             _ => (),
-                //         };
-                //         match function_call.get("arguments") {
-                //             Some(Value::String(s)) => {
-                //                 if c.choices[j].message.function_call.is_some() {
-                //                     c.choices[j]
-                //                         .message
-                //                         .function_call
-                //                         .as_mut()
-                //                         .unwrap()
-                //                         .arguments = format!(
-                //                         "{}{}",
-                //                         c.choices[j]
-                //                             .message
-                //                             .function_call
-                //                             .as_mut()
-                //                             .unwrap()
-                //                             .arguments,
-                //                         s
-                //                     );
-                //                 }
-                //             }
-                //             _ => (),
-                //         };
-                //     }
-                // };
+                if let Some(tool_calls) = a.choices[j]
+                    .delta
+                    .get("tool_calls")
+                    .and_then(|v| v.as_array())
+                {
+                    for tool_call in tool_calls {
+                        match (
+                            tool_call.get("type").and_then(|v| v.as_str()),
+                            tool_call.get("function"),
+                        ) {
+                            (Some("function"), Some(f)) => {
+                                if let Some(Value::String(name)) = f.get("name") {
+                                    c.choices[j]
+                                        .message
+                                        .tool_calls
+                                        .get_or_insert_with(Vec::new)
+                                        .push(OpenAIToolCall {
+                                            r#type: OpenAIToolType::Function,
+                                            function: OpenAIToolCallFunction {
+                                                name: name.clone(),
+                                                arguments: String::new(),
+                                            },
+                                        });
+                                }
+                            }
+                            (None, Some(f)) => {
+                                if let (Some(Value::Number(idx)), Some(Value::String(a))) =
+                                    (tool_call.get("index"), f.get("arguments"))
+                                {
+                                    let index: usize = idx
+                                        .as_u64()
+                                        .ok_or_else(|| anyhow!("Missing index for tools"))?
+                                        .try_into()
+                                        .map_err(|e| {
+                                            anyhow!("Invalid index value for tools: {:?}", e)
+                                        })?;
+
+                                    let tool_calls = c.choices[j]
+                                        .message
+                                        .tool_calls
+                                        .as_mut()
+                                        .ok_or(anyhow!("Missing tool calls"))?;
+
+                                    if index >= tool_calls.len() {
+                                        return Err(anyhow!(
+                                            "Index out-of-bound for tool_calls: {}",
+                                            index
+                                        ));
+                                    }
+
+                                    tool_calls[index].function.arguments += a;
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
             }
         }
         c
@@ -1598,6 +1620,8 @@ impl LLM for OpenAILLM {
 
         println!("FUNCTIONS: {:?} {:?}", function_call, functions);
         println!("TOOLS: {:?} {:?}", tool_choice, tools);
+
+        println!("EVENT_SEND: {:?}", event_sender);
 
         let c = match event_sender {
             Some(_) => {
