@@ -138,14 +138,21 @@ ContextItem.Visual = function ({ visual }: ContextItemVisualProps) {
 interface ItemSectionHeaderProps {
   title: string;
   description?: string;
+  hasBorder?: boolean;
 }
 
 ContextItem.SectionHeader = function ({
   title,
   description,
+  hasBorder = true,
 }: ItemSectionHeaderProps) {
   return (
-    <div className="s-flex s-flex-col s-gap-0 s-border-b s-border-structure-200 s-pb-3 s-pt-7">
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-gap-0 s-pb-3 s-pt-7",
+        hasBorder ? "s-border-b s-border-structure-200" : ""
+      )}
+    >
       <div className="s-text-xl s-font-medium s-text-element-900 dark:s-text-element-900-dark">
         {title}
       </div>
