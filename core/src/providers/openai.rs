@@ -29,6 +29,58 @@ use tokio::time::timeout;
 use super::llm::{ChatFunction, ChatFunctionCall};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
+// Input types.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenAIToolType {
+    Function,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAISpecificFunctionName {
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAISpecificFunction {
+    r#type: OpenAIToolType,
+    function: OpenAISpecificFunctionName,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenAIToolChoice {
+    None,
+    Auto,
+    OpenAISpecificFunction(OpenAISpecificFunction),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolFunction {
+    pub name: String,
+    pub description: Option<String>,
+    pub parameters: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct OpenAITool {
+    pub r#type: OpenAIToolType,
+    pub function: OpenAIToolFunction,
+}
+
+// #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+// struct OpenAIChatMessage {
+//     pub role: ChatMessageRole,
+//     pub content: Option<String>,
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub name: Option<String>,
+//     #[serde(skip_serializing_if = "Option::is_none")]
+//     pub tool_calls: Option<Vec<OpenAIToolCall>>,
+// }
+
+// Response types.
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
     pub prompt_tokens: u64,
@@ -74,22 +126,81 @@ pub struct Completion {
     // pub usage: Usage,
 }
 
+// Outputs types.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolCallFunction {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolCall {
+    pub function: OpenAIToolCallFunction,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIChatMessage {
+    pub role: ChatMessageRole,
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAIToolCall>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ChatChoice {
-    pub message: ChatMessage,
+pub struct OpenAIChatChoice {
+    pub message: OpenAIChatMessage,
     pub index: usize,
     pub finish_reason: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ChatCompletion {
+pub struct OpenAIChatCompletion {
     pub id: String,
     pub object: String,
     pub created: u64,
-    pub choices: Vec<ChatChoice>,
+    pub choices: Vec<OpenAIChatChoice>,
     // Usage is not returned by the Chat/Completion endpoint when streamed.
     // pub usage: Usage,
 }
+
+impl TryFrom<&OpenAIChatMessage> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &OpenAIChatMessage) -> Result<Self, Self::Error> {
+        let role = ChatMessageRole::from(cm.role.clone());
+        let content = match cm.content.as_ref() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
+        let function_call = match cm.tool_calls.as_ref() {
+            Some(tc) => {
+                // We only take the first tool call suggestion.
+                if tc.len() > 0 {
+                    Some(ChatFunctionCall {
+                        name: tc[0].function.name.clone(),
+                        arguments: tc[0].function.arguments.clone(),
+                    })
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        Ok(ChatMessage {
+            content,
+            role,
+            name: None,
+            function_call,
+        })
+    }
+}
+
+// Streaming types.
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatDelta {
@@ -520,14 +631,14 @@ pub async fn completion(
     Ok(completion)
 }
 
-pub async fn streamed_chat_completion(
+async fn streamed_chat_completion(
     uri: Uri,
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
-    functions: &Vec<ChatFunction>,
-    function_call: Option<String>,
+    tools: Vec<OpenAITool>,
+    tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -538,7 +649,7 @@ pub async fn streamed_chat_completion(
     response_format: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
-) -> Result<ChatCompletion> {
+) -> Result<OpenAIChatCompletion> {
     let url = uri.to_string();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -567,18 +678,6 @@ pub async fn streamed_chat_completion(
             .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
     }
 
-    // Re-adapt to OpenAI string || object format.
-    let function_call: Option<Value> = match function_call {
-        None => None,
-        Some(s) => match s.as_str() {
-            "none" => Some(Value::String(s)),
-            "auto" => Some(Value::String(s)),
-            _ => Some(json!({
-                "name": s,
-            })),
-        },
-    };
-
     let mut body = json!({
         "messages": messages,
         "temperature": temperature,
@@ -599,11 +698,11 @@ pub async fn streamed_chat_completion(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
-    if functions.len() > 0 {
-        body["functions"] = json!(functions);
+    if tools.len() > 0 {
+        body["tools"] = json!(tools);
     }
-    if function_call.is_some() {
-        body["function_call"] = function_call.unwrap();
+    if tool_choice.is_some() {
+        body["tool_choice"] = json!(tool_choice);
     }
     if response_format.is_some() {
         body["response_format"] = json!({
@@ -772,19 +871,19 @@ pub async fn streamed_chat_completion(
             0 => Err(anyhow!("No chunks received from OpenAI")),
             _ => Ok(guard[0].clone()),
         }?;
-        let mut c = ChatCompletion {
+        let mut c = OpenAIChatCompletion {
             id: f.id.clone(),
             object: f.object.clone(),
             created: f.created,
             choices: f
                 .choices
                 .iter()
-                .map(|c| ChatChoice {
-                    message: ChatMessage {
-                        role: ChatMessageRole::System,
-                        name: None,
+                .map(|c| OpenAIChatChoice {
+                    message: OpenAIChatMessage {
                         content: Some("".to_string()),
-                        function_call: None,
+                        name: None,
+                        role: ChatMessageRole::System,
+                        tool_calls: None,
                     },
                     index: c.index,
                     finish_reason: None,
@@ -831,44 +930,45 @@ pub async fn streamed_chat_completion(
                     },
                 };
 
-                match a.choices[j].delta.get("function_call") {
-                    None => (),
-                    Some(function_call) => {
-                        match function_call.get("name") {
-                            Some(Value::String(s)) => {
-                                if !c.choices[j].message.function_call.is_some() {
-                                    c.choices[j].message.function_call = Some(ChatFunctionCall {
-                                        name: s.clone(),
-                                        arguments: String::new(),
-                                    });
-                                }
-                            }
-                            _ => (),
-                        };
-                        match function_call.get("arguments") {
-                            Some(Value::String(s)) => {
-                                if c.choices[j].message.function_call.is_some() {
-                                    c.choices[j]
-                                        .message
-                                        .function_call
-                                        .as_mut()
-                                        .unwrap()
-                                        .arguments = format!(
-                                        "{}{}",
-                                        c.choices[j]
-                                            .message
-                                            .function_call
-                                            .as_mut()
-                                            .unwrap()
-                                            .arguments,
-                                        s
-                                    );
-                                }
-                            }
-                            _ => (),
-                        };
-                    }
-                };
+                // TODO:
+                // match a.choices[j].delta.get("function_call") {
+                //     None => (),
+                //     Some(function_call) => {
+                //         match function_call.get("name") {
+                //             Some(Value::String(s)) => {
+                //                 if !c.choices[j].message.function_call.is_some() {
+                //                     c.choices[j].message.function_call = Some(ChatFunctionCall {
+                //                         name: s.clone(),
+                //                         arguments: String::new(),
+                //                     });
+                //                 }
+                //             }
+                //             _ => (),
+                //         };
+                //         match function_call.get("arguments") {
+                //             Some(Value::String(s)) => {
+                //                 if c.choices[j].message.function_call.is_some() {
+                //                     c.choices[j]
+                //                         .message
+                //                         .function_call
+                //                         .as_mut()
+                //                         .unwrap()
+                //                         .arguments = format!(
+                //                         "{}{}",
+                //                         c.choices[j]
+                //                             .message
+                //                             .function_call
+                //                             .as_mut()
+                //                             .unwrap()
+                //                             .arguments,
+                //                         s
+                //                     );
+                //                 }
+                //             }
+                //             _ => (),
+                //         };
+                //     }
+                // };
             }
         }
         c
@@ -885,14 +985,14 @@ pub async fn streamed_chat_completion(
     Ok(completion)
 }
 
-pub async fn chat_completion(
+async fn chat_completion(
     uri: Uri,
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
     messages: &Vec<ChatMessage>,
-    functions: &Vec<ChatFunction>,
-    function_call: Option<String>,
+    tools: Vec<OpenAITool>,
+    tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
     top_p: f32,
     n: usize,
@@ -902,19 +1002,7 @@ pub async fn chat_completion(
     frequency_penalty: f32,
     response_format: Option<String>,
     user: Option<String>,
-) -> Result<ChatCompletion> {
-    // Re-adapt to OpenAI string || object format.
-    let function_call: Option<Value> = match function_call {
-        None => None,
-        Some(s) => match s.as_str() {
-            "none" => Some(Value::String(s)),
-            "auto" => Some(Value::String(s)),
-            _ => Some(json!({
-                "name": s,
-            })),
-        },
-    };
-
+) -> Result<OpenAIChatCompletion> {
     let mut body = json!({
         "messages": messages,
         "temperature": temperature,
@@ -939,12 +1027,14 @@ pub async fn chat_completion(
             "type": response_format.unwrap(),
         });
     }
-    if functions.len() > 0 {
-        body["functions"] = json!(functions);
+    if tools.len() > 0 {
+        body["tools"] = json!(tools);
     }
-    if function_call.is_some() {
-        body["function_call"] = function_call.unwrap();
+    if tool_choice.is_some() {
+        body["function_call"] = json!(tool_choice);
     }
+
+    println!("BODY: {}", body.to_string());
 
     let mut req = reqwest::Client::new()
         .post(uri.to_string())
@@ -978,7 +1068,7 @@ pub async fn chat_completion(
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
 
-    let mut completion: ChatCompletion = match serde_json::from_slice(c) {
+    let mut completion: OpenAIChatCompletion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
             let error: Error = serde_json::from_slice(c)?;
@@ -1432,6 +1522,83 @@ impl LLM for OpenAILLM {
             ),
         };
 
+        // Function calls / Tools logic.
+        // let (tool_choice, tools) = match function_call {
+        //     Some(ref fc) => {
+        //         let choice = match fc.as_str() {
+        //             // TODO: Auto should be default if there is at least one function.
+        //             "auto" => OpenAIToolChoice::Auto,
+        //             "none" => OpenAIToolChoice::None,
+        //             _ => {
+        //                 let function_name = OpenAISpecificFunctionName {
+        //                     name: fc.to_string(),
+        //                 };
+        //                 let function = OpenAISpecificFunction {
+        //                     r#type: OpenAIToolType::Function,
+        //                     function: function_name,
+        //                 };
+        //                 OpenAIToolChoice::OpenAISpecificFunction(function)
+        //             }
+        //         };
+
+        //         (
+        //             Some(choice),
+        //             functions
+        //                 .iter()
+        //                 .map(|f| OpenAITool {
+        //                     r#type: OpenAIToolType::Function,
+        //                     function: OpenAIToolFunction {
+        //                         name: f.name.clone(),
+        //                         description: f.description.clone(),
+        //                         parameters: f.parameters.clone(),
+        //                     },
+        //                 })
+        //                 .collect(),
+        //         )
+        //     }
+        //     None => (None, vec![]),
+        // };
+
+        // TODO(2024-04-16 flav) Use trait here.
+        let tool_choice = match function_call {
+            Some(ref fc) => {
+                let choice = match fc.as_str() {
+                    "auto" => OpenAIToolChoice::Auto,
+                    "none" => OpenAIToolChoice::None,
+                    _ => {
+                        let function_name = OpenAISpecificFunctionName {
+                            name: fc.to_string(),
+                        };
+                        let function = OpenAISpecificFunction {
+                            r#type: OpenAIToolType::Function,
+                            function: function_name,
+                        };
+                        OpenAIToolChoice::OpenAISpecificFunction(function)
+                    }
+                };
+                Some(choice)
+            }
+            None => None,
+        };
+
+        let tools = functions
+            .iter()
+            .map(|f| {
+                println!("processing function: {}", f.name);
+                OpenAITool {
+                    r#type: OpenAIToolType::Function,
+                    function: OpenAIToolFunction {
+                        name: f.name.clone(),
+                        description: f.description.clone(),
+                        parameters: f.parameters.clone(),
+                    },
+                }
+            })
+            .collect::<Vec<OpenAITool>>();
+
+        println!("FUNCTIONS: {:?} {:?}", function_call, functions);
+        println!("TOOLS: {:?} {:?}", tool_choice, tools);
+
         let c = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
@@ -1440,8 +1607,8 @@ impl LLM for OpenAILLM {
                     openai_org_id,
                     Some(self.id.clone()),
                     messages,
-                    functions,
-                    function_call,
+                    tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -1471,8 +1638,8 @@ impl LLM for OpenAILLM {
                     openai_org_id,
                     Some(self.id.clone()),
                     messages,
-                    functions,
-                    function_call,
+                    tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -1496,7 +1663,7 @@ impl LLM for OpenAILLM {
             }
         };
 
-        // println!("COMPLETION: {:?}", c);
+        println!("COMPLETION: {:?}", c);
 
         assert!(c.choices.len() > 0);
 
@@ -1507,8 +1674,8 @@ impl LLM for OpenAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| c.message.clone())
-                .collect::<Vec<_>>(),
+                .map(|c| ChatMessage::try_from(&c.message))
+                .collect::<Result<Vec<_>>>()?,
         })
     }
 }
