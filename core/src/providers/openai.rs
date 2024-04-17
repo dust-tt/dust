@@ -7,6 +7,7 @@ use crate::providers::tiktoken::tiktoken::{
 };
 use crate::run::Credentials;
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -51,8 +52,8 @@ pub struct OpenAISpecificFunction {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum OpenAIToolChoice {
-    None,
     Auto,
+    None,
     OpenAISpecificFunction(OpenAISpecificFunction),
 }
 
@@ -67,6 +68,26 @@ pub struct OpenAIToolFunction {
 struct OpenAITool {
     pub r#type: OpenAIToolType,
     pub function: OpenAIToolFunction,
+}
+
+impl FromStr for OpenAIToolChoice {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "auto" => Ok(OpenAIToolChoice::Auto),
+            "none" => Ok(OpenAIToolChoice::None),
+            _ => {
+                let function = OpenAISpecificFunction {
+                    r#type: OpenAIToolType::Function,
+                    function: OpenAISpecificFunctionName {
+                        name: s.to_string(),
+                    },
+                };
+                Ok(OpenAIToolChoice::OpenAISpecificFunction(function))
+            }
+        }
+    }
 }
 
 // #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -713,7 +734,7 @@ async fn streamed_chat_completion(
         });
     }
 
-    println!("BODY(streaming): {}", body.to_string());
+    // println!("BODY(streaming): {}", body.to_string());
 
     let client = builder
         .body(body.to_string())
@@ -1032,7 +1053,7 @@ async fn chat_completion(
         body["tools"] = json!(tools);
     }
     if tool_choice.is_some() {
-        body["function_call"] = json!(tool_choice);
+        body["tool_choice"] = json!(tool_choice);
     }
 
     println!("BODY: {}", body.to_string());
@@ -1523,62 +1544,8 @@ impl LLM for OpenAILLM {
             ),
         };
 
-        // Function calls / Tools logic.
-        // let (tool_choice, tools) = match function_call {
-        //     Some(ref fc) => {
-        //         let choice = match fc.as_str() {
-        //             // TODO: Auto should be default if there is at least one function.
-        //             "auto" => OpenAIToolChoice::Auto,
-        //             "none" => OpenAIToolChoice::None,
-        //             _ => {
-        //                 let function_name = OpenAISpecificFunctionName {
-        //                     name: fc.to_string(),
-        //                 };
-        //                 let function = OpenAISpecificFunction {
-        //                     r#type: OpenAIToolType::Function,
-        //                     function: function_name,
-        //                 };
-        //                 OpenAIToolChoice::OpenAISpecificFunction(function)
-        //             }
-        //         };
-
-        //         (
-        //             Some(choice),
-        //             functions
-        //                 .iter()
-        //                 .map(|f| OpenAITool {
-        //                     r#type: OpenAIToolType::Function,
-        //                     function: OpenAIToolFunction {
-        //                         name: f.name.clone(),
-        //                         description: f.description.clone(),
-        //                         parameters: f.parameters.clone(),
-        //                     },
-        //                 })
-        //                 .collect(),
-        //         )
-        //     }
-        //     None => (None, vec![]),
-        // };
-
-        // TODO(2024-04-16 flav) Use trait here.
-        let tool_choice = match function_call {
-            Some(ref fc) => {
-                let choice = match fc.as_str() {
-                    "auto" => OpenAIToolChoice::Auto,
-                    "none" => OpenAIToolChoice::None,
-                    _ => {
-                        let function_name = OpenAISpecificFunctionName {
-                            name: fc.to_string(),
-                        };
-                        let function = OpenAISpecificFunction {
-                            r#type: OpenAIToolType::Function,
-                            function: function_name,
-                        };
-                        OpenAIToolChoice::OpenAISpecificFunction(function)
-                    }
-                };
-                Some(choice)
-            }
+        let tool_choice = match function_call.as_ref() {
+            Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
             None => None,
         };
 
