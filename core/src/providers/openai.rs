@@ -169,6 +169,20 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
     }
 }
 
+impl TryFrom<&Vec<OpenAIToolCall>> for ChatFunctionCall {
+    type Error = anyhow::Error;
+
+    fn try_from(tcs: &Vec<OpenAIToolCall>) -> Result<Self, Self::Error> {
+        // We only take the first tool call suggestion.
+        tcs.first()
+            .map(|tc| ChatFunctionCall {
+                name: tc.function.name.clone(),
+                arguments: tc.function.arguments.clone(),
+            })
+            .ok_or_else(|| anyhow::anyhow!("No OpenAIToolCall found"))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
     pub role: ChatMessageRole,
@@ -208,13 +222,8 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
 
         let function_call = match cm.tool_calls.as_ref() {
             Some(tc) => {
-                // We only take the first tool call suggestion.
                 if tc.len() > 0 {
-                    // TODO: Use trait.
-                    Some(ChatFunctionCall {
-                        name: tc[0].function.name.clone(),
-                        arguments: tc[0].function.arguments.clone(),
-                    })
+                    Some(ChatFunctionCall::try_from(tc)?)
                 } else {
                     None
                 }
@@ -1511,7 +1520,6 @@ async fn streamed_chat_completion_with_tools(
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
-                                            // TODO: Use trait.
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
