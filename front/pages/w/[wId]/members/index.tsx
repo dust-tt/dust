@@ -1041,9 +1041,8 @@ async function sendInvitations({
         type: "error",
         title: emails.length === 1 ? "Invite failed" : "Invites failed",
         description:
-          emails.length === 1
-            ? "This user has already been invited in the last 24 hours. Please wait before sending another invite."
-            : "These users have already been invited in the last 24 hours. Please wait before sending another invite.",
+          (emails.length === 1 ? "This user has" : "These users have") +
+          " already been invited in the last 24 hours. Please wait before sending another invite.",
       });
     }
 
