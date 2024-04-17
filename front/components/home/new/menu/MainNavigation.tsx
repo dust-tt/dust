@@ -1,5 +1,3 @@
-"use client";
-
 import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";

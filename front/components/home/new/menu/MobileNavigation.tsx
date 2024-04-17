@@ -1,6 +1,9 @@
-"use client";
-
-import { ChevronRightIcon, IconButton, MenuIcon } from "@dust-tt/sparkle";
+import {
+  ChevronRightIcon,
+  IconButton,
+  LogoHorizontalColorLogo,
+  MenuIcon,
+} from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
@@ -28,7 +31,10 @@ export function MobileNavigation() {
           className="rounded-br-xl rounded-tr-xl border border-slate-300/20 bg-slate-800 px-10 py-0"
         >
           <ScrollArea className="h-[100vh]">
-            <div className="flex flex-col space-y-0 py-16">
+            <div className="flex flex-col space-y-0 py-12">
+              <div className=" pb-6">
+                <LogoHorizontalColorLogo className="h-6 w-24" />
+              </div>
               {menuConfig.mobileNav.map((item, index) => (
                 <div key={index} className="flex flex-col space-y-0 pt-4">
                   {item.href ? (
