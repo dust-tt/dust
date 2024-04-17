@@ -995,7 +995,6 @@ export function useWorkspaceEnterpriseConnection({
   };
 }
 
-
 // LABS - CAN BE REMOVED ANYTIME
 
 // Transcripts
@@ -1006,7 +1005,6 @@ export function useLabsTranscriptsConfiguration({
   workspaceId: string;
   provider: string;
 }) {
-  
   const labsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 

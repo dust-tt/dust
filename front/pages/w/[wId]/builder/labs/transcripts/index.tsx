@@ -22,7 +22,10 @@ import apiConfig from "@app/lib/api/config";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import config from "@app/lib/labs/config";
-import { useAgentConfigurations, useLabsTranscriptsConfiguration } from "@app/lib/swr";
+import {
+  useAgentConfigurations,
+  useLabsTranscriptsConfiguration,
+} from "@app/lib/swr";
 
 const provider = "google_drive";
 
@@ -68,36 +71,40 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
-  const { labsConfiguration, islabsConfigurationLoading } = useLabsTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    provider,
-  });
-  const [configurationState, setConfigurationState] = useState<{
-    isGDriveConnected: boolean,
-    assistantSelected: LightAgentConfigurationType | null,
-    emailToNotify: string,
-    isActive: boolean,
-  }>({
-    isGDriveConnected: false,
-    assistantSelected: null as LightAgentConfigurationType | null,
-    emailToNotify: "",
-    isActive: false,
-  });
+  const { labsConfiguration, islabsConfigurationLoading } =
+    useLabsTranscriptsConfiguration({
+      workspaceId: owner.sId,
+      provider,
+    });
+
+  const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
+    useState<{
+      isGDriveConnected: boolean;
+      assistantSelected: LightAgentConfigurationType | null;
+      emailToNotify: string;
+      isActive: boolean;
+    }>({
+      isGDriveConnected: false,
+      assistantSelected: null as LightAgentConfigurationType | null,
+      emailToNotify: "",
+      isActive: false,
+    });
 
   useEffect(() => {
-    setConfigurationState({
-      isGDriveConnected: labsConfiguration && labsConfiguration.id > 0 || false,
-      assistantSelected:  agentConfigurations.find(
-        (a) => a.sId === labsConfiguration?.agentConfigurationId
-      ) || null,
+    setTranscriptsConfigurationState({
+      isGDriveConnected:
+        (labsConfiguration && labsConfiguration.id > 0) || false,
+      assistantSelected:
+        agentConfigurations.find(
+          (a) => a.sId === labsConfiguration?.agentConfigurationId
+        ) || null,
       emailToNotify: labsConfiguration?.emailToNotify || "",
       isActive: labsConfiguration?.isActive || false,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [labsConfiguration]);
+  }, [labsConfiguration, agentConfigurations]);
 
   if (islabsConfigurationLoading) {
-    return <Spinner2 />
+    return <Spinner2 />;
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
@@ -127,8 +134,8 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateAssistant = async (assistant: LightAgentConfigurationType) => {
-    setConfigurationState({
-      ...configurationState,
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
       assistantSelected: assistant,
     });
     const data = {
@@ -142,13 +149,14 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateEmailToNotify = async (email: string) => {
-    setConfigurationState({
-      ...configurationState,
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
       emailToNotify: email,
     });
     const data = {
       email: email,
-      agentConfigurationId: configurationState.assistantSelected?.sId,
+      agentConfigurationId:
+        transcriptsConfigurationState.assistantSelected?.sId,
       provider,
     };
     const successMessage = "The email to notify has been set to " + email;
@@ -156,13 +164,14 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateIsActive = async (isActive: boolean) => {
-    setConfigurationState({
-      ...configurationState,
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
       isActive,
     });
     const data = {
       isActive,
-      agentConfigurationId: configurationState.assistantSelected?.sId,
+      agentConfigurationId:
+        transcriptsConfigurationState.assistantSelected?.sId,
       provider,
     };
     const successMessage = isActive
@@ -178,8 +187,8 @@ export default function LabsTranscriptsIndex({
   };
 
   const handleSaveEmailToNotify = async () => {
-    if (configurationState.emailToNotify) {
-      return updateEmailToNotify(configurationState.emailToNotify);
+    if (transcriptsConfigurationState.emailToNotify) {
+      return updateEmailToNotify(transcriptsConfigurationState.emailToNotify);
     }
   };
 
@@ -211,12 +220,12 @@ export default function LabsTranscriptsIndex({
         title: "Connected Google Drive",
         description: "Google Drive has been connected successfully.",
       });
-      setConfigurationState({
-        ...configurationState,
+      setTranscriptsConfigurationState({
+        ...transcriptsConfigurationState,
         isGDriveConnected: true,
       });
     }
-    
+
     return response;
   };
 
@@ -269,10 +278,17 @@ export default function LabsTranscriptsIndex({
               </Page.P>
               <div>
                 <Button
-                  label={configurationState.isGDriveConnected ? "Connected" : "Connect"}
+                  label={
+                    transcriptsConfigurationState.isGDriveConnected
+                      ? "Connected"
+                      : "Connect"
+                  }
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
-                  disabled={islabsConfigurationLoading || configurationState?.isGDriveConnected}
+                  disabled={
+                    islabsConfigurationLoading ||
+                    transcriptsConfigurationState?.isGDriveConnected
+                  }
                   onClick={async () => {
                     await handleConnectTranscriptsSource();
                   }}
@@ -280,76 +296,89 @@ export default function LabsTranscriptsIndex({
               </div>
             </Page.Layout>
           </Page.Layout>
-          {!islabsConfigurationLoading && configurationState.isGDriveConnected && (
-            <>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Choose an assistant" />
+          {!islabsConfigurationLoading &&
+            transcriptsConfigurationState.isGDriveConnected && (
+              <>
                 <Page.Layout direction="vertical">
-                  <Page.P>
-                    Choose the assistant that will summarize the transcripts in
-                    the way you want.
-                  </Page.P>
-                  <Page.Layout direction="horizontal">
-                    <AssistantPicker
-                      owner={owner}
-                      size="sm"
-                      onItemClick={handleSelectAssistant}
-                      assistants={agents}
-                      showFooterButtons={false}
-                    />
-                    {configurationState.assistantSelected && (
-                      <Page.P>
-                        <strong>@{configurationState.assistantSelected.name}</strong>
-                      </Page.P>
-                    )}
+                  <Page.SectionHeader title="2. Choose an assistant" />
+                  <Page.Layout direction="vertical">
+                    <Page.P>
+                      Choose the assistant that will summarize the transcripts
+                      in the way you want.
+                    </Page.P>
+                    <Page.Layout direction="horizontal">
+                      <AssistantPicker
+                        owner={owner}
+                        size="sm"
+                        onItemClick={handleSelectAssistant}
+                        assistants={agents}
+                        showFooterButtons={false}
+                      />
+                      {transcriptsConfigurationState.assistantSelected && (
+                        <Page.P>
+                          <strong>
+                            @
+                            {
+                              transcriptsConfigurationState.assistantSelected
+                                .name
+                            }
+                          </strong>
+                        </Page.P>
+                      )}
+                    </Page.Layout>
                   </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Choose the email receiving transcripts" />
-                <Page.Layout direction="vertical" gap="lg">
-                  <Page.P>
-                    By default, we will send transcripts to your email. You can
-                    chose a different email here.
-                  </Page.P>
-                  <Page.Horizontal>
-                    <div className="flex-grow">
-                      <Input
-                        placeholder="Type email"
-                        name="input"
-                        value={configurationState.emailToNotify}
-                        onChange={(e) => setConfigurationState({
-                          ...configurationState,
-                          emailToNotify: e,
-                        })}
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader title="3. Choose the email receiving transcripts" />
+                  <Page.Layout direction="vertical" gap="lg">
+                    <Page.P>
+                      By default, we will send transcripts to your email. You
+                      can chose a different email here.
+                    </Page.P>
+                    <Page.Horizontal>
+                      <div className="flex-grow">
+                        <Input
+                          placeholder="Type email"
+                          name="input"
+                          value={transcriptsConfigurationState.emailToNotify}
+                          onChange={(e) =>
+                            setTranscriptsConfigurationState({
+                              ...transcriptsConfigurationState,
+                              emailToNotify: e,
+                            })
+                          }
+                        />
+                      </div>
+                      <Button
+                        label="Save"
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          await handleSaveEmailToNotify();
+                        }}
                       />
-                    </div>
-                    <Button
-                      label="Save"
-                      variant="secondary"
-                      size="sm"
-                      onClick={async () => {
-                        await handleSaveEmailToNotify();
-                      }}
+                    </Page.Horizontal>
+                  </Page.Layout>
+                </Page.Layout>
+                <Page.Layout direction="vertical">
+                  <Page.SectionHeader title="4. Enable transcripts processing" />
+                  <Page.Layout direction="horizontal" gap="xl">
+                    <SliderToggle
+                      selected={transcriptsConfigurationState.isActive}
+                      onClick={() =>
+                        handleSetIsActive(
+                          !transcriptsConfigurationState.isActive
+                        )
+                      }
                     />
-                  </Page.Horizontal>
+                    <Page.P>
+                      When enabled, each new meeting transcript in 'My Drive'
+                      will be processed.
+                    </Page.P>
+                  </Page.Layout>
                 </Page.Layout>
-              </Page.Layout>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="4. Enable transcripts processing" />
-                <Page.Layout direction="horizontal" gap="xl">
-                  <SliderToggle
-                    selected={configurationState.isActive}
-                    onClick={() => handleSetIsActive(!configurationState.isActive)}
-                  />
-                  <Page.P>
-                    When enabled, each new meeting transcript in 'My Drive' will
-                    be processed.
-                  </Page.P>
-                </Page.Layout>
-              </Page.Layout>
-            </>
-          )}
+              </>
+            )}
         </Page>
       </AppLayout>
     </>
