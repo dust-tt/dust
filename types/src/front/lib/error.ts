@@ -66,7 +66,9 @@ export type APIErrorType =
   | "invalid_pagination_parameters"
   | "table_not_found"
   // Templates:
-  | "template_not_found";
+  | "template_not_found"
+  // Invitations:
+  | "invitation_already_sent_recently";
 
 export type APIError = {
   type: APIErrorType;
