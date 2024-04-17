@@ -1,15 +1,12 @@
 import {
   CircleIcon,
-  Div3D,
   HexagonIcon,
-  Hover3D,
   Icon,
   RectangleIcon,
   SquareIcon,
-  Tooltip,
   TriangleIcon,
 } from "@dust-tt/sparkle";
-import type { AnchorHTMLAttributes, ReactElement, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import React from "react";
 
 import { classNames } from "@app/lib/utils";
@@ -197,115 +194,3 @@ export const A = ({
 export const Strong = ({ children, className = "" }: ContentProps) => (
   <strong className={classNames(className, "font-semibold")}>{children}</strong>
 );
-
-/**
- * TO DELETE ONCE REMOVING THE LEGACY PAGE.
- */
-
-interface ReactImgProps {
-  children: ReactNode;
-  colorCSS?: string;
-  colorHEX?: string;
-  paddingCSS?: string;
-  className?: string;
-  src?: string;
-  isSmall?: boolean;
-  tooltipLabel?: string;
-}
-
-export const ReactiveImg = ({
-  children,
-  colorCSS = "border-slate-700/40 bg-slate-900/30",
-  colorHEX,
-  paddingCSS = "p-3",
-  className = "",
-  isSmall = false,
-  tooltipLabel,
-}: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveImg. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(singleChild as ReactElement, {
-    className: classNames(
-      singleChild.props.className,
-      "z-10",
-      !isSmall
-        ? "scale-100 transition-all duration-700 ease-out group-hover:scale-105"
-        : "scale-100 transition-all duration-500 ease-out group-hover:scale-125"
-    ),
-  });
-
-  const style = colorHEX
-    ? {
-        backgroundColor: `${colorHEX}88`, // B3 is hexadecimal for 70% opacity
-        borderColor: "#FFFFFF22", // 33 is hexadecimal for 20% opacity
-      }
-    : undefined;
-
-  const image = (
-    <div className={classNames("group", className)}>
-      <div
-        style={style}
-        className={classNames(
-          colorCSS,
-          paddingCSS,
-          "flex rounded-2xl border drop-shadow-[0_25px_25px_rgba(0,0,0,0.5)] backdrop-blur-sm",
-          !isSmall
-            ? "scale-100 transition-all duration-700 ease-out group-hover:scale-105"
-            : "scale-100 transition-all duration-500 ease-out group-hover:scale-110"
-        )}
-      >
-        {modifiedChild}
-      </div>
-    </div>
-  );
-
-  return tooltipLabel ? (
-    <Tooltip label={tooltipLabel}>{image}</Tooltip>
-  ) : (
-    <>{image}</>
-  );
-};
-
-export const ReactiveIcon = ({ children }: ReactImgProps) => {
-  const singleChild = React.Children.only(children);
-
-  if (!React.isValidElement(singleChild)) {
-    console.error(
-      "Invalid children for ReactiveIcon. It must be a single React element."
-    );
-    return null;
-  }
-
-  const modifiedChild = React.cloneElement(
-    singleChild as React.ReactElement<any, any>,
-    {
-      className: classNames(
-        singleChild.props.className,
-        "h-8 w-8 md:h-12 md:w-12"
-      ),
-    }
-  );
-  return (
-    <Hover3D
-      attack={0.1}
-      release={1}
-      className={classNames(
-        "rounded-2xl border p-3 shadow-xl",
-        "bg-gradient-to-b from-slate-700/60 to-slate-900/80",
-        "border-stone-700/40"
-      )}
-      depth={-10}
-    >
-      <Div3D depth={30} className="top-0">
-        {modifiedChild}
-      </Div3D>
-    </Hover3D>
-  );
-};
