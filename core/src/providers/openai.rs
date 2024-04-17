@@ -224,6 +224,21 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
     }
 }
 
+impl TryFrom<&ChatFunction> for OpenAITool {
+    type Error = anyhow::Error;
+
+    fn try_from(f: &ChatFunction) -> Result<Self, Self::Error> {
+        Ok(OpenAITool {
+            r#type: OpenAIToolType::Function,
+            function: OpenAIToolFunction {
+                name: f.name.clone(),
+                description: f.description.clone(),
+                parameters: f.parameters.clone(),
+            },
+        })
+    }
+}
+
 // Streaming types.
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -1551,18 +1566,8 @@ impl LLM for OpenAILLM {
 
         let tools = functions
             .iter()
-            .map(|f| {
-                println!("processing function: {}", f.name);
-                OpenAITool {
-                    r#type: OpenAIToolType::Function,
-                    function: OpenAIToolFunction {
-                        name: f.name.clone(),
-                        description: f.description.clone(),
-                        parameters: f.parameters.clone(),
-                    },
-                }
-            })
-            .collect::<Vec<OpenAITool>>();
+            .map(OpenAITool::try_from)
+            .collect::<Result<Vec<OpenAITool>, _>>()?;
 
         println!("FUNCTIONS: {:?} {:?}", function_call, functions);
         println!("TOOLS: {:?} {:?}", tool_choice, tools);
