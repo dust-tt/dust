@@ -5,7 +5,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { launchRetrieveNewTranscriptsWorkflow } from "@app/temporal/labs/client";
+import { launchRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -90,7 +90,7 @@ async function handler(
       if (isActive !== undefined) {
         await transcriptsConfigurationPatchResource.setIsActive({isActive})
         if (isActive) {
-          void launchRetrieveNewTranscriptsWorkflow({
+          void launchRetrieveTranscriptsWorkflow({
             userId: owner.id,
             providerId: patchProvider,
           });

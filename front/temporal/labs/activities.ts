@@ -138,8 +138,9 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
 
-  const transcriptTitle = metadataRes.data.name;
+  const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = contentRes.data;
+  const extraInstructions = "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN."
 
   const dust = new DustAPI(
     {
@@ -149,8 +150,7 @@ export async function processGoogleDriveTranscriptActivity(
     logger
   );
 
-  let conversation: ConversationType | undefined = undefined;
-  let userMessage: UserMessageType | undefined = undefined;
+  let conversation: ConversationType;
 
   const configurationId = config.getLabsTranscriptsAssistantId()
       ? config.getLabsTranscriptsAssistantId()
@@ -167,7 +167,7 @@ export async function processGoogleDriveTranscriptActivity(
     title: null,
     visibility: "unlisted",
     message: {
-      content: transcriptContent as string,
+      content: transcriptContent + extraInstructions,
       mentions: [{ configurationId }],
       context: {
         timezone: "Europe/Paris",
@@ -178,7 +178,9 @@ export async function processGoogleDriveTranscriptActivity(
       },
     },
     contentFragment: undefined,
+    blocking: true,
   });
+
   if (convRes.isErr()) {
     logger.error(
       "[processGoogleDriveTranscriptActivity] Error creating conversation",
@@ -187,8 +189,6 @@ export async function processGoogleDriveTranscriptActivity(
     return new Err(new Error(convRes.error.message));
   } else {
     conversation = convRes.value.conversation;
-    userMessage = convRes.value.message;
-
     logger.info(
       "[processGoogleDriveTranscriptActivity] Created conversation " +
         conversation.sId
@@ -202,60 +202,11 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const agentMessages = conversation.content
-    .map((versions: any) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessageType;
-
-  const streamRes = await dust.streamAgentMessageEvents({
-    conversation: conversation,
-    message: agentMessage,
-  });
-
-  if (streamRes.isErr()) {
-    return new Err(new Error(streamRes.error.message));
-  }
-
-  let fullAnswer = "";
-  for await (const event of streamRes.value.eventStream) {
-    switch (event.type) {
-      case "user_message_error": {
-        return new Err(
-          new Error(
-            `User message error: code: ${event.error.code} message: ${event.error.message}`
-          )
-        );
-      }
-
-      case "agent_error": {
-        return new Err(
-          new Error(
-            `Agent message error: code: ${event.error.code} message: ${event.error.message}`
-          )
-        );
-      }
-      case "generation_tokens": {
-        fullAnswer += event.text;
-        break;
-      }
-
-      default:
-      // Nothing to do on unsupported events
-    }
-  }
+  //Get first from array with type='agent_message' in conversation.content;
+  const agentMessage = <AgentMessageType[]>conversation.content.find(innerArray => {
+    return innerArray.find(item => item.type === 'agent_message');
+});
+  const fullAnswer = agentMessage ? agentMessage[0].content : '';
 
   // SEND EMAIL WITH SUMMARY
   const msg = {
@@ -274,7 +225,7 @@ export async function processGoogleDriveTranscriptActivity(
   LabsTranscriptsHistoryResource.makeNew({
     configurationId: transcriptsConfiguration.id,
     fileId,
-    fileName: transcriptTitle as string,
+    fileName: transcriptTitle,
   }).catch((err) => {
     logger.error(
       "[processGoogleDriveTranscriptActivity] Error creating history record",

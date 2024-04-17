@@ -17,7 +17,7 @@ export function generateWorkflowId(
   return `labs-transcripts-retrieve-u${userId}-${providerId}`;
 }
 
-export async function launchRetrieveNewTranscriptsWorkflow({
+export async function launchRetrieveTranscriptsWorkflow({
   userId,
   providerId,
 }: {
