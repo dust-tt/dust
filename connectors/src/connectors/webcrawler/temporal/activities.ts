@@ -280,7 +280,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     })
   );
 
-  let url = webCrawlerConfig.url;
+  let url = webCrawlerConfig.url.trim();
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = `http://${url}`;
   }
