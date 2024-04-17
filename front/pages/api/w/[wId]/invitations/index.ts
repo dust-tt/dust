@@ -9,7 +9,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  getRecentPendingOrRevokedInvitations,
+  batchUnrevokeInvitations,
+  getRecentPendingAndRevokedInvitations,
   sendWorkspaceInvitationEmail,
   updateOrCreateInvitation,
 } from "@app/lib/api/invitation";
@@ -154,41 +155,62 @@ async function handler(
         });
       }
       const existingMembers = await getMembers(auth);
-      const unconsumedInvitations = await getRecentPendingOrRevokedInvitations(
+      const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
         auth
       );
       if (
-        unconsumedInvitations.length >=
+        unconsumedInvitations.pending.length >=
         MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Too many unconsumed invitations. Please ask your members to consume their invitations before sending more.`,
+            message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
           },
         });
       }
-      const emailsWithRecentUnconsumedInvitations = new Set(
-        unconsumedInvitations.map((i) => i.inviteEmail.toLowerCase().trim())
+
+      const emailsWithRecentUnconsumedInvitations = new Set([
+        ...unconsumedInvitations.pending.map((i) =>
+          i.inviteEmail.toLowerCase().trim()
+        ),
+        ...unconsumedInvitations.revoked.map((i) =>
+          i.inviteEmail.toLowerCase().trim()
+        ),
+      ]);
+      const requestedEmails = new Set(
+        invitationRequests.map((r) => r.email.toLowerCase().trim())
       );
-      if (
-        invitationRequests.some((r) =>
-          emailsWithRecentUnconsumedInvitations.has(
+      const emailsToSendInvitations = invitationRequests.filter(
+        (r) =>
+          !emailsWithRecentUnconsumedInvitations.has(
             r.email.toLowerCase().trim()
           )
-        )
+      );
+      const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
+        requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+      );
+
+      if (
+        !emailsToSendInvitations.length &&
+        !invitationsToUnrevoke &&
+        invitationRequests.length > 0
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
-            message: `Some of the emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+            type: "invitation_already_sent_recently",
+            message: `These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
           },
         });
       }
+      await batchUnrevokeInvitations(
+        auth,
+        invitationsToUnrevoke.map((i) => i.sId)
+      );
       const invitationResults = await Promise.all(
-        invitationRequests.map(async ({ email, role }) => {
+        emailsToSendInvitations.map(async ({ email, role }) => {
           if (existingMembers.find((m) => m.email === email)) {
             return {
               success: false,

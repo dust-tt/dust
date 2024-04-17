@@ -2,23 +2,58 @@ import { useEffect } from "react";
 import * as THREE from "three";
 
 let speed = 0.08;
-// const postExplodeSpeed = 0.03;
 const postExplodeSpeed = 0.03;
 const particleSize = 0.008; // Size of the particles
-let targetSize = particleSize; // initial target size
+
+interface ParticulesProps {
+  currentShape: number;
+}
+
+export default function Particules({ currentShape }: ParticulesProps) {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      init();
+      calculateTargetPositions();
+      animate();
+    }
+
+    window.addEventListener("resize", onWindowResize, false);
+
+    return () => {
+      window.removeEventListener("resize", onWindowResize, false);
+      renderer.domElement.removeEventListener(
+        "webglcontextlost",
+        handleContextLost
+      );
+      renderer.dispose();
+    };
+  }, []);
+
+  useEffect(() => {
+    calculateTargetPositions(currentShape);
+  }, [currentShape]);
+
+  return (
+    <div id="canvas-container">
+      {/* Canvas will be appended here by Three.js */}
+    </div>
+  );
+}
 
 export const particuleShapes = [
-  { name: "grid", opacity: 1, size: particleSize },
-  { name: "wave", opacity: 1, size: particleSize },
-  { name: "bigSphere", opacity: 1, size: particleSize },
-  { name: "sphere", opacity: 1, size: particleSize },
-  { name: "cube", opacity: 1, size: particleSize },
-  { name: "bigCube", opacity: 1, size: particleSize },
-  { name: "torus", opacity: 1, size: particleSize },
-  { name: "pyramid", opacity: 1, size: particleSize },
-  { name: "octahedron", opacity: 1, size: particleSize },
-  { name: "tetrahedron", opacity: 1, size: particleSize },
-  { name: "icosahedron", opacity: 1, size: particleSize },
+  { name: "grid" },
+  { name: "wave" },
+  { name: "bigSphere" },
+  { name: "cube" },
+  { name: "cube" },
+  { name: "bigCube" },
+  { name: "torus" },
+  { name: "sphere" },
+  { name: "pyramid" },
+  { name: "octahedron" },
+  { name: "cone" },
+  { name: "icosahedron" },
+  { name: "galaxy" },
 ];
 
 let scene: THREE.Scene;
@@ -117,21 +152,6 @@ function onWindowResize() {
 }
 
 function animate() {
-  // Get the current size
-  const currentSize = (particleSystem.material as THREE.PointsMaterial).size;
-
-  // Calculate the difference between the current size and the target size
-  const sizeDifference = targetSize - currentSize;
-
-  // If the difference is too small, directly set to targetSize to avoid endless tiny oscillations
-  if (Math.abs(sizeDifference) < 0.001) {
-    (particleSystem.material as THREE.PointsMaterial).size = targetSize;
-  } else {
-    // Gradually change the size
-    (particleSystem.material as THREE.PointsMaterial).size +=
-      sizeDifference * 0.01; // 0.01 is the speed of size change, adjust this value to your need
-  }
-
   requestAnimationFrame(animate);
   if (rotationActive) {
     particleSystem.rotation.x += 0.0;
@@ -221,359 +241,410 @@ function animateExplode() {
 
 function calculateTargetPositions(currentShape = 0) {
   targetPositions = []; // Reset the target positions
-  targetSize = particuleShapes[currentShape].size;
-
   for (let i = 0; i < numParticles; i++) {
-    let targetPositionX = 0,
-      targetPositionY = 0,
-      targetPositionZ = 0,
-      gridSpacing,
-      gridX,
-      gridY,
-      ix,
-      iy,
-      iz,
-      phi: number,
-      theta,
-      radius,
-      particlesPerSide,
-      vertices,
-      vertex1,
-      vertex2,
-      faceIndex,
-      faceVertexIndex,
-      lerpFactor,
-      faceIndices,
-      cubeSize,
-      gridSize = 16;
+    let targetPosition = { x: 0, y: 0, z: 0 }; // Initialize targetPosition with default values
 
-    const gridNum = 48;
     switch (particuleShapes[currentShape].name) {
       case "grid":
-        gridSpacing = gridSize / gridNum; // spacing between particles in the grid
-
-        // Calculate indices along x and y axis
-        gridX = i % gridNum;
-        gridY = Math.floor(i / 3 / gridNum) % gridNum;
-
-        // Calculate positions so that the grid is centered at the origin
-        targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
-        targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
-        targetPositionZ = 0; // flat grid on the x/y plane
-        //console.log('targetPositionX', targetPositionX, 'targetPositionY', targetPositionY, 'targetPositionZ', targetPositionZ);
+        targetPosition = calculateGridPosition(i);
         break;
       case "wave":
-        gridSize = 8;
-        gridSpacing = gridSize / gridNum; // spacing between particles in the grid
-        const rippleAmplitude = 0.1; // the amplitude of the ripple
-        const rippleFrequency = (12 * Math.PI) / gridSize; // the frequency of the ripple
-
-        // Calculate indices along x and y axis
-        gridX = i % gridNum;
-        gridY = Math.floor(i / 3 / gridNum) % gridNum;
-
-        // Calculate positions so that the grid is centered at the origin
-        targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
-        targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
-
-        // Calculate the distance from the center of the grid
-        const dx = targetPositionX;
-        const dy = targetPositionY;
-        const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
-
-        // Calculate position along z-axis (height of the ripple)
-        targetPositionZ =
-          rippleAmplitude * Math.sin(rippleFrequency * distanceFromCenter);
-
+        targetPosition = calculateWavePosition(i);
         break;
       case "sphere":
-        radius = geometricObjectSize * 1.4;
-        phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
-        theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
-
-        targetPositionX = radius * Math.cos(theta) * Math.sin(phi);
-        targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
-        targetPositionZ = radius * Math.cos(phi);
+        targetPosition = calculateSpherePosition(i, geometricObjectSize * 1.4);
         break;
       case "bigSphere":
-        radius = geometricObjectSize * 4;
-        phi = Math.acos(-1 + (2 * i) / numParticles); // angle for Y
-        theta = Math.sqrt(numParticles * Math.PI) * phi; // angle for X and Z
-
-        targetPositionX = radius * Math.cos(theta) * Math.sin(phi);
-        targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
-        targetPositionZ = radius * Math.cos(phi);
+        targetPosition = calculateSpherePosition(i, geometricObjectSize * 4);
         break;
       case "cube":
-        cubeSize = geometricObjectSize * 2.5;
-        const cubeSegments = Math.ceil(Math.cbrt(numParticles / 2));
-
-        const cubeFace = Math.floor(i / (cubeSegments * cubeSegments));
-        ix = i % cubeSegments;
-        iy = Math.floor(i / cubeSegments) % cubeSegments;
-
-        switch (cubeFace) {
-          case 0: // Front
-            targetPositionX =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionY =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionZ = cubeSize / 2;
-            break;
-          case 1: // Back
-            targetPositionX =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionY =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionZ = -cubeSize / 2;
-            break;
-          case 2: // Left
-            targetPositionX = -cubeSize / 2;
-            targetPositionY =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionZ =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            break;
-          case 3: // Right
-            targetPositionX = cubeSize / 2;
-            targetPositionY =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionZ =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            break;
-          case 4: // Top
-            targetPositionX =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionY = cubeSize / 2;
-            targetPositionZ =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            break;
-          case 5: // Bottom
-            targetPositionX =
-              (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            targetPositionY = -cubeSize / 2;
-            targetPositionZ =
-              (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
-            break;
-        }
+        targetPosition = calculateCubePosition(i, geometricObjectSize * 2.5);
         break;
       case "bigCube":
-        cubeSize = geometricObjectSize * 12; // size of the cube
-        particlesPerSide = Math.cbrt(numParticles); // number of particles per side of the cube
-
-        ix = i % particlesPerSide; // index along x-axis
-        iy = Math.floor((i / particlesPerSide) % particlesPerSide); // index along y-axis
-        iz = Math.floor(i / (particlesPerSide * particlesPerSide)); // index along z-axis
-
-        targetPositionX = (ix * cubeSize) / particlesPerSide - cubeSize / 2;
-        targetPositionY = (iy * cubeSize) / particlesPerSide - cubeSize / 2;
-        targetPositionZ = (iz * cubeSize) / particlesPerSide - cubeSize / 2;
+        targetPosition = calculateBigCubePosition(i, geometricObjectSize * 12);
         break;
       case "torus":
-        const torusRadius = geometricObjectSize * 1.5; // distance from the center of the torus to the center of the tube
-        const tubeRadius = geometricObjectSize * 0.8; // radius of the tube
-        const torusSegments = 140; // number of segments for the torus
-        const tubeSegments = 60; // number of segments for the tube
-
-        const torusAngle =
-          ((i % torusSegments) * (Math.PI * 2)) / torusSegments;
-        const tubeAngle =
-          (Math.floor(i / torusSegments) * (Math.PI * 2)) / tubeSegments;
-
-        targetPositionX =
-          (torusRadius + tubeRadius * Math.cos(tubeAngle)) *
-          Math.cos(torusAngle);
-        targetPositionY =
-          (torusRadius + tubeRadius * Math.cos(tubeAngle)) *
-          Math.sin(torusAngle);
-        targetPositionZ = tubeRadius * Math.sin(tubeAngle);
+        targetPosition = calculateTorusPosition(
+          i,
+          geometricObjectSize * 1.5,
+          geometricObjectSize * 0.8
+        );
         break;
-
       case "pyramid":
-        const pyramidSize = geometricObjectSize * 3;
-        const pyramidSegments = Math.floor(Math.sqrt(numParticles / 3));
-
-        ix = i % pyramidSegments;
-        iy = Math.floor(i / pyramidSegments) % pyramidSegments;
-
-        const xPos =
-          (ix / (pyramidSegments - 1)) * pyramidSize - pyramidSize / 2;
-        const yPos =
-          (iy / (pyramidSegments - 1)) * pyramidSize - pyramidSize / 2;
-        const zPos =
-          pyramidSize / 2 -
-          (Math.max(ix, iy) / (pyramidSegments - 1)) * pyramidSize;
-
-        targetPositionX = xPos;
-        targetPositionY = yPos;
-        targetPositionZ = zPos;
+        targetPosition = calculatePyramidPosition(i, geometricObjectSize * 2);
         break;
-
       case "octahedron":
-        const octahedronRadius = geometricObjectSize * 1.5;
-        const octahedronVertices = [
-          [1, 0, 0],
-          [-1, 0, 0],
-          [0, 1, 0],
-          [0, -1, 0],
-          [0, 0, 1],
-          [0, 0, -1],
-        ];
-
-        const octahedronFaces = [
-          [0, 2, 4],
-          [0, 4, 3],
-          [0, 3, 5],
-          [0, 5, 2],
-          [1, 2, 5],
-          [1, 5, 3],
-          [1, 3, 4],
-          [1, 4, 2],
-        ];
-
-        faceIndex = Math.floor(i / (numParticles / 8));
-        const vertexIndex = Math.floor(
-          (i % (numParticles / 8)) / (numParticles / 24)
+        targetPosition = calculateOctahedronPosition(
+          i,
+          geometricObjectSize * 4
         );
-        vertex1 = octahedronVertices[octahedronFaces[faceIndex][vertexIndex]];
-        vertex2 =
-          octahedronVertices[octahedronFaces[faceIndex][(vertexIndex + 1) % 3]];
-
-        lerpFactor = (i % (numParticles / 24)) / (numParticles / 24);
-        targetPositionX =
-          octahedronRadius *
-          (vertex1[0] + (vertex2[0] - vertex1[0]) * lerpFactor);
-        targetPositionY =
-          octahedronRadius *
-          (vertex1[1] + (vertex2[1] - vertex1[1]) * lerpFactor);
-        targetPositionZ =
-          octahedronRadius *
-          (vertex1[2] + (vertex2[2] - vertex1[2]) * lerpFactor);
         break;
-
       case "tetrahedron":
-        const tetrahedronRadius = geometricObjectSize * 1.5;
-
-        phi = Math.acos(-1 + (2 * i) / numParticles);
-        theta = Math.sqrt(numParticles * Math.PI) * phi;
-
-        targetPositionX =
-          tetrahedronRadius *
-          (Math.sin(phi) * Math.cos(theta) +
-            (Math.sqrt(3) * Math.cos(phi)) / 3);
-        targetPositionY =
-          tetrahedronRadius *
-          (Math.sin(phi) * Math.sin(theta) -
-            (Math.sqrt(3) * Math.cos(phi)) / 3);
-        targetPositionZ =
-          tetrahedronRadius * ((-2 * Math.sqrt(3) * Math.sin(phi)) / 3);
-        break;
-
-      case "icosahedron":
-        const icosahedronRadius = geometricObjectSize * 1.5;
-        phi = (1 + Math.sqrt(5)) / 2; // Golden ratio
-
-        vertices = [
-          [-1, phi, 0],
-          [1, phi, 0],
-          [-1, -phi, 0],
-          [1, -phi, 0],
-          [0, -1, phi],
-          [0, 1, phi],
-          [0, -1, -phi],
-          [0, 1, -phi],
-          [phi, 0, -1],
-          [phi, 0, 1],
-          [-phi, 0, -1],
-          [-phi, 0, 1],
-        ];
-
-        for (let i = 0; i < vertices.length; i++) {
-          vertices[i] = vertices[i].map(
-            (x) => (x * icosahedronRadius) / Math.sqrt(1 + phi * phi)
-          );
-        }
-
-        faceIndices = [
-          [0, 11, 5],
-          [0, 5, 1],
-          [0, 1, 7],
-          [0, 7, 10],
-          [0, 10, 11],
-          [1, 5, 9],
-          [5, 11, 4],
-          [11, 10, 2],
-          [10, 7, 6],
-          [7, 1, 8],
-          [3, 9, 4],
-          [3, 4, 2],
-          [3, 2, 6],
-          [3, 6, 8],
-          [3, 8, 9],
-          [4, 9, 5],
-          [2, 4, 11],
-          [6, 2, 10],
-          [8, 6, 7],
-          [9, 8, 1],
-        ];
-
-        faceIndex = Math.floor(i / (numParticles / 20));
-        faceVertexIndex = Math.floor(
-          (i % (numParticles / 20)) / (numParticles / 60)
+        targetPosition = calculateTetrahedronPosition(
+          i,
+          geometricObjectSize * 1.5
         );
-        vertex1 = vertices[faceIndices[faceIndex][faceVertexIndex]];
-        vertex2 = vertices[faceIndices[faceIndex][(faceVertexIndex + 1) % 3]];
-
-        lerpFactor = (i % (numParticles / 60)) / (numParticles / 60);
-        targetPositionX = vertex1[0] + (vertex2[0] - vertex1[0]) * lerpFactor;
-        targetPositionY = vertex1[1] + (vertex2[1] - vertex1[1]) * lerpFactor;
-        targetPositionZ = vertex1[2] + (vertex2[2] - vertex1[2]) * lerpFactor;
         break;
-
+      case "icosahedron":
+        targetPosition = calculateIcosahedronPosition(
+          i,
+          geometricObjectSize * 1
+        );
+        break;
+      case "cone":
+        targetPosition = calculateConePosition(
+          i,
+          geometricObjectSize * 3,
+          geometricObjectSize * 12
+        );
+        break;
+      case "galaxy":
+        targetPosition = calculateGalaxyPosition(i, geometricObjectSize * 0.2);
+        break;
       default:
         console.log("Not a known shape");
+        targetPosition = { x: 0, y: 0, z: 0 };
         break;
     }
 
     targetPositions.push({
-      x: targetPositionX + sceneFocusX,
-      y: targetPositionY + sceneFocusY,
-      z: targetPositionZ + sceneFocusZ,
+      x: targetPosition.x + sceneFocusX,
+      y: targetPosition.y + sceneFocusY,
+      z: targetPosition.z + sceneFocusZ,
     });
   }
 }
 
-interface ParticulesProps {
-  currentShape: number;
+function calculateGridPosition(i: number) {
+  const gridSize = 16;
+  const gridNum = 48;
+  const gridSpacing = gridSize / gridNum;
+  const gridX = i % gridNum;
+  const gridY = Math.floor(i / 3 / gridNum) % gridNum;
+  const targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
+  const targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
+  const targetPositionZ = 0;
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
 }
 
-export default function Particules({ currentShape }: ParticulesProps) {
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      init();
-      calculateTargetPositions();
-      animate();
-    }
+function calculateWavePosition(i: number) {
+  const gridSize = 8;
+  const gridNum = 48;
+  const gridSpacing = gridSize / gridNum;
+  const rippleAmplitude = 0.1;
+  const rippleFrequency = (12 * Math.PI) / gridSize;
+  const gridX = i % gridNum;
+  const gridY = Math.floor(i / 3 / gridNum) % gridNum;
+  const targetPositionX = gridX * gridSpacing - gridSize / 2 + gridSpacing / 2;
+  const targetPositionY = gridY * gridSpacing - gridSize / 2 + gridSpacing / 2;
+  const dx = targetPositionX;
+  const dy = targetPositionY;
+  const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
+  const targetPositionZ =
+    rippleAmplitude * Math.sin(rippleFrequency * distanceFromCenter);
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
 
-    window.addEventListener("resize", onWindowResize, false);
+function calculateSpherePosition(i: number, radius: number) {
+  const phi = Math.acos(-1 + (2 * i) / numParticles);
+  const theta = Math.sqrt(numParticles * Math.PI) * phi;
+  const targetPositionX = radius * Math.cos(theta) * Math.sin(phi);
+  const targetPositionY = radius * Math.sin(theta) * Math.sin(phi);
+  const targetPositionZ = radius * Math.cos(phi);
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
 
-    return () => {
-      window.removeEventListener("resize", onWindowResize, false);
-      renderer.domElement.removeEventListener(
-        "webglcontextlost",
-        handleContextLost
-      );
-      renderer.dispose();
-    };
-  }, []);
+function calculateCubePosition(i: number, cubeSize: number) {
+  const cubeSegments = Math.ceil(Math.cbrt(numParticles / 2));
+  const cubeFace = Math.floor(i / (cubeSegments * cubeSegments));
+  const ix = i % cubeSegments;
+  const iy = Math.floor(i / cubeSegments) % cubeSegments;
+  let targetPositionX = 0;
+  let targetPositionY = 0;
+  let targetPositionZ = 0;
 
-  useEffect(() => {
-    calculateTargetPositions(currentShape);
-  }, [currentShape]);
+  switch (cubeFace) {
+    case 0: // Front
+      targetPositionX = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionY = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionZ = cubeSize / 2;
+      break;
+    case 1: // Back
+      targetPositionX = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionY = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionZ = -cubeSize / 2;
+      break;
+    case 2: // Left
+      targetPositionX = -cubeSize / 2;
+      targetPositionY = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionZ = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      break;
+    case 3: // Right
+      targetPositionX = cubeSize / 2;
+      targetPositionY = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionZ = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      break;
+    case 4: // Top
+      targetPositionX = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionY = cubeSize / 2;
+      targetPositionZ = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      break;
+    case 5: // Bottom
+      targetPositionX = (ix / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      targetPositionY = -cubeSize / 2;
+      targetPositionZ = (iy / (cubeSegments - 1)) * cubeSize - cubeSize / 2;
+      break;
+  }
 
-  return (
-    <div id="canvas-container">
-      {/* Canvas will be appended here by Three.js */}
-    </div>
-  );
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculateBigCubePosition(i: number, cubeSize: number) {
+  const particlesPerSide = Math.cbrt(numParticles);
+  const ix = i % particlesPerSide;
+  const iy = Math.floor((i / particlesPerSide) % particlesPerSide);
+  const iz = Math.floor(i / (particlesPerSide * particlesPerSide));
+  const targetPositionX = (ix * cubeSize) / particlesPerSide - cubeSize / 2;
+  const targetPositionY = (iy * cubeSize) / particlesPerSide - cubeSize / 2;
+  const targetPositionZ = (iz * cubeSize) / particlesPerSide - cubeSize / 2;
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculateTorusPosition(
+  i: number,
+  torusRadius: number,
+  tubeRadius: number
+) {
+  const torusSegments = 140;
+  const tubeSegments = 60;
+  const torusAngle = ((i % torusSegments) * (Math.PI * 2)) / torusSegments;
+  const tubeAngle =
+    (Math.floor(i / torusSegments) * (Math.PI * 2)) / tubeSegments;
+  const targetPositionX =
+    (torusRadius + tubeRadius * Math.cos(tubeAngle)) * Math.cos(torusAngle);
+  const targetPositionY =
+    (torusRadius + tubeRadius * Math.cos(tubeAngle)) * Math.sin(torusAngle);
+  const targetPositionZ = tubeRadius * Math.sin(tubeAngle);
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculatePyramidPosition(i: number, pyramidSize: number) {
+  const vertices = [
+    [-1, -1, -1],
+    [1, -1, -1],
+    [1, -1, 1],
+    [-1, -1, 1],
+    [0, 1, 0],
+  ];
+
+  const faces = [
+    [0, 1, 4],
+    [1, 2, 4],
+    [2, 3, 4],
+    [3, 0, 4],
+    [0, 3, 2, 1],
+  ];
+
+  const faceIndex = Math.floor(i / (numParticles / faces.length));
+  const face = faces[faceIndex];
+
+  const numVerticesInFace = face.length;
+  const r = Math.random();
+  const s = Math.random();
+
+  let u = 0;
+  let v = 0;
+  let w = 0;
+
+  if (numVerticesInFace === 3) {
+    const power = 2;
+    u = 1 - Math.pow(r, power);
+    v = Math.pow(r, power) * (1 - Math.pow(s, power));
+    w = Math.pow(r, power) * Math.pow(s, power);
+  } else {
+    const power = 2;
+    const sqrt_r = Math.sqrt(r);
+    u = 1 - Math.pow(sqrt_r, power);
+    v = Math.pow(sqrt_r, power) * (1 - Math.pow(s, power));
+    w = Math.pow(sqrt_r, power) * Math.pow(s, power);
+  }
+
+  const v1 = vertices[face[0]];
+  const v2 = vertices[face[1]];
+  const v3 = vertices[face[2]];
+  const v4 = numVerticesInFace === 4 ? vertices[face[3]] : [0, 0, 0];
+
+  const x =
+    (u * v1[0] + v * v2[0] + w * v3[0] + (1 - u - v - w) * v4[0]) * pyramidSize;
+  let y =
+    (u * v1[1] + v * v2[1] + w * v3[1] + (1 - u - v - w) * v4[1]) * pyramidSize;
+  let z =
+    (u * v1[2] + v * v2[2] + w * v3[2] + (1 - u - v - w) * v4[2]) * pyramidSize;
+
+  // Rotate 90 degrees around the x-axis
+  const tempY = y;
+  y = -z;
+  z = tempY;
+
+  return { x, y, z };
+}
+
+function calculateConePosition(i: number, radius: number, height: number) {
+  const segments = Math.ceil(Math.sqrt(numParticles));
+  const angleStep = (2 * Math.PI) / segments;
+
+  const segment = Math.floor(i / segments);
+  const segmentOffset = i % segments;
+
+  const angle = segmentOffset * angleStep;
+  const distanceFromCenter = (radius * (segments - segment)) / segments;
+
+  const x = distanceFromCenter * Math.cos(angle);
+  const y = height * (segment / segments) - height / 2;
+  const z = distanceFromCenter * Math.sin(angle);
+
+  return { x, y, z };
+}
+
+function calculateOctahedronPosition(i: number, octahedronSize: number) {
+  const vertices = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ];
+
+  const faces = [
+    [0, 2, 4],
+    [0, 4, 3],
+    [0, 3, 5],
+    [0, 5, 2],
+    [1, 4, 2],
+    [1, 3, 4],
+    [1, 5, 3],
+    [1, 2, 5],
+  ];
+
+  const faceIndex = Math.floor(i / (numParticles / faces.length));
+  const face = faces[faceIndex];
+
+  const r1 = Math.random();
+  const r2 = Math.random();
+
+  const power = 2; // Adjust this value to control the accumulation around the edges
+  const u = 1 - Math.pow(r1, power);
+  const v = Math.pow(r1, power) * (1 - Math.pow(r2, power));
+  const w = Math.pow(r1, power) * Math.pow(r2, power);
+
+  const v1 = vertices[face[0]];
+  const v2 = vertices[face[1]];
+  const v3 = vertices[face[2]];
+
+  const targetPositionX = (u * v1[0] + v * v2[0] + w * v3[0]) * octahedronSize;
+  const targetPositionY = (u * v1[1] + v * v2[1] + w * v3[1]) * octahedronSize;
+  const targetPositionZ = (u * v1[2] + v * v2[2] + w * v3[2]) * octahedronSize;
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculateTetrahedronPosition(i: number, tetrahedronRadius: number) {
+  const phi = Math.acos(-1 + (2 * i) / numParticles);
+  const theta = Math.sqrt(numParticles * Math.PI) * phi;
+  const targetPositionX =
+    tetrahedronRadius *
+    (Math.sin(phi) * Math.cos(theta) + (Math.sqrt(3) * Math.cos(phi)) / 3);
+  const targetPositionY =
+    tetrahedronRadius *
+    (Math.sin(phi) * Math.sin(theta) - (Math.sqrt(3) * Math.cos(phi)) / 3);
+  const targetPositionZ =
+    tetrahedronRadius * ((-2 * Math.sqrt(3) * Math.sin(phi)) / 3);
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculateIcosahedronPosition(i: number, icosahedronSize: number) {
+  const t = (1 + Math.sqrt(5)) / 2;
+
+  const vertices = [
+    [-1, t, 0],
+    [1, t, 0],
+    [-1, -t, 0],
+    [1, -t, 0],
+    [0, -1, t],
+    [0, 1, t],
+    [0, -1, -t],
+    [0, 1, -t],
+    [t, 0, -1],
+    [t, 0, 1],
+    [-t, 0, -1],
+    [-t, 0, 1],
+  ];
+
+  const faces = [
+    [0, 11, 5],
+    [0, 5, 1],
+    [0, 1, 7],
+    [0, 7, 10],
+    [0, 10, 11],
+    [1, 5, 9],
+    [5, 11, 4],
+    [11, 10, 2],
+    [10, 7, 6],
+    [7, 1, 8],
+    [3, 9, 4],
+    [3, 4, 2],
+    [3, 2, 6],
+    [3, 6, 8],
+    [3, 8, 9],
+    [4, 9, 5],
+    [2, 4, 11],
+    [6, 2, 10],
+    [8, 6, 7],
+    [9, 8, 1],
+  ];
+
+  const faceIndex = Math.floor(i / (numParticles / faces.length));
+  const face = faces[faceIndex];
+
+  const v1 = vertices[face[0]];
+  const v2 = vertices[face[1]];
+  const v3 = vertices[face[2]];
+
+  const r1 = Math.random();
+  const r2 = Math.random();
+  const sqrt_r1 = Math.sqrt(r1);
+
+  const power = 2; // Adjust this value to control the accumulation around the edges
+  const u = 1 - Math.pow(sqrt_r1, power);
+  const v = Math.pow(sqrt_r1, power) * (1 - Math.pow(r2, power));
+  const w = Math.pow(sqrt_r1, power) * Math.pow(r2, power);
+
+  const targetPositionX = (u * v1[0] + v * v2[0] + w * v3[0]) * icosahedronSize;
+  const targetPositionY = (u * v1[1] + v * v2[1] + w * v3[1]) * icosahedronSize;
+  const targetPositionZ = (u * v1[2] + v * v2[2] + w * v3[2]) * icosahedronSize;
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
+}
+
+function calculateGalaxyPosition(i: number, radius: number) {
+  const numArms = 4;
+  const armAngleOffset = (Math.PI * 2) / numArms;
+  const armPoints = 100;
+  const armSpread = 0.2;
+  const armIndex = i % numArms;
+  const armAngle = armIndex * armAngleOffset;
+  const armPointIndex = Math.floor(i / numArms);
+  const t = armPointIndex / armPoints;
+
+  const angle = -(t * Math.PI) / 10 + armAngle;
+  const distance = t * radius;
+
+  const armOffsetX = (Math.random() - 0.5) * distance * armSpread;
+  const armOffsetY = (Math.random() - 0.5) * distance * armSpread;
+  const armOffsetZ = (Math.random() - 0.5) * distance * armSpread;
+
+  const targetPositionX = Math.cos(angle) * distance + armOffsetX;
+  const targetPositionY = Math.sin(angle) * distance + armOffsetY;
+  const targetPositionZ = armOffsetZ;
+
+  return { x: targetPositionX, y: targetPositionY, z: targetPositionZ };
 }
