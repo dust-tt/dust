@@ -5,7 +5,7 @@ import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
 import {
   A,
   Grid,
-  H2,
+  H3,
   H5,
   P,
   Strong,
@@ -44,7 +44,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 1 },
+    props: { gaTrackingId: config.getGaTrackingId(), shape: 10 },
   };
 });
 
@@ -104,18 +104,14 @@ export default function Security() {
         </div>
       </Grid>
       <Grid gap="gap-8">
-        <H2
-          className="col-span-12 lg:col-span-10 lg:col-start-2"
-          from="from-sky-200"
-          to="to-blue-400"
-        >
+        <H3 className="col-span-12 text-center text-white">
           Certifications
           <br />
           and Trust Center
-        </H2>
+        </H3>
 
-        <div className="col-span-12 flex flex-col gap-2 text-white md:col-span-4">
-          <div className="flex aspect-[16/9] w-full items-center justify-start">
+        <div className="col-span-12 flex flex-col gap-2 text-center text-white md:col-span-4">
+          <div className="flex aspect-[16/9] w-full items-center justify-center">
             <img
               src="/static/landing/security/soc2.svg"
               className="object-contain"
@@ -127,8 +123,8 @@ export default function Security() {
             our customers data secure.
           </P>
         </div>
-        <div className="col-span-12 flex  flex-col gap-2 text-white md:col-span-4">
-          <div className="flex aspect-[16/9] w-full items-center justify-start">
+        <div className="col-span-12 flex flex-col gap-2 text-center text-white md:col-span-4">
+          <div className="flex aspect-[16/9] w-full items-center justify-center">
             <img
               src="/static/landing/security/gdpr.svg"
               className="object-contain"
@@ -140,8 +136,8 @@ export default function Security() {
             EU’s General Data Protection Regulation (GDPR)
           </P>
         </div>
-        <div className="col-span-12 flex  flex-col gap-2 text-white md:col-span-4">
-          <div className="flex aspect-[16/9] w-full items-center justify-start">
+        <div className="col-span-12 flex flex-col gap-2 text-center text-white md:col-span-4">
+          <div className="flex aspect-[16/9] w-full items-center justify-center">
             <img
               src="/static/landing/security/vanta.svg"
               className="object-contain"

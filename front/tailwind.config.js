@@ -215,5 +215,8 @@ module.exports = {
     {
       pattern: /^bg-/,
     },
+    {
+      pattern: /^grid-rows-/,
+    },
   ],
 };

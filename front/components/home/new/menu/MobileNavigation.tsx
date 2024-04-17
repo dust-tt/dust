@@ -1,6 +1,9 @@
-"use client";
-
-import { ChevronRightIcon, IconButton, MenuIcon } from "@dust-tt/sparkle";
+import {
+  ChevronRightIcon,
+  IconButton,
+  LogoHorizontalColorLogo,
+  MenuIcon,
+} from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
@@ -25,36 +28,45 @@ export function MobileNavigation() {
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="rounded-br-xl rounded-tr-xl border border-slate-300/20 bg-slate-800 pr-0"
+          className="rounded-br-xl rounded-tr-xl border border-slate-300/20 bg-slate-800 px-10 py-0"
         >
-          <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-            <div className="flex flex-col space-y-2">
-              {menuConfig.mainNav.map((item, index) => (
-                <div key={index} className="flex flex-col space-y-4 pt-6">
+          <ScrollArea className="h-[100vh]">
+            <div className="flex flex-col space-y-0 py-12">
+              <div className=" pb-6">
+                <LogoHorizontalColorLogo className="h-6 w-24" />
+              </div>
+              {menuConfig.mobileNav.map((item, index) => (
+                <div key={index} className="flex flex-col space-y-0 pt-4">
                   {item.href ? (
                     <MobileLink
                       key={item.href}
                       href={item.href}
                       onOpenChange={setOpen}
-                      className="font-semibold"
+                      isExternal={item.isExternal}
                     >
                       {item.title}
                     </MobileLink>
                   ) : (
-                    <h4 className="block select-none space-y-1 rounded-md font-semibold leading-none text-slate-200 no-underline outline-none">
+                    <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
                       {item.title}
-                    </h4>
+                    </div>
                   )}
                   {item?.items?.length &&
                     item.items.map((item) => (
                       <React.Fragment key={item.href}>
                         {item.href ? (
-                          <MobileLink href={item.href} onOpenChange={setOpen}>
-                            <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
+                          <MobileLink
+                            href={item.href}
+                            onOpenChange={setOpen}
+                            isExternal={item.isExternal}
+                          >
+                            <ChevronRightIcon className="h-5 w-5 text-slate-500" />{" "}
                             {item.title}
                           </MobileLink>
                         ) : (
-                          item.title
+                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
+                            {item.title}
+                          </div>
                         )}
                       </React.Fragment>
                     ))}
@@ -69,16 +81,17 @@ export function MobileNavigation() {
 }
 
 interface MobileLinkProps extends LinkProps {
-  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
+  isExternal?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function MobileLink({
   href,
   onOpenChange,
-  className = "",
   children,
+  isExternal,
   ...props
 }: MobileLinkProps) {
   return (
@@ -87,9 +100,10 @@ function MobileLink({
       onClick={() => {
         onOpenChange?.(false);
       }}
+      shallow={!isExternal}
+      target={isExternal ? "_blank" : undefined}
       className={classNames(
-        className,
-        "flex select-none items-center gap-1 rounded-md leading-none text-slate-200 no-underline outline-none transition-colors",
+        "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-50 no-underline outline-none transition-colors",
         "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-500"
       )}
       {...props}
