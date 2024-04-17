@@ -100,12 +100,9 @@ const isRunnable = (
   for (const name in config) {
     for (const key in config[name]) {
       if (
-        ![
-          "use_cache",
-          "error_as_output",
-          "function_call",
-          "use_tools",
-        ].includes(key)
+        key != "use_cache" &&
+        key != "error_as_output" &&
+        key != "function_call"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;
