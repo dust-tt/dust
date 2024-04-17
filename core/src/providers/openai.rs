@@ -1414,8 +1414,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format) = match &extras {
-            None => (None, None, None),
+        let (openai_org_id, openai_user, response_format, _use_tools) = match &extras {
+            None => (None, None, None, false),
             Some(v) => (
                 match v.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
@@ -1428,6 +1428,10 @@ impl LLM for OpenAILLM {
                 match v.get("response_format") {
                     Some(Value::String(f)) => Some(f.to_string()),
                     _ => None,
+                },
+                match v.get("use_tools") {
+                    Some(Value::Bool(f)) => *f,
+                    _ => false,
                 },
             ),
         };
