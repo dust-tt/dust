@@ -15,7 +15,7 @@ interface MenuConfig {
   items: NavItemWithChildren[];
 }
 
-export const CareersMenuConfig: MenuConfig = {
+const CareersMenuConfig: MenuConfig = {
   title: "Careers",
   items: [
     {
@@ -31,7 +31,7 @@ export const CareersMenuConfig: MenuConfig = {
   ],
 };
 
-export const AboutMenuConfig: MenuConfig = {
+const AboutMenuConfig: MenuConfig = {
   title: "About",
   items: [
     {
@@ -47,7 +47,7 @@ export const AboutMenuConfig: MenuConfig = {
   ],
 };
 
-export const LegalMenuConfig: MenuConfig = {
+const LegalMenuConfig: MenuConfig = {
   title: "Legal",
   items: [
     {
@@ -73,7 +73,7 @@ export const LegalMenuConfig: MenuConfig = {
   ],
 };
 
-export const MoreMenuConfig: MenuConfig = {
+const MoreMenuConfig: MenuConfig = {
   title: "More",
   items: [
     {
@@ -96,7 +96,7 @@ export const MoreMenuConfig: MenuConfig = {
   ],
 };
 
-export const SolutionsMenuConfig: MenuConfig = {
+const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
     {
@@ -114,7 +114,7 @@ export const SolutionsMenuConfig: MenuConfig = {
   ],
 };
 
-export const DevelopersMenuConfig: MenuConfig = {
+const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {

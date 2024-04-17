@@ -1,5 +1,3 @@
-"use client";
-
 import { LogoHorizontalWhiteLogo } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
@@ -31,11 +29,9 @@ export function FooterNavigation() {
                   {item.title}
                 </FooterLink>
               ) : (
-                item.title !== "More" && (
-                  <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-100 no-underline outline-none">
-                    {item.title}
-                  </div>
-                )
+                <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-100 no-underline outline-none">
+                  {item.title}
+                </div>
               )}
               {item?.items?.length &&
                 item.items.map((item) => (
@@ -60,26 +56,17 @@ export function FooterNavigation() {
 }
 
 interface FooterLinkProps extends LinkProps {
-  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
   isExternal?: boolean;
 }
 
-function FooterLink({
-  href,
-  onOpenChange,
-  children,
-  isExternal,
-  ...props
-}: FooterLinkProps) {
+function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
   return (
     <Link
       href={href}
-      onClick={() => {
-        onOpenChange?.(false);
-      }}
       shallow={!isExternal}
+      target={isExternal ? "_blank" : undefined}
       {...props}
     >
       <A variant="tertiary" className="text-sm">
