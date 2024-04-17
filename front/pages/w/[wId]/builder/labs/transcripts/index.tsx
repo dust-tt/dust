@@ -86,7 +86,12 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify(data),
     }).then((response) => {
       if (!response.ok) {
-        throw new Error("Failed to update");
+        sendNotification({
+          type: "error",
+          title: "Failed to update",
+          description: "Could not update the configuration. Please try again.",
+        });
+        return;
       }
       sendNotification({
         type: "success",

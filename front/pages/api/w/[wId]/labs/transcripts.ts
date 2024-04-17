@@ -34,6 +34,16 @@ async function handler(
     });
   }
 
+  if (!owner.flags.includes("labs_transcripts")) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "feature_flag_not_found",
+        message: "The feature is not enabled for this workspace.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGet =
