@@ -7,9 +7,10 @@ import type {
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
-import type { drive_v3 } from "googleapis";
 import * as googleapis from "googleapis";
 
+import apiConfig from "@app/lib/api/config";
+import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
@@ -18,14 +19,7 @@ import { LabsTranscriptsHistoryResource } from "@app/lib/resources/labs_transcri
 import mainLogger from "@app/logger/logger";
 import { launchProcessTranscriptWorkflow } from "@app/temporal/labs/client";
 
-const {
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-  LABS_API_KEY,
-  LABS_WORKSPACE_ID,
-  LABS_TRANSCRIPTS_ASSISTANT,
-  NODE_ENV,
-  SENDGRID_API_KEY,
-} = process.env;
+sgMail.setApiKey(apiConfig.getSendgridApiKey());
 
 export async function retrieveNewTranscriptsActivity(
   userId: ModelId,
@@ -63,7 +57,7 @@ export async function retrieveNewTranscriptsActivity(
     }
 
     const transcriptsWorkflowPromises = files.data.files.map(
-      async (file: drive_v3.Schema$File) => {
+      async (file) => {
         const fileId = file.id as string;
         return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
           (history) => {
@@ -105,14 +99,6 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  if (!SENDGRID_API_KEY) {
-    throw new Error("Missing SENDGRID_API_KEY env variable");
-  }
-  sgMail.setApiKey(SENDGRID_API_KEY);
-
-  if (!NANGO_GOOGLE_DRIVE_CONNECTOR_ID) {
-    throw new Error("NANGO_GOOGLE_DRIVE_CONNECTOR_ID is not set");
-  }
   logger.info(
     "[processGoogleDriveTranscriptActivity] Starting processing of file ",
     fileId
@@ -157,8 +143,8 @@ export async function processGoogleDriveTranscriptActivity(
 
   const dust = new DustAPI(
     {
-      workspaceId: LABS_WORKSPACE_ID as string,
-      apiKey: LABS_API_KEY as string,
+      workspaceId: config.getLabsWorkspaceId(),
+      apiKey: config.getLabsApiKey(),
     },
     logger
   );
@@ -166,9 +152,8 @@ export async function processGoogleDriveTranscriptActivity(
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
-  const configurationId =
-    NODE_ENV == "development" && LABS_TRANSCRIPTS_ASSISTANT
-      ? LABS_TRANSCRIPTS_ASSISTANT
+  const configurationId = config.getLabsTranscriptsAssistantId()
+      ? config.getLabsTranscriptsAssistantId()
       : transcriptsConfiguration.agentConfigurationId;
 
   if (!configurationId) {

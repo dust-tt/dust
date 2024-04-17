@@ -23,11 +23,8 @@ import { useAgentConfigurations } from "@app/lib/swr";
 
 const provider = "google_drive";
 
-const {
-  GA_TRACKING_ID = "",
-  NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
-  NANGO_PUBLIC_KEY = "",
-} = process.env;
+import apiConfig from "@app/lib/api/config";
+import config from "@app/lib/labs/config";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -49,9 +46,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: GA_TRACKING_ID,
-      nangoDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
-      nangoPublicKey: NANGO_PUBLIC_KEY,
+      gaTrackingId: apiConfig.getGaTrackingId(),
+      nangoDriveConnectorId: config.getNangoGoogleDriveConnectorId(),
+      nangoPublicKey: config.getNangoPublicKey(),
     },
   };
 });
@@ -261,84 +258,91 @@ export default function LabsTranscriptsIndex({
           />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="1. Connect Google Drive" />
-            <Page.Layout direction="horizontal">
+            <Page.Layout direction="vertical">
               <Page.P>
-                Connect to Google Drive so Dust can access 'My Drive' where your meeting transcripts are stored.
+                Connect to Google Drive so Dust can access 'My Drive' where your
+                meeting transcripts are stored.
               </Page.P>
-
-              <Button
-                label={isGDriveConnected ? "Connected" : "Connect"}
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                disabled={isLoading || isGDriveConnected}
-                onClick={async () => {
-                  await handleConnectTranscriptsSource();
-                }}
-              />
+              <div>
+                <Button
+                  label={isGDriveConnected ? "Connected" : "Connect"}
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={isLoading || isGDriveConnected}
+                  onClick={async () => {
+                    await handleConnectTranscriptsSource();
+                  }}
+                />
+              </div>
             </Page.Layout>
           </Page.Layout>
           {!isLoading && isGDriveConnected && (
             <>
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="2. Choose an assistant" />
-                <Page.Layout direction="horizontal">
+                <Page.Layout direction="vertical">
                   <Page.P>
-                    Choose the assistant that will summarize the
-                    transcripts in the way you want.
+                    Choose the assistant that will summarize the transcripts in
+                    the way you want.
                   </Page.P>
-
-                  <AssistantPicker
-                    owner={owner}
-                    size="sm"
-                    onItemClick={(c) => {
-                      void handleSelectAssistant(c).then(() => {
-                        console.log("Selected assistant " + c.name);
-                      });
-                    }}
-                    assistants={agents}
-                    showFooterButtons={false}
-                  />
-                  {assistantSelected && (
-                    <Page.P>
-                      <strong>@{assistantSelected.name}</strong>
-                    </Page.P>
-                  )}
+                  <Page.Layout direction="horizontal">
+                    <AssistantPicker
+                      owner={owner}
+                      size="sm"
+                      onItemClick={(c) => {
+                        void handleSelectAssistant(c).then(() => {
+                          console.log("Selected assistant " + c.name);
+                        });
+                      }}
+                      assistants={agents}
+                      showFooterButtons={false}
+                    />
+                    {assistantSelected && (
+                      <Page.P>
+                        <strong>@{assistantSelected.name}</strong>
+                      </Page.P>
+                    )}
+                  </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="3. Choose the email receiving transcripts" />
-                <Page.Layout direction="horizontal" gap="xl">
+                <Page.Layout direction="vertical" gap="lg">
                   <Page.P>
-                    By default, we will send transcripts to your email. <br />You can chose a different email
-                    here.
+                    By default, we will send transcripts to your email. You can
+                    chose a different email here.
                   </Page.P>
-                  <Page.Layout direction="horizontal" gap="xl">
-                  <Input
-                    placeholder="Type email"
-                    name="input"
-                    value={emailToNotify}
-                    onChange={(e) => setEmailToNotify(e)}
-                  />
-                  <Button
-                    label="Save"
-                    size="sm"
-                    onClick={async () => {
-                      await handleSaveEmailToNotify();
-                    }}
-                  />
-                  </Page.Layout>
+                  <Page.Horizontal>
+                    <div className="flex-grow">
+                      <Input
+                        placeholder="Type email"
+                        name="input"
+                        value={emailToNotify}
+                        onChange={(e) => setEmailToNotify(e)}
+                      />
+                    </div>
+                    <Button
+                      label="Save"
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        await handleSaveEmailToNotify();
+                      }}
+                    />
+                  </Page.Horizontal>
                 </Page.Layout>
               </Page.Layout>
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="4. Enable transcripts processing" />
                 <Page.Layout direction="horizontal" gap="xl">
-                  <Page.P>
-                    When enable, each meeting transcript in 'My Drive'  will be processed.
-                  </Page.P>
                   <SliderToggle
                     selected={isActive}
                     onClick={() => handleSetIsActive(!isActive)}
                   />
+                  <Page.P>
+                    When enabled, each new meeting transcript in 'My Drive' will
+                    be processed.
+                  </Page.P>
                 </Page.Layout>
               </Page.Layout>
             </>
