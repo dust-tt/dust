@@ -144,7 +144,7 @@ const InputBarContainer = ({
                   editorService.insertMention({ id: c.sId, label: c.name });
                 }}
                 assistants={allAssistants}
-                showBottomBarButtons={true}
+                showFooterButtons={true}
               />
               <div className="hidden sm:flex">
                 <IconButton

@@ -24,14 +24,14 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
-  showBottomBarButtons = true,
+  showFooterButtons = true,
   size = "md",
 }: {
   owner: WorkspaceType;
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
-  showBottomBarButtons?: boolean;
+  showFooterButtons?: boolean;
   size?: "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
@@ -100,7 +100,7 @@ export function AssistantPicker({
             }
             bottomBar={
               <>
-                {showBottomBarButtons && (
+                {showFooterButtons && (
                   <div className="flex border-t border-structure-50 p-2">
                     <Link
                       href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
