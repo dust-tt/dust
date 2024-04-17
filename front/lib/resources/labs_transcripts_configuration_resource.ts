@@ -1,6 +1,7 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type { CreationAttributes } from "sequelize";
 
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -23,24 +24,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     super(LabsTranscriptsConfigurationModel, blob);
   }
 
-  static async makeNew({
-    userId,
-    connectionId,
-    provider,
-  }: {
-    userId: number;
-    connectionId: string;
-    provider: LabsTranscriptsProviderType;
-  }): Promise<LabsTranscriptsConfigurationResource> {
-    if (
-      await LabsTranscriptsConfigurationModel.count({
-        where: {
-          userId: userId,
-          connectionId: connectionId,
-          provider: provider,
-        },
-      })
-    ) {
+  static async makeNew(blob: Omit<CreationAttributes<LabsTranscriptsConfigurationModel>, "isActive">): Promise<LabsTranscriptsConfigurationResource> {
+    const { userId, connectionId, provider } = blob;
+    const hasExistingConfiguration = await LabsTranscriptsConfigurationModel.count({
+      where: {
+        userId,
+        connectionId,
+        provider,
+      },
+    });
+    if (hasExistingConfiguration) {
       throw new Error(
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
       );

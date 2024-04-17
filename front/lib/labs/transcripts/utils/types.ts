@@ -3,20 +3,5 @@
 
 // GENERAL
 export type LabsTranscriptsProviderType = "google_drive" | "gong" | null;
-
-// NANGO
 export type NangoConnectionId = string;
-export type NangoConnectionResponse = {
-  connection_id: string;
-  credentials: {
-    type: string;
-    access_token: string;
-    refresh_token: string;
-    expires_at: string;
-    expires_in: number;
-    raw: {
-      scope: string;
-      token_type: string;
-    };
-  };
-};
+export type NangoIntegrationId = string;

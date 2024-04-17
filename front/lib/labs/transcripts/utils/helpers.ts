@@ -5,14 +5,15 @@ import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
 import config from "@app/lib/labs/config";
+import type { NangoConnectionId, NangoIntegrationId } from "@app/lib/labs/transcripts/utils/types";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_configuration_resource";
 
 const nango = new Nango({ secretKey: config.getNangoSecretKey() });
 
 // Google Auth
 export async function getGoogleAuthObject(
-  nangoIntegrationId: string,
-  nangoConnectionId: string
+  nangoIntegrationId: NangoIntegrationId,
+  nangoConnectionId: NangoConnectionId
 ): Promise<OAuth2Client> {
   const res: Connection = await nango.getConnection(
     nangoIntegrationId,
