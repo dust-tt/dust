@@ -243,3 +243,29 @@ export async function getRecentPendingAndRevokedInvitations(
 
   return groupedInvitations;
 }
+
+export async function batchUnrevokeInvitations(
+  auth: Authenticator,
+  invitationIds: string[]
+) {
+  const owner = auth.workspace();
+  if (!owner || !auth.isAdmin()) {
+    throw new Error(
+      "Only users that are `admins` for the current workspace can see membership invitations or modify them."
+    );
+  }
+
+  await MembershipInvitation.update(
+    {
+      status: "pending",
+    },
+    {
+      where: {
+        sId: {
+          [Op.in]: invitationIds,
+        },
+        workspaceId: owner.id,
+      },
+    }
+  );
+}

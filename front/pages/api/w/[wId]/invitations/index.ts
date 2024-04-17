@@ -7,9 +7,9 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import {
+  batchUnrevokeInvitations,
   getRecentPendingAndRevokedInvitations,
   sendWorkspaceInvitationEmail,
   updateOrCreateInvitation,
@@ -18,7 +18,6 @@ import { getPendingInvitations } from "@app/lib/api/invitation";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
-import { MembershipInvitation } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -199,17 +198,9 @@ async function handler(
           },
         });
       }
-      await MembershipInvitation.update(
-        {
-          status: "pending",
-        },
-        {
-          where: {
-            sId: {
-              [Op.in]: unconsumedInvitations.revoked.map((i) => i.sId),
-            },
-          },
-        }
+      await batchUnrevokeInvitations(
+        auth,
+        unconsumedInvitations.revoked.map((i) => i.sId)
       );
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
