@@ -179,15 +179,22 @@ async function handler(
           i.inviteEmail.toLowerCase().trim()
         ),
       ]);
+      const requestedEmails = new Set(
+        invitationRequests.map((r) => r.email.toLowerCase().trim())
+      );
       const emailsToSendInvitations = invitationRequests.filter(
         (r) =>
           !emailsWithRecentUnconsumedInvitations.has(
             r.email.toLowerCase().trim()
           )
       );
+      const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
+        requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+      );
+
       if (
         !emailsToSendInvitations.length &&
-        !unconsumedInvitations.revoked.length &&
+        !invitationsToUnrevoke &&
         invitationRequests.length > 0
       ) {
         return apiError(req, res, {
@@ -200,7 +207,7 @@ async function handler(
       }
       await batchUnrevokeInvitations(
         auth,
-        unconsumedInvitations.revoked.map((i) => i.sId)
+        invitationsToUnrevoke.map((i) => i.sId)
       );
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
