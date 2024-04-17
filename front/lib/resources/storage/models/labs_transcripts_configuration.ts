@@ -8,7 +8,7 @@ import { DataTypes, Model } from "sequelize";
 
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { User } from "@app/lib/models/user";
+import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class LabsTranscriptsConfigurationModel extends Model<
@@ -46,10 +46,6 @@ LabsTranscriptsConfigurationModel.init(
     },
     userId: {
       type: DataTypes.INTEGER,
-      references: {
-        model: "users",
-        key: "id",
-      },
     },
     connectionId: {
       type: DataTypes.STRING,
@@ -82,3 +78,13 @@ LabsTranscriptsConfigurationModel.init(
     ],
   }
 );
+
+User.hasMany(LabsTranscriptsConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+LabsTranscriptsConfigurationModel.belongsTo(User, {
+  foreignKey: {
+    name: "userId", allowNull: false
+  },
+});

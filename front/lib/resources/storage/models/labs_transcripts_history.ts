@@ -3,12 +3,13 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
-import type { LabsTranscriptsConfigurationModel } from "./labs_transcripts_configuration";
+import { LabsTranscriptsConfigurationModel } from "./labs_transcripts_configuration";
 
 export class LabsTranscriptsHistoryModel extends Model<
   InferAttributes<LabsTranscriptsHistoryModel>,
@@ -21,6 +22,7 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
   declare fileId: string;
   declare fileName: string;
+  declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
 }
 
 LabsTranscriptsHistoryModel.init(
@@ -40,13 +42,6 @@ LabsTranscriptsHistoryModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    configurationId: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: "labs_transcripts_configurations",
-        key: "id",
-      },
-    },
     fileId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -65,3 +60,16 @@ LabsTranscriptsHistoryModel.init(
     ],
   }
 );
+
+LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
+  as: "configuration",
+  foreignKey: {
+    name: "configurationId", allowNull: false
+  },
+});
+
+LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
+  as: "configuration",
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
