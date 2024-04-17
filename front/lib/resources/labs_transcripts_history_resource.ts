@@ -1,6 +1,7 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import type { CreationAttributes } from "sequelize";
 
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts_configuration";
@@ -17,28 +18,19 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
     LabsTranscriptsHistoryModel;
 
   constructor(
-    model: ModelStatic<LabsTranscriptsHistoryModel>,
     blob: Attributes<LabsTranscriptsHistoryModel>
   ) {
     super(LabsTranscriptsHistoryModel, blob);
   }
 
-  static async makeNew({
-    configurationId,
-    fileId,
-    fileName,
-  }: {
-    configurationId: LabsTranscriptsConfigurationModel["id"];
-    fileId: string;
-    fileName: string;
-  }): Promise<LabsTranscriptsHistoryResource> {
-    if (
-      await LabsTranscriptsHistoryModel.count({
-        where: {
-          fileId: fileId,
-        },
-      })
-    ) {
+  static async makeNew(blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">): Promise<LabsTranscriptsHistoryResource> {
+    const { configurationId, fileId, fileName } = blob;
+    const hasExistingHistory = await LabsTranscriptsHistoryModel.count({ 
+      where: {
+        fileId: fileId,
+      },
+    })
+      if (hasExistingHistory) {
       throw new Error(
         `A Solution transcripts history already exists with fileId ${fileId}`
       );
@@ -50,7 +42,6 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
     });
 
     return new LabsTranscriptsHistoryResource(
-      LabsTranscriptsHistoryModel,
       history.get()
     );
   }
@@ -71,7 +62,6 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
     }
 
     return new LabsTranscriptsHistoryResource(
-      LabsTranscriptsHistoryModel,
       history.get()
     );
   }
@@ -96,7 +86,6 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
     return histories.map(
       (history) =>
         new LabsTranscriptsHistoryResource(
-          LabsTranscriptsHistoryModel,
           history.get()
         )
     );

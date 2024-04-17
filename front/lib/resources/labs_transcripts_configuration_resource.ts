@@ -18,7 +18,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     LabsTranscriptsConfigurationModel;
 
   constructor(
-    model: ModelStatic<LabsTranscriptsConfigurationModel>,
     blob: Attributes<LabsTranscriptsConfigurationModel>
   ) {
     super(LabsTranscriptsConfigurationModel, blob);
@@ -46,7 +45,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     });
 
     return new LabsTranscriptsConfigurationResource(
-      LabsTranscriptsConfigurationModel,
       configuration.get()
     );
   }
@@ -67,7 +65,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
     return configuration
       ? new LabsTranscriptsConfigurationResource(
-          LabsTranscriptsConfigurationModel,
           configuration.get()
         )
       : null;
