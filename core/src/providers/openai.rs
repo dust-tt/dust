@@ -808,46 +808,25 @@ async fn streamed_chat_completion(
                                         },
                                     };
 
-                                    // TODO: Should we keep this around? Yes for function_call.
-                                    // If we a `function_call.name` in the delta object we stream a
-                                    // "function_call" event.
-                                    match chunk.choices[0].delta.get("function_call") {
-                                        None => (),
-                                        Some(function_call) => match function_call.get("name") {
-                                            None => (),
-                                            Some(name) => match name.as_str() {
-                                                None => (),
-                                                Some(n) => {
+                                    // If we have exactly one `tool_call.function.name` in the delta object, stream a "function_call" event.
+                                    if let Some(tool_calls) = chunk.choices[0]
+                                        .delta
+                                        .get("tool_calls")
+                                        .and_then(|v| v.as_array())
+                                    {
+                                        if tool_calls.len() == 1 {
+                                            if let Some(f) = tool_calls[0].get("function") {
+                                                if let Some(Value::String(name)) = f.get("name") {
                                                     let _ = sender.send(json!({
                                                         "type": "function_call",
                                                         "content": {
-                                                            "name": n,
+                                                            "name": name,
                                                         },
                                                     }));
                                                 }
-                                            },
-                                        },
-                                    };
-
-                                    // If we a `function_call.arguments` in the delta object we stream
-                                    // a "function_call_arguments_tokens" event.
-                                    match chunk.choices[0].delta.get("function_call") {
-                                        None => (),
-                                        Some(function_call) => {
-                                            match function_call.get("arguments") {
-                                                None => (),
-                                                Some(name) => match name.as_str() {
-                                                    None => (),
-                                                    Some(n) => {
-                                                        let _ = sender.send(json!({
-                                                            "type": "function_call_arguments_tokens",
-                                                            "content": {
-                                                                "text": n,
-                                                            },
-                                                        }));
-                                                    }
-                                                },
                                             }
+                                        } else {
+                                            return Err(anyhow!("More than one tool call found"));
                                         }
                                     }
                                 }
