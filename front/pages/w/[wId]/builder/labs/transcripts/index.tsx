@@ -297,11 +297,7 @@ export default function LabsTranscriptsIndex({
                     <AssistantPicker
                       owner={owner}
                       size="sm"
-                      onItemClick={(c) => {
-                        void handleSelectAssistant(c).then(() => {
-                          console.log("Selected assistant " + c.name);
-                        });
-                      }}
+                      onItemClick={handleSelectAssistant}
                       assistants={agents}
                       showFooterButtons={false}
                     />

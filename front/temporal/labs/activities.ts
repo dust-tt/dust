@@ -10,6 +10,7 @@ import sgMail from "@sendgrid/mail";
 import * as googleapis from "googleapis";
 
 import apiConfig from "@app/lib/api/config";
+import { sendEmail } from "@app/lib/email";
 import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
@@ -58,7 +59,7 @@ export async function retrieveNewTranscriptsActivity(
 
     const transcriptsWorkflowPromises = files.data.files.map(
       async (file) => {
-        const fileId = file.id as string;
+        const fileId = <string>file.id;
         return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
           (history) => {
             if (history) {
@@ -78,9 +79,9 @@ export async function retrieveNewTranscriptsActivity(
     await Promise.all(transcriptsWorkflowPromises);
   } else {
     // throw error
-    logger.error("[retrieveNewTranscripts] Provider not supported. Stopping.", {
+    logger.error({
       providerId,
-    });
+    }, "[retrieveNewTranscripts] Provider not supported. Stopping.");
   }
 }
 
@@ -150,9 +151,7 @@ export async function processGoogleDriveTranscriptActivity(
     logger
   );
 
-  const configurationId = config.getLabsTranscriptsAssistantId()
-      ? config.getLabsTranscriptsAssistantId()
-      : transcriptsConfiguration.agentConfigurationId;
+  const configurationId = config.getLabsTranscriptsAssistantId() || transcriptsConfiguration.agentConfigurationId;
 
   if (!configurationId) {
     logger.error(
@@ -188,11 +187,6 @@ export async function processGoogleDriveTranscriptActivity(
   } 
 
   const conversation = convRes.value.conversation;
-  logger.info(
-    "[processGoogleDriveTranscriptActivity] Created conversation " +
-      conversation.sId
-  );
-  
 
   if (!conversation) {
     logger.error(
@@ -201,24 +195,17 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
+  logger.info(
+    "[processGoogleDriveTranscriptActivity] Created conversation " +
+      conversation.sId
+  );
+  
+
   //Get first from array with type='agent_message' in conversation.content;
   const agentMessage = <AgentMessageType[]>conversation.content.find(innerArray => {
     return innerArray.find(item => item.type === 'agent_message');
 });
   const fullAnswer = agentMessage ? agentMessage[0].content : '';
-
-  // SEND EMAIL WITH SUMMARY
-  const msg = {
-    to: transcriptsConfiguration.emailToNotify || user.email,
-    from: "team@dust.tt",
-    subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `${fullAnswer}<br>` + `The Dust team`,
-  };
-  void sgMail.send(msg).then(() => {
-    logger.info(
-      "[processGoogleDriveTranscriptActivity] Email sent with summary"
-    );
-  });
   
   const hasExistingHistory = await LabsTranscriptsHistoryResource.findByFileId({
     fileId,
@@ -236,6 +223,17 @@ export async function processGoogleDriveTranscriptActivity(
     fileId,
     fileName: transcriptTitle,
   });
+
+  const msg = {
+    from: {
+      name: "Dust team",
+      email: "team@dust.tt",
+    },
+    subject: `[DUST] Meeting summary - ${transcriptTitle}`,
+    html: `${fullAnswer}<br>` + `The Dust team`,
+  };
+
+  await sendEmail(transcriptsConfiguration.emailToNotify || user.email, msg);
 }
 
 export async function checkIsActiveActivity({
