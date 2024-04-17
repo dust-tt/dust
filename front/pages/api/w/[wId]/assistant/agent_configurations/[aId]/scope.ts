@@ -133,7 +133,9 @@ async function handler(
           status: assistant.status as AgentStatus,
         },
         agentConfigurationId: assistant.sId,
-        legacySingleActionMode: true,
+        // Here we want to preserve whatever is in the exising configuration,
+        // so we don't want to use the legacySingleActionMode (which overwrites `forceUseAtIteration`)
+        legacySingleActionMode: false,
       });
       if (result.isErr()) {
         return apiError(req, res, {
