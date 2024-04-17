@@ -112,7 +112,6 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (!transcriptsConfiguration) {
     logger.info(
-      {},
       "[processGoogleDriveTranscriptActivity] No configuration found. Stopping."
     );
     return;
@@ -179,8 +178,8 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (convRes.isErr()) {
     logger.error(
-      "[processGoogleDriveTranscriptActivity] Error creating conversation",
-      convRes.error
+      convRes.error, // Remove curly braces and add a comma after convRes.error
+      "[processGoogleDriveTranscriptActivity] Error creating conversation"
     );
     return new Err(new Error(convRes.error.message));
   } 
