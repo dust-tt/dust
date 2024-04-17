@@ -263,8 +263,7 @@ export default function LabsTranscriptsIndex({
             <Page.SectionHeader title="1. Connect Google Drive" />
             <Page.Layout direction="horizontal">
               <Page.P>
-                Connect your personal Google Drive so Dust can access your
-                meeting transcripts.
+                Connect to Google Drive so Dust can access 'My Drive' where your meeting transcripts are stored.
               </Page.P>
 
               <Button
@@ -281,13 +280,11 @@ export default function LabsTranscriptsIndex({
           {!isLoading && isGDriveConnected && (
             <>
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Assistant configuration" />
+                <Page.SectionHeader title="2. Choose an assistant" />
                 <Page.Layout direction="horizontal">
                   <Page.P>
-                    The chosen assistant should be configured to summarize the
-                    transcripts in the way you want.{" "}
-                    <strong>Instruct it to answer in HTML format</strong> to
-                    receive a readable email.
+                    Choose the assistant that will summarize the
+                    transcripts in the way you want.
                   </Page.P>
 
                   <AssistantPicker
@@ -309,13 +306,13 @@ export default function LabsTranscriptsIndex({
                 </Page.Layout>
               </Page.Layout>
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Email configuration" />
+                <Page.SectionHeader title="3. Choose the email receiving transcripts" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <Page.P>
-                    By default, the assistant will send the summarized
-                    transcript to your email. You can chose a different email
+                    By default, we will send transcripts to your email. <br />You can chose a different email
                     here.
                   </Page.P>
+                  <Page.Layout direction="horizontal" gap="xl">
                   <Input
                     placeholder="Type email"
                     name="input"
@@ -329,14 +326,14 @@ export default function LabsTranscriptsIndex({
                       await handleSaveEmailToNotify();
                     }}
                   />
+                  </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="4. Activate" />
+                <Page.SectionHeader title="4. Enable transcripts processing" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <Page.P>
-                    When this is turned on, you will receive a summary of each
-                    of your transcripted meetings.
+                    When enable, each meeting transcript in 'My Drive'  will be processed.
                   </Page.P>
                   <SliderToggle
                     selected={isActive}
