@@ -1030,6 +1030,23 @@ async function sendInvitations({
   });
 
   if (!res.ok) {
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      // ignore
+    }
+    if (data?.error?.type === "invitation_already_sent_recently") {
+      sendNotification({
+        type: "error",
+        title: emails.length === 1 ? "Invite failed" : "Invites failed",
+        description:
+          emails.length === 1
+            ? "This user has already been invited in the last 24 hours. Please wait before sending another invite."
+            : "These users have already been invited in the last 24 hours. Please wait before sending another invite.",
+      });
+    }
+
     sendNotification({
       type: "error",
       title: "Invite failed",
