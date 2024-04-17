@@ -1,9 +1,4 @@
-import type {
-  AgentMessageType,
-  ConversationType,
-  ModelId,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { AgentMessageType, ModelId } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
@@ -54,29 +49,34 @@ export async function retrieveNewTranscriptsActivity(
         fields: "files(id, name)",
       });
 
-    if (!files.data.files) {
+    if (files.data.files?.length !== 0) {
       logger.info("[retrieveNewTranscripts] No new files found");
       return;
     }
 
-    const transcriptsWorkflowPromises = files.data.files.map(async (file) => {
-      const fileId = <string>file.id;
-      return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
-        (history) => {
-          if (history) {
-            logger.info(
-              "[retrieveNewTranscripts] File already processed. Skipping.",
-              { fileId }
-            );
-            return;
-          }
-
-          return launchProcessTranscriptWorkflow({ userId, fileId });
-        }
-      );
-    });
-
-    await Promise.all(transcriptsWorkflowPromises);
+    const filesData = files.data.files;
+    for (let i = 0; i < filesData.length; i++) {
+      const file = filesData[i];
+      if (!file.id) {
+        logger.error(
+          { file },
+          "[retrieveNewTranscripts] File does not have an id. Skipping."
+        );
+        continue;
+      }
+      const fileId = file.id;
+      const history = await LabsTranscriptsHistoryResource.findByFileId({
+        fileId,
+      });
+      if (history) {
+        logger.info(
+          { fileId },
+          "[retrieveNewTranscripts] File already processed. Skipping."
+        );
+        continue;
+      }
+      await launchProcessTranscriptWorkflow({ userId, fileId });
+    }
   } else {
     // throw error
     logger.error(
