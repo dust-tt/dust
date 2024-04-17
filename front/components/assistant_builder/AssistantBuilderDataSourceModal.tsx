@@ -144,7 +144,11 @@ export default function AssistantBuilderDataSourceModal({
         }
       }}
       onSave={() => onSaveLocal({ isSelectAll })}
-      hasChanged={selectedDataSource !== null}
+      hasChanged={
+        selectedDataSource !== null ||
+        shouldDisplayFoldersScreen ||
+        shouldDisplayWebsitesScreen
+      }
       variant="full-screen"
       title="Manage data sources selection"
     >
