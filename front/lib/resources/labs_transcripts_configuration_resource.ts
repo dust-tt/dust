@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import type { CreationAttributes } from "sequelize";
@@ -55,7 +55,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     userId,
     provider,
   }: {
-    userId: number;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
@@ -79,7 +79,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider,
   }: {
     agentConfigurationId: string | null;
-    userId: number;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
@@ -126,7 +126,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider,
   }: {
     emailToNotify: string | null;
-    userId: number;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<
@@ -171,7 +171,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     userId,
     provider,
   }: {
-    userId: number;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<boolean> {
     const configuration = await this.findByUserIdAndProvider({
@@ -190,7 +190,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     provider,
   }: {
     isActive: boolean;
-    userId: number;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<
     Result<

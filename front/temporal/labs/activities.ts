@@ -85,7 +85,7 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processGoogleDriveTranscriptActivity(
-  userId: number,
+  userId: ModelId,
   fileId: string
 ) {
   const logger = mainLogger.child({ userId });
@@ -287,7 +287,7 @@ export async function checkIsActiveActivity({
   userId,
   providerId,
 }: {
-  userId: number;
+  userId: ModelId;
   providerId: LabsTranscriptsProviderType;
 }) {
   const isActive = await LabsTranscriptsConfigurationResource.getIsActive({

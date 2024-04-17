@@ -45,7 +45,7 @@ export async function retrieveNewTranscriptsWorkflow(
 }
 
 export async function processTranscriptWorkflow(
-  userId: number,
+  userId: ModelId,
   fileId: string
 ) {
   await processGoogleDriveTranscriptActivity(userId, fileId);

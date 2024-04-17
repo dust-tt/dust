@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
@@ -21,7 +21,7 @@ export async function launchRetrieveNewTranscriptsWorkflow({
   userId,
   providerId,
 }: {
-  userId: number;
+  userId: ModelId;
   providerId: LabsTranscriptsProviderType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -60,7 +60,7 @@ export async function launchProcessTranscriptWorkflow({
   userId,
   fileId,
 }: {
-  userId: number;
+  userId: ModelId;
   fileId: string;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
