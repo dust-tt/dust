@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
@@ -485,23 +486,25 @@ export default function Chat({
                     />
                   </div>
                 </div>
-                <div className="flex flex-initial flex-grow flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">use_tools</div>
-                  <div className="flex w-4 font-normal">
-                    <input
-                      type="checkbox"
-                      className={classNames(
-                        "block w-48 flex-1 rounded-md px-1 py-1 text-sm font-normal",
-                        readOnly
-                          ? "border-white ring-0 focus:border-white focus:ring-0"
-                          : "border-white focus:border-gray-300 focus:ring-0"
-                      )}
-                      readOnly={readOnly}
-                      checked={block.config.use_tools === true}
-                      onChange={(e) => handleUseToolsChange(e.target.checked)}
-                    />
+                {isDevelopmentOrDustWorkspace(owner) && (
+                  <div className="flex flex-initial flex-grow flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+                    <div className="flex flex-initial">use_tools</div>
+                    <div className="flex w-4 font-normal">
+                      <input
+                        type="checkbox"
+                        className={classNames(
+                          "block w-48 flex-1 rounded-md px-1 py-1 text-sm font-normal",
+                          readOnly
+                            ? "border-white ring-0 focus:border-white focus:ring-0"
+                            : "border-white focus:border-gray-300 focus:ring-0"
+                        )}
+                        readOnly={readOnly}
+                        checked={block.config.use_tools === true}
+                        onChange={(e) => handleUseToolsChange(e.target.checked)}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           ) : null}
