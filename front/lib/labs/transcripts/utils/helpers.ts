@@ -5,7 +5,10 @@ import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
 import config from "@app/lib/labs/config";
-import type { NangoConnectionId, NangoIntegrationId } from "@app/lib/labs/transcripts/utils/types";
+import type {
+  NangoConnectionId,
+  NangoIntegrationId,
+} from "@app/lib/labs/transcripts/utils/types";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 
 const nango = new Nango({ secretKey: config.getNangoSecretKey() });
@@ -35,7 +38,7 @@ export async function getGoogleAuthFromUserTranscriptConfiguration(
   userId: ModelId
 ) {
   const providerId = "google_drive";
-  
+
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
       userId: userId,

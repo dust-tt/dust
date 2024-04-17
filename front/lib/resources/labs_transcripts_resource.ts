@@ -18,21 +18,25 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static model: ModelStatic<LabsTranscriptsConfigurationModel> =
     LabsTranscriptsConfigurationModel;
 
-  constructor(
-    blob: Attributes<LabsTranscriptsConfigurationModel>
-  ) {
+  constructor(blob: Attributes<LabsTranscriptsConfigurationModel>) {
     super(LabsTranscriptsConfigurationModel, blob);
   }
 
-  static async makeNew(blob: Omit<CreationAttributes<LabsTranscriptsConfigurationModel>, "isActive">): Promise<LabsTranscriptsConfigurationResource> {
+  static async makeNew(
+    blob: Omit<
+      CreationAttributes<LabsTranscriptsConfigurationModel>,
+      "isActive"
+    >
+  ): Promise<LabsTranscriptsConfigurationResource> {
     const { userId, connectionId, provider } = blob;
-    const hasExistingConfiguration = await LabsTranscriptsConfigurationModel.count({
-      where: {
-        userId,
-        connectionId,
-        provider,
-      },
-    });
+    const hasExistingConfiguration =
+      await LabsTranscriptsConfigurationModel.count({
+        where: {
+          userId,
+          connectionId,
+          provider,
+        },
+      });
     if (hasExistingConfiguration) {
       throw new Error(
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
@@ -45,9 +49,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       isActive: false,
     });
 
-    return new LabsTranscriptsConfigurationResource(
-      configuration.get()
-    );
+    return new LabsTranscriptsConfigurationResource(configuration.get());
   }
 
   static async findByUserIdAndProvider({
@@ -65,9 +67,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     });
 
     return configuration
-      ? new LabsTranscriptsConfigurationResource(
-          configuration.get()
-        )
+      ? new LabsTranscriptsConfigurationResource(configuration.get())
       : null;
   }
 
@@ -84,7 +84,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       | Error
     >
   > {
-
     if (this.agentConfigurationId === agentConfigurationId) {
       return new Ok(undefined);
     }
@@ -106,7 +105,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async setEmailToNotify({
-    emailToNotify
+    emailToNotify,
   }: {
     emailToNotify: string | null;
   }): Promise<
@@ -155,11 +154,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return configuration.isActive;
   }
 
-  async setIsActive({
-    isActive
-  }: {
-    isActive: boolean;
-  }): Promise<
+  async setIsActive({ isActive }: { isActive: boolean }): Promise<
     Result<
       void,
       | {
@@ -168,7 +163,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       | Error
     >
   > {
-    
     if (this.isActive === isActive) {
       return new Ok(undefined);
     }
@@ -205,7 +199,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 }
 
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -215,13 +208,13 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
   static model: ModelStatic<LabsTranscriptsHistoryModel> =
     LabsTranscriptsHistoryModel;
 
-  constructor(
-    blob: Attributes<LabsTranscriptsHistoryModel>
-  ) {
+  constructor(blob: Attributes<LabsTranscriptsHistoryModel>) {
     super(LabsTranscriptsHistoryModel, blob);
   }
 
-  static async makeNew(blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">): Promise<LabsTranscriptsHistoryResource> {
+  static async makeNew(
+    blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">
+  ): Promise<LabsTranscriptsHistoryResource> {
     const { configurationId, fileId, fileName } = blob;
 
     const history = await LabsTranscriptsHistoryModel.create({
@@ -230,9 +223,7 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
       fileName,
     });
 
-    return new LabsTranscriptsHistoryResource(
-      history.get()
-    );
+    return new LabsTranscriptsHistoryResource(history.get());
   }
 
   static async findByFileId({
@@ -250,9 +241,7 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
       return null;
     }
 
-    return new LabsTranscriptsHistoryResource(
-      history.get()
-    );
+    return new LabsTranscriptsHistoryResource(history.get());
   }
 
   static async listByConfigurationId({
@@ -273,10 +262,7 @@ export class LabsTranscriptsHistoryResource extends BaseResource<LabsTranscripts
     });
 
     return histories.map(
-      (history) =>
-        new LabsTranscriptsHistoryResource(
-          history.get()
-        )
+      (history) => new LabsTranscriptsHistoryResource(history.get())
     );
   }
 

@@ -47,7 +47,10 @@ import { ConversationClassification } from "@app/lib/models/conversation_classif
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 // Labs - Can be removed at all times if a solution is dropped
-import { LabsTranscriptsConfigurationModel, LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 

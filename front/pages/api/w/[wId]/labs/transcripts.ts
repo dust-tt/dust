@@ -52,7 +52,7 @@ async function handler(
           provider: req.query.provider as LabsTranscriptsProviderType,
         });
 
-      if(!transcriptsConfigurationGet) {
+      if (!transcriptsConfigurationGet) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -101,14 +101,18 @@ async function handler(
         });
       }
 
-      await transcriptsConfigurationPatchResource.setAgentConfigurationId({agentConfigurationId: patchAgentId});
+      await transcriptsConfigurationPatchResource.setAgentConfigurationId({
+        agentConfigurationId: patchAgentId,
+      });
 
       if (emailToNotify) {
-        await transcriptsConfigurationPatchResource.setEmailToNotify({emailToNotify});
+        await transcriptsConfigurationPatchResource.setEmailToNotify({
+          emailToNotify,
+        });
       }
 
       if (isActive !== undefined) {
-        await transcriptsConfigurationPatchResource.setIsActive({isActive})
+        await transcriptsConfigurationPatchResource.setIsActive({ isActive });
         if (isActive) {
           await launchRetrieveTranscriptsWorkflow({
             userId: owner.id,

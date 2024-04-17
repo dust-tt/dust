@@ -15,7 +15,10 @@ import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
 import { User } from "@app/lib/models";
-import { LabsTranscriptsConfigurationResource,LabsTranscriptsHistoryResource } from "@app/lib/resources/labs_transcripts_resource";
+import {
+  LabsTranscriptsConfigurationResource,
+  LabsTranscriptsHistoryResource,
+} from "@app/lib/resources/labs_transcripts_resource";
 import mainLogger from "@app/logger/logger";
 import { launchProcessTranscriptWorkflow } from "@app/temporal/labs/client";
 
@@ -56,31 +59,32 @@ export async function retrieveNewTranscriptsActivity(
       return;
     }
 
-    const transcriptsWorkflowPromises = files.data.files.map(
-      async (file) => {
-        const fileId = <string>file.id;
-        return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
-          (history) => {
-            if (history) {
-              logger.info(
-                "[retrieveNewTranscripts] File already processed. Skipping.",
-                { fileId }
-              );
-              return;
-            }
-
-            return launchProcessTranscriptWorkflow({ userId, fileId });
+    const transcriptsWorkflowPromises = files.data.files.map(async (file) => {
+      const fileId = <string>file.id;
+      return LabsTranscriptsHistoryResource.findByFileId({ fileId }).then(
+        (history) => {
+          if (history) {
+            logger.info(
+              "[retrieveNewTranscripts] File already processed. Skipping.",
+              { fileId }
+            );
+            return;
           }
-        );
-      }
-    );
+
+          return launchProcessTranscriptWorkflow({ userId, fileId });
+        }
+      );
+    });
 
     await Promise.all(transcriptsWorkflowPromises);
   } else {
     // throw error
-    logger.error({
-      providerId,
-    }, "[retrieveNewTranscripts] Provider not supported. Stopping.");
+    logger.error(
+      {
+        providerId,
+      },
+      "[retrieveNewTranscripts] Provider not supported. Stopping."
+    );
   }
 }
 
@@ -131,7 +135,10 @@ export async function processGoogleDriveTranscriptActivity(
   });
 
   if (contentRes.status !== 200) {
-    logger.error({ error: contentRes.statusText }, "Error exporting Google document");
+    logger.error(
+      { error: contentRes.statusText },
+      "Error exporting Google document"
+    );
     throw new Error(
       `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
     );
@@ -139,7 +146,8 @@ export async function processGoogleDriveTranscriptActivity(
 
   const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = contentRes.data;
-  const extraInstructions = "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN."
+  const extraInstructions =
+    "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
 
   const dust = new DustAPI(
     {
@@ -149,7 +157,9 @@ export async function processGoogleDriveTranscriptActivity(
     logger
   );
 
-  const configurationId = config.getLabsTranscriptsAssistantId() || transcriptsConfiguration.agentConfigurationId;
+  const configurationId =
+    config.getLabsTranscriptsAssistantId() ||
+    transcriptsConfiguration.agentConfigurationId;
 
   if (!configurationId) {
     logger.error(
@@ -182,7 +192,7 @@ export async function processGoogleDriveTranscriptActivity(
       "[processGoogleDriveTranscriptActivity] Error creating conversation"
     );
     return new Err(new Error(convRes.error.message));
-  } 
+  }
 
   const conversation = convRes.value.conversation;
 
@@ -197,14 +207,15 @@ export async function processGoogleDriveTranscriptActivity(
     "[processGoogleDriveTranscriptActivity] Created conversation " +
       conversation.sId
   );
-  
 
   //Get first from array with type='agent_message' in conversation.content;
-  const agentMessage = <AgentMessageType[]>conversation.content.find(innerArray => {
-    return innerArray.find(item => item.type === 'agent_message');
-});
-  const fullAnswer = agentMessage ? agentMessage[0].content : '';
-  
+  const agentMessage = <AgentMessageType[]>conversation.content.find(
+    (innerArray) => {
+      return innerArray.find((item) => item.type === "agent_message");
+    }
+  );
+  const fullAnswer = agentMessage ? agentMessage[0].content : "";
+
   const hasExistingHistory = await LabsTranscriptsHistoryResource.findByFileId({
     fileId,
   });

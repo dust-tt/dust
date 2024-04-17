@@ -3,7 +3,8 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
- NonAttribute } from "sequelize";
+  NonAttribute,
+} from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import type { LabsTranscriptsProviderType } from "@app/lib/labs/transcripts/utils/types";
@@ -85,10 +86,10 @@ User.hasMany(LabsTranscriptsConfigurationModel, {
 });
 LabsTranscriptsConfigurationModel.belongsTo(User, {
   foreignKey: {
-    name: "userId", allowNull: false
+    name: "userId",
+    allowNull: false,
   },
 });
-
 
 export class LabsTranscriptsHistoryModel extends Model<
   InferAttributes<LabsTranscriptsHistoryModel>,
@@ -143,7 +144,8 @@ LabsTranscriptsHistoryModel.init(
 LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
   as: "configuration",
   foreignKey: {
-    name: "configurationId", allowNull: false
+    name: "configurationId",
+    allowNull: false,
   },
 });
 

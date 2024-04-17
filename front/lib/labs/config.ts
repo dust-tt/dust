@@ -18,7 +18,7 @@ const config = {
   },
   getLabsTranscriptsAssistantId: (): string => {
     return EnvironmentConfig.getEnvVariable("LABS_TRANSCRIPTS_ASSISTANT_ID");
-  }
+  },
 };
 
 export default config;

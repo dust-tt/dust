@@ -36,7 +36,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isAdmin() || !subscription) {
+  if (!owner || !subscription) {
     return {
       notFound: true,
     };
@@ -207,7 +207,7 @@ export default function LabsTranscriptsIndex({
         connectionId,
         provider,
       }),
-    })
+    });
 
     if (!response.ok) {
       sendNotification({
@@ -225,7 +225,7 @@ export default function LabsTranscriptsIndex({
     }
     setIsLoading(false);
     return response;
-  }
+  };
 
   const handleConnectTranscriptsSource = async () => {
     setIsLoading(true);
