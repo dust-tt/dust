@@ -753,7 +753,7 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
 
 type AgentConfigurationWithoutActionsType = Omit<
   AgentConfigurationType,
-  "actions"
+  "actions" | "generation"
 >;
 
 export async function createAgentConfiguration(
@@ -767,7 +767,6 @@ export async function createAgentConfiguration(
     status,
     scope,
     model,
-    generation,
     agentConfigurationId,
   }: {
     name: string;
@@ -778,7 +777,6 @@ export async function createAgentConfiguration(
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
     model: AgentModelConfigurationType;
-    generation: AgentGenerationConfigurationType | null;
     agentConfigurationId?: string;
   }
 ): Promise<Result<AgentConfigurationWithoutActionsType, Error>> {
@@ -882,7 +880,6 @@ export async function createAgentConfiguration(
             maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
-            generationConfigurationId: null,
             authorId: user.id,
           },
           {
@@ -922,7 +919,6 @@ export async function createAgentConfiguration(
         ...agentModel,
         temperature: agent.temperature,
       },
-      generation,
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({

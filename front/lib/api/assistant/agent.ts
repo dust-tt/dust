@@ -342,7 +342,7 @@ export async function* runAgent(
   }
 
   // Then run the generation if a configuration is present.
-  if (configuration.generation !== null) {
+  if (fullConfiguration.generation !== null) {
     const eventStream = runGeneration(
       auth,
       fullConfiguration,

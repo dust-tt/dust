@@ -18,13 +18,17 @@ const backfillGenerationConfigs = async (execute: boolean) => {
     `Found ${generationConfigs.length} retrieval configurations without agent configuration`
   );
 
+  throw new Error(
+    "This should not be run anymore since generationConfigurationId has been removed from AgentConfiguration."
+  );
+
   for (const chunk of _.chunk(generationConfigs, 16)) {
     await Promise.all(
       chunk.map(async (g) => {
         const agent = await AgentConfiguration.findOne({
-          where: {
-            generationConfigurationId: g.id,
-          },
+          // where: {
+          //   generationConfigurationId: g.id,
+          // },
         });
         if (!agent) {
           logger.warn(

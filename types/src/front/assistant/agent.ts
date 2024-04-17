@@ -159,9 +159,6 @@ export type LightAgentConfigurationType = {
   instructions: string | null;
   model: AgentModelConfigurationType;
 
-  // If undefined, no text generation.
-  generation: AgentGenerationConfigurationType | null;
-
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
 
@@ -183,6 +180,8 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are
   // performed.
   actions: AgentActionConfigurationType[];
+  // If null, no text generation.
+  generation: AgentGenerationConfigurationType | null;
 };
 
 export interface TemplateAgentConfigurationType {

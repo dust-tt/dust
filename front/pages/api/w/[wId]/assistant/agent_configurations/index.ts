@@ -284,10 +284,8 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-
   // @todo FIX MULTI ACTIONS
-  const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
+  const maxToolsUsePerRun = actions.length + (generation !== null ? 1 : 0);
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
@@ -298,7 +296,6 @@ export async function createOrUpgradeAgentConfiguration({
     status,
     scope,
     model,
-    generation: generationConfig,
     agentConfigurationId,
   });
 
@@ -309,6 +306,8 @@ export async function createOrUpgradeAgentConfiguration({
   if (!isSupportedModel(model)) {
     return new Err(new Error("Unsupported model"));
   }
+
+  let generationConfig: AgentGenerationConfigurationType | null = null;
 
   if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
@@ -384,6 +383,7 @@ export async function createOrUpgradeAgentConfiguration({
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
     actions: actionConfigs,
+    generation: generationConfig,
   };
 
   // We are not tracking draft agents

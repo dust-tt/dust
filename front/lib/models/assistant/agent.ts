@@ -113,10 +113,6 @@ export class AgentConfiguration extends Model<
 
   declare maxToolsUsePerRun: number;
 
-  declare generationConfigurationId: ForeignKey<
-    AgentGenerationConfiguration["id"]
-  > | null;
-
   declare author: NonAttribute<User>;
 }
 
