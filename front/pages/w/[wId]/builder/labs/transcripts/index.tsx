@@ -5,6 +5,7 @@ import {
   Input,
   Page,
   SliderToggle,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -17,14 +18,13 @@ import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import apiConfig from "@app/lib/api/config";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useAgentConfigurations } from "@app/lib/swr";
+import config from "@app/lib/labs/config";
+import { useAgentConfigurations, useLabsTranscriptsConfiguration } from "@app/lib/swr";
 
 const provider = "google_drive";
-
-import apiConfig from "@app/lib/api/config";
-import config from "@app/lib/labs/config";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -32,7 +32,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   gaTrackingId: string;
   nangoDriveConnectorId: string;
   nangoPublicKey: string;
-}>(async (context, auth) => {
+}>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
@@ -60,20 +60,45 @@ export default function LabsTranscriptsIndex({
   nangoDriveConnectorId,
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGDriveConnected, setIsGDriveConnected] = useState(false);
-  const [assistantSelected, setAssistantSelected] =
-    useState<LightAgentConfigurationType | null>(null);
   const sendNotification = useContext(SendNotificationsContext);
-  const [emailToNotify, setEmailToNotify] = useState<string | null>("");
-  const [agentsFetched, setAgentsFetched] = useState(false);
-  const [isActive, setIsActive] = useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
     sort: "priority",
   });
+
+  const { labsConfiguration, islabsConfigurationLoading } = useLabsTranscriptsConfiguration({
+    workspaceId: owner.sId,
+    provider,
+  });
+  const [configurationState, setConfigurationState] = useState<{
+    isGDriveConnected: boolean,
+    assistantSelected: LightAgentConfigurationType | null,
+    emailToNotify: string,
+    isActive: boolean,
+  }>({
+    isGDriveConnected: false,
+    assistantSelected: null as LightAgentConfigurationType | null,
+    emailToNotify: "",
+    isActive: false,
+  });
+
+  useEffect(() => {
+    setConfigurationState({
+      isGDriveConnected: labsConfiguration && labsConfiguration.id > 0 || false,
+      assistantSelected:  agentConfigurations.find(
+        (a) => a.sId === labsConfiguration?.agentConfigurationId
+      ) || null,
+      emailToNotify: labsConfiguration?.emailToNotify || "",
+      isActive: labsConfiguration?.isActive || false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labsConfiguration]);
+
+  if (islabsConfigurationLoading) {
+    return <Spinner2 />
+  }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
@@ -102,7 +127,10 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateAssistant = async (assistant: LightAgentConfigurationType) => {
-    setAssistantSelected(assistant);
+    setConfigurationState({
+      ...configurationState,
+      assistantSelected: assistant,
+    });
     const data = {
       agentConfigurationId: assistant.sId,
       provider,
@@ -114,10 +142,13 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateEmailToNotify = async (email: string) => {
-    setEmailToNotify(email);
+    setConfigurationState({
+      ...configurationState,
+      emailToNotify: email,
+    });
     const data = {
       email: email,
-      agentConfigurationId: assistantSelected?.sId,
+      agentConfigurationId: configurationState.assistantSelected?.sId,
       provider,
     };
     const successMessage = "The email to notify has been set to " + email;
@@ -125,10 +156,13 @@ export default function LabsTranscriptsIndex({
   };
 
   const updateIsActive = async (isActive: boolean) => {
-    setIsActive(isActive);
+    setConfigurationState({
+      ...configurationState,
+      isActive,
+    });
     const data = {
       isActive,
-      agentConfigurationId: assistantSelected?.sId,
+      agentConfigurationId: configurationState.assistantSelected?.sId,
       provider,
     };
     const successMessage = isActive
@@ -144,58 +178,14 @@ export default function LabsTranscriptsIndex({
   };
 
   const handleSaveEmailToNotify = async () => {
-    if (emailToNotify) {
-      return updateEmailToNotify(emailToNotify);
+    if (configurationState.emailToNotify) {
+      return updateEmailToNotify(configurationState.emailToNotify);
     }
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
     return updateIsActive(isActive);
   };
-
-  useEffect(() => {
-    if (agentConfigurations.length > 0) {
-      setAgentsFetched(true);
-    }
-  }, [agentConfigurations]);
-
-  useEffect(() => {
-    void fetch(`/api/w/${owner.sId}/labs/transcripts?provider=` + provider, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          return; // No configuration found yet
-        }
-        const { configuration } = await response.json();
-        if (configuration?.id) {
-          setIsGDriveConnected(true);
-        }
-
-        if (configuration?.agentConfigurationId) {
-          setAssistantSelected(
-            agentConfigurations.find(
-              (a) => a.sId === configuration.agentConfigurationId
-            ) || null
-          );
-        }
-
-        if (configuration?.emailToNotify) {
-          setEmailToNotify(configuration.emailToNotify);
-        }
-
-        if (configuration?.isActive !== undefined) {
-          setIsActive(configuration.isActive);
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agentsFetched]);
 
   const saveGoogleDriveConnection = async (connectionId: string) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
@@ -221,14 +211,16 @@ export default function LabsTranscriptsIndex({
         title: "Connected Google Drive",
         description: "Google Drive has been connected successfully.",
       });
-      setIsGDriveConnected(true);
+      setConfigurationState({
+        ...configurationState,
+        isGDriveConnected: true,
+      });
     }
-    setIsLoading(false);
+    
     return response;
   };
 
   const handleConnectTranscriptsSource = async () => {
-    setIsLoading(true);
     try {
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
@@ -249,7 +241,6 @@ export default function LabsTranscriptsIndex({
         title: "Failed to connect Google Drive",
         description: "Could not connect to Google Drive. Please try again.",
       });
-      setIsLoading(false);
     }
   };
 
@@ -278,10 +269,10 @@ export default function LabsTranscriptsIndex({
               </Page.P>
               <div>
                 <Button
-                  label={isGDriveConnected ? "Connected" : "Connect"}
+                  label={configurationState.isGDriveConnected ? "Connected" : "Connect"}
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
-                  disabled={isLoading || isGDriveConnected}
+                  disabled={islabsConfigurationLoading || configurationState?.isGDriveConnected}
                   onClick={async () => {
                     await handleConnectTranscriptsSource();
                   }}
@@ -289,7 +280,7 @@ export default function LabsTranscriptsIndex({
               </div>
             </Page.Layout>
           </Page.Layout>
-          {!isLoading && isGDriveConnected && (
+          {!islabsConfigurationLoading && configurationState.isGDriveConnected && (
             <>
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="2. Choose an assistant" />
@@ -306,9 +297,9 @@ export default function LabsTranscriptsIndex({
                       assistants={agents}
                       showFooterButtons={false}
                     />
-                    {assistantSelected && (
+                    {configurationState.assistantSelected && (
                       <Page.P>
-                        <strong>@{assistantSelected.name}</strong>
+                        <strong>@{configurationState.assistantSelected.name}</strong>
                       </Page.P>
                     )}
                   </Page.Layout>
@@ -326,8 +317,11 @@ export default function LabsTranscriptsIndex({
                       <Input
                         placeholder="Type email"
                         name="input"
-                        value={emailToNotify}
-                        onChange={(e) => setEmailToNotify(e)}
+                        value={configurationState.emailToNotify}
+                        onChange={(e) => setConfigurationState({
+                          ...configurationState,
+                          emailToNotify: e,
+                        })}
                       />
                     </div>
                     <Button
@@ -345,8 +339,8 @@ export default function LabsTranscriptsIndex({
                 <Page.SectionHeader title="4. Enable transcripts processing" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <SliderToggle
-                    selected={isActive}
-                    onClick={() => handleSetIsActive(!isActive)}
+                    selected={configurationState.isActive}
+                    onClick={() => handleSetIsActive(!configurationState.isActive)}
                   />
                   <Page.P>
                     When enabled, each new meeting transcript in 'My Drive' will

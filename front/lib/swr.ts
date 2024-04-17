@@ -41,6 +41,7 @@ import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
@@ -991,5 +992,32 @@ export function useWorkspaceEnterpriseConnection({
     isEnterpriseConnectionLoading: !error && !data,
     isEnterpriseConnectionError: error,
     mutateEnterpriseConnection: mutate,
+  };
+}
+
+
+// LABS - CAN BE REMOVED ANYTIME
+
+// Transcripts
+export function useLabsTranscriptsConfiguration({
+  workspaceId,
+  provider,
+}: {
+  workspaceId: string;
+  provider: string;
+}) {
+  
+  const labsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWR(
+    `/api/w/${workspaceId}/labs/transcripts?provider=${provider}`,
+    labsConfigurationFetcher
+  );
+
+  return {
+    labsConfiguration: data ? data.configuration : null,
+    islabsConfigurationLoading: !error && !data,
+    islabsConfigurationError: error,
   };
 }
