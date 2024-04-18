@@ -154,7 +154,11 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 meta_prompt,
                 cm.content.clone().unwrap_or(String::from(""))
             )),
-            name: cm.name.clone(),
+            // Name is only supported for the Function/Tool role.
+            name: match cm.role {
+                ChatMessageRole::Function => cm.name.clone(),
+                _ => None,
+            },
             role: mistral_role,
             tool_calls: match cm.function_call.as_ref() {
                 Some(fc) => Some(vec![MistralToolCall::try_from(fc)?]),
