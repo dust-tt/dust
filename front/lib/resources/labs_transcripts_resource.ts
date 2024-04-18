@@ -39,9 +39,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       );
     }
 
-    console.log('CREATING CONFIGURATION WITH ');
-    console.log(blob);
-
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,

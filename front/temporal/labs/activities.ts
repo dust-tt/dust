@@ -161,18 +161,6 @@ export async function processGoogleDriveTranscriptActivity(
   const extraInstructions =
     "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-  const dust = new DustAPI(
-=======
-  const dustAPI = new DustAPI(
->>>>>>> 8e6bbce7e (Lint)
-    {
-      workspaceId: config.getLabsWorkspaceId(),
-      apiKey: config.getLabsApiKey(),
-    },
-    logger
-=======
   const owner = await Workspace.findByPk(workspaceId);
   if (!owner) {
     throw new Error(
@@ -180,8 +168,7 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
   const prodCredentials = await prodAPICredentialsForOwner(
-    renderLightWorkspaceType({workspace: owner})
->>>>>>> Stashed changes
+    renderLightWorkspaceType({ workspace: owner })
   );
   const dustAPI = new DustAPI(prodCredentials, logger);
 
