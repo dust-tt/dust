@@ -1,8 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
-import type {
-  NangoConnectionId,
-  NangoIntegrationId,
-} from "@dust-tt/types";
+import type { NangoConnectionId, NangoIntegrationId } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
