@@ -71,20 +71,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return new Ok(undefined);
     }
 
-    try {
-      await LabsTranscriptsConfigurationModel.update(
-        { agentConfigurationId },
-        {
-          where: {
-            id: this.id,
-          },
-        }
-      );
+    await LabsTranscriptsConfigurationModel.update(
+      { agentConfigurationId },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);
   }
 
   async setEmailToNotify({
@@ -104,20 +100,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return new Ok(undefined);
     }
 
-    try {
-      await LabsTranscriptsConfigurationModel.update(
-        { emailToNotify },
-        {
-          where: {
-            id: this.id,
-          },
-        }
-      );
+    await LabsTranscriptsConfigurationModel.update(
+      { emailToNotify },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return new Ok(undefined);  
   }
 
   static async getIsActive({
