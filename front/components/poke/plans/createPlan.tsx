@@ -315,7 +315,7 @@ function SelectField({
           <PokeFormControl>
             <PokeSelect
               onValueChange={field.onChange}
-              defaultValue={field.value as string}
+              value={field.value as string}
             >
               <PokeFormControl>
                 <PokeSelectTrigger>
