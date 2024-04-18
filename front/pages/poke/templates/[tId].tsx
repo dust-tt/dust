@@ -40,6 +40,7 @@ import {
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 
@@ -247,6 +248,40 @@ function TemplatesPage({
     [assistantTemplate, sendNotification, setIsSubmitting, router]
   );
 
+  const { submit: onDelete } = useSubmitFunction(async () => {
+    if (assistantTemplate === null) {
+      window.alert(
+        "An error occurred while attempting to delete the template (can't find the template)."
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this template? There's no going back."
+      )
+    ) {
+      return;
+    }
+    try {
+      const r = await fetch(`/api/poke/templates/${assistantTemplate.sId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!r.ok) {
+        throw new Error("Failed to delete template.");
+      }
+      await router.push("/poke/templates");
+    } catch (e) {
+      console.error(e);
+      window.alert(
+        "An error occurred while attempting to delete the template."
+      );
+    }
+  });
+
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
@@ -373,9 +408,18 @@ function TemplatesPage({
               name="backgroundColor"
               placeholder="tailwind color code"
             />
-            <PokeButton type="submit" className="border border-structure-300">
-              Submit
-            </PokeButton>
+            <div className="space flex justify-between">
+              <PokeButton type="submit" className="border border-structure-300">
+                Submit
+              </PokeButton>
+              <PokeButton
+                type="button"
+                variant="destructive"
+                onClick={onDelete}
+              >
+                Delete this template
+              </PokeButton>
+            </div>
           </form>
         </PokeForm>
       </div>

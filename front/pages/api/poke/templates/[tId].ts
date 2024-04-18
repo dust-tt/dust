@@ -52,9 +52,11 @@ async function handler(
     });
   }
 
+  let template: TemplateResource | null = null;
+
   switch (req.method) {
     case "GET":
-      const template = await TemplateResource.fetchByExternalId(templateId);
+      template = await TemplateResource.fetchByExternalId(templateId);
       if (!template) {
         return apiError(req, res, {
           status_code: 404,
@@ -136,6 +138,25 @@ async function handler(
         // TODO
         visibility: "published",
       });
+
+      res.status(200).json({
+        success: true,
+      });
+      break;
+
+    case "DELETE":
+      template = await TemplateResource.fetchByExternalId(templateId);
+      if (!template) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "template_not_found",
+            message: "Could not find the template.",
+          },
+        });
+      }
+
+      await template.delete();
 
       res.status(200).json({
         success: true,
