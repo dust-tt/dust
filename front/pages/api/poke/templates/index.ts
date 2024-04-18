@@ -77,7 +77,7 @@ async function handler(
       }
 
       const model = USED_MODEL_CONFIGS.find(
-        (config) => config.modelId === body.presetModel
+        (config) => config.modelId === body.presetModelId
       );
 
       if (!model) {
