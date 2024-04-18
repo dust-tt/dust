@@ -2,7 +2,6 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
-  Input,
   Page,
   SliderToggle,
   Spinner2,
@@ -148,21 +147,6 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(data, successMessage);
   };
 
-  const updateEmailToNotify = async (email: string) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      emailToNotify: email,
-    });
-    const data = {
-      email: email,
-      agentConfigurationId:
-        transcriptsConfigurationState.assistantSelected?.sId,
-      provider,
-    };
-    const successMessage = "The email to notify has been set to " + email;
-    await makePatchRequest(data, successMessage);
-  };
-
   const updateIsActive = async (isActive: boolean) => {
     setTranscriptsConfigurationState({
       ...transcriptsConfigurationState,
@@ -184,12 +168,6 @@ export default function LabsTranscriptsIndex({
     assistant: LightAgentConfigurationType
   ) => {
     return updateAssistant(assistant);
-  };
-
-  const handleSaveEmailToNotify = async () => {
-    if (transcriptsConfigurationState.emailToNotify) {
-      return updateEmailToNotify(transcriptsConfigurationState.emailToNotify);
-    }
   };
 
   const handleSetIsActive = async (isActive: boolean) => {

@@ -1,6 +1,5 @@
 import {
   ArrowUpOnSquareIcon,
-  BookOpenIcon,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
@@ -213,18 +212,6 @@ export const subNavigationBuild = ({
   const betaMenus: SparkleAppLayoutNavigation[] = [];
 
   if (hasBetaAccess) {
-    if (owner.flags.includes("labs_transcripts")) {
-      betaMenus.push({
-        id: "transcripts",
-        label: "Transcripts Processing",
-        icon: BookOpenIcon,
-        href: `/w/${owner.sId}/builder/labs/transcripts`,
-        current: current === "transcripts",
-        subMenuLabel: current === "transcripts" ? subMenuLabel : undefined,
-        subMenu: current === "transcripts" ? subMenu : undefined,
-      });
-    }
-
     if (
       owner.flags.includes("labs_extract") ||
       isDevelopmentOrDustWorkspace(owner)
