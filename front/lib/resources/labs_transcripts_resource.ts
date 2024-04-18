@@ -29,8 +29,8 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
-      ...blob,
-      isActive: false,
+      ...blob, 
+      isActive: false
     });
     return new LabsTranscriptsConfigurationResource(configuration.get());
   }

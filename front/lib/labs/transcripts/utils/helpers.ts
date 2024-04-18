@@ -43,7 +43,7 @@ export async function getGoogleAuthFromUserTranscriptConfiguration(
     });
 
   if (!transcriptsConfiguration) {
-    return;
+    return null;
   }
 
   return getGoogleAuthObject(
