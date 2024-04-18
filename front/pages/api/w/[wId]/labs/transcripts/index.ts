@@ -44,12 +44,14 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const userId = auth.user()?.id;
+
+  if (!owner || !userId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "The workspace was not found.",
+        message: "The workspace or user was not found.",
       },
     });
   }
@@ -67,10 +69,13 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          userId: owner.id,
-          provider: req.query.provider as LabsTranscriptsProviderType,
-        });
+        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
+          {
+            userId,
+            workspaceId: owner.id,
+            provider: req.query.provider as LabsTranscriptsProviderType,
+          }
+        );
 
       if (!transcriptsConfigurationGet) {
         return apiError(req, res, {
@@ -113,10 +118,13 @@ async function handler(
       } = patchBodyValidation.right;
 
       const transcriptsConfigurationPatchResource =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          userId: owner.id,
-          provider: patchProvider as LabsTranscriptsProviderType,
-        });
+        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
+          {
+            userId,
+            workspaceId: owner.id,
+            provider: patchProvider as LabsTranscriptsProviderType,
+          }
+        );
 
       if (!transcriptsConfigurationPatchResource) {
         return apiError(req, res, {
@@ -142,7 +150,8 @@ async function handler(
         await transcriptsConfigurationPatchResource.setIsActive({ isActive });
         if (isActive) {
           await launchRetrieveTranscriptsWorkflow({
-            userId: owner.id,
+            userId,
+            workspaceId: owner.id,
             providerId: patchProvider,
           });
         }
@@ -173,7 +182,8 @@ async function handler(
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
-          userId: owner.id,
+          userId,
+          workspaceId: owner.id,
           connectionId,
           provider,
         });
