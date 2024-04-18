@@ -29,8 +29,14 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { runDustApp } from "@app/lib/api/assistant/actions/dust_app_run";
-import { runRetrieval } from "@app/lib/api/assistant/actions/retrieval";
+import {
+  generateRunDustAppSpecification,
+  runDustApp,
+} from "@app/lib/api/assistant/actions/dust_app_run";
+import {
+  generateRetrievalSpecification,
+  runRetrieval,
+} from "@app/lib/api/assistant/actions/retrieval";
 import { runTablesQuery } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -312,12 +318,93 @@ async function* runAction(
   AgentErrorEvent | AgentActionEvent | AgentActionSuccessEvent,
   void
 > {
+  const now = Date.now();
+
   if (isRetrievalConfiguration(action)) {
-    const eventStream = runRetrieval(auth, {
+    const specRes = await generateRetrievalSpecification(auth, {
       configuration,
+      actionConfiguration: action,
       conversation,
       userMessage,
       agentMessage,
+    });
+
+    if (specRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          elapsed: Date.now() - now,
+          error: specRes.error,
+        },
+        "Error generating action specification"
+      );
+      yield {
+        type: "agent_error",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "parameters_generation_error",
+          message: `Error generating action specification: ${specRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    let rawInputs: Record<string, string | boolean | number> = {};
+
+    if (specRes.value.inputs.length > 0) {
+      const rawInputsRes = await generateActionInputs(
+        auth,
+        configuration,
+        specRes.value,
+        conversation,
+        userMessage
+      );
+
+      if (rawInputsRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            elapsed: Date.now() - now,
+            error: rawInputsRes.error,
+          },
+          "Error generating action inputs"
+        );
+        yield {
+          type: "agent_error",
+          created: now,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "parameters_generation_error",
+            message: `Error generating action parameters: ${rawInputsRes.error.message}`,
+          },
+        };
+        return;
+      }
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          elapsed: Date.now() - now,
+        },
+        "[ASSISTANT_TRACE] Retrieval action inputs generation"
+      );
+
+      rawInputs = rawInputsRes.value;
+    }
+
+    const eventStream = runRetrieval(auth, {
+      configuration,
+      actionConfiguration: action,
+      conversation,
+      userMessage,
+      agentMessage,
+      spec: specRes.value,
+      rawInputs,
     });
 
     for await (const event of eventStream) {
@@ -359,11 +446,90 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const eventStream = runDustApp(auth, {
+    const specRes = await generateRunDustAppSpecification(auth, {
       configuration,
+      actionConfiguration: action,
       conversation,
       userMessage,
       agentMessage,
+    });
+
+    if (specRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          elapsed: Date.now() - now,
+          error: specRes.error,
+        },
+        "Error generating action specification"
+      );
+      yield {
+        type: "agent_error",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "parameters_generation_error",
+          message: `Error generating action specification: ${specRes.error.message}`,
+        },
+      };
+      return;
+    }
+
+    let rawInputs: Record<string, string | boolean | number> = {};
+
+    if (specRes.value.inputs.length > 0) {
+      const rawInputsRes = await generateActionInputs(
+        auth,
+        configuration,
+        specRes.value,
+        conversation,
+        userMessage
+      );
+
+      if (rawInputsRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            elapsed: Date.now() - now,
+            error: rawInputsRes.error,
+          },
+          "Error generating action inputs"
+        );
+        yield {
+          type: "agent_error",
+          created: now,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "parameters_generation_error",
+            message: `Error generating action parameters: ${rawInputsRes.error.message}`,
+          },
+        };
+        return;
+      }
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          elapsed: Date.now() - now,
+        },
+        "[ASSISTANT_TRACE] DustAppRun action inputs generation"
+      );
+
+      rawInputs = rawInputsRes.value;
+    }
+
+    const eventStream = runDustApp(auth, {
+      configuration,
+      actionConfiguration: action,
+      conversation,
+      userMessage,
+      agentMessage,
+      spec: specRes.value,
+      rawInputs,
     });
 
     for await (const event of eventStream) {
