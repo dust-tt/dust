@@ -9,7 +9,7 @@ import apiConfig from "@app/lib/api/config";
 import { sendEmail } from "@app/lib/email";
 import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
-import { User } from "@app/lib/models";
+import { User } from "@app/lib/models/user";
 import {
   LabsTranscriptsConfigurationResource,
   LabsTranscriptsHistoryResource,
