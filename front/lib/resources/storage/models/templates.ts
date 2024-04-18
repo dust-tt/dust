@@ -1,7 +1,7 @@
 import type {
   ActionPreset,
   AssistantCreativityLevel,
-  AssistantTemplateTagNameType,
+  TemplateTagCodeType,
   TemplateVisibility,
 } from "@dust-tt/types";
 import type {
@@ -40,7 +40,7 @@ export class TemplateModel extends Model<
   declare helpInstructions: string | null;
   declare helpActions: string | null;
 
-  declare tags: AssistantTemplateTagNameType[];
+  declare tags: TemplateTagCodeType[];
 }
 
 TemplateModel.init(
