@@ -61,7 +61,7 @@ import logger from "@app/logger/logger";
  */
 
 // This method is used by actions to generate its inputs if needed.
-export async function generateActionInputs(
+async function generateActionInputs(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   specification: AgentActionSpecification,
