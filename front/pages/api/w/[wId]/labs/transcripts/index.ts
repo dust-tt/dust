@@ -139,7 +139,7 @@ async function handler(
       }
 
       if (isActive !== undefined) {
-        await transcriptsConfigurationPatchResource.setIsActive({ isActive });
+        await transcriptsConfigurationPatchResource.setIsActive(isActive);
         if (isActive) {
           await launchRetrieveTranscriptsWorkflow({
             userId: owner.id,

@@ -27,6 +27,7 @@ export async function retrieveNewTranscriptsWorkflow(
   const isWorkflowActive = true;
 
   while (isWorkflowActive) {
+    // TODO:
     if ((await checkIsActiveActivity({ userId, providerId })) !== true) {
       break;
     }

@@ -82,7 +82,6 @@ LabsTranscriptsConfigurationModel.init(
 
 User.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
 });
 LabsTranscriptsConfigurationModel.belongsTo(User, {
   foreignKey: {
@@ -152,5 +151,4 @@ LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
 LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
   as: "configuration",
   foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
 });

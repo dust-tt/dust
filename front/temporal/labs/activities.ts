@@ -245,16 +245,9 @@ export async function processGoogleDriveTranscriptActivity(
   await sendEmail(transcriptsConfiguration.emailToNotify || user.email, msg);
 }
 
-export async function checkIsActiveActivity({
-  userId,
-  providerId,
-}: {
-  userId: ModelId;
-  providerId: LabsTranscriptsProviderType;
-}) {
-  const isActive = await LabsTranscriptsConfigurationResource.getIsActive({
-    userId,
-    provider: providerId,
-  });
-  return isActive;
+// TODO:
+export async function checkIsActiveActivity(
+  transcriptResource: LabsTranscriptsConfigurationResource
+) {
+  return transcriptResource.isActive;
 }
