@@ -8,6 +8,7 @@ import {
   CreateTemplateFormSchema,
   GPT_4_TURBO_MODEL_CONFIG,
   removeNulls,
+  TEMPLATE_VISIBILITIES,
   TEMPLATES_TAGS_CONFIG,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -294,6 +295,7 @@ function TemplatesPage({
       helpInstructions: "",
       helpActions: "",
       tags: [],
+      visibility: "draft",
     },
   });
 
@@ -407,6 +409,15 @@ function TemplatesPage({
               control={form.control}
               name="backgroundColor"
               placeholder="tailwind color code"
+            />
+            <SelectField
+              control={form.control}
+              name="visibility"
+              title="Visibility"
+              options={TEMPLATE_VISIBILITIES.map((v) => ({
+                value: v,
+                display: v,
+              }))}
             />
             <div className="space flex justify-between">
               <PokeButton type="submit" className="border border-structure-300">

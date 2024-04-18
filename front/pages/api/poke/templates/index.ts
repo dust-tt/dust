@@ -105,8 +105,7 @@ async function handler(
         presetTemperature: body.presetTemperature ?? null,
         sId: generateModelSId(),
         tags: body.tags,
-        // TODO
-        visibility: "published",
+        visibility: body.visibility,
       });
 
       res.status(200).json({
