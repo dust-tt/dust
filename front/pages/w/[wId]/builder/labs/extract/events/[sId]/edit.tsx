@@ -156,7 +156,7 @@ const BasicEventPropsEditor = ({
     );
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/u/extract/templates/${event.schema.sId}`
+        `/w/${owner.sId}/builder/labs/extract/templates/${event.schema.sId}`
       );
     } else {
       const err = (await res.json()) as { error: APIError };
@@ -191,7 +191,9 @@ const BasicEventPropsEditor = ({
       />
       <Button
         onClick={() =>
-          router.push(`/w/${owner.sId}/u/extract/templates/${event.schema.sId}`)
+          router.push(
+            `/w/${owner.sId}/builder/labs/extract/templates/${event.schema.sId}`
+          )
         }
         label="Back"
         variant="secondary"

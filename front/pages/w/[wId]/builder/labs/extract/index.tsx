@@ -73,7 +73,7 @@ export default function AppExtractEvents({
                 <tr key={schema.marker} className="border-y">
                   <td className="whitespace-nowrap px-3 py-4 font-medium">
                     <Link
-                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`}
+                      href={`/w/${owner.sId}/builder/labs/extract/templates/${schema.sId}/edit`}
                       className="block"
                     >
                       [[{schema.marker}]]
@@ -83,7 +83,7 @@ export default function AppExtractEvents({
                     {" "}
                     {/* Set the second column to take max width */}
                     <Link
-                      href={`/w/${owner.sId}/u/extract/templates/${schema.sId}/edit`}
+                      href={`/w/${owner.sId}/builder/labs/extract/templates/${schema.sId}/edit`}
                       className="block"
                     >
                       {schema.description}
@@ -95,7 +95,7 @@ export default function AppExtractEvents({
                       variant="tertiary"
                       onClick={() =>
                         router.push(
-                          `/w/${owner.sId}/u/extract/templates/${schema.sId}`
+                          `/w/${owner.sId}/builder/labs/extract/templates/${schema.sId}`
                         )
                       }
                     />
@@ -106,7 +106,7 @@ export default function AppExtractEvents({
         </table>
 
         <div className="my-10">
-          <Link href={`/w/${owner.sId}/u/extract/templates/new`}>
+          <Link href={`/w/${owner.sId}/builder/labs/extract/templates/new`}>
             <Button label="Create New" icon={PlusIcon} disabled={readOnly} />
           </Link>
         </div>
