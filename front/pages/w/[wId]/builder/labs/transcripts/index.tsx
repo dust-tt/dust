@@ -329,39 +329,7 @@ export default function LabsTranscriptsIndex({
                   </Page.Layout>
                 </Page.Layout>
                 <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="3. Choose the email receiving transcripts" />
-                  <Page.Layout direction="vertical" gap="lg">
-                    <Page.P>
-                      By default, we will send transcripts to your email. You
-                      can chose a different email here.
-                    </Page.P>
-                    <Page.Horizontal>
-                      <div className="flex-grow">
-                        <Input
-                          placeholder="Type email"
-                          name="input"
-                          value={transcriptsConfigurationState.emailToNotify}
-                          onChange={(e) =>
-                            setTranscriptsConfigurationState({
-                              ...transcriptsConfigurationState,
-                              emailToNotify: e,
-                            })
-                          }
-                        />
-                      </div>
-                      <Button
-                        label="Save"
-                        variant="secondary"
-                        size="sm"
-                        onClick={async () => {
-                          await handleSaveEmailToNotify();
-                        }}
-                      />
-                    </Page.Horizontal>
-                  </Page.Layout>
-                </Page.Layout>
-                <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="4. Enable transcripts processing" />
+                  <Page.SectionHeader title="3. Enable transcripts processing" />
                   <Page.Layout direction="horizontal" gap="xl">
                     <SliderToggle
                       selected={transcriptsConfigurationState.isActive}
