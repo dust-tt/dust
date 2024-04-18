@@ -8,7 +8,7 @@ import Link from "next/link";
 export interface TemplatesDisplayType {
   id: string;
   name: string;
-  status: TemplateVisibility;
+  visibility: TemplateVisibility;
   tags: TemplateTagCodeType[];
 }
 
@@ -61,11 +61,11 @@ export function makeColumnsForTemplates(): ColumnDef<TemplatesDisplayType>[] {
       },
     },
     {
-      accessorKey: "status",
+      accessorKey: "visibility",
       header: ({ column }) => {
         return (
           <div className="flex space-x-2">
-            <p>Status</p>
+            <p>Visibility</p>
             <IconButton
               variant="tertiary"
               icon={ArrowsUpDownIcon}

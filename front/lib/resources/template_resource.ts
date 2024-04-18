@@ -136,6 +136,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       presetTemperature: this.presetTemperature,
       sId: this.sId,
       tags: this.tags,
+      visibility: this.visibility,
     };
   }
 }

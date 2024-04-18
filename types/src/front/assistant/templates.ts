@@ -127,6 +127,7 @@ export const CreateTemplateFormSchema = t.type({
   presetModelId: t.string,
   presetTemperature: AssistantCreativityLevelCodec,
   tags: nonEmptyArray(TemplateTagCodeTypeCodec),
+  visibility: TemplateVisibilityCodec,
 });
 
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;

@@ -11,7 +11,7 @@ function prepareTemplatesForDisplay(templates: any[]): TemplatesDisplayType[] {
   return templates.map((t) => ({
     id: t.sId,
     name: t.handle,
-    status: t.visibility,
+    visibility: t.visibility,
     tags: t.tags,
   }));
 }
