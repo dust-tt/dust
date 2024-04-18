@@ -7,6 +7,7 @@ use crate::providers::tiktoken::tiktoken::{
 };
 use crate::run::Credentials;
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -74,6 +75,211 @@ pub struct Completion {
     // pub usage: Usage,
 }
 
+///
+/// Tools implementation types.
+///
+
+// Input types.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenAIToolType {
+    Function,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIFunction {
+    name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIFunctionCall {
+    r#type: OpenAIToolType,
+    function: OpenAIFunction,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenAIToolChoice {
+    Auto,
+    None,
+    OpenAIFunctionCall(OpenAIFunctionCall),
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolFunction {
+    pub name: String,
+    pub description: Option<String>,
+    pub parameters: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct OpenAITool {
+    pub r#type: OpenAIToolType,
+    pub function: OpenAIToolFunction,
+}
+
+impl FromStr for OpenAIToolChoice {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "auto" => Ok(OpenAIToolChoice::Auto),
+            "none" => Ok(OpenAIToolChoice::None),
+            _ => {
+                let function = OpenAIFunctionCall {
+                    r#type: OpenAIToolType::Function,
+                    function: OpenAIFunction {
+                        name: s.to_string(),
+                    },
+                };
+                Ok(OpenAIToolChoice::OpenAIFunctionCall(function))
+            }
+        }
+    }
+}
+
+// Outputs types.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolCallFunction {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIToolCall {
+    r#type: OpenAIToolType,
+    pub function: OpenAIToolCallFunction,
+}
+
+impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
+    type Error = anyhow::Error;
+
+    fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
+        Ok(OpenAIToolCall {
+            r#type: OpenAIToolType::Function,
+            function: OpenAIToolCallFunction {
+                name: cf.name.clone(),
+                arguments: cf.arguments.clone(),
+            },
+        })
+    }
+}
+
+impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
+    type Error = anyhow::Error;
+
+    fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
+        Ok(ChatFunctionCall {
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct OpenAIChatMessage {
+    pub role: ChatMessageRole,
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAIToolCall>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatChoice {
+    pub message: OpenAIChatMessage,
+    pub index: usize,
+    pub finish_reason: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OpenAIChatCompletion {
+    pub id: String,
+    pub object: String,
+    pub created: u64,
+    pub choices: Vec<OpenAIChatChoice>,
+    // Usage is not returned by the Chat/Completion endpoint when streamed.
+    // pub usage: Usage,
+}
+
+// This code performs a type conversion with information loss when converting to ChatFunctionCall.
+// It only supports one tool call, so it takes the first one from the vector of OpenAIToolCall,
+// hence potentially discarding other tool calls.
+impl TryFrom<&OpenAIChatMessage> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &OpenAIChatMessage) -> Result<Self, Self::Error> {
+        let role = ChatMessageRole::from(cm.role.clone());
+        let content = match cm.content.as_ref() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
+        let function_call = match cm.tool_calls.as_ref() {
+            Some(tcs) => {
+                if !tcs.is_empty() {
+                    // Consider only the first tool call, ignoring the rest.
+                    tcs.first()
+                        .and_then(|tc| ChatFunctionCall::try_from(tc).ok())
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+        let name = match cm.name.as_ref() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
+        Ok(ChatMessage {
+            content,
+            role,
+            name,
+            function_call,
+        })
+    }
+}
+
+impl TryFrom<&ChatMessage> for OpenAIChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        Ok(OpenAIChatMessage {
+            content: cm.content.clone(),
+            name: cm.name.clone(),
+            role: cm.role.clone(),
+            tool_calls: match cm.function_call.as_ref() {
+                Some(fc) => Some(vec![OpenAIToolCall::try_from(fc)?]),
+                None => None,
+            },
+        })
+    }
+}
+
+impl TryFrom<&ChatFunction> for OpenAITool {
+    type Error = anyhow::Error;
+
+    fn try_from(f: &ChatFunction) -> Result<Self, Self::Error> {
+        Ok(OpenAITool {
+            r#type: OpenAIToolType::Function,
+            function: OpenAIToolFunction {
+                name: f.name.clone(),
+                description: f.description.clone(),
+                parameters: f.parameters.clone(),
+            },
+        })
+    }
+}
+
+/// Legacy types that are used in the legacy function implementation.
+/// To be removed when the legacy function implementation is no longer needed.
+
+// TODO(2024-04-17 flav) Delete.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatChoice {
     pub message: ChatMessage,
@@ -81,6 +287,7 @@ pub struct ChatChoice {
     pub finish_reason: Option<String>,
 }
 
+// TODO(2024-04-17 flav) Delete.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatCompletion {
     pub id: String,
@@ -519,6 +726,10 @@ pub async fn completion(
 
     Ok(completion)
 }
+
+///
+/// With legacy function implementation
+///
 
 pub async fn streamed_chat_completion(
     uri: Uri,
@@ -1015,6 +1226,475 @@ pub async fn chat_completion(
 }
 
 ///
+/// With Tools support
+///
+
+async fn streamed_chat_completion_with_tools(
+    uri: Uri,
+    api_key: String,
+    organization_id: Option<String>,
+    model_id: Option<String>,
+    messages: &Vec<OpenAIChatMessage>,
+    tools: Vec<OpenAITool>,
+    tool_choice: Option<OpenAIToolChoice>,
+    temperature: f32,
+    top_p: f32,
+    n: usize,
+    stop: &Vec<String>,
+    max_tokens: Option<i32>,
+    presence_penalty: f32,
+    frequency_penalty: f32,
+    response_format: Option<String>,
+    user: Option<String>,
+    event_sender: Option<UnboundedSender<Value>>,
+) -> Result<OpenAIChatCompletion> {
+    let url = uri.to_string();
+
+    let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    builder = match builder.method(String::from("POST")).header(
+        "Authorization",
+        format!("Bearer {}", api_key.clone()).as_str(),
+    ) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    builder = match builder.header("Content-Type", "application/json") {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+    builder = match builder.header("api-key", api_key.clone().as_str()) {
+        Ok(b) => b,
+        Err(_) => return Err(anyhow!("Error creating streamed client to OpenAI")),
+    };
+
+    if let Some(org_id) = organization_id {
+        builder = builder
+            .header("OpenAI-Organization", org_id.as_str())
+            .map_err(|_| anyhow!("Error creating streamed client to OpenAI"))?;
+    }
+
+    let mut body = json!({
+        "messages": messages,
+        "temperature": temperature,
+        "top_p": top_p,
+        "n": n,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "max_tokens": max_tokens,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+        "stream": true,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+    if tools.len() > 0 {
+        body["tools"] = json!(tools);
+    }
+    if tool_choice.is_some() {
+        body["tool_choice"] = json!(tool_choice);
+    }
+    if response_format.is_some() {
+        body["response_format"] = json!({
+            "type": response_format.unwrap(),
+        });
+    }
+
+    let client = builder
+        .body(body.to_string())
+        .reconnect(
+            es::ReconnectOptions::reconnect(true)
+                .retry_initial(false)
+                .delay(Duration::from_secs(1))
+                .backoff_factor(2)
+                .delay_max(Duration::from_secs(8))
+                .build(),
+        )
+        .build();
+
+    let mut stream = client.stream();
+
+    let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+
+    'stream: loop {
+        match stream.try_next().await {
+            Ok(e) => match e {
+                Some(es::SSE::Comment(_)) => {
+                    println!("UNEXPECTED COMMENT");
+                }
+                Some(es::SSE::Event(e)) => match e.data.as_str() {
+                    "[DONE]" => {
+                        break 'stream;
+                    }
+                    _ => {
+                        let index = {
+                            let guard = chunks.lock();
+                            guard.len()
+                        };
+
+                        let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
+                            Ok(c) => c,
+                            Err(err) => {
+                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
+                                match error {
+                                    Ok(error) => {
+                                        match error.retryable_streamed() && index == 0 {
+                                            true => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(500),
+                                                    factor: 2,
+                                                    retries: 3,
+                                                }),
+                                            })?,
+                                            false => Err(ModelError {
+                                                message: error.message(),
+                                                retryable: None,
+                                            })?,
+                                        }
+                                        break 'stream;
+                                    }
+                                    Err(_) => {
+                                        Err(anyhow!(
+                                            "OpenAIError: failed parsing streamed \
+                                                 completion from OpenAI err={} data={}",
+                                            err,
+                                            e.data.as_str(),
+                                        ))?;
+                                        break 'stream;
+                                    }
+                                }
+                            }
+                        };
+
+                        // Only stream if choices is length 1 but should always be the case.
+                        match event_sender.as_ref() {
+                            Some(sender) => {
+                                if chunk.choices.len() == 1 {
+                                    // we ignore the role for generating events
+
+                                    // If we get `content` in the delta object we stream "tokens".
+                                    match chunk.choices[0].delta.get("content") {
+                                        None => (),
+                                        Some(content) => match content.as_str() {
+                                            None => (),
+                                            Some(s) => {
+                                                if s.len() > 0 {
+                                                    let _ = sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": s,
+                                                        },
+                                                    }));
+                                                }
+                                            }
+                                        },
+                                    };
+
+                                    // If we have exactly one `tool_call.function.name` in the delta object, stream a "function_call" event.
+                                    if let Some(tool_calls) = chunk.choices[0]
+                                        .delta
+                                        .get("tool_calls")
+                                        .and_then(|v| v.as_array())
+                                    {
+                                        if tool_calls.len() == 1 {
+                                            if let Some(f) = tool_calls[0].get("function") {
+                                                if let Some(Value::String(name)) = f.get("name") {
+                                                    let _ = sender.send(json!({
+                                                        "type": "function_call",
+                                                        "content": {
+                                                            "name": name,
+                                                        },
+                                                    }));
+                                                }
+                                            }
+                                        } else {
+                                            return Err(anyhow!("More than one tool call found"));
+                                        }
+                                    }
+                                }
+                            }
+                            None => (),
+                        };
+                        chunks.lock().push(chunk);
+                    }
+                },
+                None => {
+                    println!("UNEXPECTED NONE");
+                    break 'stream;
+                }
+            },
+            Err(e) => {
+                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                break 'stream;
+            }
+        }
+    }
+
+    let mut completion = {
+        let guard = chunks.lock();
+        let f = match guard.len() {
+            0 => Err(anyhow!("No chunks received from OpenAI")),
+            _ => Ok(guard[0].clone()),
+        }?;
+        let mut c = OpenAIChatCompletion {
+            id: f.id.clone(),
+            object: f.object.clone(),
+            created: f.created,
+            choices: f
+                .choices
+                .iter()
+                .map(|c| OpenAIChatChoice {
+                    message: OpenAIChatMessage {
+                        content: Some("".to_string()),
+                        name: None,
+                        role: ChatMessageRole::System,
+                        tool_calls: None,
+                    },
+                    index: c.index,
+                    finish_reason: None,
+                })
+                .collect::<Vec<_>>(),
+        };
+
+        for i in 0..guard.len() {
+            let a = guard[i].clone();
+            if a.choices.len() != f.choices.len() {
+                Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
+            }
+            for j in 0..a.choices.len() {
+                match a.choices.get(j).unwrap().finish_reason.clone() {
+                    None => (),
+                    Some(f) => c.choices[j].finish_reason = Some(f),
+                };
+
+                match a.choices[j].delta.get("role") {
+                    None => (),
+                    Some(role) => match role.as_str() {
+                        None => (),
+                        Some(r) => {
+                            c.choices[j].message.role = ChatMessageRole::from_str(r)?;
+                        }
+                    },
+                };
+
+                match a.choices[j].delta.get("content") {
+                    None => (),
+                    Some(content) => match content.as_str() {
+                        None => (),
+                        Some(s) => {
+                            c.choices[j].message.content = Some(format!(
+                                "{}{}",
+                                c.choices[j]
+                                    .message
+                                    .content
+                                    .as_ref()
+                                    .unwrap_or(&String::new()),
+                                s
+                            ));
+                        }
+                    },
+                };
+
+                if let Some(tool_calls) = a.choices[j]
+                    .delta
+                    .get("tool_calls")
+                    .and_then(|v| v.as_array())
+                {
+                    for tool_call in tool_calls {
+                        match (
+                            tool_call.get("type").and_then(|v| v.as_str()),
+                            tool_call.get("function"),
+                        ) {
+                            (Some("function"), Some(f)) => {
+                                if let Some(Value::String(name)) = f.get("name") {
+                                    c.choices[j]
+                                        .message
+                                        .tool_calls
+                                        .get_or_insert_with(Vec::new)
+                                        .push(OpenAIToolCall {
+                                            r#type: OpenAIToolType::Function,
+                                            function: OpenAIToolCallFunction {
+                                                name: name.clone(),
+                                                arguments: String::new(),
+                                            },
+                                        });
+                                }
+                            }
+                            (None, Some(f)) => {
+                                if let (Some(Value::Number(idx)), Some(Value::String(a))) =
+                                    (tool_call.get("index"), f.get("arguments"))
+                                {
+                                    let index: usize = idx
+                                        .as_u64()
+                                        .ok_or_else(|| anyhow!("Missing index for tools"))?
+                                        .try_into()
+                                        .map_err(|e| {
+                                            anyhow!("Invalid index value for tools: {:?}", e)
+                                        })?;
+
+                                    let tool_calls = c.choices[j]
+                                        .message
+                                        .tool_calls
+                                        .as_mut()
+                                        .ok_or(anyhow!("Missing tool calls"))?;
+
+                                    if index >= tool_calls.len() {
+                                        return Err(anyhow!(
+                                            "Index out-of-bound for tool_calls: {}",
+                                            index
+                                        ));
+                                    }
+
+                                    tool_calls[index].function.arguments += a;
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+        }
+        c
+    };
+
+    // for all messages, edit the content and strip leading and trailing spaces and \n
+    for m in completion.choices.iter_mut() {
+        m.message.content = match m.message.content.as_ref() {
+            None => None,
+            Some(c) => Some(c.trim().to_string()),
+        };
+    }
+
+    Ok(completion)
+}
+
+async fn chat_completion_with_tools(
+    uri: Uri,
+    api_key: String,
+    organization_id: Option<String>,
+    model_id: Option<String>,
+    messages: &Vec<OpenAIChatMessage>,
+    tools: Vec<OpenAITool>,
+    tool_choice: Option<OpenAIToolChoice>,
+    temperature: f32,
+    top_p: f32,
+    n: usize,
+    stop: &Vec<String>,
+    max_tokens: Option<i32>,
+    presence_penalty: f32,
+    frequency_penalty: f32,
+    response_format: Option<String>,
+    user: Option<String>,
+) -> Result<OpenAIChatCompletion> {
+    let mut body = json!({
+        "messages": messages,
+        "temperature": temperature,
+        "top_p": top_p,
+        "n": n,
+        "stop": match stop.len() {
+            0 => None,
+            _ => Some(stop),
+        },
+        "max_tokens": max_tokens,
+        "presence_penalty": presence_penalty,
+        "frequency_penalty": frequency_penalty,
+    });
+    if user.is_some() {
+        body["user"] = json!(user);
+    }
+    if model_id.is_some() {
+        body["model"] = json!(model_id);
+    }
+    if response_format.is_some() {
+        body["response_format"] = json!({
+            "type": response_format.unwrap(),
+        });
+    }
+    if tools.len() > 0 {
+        body["tools"] = json!(tools);
+    }
+    if tool_choice.is_some() {
+        body["tool_choice"] = json!(tool_choice);
+    }
+
+    let mut req = reqwest::Client::new()
+        .post(uri.to_string())
+        .header("Content-Type", "application/json")
+        // This one is for `openai`.
+        .header("Authorization", format!("Bearer {}", api_key.clone()))
+        // This one is for `azure_openai`.
+        .header("api-key", api_key.clone());
+
+    if let Some(organization_id) = organization_id {
+        req = req.header(
+            "OpenAI-Organization",
+            &format!("{}", organization_id.clone()),
+        );
+    }
+
+    let req = req.json(&body);
+
+    let res = match timeout(Duration::new(180, 0), req.send()).await {
+        Ok(Ok(res)) => res,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
+    };
+    let body = match timeout(Duration::new(180, 0), res.bytes()).await {
+        Ok(Ok(body)) => body,
+        Ok(Err(e)) => Err(e)?,
+        Err(_) => Err(anyhow!("Timeout reading response from OpenAI after 180s"))?,
+    };
+
+    let mut b: Vec<u8> = vec![];
+    body.reader().read_to_end(&mut b)?;
+    let c: &[u8] = &b;
+
+    let mut completion: OpenAIChatCompletion = match serde_json::from_slice(c) {
+        Ok(c) => Ok(c),
+        Err(_) => {
+            let error: Error = serde_json::from_slice(c)?;
+            match error.retryable() {
+                true => Err(ModelError {
+                    message: error.message(),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 2,
+                        retries: 3,
+                    }),
+                }),
+                false => Err(ModelError {
+                    message: error.message(),
+                    retryable: Some(ModelErrorRetryOptions {
+                        sleep: Duration::from_millis(500),
+                        factor: 1,
+                        retries: 1,
+                    }),
+                }),
+            }
+        }
+    }?;
+
+    // for all messages, edit the content and strip leading and trailing spaces and \n
+    for m in completion.choices.iter_mut() {
+        m.message.content = match m.message.content.as_ref() {
+            None => None,
+            Some(c) => Some(c.trim().to_string()),
+        };
+    }
+
+    Ok(completion)
+}
+
+///
 /// Shared streamed/non-streamed chat/completion handling code (used by both OpenAILLM and
 /// AzureOpenAILLM).
 ///
@@ -1036,8 +1716,6 @@ pub async fn embed(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
-
-    // println!("BODY: {}", body.to_string());
 
     // let mut req_builder = Request::builder()
     //     .method(Method::POST)
@@ -1133,6 +1811,145 @@ impl OpenAILLM {
                 false => r50k_base_singleton(),
             },
         }
+    }
+
+    async fn chat_with_tools(
+        &self,
+        messages: &Vec<ChatMessage>,
+        functions: &Vec<ChatFunction>,
+        function_call: Option<String>,
+        temperature: f32,
+        top_p: Option<f32>,
+        n: usize,
+        stop: &Vec<String>,
+        mut max_tokens: Option<i32>,
+        presence_penalty: Option<f32>,
+        frequency_penalty: Option<f32>,
+        extras: Option<Value>,
+        event_sender: Option<UnboundedSender<Value>>,
+    ) -> Result<LLMChatGeneration> {
+        if let Some(m) = max_tokens {
+            if m == -1 {
+                max_tokens = None;
+            }
+        }
+
+        let (openai_org_id, openai_user, response_format) = match &extras {
+            None => (None, None, None),
+            Some(v) => (
+                match v.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                match v.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                match v.get("response_format") {
+                    Some(Value::String(f)) => Some(f.to_string()),
+                    _ => None,
+                },
+            ),
+        };
+
+        let tool_choice = match function_call.as_ref() {
+            Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
+            None => None,
+        };
+
+        let tools = functions
+            .iter()
+            .map(OpenAITool::try_from)
+            .collect::<Result<Vec<OpenAITool>, _>>()?;
+
+        let openai_messages = self.to_openai_messages(messages)?;
+
+        let c = match event_sender {
+            Some(_) => {
+                streamed_chat_completion_with_tools(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    openai_org_id,
+                    Some(self.id.clone()),
+                    &openai_messages,
+                    tools,
+                    tool_choice,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    max_tokens,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    response_format,
+                    openai_user,
+                    event_sender,
+                )
+                .await?
+            }
+            None => {
+                chat_completion_with_tools(
+                    self.chat_uri()?,
+                    self.api_key.clone().unwrap(),
+                    openai_org_id,
+                    Some(self.id.clone()),
+                    &openai_messages,
+                    tools,
+                    tool_choice,
+                    temperature,
+                    match top_p {
+                        Some(t) => t,
+                        None => 1.0,
+                    },
+                    n,
+                    stop,
+                    max_tokens,
+                    match presence_penalty {
+                        Some(p) => p,
+                        None => 0.0,
+                    },
+                    match frequency_penalty {
+                        Some(f) => f,
+                        None => 0.0,
+                    },
+                    response_format,
+                    openai_user,
+                )
+                .await?
+            }
+        };
+
+        assert!(c.choices.len() > 0);
+
+        Ok(LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::OpenAI.to_string(),
+            model: self.id.clone(),
+            completions: c
+                .choices
+                .iter()
+                .map(|c| ChatMessage::try_from(&c.message))
+                .collect::<Result<Vec<_>>>()?,
+        })
+    }
+
+    fn to_openai_messages(
+        &self,
+        messages: &Vec<ChatMessage>,
+    ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
+        messages
+            .iter()
+            .map(|m| OpenAIChatMessage::try_from(m))
+            .collect::<Result<Vec<_>>>()
     }
 }
 
@@ -1414,7 +2231,7 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (openai_org_id, openai_user, response_format, _use_tools) = match &extras {
+        let (openai_org_id, openai_user, response_format, use_tools) = match &extras {
             None => (None, None, None, false),
             Some(v) => (
                 match v.get("openai_organization_id") {
@@ -1435,6 +2252,25 @@ impl LLM for OpenAILLM {
                 },
             ),
         };
+
+        if use_tools {
+            return self
+                .chat_with_tools(
+                    messages,
+                    functions,
+                    function_call,
+                    temperature,
+                    top_p,
+                    n,
+                    stop,
+                    max_tokens,
+                    presence_penalty,
+                    frequency_penalty,
+                    extras,
+                    event_sender,
+                )
+                .await;
+        }
 
         let c = match event_sender {
             Some(_) => {
