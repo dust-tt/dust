@@ -250,12 +250,15 @@ function TemplatesPage({
 
   const { submit: onDelete } = useSubmitFunction(async () => {
     if (assistantTemplate === null) {
-      throw "unreachable";
+      window.alert(
+        "An error occurred while attempting to delete the template (can't find the template)."
+      );
+      return;
     }
 
     if (
       !window.confirm(
-        "Are you sure you want to delete this template? There's no going back"
+        "Are you sure you want to delete this template? There's no going back."
       )
     ) {
       return;
