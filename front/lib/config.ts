@@ -32,11 +32,10 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
               ? spec[i].config.use_cache
               : false
             : false,
-          use_tools:
-            typeof spec[i].config.use_tools === "boolean"
-              ? spec[i].config.use_tools
-              : false,
         };
+        if (typeof spec[i].config.use_tools === "boolean") {
+          c[spec[i].name].use_tools = spec[i].config.use_tools;
+        }
         break;
       case "input":
         c[spec[i].name] = {
