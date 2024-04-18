@@ -47,6 +47,11 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+// Labs - Can be removed at all times if a solution is dropped
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
@@ -103,6 +108,11 @@ async function main() {
   await ConversationClassification.sync({ alter: true });
 
   await TemplateModel.sync({ alter: true });
+
+  // Labs - Can be removed at all times if a solution is dropped
+  await LabsTranscriptsConfigurationModel.sync({ alter: true });
+  await LabsTranscriptsHistoryModel.sync({ alter: true });
+
   process.exit(0);
 }
 
