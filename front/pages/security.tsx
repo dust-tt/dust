@@ -1,7 +1,11 @@
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import {
+  HeaderContentBlock,
+  ImgBlock,
+} from "@app/components/home/new/ContentBlocks";
 import {
   A,
   Grid,
@@ -102,6 +106,35 @@ export default function Security() {
             training&nbsp;models.
           </P>
         </div>
+
+        <ImgBlock
+          title={<>Manage workspace invitations&nbsp;seamlessly.</>}
+          content={
+            <>
+              Control your workspace with Single Sign-On (SSO) and easy
+              batch&nbsp;invites.
+            </>
+          }
+        >
+          <Hover3D
+            depth={-20}
+            perspective={1000}
+            className={classNames("relative")}
+          >
+            <Div3D depth={-20}>
+              <img src="/static/landing/member/member1.png" />
+            </Div3D>
+            <Div3D depth={20} className="absolute top-0">
+              <img src="/static/landing/member/member2.png" />
+            </Div3D>
+            <Div3D depth={40} className="absolute top-0">
+              <img src="/static/landing/member/member3.png" />
+            </Div3D>
+            <Div3D depth={70} className="absolute top-0">
+              <img src="/static/landing/member/member4.png" />
+            </Div3D>
+          </Hover3D>
+        </ImgBlock>
       </Grid>
       <Grid gap="gap-8">
         <H3 className="col-span-12 text-center text-white">

@@ -91,6 +91,9 @@ const MoreMenuConfig: MenuConfig = {
     },
     LegalMenuConfig.items[0],
     LegalMenuConfig.items[1],
+    {
+      title: " ",
+    },
     LegalMenuConfig.items[2],
     LegalMenuConfig.items[3],
   ],
@@ -159,7 +162,7 @@ export const menuConfig: DocsConfig = {
     {
       title: DevelopersMenuConfig.title,
       label: "Build with Dust",
-      rows: 4,
+      rows: 2,
       items: DevelopersMenuConfig.items,
     },
     {

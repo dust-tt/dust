@@ -71,7 +71,7 @@ export default function Pricing() {
               <Button
                 variant="primary"
                 size="md"
-                label="Start with Dust Pro, 15 Days free trial"
+                label="Start with Pro, 15 Days free"
                 icon={RocketIcon}
                 onClick={() => {
                   window.location.href = "/api/auth/login";

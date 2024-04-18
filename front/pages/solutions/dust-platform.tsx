@@ -50,7 +50,7 @@ export default function RecruitingPeople() {
     <>
       <HeaderContentBlock
         uptitle="Dust Apps, Dust API"
-        title={<>Ever&nbsp;expending; Developper and tinkerer&nbsp;friendly</>}
+        title={<>Ever&nbsp;expanding; Developper and tinkerer&nbsp;friendly</>}
         from="from-amber-200"
         to="to-amber-400"
         subtitle={
@@ -102,7 +102,7 @@ export default function RecruitingPeople() {
           <H3 className="text-white">
             Dust Apps:
             <br />
-            Expends your Assistants&nbsp;agency
+            Expands your Assistants&nbsp;agency
           </H3>
           <P size="md">
             Dust Apps are specialized applications designed to perform specific
@@ -146,7 +146,7 @@ export default function RecruitingPeople() {
             Use Assistants and Data Sources programmatically
           </H3>
           <P size="md">
-            Dust’s API allows expending the means to interact with assistants
+            Dust’s API allows expanding the means to interact with assistants
             and their Data Sources from outside Dust's webapp, allowing
             programmatic manipulation of strongly customized LLM models.
           </P>

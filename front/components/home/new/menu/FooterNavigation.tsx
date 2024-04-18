@@ -10,7 +10,7 @@ import { classNames } from "@app/lib/utils";
 export function FooterNavigation() {
   return (
     <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-slate-800 bg-slate-900 pb-16 pt-12">
-      <div className="w-full px-12">
+      <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className={classNames("opacity-70", "col-span-12")}>
             <LogoHorizontalWhiteLogo className="h-6 w-24" />
