@@ -31,37 +31,38 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     const { userId, connectionId, provider } = blob;
     const hasExistingConfiguration =
       await LabsTranscriptsConfigurationModel.count({
-        where: {
-          userId,
-          connectionId,
-          provider,
-        },
+        where: { ...blob },
       });
     if (hasExistingConfiguration) {
       throw new Error(
         `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
       );
     }
+
+    console.log('CREATING CONFIGURATION WITH ');
+    console.log(blob);
+
     const configuration = await LabsTranscriptsConfigurationModel.create({
-      userId,
-      connectionId,
-      provider,
+      ...blob,
       isActive: false,
     });
 
     return new LabsTranscriptsConfigurationResource(configuration.get());
   }
 
-  static async findByUserIdAndProvider({
+  static async findByUserWorkspaceAndProvider({
     userId,
+    workspaceId,
     provider,
   }: {
     userId: ModelId;
+    workspaceId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
         userId,
+        workspaceId,
         provider,
       },
     });
@@ -139,13 +140,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
   static async getIsActive({
     userId,
+    workspaceId,
     provider,
   }: {
     userId: ModelId;
+    workspaceId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<boolean> {
-    const configuration = await this.findByUserIdAndProvider({
+    const configuration = await this.findByUserWorkspaceAndProvider({
       userId,
+      workspaceId,
       provider,
     });
     if (!configuration) {

@@ -6,14 +6,17 @@ import sgMail from "@sendgrid/mail";
 import * as googleapis from "googleapis";
 
 import apiConfig from "@app/lib/api/config";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import {
   LabsTranscriptsConfigurationResource,
   LabsTranscriptsHistoryResource,
 } from "@app/lib/resources/labs_transcripts_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import { launchProcessTranscriptWorkflow } from "@app/temporal/labs/client";
 
@@ -21,12 +24,16 @@ sgMail.setApiKey(apiConfig.getSendgridApiKey());
 
 export async function retrieveNewTranscriptsActivity(
   userId: ModelId,
+  workspaceId: ModelId,
   providerId: LabsTranscriptsProviderType
 ) {
   const logger = mainLogger.child({ userId });
 
   if (providerId == "google_drive") {
-    const auth = await getGoogleAuthFromUserTranscriptConfiguration(userId);
+    const auth = await getGoogleAuthFromUserTranscriptConfiguration(
+      userId,
+      workspaceId
+    );
 
     if (!auth) {
       logger.error("[retrieveNewTranscripts] No Google auth found. Stopping.");
@@ -75,7 +82,7 @@ export async function retrieveNewTranscriptsActivity(
         );
         continue;
       }
-      await launchProcessTranscriptWorkflow({ userId, fileId });
+      await launchProcessTranscriptWorkflow({ userId, workspaceId, fileId });
     }
   } else {
     // throw error
@@ -90,6 +97,7 @@ export async function retrieveNewTranscriptsActivity(
 
 export async function processGoogleDriveTranscriptActivity(
   userId: ModelId,
+  workspaceId: ModelId,
   fileId: string
 ) {
   const logger = mainLogger.child({ userId });
@@ -109,8 +117,9 @@ export async function processGoogleDriveTranscriptActivity(
   );
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
+    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
       userId: userId,
+      workspaceId: workspaceId,
       provider: providerId,
     });
 
@@ -121,7 +130,10 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(userId);
+  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
+    userId,
+    workspaceId
+  );
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
   const metadataRes = await drive.files.get({
@@ -149,13 +161,25 @@ export async function processGoogleDriveTranscriptActivity(
   const extraInstructions =
     "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
 
+<<<<<<< Updated upstream
   const dust = new DustAPI(
     {
       workspaceId: config.getLabsWorkspaceId(),
       apiKey: config.getLabsApiKey(),
     },
     logger
+=======
+  const owner = await Workspace.findByPk(workspaceId);
+  if (!owner) {
+    throw new Error(
+      `Could not get internal builder for workspace ${workspaceId}`
+    );
+  }
+  const prodCredentials = await prodAPICredentialsForOwner(
+    renderLightWorkspaceType({workspace: owner})
+>>>>>>> Stashed changes
   );
+  const dustAPI = new DustAPI(prodCredentials, logger);
 
   const configurationId =
     config.getLabsTranscriptsAssistantId() ||
@@ -247,13 +271,16 @@ export async function processGoogleDriveTranscriptActivity(
 
 export async function checkIsActiveActivity({
   userId,
+  workspaceId,
   providerId,
 }: {
   userId: ModelId;
+  workspaceId: ModelId;
   providerId: LabsTranscriptsProviderType;
 }) {
   const isActive = await LabsTranscriptsConfigurationResource.getIsActive({
     userId,
+    workspaceId,
     provider: providerId,
   });
   return isActive;

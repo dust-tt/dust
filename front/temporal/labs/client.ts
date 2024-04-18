@@ -19,9 +19,11 @@ export function generateWorkflowId(
 
 export async function launchRetrieveTranscriptsWorkflow({
   userId,
+  workspaceId,
   providerId,
 }: {
   userId: ModelId;
+  workspaceId: ModelId;
   providerId: LabsTranscriptsProviderType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -29,7 +31,7 @@ export async function launchRetrieveTranscriptsWorkflow({
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
-      args: [userId, providerId],
+      args: [userId, workspaceId, providerId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {
@@ -58,9 +60,11 @@ export async function launchRetrieveTranscriptsWorkflow({
 
 export async function launchProcessTranscriptWorkflow({
   userId,
+  workspaceId,
   fileId,
 }: {
   userId: ModelId;
+  workspaceId: ModelId;
   fileId: string;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -69,11 +73,12 @@ export async function launchProcessTranscriptWorkflow({
 
   try {
     await client.workflow.start(processTranscriptWorkflow, {
-      args: [userId, fileId],
+      args: [userId, workspaceId, fileId],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {
         userId,
+        workspaceId,
         fileId,
       },
     });

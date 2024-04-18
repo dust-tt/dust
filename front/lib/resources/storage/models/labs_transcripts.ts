@@ -10,6 +10,7 @@ import { DataTypes, Model } from "sequelize";
 
 import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class LabsTranscriptsConfigurationModel extends Model<
@@ -21,6 +22,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
   declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
@@ -46,6 +48,9 @@ LabsTranscriptsConfigurationModel.init(
       defaultValue: DataTypes.NOW,
     },
     userId: {
+      type: DataTypes.INTEGER,
+    },
+    workspaceId: {
       type: DataTypes.INTEGER,
     },
     connectionId: {
@@ -84,9 +89,19 @@ User.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+Workspace.hasMany(LabsTranscriptsConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
 LabsTranscriptsConfigurationModel.belongsTo(User, {
   foreignKey: {
     name: "userId",
+    allowNull: false,
+  },
+});
+LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
+  foreignKey: {
+    name: "workspaceId",
     allowNull: false,
   },
 });
