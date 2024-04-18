@@ -28,27 +28,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       "isActive"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
-    const { userId, connectionId, provider } = blob;
-    const hasExistingConfiguration =
-      await LabsTranscriptsConfigurationModel.count({
-        where: {
-          userId,
-          connectionId,
-          provider,
-        },
-      });
-    if (hasExistingConfiguration) {
-      throw new Error(
-        `A Solution configuration already exists for user ${userId} with connectionId ${connectionId} and provider ${provider}`
-      );
-    }
     const configuration = await LabsTranscriptsConfigurationModel.create({
-      userId,
-      connectionId,
-      provider,
+      ...blob,
       isActive: false,
     });
-
     return new LabsTranscriptsConfigurationResource(configuration.get());
   }
 
