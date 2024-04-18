@@ -131,8 +131,8 @@ impl FromStr for OpenAIToolChoice {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "auto" => Ok(OpenAIToolChoice::Control(Control::Auto)),
-            "none" => Ok(OpenAIToolChoice::Control(Control::None)),
+            "auto" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::Auto)),
+            "none" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::None)),
             _ => {
                 let function = OpenAIFunctionCall {
                     r#type: OpenAIToolType::Function,
