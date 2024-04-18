@@ -514,6 +514,7 @@ export class DustAPI {
     visibility,
     message,
     contentFragment,
+    blocking = false,
   }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
     DustAPIResponse<{
       conversation: ConversationType;
@@ -533,6 +534,7 @@ export class DustAPI {
           visibility,
           message,
           contentFragment,
+          blocking,
         }),
       }
     );
