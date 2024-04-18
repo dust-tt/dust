@@ -145,7 +145,6 @@ export default function CreateAssistant({
     const scrollContainerElement = document.getElementById("main-content");
 
     if (!scrollToElement || !scrollContainerElement) {
-      console.error("Element or scrollable container not found.", tagName);
       return;
     }
     const scrollToElementRect = scrollToElement.getBoundingClientRect();
