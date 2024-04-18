@@ -6,36 +6,85 @@ import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { AgentAction } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
 
-// Keeps the order of tags for UI display purposes.
-export const assistantTemplateTagNames = [
-  "Featured",
-  "Productivity",
-  "Design",
-  "Sales",
-  "Product Management",
-  "Operations",
-  "Engineering",
-  "Data",
-  "Marketing",
-  "Content",
-  "Writing",
-  "Hiring",
-  "UX Design",
-  "UX Research",
-  "Finance",
-  "Product",
-  // TODO: Add tag names for templates, here.
+export const TEMPLATES_TAG_CODES = [
+  "CONTENT",
+  "DATA",
+  "DESIGN",
+  "ENGINEERING",
+  "FINANCE",
+  "HIRING",
+  "MARKETING",
+  "OPERATIONS",
+  "PRODUCT",
+  "PRODUCT_MANAGEMENT",
+  "PRODUCTIVITY",
+  "SALES",
+  "UX_DESIGN",
+  "UX_RESEARCH",
+  "WRITING",
 ] as const;
+export type TemplateTagCodeType = (typeof TEMPLATES_TAG_CODES)[number];
 
-export type AssistantTemplateTagNameType =
-  (typeof assistantTemplateTagNames)[number];
+export type TemplateTagsType = Record<
+  TemplateTagCodeType,
+  {
+    label: string;
+  }
+>;
 
-export function isAssistantTemplateTagNameTypeArray(
+export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
+  CONTENT: {
+    label: "Content",
+  },
+  DATA: {
+    label: "Data",
+  },
+  DESIGN: {
+    label: "Design",
+  },
+  ENGINEERING: {
+    label: "Engineering",
+  },
+  FINANCE: {
+    label: "Finance",
+  },
+  HIRING: {
+    label: "Hiring",
+  },
+  MARKETING: {
+    label: "Marketing",
+  },
+  OPERATIONS: {
+    label: "Operations",
+  },
+  PRODUCT: {
+    label: "Product",
+  },
+  PRODUCT_MANAGEMENT: {
+    label: "Product Management",
+  },
+  PRODUCTIVITY: {
+    label: "Productivity",
+  },
+  SALES: {
+    label: "Sales",
+  },
+  UX_DESIGN: {
+    label: "UX Design",
+  },
+  UX_RESEARCH: {
+    label: "UX Research",
+  },
+  WRITING: {
+    label: "Writing",
+  },
+};
+
+export function isTemplateTagCodeArray(
   value: unknown
-): value is AssistantTemplateTagNameType[] {
+): value is TemplateTagCodeType[] {
   return (
-    Array.isArray(value) &&
-    value.every((v) => assistantTemplateTagNames.includes(v))
+    Array.isArray(value) && value.every((v) => TEMPLATES_TAG_CODES.includes(v))
   );
 }
 
@@ -62,6 +111,10 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
   "TemplateVisibility"
 );
 
+const TemplateTagCodeTypeCodec = t.keyof({
+  ...TEMPLATES_TAGS_CONFIG,
+});
+
 export const CreateTemplateFormSchema = t.type({
   backgroundColor: NonEmptyString,
   description: t.union([t.string, t.undefined]),
@@ -73,7 +126,7 @@ export const CreateTemplateFormSchema = t.type({
   presetInstructions: t.union([t.string, t.undefined]),
   presetModel: t.string,
   presetTemperature: AssistantCreativityLevelCodec,
-  tags: nonEmptyArray(t.string),
+  tags: nonEmptyArray(TemplateTagCodeTypeCodec),
 });
 
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;

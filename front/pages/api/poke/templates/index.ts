@@ -1,7 +1,7 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import {
   CreateTemplateFormSchema,
-  isAssistantTemplateTagNameTypeArray,
+  isTemplateTagCodeArray,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -65,7 +65,7 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      if (!isAssistantTemplateTagNameTypeArray(body.tags)) {
+      if (!isTemplateTagCodeArray(body.tags)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

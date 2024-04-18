@@ -8,11 +8,12 @@ import {
   Searchbar,
 } from "@dust-tt/sparkle";
 import type {
-  AssistantTemplateTagNameType,
   SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assistantTemplateTagNames } from "@dust-tt/types";
+import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -35,7 +36,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   gaTrackingId: string;
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  templateTags: AssistantTemplateTagNameType[];
+  templateTagsMapping: TemplateTagsType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -58,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: config.getGaTrackingId(),
       flow,
-      templateTags: [...assistantTemplateTagNames],
+      templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
   };
 });
@@ -68,7 +69,7 @@ export default function CreateAssistant({
   gaTrackingId,
   owner,
   subscription,
-  templateTags,
+  templateTagsMapping,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -85,35 +86,36 @@ export default function CreateAssistant({
 
   const [filteredTemplates, setFilteredTemplates] = useState<{
     templates: typeof assistantTemplates;
-    tags: AssistantTemplateTagNameType[];
+    tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
   useEffect(() => {
+    const templatesToDisplay = assistantTemplates.filter((template) => {
+      return isTemplateTagCodeArray(template.tags);
+    });
     setFilteredTemplates({
-      templates: assistantTemplates,
-      tags: _.uniq(assistantTemplates.map((template) => template.tags).flat()),
+      templates: templatesToDisplay,
+      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
     });
   }, [assistantTemplates]);
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
-
-    if (searchTerm === "") {
-      setFilteredTemplates({
-        templates: assistantTemplates,
-        tags: _.uniq(
-          assistantTemplates.map((template) => template.tags).flat()
-        ),
-      });
-    } else {
-      const filteredTemplates = assistantTemplates.filter((template) =>
-        subFilter(searchTerm.toLowerCase(), template.handle.toLowerCase())
-      );
-      setFilteredTemplates({
-        templates: filteredTemplates,
-        tags: _.uniq(filteredTemplates.map((template) => template.tags).flat()),
-      });
-    }
+    const templatesFilteredFromSearch =
+      searchTerm === ""
+        ? assistantTemplates
+        : assistantTemplates.filter((template) =>
+            subFilter(searchTerm.toLowerCase(), template.handle.toLowerCase())
+          );
+    const templatesToDisplay = templatesFilteredFromSearch.filter(
+      (template) => {
+        return isTemplateTagCodeArray(template.tags);
+      }
+    );
+    setFilteredTemplates({
+      templates: templatesToDisplay,
+      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
+    });
   };
 
   const handleCloseModal = () => {
@@ -134,10 +136,10 @@ export default function CreateAssistant({
   }>({});
 
   useEffect(() => {
-    templateTags.forEach((tag: string) => {
+    Object.keys(templateTagsMapping).forEach((tag: string) => {
       tagsRefsMap.current[tag] = tagsRefsMap.current[tag] || createRef();
     });
-  }, [templateTags]);
+  }, [templateTagsMapping]);
 
   const scrollToTag = (tagName: string) => {
     const SCROLL_OFFSET = 64; // Header size
@@ -229,7 +231,7 @@ export default function CreateAssistant({
             <div className="flex flex-row flex-wrap gap-2">
               {filteredTemplates.tags.map((tagName) => (
                 <Button
-                  label={tagName}
+                  label={templateTagsMapping[tagName].label}
                   variant="tertiary"
                   key={tagName}
                   size="xs"
@@ -248,7 +250,7 @@ export default function CreateAssistant({
               return (
                 <div key={tagName} ref={tagsRefsMap.current[tagName]}>
                   <ContextItem.SectionHeader
-                    title={tagName}
+                    title={templateTagsMapping[tagName].label}
                     hasBorder={false}
                   />
                   <TemplateGrid templates={templatesForTag} />

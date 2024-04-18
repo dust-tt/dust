@@ -1,8 +1,6 @@
 import { Chip, IconButton } from "@dust-tt/sparkle";
-import type {
-  AssistantTemplateTagNameType,
-  TemplateVisibility,
-} from "@dust-tt/types";
+import type { TemplateTagCodeType, TemplateVisibility } from "@dust-tt/types";
+import { TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -11,7 +9,7 @@ export interface TemplatesDisplayType {
   id: string;
   name: string;
   status: TemplateVisibility;
-  tags: AssistantTemplateTagNameType[];
+  tags: TemplateTagCodeType[];
 }
 
 export function makeColumnsForTemplates(): ColumnDef<TemplatesDisplayType>[] {
@@ -87,8 +85,16 @@ export function makeColumnsForTemplates(): ColumnDef<TemplatesDisplayType>[] {
         </div>
       ),
       cell: ({ row }) => {
-        const tags: string[] = row.getValue("tags");
-        const tagChips = tags.map((t) => <Chip label={t} key={t} size="xs" />);
+        const tags: TemplateTagCodeType[] = row.getValue("tags");
+        const tagChips = tags.map((t) => (
+          <Chip
+            label={
+              TEMPLATES_TAGS_CONFIG[t] ? TEMPLATES_TAGS_CONFIG[t].label : t
+            }
+            key={t}
+            size="xs"
+          />
+        ));
 
         return <div className="flex gap-x-2">{tagChips}</div>;
       },

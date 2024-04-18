@@ -1,13 +1,17 @@
-import type { CreateTemplateFormType } from "@dust-tt/types";
+import type {
+  CreateTemplateFormType,
+  TemplateTagCodeType,
+} from "@dust-tt/types";
 import {
   ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
-  assistantTemplateTagNames,
   CreateTemplateFormSchema,
   GPT_4_TURBO_MODEL_CONFIG,
   removeNulls,
+  TEMPLATES_TAGS_CONFIG,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect } from "react";
@@ -112,9 +116,12 @@ function TextareaField({
   );
 }
 
-const tagOptions = assistantTemplateTagNames.map((t) => ({
-  label: t,
-  value: t,
+const tagOptions: {
+  label: string;
+  value: TemplateTagCodeType;
+}[] = _.map(TEMPLATES_TAGS_CONFIG, (config, key) => ({
+  label: config.label,
+  value: key as TemplateTagCodeType,
 }));
 
 interface SelectFieldOption {
@@ -339,8 +346,10 @@ function TemplatesPage({
                   <PokeFormControl>
                     <MultiSelect
                       options={tagOptions}
-                      value={field.value.map((tag) => ({
-                        label: tag,
+                      value={field.value.map((tag: TemplateTagCodeType) => ({
+                        label: TEMPLATES_TAGS_CONFIG[tag]
+                          ? TEMPLATES_TAGS_CONFIG[tag].label
+                          : tag,
                         value: tag,
                       }))}
                       onChange={(tags: { label: string; value: string }[]) => {
