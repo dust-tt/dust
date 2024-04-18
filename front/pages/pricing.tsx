@@ -6,6 +6,7 @@ import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
 import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import { getParticleShapeIndexByName } from "@app/components/home/new/Particles";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
@@ -39,7 +40,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 2 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName("bigSphere"),
+    },
   };
 });
 
@@ -56,20 +60,14 @@ export default function Pricing() {
         }}
       />
       <HeaderContentBlock
-        title={
-          <>
-            Start with Dust!
-            <br />
-            Meet our pricing plans.
-          </>
-        }
-        from="from-sky-200"
-        to="to-blue-500"
+        title={<>Meet our pricing plans.</>}
+        from="from-slate-50/90"
+        to="to-slate-200/70"
         subtitle={
           <>
             <div>
               <Button
-                variant="primary"
+                variant="tertiary"
                 size="md"
                 label="Start with Pro, 15 Days free"
                 icon={RocketIcon}

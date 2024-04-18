@@ -1,4 +1,5 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React from "react";
 
 import {
@@ -10,11 +11,7 @@ import {
 } from "@app/components/home/new/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-interface IntroSectionProps {
-  postLoginReturnToUrl: string;
-}
-
-export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
+export function IntroSection() {
   const MainVisualImage = () => (
     <Hover3D depth={-40} perspective={1000} className="relative">
       <Div3D depth={-30}>
@@ -76,15 +73,14 @@ export function IntroSection({ postLoginReturnToUrl }: IntroSectionProps) {
             AI&nbsp;assistants.
           </P>
           <div>
-            <Button
-              variant="primary"
-              size="md"
-              label="Start with Dust Now"
-              icon={RocketIcon}
-              onClick={() =>
-                (window.location.href = `/api/auth/login?returnTo=${postLoginReturnToUrl}`)
-              }
-            />
+            <Link href="/pricing" shallow={true}>
+              <Button
+                variant="primary"
+                size="md"
+                label="Start now, check our pricing"
+                icon={RocketIcon}
+              />
+            </Link>
           </div>
         </div>
         <div

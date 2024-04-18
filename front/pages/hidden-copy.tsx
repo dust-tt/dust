@@ -1,4 +1,3 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -54,12 +53,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-export default function Home({
-  postLoginReturnToUrl,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function Home() {
   return (
     <>
-      <IntroSection postLoginReturnToUrl={postLoginReturnToUrl} />
+      <IntroSection />
       <TeamSection />
       <FutureSection />
       <BlogSection />

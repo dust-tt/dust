@@ -42,11 +42,12 @@ export function TeamSection() {
           )}
         >
           <ImgBlock
-            title={<>Find the creative members in&nbsp;your&nbsp;team</>}
+            title={<>Give your&nbsp;creative team members an&nbsp;edge</>}
             content={
               <>
-                Empower them with the best tools to&nbsp;accelerate
-                your&nbsp;company’s transition to&nbsp;GenAI.
+                Empower those with a&nbsp;builder mindset the&nbsp;right tools
+                to&nbsp;accelerate your&nbsp;company's transition
+                with&nbsp;GenAI.
               </>
             }
           >
