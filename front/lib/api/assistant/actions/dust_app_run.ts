@@ -12,11 +12,7 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
@@ -103,21 +99,13 @@ export async function dustAppRunActionSpecification(
   });
 }
 
-/// Generates the action specification for generation of rawInputs passed to `runDustApp`.
-export async function generateRunDustAppSpecification(
+// Generates the action specification for generation of rawInputs passed to `runDustApp`.
+export async function generateDustAppRunSpecification(
   auth: Authenticator,
   {
-    configuration,
     actionConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
   }: {
-    configuration: AgentConfigurationType;
     actionConfiguration: DustAppRunConfigurationType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
-    agentMessage: AgentMessageType;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
@@ -217,7 +205,6 @@ export async function* runDustApp(
     configuration,
     actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
     spec,
     rawInputs,
@@ -225,7 +212,6 @@ export async function* runDustApp(
     configuration: AgentConfigurationType;
     actionConfiguration: DustAppRunConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     spec: AgentActionSpecification;
     rawInputs: Record<string, string | boolean | number>;

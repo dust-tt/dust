@@ -15,11 +15,7 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
@@ -187,21 +183,13 @@ export async function retrievalActionSpecification(
   };
 }
 
-/// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
+// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
 export async function generateRetrievalSpecification(
   auth: Authenticator,
   {
-    configuration,
     actionConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
   }: {
-    configuration: AgentConfigurationType;
     actionConfiguration: RetrievalConfigurationType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
-    agentMessage: AgentMessageType;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
@@ -407,17 +395,13 @@ export async function* runRetrieval(
     configuration,
     actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
-    spec,
     rawInputs,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: RetrievalConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    spec: AgentActionSpecification;
     rawInputs: Record<string, string | boolean | number>;
   }
 ): AsyncGenerator<
