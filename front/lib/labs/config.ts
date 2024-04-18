@@ -13,12 +13,6 @@ const config = {
   getLabsApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("LABS_API_KEY");
   },
-  getLabsWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("LABS_WORKSPACE_ID");
-  },
-  getLabsTranscriptsAssistantId: (): string => {
-    return EnvironmentConfig.getEnvVariable("LABS_TRANSCRIPTS_ASSISTANT_ID");
-  },
 };
 
 export default config;

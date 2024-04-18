@@ -31,7 +31,11 @@ runUpdateWorkspaceUsageWorker().catch((err) =>
 );
 
 runScrubWorkspaceQueueWorker().catch((err) =>
-  logger.error({ error: err }, "Error running scrub workspace queue worker")
+  logger.error({ error: err }, "Error running scrub workspace queue worker.")
+);
+
+runLabsWorker().catch((err) =>
+  logger.error({ error: err }, "Error running labs worker.")
 );
 
 runLabsWorker().catch((err) =>

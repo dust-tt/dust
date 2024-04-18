@@ -20,7 +20,7 @@ const {
 export async function retrieveNewTranscriptsWorkflow(
   userId: ModelId,
   workspaceId: ModelId,
-  providerId: LabsTranscriptsProviderType
+  provider: LabsTranscriptsProviderType
 ) {
   // 15 minutes
   const SECONDS_INTERVAL_BETWEEN_PULLS = 15 * 60;
@@ -28,19 +28,25 @@ export async function retrieveNewTranscriptsWorkflow(
   const isWorkflowActive = true;
 
   while (isWorkflowActive) {
-    // TODO:
-    if ((await checkIsActiveActivity({ userId, workspaceId })) !== true) {
+    const isConfigurationActive = await checkIsActiveActivity({
+      provider,
+      userId,
+      workspaceId,
+    });
+    if (!isConfigurationActive) {
       break;
     }
-    await retrieveNewTranscriptsActivity(userId, workspaceId, providerId);
+
+    await retrieveNewTranscriptsActivity(userId, workspaceId, provider);
+
     await sleep(SECONDS_INTERVAL_BETWEEN_PULLS * 1000);
 
-    // Temporal becomes slow > 4000 lines so we need to continue as new
+    // Temporal becomes slow > 4000 lines so we need to continue as new.
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof retrieveNewTranscriptsWorkflow>(
         userId,
         workspaceId,
-        providerId
+        provider
       );
     }
   }
