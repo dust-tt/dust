@@ -1,15 +1,13 @@
-import { Page, TemplateItem } from "@dust-tt/sparkle";
-import type { AssistantTemplateTagNameType } from "@dust-tt/types";
+import { TemplateItem } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
 import type { AssistantTemplateListType } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 
 interface TemplateGridProps {
-  tagName: AssistantTemplateTagNameType;
   templates: AssistantTemplateListType[];
 }
 
-export function TemplateGrid({ tagName, templates }: TemplateGridProps) {
+export function TemplateGrid({ templates }: TemplateGridProps) {
   const router = useRouter();
 
   const makeTemplateModalHref = (templateId: string) => {
@@ -40,10 +38,5 @@ export function TemplateGrid({ tagName, templates }: TemplateGridProps) {
     return null;
   }
 
-  return (
-    <div id={tagName}>
-      <Page.SectionHeader title={tagName} />
-      <div className="grid grid-cols-2 gap-2">{items}</div>
-    </div>
-  );
+  return <div className="grid grid-cols-2 gap-2">{items}</div>;
 }
