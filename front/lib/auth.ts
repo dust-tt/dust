@@ -1,5 +1,6 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  LightWorkspaceType,
   RoleType,
   UserType,
   WhitelistableFeature,
@@ -559,7 +560,7 @@ export async function subscriptionForWorkspace(
  * @returns Promise<Result<Key, Error>>
  */
 export async function getOrCreateSystemApiKey(
-  workspace: WorkspaceType
+  workspace: LightWorkspaceType
 ): Promise<Result<Key, Error>> {
   let key = await Key.findOne({
     where: {
@@ -595,7 +596,7 @@ export async function getOrCreateSystemApiKey(
  * @returns DustAPICredentials
  */
 export async function prodAPICredentialsForOwner(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   {
     useLocalInDev,
   }: {

@@ -41,16 +41,19 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return new LabsTranscriptsConfigurationResource(configuration.get());
   }
 
-  static async findByUserIdAndProvider({
+  static async findByUserWorkspaceAndProvider({
     userId,
+    workspaceId,
     provider,
   }: {
     userId: ModelId;
+    workspaceId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
         userId,
+        workspaceId,
         provider,
       },
     });

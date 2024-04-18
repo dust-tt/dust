@@ -27,7 +27,6 @@ export const PostLabsTranscriptsConfigurationBodySchema = t.type({
 export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
   agentConfigurationId: t.string,
   provider: acceptableProviders,
-  email: t.union([t.string, t.undefined]),
   isActive: t.union([t.boolean, t.undefined]),
 });
 
@@ -44,12 +43,14 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner) {
+  const userId = auth.user()?.id;
+
+  if (!owner || !userId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
-        message: "The workspace was not found.",
+        message: "The workspace or user was not found.",
       },
     });
   }
@@ -67,10 +68,13 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          userId: owner.id,
-          provider: req.query.provider as LabsTranscriptsProviderType,
-        });
+        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
+          {
+            userId,
+            workspaceId: owner.id,
+            provider: req.query.provider as LabsTranscriptsProviderType,
+          }
+        );
 
       if (!transcriptsConfigurationGet) {
         return apiError(req, res, {
@@ -108,15 +112,17 @@ async function handler(
       const {
         agentConfigurationId: patchAgentId,
         provider: patchProvider,
-        email: emailToNotify,
         isActive,
       } = patchBodyValidation.right;
 
       const transcriptsConfigurationPatchResource =
-        await LabsTranscriptsConfigurationResource.findByUserIdAndProvider({
-          userId: owner.id,
-          provider: patchProvider as LabsTranscriptsProviderType,
-        });
+        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
+          {
+            userId,
+            workspaceId: owner.id,
+            provider: patchProvider as LabsTranscriptsProviderType,
+          }
+        );
 
       if (!transcriptsConfigurationPatchResource) {
         return apiError(req, res, {
@@ -132,17 +138,12 @@ async function handler(
         agentConfigurationId: patchAgentId,
       });
 
-      if (emailToNotify) {
-        await transcriptsConfigurationPatchResource.setEmailToNotify({
-          emailToNotify,
-        });
-      }
-
       if (isActive !== undefined) {
         await transcriptsConfigurationPatchResource.setIsActive(isActive);
         if (isActive) {
           await launchRetrieveTranscriptsWorkflow({
-            userId: owner.id,
+            userId,
+            workspaceId: owner.id,
             providerId: patchProvider,
           });
         }
@@ -173,7 +174,8 @@ async function handler(
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
-          userId: owner.id,
+          userId,
+          workspaceId: owner.id,
           connectionId,
           provider,
         });
