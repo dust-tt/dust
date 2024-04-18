@@ -96,7 +96,7 @@ export function ExtractEventSchemaForm({
     });
     if (res.ok) {
       setIsProcessing(false);
-      await router.push(`/w/${owner.sId}/u/extract`);
+      await router.push(`/w/${owner.sId}/builder/labs/extract`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setIsProcessing(false);
@@ -122,7 +122,7 @@ export function ExtractEventSchemaForm({
     );
     if (res.ok) {
       setIsProcessing(false);
-      await router.push(`/w/${owner.sId}/u/extract`);
+      await router.push(`/w/${owner.sId}/builder/labs/extract`);
     } else {
       const err = (await res.json()) as { error: APIError };
       setIsProcessing(false);
@@ -213,7 +213,9 @@ export function ExtractEventSchemaForm({
               }}
             />
             <Button
-              onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
+              onClick={() =>
+                router.push(`/w/${owner.sId}/builder/labs/extract`)
+              }
               label="Cancel"
               variant="secondary"
             />
