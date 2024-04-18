@@ -67,13 +67,10 @@ export type APIErrorType =
   | "table_not_found"
   // Templates:
   | "template_not_found"
-<<<<<<< HEAD
   // Invitations:
-  | "invitation_already_sent_recently";
-=======
+  | "invitation_already_sent_recently"
   // Labs:
   | "configuration_not_found";
->>>>>>> alban/solutions-transcripts
 
 export type APIError = {
   type: APIErrorType;
