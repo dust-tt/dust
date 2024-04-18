@@ -131,3 +131,49 @@ export const CreateTemplateFormSchema = t.type({
 });
 
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
+
+const TAILWIND_COLOR_NAMES = [
+  "amber",
+  "black",
+  "blue",
+  "cyan",
+  "emerald",
+  "fuchsia",
+  "gray",
+  "green",
+  "indigo",
+  "lime",
+  "orange",
+  "pink",
+  "purple",
+  "red",
+  "rose",
+  "sky",
+  "stone",
+  "teal",
+  "violet",
+  "white",
+  "yellow",
+];
+const TAILWIND_COLOR_SHADES = [
+  "50",
+  "100",
+  "200",
+  "300",
+  "400",
+  "500",
+  "600",
+  "700",
+  "800",
+  "900",
+];
+
+export const generateTailwindBackgroundColors = (): string[] => {
+  const tailwindColors: string[] = [];
+  TAILWIND_COLOR_NAMES.forEach((color) => {
+    TAILWIND_COLOR_SHADES.forEach((shade) => {
+      tailwindColors.push(`bg-${color}-${shade}`);
+    });
+  });
+  return tailwindColors;
+};
