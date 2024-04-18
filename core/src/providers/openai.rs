@@ -1308,8 +1308,6 @@ async fn streamed_chat_completion_with_tools(
         });
     }
 
-    // println!("BODY(streaming): {}", body.to_string());
-
     let client = builder
         .body(body.to_string())
         .reconnect(
@@ -1376,8 +1374,6 @@ async fn streamed_chat_completion_with_tools(
                                 }
                             }
                         };
-
-                        // println!("CHUNK: {:?}", chunk);
 
                         // Only stream if choices is length 1 but should always be the case.
                         match event_sender.as_ref() {
@@ -1630,8 +1626,6 @@ async fn chat_completion_with_tools(
         body["tool_choice"] = json!(tool_choice);
     }
 
-    println!("BODY: {}", body.to_string());
-
     let mut req = reqwest::Client::new()
         .post(uri.to_string())
         .header("Content-Type", "application/json")
@@ -1722,8 +1716,6 @@ pub async fn embed(
     if model_id.is_some() {
         body["model"] = json!(model_id);
     }
-
-    // println!("BODY: {}", body.to_string());
 
     // let mut req_builder = Request::builder()
     //     .method(Method::POST)
@@ -1935,8 +1927,6 @@ impl OpenAILLM {
                 .await?
             }
         };
-
-        // println!("COMPLETION(using tools): {:?}", c);
 
         assert!(c.choices.len() > 0);
 
