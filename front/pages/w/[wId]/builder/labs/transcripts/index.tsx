@@ -245,7 +245,7 @@ export default function LabsTranscriptsIndex({
           <Page.Header
             title="Transcripts processing"
             icon={BookOpenIcon}
-            description="Receive meeting minutes summarized by email automatically. Works with Google Meet and Gong.io."
+            description="Receive meeting minutes summarized by email automatically."
           />
           <Page.Layout direction="vertical">
             <Page.SectionHeader title="1. Connect Google Drive" />
@@ -320,6 +320,8 @@ export default function LabsTranscriptsIndex({
                     <Page.P>
                       When enabled, each new meeting transcript in 'My Drive'
                       will be processed.
+                      <br/>
+                      Summaries can take up to 30 minutes to be sent after meetings end.
                     </Page.P>
                   </Page.Layout>
                 </Page.Layout>
