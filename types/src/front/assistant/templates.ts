@@ -80,7 +80,7 @@ export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
   },
 };
 
-export function isTemplateTagsArrayValid(
+export function isTemplateTagCodeArray(
   value: unknown
 ): value is TemplateTagCodeType[] {
   return (

@@ -13,10 +13,7 @@ import type {
   TemplateTagsType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isTemplateTagsArrayValid,
-  TEMPLATES_TAGS_CONFIG,
-} from "@dust-tt/types";
+import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -94,7 +91,7 @@ export default function CreateAssistant({
 
   useEffect(() => {
     const templatesToDisplay = assistantTemplates.filter((template) => {
-      return isTemplateTagsArrayValid(template.tags);
+      return isTemplateTagCodeArray(template.tags);
     });
     setFilteredTemplates({
       templates: templatesToDisplay,
@@ -112,7 +109,7 @@ export default function CreateAssistant({
           );
     const templatesToDisplay = templatesFilteredFromSearch.filter(
       (template) => {
-        return isTemplateTagsArrayValid(template.tags);
+        return isTemplateTagCodeArray(template.tags);
       }
     );
     setFilteredTemplates({
