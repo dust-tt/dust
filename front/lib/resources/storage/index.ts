@@ -11,7 +11,7 @@ export const frontSequelize = new Sequelize(
   {
     pool: {
       // Default is 5.
-      max: isDevelopment() ? 5 : 50,
+      max: isDevelopment() ? 5 : 40,
     },
     logging: false,
     hooks: {
