@@ -347,7 +347,9 @@ function TemplatesPage({
                     <MultiSelect
                       options={tagOptions}
                       value={field.value.map((tag: TemplateTagCodeType) => ({
-                        label: TEMPLATES_TAGS_CONFIG[tag].label,
+                        label: TEMPLATES_TAGS_CONFIG[tag]
+                          ? TEMPLATES_TAGS_CONFIG[tag].label
+                          : tag,
                         value: tag,
                       }))}
                       onChange={(tags: { label: string; value: string }[]) => {

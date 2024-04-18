@@ -87,7 +87,13 @@ export function makeColumnsForTemplates(): ColumnDef<TemplatesDisplayType>[] {
       cell: ({ row }) => {
         const tags: TemplateTagCodeType[] = row.getValue("tags");
         const tagChips = tags.map((t) => (
-          <Chip label={TEMPLATES_TAGS_CONFIG[t].label} key={t} size="xs" />
+          <Chip
+            label={
+              TEMPLATES_TAGS_CONFIG[t] ? TEMPLATES_TAGS_CONFIG[t].label : t
+            }
+            key={t}
+            size="xs"
+          />
         ));
 
         return <div className="flex gap-x-2">{tagChips}</div>;
