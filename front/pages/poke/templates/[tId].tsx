@@ -1,3 +1,4 @@
+import { TemplateItem } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -6,6 +7,7 @@ import {
   ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
   CreateTemplateFormSchema,
+  generateTailwindBackgroundColors,
   GPT_4_TURBO_MODEL_CONFIG,
   removeNulls,
   TEMPLATE_VISIBILITIES,
@@ -15,7 +17,7 @@ import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
@@ -23,6 +25,13 @@ import { MultiSelect } from "react-multi-select-component";
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import {
+  PokeDialog,
+  PokeDialogContent,
+  PokeDialogHeader,
+  PokeDialogTitle,
+  PokeDialogTrigger,
+} from "@app/components/poke/shadcn/ui/dialog";
 import {
   PokeForm,
   PokeFormControl,
@@ -177,6 +186,35 @@ function SelectField({
   );
 }
 
+function PreviewDialog({ form }: { form: any }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <PokeDialog open={open} onOpenChange={setOpen}>
+      <PokeDialogTrigger asChild>
+        <PokeButton variant="outline">✨ Preview Template</PokeButton>
+      </PokeDialogTrigger>
+      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <PokeDialogHeader>
+          <PokeDialogTitle>
+            Preview as displayed in Template Gallery
+          </PokeDialogTitle>
+        </PokeDialogHeader>
+        <TemplateItem
+          name={form.getValues("handle")}
+          id="1"
+          description={form.getValues("description") ?? ""}
+          visual={{
+            backgroundColor: form.getValues("backgroundColor"),
+            emoji: form.getValues("emoji"),
+          }}
+          href={""}
+        />
+      </PokeDialogContent>
+    </PokeDialog>
+  );
+}
+
 function TemplatesPage({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -294,6 +332,8 @@ function TemplatesPage({
       presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
+      emoji: "🐈‍⬛",
+      backgroundColor: "bg-pink-300",
       tags: [],
       visibility: "draft",
     },
@@ -404,11 +444,15 @@ function TemplatesPage({
                 </PokeFormItem>
               )}
             />
-            <InputField control={form.control} name="emoji" placeholder="🤓" />
-            <InputField
+            <InputField control={form.control} name="emoji" />
+            <SelectField
               control={form.control}
               name="backgroundColor"
-              placeholder="tailwind color code"
+              title="Background Color"
+              options={generateTailwindBackgroundColors().map((v) => ({
+                value: v,
+                display: v,
+              }))}
             />
             <SelectField
               control={form.control}
@@ -421,8 +465,9 @@ function TemplatesPage({
             />
             <div className="space flex justify-between">
               <PokeButton type="submit" className="border border-structure-300">
-                Submit
+                Save
               </PokeButton>
+              <PreviewDialog form={form} />
               <PokeButton
                 type="button"
                 variant="destructive"
