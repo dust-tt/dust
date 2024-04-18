@@ -1,4 +1,11 @@
-import { Avatar, Button, ElementModal, Page, Spinner2 } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  ElementModal,
+  Markdown,
+  Page,
+  Spinner2,
+} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 
@@ -71,7 +78,7 @@ export function AssistantTemplateModal({
             </div>
           </div>
           <p className="whitespace-pre-line text-sm font-normal text-element-900">
-            {description}
+            <Markdown content={description ?? ""} />
           </p>
           <InstructionsSection instructions={presetInstructions} />
         </div>
