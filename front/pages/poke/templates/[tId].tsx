@@ -149,8 +149,8 @@ function SelectField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
             <PokeSelect
+              value={field.value as string}
               onValueChange={field.onChange}
-              defaultValue={field.value as string}
             >
               <PokeFormControl>
                 <PokeSelectTrigger>
@@ -253,7 +253,7 @@ function TemplatesPage({
       description: "",
       handle: "",
       presetInstructions: "",
-      presetModel: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
       presetAction: "reply",
       helpInstructions: "",
@@ -279,6 +279,11 @@ function TemplatesPage({
     );
   }
 
+  if (Object.keys(form.formState.errors).length > 0) {
+    // Useful to debug in case you have an error on a field that is not rendered
+    console.log("Form errors", form.formState.errors);
+  }
+
   return (
     <div className="min-h-screen bg-structure-50 pb-48">
       <PokeNavbar />
@@ -302,10 +307,11 @@ function TemplatesPage({
             />
             <SelectField
               control={form.control}
-              name="presetModel"
+              name="presetModelId"
               title="Preset Model"
               options={USED_MODEL_CONFIGS.map((config) => ({
                 value: config.modelId,
+                display: config.displayName,
               }))}
             />
             <SelectField
@@ -347,9 +353,7 @@ function TemplatesPage({
                     <MultiSelect
                       options={tagOptions}
                       value={field.value.map((tag: TemplateTagCodeType) => ({
-                        label: TEMPLATES_TAGS_CONFIG[tag]
-                          ? TEMPLATES_TAGS_CONFIG[tag].label
-                          : tag,
+                        label: TEMPLATES_TAGS_CONFIG[tag].label,
                         value: tag,
                       }))}
                       onChange={(tags: { label: string; value: string }[]) => {
