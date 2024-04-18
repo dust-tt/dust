@@ -1,6 +1,6 @@
 FROM rust:1.76.0 as core
 
-RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop cmake
 
 WORKDIR /app
 
