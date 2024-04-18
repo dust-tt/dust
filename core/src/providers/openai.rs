@@ -88,14 +88,14 @@ pub enum OpenAIToolType {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OpenAISpecificFunctionName {
+pub struct OpenAIFunction {
     name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct OpenAISpecificFunction {
+pub struct OpenAIFunctionCall {
     r#type: OpenAIToolType,
-    function: OpenAISpecificFunctionName,
+    function: OpenAIFunction,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -103,7 +103,7 @@ pub struct OpenAISpecificFunction {
 pub enum OpenAIToolChoice {
     Auto,
     None,
-    OpenAISpecificFunction(OpenAISpecificFunction),
+    OpenAIFunctionCall(OpenAIFunctionCall),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -127,13 +127,13 @@ impl FromStr for OpenAIToolChoice {
             "auto" => Ok(OpenAIToolChoice::Auto),
             "none" => Ok(OpenAIToolChoice::None),
             _ => {
-                let function = OpenAISpecificFunction {
+                let function = OpenAIFunctionCall {
                     r#type: OpenAIToolType::Function,
-                    function: OpenAISpecificFunctionName {
+                    function: OpenAIFunction {
                         name: s.to_string(),
                     },
                 };
-                Ok(OpenAIToolChoice::OpenAISpecificFunction(function))
+                Ok(OpenAIToolChoice::OpenAIFunctionCall(function))
             }
         }
     }
@@ -167,20 +167,14 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
     }
 }
 
-// This code performs a type conversion with information loss when converting to ChatFunctionCall.
-// It only supports one tool call, so it takes the first one from the vector of OpenAIToolCall,
-// hence potentially discarding other tool calls.
-impl TryFrom<&Vec<OpenAIToolCall>> for ChatFunctionCall {
+impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
     type Error = anyhow::Error;
 
-    fn try_from(tcs: &Vec<OpenAIToolCall>) -> Result<Self, Self::Error> {
-        // We only take the first tool call suggestion.
-        tcs.first()
-            .map(|tc| ChatFunctionCall {
-                name: tc.function.name.clone(),
-                arguments: tc.function.arguments.clone(),
-            })
-            .ok_or_else(|| anyhow::anyhow!("No OpenAIToolCall found"))
+    fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
+        Ok(ChatFunctionCall {
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
     }
 }
 
@@ -211,6 +205,9 @@ pub struct OpenAIChatCompletion {
     // pub usage: Usage,
 }
 
+// This code performs a type conversion with information loss when converting to ChatFunctionCall.
+// It only supports one tool call, so it takes the first one from the vector of OpenAIToolCall,
+// hence potentially discarding other tool calls.
 impl TryFrom<&OpenAIChatMessage> for ChatMessage {
     type Error = anyhow::Error;
 
@@ -222,9 +219,11 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
         };
 
         let function_call = match cm.tool_calls.as_ref() {
-            Some(tc) => {
-                if tc.len() > 0 {
-                    Some(ChatFunctionCall::try_from(tc)?)
+            Some(tcs) => {
+                if !tcs.is_empty() {
+                    // Consider only the first tool call, ignoring the rest.
+                    tcs.first()
+                        .and_then(|tc| ChatFunctionCall::try_from(tc).ok())
                 } else {
                     None
                 }
@@ -232,10 +231,15 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             None => None,
         };
 
+        let name = match cm.name.as_ref() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
         Ok(ChatMessage {
             content,
             role,
-            name: None,
+            name,
             function_call,
         })
     }
@@ -1428,7 +1432,7 @@ async fn streamed_chat_completion_with_tools(
                     }
                 },
                 None => {
-                    println!("UNEXPECED NONE");
+                    println!("UNEXPECTED NONE");
                     break 'stream;
                 }
             },
