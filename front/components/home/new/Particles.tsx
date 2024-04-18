@@ -40,6 +40,10 @@ export default function Particules({ currentShape }: ParticulesProps) {
   );
 }
 
+export function getParticleShapeIndexByName(name: string) {
+  return particuleShapes.findIndex((shape) => shape.name === name);
+}
+
 export const particuleShapes = [
   { name: "grid" },
   { name: "wave" },

@@ -139,7 +139,7 @@ export function TeamSection() {
             }
             content={
               <>
-                Leverage Dust’s Slack&nbsp;integration, API, and&nbsp;Dust Apps
+                Leverage Dust’s Slack&nbsp;integration, API, and&nbsp;Dust Apps
                 to&nbsp;bring Dust where you&nbsp;need&nbsp;it.
               </>
             }
