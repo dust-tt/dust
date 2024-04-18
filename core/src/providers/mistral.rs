@@ -1,9 +1,14 @@
 use super::llm::{ChatFunction, ChatFunctionCall, ChatMessage};
-use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
+use super::sentencepiece::sentencepiece::{
+    decode_async, encode_async, mistral_instruct_tokenizer_240216_model_v2_base_singleton,
+    mistral_instruct_tokenizer_240216_model_v3_base_singleton,
+    mistral_tokenizer_model_v1_base_singleton, tokenize_async,
+};
+
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{p50k_base_singleton, CoreBPE};
+
 use crate::run::Credentials;
 use crate::utils::ParseError;
 use crate::utils::{self, now};
@@ -14,6 +19,7 @@ use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use hyper::{body::Buf, Uri};
 use parking_lot::{Mutex, RwLock};
+use sentencepiece::SentencePieceProcessor;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -398,8 +404,21 @@ impl MistralAILLM {
         Ok(mistral_messages)
     }
 
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        return p50k_base_singleton();
+    fn tokenizer(&self) -> Arc<RwLock<SentencePieceProcessor>> {
+        if self.id.starts_with("mistral-tiny")
+            || self.id.starts_with("mistral-embed")
+            || self.id.starts_with("open-mistral-7b")
+            || self.id.starts_with("open-mixtral-8x7b")
+        {
+            return mistral_tokenizer_model_v1_base_singleton();
+        }
+
+        if self.id.starts_with("open-mixtral-8x22b") {
+            return mistral_instruct_tokenizer_240216_model_v3_base_singleton();
+        }
+
+        // default to v2 tokenizer (mistral-small, mistral-medium, mistral-large)
+        return mistral_instruct_tokenizer_240216_model_v2_base_singleton();
     }
 
     async fn streamed_chat_completion(
