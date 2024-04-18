@@ -58,6 +58,9 @@ const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
 const MAX_PENDING_UPSERT_ACTIVITIES = 5;
 
+// If set to true, the workflow will process all discovered resources until empty.
+const PROCESS_ALL_DISCOVERED_RESOURCES = false;
+
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
 );
@@ -206,7 +209,7 @@ export async function notionSyncWorkflow({
             forceResync,
           });
         }
-      } while (discoveredResources);
+      } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
     }
 
     // Compute parents after all documents are added/updated.
