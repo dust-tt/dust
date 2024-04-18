@@ -149,8 +149,6 @@ pub struct OpenAIToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIToolCall {
-    // TODO:
-    // id: Option<String>,
     r#type: OpenAIToolType,
     pub function: OpenAIToolCallFunction,
 }
@@ -169,6 +167,9 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
     }
 }
 
+// This code performs a type conversion with information loss when converting to ChatFunctionCall.
+// It only supports one tool call, so it takes the first one from the vector of OpenAIToolCall,
+// hence potentially discarding other tool calls.
 impl TryFrom<&Vec<OpenAIToolCall>> for ChatFunctionCall {
     type Error = anyhow::Error;
 
@@ -1372,7 +1373,7 @@ async fn streamed_chat_completion_with_tools(
                             }
                         };
 
-                        println!("CHUNK: {:?}", chunk);
+                        // println!("CHUNK: {:?}", chunk);
 
                         // Only stream if choices is length 1 but should always be the case.
                         match event_sender.as_ref() {
@@ -1865,9 +1866,6 @@ impl OpenAILLM {
             .map(OpenAITool::try_from)
             .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-        println!("FUNCTIONS: {:?} {:?}", function_call, functions);
-        println!("TOOLS: {:?} {:?}", tool_choice, tools);
-
         let openai_messages = self.to_openai_messages(messages)?;
 
         let c = match event_sender {
@@ -1934,7 +1932,7 @@ impl OpenAILLM {
             }
         };
 
-        println!("COMPLETION(using tools): {:?}", c);
+        // println!("COMPLETION(using tools): {:?}", c);
 
         assert!(c.choices.len() > 0);
 
