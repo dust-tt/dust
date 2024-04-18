@@ -149,7 +149,7 @@ export async function processGoogleDriveTranscriptActivity(
   const extraInstructions =
     "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
 
-  const dust = new DustAPI(
+  const dustAPI = new DustAPI(
     {
       workspaceId: config.getLabsWorkspaceId(),
       apiKey: config.getLabsApiKey(),
@@ -168,7 +168,7 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const convRes = await dust.createConversation({
+  const convRes = await dustAPI.createConversation({
     title: null,
     visibility: "unlisted",
     message: {

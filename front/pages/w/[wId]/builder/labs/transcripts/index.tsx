@@ -320,8 +320,9 @@ export default function LabsTranscriptsIndex({
                     <Page.P>
                       When enabled, each new meeting transcript in 'My Drive'
                       will be processed.
-                      <br/>
-                      Summaries can take up to 30 minutes to be sent after meetings end.
+                      <br />
+                      Summaries can take up to 30 minutes to be sent after
+                      meetings end.
                     </Page.P>
                   </Page.Layout>
                 </Page.Layout>
