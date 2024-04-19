@@ -69,8 +69,6 @@ export async function renderConversationForModel({
 > {
   const messages: ModelMessageType[] = [];
 
-  let retrievalFound = false;
-
   // Render all messages and all actions but only keep the latest retrieval action.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
     const versions = conversation.content[i];
@@ -86,10 +84,7 @@ export async function renderConversationForModel({
       }
       if (m.action) {
         if (isRetrievalActionType(m.action)) {
-          if (!retrievalFound) {
-            messages.unshift(renderRetrievalActionForModel(m.action));
-            retrievalFound = true;
-          }
+          messages.unshift(renderRetrievalActionForModel(m.action));
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
         } else if (isTablesQueryActionType(m.action)) {
