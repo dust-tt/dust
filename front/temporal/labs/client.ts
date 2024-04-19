@@ -8,7 +8,7 @@ import { QUEUE_NAME } from "@app/temporal/labs/config";
 import {
   makeProcessTranscriptWorkflowId,
   makeRetrieveTranscriptWorkflowId,
-} from "@app/temporal/labs/types";
+} from "@app/temporal/labs/utils";
 import {
   processTranscriptWorkflow,
   retrieveNewTranscriptsWorkflow,
