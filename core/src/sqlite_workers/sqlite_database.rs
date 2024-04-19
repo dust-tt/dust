@@ -244,11 +244,14 @@ async fn create_in_memory_sqlite_db(
             .iter()
             .filter(|(_, rows)| !rows.is_empty())
             .map(|(table, rows)| {
+                let table_name = unique_table_names
+                    .get(&table.unique_id())
+                    .expect("Unreachable: table name not found in unique_table_names");
                 if table.schema_cached().is_none() {
-                    Err(anyhow!("No cached schema found for table {}", table.name()))?;
+                    Err(anyhow!("No cached schema found for table {}", table_name))?;
                 }
                 let table_schema = table.schema_cached().unwrap();
-                let (sql, field_names) = table_schema.get_insert_sql(table.name());
+                let (sql, field_names) = table_schema.get_insert_sql(table_name);
                 let mut stmt = conn.prepare(&sql)?;
 
                 rows.par_iter()
