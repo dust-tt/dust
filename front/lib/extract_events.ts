@@ -278,7 +278,7 @@ export async function _logDebugEventOnSlack({
           text: "Event",
           emoji: true,
         },
-        url: URL + `/w/${wId}/u/extract/events/${event.sId}/edit`,
+        url: URL + `/w/${wId}/builder/labs/extract/events/${event.sId}/edit`,
       },
     },
   ];

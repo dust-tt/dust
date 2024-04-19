@@ -304,5 +304,5 @@ export async function processGoogleDriveTranscriptActivity(
     html: `${fullAnswer}<br>` + `The Dust team`,
   };
 
-  await sendEmail(transcriptsConfiguration.emailToNotify || user.email, msg);
+  await sendEmail(user.email, msg);
 }

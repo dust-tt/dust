@@ -162,7 +162,7 @@ export default function AppExtractEventsReadData({
                       )}
                     >
                       <Link
-                        href={`/w/${owner.sId}/u/extract/events/${event.sId}/edit`}
+                        href={`/w/${owner.sId}/builder/labs/extract/events/${event.sId}/edit`}
                         className="block"
                       >
                         <EventProperties event={event} />
@@ -201,7 +201,7 @@ export default function AppExtractEventsReadData({
                           }
                           onClick={() =>
                             router.push(
-                              `/w/${owner.sId}/u/extract/events/${event.sId}/edit`
+                              `/w/${owner.sId}/builder/labs/extract/events/${event.sId}/edit`
                             )
                           }
                           disabled={isProcessing}
@@ -231,7 +231,7 @@ export default function AppExtractEventsReadData({
           </table>
         </div>
         <Button
-          onClick={() => router.push(`/w/${owner.sId}/u/extract`)}
+          onClick={() => router.push(`/w/${owner.sId}/builder/labs/extract`)}
           label="Back"
           variant="secondary"
         />

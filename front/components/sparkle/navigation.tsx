@@ -69,7 +69,7 @@ export type SparkleAppLayoutNavigation = {
 };
 
 export type SidebarNavigation = {
-  id: "assistants" | "data_sources" | "workspace" | "developers" | "lab";
+  id: "assistants" | "data_sources" | "workspace" | "developers" | "beta";
   label: string | null;
   variant: "primary" | "secondary";
   menus: SparkleAppLayoutNavigation[];
@@ -205,20 +205,33 @@ export const subNavigationBuild = ({
     ],
   });
 
-  if (isDevelopmentOrDustWorkspace(owner)) {
+  const hasBetaAccess =
+    owner.flags?.some((flag: string) => flag.startsWith("labs_")) ||
+    isDevelopmentOrDustWorkspace(owner);
+
+  const betaMenus: SparkleAppLayoutNavigation[] = [];
+
+  if (hasBetaAccess) {
+    if (
+      owner.flags.includes("labs_extract") ||
+      isDevelopmentOrDustWorkspace(owner)
+    ) {
+      betaMenus.push({
+        id: "extract",
+        label: "Extract",
+        icon: ArrowUpOnSquareIcon,
+        href: `/w/${owner.sId}/builder/labs/extract`,
+        current: current === "extract",
+        subMenuLabel: current === "extract" ? subMenuLabel : undefined,
+        subMenu: current === "extract" ? subMenu : undefined,
+      });
+    }
+
     nav.push({
-      id: "lab",
-      label: "Lab (Dust Only)",
+      id: "beta",
+      label: "Beta",
       variant: "secondary",
-      menus: [
-        {
-          id: "extract",
-          label: "Extract",
-          icon: ArrowUpOnSquareIcon,
-          href: `/w/${owner.sId}/u/extract`,
-          current: current === "extract",
-        },
-      ],
+      menus: betaMenus,
     });
   }
 

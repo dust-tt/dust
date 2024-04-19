@@ -24,13 +24,14 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
+  showFooterButtons = true,
   size = "md",
 }: {
   owner: WorkspaceType;
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
-  showBuilderButtons?: boolean;
+  showFooterButtons?: boolean;
   size?: "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
@@ -98,28 +99,30 @@ export function AssistantPicker({
               </>
             }
             bottomBar={
-              <div className="flex border-t border-structure-50 p-2">
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
-                >
-                  <Button
-                    label="Create"
-                    size="xs"
-                    variant="primary"
-                    icon={PlusIcon}
-                    className="mr-2"
-                  />
-                </Link>
-                <div className="s-flex-grow" />
-                <Link href={`/w/${owner.sId}/assistant/assistants`}>
-                  <Button
-                    label="My Assistants"
-                    size="xs"
-                    variant="tertiary"
-                    icon={ListIcon}
-                  />
-                </Link>
-              </div>
+              showFooterButtons && (
+                <div className="flex border-t border-structure-50 p-2">
+                  <Link
+                    href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                  >
+                    <Button
+                      label="Create"
+                      size="xs"
+                      variant="primary"
+                      icon={PlusIcon}
+                      className="mr-2"
+                    />
+                  </Link>
+                  <div className="s-flex-grow" />
+                  <Link href={`/w/${owner.sId}/assistant/assistants`}>
+                    <Button
+                      label="My Assistants"
+                      size="xs"
+                      variant="tertiary"
+                      icon={ListIcon}
+                    />
+                  </Link>
+                </div>
+              )
             }
           >
             {searchedAssistants.map((c) => (
