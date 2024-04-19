@@ -70,7 +70,7 @@ export const timeAgoFrom = (
   }
   if (minutes > 0) {
     return `${minutes}${
-      useLongFormat ? maybePlural(minutes, " minute") : "mn"
+      useLongFormat ? maybePlural(minutes, " minute") : "min"
     }`;
   }
   return seconds + "s";
