@@ -231,7 +231,7 @@ export default function LabsTranscriptsIndex({
     try {
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
-        `labs-transcripts-w${owner.id}-u${user.id}`,
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         provider
       );
       const {
