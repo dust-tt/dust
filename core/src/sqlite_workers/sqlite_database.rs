@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    databases::database::{QueryResult, Row, Table},
+    databases::database::{get_unique_table_names_for_database, QueryResult, Row, Table},
     databases_store::store::DatabasesStore,
     utils,
 };
@@ -206,6 +206,7 @@ async fn create_in_memory_sqlite_db(
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
+        let unique_table_names = get_unique_table_names_for_database(&tables);
         let create_tables_sql: String = tables
             .into_iter()
             .filter_map(|t| match t.schema_cached() {
@@ -213,7 +214,10 @@ async fn create_in_memory_sqlite_db(
                     if s.is_empty() {
                         None
                     } else {
-                        Some(s.get_create_table_sql_string(t.name()))
+                        let table_name = unique_table_names
+                            .get(&t.unique_id())
+                            .expect("Unreachable: table name not found in unique_table_names");
+                        Some(s.get_create_table_sql_string(table_name))
                     }
                 }
                 None => None,

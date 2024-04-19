@@ -1,6 +1,6 @@
 use super::helpers::get_data_source_project;
 use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::Table;
+use crate::databases::database::{get_unique_table_names_for_database, Table};
 use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
@@ -74,6 +74,9 @@ impl Block for DatabaseSchema {
 
         let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
+        // Compute the unique table names for each table.
+        let unique_table_names = get_unique_table_names_for_database(&tables);
+
         // Load the schema for each table.
         // If the schema cache is stale, this will update it in place.
         try_join_all(
@@ -88,9 +91,12 @@ impl Block for DatabaseSchema {
                 tables
                     .into_iter()
                     .map(|t| {
+                        let unique_table_name = unique_table_names
+                            .get(&t.unique_id())
+                            .expect("Unreachable: missing unique table name.");
                         json!({
                             "table_schema": t.schema_cached(),
-                            "dbml": t.render_dbml(),
+                            "dbml": t.render_dbml(Some(&unique_table_name)),
                         })
                     })
                     .collect::<Vec<_>>(),

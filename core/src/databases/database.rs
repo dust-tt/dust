@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::table_schema::TableSchema;
 use crate::{
     databases_store::store::DatabasesStore,
@@ -196,12 +198,16 @@ impl Table {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
     }
 
-    pub fn render_dbml(&self) -> String {
+    pub fn render_dbml(&self, name: Option<&str>) -> String {
+        let name = match name {
+            Some(name) => name,
+            None => self.name(),
+        };
         match self.schema {
-            None => format!("Table {} {{\n}}", self.name()),
+            None => format!("Table {} {{\n}}", name),
             Some(ref schema) => format!(
                 "Table {} {{\n{}\n\n  Note: '{}'\n}}",
-                self.name(),
+                name,
                 schema
                     .columns()
                     .iter()
@@ -448,6 +454,28 @@ impl HasValue for QueryResult {
     }
 }
 
+pub fn get_unique_table_names_for_database(tables: &[Table]) -> HashMap<String, String> {
+    let mut name_count: HashMap<&str, usize> = HashMap::new();
+
+    tables
+        .iter()
+        .sorted_by_key(|table| table.unique_id())
+        .map(|table| {
+            let base_name = table.name();
+            let count = name_count.entry(base_name).or_insert(0);
+            *count += 1;
+
+            (
+                table.unique_id(),
+                match *count {
+                    1 => base_name.to_string(),
+                    _ => format!("{}_{}", base_name, *count - 1),
+                },
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -496,7 +524,7 @@ mod tests {
   Note: 'Test records for DBML rendering'
 }"#
         .to_string();
-        assert_eq!(table.render_dbml(), expected);
+        assert_eq!(table.render_dbml(None), expected);
 
         Ok(())
     }

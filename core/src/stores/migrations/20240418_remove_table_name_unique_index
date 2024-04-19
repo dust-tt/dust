@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_tables_data_source_table_name;
