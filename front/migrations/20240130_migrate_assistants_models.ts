@@ -1,4 +1,4 @@
-import { GPT_4_TURBO_PREVIEW_MODEL_ID } from "@dust-tt/types";
+import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 
 import {
@@ -13,7 +13,7 @@ const { LIVE, WORKSPACE } = process.env;
 
 // GPT-4 and GPT-4-32k are being replaced by GPT-4-1106-preview
 const FROM_MODELS = ["gpt-4-1106-preview"] as string[];
-const TO_MODEL = GPT_4_TURBO_PREVIEW_MODEL_ID;
+const TO_MODEL = GPT_4_TURBO_MODEL_ID;
 
 // GPT-3.5 Turbo and GPT-3.5 Turbo 16k are being replaced by GPT-3.5 Turbo 1106
 // const FROM_MODELS = ["gpt-3.5-turbo", "gpt-3.5-turbo-16k"];
