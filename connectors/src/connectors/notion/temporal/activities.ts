@@ -2445,10 +2445,7 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   const tableId = getNotionDatabaseTableId(database.notionDatabaseId);
   const name =
     database.title ?? `Untitled Database (${database.notionDatabaseId})`;
-  const tableName = makeStructuredDataTableName(
-    name,
-    database.notionDatabaseId
-  );
+  const tableName = makeStructuredDataTableName(name);
 
   const tableDescription = `Structured data from Notion Database ${tableName}`;
   return { databaseName: name, tableId, tableName, tableDescription };

@@ -54,10 +54,7 @@ async function upsertTable(
   const tableId = getGoogleSheetTableId(spreadsheet.id, id);
 
   const name = `${spreadsheet.title} - ${title}`;
-  const tableName = makeStructuredDataTableName(
-    name,
-    `${spreadsheet.id}-${sheet.id}`
-  );
+  const tableName = makeStructuredDataTableName(name);
 
   const tableDescription = `Structured data from the Google Spreadsheet (${spreadsheet.title}) and sheet (${title}`;
 
