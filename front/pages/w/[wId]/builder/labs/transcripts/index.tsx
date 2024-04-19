@@ -264,7 +264,7 @@ export default function LabsTranscriptsIndex({
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
                   disabled={
-                    islabsConfigurationLoading ||
+                    isTranscriptsConfigurationLoading ||
                     transcriptsConfigurationState?.isGDriveConnected
                   }
                   onClick={async () => {
@@ -274,7 +274,7 @@ export default function LabsTranscriptsIndex({
               </div>
             </Page.Layout>
           </Page.Layout>
-          {!islabsConfigurationLoading &&
+          {!isTranscriptsConfigurationLoading &&
             transcriptsConfigurationState.isGDriveConnected && (
               <>
                 <Page.Layout direction="vertical">
