@@ -211,11 +211,6 @@ export async function* runTablesQuery(
     tables,
   };
 
-  // TODO(2024-04-19 flav) Delete.
-  if (isDevelopmentOrDustWorkspace(owner)) {
-    config.MODEL.use_tools = true;
-  }
-
   // Running the app
   const res = await runActionStreamed(
     auth,
