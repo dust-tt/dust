@@ -66,7 +66,7 @@ export default function Pricing() {
         title={
           <>
             Meet our pricing plans.
-            <div className="pt-2">
+            <div className="pt-4">
               <Button
                 variant="primary"
                 size="md"

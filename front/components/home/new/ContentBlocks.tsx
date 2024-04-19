@@ -14,7 +14,7 @@ import { classNames } from "@app/lib/utils";
 interface ImgBlockProps {
   children?: React.ReactNode;
   title: React.ReactNode;
-  content: React.ReactNode;
+  content: React.ReactNode | React.ReactNode[];
   className?: string;
 }
 
@@ -24,14 +24,26 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   content,
   className = "",
 }) => {
+  const renderContent = () => {
+    if (Array.isArray(content)) {
+      return content.map((item, index) => (
+        <P key={index} size="md">
+          {item}
+        </P>
+      ));
+    } else {
+      return <P size="md">{content}</P>;
+    }
+  };
+
   return (
     <div className={classNames("flex flex-col gap-12", className)}>
       <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
         {children ? children : null}
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2 lg:gap-4">
         <H3 className="text-white">{title}</H3>
-        <P size="md">{content}</P>
+        {renderContent()}
       </div>
     </div>
   );

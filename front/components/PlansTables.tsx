@@ -293,11 +293,10 @@ export function PricePlans({
               className={({ selected }) =>
                 classNames(
                   "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-2 text-sm",
-                  "md:py-3 md:text-lg",
+                  "py-3 text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-sky-400 text-white shadow dark:bg-sky-500"
+                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
                     : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
               }
@@ -308,8 +307,7 @@ export function PricePlans({
               className={({ selected }) =>
                 classNames(
                   "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-2 text-sm",
-                  "md:py-3 md:text-lg",
+                  "py-3 text-lg",
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-pink-400 text-white shadow dark:bg-pink-500"

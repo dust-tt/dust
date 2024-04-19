@@ -21,7 +21,7 @@ export const Grid = ({
   children,
   verticalAlign = "top",
   className = "",
-  gap = "gap-8 md:gap-y-12",
+  gap = "sm:gap-8 md:gap-y-12",
 }: ContentProps) => (
   <div
     className={classNames(
