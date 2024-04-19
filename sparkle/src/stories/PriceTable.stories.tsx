@@ -15,29 +15,14 @@ export const PricingXS = () => {
     <div className="s-h-full s-w-full">
       <PriceTable.Container>
         <PriceTable
-          title="Test"
-          price="0€"
-          priceLabel="/ month"
-          color="emerald"
-        >
-          <PriceTable.Item label="Single member / workspace" variant="dash" />
-          <PriceTable.Item label="Unlimited custom assistants" />
-          <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
-          <PriceTable.Item label="20 messages a week" variant="dash" />
-          <PriceTable.Item label="Static Data Sources (35Mo)" variant="dash" />
-          <PriceTable.Item label="Connected Data Sources" variant="xmark" />
-          <PriceTable.ActionContainer>
-            <div className="s-h-9 s-text-base s-font-bold s-text-element-600">
-              Your current plan
-            </div>
-          </PriceTable.ActionContainer>
-        </PriceTable>
-        <PriceTable
           title="Business"
           price="0€"
-          color="sky"
+          color="emerald"
           priceLabel="/ month / seat"
         >
+          <PriceTable.ActionContainer position="top">
+            <Button size="sm" variant="primary" label="Start Now" />
+          </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited custom assistants" />
           <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
@@ -46,10 +31,13 @@ export const PricingXS = () => {
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
           <PriceTable.ActionContainer>
-            <Button size="sm" variant="primary" label="Select this plan" />
+            <Button size="sm" variant="primary" label="Start Now" />
           </PriceTable.ActionContainer>
         </PriceTable>
         <PriceTable title="Enterprise" price="Custom">
+          <PriceTable.ActionContainer position="top">
+            <Button size="sm" variant="primary" label="Start Now" />
+          </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited workspaces" />
           <PriceTable.Item label="Unlimited custom assistants" />
@@ -60,7 +48,7 @@ export const PricingXS = () => {
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
           <PriceTable.ActionContainer>
-            <Button size="sm" variant="secondary" label="Contact us" />
+            <Button size="sm" variant="primary" label="Contact us" />
           </PriceTable.ActionContainer>
         </PriceTable>
       </PriceTable.Container>
@@ -73,31 +61,15 @@ export const PricingSM = () => {
     <div className="s-h-full s-w-full">
       <PriceTable.Container>
         <PriceTable
-          title="Test"
-          price="0€"
-          priceLabel="/ month"
-          color="emerald"
-          size="sm"
-        >
-          <PriceTable.Item label="Single member / workspace" variant="dash" />
-          <PriceTable.Item label="Unlimited custom assistants" />
-          <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
-          <PriceTable.Item label="20 messages a week" variant="dash" />
-          <PriceTable.Item label="Static Data Sources (35Mo)" variant="dash" />
-          <PriceTable.Item label="Connected Data Sources" variant="xmark" />
-          <PriceTable.ActionContainer>
-            <div className="s-h-9 s-text-base s-font-bold s-text-element-600">
-              Your current plan
-            </div>
-          </PriceTable.ActionContainer>
-        </PriceTable>
-        <PriceTable
-          title="Business"
-          price="0€"
+          title="pro"
+          price="29€"
           color="sky"
           priceLabel="/ month / seat"
           size="sm"
         >
+          <PriceTable.ActionContainer position="top">
+            <Button size="md" variant="primary" label="Select this plan" />
+          </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited custom assistants" />
           <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
@@ -110,6 +82,9 @@ export const PricingSM = () => {
           </PriceTable.ActionContainer>
         </PriceTable>
         <PriceTable title="Enterprise" price="Custom" size="sm">
+          <PriceTable.ActionContainer position="top">
+            <Button size="md" variant="primary" label="Contact us" />
+          </PriceTable.ActionContainer>
           <PriceTable.Item label="Unlimited members / workspace" />
           <PriceTable.Item label="Unlimited workspaces" />
           <PriceTable.Item label="Unlimited custom assistants" />
@@ -120,7 +95,7 @@ export const PricingSM = () => {
           <PriceTable.Item label="1 user" />
           <PriceTable.Item label="1 user" />
           <PriceTable.ActionContainer>
-            <Button size="md" variant="secondary" label="Contact us" />
+            <Button size="md" variant="primary" label="Contact us" />
           </PriceTable.ActionContainer>
         </PriceTable>
       </PriceTable.Container>
