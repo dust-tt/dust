@@ -68,8 +68,8 @@ const PRO_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Single Sign-on (Google, GitHub)",
-    variant: "check",
+    label: "Google & GitHub Authentication",
+    variant: "dash",
     display: ["landing", "subscribe"],
   },
   {
@@ -131,7 +131,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Single Sign-on",
+    label: "Single Sign-On (SSO)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -181,7 +181,7 @@ export function ProPriceTable({
       magnified={false}
     >
       {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-        <PriceTable.ActionContainer>
+        <PriceTable.ActionContainer position="top">
           <Button
             variant="primary"
             size={biggerButtonSize}
@@ -228,7 +228,7 @@ function EnterprisePriceTable({
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
-      <PriceTable.ActionContainer>
+      <PriceTable.ActionContainer position="top">
         {onClick && (
           <Button
             variant="primary"
