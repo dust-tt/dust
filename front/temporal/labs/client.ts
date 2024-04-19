@@ -1,6 +1,8 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { WorkflowHandle} from "@temporalio/client";
+import {WorkflowNotFoundError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -26,6 +28,7 @@ export async function launchRetrieveTranscriptsWorkflow({
   const client = await getTemporalClient();
   const workflowId = makeRetrieveTranscriptWorkflowId({
     providerId,
+    workspaceId,
     userId,
   });
 
@@ -110,3 +113,43 @@ export async function launchProcessTranscriptWorkflow({
     return new Err(e as Error);
   }
 }
+
+export async function stopRetrieveTranscriptsWorkflow({
+  userId,
+  workspaceId,
+  providerId,
+}: {
+  userId: ModelId;
+  workspaceId: ModelId;
+  providerId: LabsTranscriptsProviderType;
+}): Promise<Result<void, Error>> {
+  const client = await getTemporalClient();
+  const workflowId = makeRetrieveTranscriptWorkflowId({
+    providerId,
+    workspaceId,
+    userId,
+  });
+
+  try {
+    const handle: WorkflowHandle<typeof intercomSyncWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        error: e,
+      },
+      "[Intercom] Failed stopping workflow."
+    );
+    return new Err(e as Error);
+  }
+}
+
