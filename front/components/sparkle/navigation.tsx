@@ -205,9 +205,10 @@ export const subNavigationBuild = ({
     ],
   });
 
-  const hasBetaAccess = owner.flags?.some((flag: string) =>
-    flag.startsWith("labs_")
-  );
+  const hasBetaAccess =
+    owner.flags?.some((flag: string) => flag.startsWith("labs_")) ||
+    isDevelopmentOrDustWorkspace(owner);
+
   const betaMenus: SparkleAppLayoutNavigation[] = [];
 
   if (hasBetaAccess) {
