@@ -4,7 +4,9 @@
 
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 
-export const GPT_4_TURBO_PREVIEW_MODEL_ID = "gpt-4-turbo-preview" as const;
+export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
+export const DEPRECATED_GPT_4_TURBO_PREVIEW_MODEL_ID =
+  "gpt-4-turbo-preview" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 
 const GPT_4_DESCRIPTION =
@@ -13,7 +15,18 @@ const GPT_4_SHORT_DESCRIPTION = "OpenAI's smartest model.";
 
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai" as const,
-  modelId: GPT_4_TURBO_PREVIEW_MODEL_ID,
+  modelId: GPT_4_TURBO_MODEL_ID,
+  displayName: "GPT 4",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  largeModel: true,
+  description: GPT_4_DESCRIPTION,
+  shortDescription: GPT_4_SHORT_DESCRIPTION,
+};
+
+export const TO_REMOVE_DEPRECATED_GPT_4_TURBO_PREVIEW_MODEL_CONFIG = {
+  providerId: "openai" as const,
+  modelId: DEPRECATED_GPT_4_TURBO_PREVIEW_MODEL_ID,
   displayName: "GPT 4",
   contextSize: 128_000,
   recommendedTopK: 32,
@@ -155,6 +168,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
 export const SUPPORTED_MODEL_CONFIGS = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  TO_REMOVE_DEPRECATED_GPT_4_TURBO_PREVIEW_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
