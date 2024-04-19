@@ -40,7 +40,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  if (!owner || !subscription || !owner.flags.includes("labs_transcripts")) {
+  if (
+    !owner ||
+    !owner.flags.includes("labs_transcripts") ||
+    !subscription ||
+    !user
+  ) {
     return {
       notFound: true,
     };
@@ -74,11 +79,14 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
-  const { transcriptsConfiguration, isTranscriptsConfigurationLoading } =
-    useLabsTranscriptsConfiguration({
-      workspaceId: owner.sId,
-      provider,
-    });
+  const {
+    transcriptsConfiguration,
+    isTranscriptsConfigurationLoading,
+    mutateTranscriptsConfiguration,
+  } = useLabsTranscriptsConfiguration({
+    workspaceId: owner.sId,
+    provider,
+  });
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
@@ -110,27 +118,30 @@ export default function LabsTranscriptsIndex({
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
   const makePatchRequest = async (data: any, successMessage: string) => {
-    await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
-    }).then((response) => {
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update",
-          description: "Could not update the configuration. Please try again.",
-        });
-        return;
-      }
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: successMessage,
-      });
     });
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the configuration. Please try again.",
+      });
+      return;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: successMessage,
+    });
+
+    await mutateTranscriptsConfiguration();
   };
 
   const updateAssistant = async (assistant: LightAgentConfigurationType) => {
@@ -204,6 +215,8 @@ export default function LabsTranscriptsIndex({
         ...transcriptsConfigurationState,
         isGDriveConnected: true,
       });
+
+      await mutateTranscriptsConfiguration();
     }
 
     return response;
