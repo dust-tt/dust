@@ -4,7 +4,7 @@ import type {
   NotionGarbageCollectionMode,
 } from "@dust-tt/types";
 import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
-import { assertNever, getNotionDatabaseTableId } from "@dust-tt/types";
+import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -65,7 +65,6 @@ import {
 } from "@connectors/lib/models/notion";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { redisClient } from "@connectors/lib/redis";
-import { makeStructuredDataTableName } from "@connectors/lib/structured_data";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -2445,10 +2444,7 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   const tableId = getNotionDatabaseTableId(database.notionDatabaseId);
   const name =
     database.title ?? `Untitled Database (${database.notionDatabaseId})`;
-  const tableName = makeStructuredDataTableName(
-    name,
-    database.notionDatabaseId
-  );
+  const tableName = slugify(name.substring(0, 32));
 
   const tableDescription = `Structured data from Notion Database ${tableName}`;
   return { databaseName: name, tableId, tableName, tableDescription };
