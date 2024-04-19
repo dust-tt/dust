@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 
+import { Button } from "@sparkle/_index";
 import { Check, Dash, XMark } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -190,21 +191,29 @@ PriceTable.Item = function ({
 interface PriceTableActionContainerProps {
   children: ReactNode;
   size?: "xs" | "sm";
+  position?: "top" | "bottom";
 }
 
 PriceTable.ActionContainer = function ({
   children,
   size = "xs",
+  position = "bottom",
 }: PriceTableActionContainerProps) {
   return (
-    <div
-      className={classNames(
-        "s-flex s-w-full s-flex-grow s-justify-center s-px-2",
-        size === "xs" ? "s-py-2" : "s-py-4"
-      )}
-    >
-      <div className="s-flex s-h-full s-flex-col s-justify-end">{children}</div>
-    </div>
+    <>
+      {position === "bottom" ? <div className="s-h-full s-w-full" /> : null}
+      <div
+        className={classNames(
+          "s-flex s-w-full s-justify-center s-px-2",
+          size === "xs" ? "s-py-2" : "s-py-4",
+          position === "top" ? "s-border-b s-border-structure-100" : ""
+        )}
+      >
+        <div className="s-flex s-h-full s-flex-col s-justify-end">
+          {children}
+        </div>
+      </div>
+    </>
   );
 };
 
