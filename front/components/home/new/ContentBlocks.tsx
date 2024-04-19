@@ -310,14 +310,24 @@ export const ContentAssistantBlock = ({
       <div className={classNames("flex grow basis-0 gap-8 p-8", contentFinal)}>
         {content}
       </div>
+
       <div
         className={classNames(
-          "flex grow basis-0 justify-end gap-8 border border-slate-800/10 bg-gradient-to-br p-8",
-          assistantFinal,
+          "flex grow basis-0 flex-col gap-4 border border-slate-800/10 bg-gradient-to-br p-8 pt-6",
           assistantColor[color]
         )}
       >
-        {assistant}
+        <div className="text-sm uppercase text-slate-800/60">
+          The assistant(s) for the job:
+        </div>
+        <div
+          className={classNames(
+            "flex grow basis-0 justify-start gap-8",
+            assistantFinal
+          )}
+        >
+          {assistant}
+        </div>
       </div>
     </div>
   );
@@ -359,7 +369,12 @@ export const DroidItem = ({
   className?: string;
 }) => {
   return (
-    <div className={classNames("flex grow basis-0 flex-col gap-2", className)}>
+    <div
+      className={classNames(
+        "flex max-w-[500px] grow basis-0 flex-col gap-2",
+        className
+      )}
+    >
       {emoji ? (
         <Avatar size="xl" emoji={emoji} backgroundColor={avatarBackground} />
       ) : null}
