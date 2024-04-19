@@ -25,6 +25,7 @@ import {
   useAgentConfigurations,
   useLabsTranscriptsConfiguration,
 } from "@app/lib/swr";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 const provider = "google_drive";
 
@@ -117,7 +118,10 @@ export default function LabsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const makePatchRequest = async (data: any, successMessage: string) => {
+  const makePatchRequest = async (
+    data: Partial<PatchTranscriptsConfiguration>,
+    successMessage: string
+  ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "PATCH",
       headers: {
@@ -150,14 +154,15 @@ export default function LabsTranscriptsIndex({
       assistantSelected: assistant,
     });
 
-    const data = {
-      agentConfigurationId: assistant.sId,
-      provider,
-    };
     const successMessage =
       "The assistant that will help you summarize your transcripts has been set to @" +
       assistant.name;
-    await makePatchRequest(data, successMessage);
+    await makePatchRequest(
+      {
+        agentConfigurationId: assistant.sId,
+      },
+      successMessage
+    );
   };
 
   const updateIsActive = async (isActive: boolean) => {
@@ -165,16 +170,16 @@ export default function LabsTranscriptsIndex({
       ...transcriptsConfigurationState,
       isActive,
     });
-    const data = {
-      isActive,
-      agentConfigurationId:
-        transcriptsConfigurationState.assistantSelected?.sId,
-      provider,
-    };
+
     const successMessage = isActive
       ? "We will start summarizing your transcripts."
       : "We will no longer summarize your transcripts.";
-    await makePatchRequest(data, successMessage);
+    await makePatchRequest(
+      {
+        isActive,
+      },
+      successMessage
+    );
   };
 
   const handleSelectAssistant = async (

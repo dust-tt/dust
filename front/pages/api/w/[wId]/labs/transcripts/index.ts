@@ -32,6 +32,9 @@ export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableProviders,
   isActive: t.union([t.boolean, t.undefined]),
 });
+export type PatchTranscriptsConfiguration = t.TypeOf<
+  typeof PatchLabsTranscriptsConfigurationBodySchema
+>;
 
 async function handler(
   req: NextApiRequest,
