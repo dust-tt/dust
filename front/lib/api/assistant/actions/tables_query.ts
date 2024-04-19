@@ -1,4 +1,5 @@
 import type {
+  AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
@@ -6,30 +7,22 @@ import type {
   ModelMessageType,
   Result,
   TablesQueryActionType,
+  TablesQueryConfigurationType,
   TablesQueryErrorEvent,
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
-  UserMessageType,
 } from "@dust-tt/types";
-import {
-  cloneBaseConfig,
-  DustProdActionRegistry,
-  Err,
-  isTablesQueryConfiguration,
-  Ok,
-} from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
 /**
- * Model rendering of TablesQueryAction.
+ * Model rendering of TableQueries.
  */
 
 export function renderTablesQueryActionForModel(
@@ -46,18 +39,20 @@ export function renderTablesQueryActionForModel(
 
   return {
     role: "action" as const,
-    name: "TablesQuery",
+    name: "query_tables",
     content,
   };
 }
 
 /**
- * Generate the specification for the TablesQuery app.
- * This is the instruction given to the LLM to understand the task.
+ * Params generation.
  */
-function getTablesQueryAppSpecification() {
+
+// Generate the specification for the TablesQuery app. This is the instruction given to the LLM to
+// understand the task.
+async function tablesQueryActionSpecification(): Promise<AgentActionSpecification> {
   return {
-    name: "query_Tables",
+    name: "query_tables",
     description:
       "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
     inputs: [
@@ -71,60 +66,37 @@ function getTablesQueryAppSpecification() {
   };
 }
 
-/**
- * Generate the parameters for the TablesQuery app.
- */
-export async function generateTablesQueryAppParams(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType
-): Promise<
-  Result<
-    {
-      [key: string]: string | number | boolean;
-    },
-    Error
-  >
-> {
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (!isTablesQueryConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `runQueryTables`"
-    );
+// Generates the action specification for generation of rawInputs passed to `runTablesQuery`.
+export async function generateTablesQuerySpecification(
+  auth: Authenticator
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  const spec = getTablesQueryAppSpecification();
-  const rawInputsRes = await generateActionInputs(
-    auth,
-    configuration,
-    spec,
-    conversation,
-    userMessage
-  );
-
-  if (rawInputsRes.isErr()) {
-    return new Err(rawInputsRes.error);
-  }
-  return new Ok(rawInputsRes.value);
+  const spec = await tablesQueryActionSpecification();
+  return new Ok(spec);
 }
 
 /**
- * Run the TablesQuery app.
+ * Action execution.
  */
+
 export async function* runTablesQuery(
   auth: Authenticator,
   {
     configuration,
+    actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
+    rawInputs,
   }: {
     configuration: AgentConfigurationType;
+    actionConfiguration: TablesQueryConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
+    rawInputs: Record<string, string | boolean | number>;
   }
 ): AsyncGenerator<
   | TablesQueryErrorEvent
@@ -132,28 +104,12 @@ export async function* runTablesQuery(
   | TablesQueryParamsEvent
   | TablesQueryOutputEvent
 > {
-  // Checking authorizations
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (!isTablesQueryConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `runQueryTables`"
-    );
-  }
-
-  // Generating inputs
-  const inputRes = await generateTablesQueryAppParams(
-    auth,
-    configuration,
-    conversation,
-    userMessage
-  );
-  if (inputRes.isErr()) {
+  if (!rawInputs.question || typeof rawInputs.question !== "string") {
     yield {
       type: "tables_query_error",
       created: Date.now(),
@@ -161,18 +117,20 @@ export async function* runTablesQuery(
       messageId: agentMessage.sId,
       error: {
         code: "tables_query_parameters_generation_error",
-        message: `Error generating parameters for tables_query: ${inputRes.error.message}`,
+        message: `Error generating parameters for tables query: failed to generate a valid question.`,
       },
     };
     return;
   }
-  const input = inputRes.value;
+
+  const question = rawInputs.question as string;
+
   let output: Record<string, string | boolean | number> = {};
 
   // Creating action
   const action = await AgentTablesQueryAction.create({
     tablesQueryConfigurationId: configuration.sId,
-    params: input,
+    params: rawInputs,
     output,
   });
 
@@ -193,7 +151,7 @@ export async function* runTablesQuery(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-query-tables"].config
   );
-  const tables = actionConfig.tables.map((t) => ({
+  const tables = actionConfiguration.tables.map((t) => ({
     workspace_id: t.workspaceId,
     table_id: t.tableId,
     data_source_id: t.dataSourceId,
@@ -223,7 +181,7 @@ export async function* runTablesQuery(
     config,
     [
       {
-        question: input.question,
+        question,
         instructions: configuration.instructions,
       },
     ]

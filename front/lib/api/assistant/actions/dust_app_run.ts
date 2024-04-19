@@ -1,5 +1,6 @@
 import type {
   DustAppRunBlockEvent,
+  DustAppRunConfigurationType,
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
   DustAppRunSuccessEvent,
@@ -11,28 +12,20 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { isDustAppRunConfiguration } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import { getApp } from "@app/lib/api/app";
+import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import logger from "@app/logger/logger";
-
-import { getApp } from "../../app";
-import { getDatasetSchema } from "../../datasets";
-import { generateActionInputs } from "../agent";
 
 /**
  * Model rendering of DustAppRuns.
@@ -106,83 +99,67 @@ export async function dustAppRunActionSpecification(
   });
 }
 
-// Generates Dust app run parameters given the agent configuration and the conversation context.
-export async function generateDustAppRunParams(
+// Generates the action specification for generation of rawInputs passed to `runDustApp`.
+export async function generateDustAppRunSpecification(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  app: AppType,
-  schema: DatasetSchema | null
-): Promise<Result<DustAppParameters, Error>> {
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+  {
+    actionConfiguration,
+  }: {
+    actionConfiguration: DustAppRunConfigurationType;
+  }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+  }
 
-  if (!isDustAppRunConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `generateDustAppRunParams`"
+  if (owner.sId !== actionConfiguration.appWorkspaceId) {
+    return new Err(
+      new Error(
+        "Runing Dust apps that are not part of your own workspace is not supported yet."
+      )
     );
   }
 
-  const specRes = await dustAppRunActionSpecification(app, schema);
-  if (specRes.isErr()) {
-    return new Err(specRes.error);
+  const app = await getApp(auth, actionConfiguration.appId);
+  if (!app) {
+    return new Err(
+      new Error(
+        "Failed to retrieve Dust app " +
+          `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId}`
+      )
+    );
   }
 
-  if (specRes.value.inputs.length > 0) {
-    const now = Date.now();
+  // Parse the specifiaction of the app.
+  const appSpec = JSON.parse(
+    app.savedSpecification || "[]"
+  ) as SpecificationType;
 
-    const rawInputsRes = await generateActionInputs(
-      auth,
-      configuration,
-      specRes.value,
-      conversation,
-      userMessage
-    );
+  const appConfig = extractConfig(JSON.parse(app.savedSpecification || "{}"));
 
-    if (rawInputsRes.isOk()) {
-      const rawInputs = rawInputsRes.value;
-      logger.info(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-        },
-        "[ASSISTANT_TRACE] DustAppRun action inputs generation"
+  let schema: DatasetSchema | null = null;
+
+  const inputSpec = appSpec.find((b) => b.type === "input");
+  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
+  const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
+
+  if (datasetName) {
+    // We have a dataset name we need to find associated schema.
+    schema = await getDatasetSchema(auth, app, datasetName);
+    if (!schema) {
+      return new Err(
+        new Error(
+          "Failed to retrieve schema for Dust app: " +
+            `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId} ` +
+            `dataset=${datasetName}` +
+            " (make sure you have set descriptions in your app input block dataset)"
+        )
       );
-
-      // Check that all inputs are accounted for.
-      const inputs: DustAppParameters = {};
-
-      for (const k of specRes.value.inputs) {
-        if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
-          inputs[k.name] = rawInputs[k.name];
-        } else {
-          return new Err(
-            new Error(
-              `Failed to generate input ${k.name} (expected type ${
-                k.type
-              }, got ${rawInputs[k.name]})`
-            )
-          );
-        }
-      }
-
-      return new Ok(inputs);
     }
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        elapsed: Date.now() - now,
-        error: rawInputsRes.error,
-      },
-      "Error generating DustAppRun action inputs"
-    );
-
-    return new Err(rawInputsRes.error);
   }
 
-  return new Ok({});
+  return dustAppRunActionSpecification(app, schema);
 }
 
 /**
@@ -226,14 +203,18 @@ export async function* runDustApp(
   auth: Authenticator,
   {
     configuration,
+    actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
+    spec,
+    rawInputs,
   }: {
     configuration: AgentConfigurationType;
+    actionConfiguration: DustAppRunConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
+    spec: AgentActionSpecification;
+    rawInputs: Record<string, string | boolean | number>;
   }
 ): AsyncGenerator<
   | DustAppRunParamsEvent
@@ -247,28 +228,7 @@ export async function* runDustApp(
     throw new Error("Unexpected unauthenticated call to `runDustApp`");
   }
 
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (!isDustAppRunConfiguration(actionConfig)) {
-    throw new Error("Unexpected action configuration received in `runDustApp`");
-  }
-
-  if (owner.sId !== actionConfig.appWorkspaceId) {
-    yield {
-      type: "dust_app_run_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "dust_app_run_workspace_error",
-        message:
-          "Runing Dust apps that are not part of your own workspace is not supported yet.",
-      },
-    };
-    return;
-  }
-
-  const app = await getApp(auth, actionConfig.appId);
+  const app = await getApp(auth, actionConfiguration.appId);
   if (!app) {
     yield {
       type: "dust_app_run_error",
@@ -276,79 +236,48 @@ export async function* runDustApp(
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "dust_app_run_app_error",
-        message: `Failed to retrieve Dust app ${actionConfig.appWorkspaceId}/${actionConfig.appId}`,
+        code: "dust_app_run_parameters_generation_error",
+        message:
+          "Failed to retrieve Dust app " +
+          `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId}`,
       },
     };
     return;
   }
 
-  // Parse the specifiaction of the app.
-  const appSpec = JSON.parse(
-    app.savedSpecification || `[]`
-  ) as SpecificationType;
-
   const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
 
-  let schema: DatasetSchema | null = null;
+  // Check that all inputs are accounted for.
+  const params: DustAppParameters = {};
 
-  const inputSpec = appSpec.find((b) => b.type === "input");
-  const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
-  const datasetName: string | null = inputConfig ? inputConfig.dataset : null;
-
-  if (datasetName) {
-    // We have a dataset name we need to find associated schema.
-    schema = await getDatasetSchema(auth, app, datasetName);
-    if (!schema) {
+  for (const k of spec.inputs) {
+    if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
+      params[k.name] = rawInputs[k.name];
+    } else {
       yield {
         type: "dust_app_run_error",
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "dust_app_run_app_schema_error",
-          message:
-            `Failed to retrieve schema for Dust app: ${actionConfig.appWorkspaceId}/${actionConfig.appId} dataset=${datasetName}` +
-            " (make sure you have set descriptions in your app input block dataset)",
+          code: "dust_app_run_parameters_generation_error",
+          message: `Failed to generate input ${k.name} (expected type ${
+            k.type
+          }, got ${rawInputs[k.name]})`,
         },
       };
       return;
     }
   }
 
-  const paramsRes = await generateDustAppRunParams(
-    auth,
-    configuration,
-    conversation,
-    userMessage,
-    app,
-    schema
-  );
-
-  if (paramsRes.isErr()) {
-    yield {
-      type: "dust_app_run_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "dust_app_run_parameters_generation_error",
-        message: `Error generating parameters for Dust App run: ${paramsRes.error.message}`,
-      },
-    };
-    return;
-  }
-
-  const params = paramsRes.value;
-
   // Create the AgentDustAppRunAction object in the database and yield an event for the generation
   // of the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have an output but the error will be stored on the parent agent
   // message.
   const action = await AgentDustAppRunAction.create({
-    dustAppRunConfigurationId: actionConfig.sId,
-    appWorkspaceId: actionConfig.appWorkspaceId,
-    appId: actionConfig.appId,
+    dustAppRunConfigurationId: actionConfiguration.sId,
+    appWorkspaceId: actionConfiguration.appWorkspaceId,
+    appId: actionConfiguration.appId,
     appName: app.name,
     params,
   });
@@ -361,8 +290,8 @@ export async function* runDustApp(
     action: {
       id: action.id,
       type: "dust_app_run_action",
-      appWorkspaceId: actionConfig.appWorkspaceId,
-      appId: actionConfig.appId,
+      appWorkspaceId: actionConfiguration.appWorkspaceId,
+      appId: actionConfiguration.appId,
       appName: app.name,
       params,
       runningBlock: null,
@@ -384,8 +313,8 @@ export async function* runDustApp(
   // that the app executes in the exact same conditions in which they were developed.
   const runRes = await api.runAppStreamed(
     {
-      workspaceId: actionConfig.appWorkspaceId,
-      appId: actionConfig.appId,
+      workspaceId: actionConfiguration.appWorkspaceId,
+      appId: actionConfiguration.appId,
       appHash: "latest",
     },
     appConfig,
@@ -434,8 +363,8 @@ export async function* runDustApp(
         action: {
           id: action.id,
           type: "dust_app_run_action",
-          appWorkspaceId: actionConfig.appWorkspaceId,
-          appId: actionConfig.appId,
+          appWorkspaceId: actionConfiguration.appWorkspaceId,
+          appId: actionConfiguration.appId,
           appName: app.name,
           params,
           runningBlock: {
@@ -490,8 +419,8 @@ export async function* runDustApp(
     action: {
       id: action.id,
       type: "dust_app_run_action",
-      appWorkspaceId: actionConfig.appWorkspaceId,
-      appId: actionConfig.appId,
+      appWorkspaceId: actionConfiguration.appWorkspaceId,
+      appId: actionConfiguration.appId,
       appName: app.name,
       params,
       runningBlock: null,
