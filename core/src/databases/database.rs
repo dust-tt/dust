@@ -469,7 +469,7 @@ pub fn get_unique_table_names_for_database(tables: &[Table]) -> HashMap<String, 
                 table.unique_id(),
                 match *count {
                     1 => base_name.to_string(),
-                    _ => format!("{}_{}", base_name, count),
+                    _ => format!("{}_{}", base_name, *count - 1),
                 },
             )
         })
