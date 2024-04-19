@@ -2,10 +2,8 @@ import type { AgentMessageType, ModelId } from "@dust-tt/types";
 import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import sgMail from "@sendgrid/mail";
 import * as googleapis from "googleapis";
 
-import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
@@ -15,8 +13,6 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-
-sgMail.setApiKey(apiConfig.getSendgridApiKey());
 
 async function retrieveRecentTranscripts(
   {

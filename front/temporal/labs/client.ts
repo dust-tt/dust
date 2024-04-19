@@ -59,7 +59,6 @@ export async function launchRetrieveTranscriptsWorkflow({
   }
 }
 
-// Safe to delete!
 export async function launchProcessTranscriptWorkflow({
   userId,
   workspaceId,
