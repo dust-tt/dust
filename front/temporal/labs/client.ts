@@ -6,16 +6,13 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/labs/config";
 import {
+  makeProcessTranscriptWorkflowId,
+  makeRetrieveTranscriptWorkflowId,
+} from "@app/temporal/labs/types";
+import {
   processTranscriptWorkflow,
   retrieveNewTranscriptsWorkflow,
 } from "@app/temporal/labs/workflows";
-
-export function generateWorkflowId(
-  userId: string,
-  providerId: LabsTranscriptsProviderType
-): string {
-  return `labs-transcripts-retrieve-u${userId}-${providerId}`;
-}
 
 export async function launchRetrieveTranscriptsWorkflow({
   userId,
@@ -27,7 +24,10 @@ export async function launchRetrieveTranscriptsWorkflow({
   providerId: LabsTranscriptsProviderType;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = generateWorkflowId(userId.toString(), providerId);
+  const workflowId = makeRetrieveTranscriptWorkflowId({
+    providerId,
+    userId,
+  });
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
@@ -38,12 +38,13 @@ export async function launchRetrieveTranscriptsWorkflow({
         userId,
         providerId,
       },
+      cronSchedule: "*/15 * * * *", // Every 15 minutes.
     });
     logger.info(
       {
         workflowId,
       },
-      `Started workflow ${workflowId}.`
+      "Transcript retrieval workflow started."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -52,7 +53,7 @@ export async function launchRetrieveTranscriptsWorkflow({
         workflowId,
         error: e,
       },
-      `Failed starting workflow ${workflowId}.`
+      "Transcript retrieval workflow failed."
     );
     return new Err(e as Error);
   }
@@ -69,13 +70,22 @@ export async function launchProcessTranscriptWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `labs-transcripts-processing-u${userId}-f${fileId}`;
+  const workflowId = makeProcessTranscriptWorkflowId({
+    fileId,
+    userId,
+  });
 
   try {
     await client.workflow.start(processTranscriptWorkflow, {
-      args: [userId, workspaceId, fileId],
+      args: [
+        {
+          userId,
+          workspaceId,
+          fileId,
+        },
+      ],
       taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
+      workflowId,
       memo: {
         userId,
         workspaceId,
@@ -86,7 +96,7 @@ export async function launchProcessTranscriptWorkflow({
       {
         workflowId,
       },
-      `Started workflow ${workflowId}.`
+      "Transcript processing workflow started."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -95,7 +105,7 @@ export async function launchProcessTranscriptWorkflow({
         workflowId,
         error: e,
       },
-      `Failed starting workflow ${workflowId}.`
+      "Transcript processing workflow failed."
     );
     return new Err(e as Error);
   }

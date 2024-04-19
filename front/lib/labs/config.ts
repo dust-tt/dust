@@ -10,9 +10,6 @@ const config = {
   getNangoGoogleDriveConnectorId: (): string => {
     return EnvironmentConfig.getEnvVariable("NANGO_GOOGLE_DRIVE_CONNECTOR_ID");
   },
-  getLabsApiKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("LABS_API_KEY");
-  },
 };
 
 export default config;

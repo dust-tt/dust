@@ -14,8 +14,7 @@ export async function runLabsWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    // At the time of edit we have 2 front-worker. We target 64 overall concurrency.
-    maxConcurrentActivityTaskExecutions: 32,
+    maxConcurrentActivityTaskExecutions: 16,
     connection,
     namespace,
     interceptors: {
