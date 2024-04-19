@@ -292,11 +292,6 @@ impl Block for Chat {
                     extras["response_format"] = json!(s.clone());
                 }
 
-                extras["use_tools"] = json!(match v.get("use_tools") {
-                    Some(Value::Bool(b)) => *b,
-                    _ => false,
-                });
-
                 match extras.as_object().unwrap().keys().len() {
                     0 => None,
                     _ => Some(extras),

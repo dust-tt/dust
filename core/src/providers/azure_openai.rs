@@ -4,6 +4,7 @@ use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
+    to_openai_messages, OpenAITool, OpenAIToolChoice,
 };
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
@@ -20,6 +21,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::io::prelude::*;
+use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -472,6 +474,18 @@ impl LLM for AzureOpenAILLM {
             ),
         };
 
+        let tool_choice = match function_call.as_ref() {
+            Some(fc) => Some(OpenAIToolChoice::from_str(fc)?),
+            None => None,
+        };
+
+        let tools = functions
+            .iter()
+            .map(OpenAITool::try_from)
+            .collect::<Result<Vec<OpenAITool>, _>>()?;
+
+        let openai_messages = to_openai_messages(messages)?;
+
         let c = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
@@ -479,9 +493,9 @@ impl LLM for AzureOpenAILLM {
                     self.api_key.clone().unwrap(),
                     None,
                     None,
-                    messages,
-                    functions,
-                    function_call,
+                    &openai_messages,
+                    tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -510,9 +524,9 @@ impl LLM for AzureOpenAILLM {
                     self.api_key.clone().unwrap(),
                     None,
                     None,
-                    messages,
-                    functions,
-                    function_call,
+                    &openai_messages,
+                    tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(t) => t,
@@ -547,8 +561,8 @@ impl LLM for AzureOpenAILLM {
             completions: c
                 .choices
                 .iter()
-                .map(|c| c.message.clone())
-                .collect::<Vec<_>>(),
+                .map(|c| ChatMessage::try_from(&c.message))
+                .collect::<Result<Vec<_>>>()?,
         })
     }
 }
