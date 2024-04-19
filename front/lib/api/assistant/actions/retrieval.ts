@@ -15,21 +15,14 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
 } from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-} from "@dust-tt/types";
+import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import {
   AgentRetrievalAction,
   RetrievalDocument,
@@ -190,107 +183,22 @@ export async function retrievalActionSpecification(
   };
 }
 
-/// Generates retrieval parameters given the agent configuration and the conversation context,
-/// potentially generating the query and relative time frame.
-export async function generateRetrievalParams(
+// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
+export async function generateRetrievalSpecification(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType
-): Promise<
-  Result<
-    {
-      query: string | null;
-      relativeTimeFrame: TimeFrame | null;
-      topK: number | "auto";
-    },
-    Error
-  >
-> {
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (!isRetrievalConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `generateRetrievalParams`"
-    );
+  {
+    actionConfiguration,
+  }: {
+    actionConfiguration: RetrievalConfigurationType;
+  }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  let query: string | null = null;
-  let relativeTimeFrame: TimeFrame | null = null;
-
-  if (
-    actionConfig.relativeTimeFrame !== "none" &&
-    actionConfig.relativeTimeFrame !== "auto"
-  ) {
-    relativeTimeFrame = actionConfig.relativeTimeFrame;
-  }
-
-  const spec = await retrievalActionSpecification(actionConfig);
-
-  if (spec.inputs.length > 0) {
-    const now = Date.now();
-
-    const rawInputsRes = await generateActionInputs(
-      auth,
-      configuration,
-      spec,
-      conversation,
-      userMessage
-    );
-
-    if (rawInputsRes.isOk()) {
-      const rawInputs = rawInputsRes.value;
-
-      logger.info(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-        },
-        "[ASSISTANT_TRACE] Retrieval action inputs generation"
-      );
-
-      if (actionConfig.query === "auto") {
-        if (!rawInputs.query || typeof rawInputs.query !== "string") {
-          return new Err(
-            new Error("Failed to generate a valid retrieval query.")
-          );
-        }
-        query = rawInputs.query as string;
-      }
-
-      if (actionConfig.relativeTimeFrame === "auto") {
-        if (
-          rawInputs.relativeTimeFrame &&
-          typeof rawInputs.relativeTimeFrame === "string"
-        ) {
-          relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
-        }
-      }
-    } else {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-          error: rawInputsRes.error,
-        },
-        "Error generating retrieval action inputs"
-      );
-
-      // We fail the rerieval only if we had to generate a query but failed to do so, if the
-      // relativeTimeFrame failed, we'll just use `null`.
-      if (actionConfig.query === "auto") {
-        return rawInputsRes;
-      }
-    }
-  }
-
-  return new Ok({
-    query,
-    relativeTimeFrame,
-    topK: actionConfig.topK,
-  });
+  const spec = await retrievalActionSpecification(actionConfiguration);
+  return new Ok(spec);
 }
 
 /**
@@ -485,14 +393,16 @@ export async function* runRetrieval(
   auth: Authenticator,
   {
     configuration,
+    actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
+    rawInputs,
   }: {
     configuration: AgentConfigurationType;
+    actionConfiguration: RetrievalConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
+    rawInputs: Record<string, string | boolean | number>;
   }
 ): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
@@ -503,50 +413,46 @@ export async function* runRetrieval(
     throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+  let query: string | null = null;
+  let relativeTimeFrame: TimeFrame | null = null;
 
-  if (!isRetrievalConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `runRetrieval`"
-    );
+  if (
+    actionConfiguration.relativeTimeFrame !== "none" &&
+    actionConfiguration.relativeTimeFrame !== "auto"
+  ) {
+    relativeTimeFrame = actionConfiguration.relativeTimeFrame;
   }
 
-  const paramsRes = await generateRetrievalParams(
-    auth,
-    configuration,
-    conversation,
-    userMessage
-  );
-
-  if (paramsRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-        error: paramsRes.error,
-      },
-      "Error generating retrieval parameters"
-    );
-    yield {
-      type: "retrieval_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "retrieval_parameters_generation_error",
-        message: `Error generating parameters for retrieval: ${paramsRes.error.message}`,
-      },
-    };
-    return;
+  if (actionConfiguration.query === "auto") {
+    if (!rawInputs.query || typeof rawInputs.query !== "string") {
+      yield {
+        type: "retrieval_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "retrieval_parameters_generation_error",
+          message: `Error generating parameters for retrieval: failed to generate a valid query.`,
+        },
+      };
+      return;
+    }
+    query = rawInputs.query as string;
   }
 
-  const params = paramsRes.value;
+  if (actionConfiguration.relativeTimeFrame === "auto") {
+    if (
+      rawInputs.relativeTimeFrame &&
+      typeof rawInputs.relativeTimeFrame === "string"
+    ) {
+      relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
+    }
+  }
 
   const model = configuration.generation?.model;
 
   let topK = 16;
-
-  if (params.topK === "auto") {
+  if (actionConfiguration.topK === "auto") {
     if (!model) {
       logger.warn(
         {
@@ -560,7 +466,7 @@ export async function* runRetrieval(
       topK = supportedModel.recommendedTopK;
     }
   } else {
-    topK = params.topK;
+    topK = actionConfiguration.topK;
   }
 
   // Create the AgentRetrievalAction object in the database and yield an event for the generation of
@@ -568,11 +474,11 @@ export async function* runRetrieval(
   // later on, the action won't have retrieved documents but the error will be stored on the parent
   // agent message.
   const action = await AgentRetrievalAction.create({
-    query: params.query,
-    relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
-    relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
+    query: query,
+    relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
+    relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     topK,
-    retrievalConfigurationId: actionConfig.sId,
+    retrievalConfigurationId: actionConfiguration.sId,
   });
 
   yield {
@@ -580,13 +486,13 @@ export async function* runRetrieval(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    dataSources: actionConfig.dataSources,
+    dataSources: actionConfiguration.dataSources,
     action: {
       id: action.id,
       type: "retrieval_action",
       params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
+        relativeTimeFrame: relativeTimeFrame,
+        query: query,
         topK,
       },
       documents: null,
@@ -600,12 +506,12 @@ export async function* runRetrieval(
   );
 
   // Handle data sources list and parents/tags filtering.
-  config.DATASOURCE.data_sources = actionConfig.dataSources.map((d) => ({
+  config.DATASOURCE.data_sources = actionConfiguration.dataSources.map((d) => ({
     workspace_id: d.workspaceId,
     data_source_id: d.dataSourceId,
   }));
 
-  for (const ds of actionConfig.dataSources) {
+  for (const ds of actionConfiguration.dataSources) {
     /** Caveat: empty array in tags.in means "no document match" since no
      * documents has any tags that is in the tags.in array (same for parents)*/
     if (!config.DATASOURCE.filter.tags) {
@@ -642,9 +548,9 @@ export async function* runRetrieval(
   }
 
   // Handle timestamp filtering.
-  if (params.relativeTimeFrame) {
+  if (relativeTimeFrame) {
     config.DATASOURCE.filter.timestamp = {
-      gt: timeFrameFromNow(params.relativeTimeFrame),
+      gt: timeFrameFromNow(relativeTimeFrame),
     };
   }
 
@@ -653,7 +559,7 @@ export async function* runRetrieval(
 
   const res = await runActionStreamed(auth, "assistant-v2-retrieval", config, [
     {
-      query: params.query,
+      query: query,
     },
   ]);
 
@@ -688,7 +594,7 @@ export async function* runRetrieval(
   // want `core` to return the `workspace_id` that was used eventualy.
   // TODO(spolu): make `core` return data source workspace id.
   const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
-  for (const ds of actionConfig.dataSources) {
+  for (const ds of actionConfiguration.dataSources) {
     dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
   }
 
@@ -837,8 +743,8 @@ export async function* runRetrieval(
       id: action.id,
       type: "retrieval_action",
       params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
+        relativeTimeFrame: relativeTimeFrame,
+        query: query,
         topK,
       },
       documents,
