@@ -1005,17 +1005,18 @@ export function useLabsTranscriptsConfiguration({
   workspaceId: string;
   provider: string;
 }) {
-  const labsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
+  const transcriptsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${workspaceId}/labs/transcripts?provider=${provider}`,
-    labsConfigurationFetcher
+    transcriptsConfigurationFetcher
   );
 
   return {
-    labsConfiguration: data ? data.configuration : null,
-    islabsConfigurationLoading: !error && !data,
-    islabsConfigurationError: error,
+    transcriptsConfiguration: data ? data.configuration : null,
+    isTranscriptsConfigurationLoading: !error && !data,
+    isTranscriptsConfigurationError: error,
+    mutateTranscriptsConfiguration: mutate,
   };
 }

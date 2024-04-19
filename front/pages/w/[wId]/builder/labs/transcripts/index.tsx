@@ -70,7 +70,7 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
-  const { labsConfiguration, islabsConfigurationLoading } =
+  const { transcriptsConfiguration, isTranscriptsConfigurationLoading } =
     useLabsTranscriptsConfiguration({
       workspaceId: owner.sId,
       provider,
@@ -92,17 +92,17 @@ export default function LabsTranscriptsIndex({
   useEffect(() => {
     setTranscriptsConfigurationState({
       isGDriveConnected:
-        (labsConfiguration && labsConfiguration.id > 0) || false,
+        (transcriptsConfiguration && transcriptsConfiguration.id > 0) || false,
       assistantSelected:
         agentConfigurations.find(
-          (a) => a.sId === labsConfiguration?.agentConfigurationId
+          (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
         ) || null,
-      emailToNotify: labsConfiguration?.emailToNotify || "",
-      isActive: labsConfiguration?.isActive || false,
+      emailToNotify: transcriptsConfiguration?.emailToNotify || "",
+      isActive: transcriptsConfiguration?.isActive || false,
     });
-  }, [labsConfiguration, agentConfigurations]);
+  }, [transcriptsConfiguration, agentConfigurations]);
 
-  if (islabsConfigurationLoading) {
+  if (isTranscriptsConfigurationLoading) {
     return <Spinner2 />;
   }
 

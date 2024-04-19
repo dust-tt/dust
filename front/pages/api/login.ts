@@ -369,7 +369,6 @@ async function handler(
     }
 
     const { flow, workspace } = result.value;
-
     if (flow) {
       res.redirect(`/no-workspace?flow=${flow}`);
       return;
