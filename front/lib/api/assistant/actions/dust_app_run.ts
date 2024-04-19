@@ -236,7 +236,7 @@ export async function* runDustApp(
       configurationId: configuration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "dust_app_run_action",
+        code: "dust_app_run_parameters_generation_error",
         message:
           "Failed to retrieve Dust app " +
           `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId}`,
