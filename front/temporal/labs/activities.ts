@@ -198,11 +198,15 @@ export async function processGoogleDriveTranscriptActivity(
       `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
     );
   }
-
+  
   const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = contentRes.data;
-  const extraInstructions =
-    "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
+  if(!transcriptContent) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] No content found. Stopping."
+    );
+    return;
+  }
 
   // TODO: We should enforce that user is a member of the workspace.
   const owner = await Workspace.findByPk(workspaceId);
@@ -211,6 +215,7 @@ export async function processGoogleDriveTranscriptActivity(
       `Could not find workspace for user (workspaceId: ${workspaceId}).`
     );
   }
+  
   const prodCredentials = await prodAPICredentialsForOwner(
     renderLightWorkspaceType({ workspace: owner }),
     { useLocalInDev: true }
@@ -230,20 +235,31 @@ export async function processGoogleDriveTranscriptActivity(
 
   // TODO: Consider using a content fragment to attach the transcript.
   const convRes = await dustAPI.createConversation({
-    title: null,
+    title: transcriptTitle,
     visibility: "unlisted",
     message: {
-      content: transcriptContent + extraInstructions,
+      content: "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.",
       mentions: [{ configurationId: agentConfigurationId }],
       context: {
         timezone: "Europe/Paris",
         username: "labs-transcript-processor",
-        fullName: null,
+        fullName: "Transcript Processor",
         email: null,
-        profilePictureUrl: null,
+        profilePictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       },
     },
-    contentFragment: undefined,
+    contentFragment: {
+      title: transcriptTitle,
+      content: transcriptContent.toString(),
+      url: null,
+      contentType: "file_attachment",
+      context: {
+        username: "labs-transcript-processor",
+        fullName: "Transcript Processor",
+        email: null,
+        profilePictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+      },
+    },
     blocking: true,
   });
 
