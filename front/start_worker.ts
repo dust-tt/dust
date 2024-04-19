@@ -5,6 +5,7 @@ import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runProductionChecksWorker } from "@app/production_checks/temporal/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/scrub_workspace/temporal/worker";
+import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
 import { runUpsertQueueWorker } from "@app/upsert_queue/temporal/worker";
 
@@ -30,5 +31,9 @@ runUpdateWorkspaceUsageWorker().catch((err) =>
 );
 
 runScrubWorkspaceQueueWorker().catch((err) =>
-  logger.error({ error: err }, "Error running scrub workspace queue worker")
+  logger.error({ error: err }, "Error running scrub workspace queue worker.")
+);
+
+runLabsWorker().catch((err) =>
+  logger.error({ error: err }, "Error running labs worker.")
 );
