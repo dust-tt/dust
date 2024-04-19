@@ -133,10 +133,10 @@ export async function generateDustAppRunSpecification(
 
   // Parse the specifiaction of the app.
   const appSpec = JSON.parse(
-    app.savedSpecification || `[]`
+    app.savedSpecification || "[]"
   ) as SpecificationType;
 
-  const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
+  const appConfig = extractConfig(JSON.parse(app.savedSpecification || "{}"));
 
   let schema: DatasetSchema | null = null;
 
