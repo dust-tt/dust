@@ -10,15 +10,9 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
-  DustAppRunBlockEvent,
-  DustAppRunParamsEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  ProcessParamsEvent,
   Result,
-  RetrievalParamsEvent,
-  TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -191,12 +185,7 @@ export async function* runLegacyAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -309,12 +298,7 @@ async function* runAction(
     action: AgentActionConfigurationType;
   }
 ): AsyncGenerator<
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent
-  | ProcessParamsEvent
+  | AgentActionEvent
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent,
