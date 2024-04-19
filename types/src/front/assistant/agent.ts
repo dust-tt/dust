@@ -54,9 +54,9 @@ export type AgentActionSpecification = {
 
 export type AgentGenerationConfigurationType = {
   id: ModelId;
-  prompt: string;
   model: SupportedModel;
   temperature: number;
+  forceUseAtIteration: number | null;
 };
 
 /**
@@ -155,6 +155,8 @@ export type LightAgentConfigurationType = {
   // Global agents have a null authorId, others have a non-null authorId
   versionAuthorId: ModelId | null;
 
+  instructions: string | null;
+
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 
@@ -176,22 +178,23 @@ export type LightAgentConfigurationType = {
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
-  // If undefined, no action performed, otherwise the action is
-  // performed (potentially NoOp eg autoSkip above).
-  action: AgentActionConfigurationType | null;
+  // If empty, no actions are performed, otherwise the actions are
+  // performed.
+  actions: AgentActionConfigurationType[];
 };
 
 export interface TemplateAgentConfigurationType {
   // If undefined, no text generation.
   generation: {
-    prompt: string;
     model: SupportedModel;
     temperature: number;
+    forceUseAtIteration: number | null;
   } | null;
 
   name: string;
   scope: AgentConfigurationScope;
   description: string;
-  action: AgentActionConfigurationType | null;
+  actions: AgentActionConfigurationType[];
+  instructions: string | null;
   isTemplate: true;
 }

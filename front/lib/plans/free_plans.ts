@@ -1,6 +1,6 @@
 import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models";
+import { Plan } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,

@@ -19,10 +19,10 @@ import {
   assertNever,
   Err,
   isSupportedModel,
-  isTemplatedQuery,
   isTimeFrame,
   Ok,
 } from "@dust-tt/types";
+import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
@@ -35,21 +35,27 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
-  AgentConfiguration,
   AgentDataSourceConfiguration,
-  AgentDustAppRunConfiguration,
-  AgentGenerationConfiguration,
   AgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/actions/retrieval";
+import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
   AgentUserRelation,
+} from "@app/lib/models/assistant/agent";
+import {
   Conversation,
-  DataSource,
   Mention,
   Message,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { DataSource } from "@app/lib/models/data_source";
+import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -175,13 +181,6 @@ async function fetchGlobalAgentConfigurationForView(
 }
 
 // Workspace agent configurations.
-
-function byId<T extends { id: number }>(list: T[]): Record<string, T> {
-  return list.reduce((acc, item) => {
-    acc[item.id] = item;
-    return acc;
-  }, {} as Record<number, T>);
-}
 
 async function fetchAgentConfigurationsForView(
   auth: Authenticator,
@@ -345,18 +344,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
-  const generationConfigIds = agentConfigurations
-    .filter((a) => a.generationConfigurationId !== null)
-    .map((a) => a.generationConfigurationId as number);
-  const retrievalConfigIds = agentConfigurations
-    .filter((a) => a.retrievalConfigurationId !== null)
-    .map((a) => a.retrievalConfigurationId as number);
-  const dustAppRunConfigIds = agentConfigurations
-    .filter((a) => a.dustAppRunConfigurationId !== null)
-    .map((a) => a.dustAppRunConfigurationId as number);
-  const tablesQueryConfigurationsIds = agentConfigurations
-    .filter((a) => a.tablesQueryConfigurationId !== null)
-    .map((a) => a.tablesQueryConfigurationId as number);
+
+  function groupByAgentConfigurationId<
+    T extends { agentConfigurationId: number }
+  >(list: T[]): Record<number, T[]> {
+    return _.groupBy(list, "agentConfigurationId");
+  }
 
   const [
     generationConfigs,
@@ -365,26 +358,28 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tablesQueryConfigs,
     agentUserRelations,
   ] = await Promise.all([
-    generationConfigIds.length > 0
-      ? AgentGenerationConfiguration.findAll({
-          where: { id: { [Op.in]: generationConfigIds } },
-        }).then(byId)
-      : Promise.resolve({} as Record<number, AgentGenerationConfiguration>),
-    retrievalConfigIds.length > 0 && variant === "full"
+    AgentGenerationConfiguration.findAll({
+      where: { agentConfigurationId: { [Op.in]: configurationIds } },
+      // TODO(pr 20240415) temporary inlined for type checking
+      // this should be refactored to use the groupByAgentConfigurationId function
+    }).then((list) => _.groupBy(list, "agentConfigurationId")),
+    variant === "full"
       ? AgentRetrievalConfiguration.findAll({
-          where: { id: { [Op.in]: retrievalConfigIds } },
-        }).then(byId)
-      : Promise.resolve({} as Record<number, AgentRetrievalConfiguration>),
-    dustAppRunConfigIds.length > 0 && variant === "full"
+          where: { agentConfigurationId: { [Op.in]: configurationIds } },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentRetrievalConfiguration[]>),
+    variant === "full"
       ? AgentDustAppRunConfiguration.findAll({
-          where: { id: { [Op.in]: dustAppRunConfigIds } },
-        }).then(byId)
-      : Promise.resolve({} as Record<number, AgentDustAppRunConfiguration>),
-    tablesQueryConfigurationsIds.length > 0 && variant === "full"
+          where: { agentConfigurationId: { [Op.in]: configurationIds } },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentDustAppRunConfiguration[]>),
+    variant === "full"
       ? AgentTablesQueryConfiguration.findAll({
-          where: { id: { [Op.in]: tablesQueryConfigurationsIds } },
-        }).then(byId)
-      : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration>),
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration[]>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -405,7 +400,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       ? AgentDataSourceConfiguration.findAll({
           where: {
             retrievalConfigurationId: {
-              [Op.in]: Object.values(retrievalConfigs).map((r) => r.id),
+              [Op.in]: Object.values(retrievalConfigs).flatMap((r) =>
+                r.map((c) => c.id)
+              ),
             },
           },
           include: [
@@ -422,34 +419,22 @@ async function fetchWorkspaceAgentConfigurationsForView(
           ],
         })
       : Promise.resolve([])
-  ).then((dsConfigs) =>
-    dsConfigs.reduce((acc, dsConfig) => {
-      acc[dsConfig.retrievalConfigurationId] =
-        acc[dsConfig.retrievalConfigurationId] || [];
-      acc[dsConfig.retrievalConfigurationId].push(dsConfig);
-      return acc;
-    }, {} as Record<number, AgentDataSourceConfiguration[]>)
-  );
+  ).then((dsConfigs) => _.groupBy(dsConfigs, "retrievalConfigurationId"));
 
   const agentTablesConfigurationTablesPromise = (
     Object.values(tablesQueryConfigs).length
       ? AgentTablesQueryConfigurationTable.findAll({
           where: {
             tablesQueryConfigurationId: {
-              [Op.in]: Object.values(tablesQueryConfigs).map((r) => r.id),
+              [Op.in]: Object.values(tablesQueryConfigs).flatMap((r) =>
+                r.map((c) => c.id)
+              ),
             },
           },
         })
       : Promise.resolve([])
-  ).then((tablesConfigurationTables) =>
-    tablesConfigurationTables.reduce((acc, tablesConfigurationTable) => {
-      acc[tablesConfigurationTable.tablesQueryConfigurationId] =
-        acc[tablesConfigurationTable.tablesQueryConfigurationId] || [];
-      acc[tablesConfigurationTable.tablesQueryConfigurationId].push(
-        tablesConfigurationTable
-      );
-      return acc;
-    }, {} as Record<number, AgentTablesQueryConfigurationTable[]>)
+  ).then((tablesConfigs) =>
+    _.groupBy(tablesConfigs, "tablesQueryConfigurationId")
   );
 
   const [agentDatasourceConfigurations, agentTablesConfigurationTables] =
@@ -460,39 +445,29 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
-    let action: AgentActionConfigurationType | null = null;
+    const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
-      if (agent.retrievalConfigurationId) {
-        const retrievalConfig =
-          retrievalConfigs[agent.retrievalConfigurationId];
-
-        if (!retrievalConfig) {
-          throw new Error(
-            `Couldn't find action configuration for retrieval configuration ${agent.retrievalConfigurationId}}`
-          );
-        }
-
+      const retrievalConfigurations = retrievalConfigs[agent.id] ?? [];
+      for (const retrievalConfig of retrievalConfigurations) {
         const dataSourcesConfig =
           agentDatasourceConfigurations[retrievalConfig.id] ?? [];
-
         let topK: number | "auto" = "auto";
         if (retrievalConfig.topKMode === "custom") {
           if (!retrievalConfig.topK) {
             // unreachable
             throw new Error(
-              `Couldn't find topK for retrieval configuration ${agent.retrievalConfigurationId}} with 'custom' topK mode`
+              `Couldn't find topK for retrieval configuration ${retrievalConfig.id}} with 'custom' topK mode`
             );
           }
 
           topK = retrievalConfig.topK;
         }
-
-        action = {
+        actions.push({
           id: retrievalConfig.id,
           sId: retrievalConfig.sId,
           type: "retrieval_configuration",
-          query: renderRetrievalQueryType(retrievalConfig),
+          query: retrievalConfig.query,
           relativeTimeFrame: renderRetrievalTimeframeType(retrievalConfig),
           topK,
           dataSources: dataSourcesConfig.map((dsConfig) => {
@@ -511,57 +486,57 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
-        };
-      } else if (agent.dustAppRunConfigurationId) {
-        const dustAppRunConfig =
-          dustAppRunConfigs[agent.dustAppRunConfigurationId];
+          forceUseAtIteration: retrievalConfig.forceUseAtIteration,
+        });
+      }
 
-        if (!dustAppRunConfig) {
-          throw new Error(
-            `Couldn't find action configuration for DustAppRun configuration ${agent.dustAppRunConfigurationId}}`
-          );
-        }
-
-        action = {
+      const dustAppRunConfigurations = dustAppRunConfigs[agent.id] ?? [];
+      for (const dustAppRunConfig of dustAppRunConfigurations) {
+        actions.push({
           id: dustAppRunConfig.id,
           sId: dustAppRunConfig.sId,
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
-        };
-      } else if (agent.tablesQueryConfigurationId) {
-        const tablesQueryConfig =
-          tablesQueryConfigs[agent.tablesQueryConfigurationId];
+          forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
+        });
+      }
 
-        if (!tablesQueryConfig) {
-          throw new Error(
-            `Couldn't find action configuration for Tables configuration ${agent.tablesQueryConfigurationId}}`
-          );
-        }
-
+      const tablesQueryConfigurations = tablesQueryConfigs[agent.id] ?? [];
+      for (const tablesQueryConfig of tablesQueryConfigurations) {
         const tablesQueryConfigTables =
           agentTablesConfigurationTables[tablesQueryConfig.id] ?? [];
-
-        action = {
+        actions.push({
           id: tablesQueryConfig.id,
           sId: tablesQueryConfig.sId,
           type: "tables_query_configuration",
-          tables: tablesQueryConfigTables.map((tablesQueryConfigTable) => {
-            return {
-              dataSourceId: tablesQueryConfigTable.dataSourceId,
-              workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
-              tableId: tablesQueryConfigTable.tableId,
-            };
-          }),
-        };
+          tables: tablesQueryConfigTables.map((tablesQueryConfigTable) => ({
+            dataSourceId: tablesQueryConfigTable.dataSourceId,
+            workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
+            tableId: tablesQueryConfigTable.tableId,
+          })),
+          forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
+        });
       }
     }
 
     let generation: AgentGenerationConfigurationType | null = null;
 
-    if (agent.generationConfigurationId) {
-      const generationConfig =
-        generationConfigs[agent.generationConfigurationId];
+    const generationConfig = (() => {
+      switch (generationConfigs[agent.id]?.length) {
+        case 0:
+        case undefined:
+          return null;
+        case 1:
+          return generationConfigs[agent.id][0];
+        default:
+          throw new Error(
+            "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
+          );
+      }
+    })();
+
+    if (generationConfig) {
       const model = {
         providerId: generationConfig.providerId,
         modelId: generationConfig.modelId,
@@ -571,9 +546,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
       generation = {
         id: generationConfig.id,
-        prompt: generationConfig.prompt,
         temperature: generationConfig.temperature,
         model,
+        forceUseAtIteration: generationConfig.forceUseAtIteration,
       };
     }
 
@@ -587,8 +562,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
+      instructions: agent.instructions,
       status: agent.status,
-      action,
+      actions,
       generation,
       versionAuthorId: agent.authorId,
     };
@@ -774,31 +750,35 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
   return contentType.includes("image");
 }
 
-/**
- * Create Agent Configuration
- */
+type AgentConfigurationWithoutActionsType = Omit<
+  AgentConfigurationType,
+  "actions"
+>;
+
 export async function createAgentConfiguration(
   auth: Authenticator,
   {
     name,
     description,
+    instructions,
+    maxToolsUsePerRun,
     pictureUrl,
     status,
     scope,
     generation,
-    action,
     agentConfigurationId,
   }: {
     name: string;
     description: string;
+    instructions: string | null;
+    maxToolsUsePerRun: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
     generation: AgentGenerationConfigurationType | null;
-    action: AgentActionConfigurationType | null;
     agentConfigurationId?: string;
   }
-): Promise<Result<AgentConfigurationType, Error>> {
+): Promise<Result<AgentConfigurationWithoutActionsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -892,18 +872,12 @@ export async function createAgentConfiguration(
             scope,
             name,
             description,
+            instructions,
+            maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
             generationConfigurationId: generation?.id || null,
             authorId: user.id,
-            // We know here that these are one that we created and not a "global virtual" one so we're
-            // good to set the foreign key.
-            retrievalConfigurationId:
-              action?.type === "retrieval_configuration" ? action?.id : null,
-            dustAppRunConfigurationId:
-              action?.type === "dust_app_run_configuration" ? action?.id : null,
-            tablesQueryConfigurationId:
-              action?.type === "tables_query_configuration" ? action?.id : null,
           },
           {
             transaction: t,
@@ -915,7 +889,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: AgentConfigurationType = {
+    const agentConfiguration: AgentConfigurationWithoutActionsType = {
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
@@ -925,9 +899,9 @@ export async function createAgentConfiguration(
       userListStatus: null,
       name: agent.name,
       description: agent.description,
+      instructions: agent.instructions,
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      action: action,
       generation: generation,
     };
 
@@ -950,9 +924,6 @@ export async function createAgentConfiguration(
   }
 }
 
-/**
- * Archive Agent Configuration
- */
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
@@ -1011,19 +982,20 @@ export async function restoreAgentConfiguration(
   return affectedCount > 0;
 }
 
-/**
- * Create Agent Generation Configuration
- */
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
-    prompt,
+    prompt, // @todo Daph remove this field
     model,
     temperature,
+    agentConfiguration,
+    forceUseAtIteration,
   }: {
-    prompt: string;
+    prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
+    agentConfiguration: AgentConfigurationWithoutActionsType;
+    forceUseAtIteration: number | null;
   }
 ): Promise<AgentGenerationConfigurationType> {
   const owner = auth.workspace();
@@ -1040,17 +1012,19 @@ export async function createAgentGenerationConfiguration(
   }
 
   const genConfig = await AgentGenerationConfiguration.create({
-    prompt: prompt,
+    prompt: prompt, // @todo Daph remove this field
     providerId: model.providerId,
     modelId: model.modelId,
     temperature: temperature,
+    agentConfigurationId: agentConfiguration.id,
+    forceUseAtIteration: forceUseAtIteration,
   });
 
   return {
     id: genConfig.id,
-    prompt: genConfig.prompt,
     temperature: genConfig.temperature,
     model,
+    forceUseAtIteration,
   };
 }
 
@@ -1059,7 +1033,7 @@ export async function createAgentGenerationConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action:
+  action: (
     | {
         type: "retrieval_configuration";
         query: RetrievalQuery;
@@ -1080,6 +1054,10 @@ export async function createAgentActionConfiguration(
           tableId: string;
         }>;
       }
+  ) & {
+    forceUseAtIteration: number | null;
+  },
+  agentConfiguration: AgentConfigurationWithoutActionsType
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1091,10 +1069,7 @@ export async function createAgentActionConfiguration(
       const retrievalConfig = await AgentRetrievalConfiguration.create(
         {
           sId: generateModelSId(),
-          query: isTemplatedQuery(action.query) ? "templated" : action.query,
-          queryTemplate: isTemplatedQuery(action.query)
-            ? action.query.template
-            : null,
+          query: action.query,
           relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
             ? "custom"
             : action.relativeTimeFrame,
@@ -1106,6 +1081,8 @@ export async function createAgentActionConfiguration(
             : null,
           topK: action.topK !== "auto" ? action.topK : null,
           topKMode: action.topK === "auto" ? "auto" : "custom",
+          agentConfigurationId: agentConfiguration.id,
+          forceUseAtIteration: action.forceUseAtIteration,
         },
         { transaction: t }
       );
@@ -1123,6 +1100,7 @@ export async function createAgentActionConfiguration(
         relativeTimeFrame: action.relativeTimeFrame,
         topK: action.topK,
         dataSources: action.dataSources,
+        forceUseAtIteration: action.forceUseAtIteration,
       };
     });
   } else if (action.type === "dust_app_run_configuration") {
@@ -1130,6 +1108,8 @@ export async function createAgentActionConfiguration(
       sId: generateModelSId(),
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
+      agentConfigurationId: agentConfiguration.id,
+      forceUseAtIteration: action.forceUseAtIteration,
     });
 
     return {
@@ -1138,12 +1118,15 @@ export async function createAgentActionConfiguration(
       type: "dust_app_run_configuration",
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
+      forceUseAtIteration: action.forceUseAtIteration,
     };
   } else if (action.type === "tables_query_configuration") {
     return frontSequelize.transaction(async (t) => {
       const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
         {
           sId: generateModelSId(),
+          agentConfigurationId: agentConfiguration.id,
+          forceUseAtIteration: action.forceUseAtIteration,
         },
         { transaction: t }
       );
@@ -1166,6 +1149,7 @@ export async function createAgentActionConfiguration(
         sId: tablesQueryConfig.sId,
         type: "tables_query_configuration",
         tables: action.tables,
+        forceUseAtIteration: action.forceUseAtIteration,
       };
     });
   } else {
@@ -1188,18 +1172,6 @@ function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
     timeframe = "none";
   }
   return timeframe;
-}
-
-function renderRetrievalQueryType(action: AgentRetrievalConfiguration) {
-  let query: RetrievalQuery = "auto";
-  if (action.query === "templated" && action.queryTemplate) {
-    query = {
-      template: action.queryTemplate,
-    };
-  } else if (action.query === "none") {
-    query = "none";
-  }
-  return query;
 }
 
 /**
@@ -1369,4 +1341,16 @@ export async function setAgentScope(
   await agent.save();
 
   return new Ok({ agentId, scope });
+}
+
+// Should only be called when we need to cleanup the agent configuration
+// right after creating it due to an error.
+export async function unsafeHardDeleteAgentConfiguration(
+  agentConfiguration: AgentConfigurationWithoutActionsType
+): Promise<void> {
+  await AgentConfiguration.destroy({
+    where: {
+      id: agentConfiguration.id,
+    },
+  });
 }

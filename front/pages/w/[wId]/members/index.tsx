@@ -290,6 +290,7 @@ export default function WorkspaceAdmin({
           plan={plan}
         />
         <ChangeMemberModal
+          owner={owner}
           member={changeRoleMember}
           onClose={() => setChangeRoleMember(null)}
         />
@@ -560,28 +561,35 @@ function InviteEmailModal({
         <div>Do you want to proceed?</div>
       </div>
     );
+    const hasExistingMembers =
+      activeDifferentRole.length > 0 || revoked.length > 0;
 
-    if (
-      !shouldWarnAboutExistingMembers(invitesByCase) ||
+    const shouldProceedWithInvites =
+      !hasExistingMembers ||
       (await confirm({
         title: "Some users are already in the workspace",
         message: ReinviteUsersMessage,
         validateLabel: "Yes, proceed",
         validateVariant: "primaryWarning",
-      }))
-    ) {
-      await handleMembersRoleChange({
-        members: [...activeDifferentRole, ...revoked],
-        role: invitationRole,
-        mutate,
-        sendNotification,
-      });
+      }));
+
+    if (shouldProceedWithInvites) {
       await sendInvitations({
         owner,
         emails: notInWorkspace,
         invitationRole,
         sendNotification,
       });
+
+      if (hasExistingMembers) {
+        await handleMembersRoleChange({
+          members: [...activeDifferentRole, ...revoked],
+          role: invitationRole,
+          sendNotification,
+        });
+        await mutate(`/api/w/${owner.sId}/members`);
+      }
+
       await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
     }
@@ -794,14 +802,15 @@ async function revokeInvitation({
 async function handleMembersRoleChange({
   members,
   role,
-  mutate,
   sendNotification,
 }: {
   members: UserTypeWithWorkspaces[];
   role: RoleType;
-  mutate: any;
   sendNotification: any;
 }): Promise<void> {
+  if (members.length === 0) {
+    return;
+  }
   const promises = members.map((member) =>
     fetch(`/api/w/${member.workspaces[0].sId}/members/${member.sId}`, {
       method: "POST",
@@ -830,15 +839,16 @@ async function handleMembersRoleChange({
       description: `Role updated to ${role} for ${members.length} member(s).`,
     });
   }
-  await mutate(`/api/w/${members[0].workspaces[0].sId}/members`);
 }
 
 function ChangeMemberModal({
   onClose,
   member,
+  owner,
 }: {
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
+  owner: WorkspaceType;
 }) {
   assert(
     member?.workspaces[0].role !== "none",
@@ -874,9 +884,9 @@ function ChangeMemberModal({
         await handleMembersRoleChange({
           members: [member],
           role: selectedRole,
-          mutate,
           sendNotification,
         });
+        await mutate(`/api/w/${owner.sId}/members`);
         closeModalFn();
       }}
       saveLabel="Update role"
@@ -928,9 +938,9 @@ function ChangeMemberModal({
           await handleMembersRoleChange({
             members: [member],
             role: "none",
-            mutate,
             sendNotification,
           });
+          await mutate(`/api/w/${owner.sId}/members`);
           setRevokeMemberModalOpen(false);
           onClose();
         }}
@@ -1020,6 +1030,22 @@ async function sendInvitations({
   });
 
   if (!res.ok) {
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      // ignore
+    }
+    if (data?.error?.type === "invitation_already_sent_recently") {
+      sendNotification({
+        type: "error",
+        title: emails.length === 1 ? "Invite failed" : "Invites failed",
+        description:
+          (emails.length === 1 ? "This user has" : "These users have") +
+          " already been invited in the last 24 hours. Please wait before sending another invite.",
+      });
+    }
+
     sendNotification({
       type: "error",
       title: "Invite failed",
@@ -1067,15 +1093,3 @@ const ROLES_DATA: Record<
     color: "emerald",
   },
 };
-
-function shouldWarnAboutExistingMembers(invitesByCase: {
-  activeSameRole: UserTypeWithWorkspaces[];
-  activeDifferentRole: UserTypeWithWorkspaces[];
-  revoked: UserTypeWithWorkspaces[];
-  notInWorkspace: string[];
-}) {
-  return (
-    invitesByCase.activeDifferentRole.length > 0 ||
-    invitesByCase.revoked.length > 0
-  );
-}

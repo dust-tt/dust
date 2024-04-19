@@ -1,14 +1,10 @@
 // @ts-expect-error old migration code kept for reference
+
 import { personalWorkspace } from "@app/lib/auth";
-import {
-  App,
-  Dataset,
-  DataSource,
-  Key,
-  Provider,
-  Run,
-  User,
-} from "@app/lib/models";
+import { App, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { DataSource } from "@app/lib/models/data_source";
+import { User } from "@app/lib/models/user";
+import { Key } from "@app/lib/models/workspace";
 
 async function addWorkspaceToObject(
   object: App | Dataset | Provider | Key | DataSource | Run

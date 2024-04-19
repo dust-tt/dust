@@ -125,17 +125,18 @@ async function handler(
         }
       }
 
-      const result = await createOrUpgradeAgentConfiguration(
+      const result = await createOrUpgradeAgentConfiguration({
         auth,
-        {
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-          },
+        assistant: {
+          ...assistant,
+          scope: bodyValidation.right.scope,
+          status: assistant.status as AgentStatus,
         },
-        assistant.sId
-      );
+        agentConfigurationId: assistant.sId,
+        // Here we want to preserve whatever is in the exising configuration,
+        // so we don't want to use the legacySingleActionMode (which overwrites `forceUseAtIteration`)
+        legacySingleActionMode: false,
+      });
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,

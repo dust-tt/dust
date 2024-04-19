@@ -1,7 +1,7 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import {
   CreateTemplateFormSchema,
-  isAssistantTemplateTagNameTypeArray,
+  isTemplateTagCodeArray,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -65,7 +65,7 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      if (!isAssistantTemplateTagNameTypeArray(body.tags)) {
+      if (!isTemplateTagCodeArray(body.tags)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -77,7 +77,7 @@ async function handler(
       }
 
       const model = USED_MODEL_CONFIGS.find(
-        (config) => config.modelId === body.presetModel
+        (config) => config.modelId === body.presetModelId
       );
 
       if (!model) {
@@ -105,8 +105,7 @@ async function handler(
         presetTemperature: body.presetTemperature ?? null,
         sId: generateModelSId(),
         tags: body.tags,
-        // TODO
-        visibility: "published",
+        visibility: body.visibility,
       });
 
       res.status(200).json({

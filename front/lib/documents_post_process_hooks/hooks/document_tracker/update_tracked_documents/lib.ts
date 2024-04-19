@@ -8,7 +8,7 @@ import type {
 } from "@app/lib/documents_post_process_hooks/hooks";
 import { getDatasource } from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
 import { TRACKABLE_CONNECTOR_TYPES } from "@app/lib/documents_post_process_hooks/hooks/document_tracker/consts";
-import { TrackedDocument } from "@app/lib/models";
+import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import mainLogger from "@app/logger/logger";
 
 const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;

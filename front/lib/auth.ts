@@ -1,5 +1,6 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type {
+  LightWorkspaceType,
   RoleType,
   UserType,
   WhitelistableFeature,
@@ -27,14 +28,10 @@ import { renderUserType } from "@app/lib/api/user";
 import { isDevelopment } from "@app/lib/development";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
-import {
-  FeatureFlag,
-  Key,
-  Plan,
-  Subscription,
-  User,
-  Workspace,
-} from "@app/lib/models";
+import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { User } from "@app/lib/models/user";
+import { Key, Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -521,7 +518,6 @@ export async function subscriptionForWorkspace(
       "sId",
       "startDate",
       "status",
-      "stripeCustomerId",
       "stripeSubscriptionId",
       "trialing",
     ],
@@ -564,7 +560,7 @@ export async function subscriptionForWorkspace(
  * @returns Promise<Result<Key, Error>>
  */
 export async function getOrCreateSystemApiKey(
-  workspace: WorkspaceType
+  workspace: LightWorkspaceType
 ): Promise<Result<Key, Error>> {
   let key = await Key.findOne({
     where: {
@@ -600,7 +596,7 @@ export async function getOrCreateSystemApiKey(
  * @returns DustAPICredentials
  */
 export async function prodAPICredentialsForOwner(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   {
     useLocalInDev,
   }: {

@@ -26,7 +26,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { rateLimiter } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models";
+import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { redisClient } from "@app/lib/redis";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";

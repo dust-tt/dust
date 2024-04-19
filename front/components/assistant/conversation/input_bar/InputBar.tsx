@@ -170,12 +170,14 @@ export function AssistantInputBar({
         if (!file) {
           return;
         }
-        if (file.size > 10_000_000) {
+        if (file.size > 100_000_000) {
+          // Even though we don't display the file size limit in the UI, we still check it here to prevent
+          // processing files that are too large.
           sendNotification({
             type: "error",
             title: "File too large.",
             description:
-              "PDF uploads are limited to 10Mb per file. Please consider uploading a smaller file.",
+              "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
           });
           return;
         }
@@ -189,13 +191,13 @@ export function AssistantInputBar({
           });
           return;
         }
-        if (res.value.content.length > 1_000_000) {
+        if (res.value.content.length > 500_000) {
           // This error should pretty much never be triggered but it is a possible case, so here it is.
           sendNotification({
             type: "error",
             title: "File too large.",
             description:
-              "The extracted text from your PDF has more than 1 million characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+              "The extracted text from your PDF has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
           });
           return;
         }

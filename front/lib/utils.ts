@@ -69,7 +69,9 @@ export const timeAgoFrom = (
     return `${hours}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
   }
   if (minutes > 0) {
-    return `${minutes}${useLongFormat ? maybePlural(minutes, " minute") : "m"}`;
+    return `${minutes}${
+      useLongFormat ? maybePlural(minutes, " minute") : "min"
+    }`;
   }
   return seconds + "s";
 };

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    databases::database::{QueryResult, Row, Table},
+    databases::database::{get_unique_table_names_for_database, QueryResult, Row, Table},
     databases_store::store::DatabasesStore,
     utils,
 };
@@ -206,6 +206,7 @@ async fn create_in_memory_sqlite_db(
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
+        let unique_table_names = get_unique_table_names_for_database(&tables);
         let create_tables_sql: String = tables
             .into_iter()
             .filter_map(|t| match t.schema_cached() {
@@ -213,7 +214,10 @@ async fn create_in_memory_sqlite_db(
                     if s.is_empty() {
                         None
                     } else {
-                        Some(s.get_create_table_sql_string(t.name()))
+                        let table_name = unique_table_names
+                            .get(&t.unique_id())
+                            .expect("Unreachable: table name not found in unique_table_names");
+                        Some(s.get_create_table_sql_string(table_name))
                     }
                 }
                 None => None,
@@ -240,11 +244,14 @@ async fn create_in_memory_sqlite_db(
             .iter()
             .filter(|(_, rows)| !rows.is_empty())
             .map(|(table, rows)| {
+                let table_name = unique_table_names
+                    .get(&table.unique_id())
+                    .expect("Unreachable: table name not found in unique_table_names");
                 if table.schema_cached().is_none() {
-                    Err(anyhow!("No cached schema found for table {}", table.name()))?;
+                    Err(anyhow!("No cached schema found for table {}", table_name))?;
                 }
                 let table_schema = table.schema_cached().unwrap();
-                let (sql, field_names) = table_schema.get_insert_sql(table.name());
+                let (sql, field_names) = table_schema.get_insert_sql(table_name);
                 let mut stmt = conn.prepare(&sql)?;
 
                 rows.par_iter()

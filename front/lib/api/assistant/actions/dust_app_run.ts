@@ -26,7 +26,8 @@ import { Err, Ok } from "@dust-tt/types";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
-import { AgentDustAppRunAction } from "@app/lib/models";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
+import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import logger from "@app/logger/logger";
 
 import { getApp } from "../../app";
@@ -114,8 +115,9 @@ export async function generateDustAppRunParams(
   app: AppType,
   schema: DatasetSchema | null
 ): Promise<Result<DustAppParameters, Error>> {
-  const c = configuration.action;
-  if (!isDustAppRunConfiguration(c)) {
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (!isDustAppRunConfiguration(actionConfig)) {
     throw new Error(
       "Unexpected action configuration received in `generateDustAppRunParams`"
     );
@@ -222,10 +224,17 @@ export async function renderDustAppRunActionByModelId(
 // message.
 export async function* runDustApp(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  {
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage,
+  }: {
+    configuration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
+  }
 ): AsyncGenerator<
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
@@ -235,15 +244,16 @@ export async function* runDustApp(
 > {
   const owner = auth.workspace();
   if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+    throw new Error("Unexpected unauthenticated call to `runDustApp`");
   }
 
-  const c = configuration.action;
-  if (!isDustAppRunConfiguration(c)) {
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (!isDustAppRunConfiguration(actionConfig)) {
     throw new Error("Unexpected action configuration received in `runDustApp`");
   }
 
-  if (owner.sId !== c.appWorkspaceId) {
+  if (owner.sId !== actionConfig.appWorkspaceId) {
     yield {
       type: "dust_app_run_error",
       created: Date.now(),
@@ -258,7 +268,7 @@ export async function* runDustApp(
     return;
   }
 
-  const app = await getApp(auth, c.appId);
+  const app = await getApp(auth, actionConfig.appId);
   if (!app) {
     yield {
       type: "dust_app_run_error",
@@ -267,7 +277,7 @@ export async function* runDustApp(
       messageId: agentMessage.sId,
       error: {
         code: "dust_app_run_app_error",
-        message: `Failed to retrieve Dust app ${c.appWorkspaceId}/${c.appId}`,
+        message: `Failed to retrieve Dust app ${actionConfig.appWorkspaceId}/${actionConfig.appId}`,
       },
     };
     return;
@@ -298,7 +308,7 @@ export async function* runDustApp(
         error: {
           code: "dust_app_run_app_schema_error",
           message:
-            `Failed to retrieve schema for Dust app: ${c.appWorkspaceId}/${c.appId} dataset=${datasetName}` +
+            `Failed to retrieve schema for Dust app: ${actionConfig.appWorkspaceId}/${actionConfig.appId} dataset=${datasetName}` +
             " (make sure you have set descriptions in your app input block dataset)",
         },
       };
@@ -336,9 +346,9 @@ export async function* runDustApp(
   // later on, the action won't have an output but the error will be stored on the parent agent
   // message.
   const action = await AgentDustAppRunAction.create({
-    dustAppRunConfigurationId: c.sId,
-    appWorkspaceId: c.appWorkspaceId,
-    appId: c.appId,
+    dustAppRunConfigurationId: actionConfig.sId,
+    appWorkspaceId: actionConfig.appWorkspaceId,
+    appId: actionConfig.appId,
     appName: app.name,
     params,
   });
@@ -351,8 +361,8 @@ export async function* runDustApp(
     action: {
       id: action.id,
       type: "dust_app_run_action",
-      appWorkspaceId: c.appWorkspaceId,
-      appId: c.appId,
+      appWorkspaceId: actionConfig.appWorkspaceId,
+      appId: actionConfig.appId,
       appName: app.name,
       params,
       runningBlock: null,
@@ -374,8 +384,8 @@ export async function* runDustApp(
   // that the app executes in the exact same conditions in which they were developed.
   const runRes = await api.runAppStreamed(
     {
-      workspaceId: c.appWorkspaceId,
-      appId: c.appId,
+      workspaceId: actionConfig.appWorkspaceId,
+      appId: actionConfig.appId,
       appHash: "latest",
     },
     appConfig,
@@ -424,8 +434,8 @@ export async function* runDustApp(
         action: {
           id: action.id,
           type: "dust_app_run_action",
-          appWorkspaceId: c.appWorkspaceId,
-          appId: c.appId,
+          appWorkspaceId: actionConfig.appWorkspaceId,
+          appId: actionConfig.appId,
           appName: app.name,
           params,
           runningBlock: {
@@ -480,8 +490,8 @@ export async function* runDustApp(
     action: {
       id: action.id,
       type: "dust_app_run_action",
-      appWorkspaceId: c.appWorkspaceId,
-      appId: c.appId,
+      appWorkspaceId: actionConfig.appWorkspaceId,
+      appId: actionConfig.appId,
       appName: app.name,
       params,
       runningBlock: null,

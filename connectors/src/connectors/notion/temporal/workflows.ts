@@ -15,12 +15,12 @@ import type * as activities from "@connectors/connectors/notion/temporal/activit
 
 const { garbageCollect } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minute",
+  heartbeatTimeout: "5 minute",
 });
 
-const { upsertDatabaseInConnectorsDb, updateParentsFields } = proxyActivities<
-  typeof activities
->({
+const { updateParentsFields } = proxyActivities<typeof activities>({
   startToCloseTimeout: "60 minute",
+  heartbeatTimeout: "5 minute",
 });
 
 const {
@@ -33,6 +33,7 @@ const {
   clearWorkflowCache,
   getDiscoveredResourcesFromCache,
   upsertDatabaseStructuredDataFromCache,
+  upsertDatabaseInConnectorsDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
 });
@@ -56,6 +57,9 @@ const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
 const MAX_PENDING_UPSERT_ACTIVITIES = 5;
+
+// If set to true, the workflow will process all discovered resources until empty.
+const PROCESS_ALL_DISCOVERED_RESOURCES = false;
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -205,7 +209,7 @@ export async function notionSyncWorkflow({
             forceResync,
           });
         }
-      } while (discoveredResources);
+      } while (discoveredResources && PROCESS_ALL_DISCOVERED_RESOURCES);
     }
 
     // Compute parents after all documents are added/updated.

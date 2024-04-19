@@ -23,6 +23,7 @@ import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
+  removeNulls,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
@@ -638,7 +639,9 @@ export async function submitAssistantBuilderForm({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >;
 
-  let actionParam: BodyType["assistant"]["action"] | null = null;
+  let actionParam:
+    | NonNullable<BodyType["assistant"]["actions"]>[number]
+    | null = null;
 
   switch (builderState.actionMode) {
     case "GENERIC":
@@ -707,11 +710,11 @@ export async function submitAssistantBuilderForm({
         name: removeLeadingAt(handle),
         pictureUrl: avatarUrl,
         description: description,
+        instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
-        action: actionParam,
+        actions: removeNulls([actionParam]),
         generation: {
-          prompt: instructions.trim(),
           model: builderState.generationSettings.modelSettings,
           temperature: builderState.generationSettings.temperature,
         },

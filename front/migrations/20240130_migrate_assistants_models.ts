@@ -1,11 +1,11 @@
-import { GPT_4_TURBO_PREVIEW_MODEL_ID } from "@dust-tt/types";
+import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 
 import {
   AgentConfiguration,
   AgentGenerationConfiguration,
-  Workspace,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 
 const { LIVE, WORKSPACE } = process.env;
 
@@ -13,7 +13,7 @@ const { LIVE, WORKSPACE } = process.env;
 
 // GPT-4 and GPT-4-32k are being replaced by GPT-4-1106-preview
 const FROM_MODELS = ["gpt-4-1106-preview"] as string[];
-const TO_MODEL = GPT_4_TURBO_PREVIEW_MODEL_ID;
+const TO_MODEL = GPT_4_TURBO_MODEL_ID;
 
 // GPT-3.5 Turbo and GPT-3.5 Turbo 16k are being replaced by GPT-3.5 Turbo 1106
 // const FROM_MODELS = ["gpt-3.5-turbo", "gpt-3.5-turbo-16k"];
@@ -36,7 +36,12 @@ async function updateWorkspaceAssistants(wId: string) {
   });
 
   for (const c of agentConfigurations) {
-    if (!c.generationConfigurationId) {
+    const genConfigs = await AgentGenerationConfiguration.findAll({
+      where: {
+        agentConfigurationId: c.id,
+      },
+    });
+    if (genConfigs.length === 0) {
       console.log(
         "Skipping agent (no generation configuration)",
         c.sId,
@@ -45,15 +50,13 @@ async function updateWorkspaceAssistants(wId: string) {
       continue;
     }
 
-    const g = await AgentGenerationConfiguration.findOne({
-      where: { id: c.generationConfigurationId },
-    });
-
-    if (!g) {
+    if (genConfigs.length > 1) {
       throw new Error(
-        `Generation configuration ${c.generationConfigurationId} not found`
+        "Unexpected: legacy migration, agents could not have multiple generation configurations at the time"
       );
     }
+
+    const g = genConfigs[0];
 
     if (FROM_MODELS.includes(g.modelId)) {
       if (LIVE) {

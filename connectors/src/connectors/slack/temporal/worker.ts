@@ -2,7 +2,10 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
 import * as activities from "@connectors/connectors/slack/temporal/activities";
-import { getTemporalWorkerConnection } from "@connectors/lib/temporal";
+import {
+  getTemporalWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@connectors/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
@@ -18,6 +21,7 @@ export async function runSlackWorker() {
     reuseV8Context: true,
     namespace,
     maxConcurrentActivityTaskExecutions: 16,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {

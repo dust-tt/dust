@@ -1,7 +1,7 @@
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
-import { DataSource } from "@app/lib/models";
+import { DataSource } from "@app/lib/models/data_source";
 import logger from "@app/logger/logger";
 
 async function main() {

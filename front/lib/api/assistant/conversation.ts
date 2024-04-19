@@ -59,15 +59,16 @@ import {
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import {
   AgentMessage,
   Conversation,
   ConversationParticipant,
   Mention,
   Message,
-  User,
   UserMessage,
-} from "@app/lib/models";
+} from "@app/lib/models/assistant/conversation";
+import { User } from "@app/lib/models/user";
 import {
   ContentFragmentResource,
   fileAttachmentLocation,
@@ -451,6 +452,12 @@ export async function generateConversationTitle(
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+
+  // TODO(2024-04-19 flav) Delete.
+  const owner = auth.workspace();
+  if (owner && isDevelopmentOrDustWorkspace(owner)) {
+    config.MODEL.use_tools = true;
+  }
 
   const res = await runActionStreamed(
     auth,

@@ -14,7 +14,8 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/email";
-import { Plan, Subscription, Workspace } from "@app/lib/models";
+import { Plan, Subscription } from "@app/lib/models/plan";
+import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -100,7 +101,6 @@ async function handler(
           // We can create the new subscription and end the active one if any.
           const session = event.data.object as Stripe.Checkout.Session;
           const workspaceId = session.client_reference_id;
-          const stripeCustomerId = session.customer;
           const stripeSubscriptionId = session.subscription;
           const planCode = session?.metadata?.planCode || null;
           const userId = session?.metadata?.userId || null;
@@ -111,7 +111,6 @@ async function handler(
             logger.info(
               {
                 workspaceId,
-                stripeCustomerId,
                 stripeSubscriptionId,
                 planCode,
               },
@@ -123,7 +122,6 @@ async function handler(
             logger.error(
               {
                 workspaceId,
-                stripeCustomerId,
                 stripeSubscriptionId,
                 planCode,
               },
@@ -135,9 +133,7 @@ async function handler(
           try {
             if (
               workspaceId === null ||
-              stripeCustomerId === null ||
               planCode === null ||
-              typeof stripeCustomerId !== "string" ||
               typeof stripeSubscriptionId !== "string"
             ) {
               throw new Error("Missing required data in event.");
@@ -175,7 +171,6 @@ async function handler(
                 logger.error(
                   {
                     workspaceId,
-                    stripeCustomerId,
                     stripeSubscriptionId,
                     planCode,
                   },
@@ -197,7 +192,6 @@ async function handler(
                 logger.error(
                   {
                     workspaceId,
-                    stripeCustomerId,
                     stripeSubscriptionId,
                     planCode,
                   },
@@ -233,7 +227,6 @@ async function handler(
                   trialing: stripeSubscription.status === "trialing",
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
-                  stripeCustomerId: stripeCustomerId,
                 },
                 { transaction: t }
               );
@@ -259,7 +252,6 @@ async function handler(
               {
                 error,
                 workspaceId,
-                stripeCustomerId,
                 stripeSubscriptionId,
                 planCode,
               },
