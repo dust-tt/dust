@@ -6,17 +6,10 @@ import {
 } from "../../../front/assistant/actions/retrieval";
 import { ModelId } from "../../../shared/model_id";
 
-export const ProcessSchemaPrimitiveTypes = ["string", "number", "boolean"];
-export const ProcessSchemaListTypes = [];
-export const ProcessSchemaPropertyAllTypes = [
-  ...ProcessSchemaPrimitiveTypes,
-  ...ProcessSchemaListTypes,
-] as const;
-
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
   name: string;
-  type: (typeof ProcessSchemaPropertyAllTypes)[number];
+  type: "string" | "number" | "boolean";
   description: string;
 };
 

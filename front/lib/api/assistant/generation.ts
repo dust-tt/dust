@@ -19,6 +19,7 @@ import {
   isAgentMessageType,
   isContentFragmentType,
   isDustAppRunActionType,
+  isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
   isTablesQueryActionType,
@@ -42,6 +43,8 @@ import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+
+import { renderProcessActionForModel } from "./actions/process";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
@@ -98,6 +101,8 @@ export async function renderConversationForModel({
           messages.unshift(renderDustAppRunActionForModel(m.action));
         } else if (isTablesQueryActionType(m.action)) {
           messages.unshift(renderTablesQueryActionForModel(m.action));
+        } else if (isProcessActionType(m.action)) {
+          messages.unshift(renderProcessActionForModel(m.action));
         } else {
           assertNever(m.action);
         }
@@ -192,9 +197,9 @@ export async function renderConversationForModel({
       tokensUsed += c;
       selected.unshift(messages[i]);
     } else if (
-      // when a content fragment has more than the remaining number of tokens, we split it
+      // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
-      // allow at least tokensMargin tokens in addition to the truncation message
+      // Allow at least tokensMargin tokens in addition to the truncation message.
       tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
     ) {
       const remainingTokens =
