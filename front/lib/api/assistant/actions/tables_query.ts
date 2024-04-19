@@ -22,7 +22,7 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import logger from "@app/logger/logger";
 
 /**
- * Action rendering.
+ * Model rendering of TableQueries.
  */
 
 export function renderTablesQueryActionForModel(
@@ -39,7 +39,7 @@ export function renderTablesQueryActionForModel(
 
   return {
     role: "action" as const,
-    name: "TablesQuery",
+    name: "query_tables",
     content,
   };
 }
@@ -52,7 +52,7 @@ export function renderTablesQueryActionForModel(
 // understand the task.
 async function tablesQueryActionSpecification(): Promise<AgentActionSpecification> {
   return {
-    name: "query_Tables",
+    name: "query_tables",
     description:
       "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
     inputs: [
@@ -117,7 +117,7 @@ export async function* runTablesQuery(
       messageId: agentMessage.sId,
       error: {
         code: "tables_query_parameters_generation_error",
-        message: `Error generating parameters for retrieval: failed to generate a valid question.`,
+        message: `Error generating parameters for tables query: failed to generate a valid question.`,
       },
     };
     return;
