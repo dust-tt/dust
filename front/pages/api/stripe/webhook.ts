@@ -29,7 +29,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
-} from "@app/scrub_workspace/temporal/client";
+} from "@app/temporal/scrub_workspace/client";
 
 const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
 

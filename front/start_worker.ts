@@ -1,13 +1,13 @@
 import { setupGlobalErrorHandler } from "@dust-tt/types";
 
-import { runPostUpsertHooksWorker } from "@app/documents_post_process_hooks/temporal/worker";
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
-import { runProductionChecksWorker } from "@app/production_checks/temporal/worker";
-import { runScrubWorkspaceQueueWorker } from "@app/scrub_workspace/temporal/worker";
+import { runPostUpsertHooksWorker } from "@app/temporal/documents_post_process_hooks/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
+import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
+import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
+import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
-import { runUpsertQueueWorker } from "@app/upsert_queue/temporal/worker";
 
 setupGlobalErrorHandler(logger);
 

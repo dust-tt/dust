@@ -15,10 +15,9 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDocumentsPostDeleteHooksToRun } from "@app/documents_post_process_hooks/hooks";
-import { launchRunPostDeleteHooksWorkflow } from "@app/documents_post_process_hooks/temporal/client";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
@@ -26,6 +25,7 @@ import {
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
   api: {

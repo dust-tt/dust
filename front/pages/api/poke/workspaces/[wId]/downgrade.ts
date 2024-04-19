@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { launchScheduleWorkspaceScrubWorkflow } from "@app/scrub_workspace/temporal/client";
+import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
 export type DowngradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;
