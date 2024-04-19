@@ -233,7 +233,6 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  // TODO: Consider using a content fragment to attach the transcript.
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
     visibility: "unlisted",
