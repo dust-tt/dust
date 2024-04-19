@@ -134,8 +134,8 @@ async function handler(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "configuration_not_found",
-            message: "The configuration was not found.",
+            type: "transcripts_configuration_not_found",
+            message: "The transcript configuration was not found.",
           },
         });
       }

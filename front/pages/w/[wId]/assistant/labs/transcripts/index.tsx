@@ -282,10 +282,7 @@ export default function LabsTranscriptsIndex({
                 }
                 size="sm"
                 icon={CloudArrowLeftRightIcon}
-                disabled={
-                  isTranscriptsConfigurationLoading ||
-                  transcriptsConfigurationState?.isGDriveConnected
-                }
+                disabled={transcriptsConfigurationState?.isGDriveConnected}
                 onClick={async () => {
                   await handleConnectTranscriptsSource();
                 }}
@@ -293,55 +290,53 @@ export default function LabsTranscriptsIndex({
             </div>
           </Page.Layout>
         </Page.Layout>
-        {!isTranscriptsConfigurationLoading &&
-          transcriptsConfigurationState.isGDriveConnected && (
-            <>
+        {transcriptsConfigurationState.isGDriveConnected && (
+          <>
+            <Page.Layout direction="vertical">
+              <Page.SectionHeader title="2. Choose an assistant" />
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Choose an assistant" />
-                <Page.Layout direction="vertical">
-                  <Page.P>
-                    Choose the assistant that will summarize the transcripts in
-                    the way you want.
-                  </Page.P>
-                  <Page.Layout direction="horizontal">
-                    <AssistantPicker
-                      owner={owner}
-                      size="sm"
-                      onItemClick={handleSelectAssistant}
-                      assistants={agents}
-                      showFooterButtons={false}
-                    />
-                    {transcriptsConfigurationState.assistantSelected && (
-                      <Page.P>
-                        <strong>
-                          @
-                          {transcriptsConfigurationState.assistantSelected.name}
-                        </strong>
-                      </Page.P>
-                    )}
-                  </Page.Layout>
-                </Page.Layout>
-              </Page.Layout>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Enable transcripts processing" />
-                <Page.Layout direction="horizontal" gap="xl">
-                  <SliderToggle
-                    selected={transcriptsConfigurationState.isActive}
-                    onClick={() =>
-                      handleSetIsActive(!transcriptsConfigurationState.isActive)
-                    }
+                <Page.P>
+                  Choose the assistant that will summarize the transcripts in
+                  the way you want.
+                </Page.P>
+                <Page.Layout direction="horizontal">
+                  <AssistantPicker
+                    owner={owner}
+                    size="sm"
+                    onItemClick={handleSelectAssistant}
+                    assistants={agents}
+                    showFooterButtons={false}
                   />
-                  <Page.P>
-                    When enabled, each new meeting transcript in 'My Drive' will
-                    be processed.
-                    <br />
-                    Summaries can take up to 30 minutes to be sent after
-                    meetings end.
-                  </Page.P>
+                  {transcriptsConfigurationState.assistantSelected && (
+                    <Page.P>
+                      <strong>
+                        @{transcriptsConfigurationState.assistantSelected.name}
+                      </strong>
+                    </Page.P>
+                  )}
                 </Page.Layout>
               </Page.Layout>
-            </>
-          )}
+            </Page.Layout>
+            <Page.Layout direction="vertical">
+              <Page.SectionHeader title="3. Enable transcripts processing" />
+              <Page.Layout direction="horizontal" gap="xl">
+                <SliderToggle
+                  selected={transcriptsConfigurationState.isActive}
+                  onClick={() =>
+                    handleSetIsActive(!transcriptsConfigurationState.isActive)
+                  }
+                />
+                <Page.P>
+                  When enabled, each new meeting transcript in 'My Drive' will
+                  be processed.
+                  <br />
+                  Summaries can take up to 30 minutes to be sent after meetings
+                  end.
+                </Page.P>
+              </Page.Layout>
+            </Page.Layout>
+          </>
+        )}
       </Page>
     </AppLayout>
   );

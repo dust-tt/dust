@@ -70,7 +70,7 @@ export type APIErrorType =
   // Invitations:
   | "invitation_already_sent_recently"
   // Labs:
-  | "configuration_not_found";
+  | "transcripts_configuration_not_found";
 
 export type APIError = {
   type: APIErrorType;
