@@ -2442,10 +2442,18 @@ function getTableInfoFromDatabase(database: NotionDatabase): {
   tableDescription: string;
 } {
   const tableId = getNotionDatabaseTableId(database.notionDatabaseId);
-  const name =
-    database.title ?? `Untitled Database (${database.notionDatabaseId})`;
-  const tableName = slugify(name.substring(0, 32));
+  const fallbackName = `Untitled Database (${database.notionDatabaseId})`;
+
+  let tableName = slugify((database.title ?? "").substring(0, 32));
+  if (!tableName) {
+    tableName = slugify(fallbackName.substring(0, 32));
+  }
 
   const tableDescription = `Structured data from Notion Database ${tableName}`;
-  return { databaseName: name, tableId, tableName, tableDescription };
+  return {
+    databaseName: database.title || fallbackName,
+    tableId,
+    tableName,
+    tableDescription,
+  };
 }
