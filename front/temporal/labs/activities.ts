@@ -1,4 +1,4 @@
-import type { AgentMessageType, ModelId, ProviderType } from "@dust-tt/types";
+import type { AgentMessageType, ModelId } from "@dust-tt/types";
 import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
@@ -8,106 +8,131 @@ import * as googleapis from "googleapis";
 import apiConfig from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import config from "@app/lib/labs/config";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-import { launchProcessTranscriptWorkflow } from "@app/temporal/labs/client";
 
 sgMail.setApiKey(apiConfig.getSendgridApiKey());
+
+async function retrieveRecentTranscripts(
+  {
+    userId,
+    workspaceId,
+  }: {
+    userId: ModelId;
+    workspaceId: ModelId;
+  },
+  logger: Logger
+) {
+  const auth = await getGoogleAuthFromUserTranscriptConfiguration(
+    userId,
+    workspaceId
+  );
+
+  if (!auth) {
+    logger.error(
+      {},
+      "[retrieveRecentTranscripts] No Google auth found. Stopping."
+    );
+    return [];
+  }
+
+  // Only pull transcripts from last day.
+  // We could do from the last 15 minutes
+  // but we want to avoid missing any if the workflow is down or slow.
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 1);
+
+  const files = await googleapis.google
+    .drive({ version: "v3", auth })
+    .files.list({
+      q:
+        "name contains '- Transcript' and createdTime > '" +
+        cutoffDate.toISOString() +
+        "'",
+      fields: "files(id, name)",
+    });
+
+  const { files: filesData } = files.data;
+  if (!filesData || filesData.length === 0) {
+    logger.info({}, "[retrieveRecentTranscripts] No new files found.");
+    return [];
+  }
+
+  return filesData;
+}
 
 export async function retrieveNewTranscriptsActivity(
   userId: ModelId,
   workspaceId: ModelId,
   provider: LabsTranscriptsProviderType
-) {
+): Promise<string[]> {
   const localLogger = mainLogger.child({
     provider,
     userId,
     workspaceId,
   });
 
-  if (provider == "google_drive") {
-    const auth = await getGoogleAuthFromUserTranscriptConfiguration(
-      userId,
-      workspaceId
-    );
-
-    if (!auth) {
-      localLogger.error(
-        {},
-        "[retrieveNewTranscripts] No Google auth found. Stopping."
-      );
-      return;
-    }
-
-    // Only pull transcripts from last day
-    // We could do from the last 15 minutes
-    // but we want to avoid missing any if the workflow is down
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 1);
-
-    const files = await googleapis.google
-      .drive({ version: "v3", auth })
-      .files.list({
-        q:
-          "name contains '- Transcript' and createdTime > '" +
-          cutoffDate.toISOString() +
-          "'",
-        fields: "files(id, name)",
-      });
-
-    if (!files.data.files || files.data.files.length === 0) {
-      localLogger.info({}, "[retrieveNewTranscripts] No new files found.");
-      return;
-    }
-
-    const transcriptConfiguration =
-      await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
-        {
-          userId,
-          workspaceId,
-          provider: provider,
-        }
-      );
-
-    if (!transcriptConfiguration) {
-      return;
-    }
-
-    const { files: filesData } = files.data;
-    for (const file of filesData) {
-      const { id: fileId } = file;
-      if (!fileId) {
-        localLogger.error(
-          { file: file.id },
-          "[retrieveNewTranscripts] File does not have an id. Skipping."
-        );
-        continue;
-      }
-
-      const history = await transcriptConfiguration.fetchHistoryForFileId(
-        fileId
-      );
-      if (history) {
-        localLogger.info(
-          { fileId },
-          "[retrieveNewTranscripts] File already processed. Skipping."
-        );
-        continue;
-      }
-
-      await launchProcessTranscriptWorkflow({ userId, workspaceId, fileId });
-    }
-  } else {
+  // We only support google_drive for now.
+  if (provider !== "google_drive") {
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Provider not supported. Stopping."
     );
+
+    return [];
   }
+
+  const transcriptConfiguration =
+    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
+      userId,
+      workspaceId,
+      provider: provider,
+    });
+  if (!transcriptConfiguration) {
+    localLogger.error(
+      {},
+      "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
+    );
+    return [];
+  }
+
+  const recentTranscriptFiles = await retrieveRecentTranscripts(
+    {
+      userId,
+      workspaceId,
+    },
+    localLogger
+  );
+
+  const fileIdsToProcess: string[] = [];
+  for (const recentTranscriptFile of recentTranscriptFiles) {
+    const { id: fileId } = recentTranscriptFile;
+    if (!fileId) {
+      localLogger.error(
+        {},
+        "[retrieveNewTranscripts] File does not have an id. Skipping."
+      );
+      continue;
+    }
+
+    const history = await transcriptConfiguration.fetchHistoryForFileId(fileId);
+    if (history) {
+      localLogger.info(
+        { fileId },
+        "[retrieveNewTranscripts] File already processed. Skipping."
+      );
+      continue;
+    }
+
+    fileIdsToProcess.push(fileId);
+  }
+
+  return fileIdsToProcess;
 }
 
 export async function processGoogleDriveTranscriptActivity(
@@ -144,7 +169,6 @@ export async function processGoogleDriveTranscriptActivity(
       workspaceId: workspaceId,
       provider: provider,
     });
-
   if (!transcriptsConfiguration) {
     localLogger.info(
       "[processGoogleDriveTranscriptActivity] No configuration found. Stopping."
@@ -192,9 +216,12 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
   const prodCredentials = await prodAPICredentialsForOwner(
-    renderLightWorkspaceType({ workspace: owner })
+    renderLightWorkspaceType({ workspace: owner }),
+    { useLocalInDev: true }
   );
-  const dustAPI = new DustAPI(prodCredentials, localLogger);
+  const dustAPI = new DustAPI(prodCredentials, localLogger, {
+    useLocalInDev: true,
+  });
 
   const { agentConfigurationId } = transcriptsConfiguration;
 
@@ -205,7 +232,7 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  // TODO:
+  // TODO: Consider using a content fragment to attach the transcript.
   const convRes = await dustAPI.createConversation({
     title: null,
     visibility: "unlisted",
@@ -232,8 +259,7 @@ export async function processGoogleDriveTranscriptActivity(
     return new Err(new Error(convRes.error.message));
   }
 
-  const conversation = convRes.value.conversation;
-
+  const { conversation } = convRes.value;
   if (!conversation) {
     localLogger.error(
       "[processGoogleDriveTranscriptActivity] No conversation found. Stopping."
