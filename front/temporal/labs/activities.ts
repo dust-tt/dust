@@ -198,10 +198,10 @@ export async function processGoogleDriveTranscriptActivity(
       `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
     );
   }
-  
+
   const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = contentRes.data;
-  if(!transcriptContent) {
+  if (!transcriptContent) {
     localLogger.error(
       "[processGoogleDriveTranscriptActivity] No content found. Stopping."
     );
@@ -215,7 +215,7 @@ export async function processGoogleDriveTranscriptActivity(
       `Could not find workspace for user (workspaceId: ${workspaceId}).`
     );
   }
-  
+
   const prodCredentials = await prodAPICredentialsForOwner(
     renderLightWorkspaceType({ workspace: owner }),
     { useLocalInDev: true }
@@ -244,7 +244,8 @@ export async function processGoogleDriveTranscriptActivity(
         username: "labs-transcript-processor",
         fullName: "Transcript Processor",
         email: null,
-        profilePictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        profilePictureUrl:
+          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       },
     },
     contentFragment: {
@@ -256,7 +257,8 @@ export async function processGoogleDriveTranscriptActivity(
         username: "labs-transcript-processor",
         fullName: "Transcript Processor",
         email: null,
-        profilePictureUrl: "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        profilePictureUrl:
+          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
       },
     },
     blocking: true,
