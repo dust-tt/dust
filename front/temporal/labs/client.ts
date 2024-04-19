@@ -131,7 +131,7 @@ export async function stopRetrieveTranscriptsWorkflow({
   });
 
   try {
-    const handle: WorkflowHandle<typeof intercomSyncWorkflow> =
+    const handle: WorkflowHandle<typeof retrieveNewTranscriptsWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
       await handle.terminate();
