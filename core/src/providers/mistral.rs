@@ -161,8 +161,8 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 cm.content.clone().unwrap_or(String::from(""))
             )),
             // Name is only supported for the Function/Tool role.
-            name: match cm.role {
-                ChatMessageRole::Function => cm.name.clone(),
+            name: match mistral_role {
+                MistralChatMessageRole::Tool => cm.name.clone(),
                 _ => None,
             },
             role: mistral_role,
@@ -368,6 +368,8 @@ impl MistralAILLM {
             .map(|m| MistralChatMessage::try_from(m))
             .collect::<Result<Vec<_>>>()?;
 
+        // Mistral AI requires a tool call to be followed by a tool message. We therefore inject a
+        // tool call message before the tool message if missing.
         let mistral_messages = mistral_messages.iter().fold(
             vec![],
             |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
