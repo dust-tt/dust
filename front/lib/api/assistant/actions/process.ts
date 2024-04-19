@@ -156,12 +156,14 @@ export async function* runProcess(
     configuration,
     actionConfiguration,
     conversation,
+    userMessage,
     agentMessage,
     rawInputs,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ProcessConfigurationType;
     conversation: ConversationType;
+    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
   }
