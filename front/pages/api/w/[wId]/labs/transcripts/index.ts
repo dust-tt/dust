@@ -8,33 +8,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import {
-  launchRetrieveTranscriptsWorkflow,
-  stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/client";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const acceptableProviders = t.union([
-  t.literal("google_drive"),
-  t.literal("gong")
-]);
+export const acceptableTranscriptProvidersCodec = t.literal("google_drive");
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
   connectionId: t.string,
-  provider: acceptableProviders,
+  provider: acceptableTranscriptProvidersCodec,
 });
-
-export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
-  agentConfigurationId: t.union([t.string,t.undefined]),
-  provider: t.union([acceptableProviders, t.undefined]),
-  isActive: t.union([t.boolean, t.undefined]),
-});
-export type PatchTranscriptsConfiguration = t.TypeOf<
-  typeof PatchLabsTranscriptsConfigurationBodySchema
->;
 
 async function handler(
   req: NextApiRequest,
@@ -72,6 +56,8 @@ async function handler(
   }
 
   switch (req.method) {
+    // List.
+    // TODO: This should be a proper list operation.
     case "GET":
       const transcriptsConfigurationGet =
         await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
@@ -96,76 +82,7 @@ async function handler(
         .status(200)
         .json({ configuration: transcriptsConfigurationGet });
 
-    // Update
-    case "PATCH":
-      const patchBodyValidation =
-        PatchLabsTranscriptsConfigurationBodySchema.decode(req.body);
-
-      if (isLeft(patchBodyValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          patchBodyValidation.left
-        );
-
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-        });
-      }
-
-      const {
-        agentConfigurationId: patchAgentId,
-        provider: patchProvider,
-        isActive,
-      } = patchBodyValidation.right;
-
-      const transcriptsConfigurationPatchResource =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
-          {
-            userId,
-            workspaceId: owner.id,
-            provider: patchProvider as LabsTranscriptsProviderType,
-          }
-        );
-
-      if (!transcriptsConfigurationPatchResource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "transcripts_configuration_not_found",
-            message: "The transcript configuration was not found.",
-          },
-        });
-      }
-
-      await transcriptsConfigurationPatchResource.setAgentConfigurationId({
-        agentConfigurationId: patchAgentId,
-      });
-
-      if (isActive !== undefined) {
-        await transcriptsConfigurationPatchResource.setIsActive(isActive);
-        if (isActive) {
-          await launchRetrieveTranscriptsWorkflow({
-            userId,
-            workspaceId: owner.id,
-            providerId: patchProvider,
-          });
-        } else {
-          await stopRetrieveTranscriptsWorkflow({
-            userId,
-            workspaceId: owner.id,
-            providerId: patchProvider,
-          });
-        }
-      }
-
-      return res
-        .status(200)
-        .json({ configuration: transcriptsConfigurationPatchResource });
-
-    // Create
+    // Create.
     case "POST":
       const bodyValidation = PostLabsTranscriptsConfigurationBodySchema.decode(
         req.body

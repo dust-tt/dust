@@ -25,7 +25,7 @@ import {
   useAgentConfigurations,
   useLabsTranscriptsConfiguration,
 } from "@app/lib/swr";
-import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 const provider = "google_drive";
 
@@ -119,16 +119,20 @@ export default function LabsTranscriptsIndex({
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
   const makePatchRequest = async (
+    transcriptConfigurationId: number,
     data: Partial<PatchTranscriptsConfiguration>,
     successMessage: string
   ) => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await fetch(
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       sendNotification({
@@ -148,7 +152,10 @@ export default function LabsTranscriptsIndex({
     await mutateTranscriptsConfiguration();
   };
 
-  const updateAssistant = async (assistant: LightAgentConfigurationType) => {
+  const updateAssistant = async (
+    transcriptsConfigurationId: number,
+    assistant: LightAgentConfigurationType
+  ) => {
     setTranscriptsConfigurationState({
       ...transcriptsConfigurationState,
       assistantSelected: assistant,
@@ -158,15 +165,18 @@ export default function LabsTranscriptsIndex({
       "The assistant that will help you summarize your transcripts has been set to @" +
       assistant.name;
     await makePatchRequest(
+      transcriptsConfigurationId,
       {
-        provider,
         agentConfigurationId: assistant.sId,
       },
       successMessage
     );
   };
 
-  const updateIsActive = async (isActive: boolean) => {
+  const updateIsActive = async (
+    transcriptsConfigurationId: number,
+    isActive: boolean
+  ) => {
     setTranscriptsConfigurationState({
       ...transcriptsConfigurationState,
       isActive,
@@ -176,8 +186,8 @@ export default function LabsTranscriptsIndex({
       ? "We will start summarizing your meeting transcripts."
       : "We will no longer summarize your meeting transcripts.";
     await makePatchRequest(
+      transcriptsConfigurationId,
       {
-        provider,
         isActive,
       },
       successMessage
@@ -185,13 +195,17 @@ export default function LabsTranscriptsIndex({
   };
 
   const handleSelectAssistant = async (
+    transcriptConfigurationId: number,
     assistant: LightAgentConfigurationType
   ) => {
-    return updateAssistant(assistant);
+    return updateAssistant(transcriptConfigurationId, assistant);
   };
 
-  const handleSetIsActive = async (isActive: boolean) => {
-    return updateIsActive(isActive);
+  const handleSetIsActive = async (
+    transcriptConfigurationId: number,
+    isActive: boolean
+  ) => {
+    return updateIsActive(transcriptConfigurationId, isActive);
   };
 
   const saveGoogleDriveConnection = async (connectionId: string) => {
@@ -292,54 +306,65 @@ export default function LabsTranscriptsIndex({
             </div>
           </Page.Layout>
         </Page.Layout>
-        {transcriptsConfigurationState.isGDriveConnected && (
-          <>
-            <Page.Layout direction="vertical">
-              <Page.SectionHeader title="2. Choose an assistant" />
+        {transcriptsConfigurationState.isGDriveConnected &&
+          transcriptsConfiguration &&
+          transcriptsConfiguration.id && (
+            <>
               <Page.Layout direction="vertical">
-                <Page.P>
-                  Choose the assistant that will summarize the transcripts in
-                  the way you want.
-                </Page.P>
-                <Page.Layout direction="horizontal">
-                  <AssistantPicker
-                    owner={owner}
-                    size="sm"
-                    onItemClick={handleSelectAssistant}
-                    assistants={agents}
-                    showFooterButtons={false}
-                  />
-                  {transcriptsConfigurationState.assistantSelected && (
-                    <Page.P>
-                      <strong>
-                        @{transcriptsConfigurationState.assistantSelected.name}
-                      </strong>
-                    </Page.P>
-                  )}
+                <Page.SectionHeader title="2. Choose an assistant" />
+                <Page.Layout direction="vertical">
+                  <Page.P>
+                    Choose the assistant that will summarize the transcripts in
+                    the way you want.
+                  </Page.P>
+                  <Page.Layout direction="horizontal">
+                    <AssistantPicker
+                      owner={owner}
+                      size="sm"
+                      onItemClick={(assistant) =>
+                        handleSelectAssistant(
+                          transcriptsConfiguration.id,
+                          assistant
+                        )
+                      }
+                      assistants={agents}
+                      showFooterButtons={false}
+                    />
+                    {transcriptsConfigurationState.assistantSelected && (
+                      <Page.P>
+                        <strong>
+                          @
+                          {transcriptsConfigurationState.assistantSelected.name}
+                        </strong>
+                      </Page.P>
+                    )}
+                  </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
-            </Page.Layout>
-            <Page.Layout direction="vertical">
-              <Page.SectionHeader title="3. Enable transcripts processing" />
-              <Page.Layout direction="horizontal" gap="xl">
-                <SliderToggle
-                  selected={transcriptsConfigurationState.isActive}
-                  onClick={() =>
-                    handleSetIsActive(!transcriptsConfigurationState.isActive)
-                  }
-                  disabled={!transcriptsConfigurationState.assistantSelected}
-                />
-                <Page.P>
-                  When enabled, each new meeting transcript in 'My Drive' will
-                  be processed.
-                  <br />
-                  Summaries can take up to 30 minutes to be sent after meetings
-                  end.
-                </Page.P>
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="3. Enable transcripts processing" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <SliderToggle
+                    selected={transcriptsConfigurationState.isActive}
+                    onClick={() =>
+                      handleSetIsActive(
+                        transcriptsConfiguration.id,
+                        !transcriptsConfigurationState.isActive
+                      )
+                    }
+                    disabled={!transcriptsConfigurationState.assistantSelected}
+                  />
+                  <Page.P>
+                    When enabled, each new meeting transcript in 'My Drive' will
+                    be processed.
+                    <br />
+                    Summaries can take up to 30 minutes to be sent after
+                    meetings end.
+                  </Page.P>
+                </Page.Layout>
               </Page.Layout>
-            </Page.Layout>
-          </>
-        )}
+            </>
+          )}
       </Page>
     </AppLayout>
   );
