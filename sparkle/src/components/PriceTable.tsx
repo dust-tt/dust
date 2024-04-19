@@ -205,7 +205,9 @@ PriceTable.ActionContainer = function ({
         className={classNames(
           "s-flex s-w-full s-justify-center s-px-2",
           size === "xs" ? "s-py-2" : "s-py-4",
-          position === "top" ? "s-border-b s-border-structure-100" : ""
+          position === "top"
+            ? "s-border-b s-border-structure-100 dark:s-border-structure-200-dark/50"
+            : ""
         )}
       >
         <div className="s-flex s-h-full s-flex-col s-justify-end">
