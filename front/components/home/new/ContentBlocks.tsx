@@ -93,7 +93,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
 
 interface HeaderContentBlockProps {
   title: ReactNode;
-  subtitle: ReactNode;
+  subtitle?: ReactNode;
   uptitle?: string;
   from: string;
   to: string;
@@ -125,9 +125,11 @@ export const HeaderContentBlock = ({
       <H1 from={from} to={to}>
         {title}
       </H1>
-      <P size="lg" className="text-white">
-        {subtitle}
-      </P>
+      {subtitle && (
+        <P size="lg" className="text-white">
+          {subtitle}
+        </P>
+      )}
     </div>
   </Grid>
 );

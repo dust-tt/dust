@@ -9,7 +9,10 @@ import {
 import { A, Grid, P, Strong } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
-import { getParticleShapeIndexByName } from "@app/components/home/new/Particles";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -44,7 +47,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
-      shape: getParticleShapeIndexByName("icosahedron"),
+      shape: getParticleShapeIndexByName(shapeNames.icosahedron),
     },
   };
 });

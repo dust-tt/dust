@@ -6,7 +6,10 @@ import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
 import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
-import { getParticleShapeIndexByName } from "@app/components/home/new/Particles";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
@@ -42,7 +45,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
-      shape: getParticleShapeIndexByName("bigSphere"),
+      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
     },
   };
 });
@@ -60,14 +63,12 @@ export default function Pricing() {
         }}
       />
       <HeaderContentBlock
-        title={<>Meet our pricing plans.</>}
-        from="from-slate-50/90"
-        to="to-slate-200/70"
-        subtitle={
+        title={
           <>
-            <div>
+            Meet our pricing plans.
+            <div className="pt-2">
               <Button
-                variant="tertiary"
+                variant="primary"
                 size="md"
                 label="Start with Pro, 15 Days free"
                 icon={RocketIcon}
@@ -78,6 +79,8 @@ export default function Pricing() {
             </div>
           </>
         }
+        from="from-action-300"
+        to="to-action-500"
       />
       <Grid>
         <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">

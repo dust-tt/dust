@@ -180,6 +180,18 @@ export function ProPriceTable({
       size={size}
       magnified={false}
     >
+      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        <PriceTable.ActionContainer>
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Start now, 15 days free"
+            icon={RocketIcon}
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        </PriceTable.ActionContainer>
+      )}
       {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
         (item) => (
           <PriceTable.Item
@@ -189,20 +201,12 @@ export function ProPriceTable({
           />
         )
       )}
-
-      {display === "landing" && (
-        <PriceTable.ActionContainer>
-          <div className="text-base font-bold text-action-400">
-            Try it for free for 2 weeks
-          </div>
-        </PriceTable.ActionContainer>
-      )}
       {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
         <PriceTable.ActionContainer>
           <Button
             variant="primary"
             size={biggerButtonSize}
-            label="Start now"
+            label="Start now, 15 days free"
             icon={RocketIcon}
             disabled={isProcessing}
             onClick={onClick}
@@ -224,6 +228,17 @@ function EnterprisePriceTable({
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
+      <PriceTable.ActionContainer>
+        {onClick && (
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Contact us"
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        )}
+      </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item) => (
         <PriceTable.Item
           key={item.label}
