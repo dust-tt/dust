@@ -1,6 +1,5 @@
 import React, { ReactNode } from "react";
 
-import { Button } from "@sparkle/_index";
 import { Check, Dash, XMark } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
