@@ -213,7 +213,7 @@ export async function* runTablesQuery(
 
   // TODO(2024-04-19 flav) Delete.
   if (isDevelopmentOrDustWorkspace(owner)) {
-    config.use_tools = true;
+    config.MODEL.use_tools = true;
   }
 
   // Running the app

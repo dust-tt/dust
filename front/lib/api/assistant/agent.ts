@@ -103,7 +103,7 @@ export async function generateActionInputs(
   // TODO(2024-04-19 flav) Delete.
   const owner = auth.workspace();
   if (owner && isDevelopmentOrDustWorkspace(owner)) {
-    config.use_tools = true;
+    config.MODEL.use_tools = true;
   }
 
   const res = await runActionStreamed(
