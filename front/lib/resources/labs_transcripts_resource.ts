@@ -23,7 +23,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static model: ModelStatic<LabsTranscriptsConfigurationModel> =
     LabsTranscriptsConfigurationModel;
 
-  constructor(blob: Attributes<LabsTranscriptsConfigurationModel>) {
+  constructor(
+    model: ModelStatic<LabsTranscriptsConfigurationModel>,
+    blob: Attributes<LabsTranscriptsConfigurationModel>
+  ) {
     super(LabsTranscriptsConfigurationModel, blob);
   }
 
@@ -38,7 +41,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       isActive: false,
     });
 
-    return new LabsTranscriptsConfigurationResource(configuration.get());
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   static async findByUserWorkspaceAndProvider({
@@ -59,7 +65,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     });
 
     return configuration
-      ? new LabsTranscriptsConfigurationResource(configuration.get())
+      ? new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
       : null;
   }
 

@@ -1,33 +1,26 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 
+import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/labs/config";
-import {
-  makeProcessTranscriptWorkflowId,
-  makeRetrieveTranscriptWorkflowId,
-} from "@app/temporal/labs/utils";
-import {
-  processTranscriptWorkflow,
-  retrieveNewTranscriptsWorkflow,
-} from "@app/temporal/labs/workflows";
+import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/utils";
+import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/workflows";
 
-export async function launchRetrieveTranscriptsWorkflow({
-  userId,
-  workspaceId,
-  providerId,
-}: {
-  userId: ModelId;
-  workspaceId: ModelId;
-  providerId: LabsTranscriptsProviderType;
-}): Promise<Result<string, Error>> {
-  const client = await getTemporalClient();
-  const workflowId = makeRetrieveTranscriptWorkflowId({
-    providerId,
+export async function launchRetrieveTranscriptsWorkflow(
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource
+): Promise<Result<string, Error>> {
+  const {
+    provider: providerId,
     userId,
-  });
+    workspaceId,
+  } = transcriptsConfiguration;
+
+  const client = await getTemporalClient();
+  const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
@@ -59,53 +52,30 @@ export async function launchRetrieveTranscriptsWorkflow({
   }
 }
 
-export async function launchProcessTranscriptWorkflow({
-  userId,
-  workspaceId,
-  fileId,
-}: {
-  userId: ModelId;
-  workspaceId: ModelId;
-  fileId: string;
-}): Promise<Result<string, Error>> {
+export async function stopRetrieveTranscriptsWorkflow(
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource
+): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-
-  const workflowId = makeProcessTranscriptWorkflowId({
-    fileId,
-    userId,
-  });
+  const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
 
   try {
-    await client.workflow.start(processTranscriptWorkflow, {
-      args: [
-        {
-          userId,
-          workspaceId,
-          fileId,
-        },
-      ],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      memo: {
-        userId,
-        workspaceId,
-        fileId,
-      },
-    });
-    logger.info(
-      {
-        workflowId,
-      },
-      "Transcript processing workflow started."
-    );
-    return new Ok(workflowId);
+    const handle: WorkflowHandle<typeof retrieveNewTranscriptsWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    return new Ok(undefined);
   } catch (e) {
     logger.error(
       {
         workflowId,
         error: e,
       },
-      "Transcript processing workflow failed."
+      "Failed stopping workflow."
     );
     return new Err(e as Error);
   }
