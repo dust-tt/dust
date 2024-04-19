@@ -159,6 +159,7 @@ export default function LabsTranscriptsIndex({
       assistant.name;
     await makePatchRequest(
       {
+        provider,
         agentConfigurationId: assistant.sId,
       },
       successMessage
@@ -325,6 +326,7 @@ export default function LabsTranscriptsIndex({
                   onClick={() =>
                     handleSetIsActive(!transcriptsConfigurationState.isActive)
                   }
+                  disabled={!transcriptsConfigurationState.assistantSelected}
                 />
                 <Page.P>
                   When enabled, each new meeting transcript in 'My Drive' will

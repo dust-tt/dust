@@ -19,7 +19,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 
 export const acceptableProviders = t.union([
   t.literal("google_drive"),
-  t.literal("gong"),
+  t.literal("gong")
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
