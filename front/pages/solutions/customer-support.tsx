@@ -9,6 +9,10 @@ import {
 import { Grid, H2 } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -42,12 +46,15 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 9 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName(shapeNames.octahedron),
+    },
   };
 });
 
 const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3";
+  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
 export default function CustomerSupport() {
   return (
@@ -131,7 +138,7 @@ export default function CustomerSupport() {
         />
         <H2 className={defaultHClasses}>Better insights.</H2>
         <ContentAssistantBlock
-          className="col-span-12 md:col-span-8 lg:col-span-6 lg:col-start-2 xl:col-span-5 xl:col-start-3"
+          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
           color="pink"
           layout="vertical"
           content={

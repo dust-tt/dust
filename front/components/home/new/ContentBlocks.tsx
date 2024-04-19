@@ -303,7 +303,7 @@ export const ContentAssistantBlock = ({
     <div
       className={classNames(
         className,
-        "flex overflow-hidden rounded-[28px] bg-slate-50",
+        "my-4 flex overflow-hidden rounded-[28px] bg-slate-50 sm:my-0 ",
         layoutFinal
       )}
     >

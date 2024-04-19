@@ -246,6 +246,7 @@ function animateExplode() {
 }
 
 function calculateTargetPositions(currentShape = 0) {
+  speed = postExplodeSpeed;
   targetPositions = []; // Reset the target positions
   for (let i = 0; i < numParticles; i++) {
     let targetPosition = { x: 0, y: 0, z: 0 }; // Initialize targetPosition with default values

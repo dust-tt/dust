@@ -9,13 +9,16 @@ import {
 import { Grid, H2 } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
   getUserFromSession,
   makeGetServerSidePropsRequirementsWrapper,
 } from "@app/lib/iam/session";
-import { classNames } from "@app/lib/utils";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -43,147 +46,92 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 5 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName(shapeNames.torus),
+    },
   };
 });
 
-const defaultFlexClasses = "flex flex-col gap-4";
+const defaultHClasses =
+  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
 export default function RecruitingPeople() {
   return (
     <>
       <HeaderContentBlock
         uptitle="Dust for Recruiting and People teams"
-        title={
-          <>
-            Augment your&nbsp;team's producity,
-            <br />
-            provide great insights to your&nbsp;company.
-          </>
-        }
+        title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers.</>}
         from="from-amber-200"
         to="to-amber-400"
         subtitle={
           <>
-            Onboarding&nbsp;better, Manage&nbsp;feedback, Support
-            managers&nbsp;effectively, Scale performance analysis
-            and&nbsp;Recruiting.
+            Onboard&nbsp;better, support managers&nbsp;and teams effectively,
+            scale performance analysis and&nbsp;recruiting.
           </>
         }
       />
-      <Grid gap="gap-8">
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "sm:col-span-10",
-            "lg:col-span-4",
-            "xl:col-span-4 xl:col-start-2"
-          )}
-        >
-          <H2 className="text-white">
-            Share knowledge better,
-            <br />
-            free time for you.
-          </H2>
-        </div>
+      <Grid>
+        <H2 className={defaultHClasses}>
+          Share knowledge better,
+          <br />
+          free time for you.
+        </H2>{" "}
         <ContentAssistantBlock
-          className="col-span-12 lg:col-span-8 xl:col-span-6"
-          layout="column sm:vertical"
+          className="col-span-12 mb-4 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
+          layout="vertical"
           color="sky"
           content={
             <>
-              <Block title="Onboard new people with accessible information at their pace">
-                Transform your onboarding process using AI assistants design to
-                guide knewcomers through your methodes, processes, people and
+              <Block
+                title={
+                  <>
+                    Onboard new people with accessible information at their own
+                    pace
+                  </>
+                }
+              >
+                Transform your onboarding process using an AI assistant designed
+                to guide newcomers through your methods, processes, people, and
                 culture.
               </Block>
-              <Block title="Put your internal documentation to work">
-                Create an assistant capable to answer any questions and point to
-                the right internal ressources and spread your company culture
+              <Block title={<>Put your internal documentation to work</>}>
+                Create an assistant capable of answering any questions, point to
+                the right internal resources, and spread your company culture
                 and methods.
               </Block>
             </>
           }
-          assistant=<>
-            {peopleSlides[0]}
-            {peopleSlides[1]}
-          </>
+          assistant={
+            <>
+              {peopleSlides[0]}
+              {peopleSlides[1]}
+            </>
+          }
         />
-      </Grid>
-      <Grid gap="gap-8">
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "sm:col-span-10",
-            "lg:col-span-4",
-            "xl:col-start-2"
-          )}
-        >
-          <H2 className="text-white">Help your people grow.</H2>
-        </div>
+        <H2 className={defaultHClasses}>Help your people grow.</H2>{" "}
         <ContentAssistantBlock
-          className="col-span-12 lg:col-span-8 xl:col-span-6"
-          layout="column sm:vertical"
+          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
+          layout="vertical"
           color="emerald"
           content={
             <>
-              <Block title="Better data">
-                Good performance review is first good data. Collect informations
-                from various channels to provide, get an holistic view of an
-                employee's work, make more accurate evaluations.
-              </Block>
-              <Block title="Better Writing">
-                Help your team write more thoughtfully. Challenges and enriches
-                their writing with feedback on tone, refrences to the company’s
-                operating principles, priorities and business objectives.
+              <Block title={<>Improve Feedback and Reviews</>}>
+                Collect data from various channels to get a holistic view of
+                each employee's work and make more accurate evaluations. Help
+                your team write more thoughtfully, with AI-powered feedback on
+                tone, references to company principles, priorities and business
+                objectives.
               </Block>
             </>
           }
-          assistant=<></>
+          assistant={<>{peopleSlides[6]}</>}
         />
+        <H2 className={defaultHClasses}>
+          Boost your team hiring&nbsp;efforts.
+        </H2>
         <ContentAssistantBlock
-          className="col-span-12 xl:col-span-10 xl:col-start-2"
-          color="pink"
-          layout="column sm:vertical"
-          content={
-            <>
-              <Block title="Better analysis">
-                AI augmented with company knowledge will help you go through the
-                volume, summarize, read between the lines, compare effectively.
-              </Block>
-              <Block title="Better decisions">
-                Screen for diversity and inclusion and reduce the bias in
-                performance reviews by providing a more comprehensive and
-                objective analysis of employee performances.
-              </Block>
-              <Block title="Better restitution">
-                Write more personalized and reach feedback for your team,
-                development plans and career pathing for employees, aligning
-                with their strengths and improvement areas.
-              </Block>
-            </>
-          }
-          assistant=<></>
-        />
-      </Grid>
-
-      {/* HIRING */}
-      <Grid gap="gap-8">
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "sm:col-span-10",
-            "lg:col-span-4",
-            "xl:col-start-3"
-          )}
-        >
-          <H2 className="text-white">Boost your team hiring&nbsp;efforts.</H2>
-        </div>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-8 xl:col-span-6 xl:col-start-1"
+          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-6"
           layout="column sm:vertical"
           color="amber"
           content={
@@ -203,9 +151,9 @@ export default function RecruitingPeople() {
           </>
         />
         <ContentAssistantBlock
-          className="col-span-12 xl:col-span-6"
+          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-6"
           layout="column sm:vertical"
-          color="sky"
+          color="amber"
           content={
             <>
               <Block title="Make AI work for you">
@@ -266,15 +214,22 @@ const peopleSlides = [
   <DroidItem
     key="4"
     emoji="💬"
-    avatarBackground="bg-sky-200"
+    avatarBackground="bg-amber-200"
     name="@hiringQuestions"
     question="Draft questions depending on the role, type of interview and stage in the process."
   />,
   <DroidItem
     key="5"
     emoji="🧐"
-    avatarBackground="bg-sky-200"
+    avatarBackground="bg-amber-200"
     name="@candidate"
     question="Summarize available information about a candidate based on Company DB."
+  />,
+  <DroidItem
+    key="6"
+    emoji="🏅"
+    avatarBackground="bg-emerald-200"
+    name="@feedbackReview"
+    question="Collects achievements, drafts actionable reviews, helps formulate feedback."
   />,
 ];
