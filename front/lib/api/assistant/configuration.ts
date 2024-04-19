@@ -35,11 +35,9 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import {
-  AgentDataSourceConfiguration,
-  AgentRetrievalConfiguration,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,

@@ -17,8 +17,6 @@ import type {
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
-  Err,
-  isProcessConfiguration,
   Ok,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
@@ -30,11 +28,9 @@ import {
   retrievalAutoTimeFrameInputSpecification,
   timeFrameFromNow,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import { constructPrompt } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
@@ -92,112 +88,22 @@ export async function processActionSpecification(
   };
 }
 
-/// Generates retrieval parameters given the agent configuration and the conversation context,
-/// potentially generating the query and relative time frame.
-export async function generateProcessParams(
+// Generates the action specification for generation of rawInputs passed to `runProcess`.
+export async function generateProcessSpecification(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType
-): Promise<
-  Result<
-    {
-      query: string | null;
-      relativeTimeFrame: TimeFrame | null;
-    },
-    Error
-  >
-> {
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (!isProcessConfiguration(actionConfig)) {
-    throw new Error(
-      "Unexpected action configuration received in `generateProcessParams`"
-    );
+  {
+    actionConfiguration,
+  }: {
+    actionConfiguration: ProcessConfigurationType;
+  }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  let query: string | null = null;
-  let relativeTimeFrame: TimeFrame | null = null;
-
-  if (
-    actionConfig.relativeTimeFrame !== "none" &&
-    actionConfig.relativeTimeFrame !== "auto"
-  ) {
-    relativeTimeFrame = actionConfig.relativeTimeFrame;
-  }
-
-  if (actionConfig.query !== "none" && actionConfig.query !== "auto") {
-    query = actionConfig.query.template.replace(
-      "_USER_MESSAGE_",
-      userMessage.content
-    );
-  }
-
-  const spec = await processActionSpecification(actionConfig);
-
-  if (spec.inputs.length > 0) {
-    const now = Date.now();
-
-    const rawInputsRes = await generateActionInputs(
-      auth,
-      configuration,
-      spec,
-      conversation,
-      userMessage
-    );
-
-    if (rawInputsRes.isOk()) {
-      const rawInputs = rawInputsRes.value;
-
-      logger.info(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-        },
-        "[ASSISTANT_TRACE] Process action inputs generation"
-      );
-
-      if (actionConfig.query === "auto") {
-        if (!rawInputs.query || typeof rawInputs.query !== "string") {
-          return new Err(
-            new Error("Failed to generate a valid process query.")
-          );
-        }
-        query = rawInputs.query as string;
-      }
-
-      if (actionConfig.relativeTimeFrame === "auto") {
-        if (
-          rawInputs.relativeTimeFrame &&
-          typeof rawInputs.relativeTimeFrame === "string"
-        ) {
-          relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
-        }
-      }
-    } else {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsed: Date.now() - now,
-          error: rawInputsRes.error,
-        },
-        "Error generating process action inputs"
-      );
-
-      // We fail the processing only if we had to generate a query but failed to do so, if the
-      // relativeTimeFrame failed, we'll just use `null`.
-      if (actionConfig.query === "auto") {
-        return rawInputsRes;
-      }
-    }
-  }
-
-  return new Ok({
-    query,
-    relativeTimeFrame,
-  });
+  const spec = await processActionSpecification(actionConfiguration);
+  return new Ok(spec);
 }
 
 /**
@@ -207,7 +113,7 @@ export async function generateProcessParams(
 // Internal interface for the retrieval and rendering of a Process action. This should not be used
 // outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderDustAppRunActionByModelId(
+export async function renderProcessActionByModelId(
   id: ModelId
 ): Promise<ProcessActionType> {
   const action = await AgentProcessAction.findByPk(id);
@@ -230,6 +136,7 @@ export async function renderDustAppRunActionByModelId(
       query: action.query,
       relativeTimeFrame,
     },
+    schema: action.schema,
     outputs: action.outputs,
   };
 }
@@ -243,12 +150,21 @@ export async function renderDustAppRunActionByModelId(
 // for an AgentProcessAction to be stored (once the query params are infered) but for its execution
 // to fail, in which case an error event will be emitted and the AgentProcessAction won't have any
 // outputs associated. The error is expected to be stored by the caller on the parent agent message.
-export async function* runRetrieval(
+export async function* runProcess(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  {
+    configuration,
+    actionConfiguration,
+    conversation,
+    agentMessage,
+    rawInputs,
+  }: {
+    configuration: AgentConfigurationType;
+    actionConfiguration: ProcessConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
+    rawInputs: Record<string, string | boolean | number>;
+  }
 ): AsyncGenerator<
   ProcessParamsEvent | ProcessSuccessEvent | ProcessErrorEvent,
   void
@@ -258,42 +174,42 @@ export async function* runRetrieval(
     throw new Error("Unexpected unauthenticated call to `process`");
   }
 
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+  let query: string | null = null;
+  let relativeTimeFrame: TimeFrame | null = null;
 
-  if (!isProcessConfiguration(actionConfig)) {
-    throw new Error("Unexpected action configuration received in `process`");
+  if (
+    actionConfiguration.relativeTimeFrame !== "none" &&
+    actionConfiguration.relativeTimeFrame !== "auto"
+  ) {
+    relativeTimeFrame = actionConfiguration.relativeTimeFrame;
   }
 
-  const paramsRes = await generateProcessParams(
-    auth,
-    configuration,
-    conversation,
-    userMessage
-  );
-
-  if (paramsRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: owner.id,
-        conversationId: conversation.id,
-        error: paramsRes.error,
-      },
-      "Error generating process parameters"
-    );
-    yield {
-      type: "process_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "process_parameters_generation_error",
-        message: `Error generating parameters for process: ${paramsRes.error.message}`,
-      },
-    };
-    return;
+  if (actionConfiguration.query === "auto") {
+    if (!rawInputs.query || typeof rawInputs.query !== "string") {
+      yield {
+        type: "process_error",
+        created: Date.now(),
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "process_parameters_generation_error",
+          message: `Error generating parameters for process: failed to generate a valid query.`,
+        },
+      };
+      return;
+    }
+    query = rawInputs.query as string;
   }
 
-  const params = paramsRes.value;
+  if (actionConfiguration.relativeTimeFrame === "auto") {
+    if (
+      rawInputs.relativeTimeFrame &&
+      typeof rawInputs.relativeTimeFrame === "string"
+    ) {
+      relativeTimeFrame = parseTimeFrame(rawInputs.relativeTimeFrame);
+    }
+  }
+
   const model = configuration.generation?.model;
 
   let contextSize = 16384;
@@ -310,18 +226,16 @@ export async function* runRetrieval(
     contextSize = supportedModel.contextSize;
   }
 
-  // const model = configuration.generation?.model;
-
   // Create the AgentProcessAction object in the database and yield an event for the generation of
   // the params. We store the action here as the params have been generated, if an error occurs
   // later on, the action won't have outputs but the error will be stored on the parent agent
   // message.
   const action = await AgentProcessAction.create({
-    query: params.query,
-    relativeTimeFrameDuration: params.relativeTimeFrame?.duration ?? null,
-    relativeTimeFrameUnit: params.relativeTimeFrame?.unit ?? null,
-    processConfigurationId: actionConfig.sId,
-    schema: actionConfig.schema,
+    query: query,
+    relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
+    relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
+    processConfigurationId: actionConfiguration.sId,
+    schema: actionConfiguration.schema,
   });
 
   yield {
@@ -329,13 +243,13 @@ export async function* runRetrieval(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    dataSources: actionConfig.dataSources,
+    dataSources: actionConfiguration.dataSources,
     action: {
       id: action.id,
       type: "process_action",
       params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
+        relativeTimeFrame,
+        query,
       },
       schema: action.schema,
       outputs: null,
@@ -356,12 +270,12 @@ export async function* runRetrieval(
   );
 
   // Handle data sources list and parents/tags filtering.
-  config.DATASOURCE.data_sources = actionConfig.dataSources.map((d) => ({
+  config.DATASOURCE.data_sources = actionConfiguration.dataSources.map((d) => ({
     workspace_id: d.workspaceId,
     data_source_id: d.dataSourceId,
   }));
 
-  for (const ds of actionConfig.dataSources) {
+  for (const ds of actionConfiguration.dataSources) {
     /** Caveat: empty array in tags.in means "no document match" since no
      * documents has any tags that is in the tags.in array (same for parents)*/
     if (!config.DATASOURCE.filter.tags) {
@@ -398,9 +312,9 @@ export async function* runRetrieval(
   }
 
   // Handle timestamp filtering.
-  if (params.relativeTimeFrame) {
+  if (relativeTimeFrame) {
     config.DATASOURCE.filter.timestamp = {
-      gt: timeFrameFromNow(params.relativeTimeFrame),
+      gt: timeFrameFromNow(relativeTimeFrame),
     };
   }
 
@@ -409,10 +323,10 @@ export async function* runRetrieval(
 
   const res = await runActionStreamed(auth, "assistant-v2-process", config, [
     {
-      query: params.query,
+      query,
       context_size: contextSize,
       prompt,
-      schema: renderSchemaPropertiesAsJSONSchema(actionConfig.schema),
+      schema: renderSchemaPropertiesAsJSONSchema(actionConfiguration.schema),
     },
   ]);
 
@@ -517,8 +431,8 @@ export async function* runRetrieval(
       id: action.id,
       type: "process_action",
       params: {
-        relativeTimeFrame: params.relativeTimeFrame,
-        query: params.query,
+        relativeTimeFrame,
+        query,
       },
       schema: action.schema,
       outputs,

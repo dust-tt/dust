@@ -503,8 +503,8 @@ export async function* runRetrieval(
       id: action.id,
       type: "retrieval_action",
       params: {
-        relativeTimeFrame: relativeTimeFrame,
-        query: query,
+        relativeTimeFrame,
+        query,
         topK,
       },
       documents: null,
@@ -571,7 +571,7 @@ export async function* runRetrieval(
 
   const res = await runActionStreamed(auth, "assistant-v2-retrieval", config, [
     {
-      query: query,
+      query,
     },
   ]);
 
