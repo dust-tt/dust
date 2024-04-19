@@ -59,6 +59,7 @@ import {
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import {
   AgentMessage,
   Conversation,
@@ -451,6 +452,12 @@ export async function generateConversationTitle(
   );
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+
+  // TODO(2024-04-19 flav) Delete.
+  const owner = auth.workspace();
+  if (owner && isDevelopmentOrDustWorkspace(owner)) {
+    config.MODEL.use_tools = true;
+  }
 
   const res = await runActionStreamed(
     auth,
