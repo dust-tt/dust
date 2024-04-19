@@ -173,10 +173,11 @@ export default function LabsTranscriptsIndex({
     });
 
     const successMessage = isActive
-      ? "We will start summarizing your transcripts."
-      : "We will no longer summarize your transcripts.";
+      ? "We will start summarizing your meeting transcripts."
+      : "We will no longer summarize your meeting transcripts.";
     await makePatchRequest(
       {
+        provider,
         isActive,
       },
       successMessage

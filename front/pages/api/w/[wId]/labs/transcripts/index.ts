@@ -28,8 +28,8 @@ export const PostLabsTranscriptsConfigurationBodySchema = t.type({
 });
 
 export const PatchLabsTranscriptsConfigurationBodySchema = t.type({
-  agentConfigurationId: t.string,
-  provider: acceptableProviders,
+  agentConfigurationId: t.union([t.string,t.undefined]),
+  provider: t.union([acceptableProviders, t.undefined]),
   isActive: t.union([t.boolean, t.undefined]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
@@ -153,7 +153,6 @@ async function handler(
             providerId: patchProvider,
           });
         } else {
-          // Cancel the workflow
           await stopRetrieveTranscriptsWorkflow({
             userId,
             workspaceId: owner.id,
