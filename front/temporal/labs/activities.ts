@@ -306,25 +306,3 @@ export async function processGoogleDriveTranscriptActivity(
 
   await sendEmail(transcriptsConfiguration.emailToNotify || user.email, msg);
 }
-
-export async function checkIsActiveActivity({
-  userId,
-  workspaceId,
-  provider,
-}: {
-  userId: ModelId;
-  workspaceId: ModelId;
-  provider: LabsTranscriptsProviderType;
-}) {
-  const transcriptConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      provider,
-      userId,
-      workspaceId,
-    });
-  if (!transcriptConfiguration) {
-    return false;
-  }
-
-  return transcriptConfiguration.isActive;
-}
