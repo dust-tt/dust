@@ -64,6 +64,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
     const blobs = await TemplateResource.model.findAll({
       where,
+      order: [["handle", "ASC"]],
     });
 
     return blobs.map(
@@ -135,6 +136,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       presetTemperature: this.presetTemperature,
       sId: this.sId,
       tags: this.tags,
+      visibility: this.visibility,
     };
   }
 }

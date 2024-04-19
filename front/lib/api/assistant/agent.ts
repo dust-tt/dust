@@ -40,6 +40,7 @@ import {
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import logger from "@app/logger/logger";
 
 /**
@@ -98,6 +99,12 @@ export async function generateActionInputs(
   config.MODEL.function_call = specification.name;
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+
+  // TODO(2024-04-19 flav) Delete.
+  const owner = auth.workspace();
+  if (owner && isDevelopmentOrDustWorkspace(owner)) {
+    config.MODEL.use_tools = true;
+  }
 
   const res = await runActionStreamed(
     auth,

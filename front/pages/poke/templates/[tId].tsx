@@ -1,16 +1,23 @@
-import type { CreateTemplateFormType } from "@dust-tt/types";
+import { TemplateItem } from "@dust-tt/sparkle";
+import type {
+  CreateTemplateFormType,
+  TemplateTagCodeType,
+} from "@dust-tt/types";
 import {
   ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
-  assistantTemplateTagNames,
   CreateTemplateFormSchema,
+  generateTailwindBackgroundColors,
   GPT_4_TURBO_MODEL_CONFIG,
   removeNulls,
+  TEMPLATE_VISIBILITIES,
+  TEMPLATES_TAGS_CONFIG,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
@@ -18,6 +25,13 @@ import { MultiSelect } from "react-multi-select-component";
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import {
+  PokeDialog,
+  PokeDialogContent,
+  PokeDialogHeader,
+  PokeDialogTitle,
+  PokeDialogTrigger,
+} from "@app/components/poke/shadcn/ui/dialog";
 import {
   PokeForm,
   PokeFormControl,
@@ -36,6 +50,7 @@ import {
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 
@@ -112,9 +127,12 @@ function TextareaField({
   );
 }
 
-const tagOptions = assistantTemplateTagNames.map((t) => ({
-  label: t,
-  value: t,
+const tagOptions: {
+  label: string;
+  value: TemplateTagCodeType;
+}[] = _.map(TEMPLATES_TAGS_CONFIG, (config, key) => ({
+  label: config.label,
+  value: key as TemplateTagCodeType,
 }));
 
 interface SelectFieldOption {
@@ -142,8 +160,8 @@ function SelectField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
             <PokeSelect
+              value={field.value as string}
               onValueChange={field.onChange}
-              defaultValue={field.value as string}
             >
               <PokeFormControl>
                 <PokeSelectTrigger>
@@ -165,6 +183,35 @@ function SelectField({
         </PokeFormItem>
       )}
     />
+  );
+}
+
+function PreviewDialog({ form }: { form: any }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <PokeDialog open={open} onOpenChange={setOpen}>
+      <PokeDialogTrigger asChild>
+        <PokeButton variant="outline">✨ Preview Template</PokeButton>
+      </PokeDialogTrigger>
+      <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <PokeDialogHeader>
+          <PokeDialogTitle>
+            Preview as displayed in Template Gallery
+          </PokeDialogTitle>
+        </PokeDialogHeader>
+        <TemplateItem
+          name={form.getValues("handle")}
+          id="1"
+          description={form.getValues("description") ?? ""}
+          visual={{
+            backgroundColor: form.getValues("backgroundColor"),
+            emoji: form.getValues("emoji"),
+          }}
+          href={""}
+        />
+      </PokeDialogContent>
+    </PokeDialog>
   );
 }
 
@@ -240,18 +287,55 @@ function TemplatesPage({
     [assistantTemplate, sendNotification, setIsSubmitting, router]
   );
 
+  const { submit: onDelete } = useSubmitFunction(async () => {
+    if (assistantTemplate === null) {
+      window.alert(
+        "An error occurred while attempting to delete the template (can't find the template)."
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this template? There's no going back."
+      )
+    ) {
+      return;
+    }
+    try {
+      const r = await fetch(`/api/poke/templates/${assistantTemplate.sId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!r.ok) {
+        throw new Error("Failed to delete template.");
+      }
+      await router.push("/poke/templates");
+    } catch (e) {
+      console.error(e);
+      window.alert(
+        "An error occurred while attempting to delete the template."
+      );
+    }
+  });
+
   const form = useForm<CreateTemplateFormType>({
     resolver: ioTsResolver(CreateTemplateFormSchema),
     defaultValues: {
       description: "",
       handle: "",
       presetInstructions: "",
-      presetModel: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      presetModelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       presetTemperature: "balanced",
       presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
+      emoji: "🐈‍⬛",
+      backgroundColor: "bg-pink-300",
       tags: [],
+      visibility: "draft",
     },
   });
 
@@ -270,6 +354,11 @@ function TemplatesPage({
         <div className="text-structure-900">Creating template...</div>
       </div>
     );
+  }
+
+  if (Object.keys(form.formState.errors).length > 0) {
+    // Useful to debug in case you have an error on a field that is not rendered
+    console.log("Form errors", form.formState.errors);
   }
 
   return (
@@ -295,10 +384,11 @@ function TemplatesPage({
             />
             <SelectField
               control={form.control}
-              name="presetModel"
+              name="presetModelId"
               title="Preset Model"
               options={USED_MODEL_CONFIGS.map((config) => ({
                 value: config.modelId,
+                display: config.displayName,
               }))}
             />
             <SelectField
@@ -339,8 +429,8 @@ function TemplatesPage({
                   <PokeFormControl>
                     <MultiSelect
                       options={tagOptions}
-                      value={field.value.map((tag) => ({
-                        label: tag,
+                      value={field.value.map((tag: TemplateTagCodeType) => ({
+                        label: TEMPLATES_TAGS_CONFIG[tag].label,
                         value: tag,
                       }))}
                       onChange={(tags: { label: string; value: string }[]) => {
@@ -354,15 +444,38 @@ function TemplatesPage({
                 </PokeFormItem>
               )}
             />
-            <InputField control={form.control} name="emoji" placeholder="🤓" />
-            <InputField
+            <InputField control={form.control} name="emoji" />
+            <SelectField
               control={form.control}
               name="backgroundColor"
-              placeholder="tailwind color code"
+              title="Background Color"
+              options={generateTailwindBackgroundColors().map((v) => ({
+                value: v,
+                display: v,
+              }))}
             />
-            <PokeButton type="submit" className="border border-structure-300">
-              Submit
-            </PokeButton>
+            <SelectField
+              control={form.control}
+              name="visibility"
+              title="Visibility"
+              options={TEMPLATE_VISIBILITIES.map((v) => ({
+                value: v,
+                display: v,
+              }))}
+            />
+            <div className="space flex justify-between">
+              <PokeButton type="submit" className="border border-structure-300">
+                Save
+              </PokeButton>
+              <PreviewDialog form={form} />
+              <PokeButton
+                type="button"
+                variant="destructive"
+                onClick={onDelete}
+              >
+                Delete this template
+              </PokeButton>
+            </div>
           </form>
         </PokeForm>
       </div>

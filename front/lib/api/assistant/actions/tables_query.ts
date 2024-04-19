@@ -24,6 +24,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { generateActionInputs } from "@app/lib/api/assistant/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
@@ -209,6 +210,11 @@ export async function* runTablesQuery(
     type: "database",
     tables,
   };
+
+  // TODO(2024-04-19 flav) Delete.
+  if (isDevelopmentOrDustWorkspace(owner)) {
+    config.MODEL.use_tools = true;
+  }
 
   // Running the app
   const res = await runActionStreamed(
