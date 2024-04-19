@@ -100,9 +100,16 @@ pub struct OpenAIFunctionCall {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
-pub enum OpenAIToolChoice {
+pub enum OpenAIToolControl {
     Auto,
     None,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(untagged)]
+
+pub enum OpenAIToolChoice {
+    OpenAIToolControl(OpenAIToolControl),
     OpenAIFunctionCall(OpenAIFunctionCall),
 }
 
@@ -124,8 +131,8 @@ impl FromStr for OpenAIToolChoice {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "auto" => Ok(OpenAIToolChoice::Auto),
-            "none" => Ok(OpenAIToolChoice::None),
+            "auto" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::Auto)),
+            "none" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::None)),
             _ => {
                 let function = OpenAIFunctionCall {
                     r#type: OpenAIToolType::Function,
