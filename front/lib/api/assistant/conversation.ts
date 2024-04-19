@@ -59,7 +59,6 @@ import {
   batchRenderUserMessages,
 } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import {
   AgentMessage,
   Conversation,
