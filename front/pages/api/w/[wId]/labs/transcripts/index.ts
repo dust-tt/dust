@@ -8,7 +8,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { launchRetrieveTranscriptsWorkflow, stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
+import {
+  launchRetrieveTranscriptsWorkflow,
+  stopRetrieveTranscriptsWorkflow,
+} from "@app/temporal/labs/client";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
