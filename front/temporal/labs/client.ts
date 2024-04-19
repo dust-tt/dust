@@ -10,7 +10,7 @@ import { QUEUE_NAME } from "@app/temporal/labs/config";
 import {
   makeProcessTranscriptWorkflowId,
   makeRetrieveTranscriptWorkflowId,
-} from "@app/temporal/labs/types";
+} from "@app/temporal/labs/utils";
 import {
   processTranscriptWorkflow,
   retrieveNewTranscriptsWorkflow,
@@ -147,7 +147,7 @@ export async function stopRetrieveTranscriptsWorkflow({
         workflowId,
         error: e,
       },
-      "[Intercom] Failed stopping workflow."
+      "Failed stopping workflow."
     );
     return new Err(e as Error);
   }

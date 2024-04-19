@@ -7,7 +7,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "./activities";
-import { makeProcessTranscriptWorkflowId } from "./types";
+import { makeProcessTranscriptWorkflowId } from "./utils";
 
 const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity } =
   proxyActivities<typeof activities>({

@@ -36,6 +36,9 @@ pub mod providers {
     pub mod tiktoken {
         pub mod tiktoken;
     }
+    pub mod sentencepiece {
+        pub mod sentencepiece;
+    }
     pub mod anthropic;
     pub mod google_ai_studio;
 }

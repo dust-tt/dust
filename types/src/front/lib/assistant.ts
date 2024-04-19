@@ -4,7 +4,7 @@
 
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 
-export const GPT_4_TURBO_PREVIEW_MODEL_ID = "gpt-4-turbo-preview" as const;
+export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 
 const GPT_4_DESCRIPTION =
@@ -13,14 +13,14 @@ const GPT_4_SHORT_DESCRIPTION = "OpenAI's smartest model.";
 
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai" as const,
-  modelId: GPT_4_TURBO_PREVIEW_MODEL_ID,
+  modelId: GPT_4_TURBO_MODEL_ID,
   displayName: "GPT 4",
   contextSize: 128_000,
   recommendedTopK: 32,
   largeModel: true,
   description: GPT_4_DESCRIPTION,
   shortDescription: GPT_4_SHORT_DESCRIPTION,
-} as const;
+};
 
 export const GPT_3_5_TURBO_MODEL_CONFIG = {
   providerId: "openai" as const,
@@ -109,7 +109,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG = {
   providerId: "mistral" as const,
   modelId: MISTRAL_LARGE_MODEL_ID,
   displayName: "Mistral Large",
-  contextSize: 24_000,
+  contextSize: 32_000,
   recommendedTopK: 16,
   largeModel: true,
   description: "Mistral's latest `large` model (32k context).",
@@ -120,7 +120,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG = {
   providerId: "mistral" as const,
   modelId: MISTRAL_MEDIUM_MODEL_ID,
   displayName: "Mistral Medium",
-  contextSize: 24_000,
+  contextSize: 32_000,
   recommendedTopK: 16,
   largeModel: true,
   description: "Mistral's latest `medium` model (32k context).",
@@ -131,7 +131,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG = {
   providerId: "mistral" as const,
   modelId: MISTRAL_SMALL_MODEL_ID,
   displayName: "Mistral Small",
-  contextSize: 24_000,
+  contextSize: 32_000,
   recommendedTopK: 16,
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
