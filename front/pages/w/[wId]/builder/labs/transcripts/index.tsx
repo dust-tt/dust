@@ -6,7 +6,7 @@ import {
   SliderToggle,
   Spinner2,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
@@ -15,7 +15,6 @@ import { useContext, useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -30,6 +29,7 @@ const provider = "google_drive";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
+  user: UserType;
   subscription: SubscriptionType;
   gaTrackingId: string;
   nangoDriveConnectorId: string;
@@ -37,8 +37,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !subscription) {
+  if (!owner || !subscription || !owner.flags.includes("labs_transcripts")) {
     return {
       notFound: true,
     };
@@ -47,6 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   return {
     props: {
       owner,
+      user,
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       nangoDriveConnectorId: config.getNangoGoogleDriveConnectorId(),
@@ -57,6 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function LabsTranscriptsIndex({
   owner,
+  user,
   subscription,
   gaTrackingId,
   nangoDriveConnectorId,
@@ -80,12 +83,10 @@ export default function LabsTranscriptsIndex({
     useState<{
       isGDriveConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
-      emailToNotify: string;
       isActive: boolean;
     }>({
       isGDriveConnected: false,
       assistantSelected: null as LightAgentConfigurationType | null,
-      emailToNotify: "",
       isActive: false,
     });
 
@@ -97,7 +98,6 @@ export default function LabsTranscriptsIndex({
         agentConfigurations.find(
           (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
         ) || null,
-      emailToNotify: transcriptsConfiguration?.emailToNotify || "",
       isActive: transcriptsConfiguration?.isActive || false,
     });
   }, [transcriptsConfiguration, agentConfigurations]);
@@ -108,7 +108,7 @@ export default function LabsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const makePatchRequest = async (data: any, successMessage: string) => {
+  const makePatchRequest = async (data: Partial<PatchLabsTranscriptsConfigurationBodySchema>, successMessage: string) => {
     await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "PATCH",
       headers: {
@@ -137,6 +137,7 @@ export default function LabsTranscriptsIndex({
       ...transcriptsConfigurationState,
       assistantSelected: assistant,
     });
+
     const data = {
       agentConfigurationId: assistant.sId,
       provider,
@@ -211,7 +212,7 @@ export default function LabsTranscriptsIndex({
     try {
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
-        `labs-transcripts-${owner.sId}`,
+        `labs-transcripts-w${owner.id}-u${user.id}`,
         provider
       );
       const {
@@ -232,104 +233,96 @@ export default function LabsTranscriptsIndex({
   };
 
   return (
-    <>
-      <AppLayout
-        subscription={subscription}
-        owner={owner}
-        gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
-        subNavigation={subNavigationBuild({ owner, current: "transcripts" })}
-        pageTitle="Dust - Transcripts processing"
-      >
-        <Page>
-          <Page.Header
-            title="Transcripts processing"
-            icon={BookOpenIcon}
-            description="Receive meeting minutes summarized by email automatically."
-          />
+    <AppLayout
+      subscription={subscription}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="conversations"
+      pageTitle="Dust - Transcripts processing"
+    >
+      <Page>
+        <Page.Header
+          title="Transcripts processing"
+          icon={BookOpenIcon}
+          description="Receive meeting minutes summarized by email automatically."
+        />
+        <Page.Layout direction="vertical">
+          <Page.SectionHeader title="1. Connect Google Drive" />
           <Page.Layout direction="vertical">
-            <Page.SectionHeader title="1. Connect Google Drive" />
-            <Page.Layout direction="vertical">
-              <Page.P>
-                Connect to Google Drive so Dust can access 'My Drive' where your
-                meeting transcripts are stored.
-              </Page.P>
-              <div>
-                <Button
-                  label={
-                    transcriptsConfigurationState.isGDriveConnected
-                      ? "Connected"
-                      : "Connect"
-                  }
-                  size="sm"
-                  icon={CloudArrowLeftRightIcon}
-                  disabled={
-                    isTranscriptsConfigurationLoading ||
-                    transcriptsConfigurationState?.isGDriveConnected
-                  }
-                  onClick={async () => {
-                    await handleConnectTranscriptsSource();
-                  }}
-                />
-              </div>
-            </Page.Layout>
+            <Page.P>
+              Connect to Google Drive so Dust can access 'My Drive' where your
+              meeting transcripts are stored.
+            </Page.P>
+            <div>
+              <Button
+                label={
+                  transcriptsConfigurationState.isGDriveConnected
+                    ? "Connected"
+                    : "Connect"
+                }
+                size="sm"
+                icon={CloudArrowLeftRightIcon}
+                disabled={
+                  isTranscriptsConfigurationLoading ||
+                  transcriptsConfigurationState?.isGDriveConnected
+                }
+                onClick={async () => {
+                  await handleConnectTranscriptsSource();
+                }}
+              />
+            </div>
           </Page.Layout>
-          {!isTranscriptsConfigurationLoading &&
-            transcriptsConfigurationState.isGDriveConnected && (
-              <>
+        </Page.Layout>
+        {!isTranscriptsConfigurationLoading &&
+          transcriptsConfigurationState.isGDriveConnected && (
+            <>
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="2. Choose an assistant" />
                 <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="2. Choose an assistant" />
-                  <Page.Layout direction="vertical">
-                    <Page.P>
-                      Choose the assistant that will summarize the transcripts
-                      in the way you want.
-                    </Page.P>
-                    <Page.Layout direction="horizontal">
-                      <AssistantPicker
-                        owner={owner}
-                        size="sm"
-                        onItemClick={handleSelectAssistant}
-                        assistants={agents}
-                        showFooterButtons={false}
-                      />
-                      {transcriptsConfigurationState.assistantSelected && (
-                        <Page.P>
-                          <strong>
-                            @
-                            {
-                              transcriptsConfigurationState.assistantSelected
-                                .name
-                            }
-                          </strong>
-                        </Page.P>
-                      )}
-                    </Page.Layout>
-                  </Page.Layout>
-                </Page.Layout>
-                <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="3. Enable transcripts processing" />
-                  <Page.Layout direction="horizontal" gap="xl">
-                    <SliderToggle
-                      selected={transcriptsConfigurationState.isActive}
-                      onClick={() =>
-                        handleSetIsActive(
-                          !transcriptsConfigurationState.isActive
-                        )
-                      }
+                  <Page.P>
+                    Choose the assistant that will summarize the transcripts in
+                    the way you want.
+                  </Page.P>
+                  <Page.Layout direction="horizontal">
+                    <AssistantPicker
+                      owner={owner}
+                      size="sm"
+                      onItemClick={handleSelectAssistant}
+                      assistants={agents}
+                      showFooterButtons={false}
                     />
-                    <Page.P>
-                      When enabled, each new meeting transcript in 'My Drive'
-                      will be processed.
-                      <br />
-                      Summaries can take up to 30 minutes to be sent after
-                      meetings end.
-                    </Page.P>
+                    {transcriptsConfigurationState.assistantSelected && (
+                      <Page.P>
+                        <strong>
+                          @
+                          {transcriptsConfigurationState.assistantSelected.name}
+                        </strong>
+                      </Page.P>
+                    )}
                   </Page.Layout>
                 </Page.Layout>
-              </>
-            )}
-        </Page>
-      </AppLayout>
-    </>
+              </Page.Layout>
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="3. Enable transcripts processing" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <SliderToggle
+                    selected={transcriptsConfigurationState.isActive}
+                    onClick={() =>
+                      handleSetIsActive(!transcriptsConfigurationState.isActive)
+                    }
+                  />
+                  <Page.P>
+                    When enabled, each new meeting transcript in 'My Drive' will
+                    be processed.
+                    <br />
+                    Summaries can take up to 30 minutes to be sent after
+                    meetings end.
+                  </Page.P>
+                </Page.Layout>
+              </Page.Layout>
+            </>
+          )}
+      </Page>
+    </AppLayout>
   );
 }

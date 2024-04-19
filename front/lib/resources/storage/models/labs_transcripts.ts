@@ -26,7 +26,6 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
-  declare emailToNotify: string | null;
   declare isActive: boolean;
 }
 
@@ -62,10 +61,6 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
     },
     agentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    emailToNotify: {
       type: DataTypes.STRING,
       allowNull: true,
     },

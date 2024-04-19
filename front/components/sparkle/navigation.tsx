@@ -38,7 +38,6 @@ export type SubNavigationAssistantsId =
   | "personal_assistants"
   | "data_sources_url"
   | "developers"
-  | "transcripts"
   | "extract";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
