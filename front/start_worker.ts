@@ -37,7 +37,3 @@ runScrubWorkspaceQueueWorker().catch((err) =>
 runLabsWorker().catch((err) =>
   logger.error({ error: err }, "Error running labs worker.")
 );
-
-runLabsWorker().catch((err) =>
-  logger.error({ error: err }, "Error running labs worker")
-);
