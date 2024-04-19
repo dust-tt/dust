@@ -40,7 +40,7 @@ export function UserMenu({
             {owner.flags.includes("labs_transcripts") && (
               <DropdownMenu.Item
                 label="Transcripts processing"
-                href={`/w/${owner.sId}/builder/labs/transcripts`}
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
                 icon={BookOpenIcon}
               />
             )}

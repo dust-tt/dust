@@ -14,6 +14,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useContext, useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
@@ -108,7 +109,7 @@ export default function LabsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const makePatchRequest = async (data: Partial<PatchLabsTranscriptsConfigurationBodySchema>, successMessage: string) => {
+  const makePatchRequest = async (data: any, successMessage: string) => {
     await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "PATCH",
       headers: {
@@ -239,6 +240,7 @@ export default function LabsTranscriptsIndex({
       gaTrackingId={gaTrackingId}
       topNavigationCurrent="conversations"
       pageTitle="Dust - Transcripts processing"
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Page>
         <Page.Header
