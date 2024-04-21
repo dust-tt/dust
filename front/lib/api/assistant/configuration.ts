@@ -9,6 +9,7 @@ import type {
   AgentUserListStatus,
   DataSourceConfiguration,
   LightAgentConfigurationType,
+  ProcessSchemaPropertyType,
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
@@ -37,6 +38,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryConfiguration,
@@ -1049,6 +1051,13 @@ export async function createAgentActionConfiguration(
           tableId: string;
         }>;
       }
+    | {
+        type: "process_configuration";
+        query: RetrievalQuery;
+        relativeTimeFrame: RetrievalTimeframe;
+        dataSources: DataSourceConfiguration[];
+        schema: ProcessSchemaPropertyType[];
+      }
   ) & {
     forceUseAtIteration: number | null;
   },
@@ -1144,6 +1153,44 @@ export async function createAgentActionConfiguration(
         sId: tablesQueryConfig.sId,
         type: "tables_query_configuration",
         tables: action.tables,
+        forceUseAtIteration: action.forceUseAtIteration,
+      };
+    });
+  } else if (action.type === "process_configuration") {
+    return frontSequelize.transaction(async (t) => {
+      const processConfig = await AgentProcessConfiguration.create(
+        {
+          sId: generateModelSId(),
+          query: action.query,
+          relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
+            ? "custom"
+            : action.relativeTimeFrame,
+          relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
+            ? action.relativeTimeFrame.duration
+            : null,
+          relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
+            ? action.relativeTimeFrame.unit
+            : null,
+          agentConfigurationId: agentConfiguration.id,
+          schema: action.schema,
+          forceUseAtIteration: action.forceUseAtIteration,
+        },
+        { transaction: t }
+      );
+      await _createAgentDataSourcesConfigData(
+        t,
+        action.dataSources,
+        processConfig.id
+      );
+
+      return {
+        id: processConfig.id,
+        sId: processConfig.sId,
+        type: "process_configuration",
+        query: action.query,
+        relativeTimeFrame: action.relativeTimeFrame,
+        schema: action.schema,
+        dataSources: action.dataSources,
         forceUseAtIteration: action.forceUseAtIteration,
       };
     });

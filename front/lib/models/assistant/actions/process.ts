@@ -28,6 +28,8 @@ export class AgentProcessConfiguration extends Model<
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
   declare schema: ProcessSchemaPropertyType[];
+
+  declare forceUseAtIteration: number | null;
 }
 
 AgentProcessConfiguration.init(
@@ -72,6 +74,10 @@ AgentProcessConfiguration.init(
     schema: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    forceUseAtIteration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

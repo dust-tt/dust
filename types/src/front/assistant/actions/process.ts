@@ -50,6 +50,8 @@ export type ProcessConfigurationType = {
   query: RetrievalQuery;
   relativeTimeFrame: RetrievalTimeframe;
   schema: ProcessSchemaPropertyType[];
+
+  forceUseAtIteration: number | null;
 };
 
 export type ProcessActionType = {
