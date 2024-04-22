@@ -485,6 +485,7 @@ impl AnthropicLLM {
         &self,
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
+        tools: Vec<AnthropicTool>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
@@ -493,7 +494,10 @@ impl AnthropicLLM {
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
 
-        // TODO: Streaming (stream=true) is not yet supported on tools.
+        // Streaming (stream=true) is not yet supported on tools.
+        if tools.len() > 0 {
+            return Err(anyhow!("Anthropic does not support chat functions."));
+        }
 
         let mut body = json!({
             "model": self.id.clone(),
@@ -1129,7 +1133,7 @@ impl LLM for AnthropicLLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        function_call: Option<String>,
+        _function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -1222,6 +1226,7 @@ impl LLM for AnthropicLLM {
                 self.streamed_chat_completion(
                     system,
                     &messages,
+                    tools,
                     temperature,
                     match top_p {
                         Some(p) => p,
