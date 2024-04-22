@@ -57,7 +57,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     auth: Authenticator;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
-
     const owner = auth.workspace();
 
     if (!owner) {

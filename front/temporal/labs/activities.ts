@@ -26,7 +26,6 @@ async function retrieveRecentTranscripts(
   },
   logger: Logger
 ) {
-  
   const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
     userId,
     auth
@@ -76,7 +75,7 @@ export async function retrieveNewTranscriptsActivity(
     workspaceId,
   });
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId)
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   if (!auth.workspace()) {
     localLogger.error(
@@ -113,7 +112,7 @@ export async function retrieveNewTranscriptsActivity(
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
       userId,
-      auth
+      auth,
     },
     localLogger
   );
@@ -151,7 +150,7 @@ export async function processGoogleDriveTranscriptActivity(
 ) {
   const provider = "google_drive";
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId)
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
 
   if (!auth.workspace()) {
     throw new Error(

@@ -34,7 +34,7 @@ export async function getGoogleAuthObject(
 
 export async function getGoogleAuthFromUserTranscriptConfiguration(
   userId: ModelId,
-  auth: Authenticator,
+  auth: Authenticator
 ) {
   const providerId = "google_drive";
 

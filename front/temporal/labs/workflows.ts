@@ -21,11 +21,10 @@ export async function retrieveNewTranscriptsWorkflow(
   workspaceId: ModelId,
   provider: LabsTranscriptsProviderType
 ) {
-
   const workspace = await Workspace.findOne({
     where: {
       id: workspaceId,
-    }
+    },
   });
 
   if (!workspace) {
@@ -69,7 +68,7 @@ export async function processTranscriptWorkflow({
   const workspace = await Workspace.findOne({
     where: {
       id: workspaceId,
-    }
+    },
   });
 
   if (!workspace) {
