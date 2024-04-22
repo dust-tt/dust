@@ -20,7 +20,7 @@ use std::io::prelude::*;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::llm::ChatFunction;
+use super::llm::{ChatFunction, ChatFunctionCall};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -77,33 +77,84 @@ pub struct AnthropicContent {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-#[serde(rename_all = "snake_case", tag = "type")]
-enum AnthropicResponseContent {
-    Text {
-        text: String,
-    },
-    ToolUse {
-        id: String,
-        name: String,
-        input: Value,
-    },
+struct ToolUse {
+    id: String,
+    name: String,
+    input: Value,
 }
 
-// impl AnthropicContent {
-//     fn get_text(&self) -> Option<&String> {
-//         match self {
-//             AnthropicContent::Text { text } => Some(text),
-//             AnthropicContent::ToolUse { .. } => None,
-//         }
-//     }
+impl TryFrom<&ToolUse> for ChatFunctionCall {
+    type Error = anyhow::Error;
 
-//     fn get_type(&self) -> &'static str {
-//         match self {
-//             AnthropicContent::Text { .. } => "text",
-//             AnthropicContent::ToolUse { .. } => "tool_use",
-//         }
-//     }
-// }
+    fn try_from(tool_use: &ToolUse) -> Result<Self, Self::Error> {
+        let arguments = serde_json::to_string(&tool_use.input)?;
+        Ok(ChatFunctionCall {
+            name: tool_use.name.clone(),
+            arguments,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case", tag = "type")]
+enum AnthropicResponseContent {
+    Text { text: String },
+    ToolUse(ToolUse),
+}
+
+impl TryFrom<AnthropicStreamContent> for AnthropicResponseContent {
+    type Error = anyhow::Error;
+
+    fn try_from(value: AnthropicStreamContent) -> Result<Self, Self::Error> {
+        match value.r#type.as_str() {
+            "text" => Ok(AnthropicResponseContent::Text {
+                text: value.text.to_string(),
+            }),
+            _ => Err(anyhow!("Type not supported in streaming.")),
+        }
+    }
+}
+
+impl TryFrom<&AnthropicResponseContent> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cm: &AnthropicResponseContent) -> Result<Self, Self::Error> {
+        let role = ChatMessageRole::Assistant;
+
+        let content = match cm.get_text() {
+            Some(c) => Some(c.clone()),
+            None => None,
+        };
+
+        let function_call = match cm.get_tool_use() {
+            Some(tc) => Some(ChatFunctionCall::try_from(tc)?),
+            None => None,
+        };
+
+        Ok(ChatMessage {
+            content,
+            role,
+            name: None,
+            function_call,
+        })
+    }
+}
+
+impl AnthropicResponseContent {
+    fn get_text(&self) -> Option<&String> {
+        match self {
+            AnthropicResponseContent::Text { text } => Some(text),
+            AnthropicResponseContent::ToolUse { .. } => None,
+        }
+    }
+
+    fn get_tool_use(&self) -> Option<&ToolUse> {
+        match self {
+            AnthropicResponseContent::Text { .. } => None,
+            AnthropicResponseContent::ToolUse(tu) => Some(tu),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicChatMessage {
@@ -132,6 +183,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
         Ok(AnthropicChatMessage {
             content: vec![AnthropicContent {
+                // TODO:
                 r#type: "text".to_string(),
                 text: format!(
                     "{}{}",
@@ -171,18 +223,24 @@ pub struct Usage {
     pub output_tokens: u64,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamContent {
+    pub r#type: String,
+    pub text: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ChatResponse {
+pub struct StreamChatResponse {
     pub id: String,
     pub model: String,
     pub role: AnthropicChatMessageRole,
-    pub content: Vec<AnthropicContent>,
+    pub content: Vec<AnthropicStreamContent>,
     pub stop_reason: Option<StopReason>,
     pub usage: Usage,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct AnthropicChatResponse {
+struct ChatResponse {
     id: String,
     model: String,
     role: AnthropicChatMessageRole,
@@ -191,17 +249,61 @@ struct AnthropicChatResponse {
     usage: Usage,
 }
 
-impl TryFrom<AnthropicChatResponse> for ChatResponse {
+impl TryFrom<StreamChatResponse> for ChatResponse {
     type Error = anyhow::Error;
 
-    fn try_from(cr: AnthropicChatResponse) -> Result<Self, Self::Error> {
+    fn try_from(cr: StreamChatResponse) -> Result<Self, Self::Error> {
+        let content = cr
+            .content
+            .into_iter()
+            .map(AnthropicResponseContent::try_from)
+            .collect::<Result<Vec<AnthropicResponseContent>, anyhow::Error>>()?;
+
         Ok(ChatResponse {
             id: cr.id.clone(),
             model: cr.model.clone(),
             role: cr.role.clone(),
-            content: vec![], //cr.content.clone(),
+            content,
             stop_reason: cr.stop_reason.clone(),
             usage: cr.usage.clone(),
+        })
+    }
+}
+
+// This code converts a ChatResponse to a ChatMessage, but only supports one tool call.
+// It takes the first tool call from the vector of AnthropicResponseContent,
+// potentially discarding others. Anthropic often returns the CoT content as a first message,
+// which gets combined with the first tool call in the resulting ChatMessage.
+impl TryFrom<ChatResponse> for ChatMessage {
+    type Error = anyhow::Error;
+
+    fn try_from(cr: ChatResponse) -> Result<Self, Self::Error> {
+        let text_content = cr.content.iter().find_map(|item| match item.get_text() {
+            Some(text) => Some(text.clone()),
+            _ => None,
+        });
+
+        let tool_uses: Vec<ToolUse> = cr
+            .content
+            .iter()
+            .filter_map(|item| match item.get_tool_use() {
+                Some(tool_use) => Some(tool_use.clone()),
+                _ => None,
+            })
+            .collect();
+
+        let function_call = tool_uses
+            .iter()
+            .map(ChatFunctionCall::try_from)
+            .collect::<Result<Vec<_>, _>>()?
+            .first()
+            .cloned();
+
+        Ok(ChatMessage {
+            role: ChatMessageRole::Assistant,
+            name: None,
+            content: text_content,
+            function_call,
         })
     }
 }
@@ -231,21 +333,21 @@ pub struct Error {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct StreamMessageStart {
     pub r#type: String,
-    pub message: ChatResponse,
+    pub message: StreamChatResponse,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct StreamContentBlockStart {
     pub r#type: String,
     pub index: u64,
-    pub content_block: AnthropicContent,
+    pub content_block: AnthropicStreamContent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct StreamContentBlockDelta {
     pub r#type: String,
     pub index: u64,
-    pub delta: AnthropicContent,
+    pub delta: AnthropicStreamContent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -357,8 +459,7 @@ impl AnthropicLLM {
         let c: &[u8] = &b;
         let response = match status {
             reqwest::StatusCode::OK => {
-                println!("C: {:?}", String::from_utf8_lossy(c));
-                let response: AnthropicChatResponse = serde_json::from_slice(c)?;
+                let response: ChatResponse = serde_json::from_slice(c)?;
                 println!("RESPONSE (!): {:?}", response);
                 Ok(response)
             }
@@ -377,12 +478,10 @@ impl AnthropicLLM {
 
         println!("RESPONSE: {:?}", response);
 
-        let chat_response: ChatResponse = response.try_into().unwrap();
-
-        Ok(chat_response)
+        Ok(response)
     }
 
-    pub async fn streamed_chat_completion(
+    async fn streamed_chat_completion(
         &self,
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
@@ -454,7 +553,7 @@ impl AnthropicLLM {
 
         let mut stream = client.stream();
 
-        let mut final_response: Option<ChatResponse> = None;
+        let mut final_response: Option<StreamChatResponse> = None;
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
@@ -655,7 +754,11 @@ impl AnthropicLLM {
         }
 
         match final_response {
-            Some(response) => Ok(response),
+            Some(response) => {
+                let chat_response: ChatResponse = ChatResponse::try_from(response)?;
+
+                Ok(chat_response)
+            }
             None => Err(anyhow!("No response from Anthropic")),
         }
     }
@@ -1153,25 +1256,20 @@ impl LLM for AnthropicLLM {
             }
         };
 
-        // println!(">> c:", c);
+        println!(">> c: {:?}", c);
 
-        match c.content.first() {
-            None => Err(anyhow!("No content in response from Anthropic.")),
-            Some(content) => match content.r#type.as_str() {
-                "text" => Ok(LLMChatGeneration {
-                    created: utils::now(),
-                    provider: ProviderID::Anthropic.to_string(),
-                    model: self.id.clone(),
-                    completions: vec![ChatMessage {
-                        role: ChatMessageRole::Assistant,
-                        content: Some(content.text.clone()),
-                        name: None,
-                        function_call: None,
-                    }],
-                }),
-                _ => Err(anyhow!("Anthropic returned an unexpected content type.")),
-            },
-        }
+        // Handle empty response.ChatResponse
+
+        let t = LLMChatGeneration {
+            created: utils::now(),
+            provider: ProviderID::Anthropic.to_string(),
+            model: self.id.clone(),
+            completions: ChatMessage::try_from(c).into_iter().collect(),
+        };
+
+        println!(">> t: {:?}", t);
+
+        Ok(t)
     }
 }
 
