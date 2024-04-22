@@ -3,6 +3,7 @@ import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import * as googleapis from "googleapis";
+import marked from "marked";
 
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
@@ -235,17 +236,16 @@ export async function processGoogleDriveTranscriptActivity(
 
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
-    visibility: "unlisted",
+    visibility: "workspace",
     message: {
-      content: "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.",
+      content: "Transcript: " + transcriptTitle,
       mentions: [{ configurationId: agentConfigurationId }],
       context: {
-        timezone: "Europe/Paris",
-        username: "labs-transcript-processor",
-        fullName: "Transcript Processor",
-        email: null,
-        profilePictureUrl:
-          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+        username: user.username,
+        fullName: user.name,
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
       },
     },
     contentFragment: {
@@ -254,11 +254,10 @@ export async function processGoogleDriveTranscriptActivity(
       url: null,
       contentType: "file_attachment",
       context: {
-        username: "labs-transcript-processor",
-        fullName: "Transcript Processor",
-        email: null,
-        profilePictureUrl:
-          "https://dust.tt/static/systemavatar/dust_avatar_full.png",
+        username: user.username,
+        fullName: user.name,
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
       },
     },
     blocking: true,
@@ -295,7 +294,9 @@ export async function processGoogleDriveTranscriptActivity(
       return innerArray.find((item) => item.type === "agent_message");
     }
   );
-  const fullAnswer = agentMessage ? agentMessage[0].content : "";
+  const markDownAnswer =
+    agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
+  const htmlAnswer = marked.parse(markDownAnswer);
 
   const hasExistingHistory =
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
@@ -319,7 +320,7 @@ export async function processGoogleDriveTranscriptActivity(
       email: "team@dust.tt",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `${fullAnswer}<br>` + `The Dust team`,
+    html: `<a href="https://dust.tt/w/${workspaceId}/assistant/conversations/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />`,
   };
 
   await sendEmail(user.email, msg);
