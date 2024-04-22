@@ -16,7 +16,7 @@ import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";
 
 const {
-  getDrivesIds,
+  getDrivesIdsToSync,
   garbageCollector,
   getFoldersToSync,
   renewWebhooks,
@@ -151,7 +151,7 @@ export async function googleDriveIncrementalSync(
     passCount++;
     console.log("Doing pass number", passCount);
     console.log(`Processing after debouncing ${debounceCount} time(s)`);
-    const drivesIds = await getDrivesIds(connectorId);
+    const drivesIds = await getDrivesIdsToSync(connectorId);
     const startSyncTs = new Date().getTime();
     for (const googleDrive of drivesIds) {
       let nextPageToken: undefined | string = undefined;

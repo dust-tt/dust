@@ -40,10 +40,10 @@ export async function registerWebhooksForAllDrives({
   connector: ConnectorResource;
   marginMs: number;
 }): Promise<Result<undefined, Error[]>> {
-  const driveIdsToSync = await getDrivesIdsToSync(connector.id);
+  const drivesToSync = await getDrivesIdsToSync(connector.id);
   const allRes = await Promise.all(
-    driveIdsToSync.map((driveId) => {
-      return ensureWebhookForDriveId(connector, driveId, marginMs);
+    drivesToSync.map((drive) => {
+      return ensureWebhookForDriveId(connector, drive.id, marginMs);
     })
   );
 

@@ -94,9 +94,13 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
 }
 
 // Get the list of drives that have folders selected for sync.
-export async function getDrivesIdsToSync(
-  connectorId: ModelId
-): Promise<string[]> {
+export async function getDrivesIdsToSync(connectorId: ModelId): Promise<
+  {
+    id: string;
+    name: string;
+    sharedDrive: boolean;
+  }[]
+> {
   const selectedFolders = await GoogleDriveFolders.findAll({
     where: {
       connectorId: connectorId,
@@ -107,7 +111,14 @@ export async function getDrivesIdsToSync(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const driveIds = new Set<string>();
+  const driveIds: Record<
+    string,
+    {
+      id: string;
+      name: string;
+      sharedDrive: boolean;
+    }
+  > = {};
 
   for (const folder of selectedFolders) {
     const remoteFolder = await getGoogleDriveObject(
@@ -118,11 +129,15 @@ export async function getDrivesIdsToSync(
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
       }
-      driveIds.add(remoteFolder.driveId);
+      driveIds[remoteFolder.driveId] = {
+        id: remoteFolder.driveId,
+        name: remoteFolder.name,
+        sharedDrive: remoteFolder.isInSharedDrive,
+      };
     }
   }
 
-  return [...driveIds];
+  return Object.entries(driveIds).map(([, drive]) => drive);
 }
 
 export async function syncFiles(
