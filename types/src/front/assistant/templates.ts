@@ -3,7 +3,10 @@ import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { AgentAction } from "./agent";
+import { DustAppRunConfigurationType } from "./actions/dust_app_run";
+import { RetrievalConfigurationType } from "./actions/retrieval";
+import { TablesQueryConfigurationType } from "./actions/tables_query";
+import { AgentAction, AgentActionConfigurationType } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
 
 export const TEMPLATES_TAG_CODES = [
@@ -177,3 +180,46 @@ export const generateTailwindBackgroundColors = (): string[] => {
   });
   return tailwindColors;
 };
+
+export function getAgentActionConfigurationType(
+  action: ActionPreset
+): AgentActionConfigurationType | null {
+  switch (action) {
+    case "reply":
+      return null;
+
+    case "retrieval_configuration":
+      return {
+        dataSources: [],
+        id: -1,
+        query: "auto",
+        relativeTimeFrame: "auto",
+        sId: "template",
+        topK: "auto",
+        type: "retrieval_configuration",
+        forceUseAtIteration: 0,
+      } satisfies RetrievalConfigurationType;
+
+    case "tables_query_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        tables: [],
+        type: "tables_query_configuration",
+        forceUseAtIteration: 0,
+      } satisfies TablesQueryConfigurationType;
+
+    case "dust_app_run_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        type: "dust_app_run_configuration",
+        appWorkspaceId: "template",
+        appId: "template",
+        forceUseAtIteration: 0,
+      } satisfies DustAppRunConfigurationType;
+
+    default:
+      return null;
+  }
+}

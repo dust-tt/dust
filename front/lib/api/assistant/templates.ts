@@ -1,16 +1,12 @@
 import type {
-  ActionPreset,
-  AgentActionConfigurationType,
-  DustAppRunConfigurationType,
   Result,
-  RetrievalConfigurationType,
   SupportedModel,
-  TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   Err,
+  getAgentActionConfigurationType,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -28,7 +24,9 @@ export async function generateMockAgentConfigurationFromTemplate(
   }
 
   return new Ok({
-    actions: removeNulls([getAction(template.presetAction)]),
+    actions: removeNulls([
+      getAgentActionConfigurationType(template.presetAction),
+    ]),
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
     generation: {
@@ -44,45 +42,4 @@ export async function generateMockAgentConfigurationFromTemplate(
     scope: flow === "personal_assistants" ? "private" : "workspace",
     isTemplate: true,
   });
-}
-
-function getAction(action: ActionPreset): AgentActionConfigurationType | null {
-  switch (action) {
-    case "reply":
-      return null;
-
-    case "retrieval_configuration":
-      return {
-        dataSources: [],
-        id: -1,
-        query: "auto",
-        relativeTimeFrame: "auto",
-        sId: "template",
-        topK: "auto",
-        type: "retrieval_configuration",
-        forceUseAtIteration: 0,
-      } satisfies RetrievalConfigurationType;
-
-    case "tables_query_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        tables: [],
-        type: "tables_query_configuration",
-        forceUseAtIteration: 0,
-      } satisfies TablesQueryConfigurationType;
-
-    case "dust_app_run_configuration":
-      return {
-        id: -1,
-        sId: "template",
-        type: "dust_app_run_configuration",
-        appWorkspaceId: "template",
-        appId: "template",
-        forceUseAtIteration: 0,
-      } satisfies DustAppRunConfigurationType;
-
-    default:
-      return null;
-  }
 }
