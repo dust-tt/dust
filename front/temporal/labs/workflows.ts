@@ -6,8 +6,6 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { Workspace } from "@app/lib/models/workspace";
-
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
 
@@ -21,19 +19,10 @@ export async function retrieveNewTranscriptsWorkflow(
   workspaceId: ModelId,
   provider: LabsTranscriptsProviderType
 ) {
-  const workspace = await Workspace.findOne({
-    where: {
-      id: workspaceId,
-    },
-  });
-
-  if (!workspace) {
-    throw new Error("Workspace not found");
-  }
 
   const filesToProcess = await retrieveNewTranscriptsActivity(
     userId,
-    workspace.sId,
+    workspaceId,
     provider
   );
 
@@ -65,14 +54,5 @@ export async function processTranscriptWorkflow({
   userId: ModelId;
   workspaceId: ModelId;
 }): Promise<void> {
-  const workspace = await Workspace.findOne({
-    where: {
-      id: workspaceId,
-    },
-  });
-
-  if (!workspace) {
-    throw new Error("Workspace not found");
-  }
-  await processGoogleDriveTranscriptActivity(userId, workspace.sId, fileId);
+  await processGoogleDriveTranscriptActivity(userId, workspaceId, fileId);
 }

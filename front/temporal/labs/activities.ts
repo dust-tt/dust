@@ -11,11 +11,11 @@ import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-
 async function retrieveRecentTranscripts(
   {
     userId,
@@ -26,6 +26,7 @@ async function retrieveRecentTranscripts(
   },
   logger: Logger
 ) {
+  
   const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
     userId,
     auth
@@ -66,7 +67,7 @@ async function retrieveRecentTranscripts(
 
 export async function retrieveNewTranscriptsActivity(
   userId: ModelId,
-  workspaceId: string,
+  workspaceId: ModelId,
   provider: LabsTranscriptsProviderType
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
@@ -75,7 +76,19 @@ export async function retrieveNewTranscriptsActivity(
     workspaceId,
   });
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const workspace = await Workspace.findOne({
+    where: {
+      id: workspaceId,
+    }
+  });
+
+  if (!workspace) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+    );
+  }
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId)
 
   if (!auth.workspace()) {
     localLogger.error(
@@ -112,7 +125,7 @@ export async function retrieveNewTranscriptsActivity(
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
       userId,
-      auth,
+      auth
     },
     localLogger
   );
@@ -145,12 +158,24 @@ export async function retrieveNewTranscriptsActivity(
 
 export async function processGoogleDriveTranscriptActivity(
   userId: ModelId,
-  workspaceId: string,
+  workspaceId: ModelId,
   fileId: string
 ) {
   const provider = "google_drive";
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const workspace = await Workspace.findOne({
+    where: {
+      id: workspaceId,
+    }
+  });
+
+  if (!workspace) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+    );
+  }
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId)
 
   if (!auth.workspace()) {
     throw new Error(
