@@ -9,6 +9,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 const backfillGenerationConfigs = async (execute: boolean) => {
   const generationConfigs = await AgentGenerationConfiguration.findAll({
+    // @ts-expect-error agentConfigurationId was rendered non-nullable by #4795 
     where: {
       agentConfigurationId: null,
     },

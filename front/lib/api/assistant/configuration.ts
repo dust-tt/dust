@@ -360,9 +360,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   ] = await Promise.all([
     AgentGenerationConfiguration.findAll({
       where: { agentConfigurationId: { [Op.in]: configurationIds } },
-      // TODO(pr 20240415) temporary inlined for type checking
-      // this should be refactored to use the groupByAgentConfigurationId function
-    }).then((list) => _.groupBy(list, "agentConfigurationId")),
+    }).then(groupByAgentConfigurationId),
     variant === "full"
       ? AgentRetrievalConfiguration.findAll({
           where: { agentConfigurationId: { [Op.in]: configurationIds } },
