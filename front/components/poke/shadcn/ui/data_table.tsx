@@ -6,6 +6,8 @@ import type {
 import {
   flexRender,
   getCoreRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -13,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 
+import { PokeDataTableFacetedFilter } from "@app/components/poke/shadcn/ui/data_table_faceted_filter";
 import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import { PokeDataTablePagination } from "@app/components/poke/shadcn/ui/pagination";
 import {
@@ -24,15 +27,27 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 
+interface Facet {
+  columnId: string;
+  title: string;
+  options: {
+    label: string;
+    value: string;
+    icon?: React.ComponentType<{ className?: string }>;
+  }[];
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
+  facets?: Facet[];
 }
 
 export function PokeDataTable<TData, TValue>({
   columns,
   data,
+  facets,
   isLoading,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -42,9 +57,11 @@ export function PokeDataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     onSortingChange: setSorting,
     state: {
@@ -59,7 +76,7 @@ export function PokeDataTable<TData, TValue>({
 
   return (
     <div className="w-full space-y-2">
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
         <PokeInput
           name="filter"
           placeholder="Filter ..."
@@ -69,6 +86,15 @@ export function PokeDataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
+        {facets &&
+          facets.map((facet) => (
+            <PokeDataTableFacetedFilter
+              key={facet.columnId}
+              column={table.getColumn(facet.columnId)}
+              title={facet.title}
+              options={facet.options}
+            />
+          ))}
       </div>
       <div className="rounded-md border">
         <PokeTable>

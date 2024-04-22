@@ -77,7 +77,7 @@ function NavigationBar({
             ) : null}
           </div>
           <div className="flex flex-1"></div>
-          {user && <UserMenu user={user} />}
+          {user && <UserMenu user={user} owner={owner} />}
         </div>
 
         {subscription.endDate && (

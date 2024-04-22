@@ -23,6 +23,7 @@ const backfillGenerationConfigs = async (execute: boolean) => {
       chunk.map(async (g) => {
         const agent = await AgentConfiguration.findOne({
           where: {
+            // @ts-expect-error generationConfigurationId was removed by on 2024-04-22
             generationConfigurationId: g.id,
           },
         });

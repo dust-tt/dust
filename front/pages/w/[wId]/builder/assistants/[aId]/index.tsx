@@ -202,7 +202,7 @@ export default function EditAssistant({
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
-      template={null}
+      defaultTemplate={null}
     />
   );
 }

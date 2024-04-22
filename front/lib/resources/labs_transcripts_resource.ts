@@ -9,6 +9,7 @@ import type {
 } from "sequelize";
 import type { CreationAttributes } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -23,7 +24,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static model: ModelStatic<LabsTranscriptsConfigurationModel> =
     LabsTranscriptsConfigurationModel;
 
-  constructor(blob: Attributes<LabsTranscriptsConfigurationModel>) {
+  constructor(
+    model: ModelStatic<LabsTranscriptsConfigurationModel>,
+    blob: Attributes<LabsTranscriptsConfigurationModel>
+  ) {
     super(LabsTranscriptsConfigurationModel, blob);
   }
 
@@ -38,28 +42,40 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       isActive: false,
     });
 
-    return new LabsTranscriptsConfigurationResource(configuration.get());
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   static async findByUserWorkspaceAndProvider({
+    auth,
     userId,
-    workspaceId,
     provider,
   }: {
+    auth: Authenticator;
     userId: ModelId;
-    workspaceId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return null;
+    }
+
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
         userId,
-        workspaceId,
+        workspaceId: owner.id,
         provider,
       },
     });
 
     return configuration
-      ? new LabsTranscriptsConfigurationResource(configuration.get())
+      ? new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
       : null;
   }
 

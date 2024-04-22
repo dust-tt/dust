@@ -68,7 +68,9 @@ export type APIErrorType =
   // Templates:
   | "template_not_found"
   // Invitations:
-  | "invitation_already_sent_recently";
+  | "invitation_already_sent_recently"
+  // Labs:
+  | "transcripts_configuration_not_found";
 
 export type APIError = {
   type: APIErrorType;

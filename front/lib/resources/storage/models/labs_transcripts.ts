@@ -26,7 +26,6 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
-  declare emailToNotify: string | null;
   declare isActive: boolean;
 }
 
@@ -62,10 +61,6 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
     },
     agentConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    emailToNotify: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -116,6 +111,8 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare fileId: string;
   declare fileName: string;
 
+  declare conversationId: string | null;
+
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
 
   declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
@@ -145,6 +142,10 @@ LabsTranscriptsHistoryModel.init(
     fileName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    conversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

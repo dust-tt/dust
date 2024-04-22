@@ -1,11 +1,11 @@
 import { Op } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
-} from "@app/documents_post_process_hooks/hooks";
-import { getDatasource } from "@app/documents_post_process_hooks/hooks/lib/data_source_helpers";
-import type { Authenticator } from "@app/lib/auth";
+} from "@app/lib/documents_post_process_hooks/hooks";
+import { getDatasource } from "@app/lib/documents_post_process_hooks/hooks/data_source_helpers";
 import {
   _getMaxTextContentToProcess,
   _runExtractEventApp,
@@ -278,7 +278,7 @@ export async function _logDebugEventOnSlack({
           text: "Event",
           emoji: true,
         },
-        url: URL + `/w/${wId}/u/extract/events/${event.sId}/edit`,
+        url: URL + `/w/${wId}/builder/labs/extract/events/${event.sId}/edit`,
       },
     },
   ];

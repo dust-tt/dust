@@ -29,7 +29,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
-} from "@app/scrub_workspace/temporal/client";
+} from "@app/temporal/scrub_workspace/client";
 
 const { STRIPE_SECRET_KEY = "", STRIPE_SECRET_WEBHOOK_KEY = "" } = process.env;
 
@@ -420,27 +420,7 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
-
           if (
-            stripeSubscription.status === "active" &&
-            "status" in previousAttributes &&
-            previousAttributes.status === "trialing"
-          ) {
-            const subscription = await Subscription.findOne({
-              where: { stripeSubscriptionId: stripeSubscription.id },
-            });
-            if (!subscription) {
-              return apiError(req, res, {
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message:
-                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
-                },
-              });
-            }
-            await subscription.update({ status: "active", trialing: false });
-          } else if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&
             "cancel_at_period_end" in previousAttributes
@@ -499,6 +479,23 @@ async function handler(
               } else {
                 await sendReactivateSubscriptionEmail(adminEmail);
               }
+            }
+          } else if (stripeSubscription.status === "active") {
+            const subscription = await Subscription.findOne({
+              where: { stripeSubscriptionId: stripeSubscription.id },
+            });
+            if (!subscription) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "internal_server_error",
+                  message:
+                    "[Stripe Webhook] Failed to update subscription after trial ended: Subscription not found.",
+                },
+              });
+            }
+            if (subscription.trialing) {
+              await subscription.update({ status: "active", trialing: false });
             }
           }
 

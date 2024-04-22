@@ -1,8 +1,9 @@
 import "react-image-crop/dist/ReactCrop.css";
 
 import {
-  BuilderLayout,
   Button,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CircleIcon,
   SquareIcon,
   Tab,
@@ -20,12 +21,17 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
   assertNever,
+  getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
   removeNulls,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
+import _ from "lodash";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
@@ -44,6 +50,7 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type {
+  ActionMode,
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
@@ -57,6 +64,7 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 type SlackChannel = { slackChannelId: string; slackChannelName: string };
@@ -81,7 +89,7 @@ type AssistantBuilderProps = {
   flow: BuilderFlow;
   defaultIsEdited?: boolean;
   baseUrl: string;
-  template: FetchAssistantTemplateResponse | null;
+  defaultTemplate: FetchAssistantTemplateResponse | null;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -136,6 +144,14 @@ const useNavigationLock = (
       if (isNavigatingAway.current) {
         return;
       }
+
+      // Changing the query param is not leaving the page
+      const currentRoute = router.asPath.split("?")[0];
+      const newRoute = url.split("?")[0];
+      if (currentRoute === newRoute) {
+        return;
+      }
+
       router.events.emit(
         "routeChangeError",
         new Error("Navigation paused to await confirmation by user"),
@@ -167,9 +183,17 @@ const useNavigationLock = (
 };
 
 const screens = {
-  instructions: { label: "Instructions", icon: CircleIcon },
-  actions: { label: "Data sources & Actions", icon: SquareIcon },
-  naming: { label: "Naming", icon: TriangleIcon },
+  instructions: {
+    label: "Instructions",
+    icon: CircleIcon,
+    helpContainer: "instructions-help-container",
+  },
+  actions: {
+    label: "Data sources & Actions",
+    icon: SquareIcon,
+    helpContainer: "actions-help-container",
+  },
+  naming: { label: "Naming", icon: TriangleIcon, helpContainer: null },
 };
 type BuilderScreen = keyof typeof screens;
 
@@ -185,7 +209,7 @@ export default function AssistantBuilder({
   flow,
   defaultIsEdited,
   baseUrl,
-  template,
+  defaultTemplate,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -230,6 +254,61 @@ export default function AssistantBuilder({
           },
         }
   );
+  const [template, setTemplate] =
+    useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
+  const resetTemplate = async () => {
+    await setTemplate(null);
+    await router.replace(
+      {
+        pathname: router.pathname,
+        query: _.omit(router.query, "templateId"),
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
+
+  const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
+    null
+  );
+  const resetToTemplateInstructions = useCallback(async () => {
+    if (template === null) {
+      return;
+    }
+    setEdited(true);
+    setInstructionsResetAt(Date.now());
+    setBuilderState((builderState) => ({
+      ...builderState,
+      instructions: template.presetInstructions,
+    }));
+  }, [template]);
+
+  const resetToTemplateActions = useCallback(async () => {
+    if (template === null) {
+      return;
+    }
+    const action = getAgentActionConfigurationType(template.presetAction);
+    let actionMode: ActionMode = "GENERIC";
+
+    if (isRetrievalConfiguration(action)) {
+      actionMode = "RETRIEVAL_SEARCH";
+    } else if (isDustAppRunConfiguration(action)) {
+      actionMode = "DUST_APP_RUN";
+    } else if (isTablesQueryConfiguration(action)) {
+      actionMode = "TABLES_QUERY";
+    }
+
+    if (actionMode !== null) {
+      setEdited(true);
+      setBuilderState((builderState) => ({
+        ...builderState,
+        actionMode,
+        dataSourceConfigurations: {},
+        dustAppConfiguration: null,
+        tablesQueryConfiguration: {},
+      }));
+    }
+  }, [template]);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -425,11 +504,18 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(screens).map(([key, { label, icon }]) => ({
+      Object.entries(screens).map(([key, { label, icon, helpContainer }]) => ({
         label,
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
+
+          if (helpContainer) {
+            const element = document.getElementById(helpContainer);
+            if (element) {
+              element.scrollIntoView({ behavior: "smooth" });
+            }
+          }
         },
         icon,
       })),
@@ -510,6 +596,7 @@ export default function AssistantBuilder({
                         builderState={builderState}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
+                        resetAt={instructionsResetAt}
                       />
                     );
                   case "actions":
@@ -545,6 +632,9 @@ export default function AssistantBuilder({
           rightPanel={
             <AssistantBuilderPreviewDrawer
               template={template}
+              resetTemplate={resetTemplate}
+              resetToTemplateInstructions={resetToTemplateInstructions}
+              resetToTemplateActions={resetToTemplateActions}
               owner={owner}
               previewDrawerOpenedAt={previewDrawerOpenedAt}
               builderState={builderState}
@@ -775,4 +865,56 @@ export async function submitAssistantBuilderForm({
   }
 
   return newAgentConfiguration.agentConfiguration;
+}
+
+export function BuilderLayout({
+  leftPanel,
+  rightPanel,
+  isRightPanelOpen,
+  toggleRightPanel,
+}: {
+  leftPanel: React.ReactNode;
+  rightPanel: React.ReactNode;
+  isRightPanelOpen: boolean;
+  toggleRightPanel: () => void;
+}) {
+  return (
+    <>
+      <div className="flex px-4 lg:hidden">
+        <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
+      </div>
+      <div className="hidden h-full lg:flex">
+        <div className="h-full w-full">
+          <div className="flex h-full w-full items-center gap-4 px-5">
+            <div className="flex h-full grow justify-center">
+              <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
+            </div>
+            <Button
+              label="Preview"
+              labelVisible={isRightPanelOpen ? false : true}
+              size="md"
+              variant={isRightPanelOpen ? "tertiary" : "primary"}
+              icon={isRightPanelOpen ? ChevronRightIcon : ChevronLeftIcon}
+              onClick={toggleRightPanel}
+            />
+            <div
+              className={classNames(
+                "duration-400 s-h-full transition-opacity ease-out",
+                isRightPanelOpen ? "opacity-100" : "opacity-0"
+              )}
+            >
+              <div
+                className={classNames(
+                  "duration-800 h-full transition-all ease-out",
+                  isRightPanelOpen ? "w-[440px]" : "w-0"
+                )}
+              >
+                {rightPanel}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
 }
