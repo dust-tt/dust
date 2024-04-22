@@ -271,19 +271,19 @@ export default function AssistantBuilder({
   const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
     null
   );
-  const resetToTemplateInstructions = async () => {
+  const resetToTemplateInstructions = useCallback(async () => {
     if (template === null) {
       return;
     }
     setEdited(true);
     setInstructionsResetAt(Date.now());
-    await setBuilderState((builderState) => ({
+    setBuilderState((builderState) => ({
       ...builderState,
       instructions: template.presetInstructions,
     }));
-  };
+  }, [template]);
 
-  const resetToTemplateActions = async () => {
+  const resetToTemplateActions = useCallback(async () => {
     if (template === null) {
       return;
     }
@@ -308,7 +308,7 @@ export default function AssistantBuilder({
         tablesQueryConfiguration: {},
       }));
     }
-  };
+  }, [template]);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
