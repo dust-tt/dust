@@ -139,6 +139,7 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
+              agentConfiguration.status === "archived" ? "line-through" : "",
               "font-bold text-element-900",
               agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
             )}
@@ -148,30 +149,37 @@ export function AssistantDetails({
             agentConfiguration={agentConfiguration}
             initialScope={agentConfiguration.scope}
             newScope={agentConfiguration.scope}
-            disabled={isUpdatingScope}
+            disabled={isUpdatingScope || agentConfiguration.status !== "active"}
             setNewScope={(scope) => updateScope(scope)}
           />
-          <AssistantListActions
-            agentConfiguration={agentConfiguration}
-            owner={owner}
-            isParentHovered={true}
-            onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
-          />
+          {agentConfiguration.status === "active" && (
+            <AssistantListActions
+              agentConfiguration={agentConfiguration}
+              owner={owner}
+              isParentHovered={true}
+              onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
+            />
+          )}
         </div>
-        <div>
-          <AssistantEditionMenu
-            agentConfigurationId={agentConfiguration.sId}
-            owner={owner}
-            variant="button"
-            tryButton
-            onAgentDeletion={() => {
-              void mutateCurrentAgentConfiguration();
-              void mutateAgentConfigurations?.();
-            }}
-          />
-        </div>
+        {agentConfiguration.status === "active" && (
+          <div>
+            <AssistantEditionMenu
+              agentConfigurationId={agentConfiguration.sId}
+              owner={owner}
+              variant="button"
+              tryButton
+              onAgentDeletion={() => {
+                void mutateCurrentAgentConfiguration();
+                void mutateAgentConfigurations?.();
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="text-sm text-element-900">
+        {agentConfiguration.status === "archived" && (
+          <div className="font-bold">&#9888; This assistant was deleted.</div>
+        )}
         {agentConfiguration.description}
       </div>
       {agentConfiguration.scope === "global" && usageSentence && (

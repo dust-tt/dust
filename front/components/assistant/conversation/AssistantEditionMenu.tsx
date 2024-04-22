@@ -66,7 +66,10 @@ export function AssistantEditionMenu({
     return <></>;
   }
 
-  if (agentConfiguration.scope === "global") {
+  if (
+    agentConfiguration.scope === "global" ||
+    agentConfiguration.status === "archived"
+  ) {
     return <></>;
   }
 
