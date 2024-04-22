@@ -41,7 +41,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
-  facets: Facet[];
+  facets?: Facet[];
 }
 
 export function PokeDataTable<TData, TValue>({
