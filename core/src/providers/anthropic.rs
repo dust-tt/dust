@@ -259,12 +259,12 @@ impl TryFrom<StreamChatResponse> for ChatResponse {
             .collect::<Result<Vec<AnthropicResponseContent>, anyhow::Error>>()?;
 
         Ok(ChatResponse {
-            id: cr.id.clone(),
-            model: cr.model.clone(),
-            role: cr.role.clone(),
+            id: cr.id,
+            model: cr.model,
+            role: cr.role,
             content,
-            stop_reason: cr.stop_reason.clone(),
-            usage: cr.usage.clone(),
+            stop_reason: cr.stop_reason,
+            usage: cr.usage,
         })
     }
 }
