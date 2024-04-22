@@ -369,7 +369,6 @@ export async function createOrUpgradeAgentConfiguration({
             auth,
             {
               type: "process_configuration",
-              query: action.query,
               relativeTimeFrame: action.relativeTimeFrame,
               dataSources: action.dataSources,
               schema: action.schema,

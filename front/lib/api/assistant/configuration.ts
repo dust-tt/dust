@@ -1053,7 +1053,6 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "process_configuration";
-        query: RetrievalQuery;
         relativeTimeFrame: RetrievalTimeframe;
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
@@ -1161,7 +1160,6 @@ export async function createAgentActionConfiguration(
       const processConfig = await AgentProcessConfiguration.create(
         {
           sId: generateModelSId(),
-          query: action.query,
           relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
             ? "custom"
             : action.relativeTimeFrame,
@@ -1187,7 +1185,6 @@ export async function createAgentActionConfiguration(
         id: processConfig.id,
         sId: processConfig.sId,
         type: "process_configuration",
-        query: action.query,
         relativeTimeFrame: action.relativeTimeFrame,
         schema: action.schema,
         dataSources: action.dataSources,

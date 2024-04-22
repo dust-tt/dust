@@ -24,7 +24,6 @@ import {
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
   parseTimeFrame,
-  retrievalAutoQueryInputSpecification,
   retrievalAutoTimeFrameInputSpecification,
   timeFrameFromNow,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -72,9 +71,6 @@ export async function processActionSpecification(
 ): Promise<AgentActionSpecification> {
   const inputs = [];
 
-  if (configuration.query === "auto") {
-    inputs.push(retrievalAutoQueryInputSpecification());
-  }
   if (configuration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
@@ -133,7 +129,6 @@ export async function renderProcessActionByModelId(
     id: action.id,
     type: "process_action",
     params: {
-      query: action.query,
       relativeTimeFrame,
     },
     schema: action.schema,
@@ -176,7 +171,6 @@ export async function* runProcess(
     throw new Error("Unexpected unauthenticated call to `process`");
   }
 
-  let query: string | null = null;
   let relativeTimeFrame: TimeFrame | null = null;
 
   if (
@@ -184,23 +178,6 @@ export async function* runProcess(
     actionConfiguration.relativeTimeFrame !== "auto"
   ) {
     relativeTimeFrame = actionConfiguration.relativeTimeFrame;
-  }
-
-  if (actionConfiguration.query === "auto") {
-    if (!rawInputs.query || typeof rawInputs.query !== "string") {
-      yield {
-        type: "process_error",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "process_parameters_generation_error",
-          message: `Error generating parameters for process: failed to generate a valid query.`,
-        },
-      };
-      return;
-    }
-    query = rawInputs.query as string;
   }
 
   if (actionConfiguration.relativeTimeFrame === "auto") {
@@ -233,7 +210,6 @@ export async function* runProcess(
   // later on, the action won't have outputs but the error will be stored on the parent agent
   // message.
   const action = await AgentProcessAction.create({
-    query: query,
     relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfiguration.sId,
@@ -251,7 +227,6 @@ export async function* runProcess(
       type: "process_action",
       params: {
         relativeTimeFrame,
-        query,
       },
       schema: action.schema,
       outputs: null,
@@ -325,7 +300,6 @@ export async function* runProcess(
 
   const res = await runActionStreamed(auth, "assistant-v2-process", config, [
     {
-      query,
       context_size: contextSize,
       prompt,
       schema: renderSchemaPropertiesAsJSONSchema(actionConfiguration.schema),
@@ -434,7 +408,6 @@ export async function* runProcess(
       type: "process_action",
       params: {
         relativeTimeFrame,
-        query,
       },
       schema: action.schema,
       outputs,

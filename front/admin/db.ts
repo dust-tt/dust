@@ -5,6 +5,10 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentProcessAction,
+  AgentProcessConfiguration,
+} from "@app/lib/models/assistant/actions/process";
+import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
   RetrievalDocument,
@@ -77,15 +81,19 @@ async function main() {
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
 
+  await AgentGenerationConfiguration.sync({ alter: true });
+
+  await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentTablesQueryConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
+  await AgentProcessConfiguration.sync({ alter: true });
+  await AgentProcessAction.sync({ alter: true });
 
-  await AgentGenerationConfiguration.sync({ alter: true });
-  await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDataSourceConfiguration.sync({ alter: true });
+
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });

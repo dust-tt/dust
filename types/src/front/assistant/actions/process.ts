@@ -1,6 +1,5 @@
 import {
   DataSourceConfiguration,
-  RetrievalQuery,
   RetrievalTimeframe,
   TimeFrame,
 } from "../../../front/assistant/actions/retrieval";
@@ -47,7 +46,6 @@ export type ProcessConfigurationType = {
   type: "process_configuration";
 
   dataSources: DataSourceConfiguration[];
-  query: RetrievalQuery;
   relativeTimeFrame: RetrievalTimeframe;
   schema: ProcessSchemaPropertyType[];
 
@@ -61,7 +59,6 @@ export type ProcessActionType = {
 
   params: {
     relativeTimeFrame: TimeFrame | null;
-    query: string | null;
   };
   schema: ProcessSchemaPropertyType[];
   outputs: unknown[] | null;

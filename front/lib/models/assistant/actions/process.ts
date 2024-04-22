@@ -22,7 +22,6 @@ export class AgentProcessConfiguration extends Model<
 
   declare sId: string;
 
-  declare query: "auto" | "none";
   declare relativeTimeFrame: "auto" | "none" | "custom";
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
@@ -52,11 +51,6 @@ AgentProcessConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    query: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "auto",
     },
     relativeTimeFrame: {
       type: DataTypes.STRING,
@@ -118,7 +112,6 @@ export class AgentProcessAction extends Model<
 
   declare processConfigurationId: string;
 
-  declare query: string | null;
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
@@ -145,10 +138,6 @@ AgentProcessAction.init(
     processConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    query: {
-      type: DataTypes.TEXT,
-      allowNull: true,
     },
     relativeTimeFrameDuration: {
       type: DataTypes.INTEGER,

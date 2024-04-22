@@ -113,7 +113,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
           }),
           t.type({
             type: t.literal("process_configuration"),
-            query: t.union([t.literal("auto"), t.literal("none")]),
             relativeTimeFrame: t.union([
               t.literal("auto"),
               t.literal("none"),
