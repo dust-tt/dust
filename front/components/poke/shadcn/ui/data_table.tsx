@@ -86,14 +86,15 @@ export function PokeDataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
-        {facets.map((facet) => (
-          <PokeDataTableFacetedFilter
-            key={facet.columnId}
-            column={table.getColumn(facet.columnId)}
-            title={facet.title}
-            options={facet.options}
-          />
-        ))}
+        {facets &&
+          facets.map((facet) => (
+            <PokeDataTableFacetedFilter
+              key={facet.columnId}
+              column={table.getColumn(facet.columnId)}
+              title={facet.title}
+              options={facet.options}
+            />
+          ))}
       </div>
       <div className="rounded-md border">
         <PokeTable>
