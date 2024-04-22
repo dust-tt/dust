@@ -260,7 +260,7 @@ export async function processGoogleDriveTranscriptActivity(
 
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
-    visibility: "workspace",
+    visibility: "unlisted",
     message: {
       content: "Transcript: " + transcriptTitle,
       mentions: [{ configurationId: agentConfigurationId }],
