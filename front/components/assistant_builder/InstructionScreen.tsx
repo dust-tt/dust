@@ -37,13 +37,19 @@ import {
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import Document from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
 import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
+import {
+  plainTextFromTipTapContent,
+  tipTapContentFromPlainText,
+} from "@app/lib/client/assistant_builder/instructions";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { debounce } from "@app/lib/utils/debounce";
@@ -100,29 +106,38 @@ export function InstructionScreen({
   setEdited: (edited: boolean) => void;
 }) {
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: false,
-      }),
-    ],
-    content: builderState.instructions?.replaceAll("\n", "<br />") || "",
+    extensions: [Document, Text, Paragraph],
     onUpdate: ({ editor }) => {
+      const json = editor.getJSON();
+      const plainText = plainTextFromTipTapContent(json);
       setEdited(true);
       setBuilderState((state) => ({
         ...state,
-        instructions: editor.getText(),
+        instructions: plainText,
       }));
     },
   });
-  editor?.setOptions({
-    editorProps: {
-      attributes: {
-        class:
-          "min-h-60 border-structure-200 border bg-structure-50 transition-all " +
-          "duration-200 rounded-xl focus:border-action-300 focus:ring-action-300 p-2 focus:outline-action-200",
+
+  useEffect(() => {
+    // Must use the insertContent API to properly render newlines.
+    // The setContent API or the `content` property on useEditor will not render newlines.
+    editor?.commands.setContent(
+      tipTapContentFromPlainText(builderState.instructions || "")
+    );
+    editor?.setOptions({
+      editorProps: {
+        attributes: {
+          class:
+            "min-h-60 border-structure-200 border bg-structure-50 transition-all " +
+            "duration-200 rounded-xl focus:border-action-300 focus:ring-action-300 p-2 focus:outline-action-200",
+        },
       },
-    },
-  });
+    });
+
+    // Only run one time once editor is initialized.
+    // We explicitly don't want to run this effect when the content changes, as tiptap handles its own state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   return (
     <div className="flex h-full w-full flex-col gap-4">
