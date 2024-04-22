@@ -288,7 +288,7 @@ export default function AssistantBuilder({
       return;
     }
     const action = getAgentActionConfigurationType(template.presetAction);
-    let actionMode: ActionMode | null = null;
+    let actionMode: ActionMode = "GENERIC";
 
     if (isRetrievalConfiguration(action)) {
       actionMode = "RETRIEVAL_SEARCH";
