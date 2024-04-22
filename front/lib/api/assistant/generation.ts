@@ -69,9 +69,13 @@ export async function renderConversationForModel({
 > {
   const messages: ModelMessageType[] = [];
 
-  let retrievalFound = false;
+  // We include the retrievals from the last agent message that involved retrievals only. This
+  // allows to have multiple retrievals per agent messages (multi-actions) while not including old
+  // retrievals from previous messages once one set of retrievals was included (existing behavior).
+  let foundRetrieval = false;
+  let includeRetrieval = true;
 
-  // Render all messages and all actions but only keep the latest retrieval action.
+  // Render all messages and all actions.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
     const versions = conversation.content[i];
     const m = versions[versions.length - 1];
@@ -86,9 +90,9 @@ export async function renderConversationForModel({
       }
       if (m.action) {
         if (isRetrievalActionType(m.action)) {
-          if (!retrievalFound) {
+          if (includeRetrieval) {
+            foundRetrieval = true;
             messages.unshift(renderRetrievalActionForModel(m.action));
-            retrievalFound = true;
           }
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
@@ -99,6 +103,10 @@ export async function renderConversationForModel({
         }
       }
     } else if (isUserMessageType(m)) {
+      if (foundRetrieval) {
+        includeRetrieval = false;
+      }
+
       // Replace all `:mention[{name}]{.*}` with `@name`.
       const content = m.content.replaceAll(
         /:mention\[([^\]]+)\]\{[^}]+\}/g,
