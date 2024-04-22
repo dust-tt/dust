@@ -3,6 +3,32 @@ import ReactMarkdown from "react-markdown";
 
 import { ClipboardCheckIcon, ClipboardIcon, IconButton } from "@sparkle/index";
 
+function useCopyToClipboard(
+  resetInterval = 2000
+): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
+  const [isCopied, setCopied] = useState(false);
+
+  const copy = useCallback(
+    async (d: ClipboardItem) => {
+      if (!navigator?.clipboard) {
+        return false;
+      }
+      try {
+        await navigator.clipboard.write([d]);
+        setCopied(true);
+        setTimeout(() => setCopied(false), resetInterval);
+        return true;
+      } catch (error) {
+        setCopied(false);
+        return false;
+      }
+    },
+    [resetInterval]
+  );
+
+  return [isCopied, copy];
+}
+
 export function Markdown({
   content,
   className = "",
@@ -10,32 +36,6 @@ export function Markdown({
   content: string;
   className?: string;
 }) {
-  function useCopyToClipboard(
-    resetInterval = 2000
-  ): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
-    const [isCopied, setCopied] = useState(false);
-
-    const copy = useCallback(
-      async (d: ClipboardItem) => {
-        if (!navigator?.clipboard) {
-          return false;
-        }
-        try {
-          await navigator.clipboard.write([d]);
-          setCopied(true);
-          setTimeout(() => setCopied(false), resetInterval);
-          return true;
-        } catch (error) {
-          setCopied(false);
-          return false;
-        }
-      },
-      [resetInterval]
-    );
-
-    return [isCopied, copy];
-  }
-
   return (
     <ReactMarkdown
       components={{
