@@ -265,7 +265,7 @@ export function usePreviewAssistant({
   };
 }
 
-function useTryAssistantCore({
+export function useTryAssistantCore({
   owner,
   user,
   assistant,
