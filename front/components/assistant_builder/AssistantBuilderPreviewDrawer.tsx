@@ -1,14 +1,18 @@
 import {
+  Button,
   ChatBubbleBottomCenterTextIcon,
   ContextItem,
+  DropdownMenu,
   LightbulbIcon,
   MagicIcon,
   Markdown,
+  MoreIcon,
   Page,
   Tab,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -19,21 +23,25 @@ import {
   useTryAssistantCore,
 } from "@app/components/assistant/TryAssistant";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export default function AssistantBuilderPreviewDrawer({
   template,
+  resetTemplate,
   owner,
   previewDrawerOpenedAt,
   builderState,
 }: {
   template: FetchAssistantTemplateResponse | null;
+  resetTemplate: () => Promise<void>;
   owner: WorkspaceType;
   previewDrawerOpenedAt: number | null;
   builderState: AssistantBuilderState;
 }) {
+  const confirm = useContext(ConfirmContext);
   const [previewDrawerCurrentTab, setPreviewDrawerCurrentTab] = useState<
     "Preview" | "Template"
   >(template ? "Template" : "Preview");
@@ -145,7 +153,43 @@ export default function AssistantBuilderPreviewDrawer({
         )}
         {previewDrawerCurrentTab === "Template" && (
           <div className="mb-72 flex flex-col gap-4 px-6">
-            <Page.Header icon={LightbulbIcon} title="Template's User manual" />
+            <div className="flex justify-between">
+              <Page.Header
+                icon={LightbulbIcon}
+                title="Template's User manual"
+              />
+              <DropdownMenu className="text-element-700">
+                <DropdownMenu.Button>
+                  <Button
+                    icon={MoreIcon}
+                    label="Actions"
+                    labelVisible={false}
+                    disabledTooltip
+                    size="sm"
+                    variant="tertiary"
+                    hasMagnifying={false}
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={220} origin="topRight">
+                  <DropdownMenu.Item
+                    label="Close the template"
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: "Are you sure you want to close the template?",
+                        message:
+                          "Once removed, you will no longer have access to the associated user manual.",
+                        validateVariant: "primaryWarning",
+                      });
+                      if (confirmed) {
+                        setPreviewDrawerCurrentTab("Preview");
+                        await resetTemplate();
+                      }
+                    }}
+                    icon={XMarkIcon}
+                  />
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
             <Page.Separator />
             <div id="instructions-help-container">
               <ContextItem.SectionHeader
