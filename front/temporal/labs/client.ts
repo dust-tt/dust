@@ -13,24 +13,14 @@ import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/workflows";
 export async function launchRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): Promise<Result<string, Error>> {
-  const {
-    provider: providerId,
-    userId,
-    workspaceId,
-  } = transcriptsConfiguration;
-
   const client = await getTemporalClient();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
 
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
-      args: [userId, workspaceId, providerId],
+      args: [transcriptsConfiguration.id],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      memo: {
-        userId,
-        providerId,
-      },
       cronSchedule: "*/15 * * * *", // Every 15 minutes.
     });
     logger.info(

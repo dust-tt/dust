@@ -1,35 +1,36 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import * as googleapis from "googleapis";
+import marked from "marked";
+import sanitizeHtml from "sanitize-html";
 
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
+import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-
 async function retrieveRecentTranscripts(
   {
+    auth,
     userId,
-    workspaceId,
   }: {
+    auth: Authenticator;
     userId: ModelId;
-    workspaceId: ModelId;
   },
   logger: Logger
 ) {
-  const auth = await getGoogleAuthFromUserTranscriptConfiguration(
-    userId,
-    workspaceId
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
+    auth,
+    userId
   );
 
-  if (!auth) {
+  if (!googleAuth) {
     logger.error(
       {},
       "[retrieveRecentTranscripts] No Google auth found. Stopping."
@@ -44,7 +45,7 @@ async function retrieveRecentTranscripts(
   cutoffDate.setDate(cutoffDate.getDate() - 1);
 
   const files = await googleapis.google
-    .drive({ version: "v3", auth })
+    .drive({ version: "v3", auth: googleAuth })
     .files.list({
       q:
         "name contains '- Transcript' and createdTime > '" +
@@ -63,18 +64,49 @@ async function retrieveRecentTranscripts(
 }
 
 export async function retrieveNewTranscriptsActivity(
-  userId: ModelId,
-  workspaceId: ModelId,
-  provider: LabsTranscriptsProviderType
+  transcriptsConfigurationId: ModelId
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    provider,
-    userId,
-    workspaceId,
+    transcriptsConfigurationId,
   });
 
+  const transcriptsConfiguration =
+    await LabsTranscriptsConfigurationResource.fetchById(
+      transcriptsConfigurationId
+    );
+
+  if (!transcriptsConfiguration) {
+    localLogger.error(
+      {},
+      "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
+    );
+    return [];
+  }
+
+  const workspace = await Workspace.findOne({
+    where: {
+      id: transcriptsConfiguration.workspaceId,
+    },
+  });
+
+  if (!workspace) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
+    );
+  }
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+
+  if (!auth.workspace()) {
+    localLogger.error(
+      {},
+      "[retrieveNewTranscripts] Workspace not found. Stopping."
+    );
+    return [];
+  }
+
   // We only support google_drive for now.
-  if (provider !== "google_drive") {
+  if (transcriptsConfiguration.provider !== "google_drive") {
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Provider not supported. Stopping."
@@ -83,24 +115,10 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  const transcriptConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId,
-      workspaceId,
-      provider: provider,
-    });
-  if (!transcriptConfiguration) {
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
-    );
-    return [];
-  }
-
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
-      userId,
-      workspaceId,
+      auth,
+      userId: transcriptsConfiguration.userId,
     },
     localLogger
   );
@@ -116,7 +134,9 @@ export async function retrieveNewTranscriptsActivity(
       continue;
     }
 
-    const history = await transcriptConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },
@@ -132,20 +152,46 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processGoogleDriveTranscriptActivity(
-  userId: ModelId,
-  workspaceId: ModelId,
+  transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
-  const provider = "google_drive";
+  const transcriptsConfiguration =
+    await LabsTranscriptsConfigurationResource.fetchById(
+      transcriptsConfigurationId
+    );
+
+  if (!transcriptsConfiguration) {
+    throw new Error(
+      `Could not find transcript configuration for id ${transcriptsConfigurationId}.`
+    );
+  }
+
+  const workspace = await Workspace.findOne({
+    where: {
+      id: transcriptsConfiguration.workspaceId,
+    },
+  });
+
+  if (!workspace) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
+    );
+  }
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+
+  if (!auth.workspace()) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
+    );
+  }
 
   const localLogger = mainLogger.child({
     fileId,
-    provider,
-    userId,
-    workspaceId,
+    transcriptsConfigurationId,
   });
 
-  const user = await User.findByPk(userId);
+  const user = await User.findByPk(transcriptsConfiguration.userId);
   if (!user) {
     localLogger.error(
       {},
@@ -159,22 +205,18 @@ export async function processGoogleDriveTranscriptActivity(
     "[processGoogleDriveTranscriptActivity] Starting processing of file "
   );
 
-  const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId: userId,
-      workspaceId: workspaceId,
-      provider: provider,
-    });
-  if (!transcriptsConfiguration) {
+  const hasExistingHistory =
+    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+  if (hasExistingHistory) {
     localLogger.info(
-      "[processGoogleDriveTranscriptActivity] No configuration found. Stopping."
+      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
     );
     return;
   }
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
-    userId,
-    workspaceId
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
+    auth,
+    transcriptsConfiguration.userId
   );
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
@@ -201,16 +243,22 @@ export async function processGoogleDriveTranscriptActivity(
 
   const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = contentRes.data;
-  const extraInstructions =
-    "IMPORTANT: Answer in HTML format and NOT IN MARKDOWN.";
-
-  // TODO: We should enforce that user is a member of the workspace.
-  const owner = await Workspace.findByPk(workspaceId);
-  if (!owner) {
-    throw new Error(
-      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+  if (!transcriptContent) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] No content found. Stopping."
     );
+    return;
   }
+
+  const owner = auth.workspace();
+
+  if (!owner) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] No owner found. Stopping."
+    );
+    return;
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(
     renderLightWorkspaceType({ workspace: owner }),
     { useLocalInDev: true }
@@ -228,22 +276,48 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  // TODO: Consider using a content fragment to attach the transcript.
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  if (agentConfigurationsRes.isErr()) {
+    return new Err(new Error(agentConfigurationsRes.error.message));
+  }
+  const agentConfigurations = agentConfigurationsRes.value;
+  const agent = agentConfigurations.find(
+    (agent) => agent.sId === agentConfigurationId
+  );
+
+  if (!agent) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] No agent found. Stopping."
+    );
+    return;
+  }
+
   const convRes = await dustAPI.createConversation({
-    title: null,
+    title: transcriptTitle,
     visibility: "unlisted",
     message: {
-      content: transcriptContent + extraInstructions,
+      content: `:mention[${agent.name}]{sId=${agentConfigurationId}}`,
       mentions: [{ configurationId: agentConfigurationId }],
       context: {
-        timezone: "Europe/Paris",
-        username: "labs-transcript-processor",
-        fullName: null,
-        email: null,
-        profilePictureUrl: null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+        username: user.username,
+        fullName: user.name,
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
       },
     },
-    contentFragment: undefined,
+    contentFragment: {
+      title: transcriptTitle,
+      content: transcriptContent.toString(),
+      url: null,
+      contentType: "file_attachment",
+      context: {
+        username: user.username,
+        fullName: user.name,
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
+      },
+    },
     blocking: true,
   });
 
@@ -278,21 +352,17 @@ export async function processGoogleDriveTranscriptActivity(
       return innerArray.find((item) => item.type === "agent_message");
     }
   );
-  const fullAnswer = agentMessage ? agentMessage[0].content : "";
-
-  const hasExistingHistory =
-    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
-  if (hasExistingHistory) {
-    localLogger.info(
-      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
-    );
-    return;
-  }
+  const markDownAnswer =
+    agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
+  const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+  });
 
   await transcriptsConfiguration.recordHistory({
     configurationId: transcriptsConfiguration.id,
     fileId,
     fileName: transcriptTitle,
+    conversationId: conversation.sId,
   });
 
   const msg = {
@@ -301,7 +371,7 @@ export async function processGoogleDriveTranscriptActivity(
       email: "team@dust.tt",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `${fullAnswer}<br>` + `The Dust team`,
+    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
   };
 
   await sendEmail(user.email, msg);
