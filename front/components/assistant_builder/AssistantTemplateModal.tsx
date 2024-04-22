@@ -77,9 +77,9 @@ export function AssistantTemplateModal({
               </Link>
             </div>
           </div>
-          <p className="whitespace-pre-line text-sm font-normal text-element-900">
+          <div>
             <Markdown content={description ?? ""} />
-          </p>
+          </div>
           <InstructionsSection instructions={presetInstructions} />
         </div>
       </Page>
