@@ -21,9 +21,13 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
   assertNever,
+  getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
+  isDustAppRunConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
   removeNulls,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -46,6 +50,7 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type {
+  ActionMode,
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
@@ -262,6 +267,48 @@ export default function AssistantBuilder({
       { shallow: true }
     );
   };
+
+  const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
+    null
+  );
+  const resetToTemplateInstructions = useCallback(async () => {
+    if (template === null) {
+      return;
+    }
+    setEdited(true);
+    setInstructionsResetAt(Date.now());
+    setBuilderState((builderState) => ({
+      ...builderState,
+      instructions: template.presetInstructions,
+    }));
+  }, [template]);
+
+  const resetToTemplateActions = useCallback(async () => {
+    if (template === null) {
+      return;
+    }
+    const action = getAgentActionConfigurationType(template.presetAction);
+    let actionMode: ActionMode = "GENERIC";
+
+    if (isRetrievalConfiguration(action)) {
+      actionMode = "RETRIEVAL_SEARCH";
+    } else if (isDustAppRunConfiguration(action)) {
+      actionMode = "DUST_APP_RUN";
+    } else if (isTablesQueryConfiguration(action)) {
+      actionMode = "TABLES_QUERY";
+    }
+
+    if (actionMode !== null) {
+      setEdited(true);
+      setBuilderState((builderState) => ({
+        ...builderState,
+        actionMode,
+        dataSourceConfigurations: {},
+        dustAppConfiguration: null,
+        tablesQueryConfiguration: {},
+      }));
+    }
+  }, [template]);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -549,6 +596,7 @@ export default function AssistantBuilder({
                         builderState={builderState}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
+                        resetAt={instructionsResetAt}
                       />
                     );
                   case "actions":
@@ -585,6 +633,8 @@ export default function AssistantBuilder({
             <AssistantBuilderPreviewDrawer
               template={template}
               resetTemplate={resetTemplate}
+              resetToTemplateInstructions={resetToTemplateInstructions}
+              resetToTemplateActions={resetToTemplateActions}
               owner={owner}
               previewDrawerOpenedAt={previewDrawerOpenedAt}
               builderState={builderState}
