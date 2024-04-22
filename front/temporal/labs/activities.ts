@@ -173,6 +173,15 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
+  const hasExistingHistory =
+  await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+  if (hasExistingHistory) {
+    localLogger.info(
+      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
+    );
+    return;
+  }
+
   const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
     userId,
     workspaceId
@@ -297,15 +306,6 @@ export async function processGoogleDriveTranscriptActivity(
   const markDownAnswer =
     agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
   const htmlAnswer = marked.parse(markDownAnswer);
-
-  const hasExistingHistory =
-    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
-  if (hasExistingHistory) {
-    localLogger.info(
-      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
-    );
-    return;
-  }
 
   await transcriptsConfiguration.recordHistory({
     configurationId: transcriptsConfiguration.id,
