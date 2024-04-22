@@ -32,7 +32,7 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuthFromUserTranscriptConfiguration(
+export async function getGoogleAuthFromUserTranscriptsConfiguration(
   userId: ModelId,
   auth: Authenticator
 ) {

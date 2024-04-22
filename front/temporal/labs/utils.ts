@@ -11,11 +11,11 @@ export function makeRetrieveTranscriptWorkflowId(
 }
 
 export function makeProcessTranscriptWorkflowId({
+  transcriptsConfigurationId,
   fileId,
-  userId,
 }: {
+  transcriptsConfigurationId: ModelId;
   fileId: string;
-  userId: ModelId;
 }): string {
-  return `labs-transcripts-process-${userId}-${fileId}`;
+  return `labs-transcripts-process-${transcriptsConfigurationId}-${fileId}`;
 }

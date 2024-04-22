@@ -1,5 +1,4 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import * as googleapis from "googleapis";
@@ -9,7 +8,7 @@ import sanitizeHtml from "sanitize-html";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
+import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -27,7 +26,7 @@ async function retrieveRecentTranscripts(
   logger: Logger
 ) {
   
-  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
     userId,
     auth
   );
@@ -66,25 +65,35 @@ async function retrieveRecentTranscripts(
 }
 
 export async function retrieveNewTranscriptsActivity(
-  userId: ModelId,
-  workspaceId: ModelId,
-  provider: LabsTranscriptsProviderType
+  transcriptsConfigurationId: ModelId,
+  
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    provider,
-    userId,
-    workspaceId,
+    transcriptsConfigurationId
   });
+
+  const transcriptsConfiguration =
+    await LabsTranscriptsConfigurationResource.fetchById(
+      transcriptsConfigurationId
+    );
+
+  if (!transcriptsConfiguration) {
+    localLogger.error(
+      {},
+      "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
+    );
+    return [];
+  }
 
   const workspace = await Workspace.findOne({
     where: {
-      id: workspaceId,
+      id: transcriptsConfiguration.workspaceId,
     }
   });
 
   if (!workspace) {
     throw new Error(
-      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
@@ -99,7 +108,7 @@ export async function retrieveNewTranscriptsActivity(
   }
 
   // We only support google_drive for now.
-  if (provider !== "google_drive") {
+  if (transcriptsConfiguration.provider !== "google_drive") {
     localLogger.error(
       {},
       "[retrieveNewTranscripts] Provider not supported. Stopping."
@@ -108,23 +117,9 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  const transcriptConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId,
-      auth,
-      provider: provider,
-    });
-  if (!transcriptConfiguration) {
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
-    );
-    return [];
-  }
-
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
-      userId,
+      userId: transcriptsConfiguration.userId,
       auth
     },
     localLogger
@@ -141,7 +136,7 @@ export async function retrieveNewTranscriptsActivity(
       continue;
     }
 
-    const history = await transcriptConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(fileId);
     if (history) {
       localLogger.info(
         { fileId },
@@ -157,21 +152,28 @@ export async function retrieveNewTranscriptsActivity(
 }
 
 export async function processGoogleDriveTranscriptActivity(
-  userId: ModelId,
-  workspaceId: ModelId,
+  transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
-  const provider = "google_drive";
+  const transcriptsConfiguration = await LabsTranscriptsConfigurationResource.fetchById(
+    transcriptsConfigurationId
+  );
+
+  if (!transcriptsConfiguration) {
+    throw new Error(
+      `Could not find transcript configuration for id ${transcriptsConfigurationId}.`
+    );
+  }
 
   const workspace = await Workspace.findOne({
     where: {
-      id: workspaceId,
+      id: transcriptsConfiguration.workspaceId,
     }
   });
 
   if (!workspace) {
     throw new Error(
-      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
@@ -179,18 +181,16 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (!auth.workspace()) {
     throw new Error(
-      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+      `Could not find workspace for user (workspaceId: ${transcriptsConfiguration.workspaceId}).`
     );
   }
 
   const localLogger = mainLogger.child({
     fileId,
-    provider,
-    userId,
-    workspaceId,
+    transcriptsConfigurationId,
   });
 
-  const user = await User.findByPk(userId);
+  const user = await User.findByPk(transcriptsConfiguration.userId);
   if (!user) {
     localLogger.error(
       {},
@@ -204,19 +204,6 @@ export async function processGoogleDriveTranscriptActivity(
     "[processGoogleDriveTranscriptActivity] Starting processing of file "
   );
 
-  const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId,
-      auth,
-      provider,
-    });
-  if (!transcriptsConfiguration) {
-    localLogger.info(
-      "[processGoogleDriveTranscriptActivity] No configuration found. Stopping."
-    );
-    return;
-  }
-
   const hasExistingHistory =
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
@@ -226,8 +213,8 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
-    userId,
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
+    transcriptsConfiguration.userId,
     auth
   );
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
