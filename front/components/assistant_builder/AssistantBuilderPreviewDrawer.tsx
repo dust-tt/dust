@@ -96,7 +96,9 @@ export default function AssistantBuilderPreviewDrawer({
       )}
       <div
         className={classNames(
-          "grow-1 mb-5 h-full overflow-y-auto bg-structure-50 pt-5",
+          template !== null
+            ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
+            : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
           shouldAnimatePreviewDrawer &&
             previewDrawerOpenedAt != null &&
             // Only animate the reload if the drawer has been open for at least 1 second.
@@ -126,7 +128,7 @@ export default function AssistantBuilderPreviewDrawer({
                   />
                 )}
               </div>
-              <div className="shrink-0 pb-2">
+              <div className="shrink-0">
                 <AssistantInputBar
                   owner={owner}
                   onSubmit={handleSubmit}
@@ -135,7 +137,7 @@ export default function AssistantBuilderPreviewDrawer({
                   additionalAgentConfiguration={draftAssistant}
                   hideQuickActions
                   disableAutoFocus
-                  isFloating={true}
+                  isFloating={false}
                 />
               </div>
             </GenerationContextProvider>
