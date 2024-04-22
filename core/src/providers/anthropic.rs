@@ -282,18 +282,18 @@ impl TryFrom<ChatResponse> for ChatMessage {
             _ => None,
         });
 
-        let tool_uses: Vec<ToolUse> = cr
+        let tool_uses: Vec<&ToolUse> = cr
             .content
             .iter()
             .filter_map(|item| match item.get_tool_use() {
-                Some(tool_use) => Some(tool_use.clone()),
+                Some(tool_use) => Some(tool_use),
                 _ => None,
             })
             .collect();
 
         let function_call = tool_uses
-            .iter()
-            .map(ChatFunctionCall::try_from)
+            .into_iter()
+            .map(|fc| ChatFunctionCall::try_from(fc))
             .collect::<Result<Vec<_>, _>>()?
             .first()
             .cloned();
@@ -434,16 +434,22 @@ impl AnthropicLLM {
             body["system"] = json!(system);
         }
 
-        if tools.len() > 0 {
+        if !tools.is_empty() {
             body["tools"] = json!(tools);
+        }
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("Content-Type", "application/json".parse()?);
+        headers.insert("X-API-Key", self.api_key.clone().unwrap().parse()?);
+        headers.insert("anthropic-version", "2023-06-01".parse()?);
+
+        if !tools.is_empty() {
+            headers.insert("anthropic-beta", "tools-2024-04-04".parse()?);
         }
 
         let res = reqwest::Client::new()
             .post(self.messages_uri()?.to_string())
-            .header("Content-Type", "application/json")
-            .header("X-API-Key", self.api_key.clone().unwrap())
-            .header("anthropic-version", "2023-06-01")
-            .header("anthropic-beta", "tools-2024-04-04")
+            .headers(headers)
             .json(&body)
             .send()
             .await?;
@@ -486,8 +492,10 @@ impl AnthropicLLM {
         assert!(self.api_key.is_some());
 
         // Streaming (stream=true) is not yet supported on tools.
-        if tools.len() > 0 {
-            return Err(anyhow!("Anthropic does not support chat functions."));
+        if !tools.is_empty() {
+            return Err(anyhow!(
+                "Anthropic does not support chat functions in stream mode."
+            ));
         }
 
         let mut body = json!({
