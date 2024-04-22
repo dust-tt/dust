@@ -176,7 +176,7 @@ export async function processGoogleDriveTranscriptActivity(
   }
 
   const hasExistingHistory =
-  await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
     localLogger.info(
       "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
@@ -228,10 +228,11 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
 
-  const user_workspace_membership = await MembershipResource.getActiveMembershipOfUserInWorkspace({
-    user: renderUserType(user),
-    workspace: renderLightWorkspaceType({ workspace: owner }),
-  })
+  const user_workspace_membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: renderUserType(user),
+      workspace: renderLightWorkspaceType({ workspace: owner }),
+    });
 
   if (!user_workspace_membership) {
     localLogger.error(
@@ -334,7 +335,7 @@ export async function processGoogleDriveTranscriptActivity(
       email: "team@dust.tt",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />`,
+    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
   };
 
   await sendEmail(user.email, msg);
