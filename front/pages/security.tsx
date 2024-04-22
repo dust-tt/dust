@@ -85,10 +85,10 @@ export default function Security() {
         <div
           className={classNames(
             "col-span-12",
-            "grid grid-cols-1 gap-12",
-            "md:grid-cols-2 md:gap-6",
-            "lg:col-span-12 lg:grid-cols-4",
-            "2xl:col-span-10 2xl:col-start-2"
+            "grid grid-cols-1 gap-12 px-6",
+            "sm:grid-cols-2 sm:gap-6 sm:pr-0",
+            "lg:col-span-10 lg:col-start-2",
+            "xl:col-span-12 xl:grid-cols-4"
           )}
         >
           <P size="md" dotCSS="text-amber-300" shape="triangle">

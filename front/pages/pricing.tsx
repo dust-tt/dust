@@ -63,10 +63,14 @@ export default function Pricing() {
         }}
       />
       <HeaderContentBlock
-        title={
+        title={<>Meet our pricing plans.</>}
+        from="from-emerald-200"
+        to="to-emerald-500"
+        subtitle={
           <>
-            Meet our pricing plans.
-            <div className="pt-4">
+            Pro: For small teams and startups, from 1 member. <br />
+            Enterprise: From 100 members, multiple workspaces, SSO…
+            <div className="pt-8">
               <Button
                 variant="primary"
                 size="md"
@@ -79,8 +83,6 @@ export default function Pricing() {
             </div>
           </>
         }
-        from="from-action-300"
-        to="to-action-500"
       />
       <Grid>
         <div className="s-dark col-span-12 flex flex-row justify-center md:col-span-10 md:col-start-2 lg:px-2 2xl:px-24">

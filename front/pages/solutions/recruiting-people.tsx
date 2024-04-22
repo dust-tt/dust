@@ -62,7 +62,7 @@ export default function RecruitingPeople() {
       <HeaderContentBlock
         uptitle="Dust for Recruiting and People teams"
         title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers.</>}
-        from="from-amber-200"
+        from="from-amber-300"
         to="to-amber-400"
         subtitle={
           <>
@@ -80,7 +80,7 @@ export default function RecruitingPeople() {
         <ContentAssistantBlock
           className="col-span-12 mb-4 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
-          color="sky"
+          color="amber"
           content={
             <>
               <Block
@@ -113,7 +113,7 @@ export default function RecruitingPeople() {
         <ContentAssistantBlock
           className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
           layout="vertical"
-          color="emerald"
+          color="amber"
           content={
             <>
               <Block title={<>Improve Feedback and Reviews</>}>
@@ -186,49 +186,49 @@ const peopleSlides = [
   <DroidItem
     key="0"
     emoji="🌱"
-    avatarBackground="bg-sky-200"
+    avatarBackground="bg-amber-300"
     name="@onboardingBuddy"
     question="Your friendly guide to help new team members feel welcomed, informed, and integrated from day one."
   />,
   <DroidItem
     key="1"
     emoji="👋"
-    avatarBackground="bg-sky-200"
+    avatarBackground="bg-amber-300"
     name="@people"
     question="Answer on slack all questions about processes, methodes, people and roles based on company documentation."
   />,
   <DroidItem
     key="2"
     emoji="🖋️"
-    avatarBackground="bg-amber-200"
+    avatarBackground="bg-amber-300"
     name="@hiringOps"
     question="Draft job descriptions, emails, social media coms based on company standards."
   />,
   <DroidItem
     key="3"
     emoji="🔬"
-    avatarBackground="bg-amber-200"
+    avatarBackground="bg-amber-300"
     name="@interviewReading"
     question="Help read and analyse candidate expert according to company principles."
   />,
   <DroidItem
     key="4"
     emoji="💬"
-    avatarBackground="bg-amber-200"
+    avatarBackground="bg-amber-300"
     name="@hiringQuestions"
     question="Draft questions depending on the role, type of interview and stage in the process."
   />,
   <DroidItem
     key="5"
     emoji="🧐"
-    avatarBackground="bg-amber-200"
+    avatarBackground="bg-amber-300"
     name="@candidate"
     question="Summarize available information about a candidate based on Company DB."
   />,
   <DroidItem
     key="6"
     emoji="🏅"
-    avatarBackground="bg-emerald-200"
+    avatarBackground="bg-amber-300"
     name="@feedbackReview"
     question="Collects achievements, drafts actionable reviews, helps formulate feedback."
   />,

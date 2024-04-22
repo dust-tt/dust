@@ -114,6 +114,10 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Recruiting & People",
       href: "/solutions/recruiting-people",
     },
+    {
+      title: "Dust for engineers",
+      href: "/solutions/engineers",
+    },
   ],
 };
 
@@ -121,12 +125,12 @@ const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {
-      title: "Dust for engineers",
-      href: "/developers",
-    },
-    {
       title: "Dust Apps & API",
       href: "/solutions/dust-platform",
+    },
+    {
+      title: "Dust for engineers",
+      href: "/solutions/engineers",
     },
     {
       title: "Platform Documentation",

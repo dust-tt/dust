@@ -68,8 +68,8 @@ export default function CustomerSupport() {
             help your&nbsp;customers.
           </>
         }
-        from="from-sky-300"
-        to="to-blue-500"
+        from="from-sky-200"
+        to="to-sky-500"
         subtitle={
           <>
             Reply faster and increase answer&nbsp;quality
@@ -114,7 +114,7 @@ export default function CustomerSupport() {
         <H2 className={defaultHClasses}>Better team collaboration.</H2>
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          color="emerald"
+          color="sky"
           layout="vertical"
           content={
             <>
@@ -139,7 +139,7 @@ export default function CustomerSupport() {
         <H2 className={defaultHClasses}>Better insights.</H2>
         <ContentAssistantBlock
           className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
-          color="pink"
+          color="sky"
           layout="vertical"
           content={
             <>
@@ -167,21 +167,21 @@ const customerSupportSlides = [
   <DroidItem
     key={0}
     emoji="🤝"
-    avatarBackground="bg-sky-200"
+    avatarBackground="bg-sky-300"
     name="@supportExpert"
     question="Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team."
   />,
   <DroidItem
     key={1}
     emoji="📡"
-    avatarBackground="bg-emerald-200"
+    avatarBackground="bg-sky-300"
     name="@productInfo"
     question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
   />,
   <DroidItem
     key={2}
     emoji="🔮"
-    avatarBackground="bg-pink-200"
+    avatarBackground="bg-sky-300"
     name="@ticketAnalyst"
     question="@ticketAnalyst
     Classify tickets; identify patterns, sentiment, and recurring needs. "
@@ -189,7 +189,7 @@ const customerSupportSlides = [
   <DroidItem
     key={3}
     emoji="💡"
-    avatarBackground="bg-emerald-200"
+    avatarBackground="bg-sky-300"
     name="@onboardingBuddy"
     question="All you need to know about people, tooling and resources."
   />,

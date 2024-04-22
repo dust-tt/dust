@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 let speed = 0.08;
 const postExplodeSpeed = 0.03;
-const particleSize = 0.008; // Size of the particles
+const particleSize = 0.01; // Size of the particles
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;

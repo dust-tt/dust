@@ -48,7 +48,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
-      shape: getParticleShapeIndexByName(shapeNames.pyramid),
+      shape: getParticleShapeIndexByName(shapeNames.cube),
     },
   };
 });
@@ -56,34 +56,26 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 const defaultHClasses =
   "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
-export default function MarketingContent() {
+export default function EngineeringContent() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Marketing Teams"
-        title={
-          <>
-            Enhance
-            <br />
-            Content&nbsp;Production and&nbsp;Creativity
-          </>
-        }
-        from="from-pink-200"
-        to="to-pink-500"
+        uptitle="Dust for Engineers and Developers"
+        title={<>Create a&nbsp;copilot with your&nbsp;company data</>}
+        from="from-emerald-200"
+        to="to-emerald-500"
         subtitle={
           <>
-            Leverage AI assistants to&nbsp;generate innovative ideas
-            and&nbsp;high-quality content. Streamline your&nbsp;creative process
-            and&nbsp;adapt content for international&nbsp;markets.
+            Speed-up incident response, reduce interruptions, help your
+            engineers produce better code, and accelerate new&nbsp;engineers
+            on-boarding.
           </>
         }
       />
 
       <Grid>
         <H2 className={defaultHClasses}>
-          Create better content,
-          <br />
-          faster and on-brand
+          Respond Faster to Incidents and Report Better
         </H2>{" "}
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
@@ -119,9 +111,7 @@ export default function MarketingContent() {
           }
           assistant={marketingSlides[0]}
         />
-        <H2 className={defaultHClasses}>
-          Gain Competitive Insights, Repurpose With Purpose
-        </H2>{" "}
+        <H2 className={defaultHClasses}>Reduce Interruptions</H2>{" "}
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -148,9 +138,7 @@ export default function MarketingContent() {
             </>
           }
         />
-        <H2 className={defaultHClasses}>
-          Better collaboration with Sales, Product, and Support teams.
-        </H2>{" "}
+        <H2 className={defaultHClasses}>Improve Code Quality</H2>{" "}
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -183,7 +171,7 @@ export default function MarketingContent() {
   );
 }
 
-MarketingContent.getLayout = (
+EngineeringContent.getLayout = (
   page: ReactElement,
   pageProps: LandingLayoutProps
 ) => {
