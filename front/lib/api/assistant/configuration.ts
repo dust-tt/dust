@@ -876,7 +876,6 @@ export async function createAgentConfiguration(
             maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
-            generationConfigurationId: generation?.id || null,
             authorId: user.id,
           },
           {
