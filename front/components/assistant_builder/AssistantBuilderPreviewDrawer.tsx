@@ -31,12 +31,16 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assi
 export default function AssistantBuilderPreviewDrawer({
   template,
   resetTemplate,
+  resetToTemplateInstructions,
+  resetToTemplateActions,
   owner,
   previewDrawerOpenedAt,
   builderState,
 }: {
   template: FetchAssistantTemplateResponse | null;
   resetTemplate: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
   previewDrawerOpenedAt: number | null;
   builderState: AssistantBuilderState;
@@ -170,7 +174,7 @@ export default function AssistantBuilderPreviewDrawer({
                     hasMagnifying={false}
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items width={220} origin="topRight">
+                <DropdownMenu.Items width={320} origin="topRight">
                   <DropdownMenu.Item
                     label="Close the template"
                     onClick={async () => {
@@ -186,6 +190,38 @@ export default function AssistantBuilderPreviewDrawer({
                       }
                     }}
                     icon={XMarkIcon}
+                  />
+                  <DropdownMenu.Item
+                    label="Reset instructions"
+                    description="Set instructions back to template's default"
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: "Are you sure?",
+                        message:
+                          "Resetting to the default settings will erase all changes made to the Assistant's instructions.",
+                        validateVariant: "primaryWarning",
+                      });
+                      if (confirmed) {
+                        await resetToTemplateInstructions();
+                      }
+                    }}
+                    icon={MagicIcon}
+                  />
+                  <DropdownMenu.Item
+                    label="Reset actions"
+                    description="Set actions back to template's default"
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: "Are you sure?",
+                        message:
+                          "Resetting to the default settings will erase all changes made to the Assistant's actions.",
+                        validateVariant: "primaryWarning",
+                      });
+                      if (confirmed) {
+                        await resetToTemplateActions();
+                      }
+                    }}
+                    icon={MagicIcon}
                   />
                 </DropdownMenu.Items>
               </DropdownMenu>

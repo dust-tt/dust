@@ -96,6 +96,7 @@ export function InstructionScreen({
   builderState,
   setBuilderState,
   setEdited,
+  resetAt,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -104,20 +105,24 @@ export function InstructionScreen({
     statefn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  resetAt: number | null;
 }) {
-  const editor = useEditor({
-    extensions: [Document, Text, Paragraph],
-    content: tipTapContentFromPlainText(builderState.instructions || ""),
-    onUpdate: ({ editor }) => {
-      const json = editor.getJSON();
-      const plainText = plainTextFromTipTapContent(json);
-      setEdited(true);
-      setBuilderState((state) => ({
-        ...state,
-        instructions: plainText,
-      }));
+  const editor = useEditor(
+    {
+      extensions: [Document, Text, Paragraph],
+      content: tipTapContentFromPlainText(builderState.instructions || ""),
+      onUpdate: ({ editor }) => {
+        const json = editor.getJSON();
+        const plainText = plainTextFromTipTapContent(json);
+        setEdited(true);
+        setBuilderState((state) => ({
+          ...state,
+          instructions: plainText,
+        }));
+      },
     },
-  });
+    [resetAt]
+  );
 
   useEffect(() => {
     editor?.setOptions({
