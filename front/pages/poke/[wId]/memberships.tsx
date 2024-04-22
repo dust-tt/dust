@@ -1,11 +1,5 @@
-import { Button } from "@dust-tt/sparkle";
-import type {
-  UserType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import React from "react";
 
 import { MembersDataTable } from "@app/components/poke/members/table";
