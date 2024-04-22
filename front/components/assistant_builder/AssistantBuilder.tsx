@@ -169,9 +169,17 @@ const useNavigationLock = (
 };
 
 const screens = {
-  instructions: { label: "Instructions", icon: CircleIcon },
-  actions: { label: "Data sources & Actions", icon: SquareIcon },
-  naming: { label: "Naming", icon: TriangleIcon },
+  instructions: {
+    label: "Instructions",
+    icon: CircleIcon,
+    helpContainer: "instructions-help-container",
+  },
+  actions: {
+    label: "Data sources & Actions",
+    icon: SquareIcon,
+    helpContainer: "actions-help-container",
+  },
+  naming: { label: "Naming", icon: TriangleIcon, helpContainer: null },
 };
 type BuilderScreen = keyof typeof screens;
 
@@ -427,11 +435,18 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(screens).map(([key, { label, icon }]) => ({
+      Object.entries(screens).map(([key, { label, icon, helpContainer }]) => ({
         label,
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
+
+          if (helpContainer) {
+            const element = document.getElementById(helpContainer);
+            if (element) {
+              element.scrollIntoView({ behavior: "smooth" });
+            }
+          }
         },
         icon,
       })),

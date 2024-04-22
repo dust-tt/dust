@@ -2,10 +2,10 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ContextItem,
   LightbulbIcon,
+  MagicIcon,
   Markdown,
   Page,
   Tab,
-  TemplateIcon,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
@@ -46,7 +46,7 @@ export default function AssistantBuilderPreviewDrawer({
         onClick: () => {
           setPreviewDrawerCurrentTab("Template");
         },
-        icon: TemplateIcon,
+        icon: MagicIcon,
       },
       {
         label: "Preview",
@@ -96,7 +96,7 @@ export default function AssistantBuilderPreviewDrawer({
       )}
       <div
         className={classNames(
-          "grow-1 h-full overflow-y-auto bg-structure-50 pt-5",
+          "grow-1 mb-5 h-full overflow-y-auto bg-structure-50 pt-5",
           shouldAnimatePreviewDrawer &&
             previewDrawerOpenedAt != null &&
             // Only animate the reload if the drawer has been open for at least 1 second.
@@ -142,26 +142,28 @@ export default function AssistantBuilderPreviewDrawer({
           </div>
         )}
         {previewDrawerCurrentTab === "Template" && (
-          <div className="pb-6 pl-6 pt-2">
+          <div className="mb-72 flex flex-col gap-4 px-6">
             <Page.Header icon={LightbulbIcon} title="Template's User manual" />
             <Page.Separator />
-            <ContextItem.SectionHeader
-              title='"Instructions" guide'
-              hasBorder={false}
-            />
-            <Markdown
-              content={template?.helpInstructions ?? ""}
-              className="pr-8 pt-4"
-            />
+            <div id="instructions-help-container">
+              <ContextItem.SectionHeader
+                title='"Instructions" guide'
+                hasBorder={false}
+              />
+              <Markdown
+                content={template?.helpInstructions ?? ""}
+                className=""
+              />
+            </div>
             <Page.Separator />
-            <ContextItem.SectionHeader
-              title='"Actions" guide'
-              hasBorder={false}
-            />
-            <Markdown
-              content={template?.helpActions ?? ""}
-              className="pr-8 pt-4"
-            />
+
+            <div id="actions-help-container">
+              <ContextItem.SectionHeader
+                title='"Actions" guide'
+                hasBorder={false}
+              />
+              <Markdown content={template?.helpActions ?? ""} className="" />
+            </div>
           </div>
         )}
       </div>
