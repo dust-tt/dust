@@ -62,8 +62,8 @@ async function handler(
       const transcriptsConfigurationGet =
         await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
           {
-            userId,
             auth,
+            userId,
             provider: req.query.provider as LabsTranscriptsProviderType,
           }
         );

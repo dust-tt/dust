@@ -49,12 +49,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async findByUserWorkspaceAndProvider({
-    userId,
     auth,
+    userId,
     provider,
   }: {
-    userId: ModelId;
     auth: Authenticator;
+    userId: ModelId;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();

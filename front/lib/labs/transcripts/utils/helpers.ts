@@ -33,15 +33,15 @@ export async function getGoogleAuthObject(
 }
 
 export async function getGoogleAuthFromUserTranscriptsConfiguration(
-  userId: ModelId,
-  auth: Authenticator
+  auth: Authenticator,
+  userId: ModelId
 ) {
   const providerId = "google_drive";
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId,
       auth,
+      userId,
       provider: providerId,
     });
 
