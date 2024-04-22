@@ -5,9 +5,7 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 export function makeRetrieveTranscriptWorkflowId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource
 ): string {
-  const { provider, userId, workspaceId } = transcriptsConfiguration;
-
-  return `labs-transcripts-retrieve-u${userId}-w${workspaceId}-${provider}`;
+  return `labs-transcripts-retrieve-${transcriptsConfiguration.id}`;
 }
 
 export function makeProcessTranscriptWorkflowId({
