@@ -154,6 +154,13 @@ impl AnthropicResponseContent {
             AnthropicResponseContent::ToolUse(tu) => Some(tu),
         }
     }
+
+    // fn get_type(&self) -> &'static str {
+    //     match self {
+    //         AnthropicResponseContent::Text { .. } => "text",
+    //         AnthropicResponseContent::ToolUse { .. } => "tool_use",
+    //     }
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -183,7 +190,6 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
         Ok(AnthropicChatMessage {
             content: vec![AnthropicContent {
-                // TODO:
                 r#type: "text".to_string(),
                 text: format!(
                     "{}{}",
@@ -439,8 +445,6 @@ impl AnthropicLLM {
             body["tools"] = json!(tools);
         }
 
-        println!("BODY: {:?}", body.to_string());
-
         let res = reqwest::Client::new()
             .post(self.messages_uri()?.to_string())
             .header("Content-Type", "application/json")
@@ -458,11 +462,7 @@ impl AnthropicLLM {
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
         let response = match status {
-            reqwest::StatusCode::OK => {
-                let response: ChatResponse = serde_json::from_slice(c)?;
-                println!("RESPONSE (!): {:?}", response);
-                Ok(response)
-            }
+            reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
@@ -475,8 +475,6 @@ impl AnthropicLLM {
                 })
             }
         }?;
-
-        println!("RESPONSE: {:?}", response);
 
         Ok(response)
     }
@@ -1151,10 +1149,6 @@ impl LLM for AnthropicLLM {
                 "Anthropic only supports generating one sample at a time."
             ))?;
         }
-        // TODO:
-        // if functions.len() > 0 || function_call.is_some() {
-        //     return Err(anyhow!("Anthropic does not support chat functions."));
-        // }
 
         if let Some(m) = max_tokens {
             if m == -1 {
@@ -1201,7 +1195,7 @@ impl LLM for AnthropicLLM {
             .iter()
             .map(|cm| AnthropicChatMessage {
                 content: vec![AnthropicContent {
-                    // TODO: `tool_result`.
+                    // TODO: Support `tool_result` here.
                     r#type: String::from("text"),
                     text: cm
                         .content
@@ -1261,8 +1255,6 @@ impl LLM for AnthropicLLM {
             }
         };
 
-        println!(">> c: {:?}", c);
-
         // Handle empty response.ChatResponse
 
         let t = LLMChatGeneration {
@@ -1271,8 +1263,6 @@ impl LLM for AnthropicLLM {
             model: self.id.clone(),
             completions: ChatMessage::try_from(c).into_iter().collect(),
         };
-
-        println!(">> t: {:?}", t);
 
         Ok(t)
     }
