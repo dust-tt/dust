@@ -27,6 +27,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
+import _ from "lodash";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
@@ -83,7 +84,7 @@ type AssistantBuilderProps = {
   flow: BuilderFlow;
   defaultIsEdited?: boolean;
   baseUrl: string;
-  template: FetchAssistantTemplateResponse | null;
+  defaultTemplate: FetchAssistantTemplateResponse | null;
 };
 
 const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -138,6 +139,14 @@ const useNavigationLock = (
       if (isNavigatingAway.current) {
         return;
       }
+
+      // Changing the query param is not leaving the page
+      const currentRoute = router.asPath.split("?")[0];
+      const newRoute = url.split("?")[0];
+      if (currentRoute === newRoute) {
+        return;
+      }
+
       router.events.emit(
         "routeChangeError",
         new Error("Navigation paused to await confirmation by user"),
@@ -195,7 +204,7 @@ export default function AssistantBuilder({
   flow,
   defaultIsEdited,
   baseUrl,
-  template,
+  defaultTemplate,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -240,6 +249,19 @@ export default function AssistantBuilder({
           },
         }
   );
+  const [template, setTemplate] =
+    useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
+  const resetTemplate = async () => {
+    await setTemplate(null);
+    await router.replace(
+      {
+        pathname: router.pathname,
+        query: _.omit(router.query, "templateId"),
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -562,6 +584,7 @@ export default function AssistantBuilder({
           rightPanel={
             <AssistantBuilderPreviewDrawer
               template={template}
+              resetTemplate={resetTemplate}
               owner={owner}
               previewDrawerOpenedAt={previewDrawerOpenedAt}
               builderState={builderState}
