@@ -1,5 +1,6 @@
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getAuthObject } from "@connectors/connectors/google_drive/temporal/utils";
+import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { LIVE } = process.env;
@@ -14,7 +15,7 @@ async function main() {
     },
   });
 
-  console.log(
+  logger.info(
     `Found ${connectors.length} connectors with errorTyhpe: oauth_token_revoked`
   );
 
@@ -23,8 +24,13 @@ async function main() {
     try {
       const auth = await getAuthObject(connector.connectionId);
       const gDriveObject = await getGoogleDriveObject(auth, "root");
-      console.log(
-        `Successfully fetched root folder for connector ${connector.id}. Fetched: ${gDriveObject?.name}`
+      logger.info(
+        {
+          connectorId: connector.id,
+          // gDriveObject being null still means we have a valid access token
+          fileName: gDriveObject?.name,
+        },
+        `Successfully fetched root folder for connector`
       );
       toReEnable.push(connector.id);
     } catch (e) {
@@ -46,7 +52,12 @@ async function main() {
       );
     }
   }
-  console.log("Done!", toReEnable);
+  logger.info(
+    {
+      toReEnable,
+    },
+    "Done!"
+  );
 }
 main()
   .then(() => console.log("Done"))
