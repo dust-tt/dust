@@ -69,7 +69,7 @@ export async function renderConversationForModel({
 > {
   const messages: ModelMessageType[] = [];
 
-  // Render all messages and all actions but only keep the latest retrieval action.
+  // Render all messages and all actions.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
     const versions = conversation.content[i];
     const m = versions[versions.length - 1];
