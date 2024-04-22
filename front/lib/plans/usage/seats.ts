@@ -28,7 +28,7 @@ export async function countActiveSeatsInWorkspace(
 export const countActiveSeatsInWorkspaceCached = cacheWithRedis(
   countActiveSeatsInWorkspace,
   (workspaceId) => {
-    return `countActiveSeatsInWorkspace:${workspaceId}`;
+    return `count-active-seats-in-workspace:${workspaceId}`;
   },
   60 * 10 * 1000 // 10 minutes
 );
