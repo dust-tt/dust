@@ -5,12 +5,14 @@ import { Err } from "@dust-tt/types";
 import * as googleapis from "googleapis";
 import marked from "marked";
 
+import { renderUserType } from "@app/lib/api/user";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
@@ -226,6 +228,18 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
 
+  const user_workspace_membership = await MembershipResource.getActiveMembershipOfUserInWorkspace({
+    user: renderUserType(user),
+    workspace: renderLightWorkspaceType({ workspace: owner }),
+  })
+
+  if (!user_workspace_membership) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] User is not a member of the workspace. Stopping."
+    );
+    return;
+  }
+
   const prodCredentials = await prodAPICredentialsForOwner(
     renderLightWorkspaceType({ workspace: owner }),
     { useLocalInDev: true }
@@ -320,7 +334,7 @@ export async function processGoogleDriveTranscriptActivity(
       email: "team@dust.tt",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `<a href="https://dust.tt/w/${workspaceId}/assistant/conversations/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />`,
+    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />`,
   };
 
   await sendEmail(user.email, msg);
