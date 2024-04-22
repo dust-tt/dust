@@ -4,11 +4,13 @@ import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import * as googleapis from "googleapis";
 import marked from "marked";
+import sanitizeHtml from "sanitize-html";
 
 import { renderUserType } from "@app/lib/api/user";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -220,7 +222,6 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  // TODO: We should enforce that user is a member of the workspace.
   const owner = await Workspace.findByPk(workspaceId);
   if (!owner) {
     throw new Error(
@@ -228,13 +229,13 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
 
-  const user_workspace_membership =
+  const userWorkspaceMembership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user: renderUserType(user),
       workspace: renderLightWorkspaceType({ workspace: owner }),
     });
 
-  if (!user_workspace_membership) {
+  if (!userWorkspaceMembership) {
     localLogger.error(
       "[processGoogleDriveTranscriptActivity] User is not a member of the workspace. Stopping."
     );
@@ -258,11 +259,28 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
+  const agent = await AgentConfiguration.findOne({
+    where: {
+      sId: agentConfigurationId,
+      workspaceId: owner.id,
+    },
+    attributes: ["name"],
+    order: [["version", "DESC"]],
+    limit: 1,
+  });
+
+  if (!agent) {
+    localLogger.error(
+      "[processGoogleDriveTranscriptActivity] No agent found. Stopping."
+    );
+    return;
+  }
+
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
     visibility: "unlisted",
     message: {
-      content: "Transcript: " + transcriptTitle,
+      content: `:mention[${agent.name}]{sId=${agentConfigurationId}}`,
       mentions: [{ configurationId: agentConfigurationId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
@@ -320,7 +338,9 @@ export async function processGoogleDriveTranscriptActivity(
   );
   const markDownAnswer =
     agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
-  const htmlAnswer = marked.parse(markDownAnswer);
+  const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]) // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+  });
 
   await transcriptsConfiguration.recordHistory({
     configurationId: transcriptsConfiguration.id,
