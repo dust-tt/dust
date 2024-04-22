@@ -600,6 +600,17 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
     const connector = await ConnectorResource.fetchById(wh.connectorId);
     if (connector) {
       try {
+        const auth = await getAuthObject(connector.connectionId);
+        const remoteDrive = await getGoogleDriveObject(auth, wh.driveId);
+        // Check if we still have access to this drive.
+        if (!remoteDrive) {
+          logger.info(
+            { driveId: wh.driveId, connectorId: connector.id },
+            `We lost access to the drive. Deleting the associated webhook.`
+          );
+          await wh.destroy();
+          continue;
+        }
         const res = await ensureWebhookForDriveId(
           connector,
           wh.driveId,

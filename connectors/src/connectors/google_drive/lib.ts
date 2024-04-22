@@ -21,7 +21,7 @@ import {
   getAuthObject,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { ExternalOauthTokenError, HTTPError } from "@connectors/lib/error";
+import { HTTPError } from "@connectors/lib/error";
 import {
   GoogleDriveFiles,
   GoogleDriveSheet,
@@ -73,11 +73,7 @@ export async function ensureWebhookForDriveId(
     const auth = await getAuthObject(connector.connectionId);
     const remoteFile = await getGoogleDriveObject(auth, driveId);
     if (!remoteFile) {
-      logger.error(
-        { driveId, connectorId: connector.id },
-        "Could not get remote drive."
-      );
-      throw new ExternalOauthTokenError();
+      throw new Error(`Drive with id ${driveId} not found`);
     }
     const res = await registerWebhook(
       connector,
