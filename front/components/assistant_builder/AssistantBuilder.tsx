@@ -268,15 +268,15 @@ export default function AssistantBuilder({
     );
   };
 
-  const [instructionsResettedAt, setInstructionsResettedAt] = useState<
-    number | null
-  >(null);
+  const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
+    null
+  );
   const resetToTemplateInstructions = async () => {
     if (template === null) {
       return;
     }
     setEdited(true);
-    setInstructionsResettedAt(Date.now());
+    setInstructionsResetAt(Date.now());
     await setBuilderState((builderState) => ({
       ...builderState,
       instructions: template.presetInstructions,
@@ -596,7 +596,7 @@ export default function AssistantBuilder({
                         builderState={builderState}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
-                        resetAt={instructionsResettedAt}
+                        resetAt={instructionsResetAt}
                       />
                     );
                   case "actions":
