@@ -26,9 +26,10 @@ use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
-    StopSequence,
-    MaxTokens,
     EndTurn,
+    MaxTokens,
+    StopSequence,
+    ToolUse,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -76,6 +77,35 @@ pub struct AnthropicContent {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "snake_case", tag = "type")]
+enum AnthropicResponseContent {
+    Text {
+        text: String,
+    },
+    ToolUse {
+        id: String,
+        name: String,
+        input: Value,
+    },
+}
+
+// impl AnthropicContent {
+//     fn get_text(&self) -> Option<&String> {
+//         match self {
+//             AnthropicContent::Text { text } => Some(text),
+//             AnthropicContent::ToolUse { .. } => None,
+//         }
+//     }
+
+//     fn get_type(&self) -> &'static str {
+//         match self {
+//             AnthropicContent::Text { .. } => "text",
+//             AnthropicContent::ToolUse { .. } => "tool_use",
+//         }
+//     }
+// }
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicChatMessage {
     pub content: Vec<AnthropicContent>,
     pub role: AnthropicChatMessageRole,
@@ -114,6 +144,27 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
     }
 }
 
+// Tools.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicTool {
+    pub name: String,
+    pub description: Option<String>,
+    pub input_schema: Option<Value>,
+}
+
+impl TryFrom<&ChatFunction> for AnthropicTool {
+    type Error = anyhow::Error;
+
+    fn try_from(f: &ChatFunction) -> Result<Self, Self::Error> {
+        Ok(AnthropicTool {
+            name: f.name.clone(),
+            description: f.description.clone(),
+            input_schema: f.parameters.clone(),
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
     pub input_tokens: u64,
@@ -128,6 +179,31 @@ pub struct ChatResponse {
     pub content: Vec<AnthropicContent>,
     pub stop_reason: Option<StopReason>,
     pub usage: Usage,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AnthropicChatResponse {
+    id: String,
+    model: String,
+    role: AnthropicChatMessageRole,
+    content: Vec<AnthropicResponseContent>,
+    stop_reason: Option<StopReason>,
+    usage: Usage,
+}
+
+impl TryFrom<AnthropicChatResponse> for ChatResponse {
+    type Error = anyhow::Error;
+
+    fn try_from(cr: AnthropicChatResponse) -> Result<Self, Self::Error> {
+        Ok(ChatResponse {
+            id: cr.id.clone(),
+            model: cr.model.clone(),
+            role: cr.role.clone(),
+            content: vec![], //cr.content.clone(),
+            stop_reason: cr.stop_reason.clone(),
+            usage: cr.usage.clone(),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -233,6 +309,7 @@ impl AnthropicLLM {
         &self,
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
+        tools: Vec<AnthropicTool>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
@@ -256,11 +333,18 @@ impl AnthropicLLM {
             body["system"] = json!(system);
         }
 
+        if tools.len() > 0 {
+            body["tools"] = json!(tools);
+        }
+
+        println!("BODY: {:?}", body.to_string());
+
         let res = reqwest::Client::new()
             .post(self.messages_uri()?.to_string())
             .header("Content-Type", "application/json")
             .header("X-API-Key", self.api_key.clone().unwrap())
             .header("anthropic-version", "2023-06-01")
+            .header("anthropic-beta", "tools-2024-04-04")
             .json(&body)
             .send()
             .await?;
@@ -273,7 +357,9 @@ impl AnthropicLLM {
         let c: &[u8] = &b;
         let response = match status {
             reqwest::StatusCode::OK => {
-                let response: ChatResponse = serde_json::from_slice(c)?;
+                println!("C: {:?}", String::from_utf8_lossy(c));
+                let response: AnthropicChatResponse = serde_json::from_slice(c)?;
+                println!("RESPONSE (!): {:?}", response);
                 Ok(response)
             }
             _ => {
@@ -289,7 +375,11 @@ impl AnthropicLLM {
             }
         }?;
 
-        Ok(response)
+        println!("RESPONSE: {:?}", response);
+
+        let chat_response: ChatResponse = response.try_into().unwrap();
+
+        Ok(chat_response)
     }
 
     pub async fn streamed_chat_completion(
@@ -303,6 +393,8 @@ impl AnthropicLLM {
         event_sender: UnboundedSender<Value>,
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
+
+        // TODO: Streaming (stream=true) is not yet supported on tools.
 
         let mut body = json!({
             "model": self.id.clone(),
@@ -952,9 +1044,10 @@ impl LLM for AnthropicLLM {
                 "Anthropic only supports generating one sample at a time."
             ))?;
         }
-        if functions.len() > 0 || function_call.is_some() {
-            return Err(anyhow!("Anthropic does not support chat functions."));
-        }
+        // TODO:
+        // if functions.len() > 0 || function_call.is_some() {
+        //     return Err(anyhow!("Anthropic does not support chat functions."));
+        // }
 
         if let Some(m) = max_tokens {
             if m == -1 {
@@ -1001,6 +1094,7 @@ impl LLM for AnthropicLLM {
             .iter()
             .map(|cm| AnthropicChatMessage {
                 content: vec![AnthropicContent {
+                    // TODO: `tool_result`.
                     r#type: String::from("text"),
                     text: cm
                         .content
@@ -1014,6 +1108,11 @@ impl LLM for AnthropicLLM {
             .collect();
 
         // merge messages of the same role
+
+        let tools = functions
+            .iter()
+            .map(AnthropicTool::try_from)
+            .collect::<Result<Vec<AnthropicTool>, _>>()?;
 
         let c = match event_sender {
             Some(es) => {
@@ -1038,6 +1137,7 @@ impl LLM for AnthropicLLM {
                 self.chat_completion(
                     system,
                     &messages,
+                    tools,
                     temperature,
                     match top_p {
                         Some(p) => p,
@@ -1052,6 +1152,8 @@ impl LLM for AnthropicLLM {
                 .await?
             }
         };
+
+        // println!(">> c:", c);
 
         match c.content.first() {
             None => Err(anyhow!("No content in response from Anthropic.")),
