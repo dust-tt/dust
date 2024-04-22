@@ -16,7 +16,7 @@ async function main() {
   });
 
   logger.info(
-    `Found ${connectors.length} connectors with errorTyhpe: oauth_token_revoked`
+    `Found ${connectors.length} connectors with errorType: oauth_token_revoked`
   );
 
   const toReEnable = [];
