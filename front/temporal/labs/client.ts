@@ -31,7 +31,7 @@ export async function launchRetrieveTranscriptsWorkflow(
         userId,
         providerId,
       },
-      cronSchedule: "*/1 * * * *", // Every 15 minutes.
+      cronSchedule: "*/15 * * * *", // Every 15 minutes.
     });
     logger.info(
       {
