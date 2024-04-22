@@ -44,7 +44,7 @@ if (isDevelopment()) {
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
-    trialPeriodDays: 0,
+    trialPeriodDays: 14,
     canUseProduct: true,
   });
 }
