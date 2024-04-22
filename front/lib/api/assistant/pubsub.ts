@@ -23,7 +23,6 @@ import type {
   UserMessageNewEvent,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { rateLimiter } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -60,40 +59,6 @@ export async function postUserMessageWithPubSub(
     PubSubError
   >
 > {
-  let maxPerTimeframe: number | undefined = undefined;
-  let timeframeSeconds: number | undefined = undefined;
-  let rateLimitKey: string | undefined = "";
-  if (auth.user()?.id) {
-    maxPerTimeframe = 50;
-    if (auth.isUpgraded()) {
-      maxPerTimeframe = 200;
-    }
-    timeframeSeconds = 60 * 60 * 3;
-    rateLimitKey = `postUserMessageUser:${auth.user()?.id}`;
-  } else {
-    maxPerTimeframe = 512;
-    timeframeSeconds = 60 * 60;
-    rateLimitKey = `postUserMessageWorkspace:${auth.workspace()?.id}`;
-  }
-
-  if (
-    (await rateLimiter({
-      key: rateLimitKey,
-      maxPerTimeframe,
-      timeframeSeconds,
-      logger,
-    })) === 0
-  ) {
-    return new Err({
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: `You have reached the maximum number of ${maxPerTimeframe} messages per ${Math.ceil(
-          timeframeSeconds / 60
-        )} minutes of your account. Please try again later.`,
-      },
-    });
-  }
   const postMessageEvents = postUserMessage(auth, {
     conversation,
     content,
