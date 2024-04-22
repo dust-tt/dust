@@ -310,6 +310,7 @@ export async function processGoogleDriveTranscriptActivity(
     configurationId: transcriptsConfiguration.id,
     fileId,
     fileName: transcriptTitle,
+    conversationId: conversation.sId,
   });
 
   const msg = {

@@ -111,6 +111,8 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare fileId: string;
   declare fileName: string;
 
+  declare conversationId: string | null;
+
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
 
   declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
@@ -140,6 +142,10 @@ LabsTranscriptsHistoryModel.init(
     fileName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    conversationId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
