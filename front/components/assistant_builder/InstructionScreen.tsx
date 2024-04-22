@@ -40,9 +40,16 @@ import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
+import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType } from "react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -90,6 +97,18 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
   return closest;
 };
 
+const useInstructionEditorService = (editor: Editor | null) => {
+  const editorService = useMemo(() => {
+    return {
+      resetContent(content: string) {
+        return editor?.commands.setContent(content);
+      },
+    };
+  }, [editor]);
+
+  return editorService;
+};
+
 export function InstructionScreen({
   owner,
   plan,
@@ -107,22 +126,20 @@ export function InstructionScreen({
   setEdited: (edited: boolean) => void;
   resetAt: number | null;
 }) {
-  const editor = useEditor(
-    {
-      extensions: [Document, Text, Paragraph],
-      content: tipTapContentFromPlainText(builderState.instructions || ""),
-      onUpdate: ({ editor }) => {
-        const json = editor.getJSON();
-        const plainText = plainTextFromTipTapContent(json);
-        setEdited(true);
-        setBuilderState((state) => ({
-          ...state,
-          instructions: plainText,
-        }));
-      },
+  const editor = useEditor({
+    extensions: [Document, Text, Paragraph],
+    content: tipTapContentFromPlainText(builderState.instructions || ""),
+    onUpdate: ({ editor }) => {
+      const json = editor.getJSON();
+      const plainText = plainTextFromTipTapContent(json);
+      setEdited(true);
+      setBuilderState((state) => ({
+        ...state,
+        instructions: plainText,
+      }));
     },
-    [resetAt]
-  );
+  });
+  const editorService = useInstructionEditorService(editor);
 
   useEffect(() => {
     editor?.setOptions({
@@ -135,6 +152,13 @@ export function InstructionScreen({
       },
     });
   }, [editor]);
+
+  useEffect(() => {
+    if (resetAt != null) {
+      editorService.resetContent(builderState.instructions || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetAt]);
 
   return (
     <div className="flex h-full w-full flex-col gap-4">
