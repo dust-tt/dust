@@ -339,7 +339,7 @@ export async function processGoogleDriveTranscriptActivity(
   const markDownAnswer =
     agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
   const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'img' ]) // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
   });
 
   await transcriptsConfiguration.recordHistory({
