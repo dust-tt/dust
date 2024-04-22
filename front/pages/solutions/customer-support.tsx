@@ -56,7 +56,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 const defaultHClasses =
   "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
-export default function CustomerSupport() {
+export default function Content() {
   return (
     <>
       <HeaderContentBlock
@@ -109,7 +109,7 @@ export default function CustomerSupport() {
               </Block>
             </>
           }
-          assistant={customerSupportSlides[0]}
+          assistant={assistantExamples[0]}
         />
         <H2 className={defaultHClasses}>Better team collaboration.</H2>
         <ContentAssistantBlock
@@ -131,8 +131,8 @@ export default function CustomerSupport() {
           }
           assistant={
             <>
-              {customerSupportSlides[3]}
-              {customerSupportSlides[1]}
+              {assistantExamples[3]}
+              {assistantExamples[1]}
             </>
           }
         />
@@ -143,27 +143,24 @@ export default function CustomerSupport() {
           layout="vertical"
           content={
             <>
-              <Block title={<>Analyze and categorize your tickets.</>}>
+              <Block title={<>Analyze and categorize your tickets</>}>
                 Create a Dust App to classify your tickets. Help your Customer
                 Support and Product team better understand your users’ needs.
               </Block>
             </>
           }
-          assistant={<>{customerSupportSlides[2]}</>}
+          assistant={<>{assistantExamples[2]}</>}
         />
       </Grid>
     </>
   );
 }
 
-CustomerSupport.getLayout = (
-  page: ReactElement,
-  pageProps: LandingLayoutProps
-) => {
+Content.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const customerSupportSlides = [
+export const assistantExamples = [
   <DroidItem
     key={0}
     emoji="🤝"

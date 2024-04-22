@@ -108,15 +108,27 @@ const SolutionsMenuConfig: MenuConfig = {
     },
     {
       title: "Marketing & Content",
-      href: "/solutions/marketing-content",
+      href: "/solutions/marketing",
     },
     {
       title: "Recruiting & People",
       href: "/solutions/recruiting-people",
     },
     {
-      title: "Dust for engineers",
-      href: "/solutions/engineers",
+      title: "Engineering",
+      href: "/solutions/engineering",
+    },
+    {
+      title: "Data & Analytics",
+      href: "/solutions/data-analytics",
+    },
+    {
+      title: "Sales",
+      href: "/solutions/sales",
+    },
+    {
+      title: "Knowledge Management",
+      href: "/solutions/knowledge",
     },
   ],
 };
@@ -130,7 +142,7 @@ const DevelopersMenuConfig: MenuConfig = {
     },
     {
       title: "Dust for engineers",
-      href: "/solutions/engineers",
+      href: "/solutions/engineering",
     },
     {
       title: "Platform Documentation",

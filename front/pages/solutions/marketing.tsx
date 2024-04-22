@@ -48,7 +48,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
-      shape: getParticleShapeIndexByName(shapeNames.cube),
+      shape: getParticleShapeIndexByName(shapeNames.pyramid),
     },
   };
 });
@@ -56,27 +56,35 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 const defaultHClasses =
   "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
-export default function EngineeringContent() {
+export default function Content() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Engineers and Developers"
-        title={<>Create a&nbsp;copilot with your&nbsp;company data</>}
-        from="from-emerald-200"
-        to="to-emerald-500"
+        uptitle="Dust for Marketing Teams"
+        title={
+          <>
+            Enhance
+            <br />
+            Content&nbsp;Production and&nbsp;Creativity
+          </>
+        }
+        from="from-pink-200"
+        to="to-pink-500"
         subtitle={
           <>
-            Speed-up incident response, reduce interruptions, help your
-            engineers produce better code, and accelerate new&nbsp;engineers
-            on-boarding.
+            Leverage AI assistants to&nbsp;generate innovative ideas
+            and&nbsp;high-quality content. Streamline your&nbsp;creative process
+            and&nbsp;adapt content for international&nbsp;markets.
           </>
         }
       />
 
       <Grid>
         <H2 className={defaultHClasses}>
-          Respond Faster to Incidents and Report Better
-        </H2>{" "}
+          Create better content,
+          <br />
+          faster and on-brand
+        </H2>
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -109,9 +117,11 @@ export default function EngineeringContent() {
               </Block>
             </>
           }
-          assistant={marketingSlides[0]}
+          assistant={assistantExamples[0]}
         />
-        <H2 className={defaultHClasses}>Reduce Interruptions</H2>{" "}
+        <H2 className={defaultHClasses}>
+          Gain Competitive Insights, Repurpose With Purpose
+        </H2>
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -133,12 +143,14 @@ export default function EngineeringContent() {
           }
           assistant={
             <>
-              {marketingSlides[4]}
-              {marketingSlides[1]}
+              {assistantExamples[4]}
+              {assistantExamples[1]}
             </>
           }
         />
-        <H2 className={defaultHClasses}>Improve Code Quality</H2>{" "}
+        <H2 className={defaultHClasses}>
+          Better collaboration with Sales, Product, and Support teams.
+        </H2>
         <ContentAssistantBlock
           className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -161,8 +173,8 @@ export default function EngineeringContent() {
           }
           assistant={
             <>
-              {marketingSlides[2]}
-              {marketingSlides[3]}
+              {assistantExamples[2]}
+              {assistantExamples[3]}
             </>
           }
         />
@@ -171,14 +183,11 @@ export default function EngineeringContent() {
   );
 }
 
-EngineeringContent.getLayout = (
-  page: ReactElement,
-  pageProps: LandingLayoutProps
-) => {
+Content.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const marketingSlides = [
+export const assistantExamples = [
   <DroidItem
     key="0"
     emoji="🖋️"

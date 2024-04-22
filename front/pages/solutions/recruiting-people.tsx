@@ -56,7 +56,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 const defaultHClasses =
   "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
-export default function RecruitingPeople() {
+export default function Content() {
   return (
     <>
       <HeaderContentBlock
@@ -76,7 +76,7 @@ export default function RecruitingPeople() {
           Share knowledge better,
           <br />
           free time for you.
-        </H2>{" "}
+        </H2>
         <ContentAssistantBlock
           className="col-span-12 mb-4 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
           layout="vertical"
@@ -104,12 +104,12 @@ export default function RecruitingPeople() {
           }
           assistant={
             <>
-              {peopleSlides[0]}
-              {peopleSlides[1]}
+              {assistantExamples[0]}
+              {assistantExamples[1]}
             </>
           }
         />
-        <H2 className={defaultHClasses}>Help your people grow.</H2>{" "}
+        <H2 className={defaultHClasses}>Help your people grow.</H2>
         <ContentAssistantBlock
           className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
           layout="vertical"
@@ -125,7 +125,7 @@ export default function RecruitingPeople() {
               </Block>
             </>
           }
-          assistant={<>{peopleSlides[6]}</>}
+          assistant={<>{assistantExamples[6]}</>}
         />
         <H2 className={defaultHClasses}>
           Boost your team hiring&nbsp;efforts.
@@ -146,8 +146,8 @@ export default function RecruitingPeople() {
             </>
           }
           assistant=<>
-            {peopleSlides[2]}
-            {peopleSlides[3]}
+            {assistantExamples[2]}
+            {assistantExamples[3]}
           </>
         />
         <ContentAssistantBlock
@@ -166,8 +166,8 @@ export default function RecruitingPeople() {
             </>
           }
           assistant=<>
-            {peopleSlides[4]}
-            {peopleSlides[5]}
+            {assistantExamples[4]}
+            {assistantExamples[5]}
           </>
         />
       </Grid>
@@ -175,14 +175,11 @@ export default function RecruitingPeople() {
   );
 }
 
-RecruitingPeople.getLayout = (
-  page: ReactElement,
-  pageProps: LandingLayoutProps
-) => {
+Content.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const peopleSlides = [
+export const assistantExamples = [
   <DroidItem
     key="0"
     emoji="🌱"
