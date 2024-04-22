@@ -289,7 +289,7 @@ export async function deleteAgentsActivity({
       await AgentDustAppRunAction.destroy({
         where: {
           dustAppRunConfigurationId: {
-            [Op.in]: dustAppRunConfigurations.map((r) => r.id),
+            [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
           },
         },
         transaction: t,
