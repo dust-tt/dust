@@ -68,7 +68,6 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   ContentFragmentResource,
   fileAttachmentLocation,
@@ -1723,11 +1722,10 @@ async function isMessagesLimitReached({
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
-  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
   const remaining = await rateLimiter({
     key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
-    maxPerTimeframe: maxMessages * activeSeats,
+    maxPerTimeframe: maxMessages,
     timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
     logger,
   });
