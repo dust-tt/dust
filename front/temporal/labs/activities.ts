@@ -259,15 +259,14 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      sId: agentConfigurationId,
-      workspaceId: owner.id,
-    },
-    attributes: ["name"],
-    order: [["version", "DESC"]],
-    limit: 1,
-  });
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  if (agentConfigurationsRes.isErr()) {
+    return new Err(new Error(agentConfigurationsRes.error.message));
+  }
+  const agentConfigurations = agentConfigurationsRes.value;
+  const agent = agentConfigurations.find(
+    (agent) => agent.sId === agentConfigurationId
+  );
 
   if (!agent) {
     localLogger.error(
