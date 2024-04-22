@@ -107,6 +107,7 @@ export function InstructionScreen({
 }) {
   const editor = useEditor({
     extensions: [Document, Text, Paragraph],
+    content: tipTapContentFromPlainText(builderState.instructions || ""),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       const plainText = plainTextFromTipTapContent(json);
@@ -119,11 +120,6 @@ export function InstructionScreen({
   });
 
   useEffect(() => {
-    // Must use the insertContent API to properly render newlines.
-    // The setContent API or the `content` property on useEditor will not render newlines.
-    editor?.commands.setContent(
-      tipTapContentFromPlainText(builderState.instructions || "")
-    );
     editor?.setOptions({
       editorProps: {
         attributes: {
@@ -134,8 +130,6 @@ export function InstructionScreen({
       },
     });
 
-    // Only run one time once editor is initialized.
-    // We explicitly don't want to run this effect when the content changes, as tiptap handles its own state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 

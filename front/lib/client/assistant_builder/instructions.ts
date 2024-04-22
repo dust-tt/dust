@@ -1,43 +1,38 @@
-import { removeNulls } from "@dust-tt/types";
 import type { JSONContent } from "@tiptap/react";
 
 export function plainTextFromTipTapContent(root: JSONContent): string {
   if (root.type !== "doc" || !root.content) {
     return "";
   }
-  let text = "";
 
-  for (const p of root.content) {
+  return root.content.reduce((acc, p) => {
+    // Ignore non-paragraph nodes
     if (p.type !== "paragraph") {
-      continue;
-    }
-    if (!p.content || !p.content.length || p.content.length > 1) {
-      text += "\n";
-      continue;
+      return acc;
     }
 
+    // Empty paragraphs or paragraphs with multiple nodes are treated as newlines.
+    if (!p.content || !p.content.length || p.content.length > 1) {
+      return acc + "\n";
+    }
+
+    // Only paragraphs with a single text node are considered.
     const textNode = p.content && p.content[0];
     if (textNode.type !== "text") {
-      continue;
+      return acc;
     }
 
-    text += `${textNode.text}\n`;
-  }
-
-  return text;
+    return acc + `${textNode.text}\n`;
+  }, "");
 }
 
 export function tipTapContentFromPlainText(text: string): JSONContent {
   const lines = text.split("\n");
-  const doc: JSONContent = {
+  return {
     type: "doc",
-    content: [],
+    content: lines.map((l) => ({
+      type: "paragraph",
+      content: l ? [{ type: "text", text: l }] : [],
+    })),
   };
-  for (const l of lines) {
-    const textNode = l ? { type: "text", text: l } : undefined;
-    const paragraph = { type: "paragraph", content: removeNulls([textNode]) };
-    doc.content?.push(paragraph);
-  }
-
-  return doc;
 }
