@@ -15,7 +15,7 @@ export async function launchRetrieveTranscriptsWorkflow(
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
-  
+
   try {
     await client.workflow.start(retrieveNewTranscriptsWorkflow, {
       args: [transcriptsConfiguration.id],

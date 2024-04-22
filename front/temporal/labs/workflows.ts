@@ -16,13 +16,17 @@ const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity } =
 export async function retrieveNewTranscriptsWorkflow(
   transcriptsConfigurationId: ModelId
 ) {
-
-  const filesToProcess = await retrieveNewTranscriptsActivity(transcriptsConfigurationId);
+  const filesToProcess = await retrieveNewTranscriptsActivity(
+    transcriptsConfigurationId
+  );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   for (const fileId of filesToProcess) {
-    const workflowId = makeProcessTranscriptWorkflowId({ transcriptsConfigurationId, fileId });
+    const workflowId = makeProcessTranscriptWorkflowId({
+      transcriptsConfigurationId,
+      fileId,
+    });
     await executeChild(processTranscriptWorkflow, {
       workflowId,
       searchAttributes: parentSearchAttributes,
@@ -44,5 +48,8 @@ export async function processTranscriptWorkflow({
   fileId: string;
   transcriptsConfigurationId: ModelId;
 }): Promise<void> {
-  await processGoogleDriveTranscriptActivity(transcriptsConfigurationId, fileId);
+  await processGoogleDriveTranscriptActivity(
+    transcriptsConfigurationId,
+    fileId
+  );
 }

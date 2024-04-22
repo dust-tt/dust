@@ -25,7 +25,6 @@ async function retrieveRecentTranscripts(
   },
   logger: Logger
 ) {
-  
   const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
     userId,
     auth
@@ -65,11 +64,10 @@ async function retrieveRecentTranscripts(
 }
 
 export async function retrieveNewTranscriptsActivity(
-  transcriptsConfigurationId: ModelId,
-  
+  transcriptsConfigurationId: ModelId
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
-    transcriptsConfigurationId
+    transcriptsConfigurationId,
   });
 
   const transcriptsConfiguration =
@@ -88,7 +86,7 @@ export async function retrieveNewTranscriptsActivity(
   const workspace = await Workspace.findOne({
     where: {
       id: transcriptsConfiguration.workspaceId,
-    }
+    },
   });
 
   if (!workspace) {
@@ -97,7 +95,7 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId)
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
     localLogger.error(
@@ -120,7 +118,7 @@ export async function retrieveNewTranscriptsActivity(
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
       userId: transcriptsConfiguration.userId,
-      auth
+      auth,
     },
     localLogger
   );
@@ -136,7 +134,9 @@ export async function retrieveNewTranscriptsActivity(
       continue;
     }
 
-    const history = await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },
@@ -155,9 +155,10 @@ export async function processGoogleDriveTranscriptActivity(
   transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
-  const transcriptsConfiguration = await LabsTranscriptsConfigurationResource.fetchById(
-    transcriptsConfigurationId
-  );
+  const transcriptsConfiguration =
+    await LabsTranscriptsConfigurationResource.fetchById(
+      transcriptsConfigurationId
+    );
 
   if (!transcriptsConfiguration) {
     throw new Error(
@@ -168,7 +169,7 @@ export async function processGoogleDriveTranscriptActivity(
   const workspace = await Workspace.findOne({
     where: {
       id: transcriptsConfiguration.workspaceId,
-    }
+    },
   });
 
   if (!workspace) {
@@ -177,7 +178,7 @@ export async function processGoogleDriveTranscriptActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId)
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
     throw new Error(
