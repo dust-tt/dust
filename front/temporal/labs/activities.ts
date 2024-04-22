@@ -6,15 +6,12 @@ import * as googleapis from "googleapis";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
-import { renderUserType } from "@app/lib/api/user";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { getGoogleAuthFromUserTranscriptConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
@@ -22,19 +19,20 @@ import mainLogger from "@app/logger/logger";
 async function retrieveRecentTranscripts(
   {
     userId,
-    workspaceId,
+    auth,
   }: {
     userId: ModelId;
-    workspaceId: ModelId;
+    auth: Authenticator;
   },
   logger: Logger
 ) {
-  const auth = await getGoogleAuthFromUserTranscriptConfiguration(
+  
+  const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
     userId,
-    workspaceId
+    auth
   );
 
-  if (!auth) {
+  if (!googleAuth) {
     logger.error(
       {},
       "[retrieveRecentTranscripts] No Google auth found. Stopping."
@@ -49,7 +47,7 @@ async function retrieveRecentTranscripts(
   cutoffDate.setDate(cutoffDate.getDate() - 1);
 
   const files = await googleapis.google
-    .drive({ version: "v3", auth })
+    .drive({ version: "v3", auth: googleAuth })
     .files.list({
       q:
         "name contains '- Transcript' and createdTime > '" +
@@ -69,7 +67,7 @@ async function retrieveRecentTranscripts(
 
 export async function retrieveNewTranscriptsActivity(
   userId: ModelId,
-  workspaceId: ModelId,
+  workspaceId: string,
   provider: LabsTranscriptsProviderType
 ): Promise<string[]> {
   const localLogger = mainLogger.child({
@@ -77,6 +75,16 @@ export async function retrieveNewTranscriptsActivity(
     userId,
     workspaceId,
   });
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId)
+
+  if (!auth.workspace()) {
+    localLogger.error(
+      {},
+      "[retrieveNewTranscripts] Workspace not found. Stopping."
+    );
+    return [];
+  }
 
   // We only support google_drive for now.
   if (provider !== "google_drive") {
@@ -91,7 +99,7 @@ export async function retrieveNewTranscriptsActivity(
   const transcriptConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
       userId,
-      workspaceId,
+      auth,
       provider: provider,
     });
   if (!transcriptConfiguration) {
@@ -105,7 +113,7 @@ export async function retrieveNewTranscriptsActivity(
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
       userId,
-      workspaceId,
+      auth
     },
     localLogger
   );
@@ -138,10 +146,18 @@ export async function retrieveNewTranscriptsActivity(
 
 export async function processGoogleDriveTranscriptActivity(
   userId: ModelId,
-  workspaceId: ModelId,
+  workspaceId: string,
   fileId: string
 ) {
   const provider = "google_drive";
+
+  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId)
+
+  if (!auth.workspace()) {
+    throw new Error(
+      `Could not find workspace for user (workspaceId: ${workspaceId}).`
+    );
+  }
 
   const localLogger = mainLogger.child({
     fileId,
@@ -166,9 +182,9 @@ export async function processGoogleDriveTranscriptActivity(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
-      userId: userId,
-      workspaceId: workspaceId,
-      provider: provider,
+      userId,
+      auth,
+      provider,
     });
   if (!transcriptsConfiguration) {
     localLogger.info(
@@ -188,7 +204,7 @@ export async function processGoogleDriveTranscriptActivity(
 
   const googleAuth = await getGoogleAuthFromUserTranscriptConfiguration(
     userId,
-    workspaceId
+    auth
   );
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
@@ -222,22 +238,11 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const owner = await Workspace.findByPk(workspaceId);
+  const owner = auth.workspace();
+
   if (!owner) {
-    throw new Error(
-      `Could not find workspace for user (workspaceId: ${workspaceId}).`
-    );
-  }
-
-  const userWorkspaceMembership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user: renderUserType(user),
-      workspace: renderLightWorkspaceType({ workspace: owner }),
-    });
-
-  if (!userWorkspaceMembership) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] User is not a member of the workspace. Stopping."
+      "[processGoogleDriveTranscriptActivity] No owner found. Stopping."
     );
     return;
   }

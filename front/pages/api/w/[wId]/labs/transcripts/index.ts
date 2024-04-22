@@ -63,7 +63,7 @@ async function handler(
         await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
           {
             userId,
-            workspaceId: owner.id,
+            auth,
             provider: req.query.provider as LabsTranscriptsProviderType,
           }
         );

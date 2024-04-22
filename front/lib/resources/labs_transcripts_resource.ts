@@ -9,6 +9,7 @@ import type {
 } from "sequelize";
 import type { CreationAttributes } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -49,17 +50,24 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
   static async findByUserWorkspaceAndProvider({
     userId,
-    workspaceId,
+    auth,
     provider,
   }: {
     userId: ModelId;
-    workspaceId: ModelId;
+    auth: Authenticator;
     provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
+
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return null;
+    }
+
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
         userId,
-        workspaceId,
+        workspaceId: owner.id,
         provider,
       },
     });
