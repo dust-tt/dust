@@ -10,7 +10,6 @@ import {
   OpenaiLogo,
   Page,
   Spinner2,
-  TextArea,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -38,6 +37,8 @@ import {
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import type { ComponentType } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -98,6 +99,31 @@ export function InstructionScreen({
   ) => void;
   setEdited: (edited: boolean) => void;
 }) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+      }),
+    ],
+    content: builderState.instructions?.replaceAll("\n", "<br />") || "",
+    onUpdate: ({ editor }) => {
+      setEdited(true);
+      setBuilderState((state) => ({
+        ...state,
+        instructions: editor.getText(),
+      }));
+    },
+  });
+  editor?.setOptions({
+    editorProps: {
+      attributes: {
+        class:
+          "min-h-60 border-structure-200 border bg-structure-50 transition-all " +
+          "duration-200 rounded-xl focus:border-action-300 focus:ring-action-300 p-2 focus:outline-action-200",
+      },
+    },
+  });
+
   return (
     <div className="flex h-full w-full flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
@@ -125,17 +151,9 @@ export function InstructionScreen({
           />
         </div>
       </div>
-      <TextArea
-        placeholder="I want you to act as…"
-        value={builderState.instructions}
-        onChange={(value) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            instructions: value,
-          }));
-        }}
-      />
+      <div className="flex flex-col gap-1 p-px">
+        <EditorContent editor={editor} />
+      </div>
       {isDevelopmentOrDustWorkspace(owner) && (
         <Suggestions
           owner={owner}
