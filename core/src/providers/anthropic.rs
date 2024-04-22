@@ -154,13 +154,6 @@ impl AnthropicResponseContent {
             AnthropicResponseContent::ToolUse(tu) => Some(tu),
         }
     }
-
-    // fn get_type(&self) -> &'static str {
-    //     match self {
-    //         AnthropicResponseContent::Text { .. } => "text",
-    //         AnthropicResponseContent::ToolUse { .. } => "tool_use",
-    //     }
-    // }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -1255,16 +1248,12 @@ impl LLM for AnthropicLLM {
             }
         };
 
-        // Handle empty response.ChatResponse
-
-        let t = LLMChatGeneration {
+        Ok(LLMChatGeneration {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
             completions: ChatMessage::try_from(c).into_iter().collect(),
-        };
-
-        Ok(t)
+        })
     }
 }
 
