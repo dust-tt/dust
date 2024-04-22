@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -15,28 +14,26 @@ const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity } =
   });
 
 export async function retrieveNewTranscriptsWorkflow(
-  userId: ModelId,
-  workspaceId: ModelId,
-  provider: LabsTranscriptsProviderType
+  transcriptsConfigurationId: ModelId
 ) {
   const filesToProcess = await retrieveNewTranscriptsActivity(
-    userId,
-    workspaceId,
-    provider
+    transcriptsConfigurationId
   );
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
   for (const fileId of filesToProcess) {
-    const workflowId = makeProcessTranscriptWorkflowId({ fileId, userId });
+    const workflowId = makeProcessTranscriptWorkflowId({
+      transcriptsConfigurationId,
+      fileId,
+    });
     await executeChild(processTranscriptWorkflow, {
       workflowId,
       searchAttributes: parentSearchAttributes,
       args: [
         {
           fileId,
-          userId,
-          workspaceId,
+          transcriptsConfigurationId,
         },
       ],
       memo,
@@ -46,12 +43,13 @@ export async function retrieveNewTranscriptsWorkflow(
 
 export async function processTranscriptWorkflow({
   fileId,
-  userId,
-  workspaceId,
+  transcriptsConfigurationId,
 }: {
   fileId: string;
-  userId: ModelId;
-  workspaceId: ModelId;
+  transcriptsConfigurationId: ModelId;
 }): Promise<void> {
-  await processGoogleDriveTranscriptActivity(userId, workspaceId, fileId);
+  await processGoogleDriveTranscriptActivity(
+    transcriptsConfigurationId,
+    fileId
+  );
 }

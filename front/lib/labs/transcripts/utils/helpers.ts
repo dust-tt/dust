@@ -5,6 +5,7 @@ import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import type { Authenticator } from "@app/lib/auth";
 import config from "@app/lib/labs/config";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 
@@ -31,16 +32,16 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuthFromUserTranscriptConfiguration(
-  userId: ModelId,
-  workspaceId: ModelId
+export async function getGoogleAuthFromUserTranscriptsConfiguration(
+  auth: Authenticator,
+  userId: ModelId
 ) {
   const providerId = "google_drive";
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
+      auth,
       userId,
-      workspaceId,
       provider: providerId,
     });
 
