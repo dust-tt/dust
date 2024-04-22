@@ -252,7 +252,7 @@ export default function CreateAssistant({
       agentConfigurationId={null}
       defaultIsEdited={true}
       baseUrl={baseUrl}
-      template={assistantTemplate}
+      defaultTemplate={assistantTemplate}
     />
   );
 }
