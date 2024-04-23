@@ -14,7 +14,7 @@ const GPT_4_SHORT_DESCRIPTION = "OpenAI's smartest model.";
 export const GPT_4_TURBO_MODEL_CONFIG = {
   providerId: "openai" as const,
   modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT 4",
+  displayName: "GPT 4 Turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
   largeModel: true,
