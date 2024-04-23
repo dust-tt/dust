@@ -2,6 +2,7 @@ import {
   Avatar,
   BracesIcon,
   CommandLineIcon,
+  ContentMessage,
   ElementModal,
   ExternalLinkIcon,
   IconButton,
@@ -139,26 +140,27 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
-              agentConfiguration.status === "archived" ? "line-through" : "",
               "font-bold text-element-900",
               agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
             )}
           >{`@${agentConfiguration.name}`}</div>
-          <SharingDropdown
-            owner={owner}
-            agentConfiguration={agentConfiguration}
-            initialScope={agentConfiguration.scope}
-            newScope={agentConfiguration.scope}
-            disabled={isUpdatingScope || agentConfiguration.status !== "active"}
-            setNewScope={(scope) => updateScope(scope)}
-          />
           {agentConfiguration.status === "active" && (
-            <AssistantListActions
-              agentConfiguration={agentConfiguration}
-              owner={owner}
-              isParentHovered={true}
-              onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
-            />
+            <>
+              <SharingDropdown
+                owner={owner}
+                agentConfiguration={agentConfiguration}
+                initialScope={agentConfiguration.scope}
+                newScope={agentConfiguration.scope}
+                disabled={isUpdatingScope}
+                setNewScope={(scope) => updateScope(scope)}
+              />
+              <AssistantListActions
+                agentConfiguration={agentConfiguration}
+                owner={owner}
+                isParentHovered={true}
+                onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
+              />
+            </>
           )}
         </div>
         {agentConfiguration.status === "active" && (
@@ -176,10 +178,17 @@ export function AssistantDetails({
           </div>
         )}
       </div>
+      {agentConfiguration.status === "archived" && (
+        <ContentMessage
+          variant="amber"
+          title="This assistant has been deleted."
+          size="md"
+        >
+          It is no longer active and cannot be used.
+        </ContentMessage>
+      )}
+
       <div className="text-sm text-element-900">
-        {agentConfiguration.status === "archived" && (
-          <div className="font-bold">&#9888; This assistant was deleted.</div>
-        )}
         {agentConfiguration.description}
       </div>
       {agentConfiguration.scope === "global" && usageSentence && (
