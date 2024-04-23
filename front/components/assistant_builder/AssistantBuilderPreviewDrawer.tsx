@@ -111,6 +111,7 @@ export default function AssistantBuilderRightPanel({
             ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
             : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
           shouldAnimatePreviewDrawer &&
+            rightPanelStatus.tab === "Preview" &&
             rightPanelStatus.openedAt != null &&
             // Only animate the reload if the drawer has been open for at least 1 second.
             // This is to prevent the animation from triggering right after the drawer is opened.
@@ -156,7 +157,7 @@ export default function AssistantBuilderRightPanel({
         )}
         {rightPanelStatus.tab === "Template" && (
           <div className="mb-72 flex flex-col gap-4 px-6">
-            <div className="flex justify-between">
+            <div className="flex items-end justify-between">
               <Page.Header
                 icon={LightbulbIcon}
                 title="Template's User manual"
@@ -180,7 +181,7 @@ export default function AssistantBuilderRightPanel({
                       const confirmed = await confirm({
                         title: "Are you sure you want to close the template?",
                         message:
-                          "Once removed, you will no longer have access to the associated user manual.",
+                          "Your assistant will remain as it is but will not display template's help any more.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
@@ -197,7 +198,7 @@ export default function AssistantBuilderRightPanel({
                       const confirmed = await confirm({
                         title: "Are you sure?",
                         message:
-                          "Resetting to the default settings will erase all changes made to the Assistant's instructions.",
+                          "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
@@ -213,7 +214,7 @@ export default function AssistantBuilderRightPanel({
                       const confirmed = await confirm({
                         title: "Are you sure?",
                         message:
-                          "Resetting to the default settings will erase all changes made to the Assistant's actions.",
+                          "You will lose the changes you have made to the assistant's actions and go back to the template's default settings.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
@@ -226,25 +227,27 @@ export default function AssistantBuilderRightPanel({
               </DropdownMenu>
             </div>
             <Page.Separator />
-            <div id="instructions-help-container">
-              <ContextItem.SectionHeader
-                title='"Instructions" guide'
-                hasBorder={false}
-              />
-              <Markdown
-                content={template?.helpInstructions ?? ""}
-                className=""
-              />
-            </div>
-            <Page.Separator />
-
-            <div id="actions-help-container">
-              <ContextItem.SectionHeader
-                title='"Actions" guide'
-                hasBorder={false}
-              />
-              <Markdown content={template?.helpActions ?? ""} className="" />
-            </div>
+            {template?.helpInstructions && (
+              <div id="instructions-help-container">
+                <ContextItem.SectionHeader
+                  title='"Instructions" guide'
+                  hasBorder={false}
+                />
+                <Markdown content={template?.helpInstructions ?? ""} />
+              </div>
+            )}
+            {template?.helpInstructions && template?.helpActions && (
+              <Page.Separator />
+            )}
+            {template?.helpActions && (
+              <div id="actions-help-container">
+                <ContextItem.SectionHeader
+                  title='"Actions" guide'
+                  hasBorder={false}
+                />
+                <Markdown content={template?.helpActions ?? ""} className="" />
+              </div>
+            )}
           </div>
         )}
       </div>

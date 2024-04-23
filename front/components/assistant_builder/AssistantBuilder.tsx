@@ -331,8 +331,8 @@ export default function AssistantBuilder({
 
   const [rightPanelStatus, setRightPanelStatus] =
     useState<AssistantBuilderRightPanelStatus>({
-      tab: null,
-      openedAt: null,
+      tab: template != null ? "Template" : null,
+      openedAt: template != null ? Date.now() : null,
     });
 
   const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {

@@ -40,7 +40,7 @@ import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
-import type { Editor } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType } from "react";
 import React, {
@@ -100,7 +100,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 const useInstructionEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
     return {
-      resetContent(content: string) {
+      resetContent(content: JSONContent) {
         return editor?.commands.setContent(content);
       },
     };
@@ -155,7 +155,9 @@ export function InstructionScreen({
 
   useEffect(() => {
     if (resetAt != null) {
-      editorService.resetContent(builderState.instructions || "");
+      editorService.resetContent(
+        tipTapContentFromPlainText(builderState.instructions || "")
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
