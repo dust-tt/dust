@@ -171,7 +171,7 @@ export function RemoveAssistantFromWorkspaceDialog({
 }) {
   const sendNotification = useContext(SendNotificationsContext);
 
-  const { agentConfiguration: detailedConfig } = useAgentConfiguration({
+  const { agentConfiguration: detailedConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -184,7 +184,7 @@ export function RemoveAssistantFromWorkspaceDialog({
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
-        if (!detailedConfig) {
+        if (!detailedConfiguration) {
           throw new Error("Agent configuration not found");
         }
         const body: PostOrPatchAgentConfigurationRequestBody = {
@@ -195,7 +195,7 @@ export function RemoveAssistantFromWorkspaceDialog({
             pictureUrl: agentConfiguration.pictureUrl,
             status: "active",
             scope: "published",
-            actions: detailedConfig.actions,
+            actions: detailedConfiguration.actions,
             generation: agentConfiguration.generation,
           },
         };

@@ -1651,6 +1651,10 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentTablesQueryActionId: event.action.id,
           });
+        } else if (event.action.type === "process_action") {
+          await agentMessageRow.update({
+            agentProcessActionId: event.action.id,
+          });
         } else {
           ((action: never) => {
             throw new Error(
@@ -1695,6 +1699,7 @@ async function* streamRunAgentEvents(
       case "dust_app_run_block":
       case "tables_query_params":
       case "tables_query_output":
+      case "process_params":
         yield event;
         break;
       case "generation_tokens":

@@ -146,6 +146,7 @@ export function AgentMessage({
       case "dust_app_run_block":
       case "tables_query_params":
       case "tables_query_output":
+      case "process_params":
         setStreamedAgentMessage((m) => {
           return { ...m, action: event.action };
         });

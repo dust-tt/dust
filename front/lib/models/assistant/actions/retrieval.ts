@@ -4,12 +4,10 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { DataSource } from "@app/lib/models/data_source";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentRetrievalConfiguration extends Model<
@@ -93,7 +91,7 @@ AgentRetrievalConfiguration.init(
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for Timeframe
-        if (retrieval.relativeTimeFrame == "custom") {
+        if (retrieval.relativeTimeFrame === "custom") {
           if (
             !retrieval.relativeTimeFrameDuration ||
             !retrieval.relativeTimeFrameUnit
@@ -122,110 +120,6 @@ AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
 });
 AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
-
-/**
- * Configuration of Datasources used for Retrieval Action.
- */
-export class AgentDataSourceConfiguration extends Model<
-  InferAttributes<AgentDataSourceConfiguration>,
-  InferCreationAttributes<AgentDataSourceConfiguration>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare tagsIn: string[] | null;
-  declare tagsNotIn: string[] | null;
-  declare parentsIn: string[] | null;
-  declare parentsNotIn: string[] | null;
-
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  >;
-
-  declare dataSource: NonAttribute<DataSource>;
-}
-AgentDataSourceConfiguration.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    tagsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    tagsNotIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    parentsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    parentsNotIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "agent_data_source_configuration",
-    indexes: [
-      {
-        fields: ["retrievalConfigurationId"],
-      },
-    ],
-    sequelize: frontSequelize,
-    hooks: {
-      beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
-        if (
-          (dataSourceConfig.tagsIn === null) !==
-          (dataSourceConfig.tagsNotIn === null)
-        ) {
-          throw new Error("Tags must be both set or both null");
-        }
-        if (
-          (dataSourceConfig.parentsIn === null) !==
-          (dataSourceConfig.parentsNotIn === null)
-        ) {
-          throw new Error("Parents must be both set or both null");
-        }
-      },
-    },
-  }
-);
-
-// Retrieval config <> Data source config
-AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: false },
-});
-
-// Data source config <> Data source
-DataSource.hasMany(AgentDataSourceConfiguration, {
-  as: "dataSource",
-  foreignKey: { name: "dataSourceId", allowNull: false },
-  onDelete: "CASCADE",
-});
-AgentDataSourceConfiguration.belongsTo(DataSource, {
-  as: "dataSource",
-  foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 /**

@@ -56,6 +56,7 @@ export type RetrievalConfigurationType = {
   sId: string;
 
   type: "retrieval_configuration";
+
   dataSources: DataSourceConfiguration[];
   query: RetrievalQuery;
   relativeTimeFrame: RetrievalTimeframe;
@@ -87,7 +88,9 @@ export type RetrievalDocumentType = {
 
 export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
+
   type: "retrieval_action";
+
   params: {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;

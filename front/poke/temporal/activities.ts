@@ -5,12 +5,12 @@ import { Op } from "sequelize";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
-  AgentDataSourceConfiguration,
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
   RetrievalDocument,
