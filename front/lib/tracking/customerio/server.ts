@@ -5,35 +5,20 @@ import type {
 } from "@dust-tt/types";
 import * as _ from "lodash";
 
+import config from "@app/lib/api/config";
 import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
-const {
-  CUSTOMERIO_ENABLED,
-  CUSTOMERIO_SITE_ID = "",
-  CUSTOMERIO_API_KEY = "",
-} = process.env;
-
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api/v2";
-
-function isCustomerioEnabled() {
-  return CUSTOMERIO_ENABLED === "true";
-}
 
 export class CustomerioServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
-    if (!isCustomerioEnabled()) {
-      return;
-    }
     return CustomerioServerSideTracking._identifyUser({ user });
   }
 
   static async trackUserMemberships({ user }: { user: UserType }) {
-    if (!isCustomerioEnabled()) {
-      return;
-    }
     const userMemberships = await MembershipResource.getLatestMemberships({
       users: [user],
     });
@@ -78,7 +63,7 @@ export class CustomerioServerSideTracking {
   }: {
     workspace: LightWorkspaceType;
   }) {
-    if (!isCustomerioEnabled()) {
+    if (!config.getCustomerIoEnabled()) {
       return;
     }
     const subscription = await subscriptionForWorkspace(workspace.sId);
@@ -116,7 +101,7 @@ export class CustomerioServerSideTracking {
       role: MembershipRoleType;
     }>;
   }) {
-    if (!isCustomerioEnabled()) {
+    if (!config.getCustomerIoEnabled()) {
       return;
     }
     const body: Record<string, any> = {
@@ -163,7 +148,7 @@ export class CustomerioServerSideTracking {
     return {
       "Content-Type": "application/json",
       Authorization: `Basic ${Buffer.from(
-        `${CUSTOMERIO_SITE_ID}:${CUSTOMERIO_API_KEY}`
+        `${config.getCustomerIoSiteId()}:${config.getCustomerIoApiKey()}`
       ).toString("base64")}`,
     };
   }
