@@ -83,6 +83,9 @@ export class CustomerioServerSideTracking {
   }: {
     workspace: LightWorkspaceType;
   }) {
+    if (!isCustomerioEnabled()) {
+      return;
+    }
     const subscription = await subscriptionForWorkspace(workspace.sId);
     const r = await fetch(`${CUSTOMERIO_HOST}/entity`, {
       method: "POST",
@@ -118,6 +121,9 @@ export class CustomerioServerSideTracking {
       role: MembershipRoleType;
     }>;
   }) {
+    if (!isCustomerioEnabled()) {
+      return;
+    }
     const body: Record<string, any> = {
       identifiers: {
         email: user.email,
