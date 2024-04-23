@@ -19,7 +19,6 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackDataSourceCreated } from "@app/lib/amplitude/node";
 import { getDataSource } from "@app/lib/api/data_sources";
 import {
   Authenticator,
@@ -27,6 +26,7 @@ import {
   getSession,
 } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -387,7 +387,11 @@ async function handler(
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
-        trackDataSourceCreated(auth, { dataSource: dataSourceType });
+        ServerSideTracking.trackDataSourceCreated({
+          dataSource: dataSourceType,
+          user,
+          workspace: owner,
+        });
       }
 
       return res.status(201).json({

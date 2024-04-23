@@ -4,8 +4,8 @@ import { assertNever } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
-import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { isTrial } from "@app/lib/plans/trial";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -139,13 +139,11 @@ export function ReachedLimitPopup({
 
   useEffect(() => {
     if (isOpened) {
-      const amplitude = getBrowserClient();
-      amplitude.fairUsageDialogViewed({
+      void ClientSideTracking.trackFairUsageDialogViewed({
         workspaceId: owner.sId,
         workspaceName: owner.name,
         trialing,
       });
-      amplitude.flush();
     }
   }, [isOpened, owner.name, owner.sId, trialing]);
 

@@ -43,7 +43,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { trackMultiFilesUploadUsed } from "@app/lib/amplitude/browser";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -53,6 +52,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -437,7 +437,7 @@ function DatasourceDocumentsTabView({
                   onChange={async (e) => {
                     if (e.target.files && e.target.files.length > 0) {
                       const files = e.target.files;
-                      trackMultiFilesUploadUsed({
+                      ClientSideTracking.trackMultiFilesUploadUsed({
                         fileCount: files.length,
                         workspaceId: owner.sId,
                       });

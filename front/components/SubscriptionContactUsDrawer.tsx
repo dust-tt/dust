@@ -8,8 +8,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { getBrowserClient } from "@app/lib/amplitude/browser";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { isEmailValid } from "@app/lib/utils";
 
 export function SubscriptionContactUsDrawer({
@@ -30,13 +30,11 @@ export function SubscriptionContactUsDrawer({
       const formURL = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
         email
       )}`;
-      const amplitude = getBrowserClient();
-      amplitude.clickedEnterpriseContactUs({
-        email: email,
-      });
-      amplitude.flush().promise.finally(() => {
-        window.location.href = formURL;
-      });
+      ClientSideTracking.trackClickEnterpriseContactUs({ email }).finally(
+        () => {
+          window.location.href = formURL;
+        }
+      );
     } else {
       setEmailError("Invalid email address.");
     }
