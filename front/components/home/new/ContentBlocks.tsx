@@ -146,65 +146,65 @@ export const HeaderContentBlock = ({
   </Grid>
 );
 
-interface ConversationProps {
-  children: ReactNode;
-}
+// interface ConversationProps {
+//   children: ReactNode;
+// }
 
-export const Conversation = ({ children }: ConversationProps) => {
-  return <div className="flex flex-col gap-4 ">{children}</div>;
-};
+// export const Conversation = ({ children }: ConversationProps) => {
+//   return <div className="flex flex-col gap-4 ">{children}</div>;
+// };
 
-interface MessageProps {
-  children: ReactNode;
-  visual: string;
-  type: "user" | "agent";
-  name: string;
-}
+// interface MessageProps {
+//   children: ReactNode;
+//   visual: string;
+//   type: "user" | "agent";
+//   name: string;
+// }
 
-const typeClasses = {
-  user: {
-    block: "bg-white",
-    label: " text-slate-700",
-    content: "text-slate-900",
-  },
-  agent: {
-    block: "bg-sky-700/50 self-end",
-    label: "text-slate-200",
-    content: "text-slate-200",
-  },
-};
+// const typeClasses = {
+//   user: {
+//     block: "bg-white",
+//     label: " text-slate-700",
+//     content: "text-slate-900",
+//   },
+//   agent: {
+//     block: "bg-sky-700/50 self-end",
+//     label: "text-slate-200",
+//     content: "text-slate-200",
+//   },
+// };
 
-export const Message = ({ children, visual, type, name }: MessageProps) => {
-  return (
-    <div
-      className={classNames(
-        "border-box flex w-[80%] w-full flex-col gap-4 rounded-2xl border border-white/10 p-6 pb-8 backdrop-blur-lg",
-        typeClasses[type].block
-      )}
-    >
-      <div className="flex items-center gap-4">
-        <Avatar size="md" name={name} visual={visual} />
-        <div
-          className={classNames(
-            "text-lg font-semibold",
-            typeClasses[type].label
-          )}
-        >
-          {name}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">{children}</div>
-    </div>
-  );
-};
+// export const Message = ({ children, visual, type, name }: MessageProps) => {
+//   return (
+//     <div
+//       className={classNames(
+//         "border-box flex w-[80%] w-full flex-col gap-4 rounded-2xl border border-white/10 p-6 pb-8 backdrop-blur-lg",
+//         typeClasses[type].block
+//       )}
+//     >
+//       <div className="flex items-center gap-4">
+//         <Avatar size="md" name={name} visual={visual} />
+//         <div
+//           className={classNames(
+//             "text-lg font-semibold",
+//             typeClasses[type].label
+//           )}
+//         >
+//           {name}
+//         </div>
+//       </div>
+//       <div className="flex flex-col gap-2">{children}</div>
+//     </div>
+//   );
+// };
 
-interface MessageHandleProps {
-  children: ReactNode;
-}
+// interface MessageHandleProps {
+//   children: ReactNode;
+// }
 
-export const Handle = ({ children }: MessageHandleProps) => {
-  return <span className="font-semibold text-emerald-400">{children}</span>;
-};
+// export const Handle = ({ children }: MessageHandleProps) => {
+//   return <span className="font-semibold text-emerald-400">{children}</span>;
+// };
 
 interface ContentAssistantProps {
   content: ReactNode;
@@ -405,52 +405,4 @@ export const DroidItem = ({
       </P>
     </div>
   );
-};
-
-export const Avatars3D = {
-  "1": {
-    background:
-      "linear-gradient(180deg, rgba(218,188,125,1) 0%, rgba(184,142,72,1) 72%, rgba(115,93,58,1) 73%, rgba(220,191,143,1) 74%, rgba(223,198,159,1) 100%)",
-    visual: "./static/landing/droids/Droid_Cream_7.png",
-  },
-  "2": {
-    background:
-      "linear-gradient(180deg, rgba(180,157,87,1) 0%, rgba(159,134,61,1) 72%, rgba(105,85,38,1) 73%, rgba(196,173,98,1) 74%, rgba(158,136,71,1) 100%)",
-    visual: "./static/landing/droids/Droid_Green_4.png",
-  },
-  "3": {
-    background:
-      "linear-gradient(180deg, rgba(196,208,217,1) 0%, rgba(174,186,194,1) 72%, rgba(89,92,98,1) 73%, rgba(210,202,196,1) 74%, rgba(199,188,180,1) 100%)",
-    visual: "./static/landing/droids/Droid_Sky_8.png",
-  },
-  "4": {
-    background:
-      "linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)",
-    visual: "./static/landing/droids/Droid_Orange_6.png",
-  },
-  "5": {
-    background:
-      "linear-gradient(180deg, rgba(193,184,173,1) 0%, rgba(193,183,172,1) 72%, rgba(124,95,72,1) 73%, rgba(207,197,187,1) 74%, rgba(215,210,205,1) 100%)",
-    visual: "./static/landing/droids/Droid_Yellow_4.png",
-  },
-  "6": {
-    background:
-      "linear-gradient(180deg, rgba(233,230,225,1) 0%, rgba(217,205,201,1) 72%, rgba(170,120,140,1) 73%, rgba(230,221,215,1) 74%, rgba(215,210,205,1) 100%)",
-    visual: "./static/landing/droids/Droid_Pink_6.png",
-  },
-  "7": {
-    background:
-      "linear-gradient(180deg, rgba(125,154,148,1) 0%, rgba(78,111,107,1) 72%, rgba(52,74,71,1) 73%, rgba(136,169,164,1) 74%, rgba(152,178,172,1) 100%)",
-    visual: "./static/landing/droids/Droid_Teal_5.png",
-  },
-  "8": {
-    background:
-      "linear-gradient(180deg, rgba(164,159,142,1) 0%, rgba(185,179,163,1) 72%, rgba(113,105,94,1) 73%, rgba(221,215,199,1) 74%, rgba(217,213,200,1) 100%)",
-    visual: "./static/landing/droids/Droid_Sky_4.png",
-  },
-  "9": {
-    background:
-      "linear-gradient(180deg, rgba(215,189,176,1) 0%, rgba(173,136,115,1) 72%, rgba(127,62,45,1) 73%, rgba(225,204,190,1) 74%, rgba(222,200,184,1) 100%)",
-    visual: "./static/landing/droids/Droid_Red_5.png",
-  },
 };
