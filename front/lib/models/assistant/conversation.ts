@@ -14,6 +14,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
@@ -247,10 +248,10 @@ export class AgentMessage extends Model<
   declare agentDustAppRunActionId: ForeignKey<
     AgentDustAppRunAction["id"]
   > | null;
-
   declare agentTablesQueryActionId: ForeignKey<
     AgentTablesQueryAction["id"]
   > | null;
+  declare agentProcessActionId: ForeignKey<AgentTablesQueryAction["id"]> | null;
 
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
@@ -317,6 +318,7 @@ AgentMessage.init(
           "agentRetrievalActionId",
           "agentDustAppRunActionId",
           "agentTablesQueryActionId",
+          "agentProcessActionId",
         ];
         const nonNullActionTypes = actionsTypes.filter(
           (field) => agentMessage[field] != null
@@ -346,12 +348,21 @@ AgentDustAppRunAction.hasOne(AgentMessage, {
 AgentMessage.belongsTo(AgentDustAppRunAction, {
   foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
 });
+
 AgentTablesQueryAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no Tables Query action set for this Agent
+  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no TablesQuery action set for this Agent
   onDelete: "CASCADE",
 });
 AgentMessage.belongsTo(AgentTablesQueryAction, {
-  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no Tables Query action set for this Agent
+  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no TablesQuery action set for this Agent
+});
+
+AgentProcessAction.hasOne(AgentMessage, {
+  foreignKey: { name: "agentProcessActionId", allowNull: true }, // null = no Process action set for this Agent
+  onDelete: "CASCADE",
+});
+AgentMessage.belongsTo(AgentProcessAction, {
+  foreignKey: { name: "agentProcessActionId", allowNull: true }, // null = no Process action set for this Agent
 });
 
 export class Message extends Model<

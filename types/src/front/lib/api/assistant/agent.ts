@@ -15,6 +15,7 @@ import {
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
 } from "../../../../front/lib/api/assistant/actions/tables_query";
+import { ProcessParamsEvent } from "./actions/process";
 
 // Event sent when an agent error occured before we have a agent message in the database.
 export type AgentMessageErrorEvent = {
@@ -45,7 +46,8 @@ export type AgentActionEvent =
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
   | TablesQueryParamsEvent
-  | TablesQueryOutputEvent;
+  | TablesQueryOutputEvent
+  | ProcessParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

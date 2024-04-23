@@ -7,13 +7,8 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
-  DustAppRunBlockEvent,
-  DustAppRunParamsEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  RetrievalParamsEvent,
-  TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
   UserMessageType,
 } from "@dust-tt/types";
 
@@ -35,12 +30,7 @@ export async function* runAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   // TODO(multi-actions): Implement isLegacyAgent and fork execution here.

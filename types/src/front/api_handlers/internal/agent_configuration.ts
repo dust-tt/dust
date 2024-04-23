@@ -111,6 +111,50 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
               })
             ),
           }),
+          t.type({
+            type: t.literal("process_configuration"),
+            relativeTimeFrame: t.union([
+              t.literal("auto"),
+              t.literal("none"),
+              t.type({
+                duration: t.number,
+                unit: TimeframeUnitCodec,
+              }),
+            ]),
+            dataSources: t.array(
+              t.type({
+                dataSourceId: t.string,
+                workspaceId: t.string,
+                filter: t.type({
+                  tags: t.union([
+                    t.type({
+                      in: t.array(t.string),
+                      not: t.array(t.string),
+                    }),
+                    t.null,
+                  ]),
+                  parents: t.union([
+                    t.type({
+                      in: t.array(t.string),
+                      not: t.array(t.string),
+                    }),
+                    t.null,
+                  ]),
+                }),
+              })
+            ),
+            schema: t.array(
+              t.type({
+                name: t.string,
+                type: t.union([
+                  t.literal("string"),
+                  t.literal("number"),
+                  t.literal("boolean"),
+                ]),
+                description: t.string,
+              })
+            ),
+          }),
         ]),
         t.partial({
           forceUseAtIteration: t.union([t.number, t.null]),

@@ -363,6 +363,22 @@ export async function createOrUpgradeAgentConfiguration({
             agentConfigurationRes.value
           )
         );
+      } else if (action.type === "process_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "process_configuration",
+              relativeTimeFrame: action.relativeTimeFrame,
+              dataSources: action.dataSources,
+              schema: action.schema,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
       } else {
         assertNever(action);
       }
