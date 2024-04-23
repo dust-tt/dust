@@ -10,21 +10,17 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
   ttlMs: number,
   redisUri?: string
 ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
-  if (!redisUri) {
-    const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
-    if (!REDIS_CACHE_URI) {
-      throw new Error("REDIS_CACHE_URI is not set");
-    }
-    redisUri = REDIS_CACHE_URI;
-  }
-
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
   return async function (...args: Parameters<T>) {
     if (!redisUri) {
-      throw new Error("redisUrl is not set");
+      const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
+      if (!REDIS_CACHE_URI) {
+        throw new Error("REDIS_CACHE_URI is not set");
+      }
+      redisUri = REDIS_CACHE_URI;
     }
     let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
       undefined;
