@@ -141,7 +141,11 @@ export function Markdown({
           return (
             <div className="s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
               <blockquote
-                className={classNames("s-italic", paragraphSize, textColor)}
+                className={classNames(
+                  "s-w-full s-italic",
+                  paragraphSize,
+                  textColor
+                )}
               >
                 {children}
               </blockquote>
