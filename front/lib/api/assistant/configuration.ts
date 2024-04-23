@@ -1067,132 +1067,137 @@ export async function createAgentActionConfiguration(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  if (action.type === "retrieval_configuration") {
-    return frontSequelize.transaction(async (t) => {
-      const retrievalConfig = await AgentRetrievalConfiguration.create(
-        {
-          sId: generateModelSId(),
+  switch (action.type) {
+    case "retrieval_configuration": {
+      return frontSequelize.transaction(async (t) => {
+        const retrievalConfig = await AgentRetrievalConfiguration.create(
+          {
+            sId: generateModelSId(),
+            query: action.query,
+            relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
+              ? "custom"
+              : action.relativeTimeFrame,
+            relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
+              ? action.relativeTimeFrame.duration
+              : null,
+            relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
+              ? action.relativeTimeFrame.unit
+              : null,
+            topK: action.topK !== "auto" ? action.topK : null,
+            topKMode: action.topK === "auto" ? "auto" : "custom",
+            agentConfigurationId: agentConfiguration.id,
+            forceUseAtIteration: action.forceUseAtIteration,
+          },
+          { transaction: t }
+        );
+        await _createAgentDataSourcesConfigData(
+          t,
+          action.dataSources,
+          retrievalConfig.id
+        );
+
+        return {
+          id: retrievalConfig.id,
+          sId: retrievalConfig.sId,
+          type: "retrieval_configuration",
           query: action.query,
-          relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
-            ? "custom"
-            : action.relativeTimeFrame,
-          relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
-            ? action.relativeTimeFrame.duration
-            : null,
-          relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
-            ? action.relativeTimeFrame.unit
-            : null,
-          topK: action.topK !== "auto" ? action.topK : null,
-          topKMode: action.topK === "auto" ? "auto" : "custom",
-          agentConfigurationId: agentConfiguration.id,
+          relativeTimeFrame: action.relativeTimeFrame,
+          topK: action.topK,
+          dataSources: action.dataSources,
           forceUseAtIteration: action.forceUseAtIteration,
-        },
-        { transaction: t }
-      );
-      await _createAgentDataSourcesConfigData(
-        t,
-        action.dataSources,
-        retrievalConfig.id
-      );
+        };
+      });
+    }
+    case "dust_app_run_configuration": {
+      const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
+        sId: generateModelSId(),
+        appWorkspaceId: action.appWorkspaceId,
+        appId: action.appId,
+        agentConfigurationId: agentConfiguration.id,
+        forceUseAtIteration: action.forceUseAtIteration,
+      });
 
       return {
-        id: retrievalConfig.id,
-        sId: retrievalConfig.sId,
-        type: "retrieval_configuration",
-        query: action.query,
-        relativeTimeFrame: action.relativeTimeFrame,
-        topK: action.topK,
-        dataSources: action.dataSources,
+        id: dustAppRunConfig.id,
+        sId: dustAppRunConfig.sId,
+        type: "dust_app_run_configuration",
+        appWorkspaceId: action.appWorkspaceId,
+        appId: action.appId,
         forceUseAtIteration: action.forceUseAtIteration,
       };
-    });
-  } else if (action.type === "dust_app_run_configuration") {
-    const dustAppRunConfig = await AgentDustAppRunConfiguration.create({
-      sId: generateModelSId(),
-      appWorkspaceId: action.appWorkspaceId,
-      appId: action.appId,
-      agentConfigurationId: agentConfiguration.id,
-      forceUseAtIteration: action.forceUseAtIteration,
-    });
-
-    return {
-      id: dustAppRunConfig.id,
-      sId: dustAppRunConfig.sId,
-      type: "dust_app_run_configuration",
-      appWorkspaceId: action.appWorkspaceId,
-      appId: action.appId,
-      forceUseAtIteration: action.forceUseAtIteration,
-    };
-  } else if (action.type === "tables_query_configuration") {
-    return frontSequelize.transaction(async (t) => {
-      const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
-        {
-          sId: generateModelSId(),
-          agentConfigurationId: agentConfiguration.id,
-          forceUseAtIteration: action.forceUseAtIteration,
-        },
-        { transaction: t }
-      );
-      await Promise.all(
-        action.tables.map((table) =>
-          AgentTablesQueryConfigurationTable.create(
-            {
-              tablesQueryConfigurationId: tablesQueryConfig.id,
-              dataSourceId: table.dataSourceId,
-              dataSourceWorkspaceId: table.workspaceId,
-              tableId: table.tableId,
-            },
-            { transaction: t }
+    }
+    case "tables_query_configuration": {
+      return frontSequelize.transaction(async (t) => {
+        const tablesQueryConfig = await AgentTablesQueryConfiguration.create(
+          {
+            sId: generateModelSId(),
+            agentConfigurationId: agentConfiguration.id,
+            forceUseAtIteration: action.forceUseAtIteration,
+          },
+          { transaction: t }
+        );
+        await Promise.all(
+          action.tables.map((table) =>
+            AgentTablesQueryConfigurationTable.create(
+              {
+                tablesQueryConfigurationId: tablesQueryConfig.id,
+                dataSourceId: table.dataSourceId,
+                dataSourceWorkspaceId: table.workspaceId,
+                tableId: table.tableId,
+              },
+              { transaction: t }
+            )
           )
-        )
-      );
+        );
 
-      return {
-        id: tablesQueryConfig.id,
-        sId: tablesQueryConfig.sId,
-        type: "tables_query_configuration",
-        tables: action.tables,
-        forceUseAtIteration: action.forceUseAtIteration,
-      };
-    });
-  } else if (action.type === "process_configuration") {
-    return frontSequelize.transaction(async (t) => {
-      const processConfig = await AgentProcessConfiguration.create(
-        {
-          sId: generateModelSId(),
-          relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
-            ? "custom"
-            : action.relativeTimeFrame,
-          relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
-            ? action.relativeTimeFrame.duration
-            : null,
-          relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
-            ? action.relativeTimeFrame.unit
-            : null,
-          agentConfigurationId: agentConfiguration.id,
-          schema: action.schema,
+        return {
+          id: tablesQueryConfig.id,
+          sId: tablesQueryConfig.sId,
+          type: "tables_query_configuration",
+          tables: action.tables,
           forceUseAtIteration: action.forceUseAtIteration,
-        },
-        { transaction: t }
-      );
-      await _createAgentDataSourcesConfigData(
-        t,
-        action.dataSources,
-        processConfig.id
-      );
+        };
+      });
+    }
+    case "process_configuration": {
+      return frontSequelize.transaction(async (t) => {
+        const processConfig = await AgentProcessConfiguration.create(
+          {
+            sId: generateModelSId(),
+            relativeTimeFrame: isTimeFrame(action.relativeTimeFrame)
+              ? "custom"
+              : action.relativeTimeFrame,
+            relativeTimeFrameDuration: isTimeFrame(action.relativeTimeFrame)
+              ? action.relativeTimeFrame.duration
+              : null,
+            relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
+              ? action.relativeTimeFrame.unit
+              : null,
+            agentConfigurationId: agentConfiguration.id,
+            schema: action.schema,
+            forceUseAtIteration: action.forceUseAtIteration,
+          },
+          { transaction: t }
+        );
+        await _createAgentDataSourcesConfigData(
+          t,
+          action.dataSources,
+          processConfig.id
+        );
 
-      return {
-        id: processConfig.id,
-        sId: processConfig.sId,
-        type: "process_configuration",
-        relativeTimeFrame: action.relativeTimeFrame,
-        schema: action.schema,
-        dataSources: action.dataSources,
-        forceUseAtIteration: action.forceUseAtIteration,
-      };
-    });
-  } else {
-    throw new Error("Cannot create AgentActionConfiguration: unknow type");
+        return {
+          id: processConfig.id,
+          sId: processConfig.sId,
+          type: "process_configuration",
+          relativeTimeFrame: action.relativeTimeFrame,
+          schema: action.schema,
+          dataSources: action.dataSources,
+          forceUseAtIteration: action.forceUseAtIteration,
+        };
+      });
+    }
+    default:
+      assertNever(action);
   }
 }
 

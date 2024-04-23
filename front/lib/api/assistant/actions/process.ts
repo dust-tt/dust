@@ -49,7 +49,7 @@ export function renderProcessActionForModel(
 
   content += "PROCESSED OUTPUTS:\n";
 
-  // add schema
+  // TODO(spolu): figure out if we want to add the schema here?
 
   for (const o of action.outputs) {
     content += `${JSON.stringify(o)}\n`;
