@@ -28,7 +28,7 @@ spec:
             httpGet:
               path: /
               port: 3001
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
 
           envFrom:
