@@ -16,6 +16,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
@@ -437,10 +438,7 @@ async function* runAction(
           break;
 
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
@@ -488,10 +486,7 @@ async function* runAction(
           break;
 
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else if (isTablesQueryConfiguration(action)) {
@@ -535,10 +530,7 @@ async function* runAction(
           agentMessage.action = event.action;
           break;
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else if (isProcessConfiguration(action)) {
@@ -583,15 +575,10 @@ async function* runAction(
           break;
 
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else {
-    ((a: never) => {
-      throw new Error(`Unexpected action type: ${a}`);
-    })(action);
+    assertNever(action);
   }
 }

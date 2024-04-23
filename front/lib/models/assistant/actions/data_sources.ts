@@ -30,7 +30,7 @@ export class AgentDataSourceConfiguration extends Model<
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
 
-  // AgentDataSourcEConfiguration can be used by both the retrieval and the process actions'
+  // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
   // configurations.
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]

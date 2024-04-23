@@ -80,7 +80,7 @@ AgentProcessConfiguration.init(
     hooks: {
       beforeValidate: (p: AgentProcessConfiguration) => {
         // Validation for Timeframe
-        if (p.relativeTimeFrame == "custom") {
+        if (p.relativeTimeFrame === "custom") {
           if (!p.relativeTimeFrameDuration || !p.relativeTimeFrameUnit) {
             throw new Error(
               "Custom relative time frame must have a duration and unit set"

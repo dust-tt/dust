@@ -91,7 +91,7 @@ AgentRetrievalConfiguration.init(
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for Timeframe
-        if (retrieval.relativeTimeFrame == "custom") {
+        if (retrieval.relativeTimeFrame === "custom") {
           if (
             !retrieval.relativeTimeFrameDuration ||
             !retrieval.relativeTimeFrameUnit

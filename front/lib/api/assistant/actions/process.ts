@@ -216,9 +216,11 @@ export async function* runProcess(
     schema: actionConfiguration.schema,
   });
 
+  const now = Date.now();
+
   yield {
     type: "process_params",
-    created: Date.now(),
+    created: now,
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     dataSources: actionConfiguration.dataSources,
@@ -232,8 +234,6 @@ export async function* runProcess(
       outputs: null,
     },
   };
-
-  const now = Date.now();
 
   const prompt = await constructPrompt(
     auth,
