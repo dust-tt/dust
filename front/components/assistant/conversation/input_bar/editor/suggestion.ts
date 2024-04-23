@@ -1,3 +1,4 @@
+import type { Editor } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
@@ -26,10 +27,17 @@ function filterAndSortSuggestions(
     .sort((a, b) => compareForFuzzySort(lowerCaseQuery, a.label, b.label));
 }
 
-export function makeGetAssistantSuggestions(allSuggestions: EditorSuggestions) {
+export function makeGetAssistantSuggestions() {
   return {
-    items: ({ query }: { query: string }): EditorSuggestion[] => {
-      const { suggestions, fallbackSuggestions } = allSuggestions;
+    items: ({
+      editor,
+      query,
+    }: {
+      query: string;
+      editor: Editor;
+    }): EditorSuggestion[] => {
+      const { suggestions, fallbackSuggestions } =
+        editor.storage.MentionStorage.suggestions;
 
       const lowerCaseQuery = query.toLowerCase();
 
