@@ -18,7 +18,7 @@ import { nangoDeleteConnection } from "@connectors/lib/nango_client";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
-import { folderHasChildren, getDrivesIds } from "./temporal/activities";
+import { folderHasChildren, getDrives } from "./temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleGarbageCollector,
@@ -438,7 +438,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
   } else if (filterPermission === null) {
     if (parentInternalId === null) {
       // Return the list of remote shared drives.
-      const drives = await getDrivesIds(c.id);
+      const drives = await getDrives(c.id);
 
       const nodes: ContentNode[] = await Promise.all(
         drives.map(async (d): Promise<ContentNode> => {
