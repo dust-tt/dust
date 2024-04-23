@@ -293,8 +293,8 @@ export class AmplitudeServerSideTracking {
     const amplitude = getBackendClient();
     amplitude.identify(`user-${user.id}`, {
       email: user.email,
-      first_name: user.firstName,
-      last_name: user.lastName,
+      firstName: user.firstName,
+      lastName: user.lastName ?? undefined,
     });
   }
 }
