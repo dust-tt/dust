@@ -120,10 +120,10 @@ export default function AssistantBuilderRightPanel({
         )}
       >
         {rightPanelStatus.tab === "Preview" && user && draftAssistant && (
-          <div className="flex h-full w-full flex-1 flex-col justify-between">
+          <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
             <GenerationContextProvider>
               <div
-                className="flex-grow overflow-y-auto overflow-x-hidden"
+                className="flex-grow overflow-y-auto"
                 id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
               >
                 {conversation && (
