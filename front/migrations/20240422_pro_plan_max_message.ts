@@ -2,7 +2,7 @@ import { Plan } from "@app/lib/models/plan";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-const proPlanForFairUsagePerSeat = async (execute: boolean) => {
+const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
     const res = await Plan.update(
       {
@@ -28,5 +28,5 @@ const proPlanForFairUsagePerSeat = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
-  await proPlanForFairUsagePerSeat(execute);
+  await updateProMaxMessagesLimit(execute);
 });
