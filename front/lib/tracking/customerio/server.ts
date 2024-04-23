@@ -2,7 +2,6 @@ import type {
   LightWorkspaceType,
   MembershipRoleType,
   UserType,
-  UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import * as _ from "lodash";
 
@@ -31,11 +30,7 @@ export class CustomerioServerSideTracking {
     return CustomerioServerSideTracking._identifyUser({ user });
   }
 
-  static async trackUserMemberships({
-    user,
-  }: {
-    user: UserTypeWithWorkspaces;
-  }) {
+  static async trackUserMemberships({ user }: { user: UserType }) {
     if (!isCustomerioEnabled()) {
       return;
     }
