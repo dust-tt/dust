@@ -72,6 +72,8 @@ export type LoadOptions =
 
 export interface IdentifyProperties {
   email?: string;
+  firstName?: string;
+  lastName?: string;
   SignupDate?: string;
 }
 

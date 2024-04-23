@@ -2,6 +2,7 @@ import * as _ from "lodash";
 
 import { renderUserType } from "@app/lib/api/user";
 import { User } from "@app/lib/models/user";
+import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -19,14 +20,19 @@ const backfillCustomerIo = async (execute: boolean) => {
     if (execute) {
       await Promise.all(
         c.map((u) =>
-          CustomerioServerSideTracking.trackUserMemberships({ user: u }).catch(
-            (err) => {
+          Promise.all([
+            CustomerioServerSideTracking.trackUserMemberships({
+              user: u,
+            }).catch((err) => {
               logger.error(
                 { userId: u.sId, err },
                 "Failed to track user memberships on Customer.io"
               );
-            }
-          )
+            }),
+            // NOTE: this is unrelated to customerio, but leveraging this backfill
+            // to also identify all users on Amplitude.
+            AmplitudeServerSideTracking._identifyUser({ user: u }),
+          ])
         )
       );
     }

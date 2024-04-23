@@ -54,7 +54,7 @@ function getBackendClient() {
 export class AmplitudeServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
     const amplitude = getBackendClient();
-    amplitude.identify(`user-${user.id}`, { email: user.email });
+    AmplitudeServerSideTracking._identifyUser({ user });
     amplitude.signUp(`user-${user.id}`, {
       insert_id: `signup_${user.id}`,
       time: user.createdAt,
@@ -286,6 +286,15 @@ export class AmplitudeServerSideTracking {
       workspaceName,
       plan: planCode,
       workspaceSeats,
+    });
+  }
+
+  static _identifyUser({ user }: { user: UserType }) {
+    const amplitude = getBackendClient();
+    amplitude.identify(`user-${user.id}`, {
+      email: user.email,
+      first_name: user.firstName,
+      last_name: user.lastName,
     });
   }
 }
