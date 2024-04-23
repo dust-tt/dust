@@ -11,8 +11,12 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useContext, useEffect, useMemo, useState } from "react";
+import type {
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -28,13 +32,14 @@ import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
-export default function AssistantBuilderPreviewDrawer({
+export default function AssistantBuilderRightPanel({
   template,
   resetTemplate,
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  previewDrawerOpenedAt,
+  rightPanelStatus,
+  openRightPanelTab,
   builderState,
 }: {
   template: FetchAssistantTemplateResponse | null;
@@ -42,34 +47,32 @@ export default function AssistantBuilderPreviewDrawer({
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  previewDrawerOpenedAt: number | null;
+  rightPanelStatus: AssistantBuilderRightPanelStatus;
+  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
 }) {
   const confirm = useContext(ConfirmContext);
-  const [previewDrawerCurrentTab, setPreviewDrawerCurrentTab] = useState<
-    "Preview" | "Template"
-  >(template ? "Template" : "Preview");
 
-  const previewDrawerTabs = useMemo(
+  const tabsConfig = useMemo(
     () => [
       {
         label: "Template",
-        current: previewDrawerCurrentTab === "Template",
+        current: rightPanelStatus.tab === "Template",
         onClick: () => {
-          setPreviewDrawerCurrentTab("Template");
+          openRightPanelTab("Template");
         },
         icon: MagicIcon,
       },
       {
         label: "Preview",
-        current: previewDrawerCurrentTab === "Preview",
+        current: rightPanelStatus.tab === "Preview",
         onClick: () => {
-          setPreviewDrawerCurrentTab("Preview");
+          openRightPanelTab("Preview");
         },
         icon: ChatBubbleBottomCenterTextIcon,
       },
     ],
-    [previewDrawerCurrentTab]
+    [rightPanelStatus.tab, openRightPanelTab]
   );
 
   const {
@@ -99,11 +102,7 @@ export default function AssistantBuilderPreviewDrawer({
     <div className="flex h-full flex-col">
       {template && (
         <div className="shrink-0 bg-white pt-5">
-          <Tab
-            tabs={previewDrawerTabs}
-            variant="default"
-            className="hidden lg:flex"
-          />
+          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
         </div>
       )}
       <div
@@ -112,15 +111,15 @@ export default function AssistantBuilderPreviewDrawer({
             ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
             : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
           shouldAnimatePreviewDrawer &&
-            previewDrawerOpenedAt != null &&
+            rightPanelStatus.openedAt != null &&
             // Only animate the reload if the drawer has been open for at least 1 second.
             // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - previewDrawerOpenedAt > 1000
+            Date.now() - rightPanelStatus.openedAt > 1000
             ? "animate-reload"
             : ""
         )}
       >
-        {previewDrawerCurrentTab === "Preview" && user && draftAssistant && (
+        {rightPanelStatus.tab === "Preview" && user && draftAssistant && (
           <div className="flex h-full w-full flex-1 flex-col justify-between">
             <GenerationContextProvider>
               <div
@@ -155,7 +154,7 @@ export default function AssistantBuilderPreviewDrawer({
             </GenerationContextProvider>
           </div>
         )}
-        {previewDrawerCurrentTab === "Template" && (
+        {rightPanelStatus.tab === "Template" && (
           <div className="mb-72 flex flex-col gap-4 px-6">
             <div className="flex justify-between">
               <Page.Header
@@ -185,7 +184,7 @@ export default function AssistantBuilderPreviewDrawer({
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
-                        setPreviewDrawerCurrentTab("Preview");
+                        openRightPanelTab("Preview");
                         await resetTemplate();
                       }
                     }}

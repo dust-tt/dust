@@ -2,9 +2,12 @@ import "react-image-crop/dist/ReactCrop.css";
 
 import {
   Button,
+  ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleIcon,
+  IconButton,
+  MagicIcon,
   SquareIcon,
   Tab,
   TriangleIcon,
@@ -12,6 +15,8 @@ import {
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
   DataSourceType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
@@ -39,7 +44,7 @@ import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
-import AssistantBuilderPreviewDrawer from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
+import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
   removeLeadingAt,
@@ -324,15 +329,29 @@ export default function AssistantBuilder({
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
-  const [previewDrawerOpenedAt, setPreviewDrawerOpenedAt] = useState<
-    number | null
-  >(template ? Date.now() : null);
+  const [rightPanelStatus, setRightPanelStatus] =
+    useState<AssistantBuilderRightPanelStatus>({
+      tab: null,
+      openedAt: null,
+    });
 
-  const openPreviewDrawer = () => {
-    setPreviewDrawerOpenedAt(Date.now());
+  const openRightPanelTab = (tabName: AssistantBuilderRightPanelTab) => {
+    setRightPanelStatus({
+      tab: tabName,
+      openedAt: Date.now(),
+    });
   };
-  const closePreviewDrawer = () => {
-    setPreviewDrawerOpenedAt(null);
+  const closeRightPanel = () => {
+    setRightPanelStatus({
+      tab: null,
+      openedAt: null,
+    });
+  };
+
+  const toggleRightPanel = () => {
+    rightPanelStatus.tab !== null
+      ? closeRightPanel()
+      : openRightPanelTab(template === null ? "Preview" : "Template");
   };
 
   useEffect(() => {
@@ -629,23 +648,51 @@ export default function AssistantBuilder({
               <PrevNextButtons screen={screen} setScreen={setScreen} />
             </div>
           }
+          buttonsRightPanel={
+            <>
+              <IconButton
+                size="md"
+                variant="tertiary"
+                icon={
+                  rightPanelStatus.tab !== null
+                    ? ChevronRightIcon
+                    : ChevronLeftIcon
+                }
+                onClick={toggleRightPanel}
+              />
+              {rightPanelStatus.tab === null && (
+                <div className="flex flex-col gap-3 rounded-full border border-structure-200 p-4">
+                  <IconButton
+                    icon={ChatBubbleBottomCenterTextIcon}
+                    onClick={() => openRightPanelTab("Preview")}
+                    size="md"
+                    variant="tertiary"
+                  />
+                  {template !== null && (
+                    <IconButton
+                      icon={MagicIcon}
+                      onClick={() => openRightPanelTab("Template")}
+                      size="md"
+                      variant="tertiary"
+                    />
+                  )}
+                </div>
+              )}
+            </>
+          }
           rightPanel={
-            <AssistantBuilderPreviewDrawer
+            <AssistantBuilderRightPanel
               template={template}
               resetTemplate={resetTemplate}
               resetToTemplateInstructions={resetToTemplateInstructions}
               resetToTemplateActions={resetToTemplateActions}
               owner={owner}
-              previewDrawerOpenedAt={previewDrawerOpenedAt}
+              rightPanelStatus={rightPanelStatus}
+              openRightPanelTab={openRightPanelTab}
               builderState={builderState}
             />
           }
-          isRightPanelOpen={previewDrawerOpenedAt !== null}
-          toggleRightPanel={
-            previewDrawerOpenedAt !== null
-              ? closePreviewDrawer
-              : openPreviewDrawer
-          }
+          isRightPanelOpen={rightPanelStatus.tab !== null}
         />
       </AppLayout>
     </>
@@ -870,13 +917,13 @@ export async function submitAssistantBuilderForm({
 export function BuilderLayout({
   leftPanel,
   rightPanel,
+  buttonsRightPanel,
   isRightPanelOpen,
-  toggleRightPanel,
 }: {
   leftPanel: React.ReactNode;
   rightPanel: React.ReactNode;
+  buttonsRightPanel: React.ReactNode;
   isRightPanelOpen: boolean;
-  toggleRightPanel: () => void;
 }) {
   return (
     <>
@@ -889,14 +936,7 @@ export function BuilderLayout({
             <div className="flex h-full grow justify-center">
               <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
             </div>
-            <Button
-              label="Preview"
-              labelVisible={isRightPanelOpen ? false : true}
-              size="md"
-              variant={isRightPanelOpen ? "tertiary" : "primary"}
-              icon={isRightPanelOpen ? ChevronRightIcon : ChevronLeftIcon}
-              onClick={toggleRightPanel}
-            />
+            {buttonsRightPanel}
             <div
               className={classNames(
                 "duration-400 s-h-full transition-opacity ease-out",
