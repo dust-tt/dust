@@ -110,7 +110,10 @@ export function Markdown({
                     variant="tertiary"
                     size="xs"
                     icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                    onClick={handleCopy}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await handleCopy();
+                    }}
                   />
                 </div>
               )}
