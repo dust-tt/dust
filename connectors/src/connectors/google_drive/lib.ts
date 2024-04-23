@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import { GOOGLE_DRIVE_WEBHOOK_LIFE_MS } from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
-  getDrivesIdsToSync,
+  getDrivesToSync,
   getSyncPageToken,
 } from "@connectors/connectors/google_drive/temporal/activities";
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -40,10 +40,10 @@ export async function registerWebhooksForAllDrives({
   connector: ConnectorResource;
   marginMs: number;
 }): Promise<Result<undefined, Error[]>> {
-  const driveIdsToSync = await getDrivesIdsToSync(connector.id);
+  const drivesToSync = await getDrivesToSync(connector.id);
   const allRes = await Promise.all(
-    driveIdsToSync.map((driveId) => {
-      return ensureWebhookForDriveId(connector, driveId, marginMs);
+    drivesToSync.map((drive) => {
+      return ensureWebhookForDriveId(connector, drive.id, marginMs);
     })
   );
 

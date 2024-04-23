@@ -47,15 +47,17 @@ import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
 const FILES_SYNC_CONCURRENCY = 10;
 const FILES_GC_CONCURRENCY = 5;
 
+type LightGoogledrive = {
+  id: string;
+  name: string;
+  isSharedDrive: boolean;
+};
+
 export const statsDClient = new StatsD();
 
-export async function getDrivesIds(connectorId: ModelId): Promise<
-  {
-    id: string;
-    name: string;
-    sharedDrive: boolean;
-  }[]
-> {
+export async function getDrives(
+  connectorId: ModelId
+): Promise<LightGoogledrive[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -64,9 +66,9 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
 
   let nextPageToken: string | undefined | null = undefined;
   const authCredentials = await getAuthObject(connector.connectionId);
-  const ids: { id: string; name: string; sharedDrive: boolean }[] = [];
+  const drives: LightGoogledrive[] = [];
   const myDriveId = await getMyDriveIdCached(authCredentials);
-  ids.push({ id: myDriveId, name: "My Drive", sharedDrive: false });
+  drives.push({ id: myDriveId, name: "My Drive", isSharedDrive: false });
   do {
     const res: GaxiosResponse<drive_v3.Schema$DriveList> =
       await drive.drives.list({
@@ -84,19 +86,19 @@ export async function getDrivesIds(connectorId: ModelId): Promise<
     }
     for (const drive of res.data.drives) {
       if (drive.id && drive.name) {
-        ids.push({ id: drive.id, name: drive.name, sharedDrive: true });
+        drives.push({ id: drive.id, name: drive.name, isSharedDrive: true });
       }
     }
     nextPageToken = res.data.nextPageToken;
   } while (nextPageToken);
 
-  return ids;
+  return drives;
 }
 
 // Get the list of drives that have folders selected for sync.
-export async function getDrivesIdsToSync(
+export async function getDrivesToSync(
   connectorId: ModelId
-): Promise<string[]> {
+): Promise<LightGoogledrive[]> {
   const selectedFolders = await GoogleDriveFolders.findAll({
     where: {
       connectorId: connectorId,
@@ -107,7 +109,7 @@ export async function getDrivesIdsToSync(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const authCredentials = await getAuthObject(connector.connectionId);
-  const driveIds = new Set<string>();
+  const drives: Record<string, LightGoogledrive> = {};
 
   for (const folder of selectedFolders) {
     const remoteFolder = await getGoogleDriveObject(
@@ -118,11 +120,15 @@ export async function getDrivesIdsToSync(
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
       }
-      driveIds.add(remoteFolder.driveId);
+      drives[remoteFolder.driveId] = {
+        id: remoteFolder.driveId,
+        name: remoteFolder.name,
+        isSharedDrive: remoteFolder.isInSharedDrive,
+      };
     }
   }
 
-  return [...driveIds];
+  return Object.values(drives);
 }
 
 export async function syncFiles(
@@ -691,12 +697,12 @@ export async function populateSyncTokens(connectorId: ModelId) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const drivesIds = await getDrivesIds(connector.id);
+  const drivesIds = await getDrives(connector.id);
   for (const drive of drivesIds) {
     const lastSyncToken = await getSyncPageToken(
       connectorId,
       drive.id,
-      drive.sharedDrive
+      drive.isSharedDrive
     );
     await GoogleDriveSyncToken.upsert({
       connectorId: connectorId,
