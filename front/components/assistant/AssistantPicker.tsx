@@ -102,7 +102,11 @@ export function AssistantPicker({
               showFooterButtons && (
                 <div className="flex border-t border-structure-50 p-2">
                   <Link
-                    href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+                    href={
+                      owner.flags.includes("flag_templates")
+                        ? `/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`
+                        : `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`
+                    }
                   >
                     <Button
                       label="Create"
