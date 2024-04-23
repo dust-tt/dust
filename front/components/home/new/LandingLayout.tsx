@@ -21,7 +21,7 @@ import { MainNavigation } from "@app/components/home/new/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/new/menu/MobileNavigation";
 import Particles, { particuleShapes } from "@app/components/home/new/Particles";
 import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
-import { trackPageView } from "@app/lib/amplitude/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -84,7 +84,7 @@ export default function LandingLayout({
   }, []);
 
   useEffect(() => {
-    trackPageView({
+    ClientSideTracking.trackPageView({
       pathname: router.pathname,
     });
   }, [router.pathname]);

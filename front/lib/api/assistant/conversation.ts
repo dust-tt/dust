@@ -48,7 +48,6 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { trackUserMessage } from "@app/lib/amplitude/node";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -76,6 +75,7 @@ import {
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -780,7 +780,7 @@ export async function* postUserMessage(
       });
     }
   }
-  trackUserMessage({
+  ServerSideTracking.trackUserMessage({
     userMessage,
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,

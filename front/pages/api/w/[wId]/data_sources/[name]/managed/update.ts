@@ -8,12 +8,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackDataSourceUpdated } from "@app/lib/amplitude/node";
 import {
   getDataSource,
   updateDataSourceEditedBy,
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -131,7 +131,11 @@ async function handler(
       }
 
       await updateDataSourceEditedBy(auth, dataSource);
-      trackDataSourceUpdated(auth, { dataSource });
+      ServerSideTracking.trackDataSourceUpdated({
+        dataSource,
+        user: auth.user() ?? undefined,
+        workspace: owner,
+      });
 
       res.status(200).json(updateRes.value);
       return;

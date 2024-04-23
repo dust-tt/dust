@@ -8,10 +8,10 @@ import {
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackDataSourceCreated } from "@app/lib/amplitude/node";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -173,7 +173,11 @@ async function handler(
 
       const dataSourceType = await getDataSource(auth, ds.name);
       if (dataSourceType) {
-        trackDataSourceCreated(auth, { dataSource: dataSourceType });
+        ServerSideTracking.trackDataSourceCreated({
+          user,
+          workspace: owner,
+          dataSource: dataSourceType,
+        });
       }
 
       res.status(201).json({

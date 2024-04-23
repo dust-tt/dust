@@ -10,7 +10,7 @@ import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useRef } from "react";
 
-import { getBrowserClient } from "@app/lib/amplitude/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export function QuickStartGuide({
   owner,
@@ -34,16 +34,14 @@ export function QuickStartGuide({
         const duration = Date.now() - showedStartTimeRef.current;
         showedStartTimeRef.current = null;
 
-        const amplitude = getBrowserClient();
-        amplitude.identify(`user-${user.id.toString()}`);
-        amplitude.quickGuideViewed({
-          workspaceId: owner.sId,
-          workspaceName: owner.name,
+        ClientSideTracking.trackQuickGuideViewed({
+          user,
+          workspace: owner,
           duration,
         });
       }
     }
-  }, [owner.name, owner.sId, show, user.id]);
+  }, [owner, show, user]);
 
   return (
     <Modal

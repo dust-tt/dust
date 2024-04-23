@@ -17,7 +17,6 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackAssistantCreated } from "@app/lib/amplitude/node";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -29,6 +28,7 @@ import {
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -381,7 +381,11 @@ export async function createOrUpgradeAgentConfiguration({
 
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {
-    trackAssistantCreated(auth, { assistant: agentConfiguration });
+    ServerSideTracking.trackAssistantCreated({
+      user: auth.user() ?? undefined,
+      workspace: auth.workspace() ?? undefined,
+      assistant: agentConfiguration,
+    });
   }
 
   return new Ok(agentConfiguration);
