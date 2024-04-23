@@ -81,6 +81,10 @@ async function main() {
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
 
+  await AgentConfiguration.sync({ alter: true });
+  await AgentUserRelation.sync({ alter: true });
+  await GlobalAgentSettings.sync({ alter: true });
+
   await AgentGenerationConfiguration.sync({ alter: true });
 
   await AgentRetrievalConfiguration.sync({ alter: true });
@@ -93,10 +97,6 @@ async function main() {
   await AgentProcessAction.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
-
-  await AgentConfiguration.sync({ alter: true });
-  await AgentUserRelation.sync({ alter: true });
-  await GlobalAgentSettings.sync({ alter: true });
 
   await AgentRetrievalAction.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
