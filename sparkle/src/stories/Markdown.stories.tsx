@@ -38,7 +38,7 @@ Demo of a quote below:
 `;
 
 export const MarkdownExample = () => (
-  <div className="s-flex s-flex-col">
+  <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
     <Markdown content={example1} />
     <Markdown content={example2} />
   </div>
