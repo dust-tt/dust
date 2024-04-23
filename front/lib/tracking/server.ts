@@ -9,10 +9,13 @@ import type {
 } from "@dust-tt/types";
 
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
+import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import logger from "@app/logger/logger";
 
 export class ServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
     AmplitudeServerSideTracking.trackSignup({ user });
+    void CustomerioServerSideTracking.trackSignup({ user });
   }
 
   static async trackUserMemberships({
@@ -20,7 +23,18 @@ export class ServerSideTracking {
   }: {
     user: UserTypeWithWorkspaces;
   }) {
-    return AmplitudeServerSideTracking.trackUserMemberships({ user });
+    AmplitudeServerSideTracking.trackUserMemberships({ user }).catch((err) => {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track user memberships on Amplitude"
+      );
+    });
+    CustomerioServerSideTracking.trackUserMemberships({ user }).catch((err) => {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track user memberships on Customer.io"
+      );
+    });
   }
 
   static trackUserMessage({
