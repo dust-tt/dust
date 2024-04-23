@@ -13,7 +13,7 @@ import {
   updateDataSourceEditedBy,
 } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

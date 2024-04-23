@@ -26,7 +26,7 @@ import {
   getSession,
 } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

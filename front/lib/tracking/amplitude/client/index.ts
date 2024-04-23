@@ -1,11 +1,11 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 
-import type { Ampli } from "@app/lib/tracking/amplitude/browser/generated";
+import type { Ampli } from "@app/lib/tracking/amplitude/client/generated";
 import {
   ampli,
   MultiFilesUploadUsed,
   PageViewed,
-} from "@app/lib/tracking/amplitude/browser/generated";
+} from "@app/lib/tracking/amplitude/client/generated";
 import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,

@@ -18,7 +18,7 @@ import { topNavigation } from "@app/components/sparkle/navigation";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useUser } from "@app/lib/swr";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 /* Set to true when there is an incident, to show the banner (customize

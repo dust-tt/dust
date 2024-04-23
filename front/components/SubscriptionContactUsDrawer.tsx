@@ -9,7 +9,7 @@ import {
 import { useState } from "react";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { isEmailValid } from "@app/lib/utils";
 
 export function SubscriptionContactUsDrawer({

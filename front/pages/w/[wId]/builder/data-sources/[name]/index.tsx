@@ -52,7 +52,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { githubAuth } from "@app/lib/github_auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig, useDocuments, useTables } from "@app/lib/swr";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 

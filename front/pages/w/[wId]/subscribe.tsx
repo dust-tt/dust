@@ -12,7 +12,7 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

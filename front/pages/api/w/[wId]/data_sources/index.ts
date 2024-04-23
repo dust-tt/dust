@@ -11,7 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DataSource } from "@app/lib/models/data_source";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

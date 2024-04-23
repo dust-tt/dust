@@ -5,7 +5,7 @@ import { sanitizeString } from "@dust-tt/types";
 import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 

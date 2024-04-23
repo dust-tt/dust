@@ -51,7 +51,7 @@ import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContact
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;

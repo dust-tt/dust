@@ -75,7 +75,7 @@ import {
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";

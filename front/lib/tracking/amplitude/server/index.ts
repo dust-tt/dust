@@ -18,14 +18,14 @@ import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,
 } from "@app/lib/tracking/amplitude/config";
-import type { Ampli } from "@app/lib/tracking/amplitude/node/generated";
+import type { Ampli } from "@app/lib/tracking/amplitude/server/generated";
 import {
   ampli,
   AssistantCreated,
   DataSourceCreated,
   DataSourceUpdated,
   UserMessagePosted,
-} from "@app/lib/tracking/amplitude/node/generated";
+} from "@app/lib/tracking/amplitude/server/generated";
 import logger from "@app/logger/logger";
 
 let BACKEND_CLIENT: Ampli | null = null;

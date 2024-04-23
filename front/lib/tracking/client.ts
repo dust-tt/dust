@@ -1,6 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 
-import { AmplitudeClientSideTracking } from "@app/lib/tracking/amplitude/browser";
+import { AmplitudeClientSideTracking } from "@app/lib/tracking/amplitude/client";
 
 export class ClientSideTracking {
   static trackPageView({

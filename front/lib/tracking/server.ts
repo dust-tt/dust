@@ -8,7 +8,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/node";
+import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 
 export class ServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {

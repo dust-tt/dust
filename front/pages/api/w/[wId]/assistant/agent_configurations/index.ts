@@ -28,7 +28,7 @@ import {
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {

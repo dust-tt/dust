@@ -22,7 +22,7 @@ import {
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

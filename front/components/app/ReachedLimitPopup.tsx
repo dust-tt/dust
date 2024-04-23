@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 
 import { isTrial } from "@app/lib/plans/trial";
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"

@@ -10,7 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { updateUserFullName } from "@app/lib/api/user";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { ServerSideTracking } from "@app/lib/tracking/node";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

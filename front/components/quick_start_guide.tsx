@@ -10,7 +10,7 @@ import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useRef } from "react";
 
-import { ClientSideTracking } from "@app/lib/tracking/browser";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export function QuickStartGuide({
   owner,
