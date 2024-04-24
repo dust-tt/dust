@@ -197,10 +197,50 @@ async function handler(
         });
       }
 
+      if (
+        bodyValidation.right.useMultiActions &&
+        !owner.flags.includes("multi_actions")
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "Multi-actions is not enabled on this workspace.",
+          },
+        });
+      }
+
+      if (
+        !bodyValidation.right.useMultiActions &&
+        bodyValidation.right.assistant.maxToolsUsePerRun !== undefined
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "maxToolsUsePerRun is only supported in multi-actions mode.",
+          },
+        });
+      }
+
+      if (
+        bodyValidation.right.useMultiActions &&
+        bodyValidation.right.assistant.maxToolsUsePerRun === undefined
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "maxToolsUsePerRun is required in multi-actions mode.",
+          },
+        });
+      }
+
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: bodyValidation.right.assistant,
-        legacySingleActionMode: true,
+        legacySingleActionMode: !bodyValidation.right.useMultiActions,
       });
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
@@ -247,6 +287,7 @@ export async function createOrUpgradeAgentConfiguration({
     status,
     scope,
     instructions,
+    maxToolsUsePerRun,
   },
   agentConfigurationId,
   legacySingleActionMode,
@@ -279,13 +320,16 @@ export async function createOrUpgradeAgentConfiguration({
     } else {
       legacyForceGenerationAtIteration = 0;
     }
+
+    // TODO(@fontanierh): fix once generation is an action.
+    maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
   }
 
-  // @todo FIX MULTI ACTIONS
-  const maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
+  if (maxToolsUsePerRun === undefined) {
+    throw new Error("maxToolsUsePerRun is required.");
+  }
 
   let generationConfig: AgentGenerationConfigurationType | null = null;
-
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
