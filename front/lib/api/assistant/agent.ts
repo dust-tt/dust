@@ -36,8 +36,6 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  // TODO(multi-actions): Implement isLegacyAgent and fork execution here.
-
   const fullConfiguration = await getAgentConfiguration(
     auth,
     configuration.sId
