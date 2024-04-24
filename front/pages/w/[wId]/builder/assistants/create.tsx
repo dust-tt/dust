@@ -29,7 +29,6 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr";
-import { subFilter } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -104,13 +103,20 @@ export default function CreateAssistant({
     const templatesFilteredFromSearch =
       searchTerm === ""
         ? assistantTemplates
-        : assistantTemplates.filter((template) =>
-            template.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            template.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        : assistantTemplates.filter(
+            (template) =>
+              template.handle
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase()) ||
+              template.description
+                ?.toLowerCase()
+                .includes(searchTerm.toLowerCase())
           );
-    const templatesToDisplay = templatesFilteredFromSearch.filter((template) => {
-      return isTemplateTagCodeArray(template.tags);
-    });
+    const templatesToDisplay = templatesFilteredFromSearch.filter(
+      (template) => {
+        return isTemplateTagCodeArray(template.tags);
+      }
+    );
     setFilteredTemplates({
       templates: templatesToDisplay,
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
@@ -232,16 +238,20 @@ export default function CreateAssistant({
                 size="md"
               />
               <div className="flex flex-row flex-wrap gap-2">
-                {filteredTemplates.tags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map((tagName) => (
-                  <Button
-                    label={templateTagsMapping[tagName].label}
-                    variant="tertiary"
-                    key={tagName}
-                    size="xs"
-                    hasMagnifying={false}
-                    onClick={() => scrollToTag(tagName)}
-                  />
-                ))}
+                {filteredTemplates.tags
+                  .sort((a, b) =>
+                    a.toLowerCase().localeCompare(b.toLowerCase())
+                  )
+                  .map((tagName) => (
+                    <Button
+                      label={templateTagsMapping[tagName].label}
+                      variant="tertiary"
+                      key={tagName}
+                      size="xs"
+                      hasMagnifying={false}
+                      onClick={() => scrollToTag(tagName)}
+                    />
+                  ))}
               </div>
             </div>
             <Page.Separator />
