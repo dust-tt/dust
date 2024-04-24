@@ -9,7 +9,7 @@ import * as _ from "lodash";
 import config from "@app/lib/api/config";
 import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -164,7 +164,8 @@ export class CustomerioServerSideTracking {
     const planCode =
       workspace.planCode ??
       (await subscriptionForWorkspace(workspace.sId)).plan.code;
-    const seats = workspace.seats ?? countActiveSeatsInWorkspace(workspace.sId);
+    const seats =
+      workspace.seats ?? countActiveSeatsInWorkspaceCached(workspace.sId);
 
     // Unless the info changes, we only identify a given workspace once per day.
     const rateLimiterKey = `customerio_workspace:${workspace.sId}:${workspace.name}:${planCode}:${seats}`;

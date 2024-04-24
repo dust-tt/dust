@@ -12,7 +12,7 @@ import type {
 import * as _ from "lodash";
 
 import { subscriptionForWorkspaces } from "@app/lib/auth";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
@@ -33,7 +33,9 @@ export class ServerSideTracking {
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats = await countActiveSeatsInWorkspace(workspace.sId);
+            const seats = await countActiveSeatsInWorkspaceCached(
+              workspace.sId
+            );
             return { sId: workspace.sId, seats };
           })
         ),
