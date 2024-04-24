@@ -7,7 +7,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { A } from "@app/components/home/contentComponents";
@@ -551,6 +551,18 @@ export default function Developers({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [currentTab, setCurrentTab] = useState("apps");
+  const router = useRouter();
+  const handleTabChange = async (tabId: string) => {
+    const query = { ...router.query, t: tabId };
+    await router.push({ query });
+  }
+
+  useEffect(() => {
+    if (router.query.t) {
+      setCurrentTab(router.query.t as string);
+    }
+  }
+  , [router.query]);
 
   return (
     <AppLayout
@@ -598,9 +610,9 @@ export default function Developers({
         current: currentTab === "apikeys",
         icon: LockIcon,
         sizing: "expand",
-      }]} setCurrentTab={(tabId, event) => {
+      }]} setCurrentTab={async (tabId, event) => {
         event.preventDefault();
-        setCurrentTab(tabId);
+        await handleTabChange(tabId);
       }} />
 
 {(() => {
