@@ -21,12 +21,12 @@ const backfillCustomerIo = async (execute: boolean) => {
       await Promise.all(
         c.map((u) =>
           Promise.all([
-            CustomerioServerSideTracking.trackUserMemberships({
+            CustomerioServerSideTracking.backfillUser({
               user: u,
             }).catch((err) => {
               logger.error(
                 { userId: u.sId, err },
-                "Failed to track user memberships on Customer.io"
+                "Failed to backfill user on Customer.io"
               );
             }),
             // NOTE: this is unrelated to customerio, but leveraging this backfill

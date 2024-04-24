@@ -131,7 +131,7 @@ async function handler(
       }
 
       await updateDataSourceEditedBy(auth, dataSource);
-      ServerSideTracking.trackDataSourceUpdated({
+      void ServerSideTracking.trackDataSourceUpdated({
         dataSource,
         user: auth.user() ?? undefined,
         workspace: owner,

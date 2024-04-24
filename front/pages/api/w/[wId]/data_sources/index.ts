@@ -173,7 +173,7 @@ async function handler(
 
       const dataSourceType = await getDataSource(auth, ds.name);
       if (dataSourceType) {
-        ServerSideTracking.trackDataSourceCreated({
+        void ServerSideTracking.trackDataSourceCreated({
           user,
           workspace: owner,
           dataSource: dataSourceType,
