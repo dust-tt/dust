@@ -43,13 +43,7 @@ import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -346,39 +340,46 @@ function Suggestions({
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const updateSuggestions = useCallback(async () => {
-    if (!instructions) {
-      return;
-    }
-    setLoading(true);
-    const former_suggestions =
-      suggestions.status === "ok" ? suggestions.suggestions : [];
-
-    const updatedSuggestions = await getUpdatedInstructionsSuggestions({
-      owner,
-      current_instructions: instructions,
-      former_suggestions,
-    });
-    if (updatedSuggestions.isErr()) {
-      setError(updatedSuggestions.error);
-      setLoading(false);
-      return;
-    }
-
-    setSuggestions(updatedSuggestions.value);
-    setError(null);
-    setLoading(false);
-  }, [owner, instructions, suggestions]);
+  const previousInstructions = useRef<string | null>(instructions);
 
   useEffect(() => {
-    if (!instructions) {
+    // update suggestions when (and only when) instructions change
+    if (instructions === previousInstructions.current) {
+      return;
+    }
+    previousInstructions.current = instructions;
+
+    if (!instructions.trim()) {
       setError(null);
       setLoading(false);
       setSuggestions(STATIC_SUGGESTIONS);
+      clearTimeout(debounceHandle.current);
+      return;
     }
 
+    const updateSuggestions = async () => {
+      setLoading(true);
+      const updatedSuggestions = await getUpdatedInstructionsSuggestions({
+        owner,
+        currentInstructions: instructions,
+        formerSuggestions:
+          suggestions.status === "ok"
+            ? suggestions.suggestions.slice(0, 2)
+            : [],
+      });
+      if (updatedSuggestions.isErr()) {
+        setError(updatedSuggestions.error);
+        setLoading(false);
+        return;
+      }
+
+      setSuggestions(updatedSuggestions.value);
+      setError(null);
+      setLoading(false);
+    };
+
     debounce(debounceHandle, updateSuggestions);
-  }, [instructions, updateSuggestions]);
+  }, [instructions, owner, suggestions]);
 
   return (
     <Transition
@@ -475,12 +476,12 @@ function Suggestions({
  */
 async function getUpdatedInstructionsSuggestions({
   owner,
-  current_instructions,
-  former_suggestions,
+  currentInstructions,
+  formerSuggestions,
 }: {
   owner: WorkspaceType;
-  current_instructions: string;
-  former_suggestions: string[];
+  currentInstructions: string;
+  formerSuggestions: string[];
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
   const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
@@ -490,8 +491,8 @@ async function getUpdatedInstructionsSuggestions({
     body: JSON.stringify({
       type: "instructions",
       inputs: {
-        current_instructions: current_instructions,
-        former_suggestions,
+        current_instructions: currentInstructions,
+        former_suggestions: formerSuggestions,
       },
     }),
   });
