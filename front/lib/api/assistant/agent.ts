@@ -1,6 +1,7 @@
 import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
+  AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -11,7 +12,9 @@ import type {
   LightAgentConfigurationType,
   UserMessageType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
 import type { Authenticator } from "@app/lib/auth";
 
@@ -33,15 +36,45 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  // TODO(multi-actions): Implement isLegacyAgent and fork execution here.
-
-  for await (const event of runLegacyAgent(
+  const fullConfiguration = await getAgentConfiguration(
     auth,
-    configuration,
-    conversation,
-    userMessage,
-    agentMessage
-  )) {
-    yield event;
+    configuration.sId
+  );
+  if (!fullConfiguration) {
+    throw new Error(
+      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
+    );
   }
+  if (isLegacyAgent(fullConfiguration)) {
+    for await (const event of runLegacyAgent(
+      auth,
+      fullConfiguration,
+      conversation,
+      userMessage,
+      agentMessage
+    )) {
+      yield event;
+    }
+  } else {
+    throw new Error("Multi-actions agents are not supported yet.");
+  }
+}
+
+// This function returns true if the agent is a "legacy" agent with a forced schedule,
+// i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
+// and every tool is forced at a certain iteration.
+function isLegacyAgent(configuration: AgentConfigurationType): boolean {
+  // TODO(@fontanierh): change once generation is part of actions.
+  const actions = removeNulls([
+    ...configuration.actions,
+    configuration.generation,
+  ]);
+
+  return (
+    configuration.maxToolsUsePerRun <= 2 &&
+    Array.from(Array(configuration.maxToolsUsePerRun).keys()).every((i) =>
+      actions.some((a) => a.forceUseAtIteration === i)
+    ) &&
+    actions.every((a) => a.forceUseAtIteration !== undefined)
+  );
 }
