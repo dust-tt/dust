@@ -4,6 +4,8 @@ import { EmojiData } from "@sparkle/lib/avatar/types";
 
 const EMOJI_URL_REGEXP = /\/emojis\/bg-([^/]*)\/([^/]*)\/([^/.]*)/;
 
+type backgroundColorType = `bg-${string}`;
+
 /**
  * This helper extracts emojis and background color from a Dust url.
  * URL structure is defined as such:
@@ -28,27 +30,27 @@ export function getEmojiAndBackgroundFromUrl(url: string) {
       return null;
     }
 
+    const prefixedBackgroundColor: backgroundColorType = `bg-${backgroundColor}`;
+
     return {
-      backgroundColor,
+      backgroundColor: prefixedBackgroundColor,
       id,
       unified,
-      native: skinEmoji.native,
+      skinEmoji: skinEmoji.native,
     };
   }
 
   return null;
 }
 
-type bgColorType = `bg-${string}`;
-
 export function createEmojiAndBackgroundUrlSuffix({
-  bgColor,
+  backgroundColor,
   id,
   unified,
 }: {
-  bgColor: bgColorType;
+  backgroundColor: backgroundColorType;
   id: string;
   unified: string;
 }) {
-  return `/emojis/${bgColor}/${id}/${unified}`;
+  return `/emojis/${backgroundColor}/${id}/${unified}`;
 }
