@@ -52,5 +52,5 @@ export function createEmojiAndBackgroundUrlSuffix({
   id: string;
   unified: string;
 }) {
-  return `/emojis/${backgroundColor}/${id}/${unified}`;
+  return `emojis/${backgroundColor}/${id}/${unified}`;
 }
