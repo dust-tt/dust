@@ -9,7 +9,7 @@ type backgroundColorType = `bg-${string}`;
 /**
  * This helper extracts emojis and background color from a Dust url.
  * URL structure is defined as such:
- * https://dust.tt/emojis/bg-{backgroundColor}/{id}/{unified}.
+ * https://{host}/emojis/bg-{backgroundColor}/{id}/{unified}.
  */
 export function getEmojiAndBackgroundFromUrl(url: string) {
   const emojiData: EmojiData = data as EmojiData;
