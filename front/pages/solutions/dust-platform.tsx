@@ -53,7 +53,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-export default function RecruitingPeople() {
+export default function DustPlatform() {
   return (
     <>
       <HeaderContentBlock
@@ -173,7 +173,7 @@ export default function RecruitingPeople() {
   );
 }
 
-RecruitingPeople.getLayout = (
+DustPlatform.getLayout = (
   page: ReactElement,
   pageProps: LandingLayoutProps
 ) => {

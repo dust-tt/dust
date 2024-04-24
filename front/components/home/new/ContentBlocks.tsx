@@ -146,66 +146,6 @@ export const HeaderContentBlock = ({
   </Grid>
 );
 
-// interface ConversationProps {
-//   children: ReactNode;
-// }
-
-// export const Conversation = ({ children }: ConversationProps) => {
-//   return <div className="flex flex-col gap-4 ">{children}</div>;
-// };
-
-// interface MessageProps {
-//   children: ReactNode;
-//   visual: string;
-//   type: "user" | "agent";
-//   name: string;
-// }
-
-// const typeClasses = {
-//   user: {
-//     block: "bg-white",
-//     label: " text-slate-700",
-//     content: "text-slate-900",
-//   },
-//   agent: {
-//     block: "bg-sky-700/50 self-end",
-//     label: "text-slate-200",
-//     content: "text-slate-200",
-//   },
-// };
-
-// export const Message = ({ children, visual, type, name }: MessageProps) => {
-//   return (
-//     <div
-//       className={classNames(
-//         "border-box flex w-[80%] w-full flex-col gap-4 rounded-2xl border border-white/10 p-6 pb-8 backdrop-blur-lg",
-//         typeClasses[type].block
-//       )}
-//     >
-//       <div className="flex items-center gap-4">
-//         <Avatar size="md" name={name} visual={visual} />
-//         <div
-//           className={classNames(
-//             "text-lg font-semibold",
-//             typeClasses[type].label
-//           )}
-//         >
-//           {name}
-//         </div>
-//       </div>
-//       <div className="flex flex-col gap-2">{children}</div>
-//     </div>
-//   );
-// };
-
-// interface MessageHandleProps {
-//   children: ReactNode;
-// }
-
-// export const Handle = ({ children }: MessageHandleProps) => {
-//   return <span className="font-semibold text-emerald-400">{children}</span>;
-// };
-
 interface ContentAssistantProps {
   content: ReactNode;
   assistant: ReactNode;

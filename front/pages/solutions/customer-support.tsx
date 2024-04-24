@@ -49,7 +49,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-export default function Content() {
+export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
@@ -155,7 +155,10 @@ export default function Content() {
   );
 }
 
-Content.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+CustomerSupport.getLayout = (
+  page: ReactElement,
+  pageProps: LandingLayoutProps
+) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 

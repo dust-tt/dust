@@ -56,7 +56,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 const defaultHClasses =
   "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
 
-export default function Content() {
+export default function DataAnalytics() {
   return (
     <>
       <HeaderContentBlock
@@ -144,7 +144,10 @@ export default function Content() {
   );
 }
 
-Content.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+DataAnalytics.getLayout = (
+  page: ReactElement,
+  pageProps: LandingLayoutProps
+) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
