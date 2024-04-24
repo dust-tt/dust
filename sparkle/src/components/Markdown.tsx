@@ -32,12 +32,26 @@ function useCopyToClipboard(
 
 const textColor = "s-text-element-900";
 const paragraphSize = "s-text-base";
+const headingSize = {
+  sm: {
+    h1: "s-text-xl s-font-bold",
+    h2: "s-text-xl s-font-regular",
+    h3: "s-text-lg s-font-bold",
+  },
+  md: {
+    h1: "s-text-5xl s-font-semibold",
+    h2: "s-text-4xl s-font-semibold",
+    h3: "s-text-2xl s-font-semibold",
+  },
+};
 
 export function Markdown({
   content,
+  size = "sm",
   className = "",
 }: {
   content: string;
+  size?: "sm" | "md";
   className?: string;
 }) {
   return (
@@ -46,7 +60,8 @@ export function Markdown({
         h1: ({ children }) => (
           <h1
             className={classNames(
-              "s-pb-2 s-pt-4 s-text-5xl s-font-semibold",
+              "s-pb-2 s-pt-4",
+              headingSize[size].h1,
               textColor
             )}
           >
@@ -56,7 +71,8 @@ export function Markdown({
         h2: ({ children }) => (
           <h2
             className={classNames(
-              "s-pb-2 s-pt-4 s-text-4xl s-font-semibold",
+              "s-pb-2 s-pt-4",
+              headingSize[size].h2,
               textColor
             )}
           >
@@ -66,7 +82,8 @@ export function Markdown({
         h3: ({ children }) => (
           <h3
             className={classNames(
-              "s-pb-2 s-pt-4 s-text-2xl s-font-semibold",
+              "s-pb-2 s-pt-4",
+              headingSize[size].h3,
               textColor
             )}
           >
@@ -139,7 +156,7 @@ export function Markdown({
           };
 
           return (
-            <div className="s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
+            <div className="s-my-2 s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
               <blockquote
                 className={classNames(
                   "s-w-full s-italic",
