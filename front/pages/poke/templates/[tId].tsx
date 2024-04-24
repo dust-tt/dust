@@ -198,7 +198,7 @@ function SelectField({
                 <div className="bg-slate-100">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
-                      {option.display ? option.display : option.value}
+                      {option.display ?? option.value}
                     </PokeSelectItem>
                   ))}
                 </div>
