@@ -147,7 +147,9 @@ async function deleteDataSource(
 
   try {
     const r = await fetch(
-      `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceName}`,
+      `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
+        dataSourceName
+      )}`,
       {
         method: "DELETE",
         headers: {
