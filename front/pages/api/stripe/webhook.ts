@@ -24,6 +24,7 @@ import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
@@ -237,8 +238,7 @@ async function handler(
               );
               await ServerSideTracking.trackSubscriptionCreated({
                 userId,
-                workspaceName: workspace.name,
-                workspaceId: workspace.sId,
+                workspace: renderLightWorkspaceType({ workspace }),
                 planCode,
                 workspaceSeats,
               });

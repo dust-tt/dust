@@ -31,6 +31,7 @@ import {
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
   isDustAppRunConfiguration,
+  isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   removeNulls,
@@ -301,6 +302,8 @@ export default function AssistantBuilder({
       actionMode = "DUST_APP_RUN";
     } else if (isTablesQueryConfiguration(action)) {
       actionMode = "TABLES_QUERY";
+    } else if (isProcessConfiguration(action)) {
+      // not supported in the builder yet
     }
 
     if (actionMode !== null) {

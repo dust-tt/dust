@@ -58,7 +58,7 @@ export function AssistantTemplateModal({
       variant="side-md"
     >
       <Page variant="modal">
-        <div className="flex h-full flex-col gap-5 pb-6">
+        <div className="flex flex-col gap-5 pb-6">
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
             <Avatar
               emoji={emoji}

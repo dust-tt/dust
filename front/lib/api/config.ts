@@ -33,6 +33,15 @@ const config = {
   getGaTrackingId: (): string => {
     return EnvironmentConfig.getEnvVariable("GA_TRACKING_ID");
   },
+  getCustomerIoSiteId: (): string => {
+    return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
+  },
+  getCustomerIoApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("CUSTOMERIO_API_KEY");
+  },
+  getCustomerIoEnabled: (): boolean => {
+    return EnvironmentConfig.getEnvVariable("CUSTOMERIO_ENABLED") === "true";
+  },
 };
 
 export default config;
