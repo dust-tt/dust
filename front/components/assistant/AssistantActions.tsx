@@ -196,7 +196,7 @@ export function RemoveAssistantFromWorkspaceDialog({
             status: "active",
             scope: "published",
             actions: detailedConfiguration.actions,
-            generation: agentConfiguration.generation,
+            generation: detailedConfiguration.generation,
           },
         };
 

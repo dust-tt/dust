@@ -1,29 +1,85 @@
+import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
+
 /**
- * Supported models
+ * PROVIDER IDS
  */
 
-import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
+export const MODEL_PROVIDER_IDS = [
+  "openai",
+  "anthropic",
+  "mistral",
+  "google_ai_studio",
+] as const;
+export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
+
+export const isModelProviderId = (
+  providerId: unknown
+): providerId is ModelProviderIdType =>
+  MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
+
+/**
+ * MODEL IDS
+ */
 
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
+export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
+export const CLAUDE_3_SONNET_2024029_MODEL_ID =
+  "claude-3-sonnet-20240229" as const;
+export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
+  "claude-3-haiku-20240307" as const;
+export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
+export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
+export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
+export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
+export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 
-const GPT_4_DESCRIPTION =
-  "OpenAI's most powerful and recent model (128k context).";
-const GPT_4_SHORT_DESCRIPTION = "OpenAI's smartest model.";
+export const MODEL_IDS = [
+  GPT_4_TURBO_MODEL_ID,
+  GPT_3_5_TURBO_MODEL_ID,
+  CLAUDE_3_OPUS_2024029_MODEL_ID,
+  CLAUDE_3_SONNET_2024029_MODEL_ID,
+  CLAUDE_3_HAIKU_20240307_MODEL_ID,
+  CLAUDE_2_1_MODEL_ID,
+  CLAUDE_INSTANT_1_2_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_MODEL_ID,
+  MISTRAL_SMALL_MODEL_ID,
+  GEMINI_1_5_PRO_LATEST_MODEL_ID,
+] as const;
+export type ModelIdType = (typeof MODEL_IDS)[number];
 
-export const GPT_4_TURBO_MODEL_CONFIG = {
-  providerId: "openai" as const,
+export const isModelId = (modelId: unknown): modelId is ModelIdType =>
+  MODEL_IDS.includes(modelId as ModelIdType);
+
+/**
+ * MODEL CONFIGURATIONS
+ */
+
+export type ModelConfigurationType = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  displayName: string;
+  contextSize: number;
+  recommendedTopK: number;
+  largeModel: boolean;
+  description: string;
+  shortDescription: string;
+};
+
+export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
   modelId: GPT_4_TURBO_MODEL_ID,
   displayName: "GPT 4 Turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
   largeModel: true,
-  description: GPT_4_DESCRIPTION,
-  shortDescription: GPT_4_SHORT_DESCRIPTION,
+  description: "OpenAI's most powerful and recent model (128k context).",
+  shortDescription: "OpenAI's smartest model.",
 };
-
-export const GPT_3_5_TURBO_MODEL_CONFIG = {
-  providerId: "openai" as const,
+export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
   displayName: "GPT 3.5 Turbo",
   contextSize: 16_384,
@@ -32,18 +88,10 @@ export const GPT_3_5_TURBO_MODEL_CONFIG = {
   description:
     "OpenAI's cost-effective and high throughput model (16k context).",
   shortDescription: "OpenAI's fast model.",
-} as const;
+};
 
-export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
-export const CLAUDE_3_SONNET_2024029_MODEL_ID =
-  "claude-3-sonnet-20240229" as const;
-export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
-  "claude-3-haiku-20240307" as const;
-export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
-export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
-
-export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG = {
-  providerId: "anthropic" as const,
+export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
   displayName: "Claude 3 Opus",
   contextSize: 180_000,
@@ -52,10 +100,9 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG = {
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
-} as const;
-
-export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG = {
-  providerId: "anthropic" as const,
+};
+export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
   modelId: CLAUDE_3_SONNET_2024029_MODEL_ID,
   displayName: "Claude 3 Sonnet",
   contextSize: 180_000,
@@ -64,10 +111,9 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG = {
   description:
     "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
   shortDescription: "Anthropic's balanced model.",
-} as const;
-
-export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG = {
-  providerId: "anthropic" as const,
+};
+export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
   displayName: "Claude 3 Haiku",
   contextSize: 180_000,
@@ -76,10 +122,9 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG = {
   description:
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
   shortDescription: "Anthropic's quick model.",
-} as const;
-
-export const CLAUDE_2_DEFAULT_MODEL_CONFIG = {
-  providerId: "anthropic" as const,
+};
+export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
   modelId: CLAUDE_2_1_MODEL_ID,
   displayName: "Claude 2.1",
   contextSize: 180_000,
@@ -87,10 +132,9 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG = {
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's smartest model.",
-} as const;
-
-export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
-  providerId: "anthropic" as const,
+};
+export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
   modelId: CLAUDE_INSTANT_1_2_MODEL_ID,
   displayName: "Claude Instant 1.2",
   contextSize: 90_000,
@@ -99,14 +143,10 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG = {
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
   shortDescription: "Anthropic's fast model.",
-} as const;
+};
 
-export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
-export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
-export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
-
-export const MISTRAL_LARGE_MODEL_CONFIG = {
-  providerId: "mistral" as const,
+export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
   modelId: MISTRAL_LARGE_MODEL_ID,
   displayName: "Mistral Large",
   contextSize: 32_000,
@@ -114,10 +154,9 @@ export const MISTRAL_LARGE_MODEL_CONFIG = {
   largeModel: true,
   description: "Mistral's latest `large` model (32k context).",
   shortDescription: "Mistral's large model.",
-} as const;
-
-export const MISTRAL_MEDIUM_MODEL_CONFIG = {
-  providerId: "mistral" as const,
+};
+export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
   modelId: MISTRAL_MEDIUM_MODEL_ID,
   displayName: "Mistral Medium",
   contextSize: 32_000,
@@ -125,10 +164,9 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG = {
   largeModel: true,
   description: "Mistral's latest `medium` model (32k context).",
   shortDescription: "Mistral's smartest model.",
-} as const;
-
-export const MISTRAL_SMALL_MODEL_CONFIG = {
-  providerId: "mistral" as const,
+};
+export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
   modelId: MISTRAL_SMALL_MODEL_ID,
   displayName: "Mistral Small",
   contextSize: 32_000,
@@ -136,12 +174,10 @@ export const MISTRAL_SMALL_MODEL_CONFIG = {
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
-} as const;
+};
 
-const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
-
-export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
-  providerId: "google_ai_studio" as const,
+export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
   modelId: GEMINI_1_5_PRO_LATEST_MODEL_ID,
   displayName: "Gemini Pro 1.5",
   contextSize: 1_000_000,
@@ -150,9 +186,9 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG = {
   description:
     "Google's best model for scaling across a wide range of tasks (1M context).",
   shortDescription: "Google's smartest model.",
-} as const;
+};
 
-export const SUPPORTED_MODEL_CONFIGS = [
+export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
@@ -164,7 +200,7 @@ export const SUPPORTED_MODEL_CONFIGS = [
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
-] as const;
+];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
