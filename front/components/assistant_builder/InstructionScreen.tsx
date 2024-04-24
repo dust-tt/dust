@@ -351,17 +351,24 @@ function Suggestions({
       return;
     }
     setLoading(true);
-    const suggestions = await getInstructionsSuggestions(owner, instructions);
-    if (suggestions.isErr()) {
-      setError(suggestions.error);
+    const former_suggestions =
+      suggestions.status === "ok" ? suggestions.suggestions : [];
+
+    const updatedSuggestions = await getUpdatedInstructionsSuggestions({
+      owner,
+      current_instructions: instructions,
+      former_suggestions,
+    });
+    if (updatedSuggestions.isErr()) {
+      setError(updatedSuggestions.error);
       setLoading(false);
       return;
     }
 
-    setSuggestions(suggestions.value);
+    setSuggestions(updatedSuggestions.value);
     setError(null);
     setLoading(false);
-  }, [owner, instructions]);
+  }, [owner, instructions, suggestions]);
 
   useEffect(() => {
     if (!instructions) {
@@ -462,10 +469,19 @@ function Suggestions({
   );
 }
 
-async function getInstructionsSuggestions(
-  owner: WorkspaceType,
-  instructions: string
-): Promise<Result<BuilderSuggestionsType, APIError>> {
+/* Return a list of suggestions:
+ * - empty array if the instructions are good;
+ * - otherwise, former suggestions + 2 new suggestions, ranked by order of relevance.
+ */
+async function getUpdatedInstructionsSuggestions({
+  owner,
+  current_instructions,
+  former_suggestions,
+}: {
+  owner: WorkspaceType;
+  current_instructions: string;
+  former_suggestions: string[];
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
   const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
     headers: {
@@ -473,7 +489,10 @@ async function getInstructionsSuggestions(
     },
     body: JSON.stringify({
       type: "instructions",
-      inputs: { current_instructions: instructions },
+      inputs: {
+        current_instructions: current_instructions,
+        former_suggestions,
+      },
     }),
   });
   if (!res.ok) {

@@ -44,7 +44,10 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   }),
   t.type({
     type: t.literal("instructions"),
-    inputs: t.type({ current_instructions: t.string }),
+    inputs: t.type({
+      current_instructions: t.string,
+      former_suggestions: t.array(t.string),
+    }),
   }),
   t.type({
     type: t.literal("description"),
