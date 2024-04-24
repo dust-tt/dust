@@ -42,6 +42,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   isLoading?: boolean;
   facets?: Facet[];
+  pageSize?: number;
 }
 
 export function PokeDataTable<TData, TValue>({
@@ -49,6 +50,7 @@ export function PokeDataTable<TData, TValue>({
   data,
   facets,
   isLoading,
+  pageSize = 10,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -67,6 +69,11 @@ export function PokeDataTable<TData, TValue>({
     state: {
       columnFilters,
       sorting,
+    },
+    initialState: {
+      pagination: {
+        pageSize,
+      },
     },
   });
 
