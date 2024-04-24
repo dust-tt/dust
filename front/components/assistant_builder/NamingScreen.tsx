@@ -23,7 +23,7 @@ import React, {
   useState,
 } from "react";
 
-import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
+import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -259,6 +259,7 @@ export default function NamingScreen({
         }}
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
+        avatarUrl={builderState.avatarUrl}
       />
 
       <div className="flex w-full flex-col gap-5">
