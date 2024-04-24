@@ -340,6 +340,8 @@ function Suggestions({
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  // the ref allows comparing previous instructions to current instructions
+  // in the effect below
   const previousInstructions = useRef<string | null>(instructions);
 
   useEffect(() => {
