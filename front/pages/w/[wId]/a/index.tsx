@@ -1,4 +1,4 @@
-import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
+import { Button, CommandLineIcon, LockIcon,Page, PlusIcon, ShapesIcon,Tab } from "@dust-tt/sparkle";
 import type { KeyType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
@@ -117,7 +117,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       />
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
-          {keys.map((key) => (
+          {keys.sort((a, b) => b.status === 'active' ? 1 : -1).map((key) => (
             <li key={key.secret} className="px-2 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
@@ -469,44 +469,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-export default function Developers({
-  owner,
-  subscription,
-  apps,
-  gaTrackingId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function Apps({ apps, owner }: { apps: AppType[], owner: WorkspaceType }) {
   const router = useRouter();
-
   return (
-    <AppLayout
-      subscription={subscription}
-      owner={owner}
-      gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
-    >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Developers Tools"
-          icon={CommandLineIcon}
-          description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
-        />
-        <Page.P variant="secondary">
-          You can access Dust's services{" "}
-          <A>
-            <Link href="https://docs.dust.tt">through our API.</Link>
-          </A>{" "}
-          Our code is open source and available on{" "}
-          <A>
-            <Link href="https://github.com/dust-tt">GitHub.</Link>
-          </A>
-        </Page.P>
-        <Page.SectionHeader
-          title="Apps"
-          description="Your Large Language Model apps."
+    <Page.Vertical align="stretch">
+    <Page.SectionHeader
+          title="Dust Apps"
+          description="Create and manage your custom Large Language Models apps."
           action={{
             label: "Create App",
             variant: "primary",
@@ -516,8 +485,7 @@ export default function Developers({
             icon: PlusIcon,
           }}
         />
-
-        <ul role="list" className="pt-4">
+    <ul role="list" className="pt-4">
           {apps.map((app) => (
             <li key={app.sId} className="px-2">
               <div className="py-4">
@@ -571,8 +539,82 @@ export default function Developers({
             </div>
           ) : null}
         </ul>
-        <Providers owner={owner} />
-        <APIKeys owner={owner} />
+        </Page.Vertical>
+  )
+}
+
+
+export default function Developers({
+  owner,
+  subscription,
+  apps,
+  gaTrackingId,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [currentTab, setCurrentTab] = useState("apps");
+
+  return (
+    <AppLayout
+      subscription={subscription}
+      owner={owner}
+      gaTrackingId={gaTrackingId}
+      topNavigationCurrent="assistants"
+      subNavigation={subNavigationBuild({
+        owner,
+        current: "developers",
+      })}
+    >
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Developers Tools"
+          icon={CommandLineIcon}
+          description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
+        />
+        <Page.P variant="secondary">
+          You can access Dust's services{" "}
+          <A>
+            <Link href="https://docs.dust.tt">through our API.</Link>
+          </A>{" "}
+          Our code is open source and available on{" "}
+          <A>
+            <Link href="https://github.com/dust-tt">GitHub.</Link>
+          </A>
+        </Page.P>
+
+<Tab tabs={[{
+        label: "My Apps",
+        id: "apps",
+        current: currentTab === "apps",
+        icon: CommandLineIcon,
+        sizing: "expand"
+      }, {
+        label: "Providers",
+        id: "providers",
+        current: currentTab === "providers",
+        icon: ShapesIcon,
+        sizing: "expand",
+      }, {
+        label: "API Keys",
+        id: "apikeys",
+        current: currentTab === "apikeys",
+        icon: LockIcon,
+        sizing: "expand",
+      }]} setCurrentTab={(tabId, event) => {
+        event.preventDefault();
+        setCurrentTab(tabId);
+      }} />
+
+{(() => {
+  switch (currentTab) {
+    case 'apps':
+      return <Apps apps={apps} owner={owner} />;
+    case 'providers':
+      return <Providers owner={owner} />;
+    case 'apikeys':
+      return <APIKeys owner={owner} />;
+    default:
+      return null;
+  }
+})()}
       </Page.Vertical>
     </AppLayout>
   );
