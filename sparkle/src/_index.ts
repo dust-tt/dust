@@ -1,6 +1,9 @@
 import { SparkleContext } from "./context";
 export { SparkleContext };
 
+import * as avatarUtils from "./lib/avatar/utils";
+export { avatarUtils };
+
 import { Div3D, Hover3D } from "./components/Hover3D";
 export { Div3D, Hover3D };
 

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import { User } from "@sparkle/icons/solid";
+import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
@@ -127,6 +128,16 @@ export function Avatar({
       : "";
 
   const busyStyles = busy ? "s-animate-breathing s-cursor-default" : "";
+
+  // TODO: Improve to avoid mutating props.
+  const emojiInfos =
+    typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
+  if (emojiInfos) {
+    visual = null;
+
+    backgroundColor = emojiInfos.backgroundColor;
+    emoji = emojiInfos.skinEmoji;
+  }
 
   const avatarClass = classNames(
     sizeClasses[size],
