@@ -326,10 +326,7 @@ export default function NamingScreen({
             </div>
           </div>
           <div className="flex flex-col items-center space-y-2">
-            <Avatar
-              size="xl"
-              visual={<img src={builderState.avatarUrl || ""} />}
-            />
+            <Avatar size="xl" visual={builderState.avatarUrl} />
             <Button
               labelVisible={true}
               label={"Change"}

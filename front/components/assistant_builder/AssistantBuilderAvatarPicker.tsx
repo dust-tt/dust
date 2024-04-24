@@ -215,7 +215,7 @@ export function AvatarPicker({
                     onClose();
                   }}
                 >
-                  <Avatar size="auto" visual={<img src={url} />} />
+                  <Avatar size="auto" visual={url} />
                 </div>
               ))}
             </div>

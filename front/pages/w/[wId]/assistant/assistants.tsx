@@ -173,7 +173,7 @@ function ScopeSection({
           key={agent.sId}
           title={`@${agent.name}`}
           subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
-          visual={<Avatar visual={<img src={agent.pictureUrl} />} size="md" />}
+          visual={<Avatar visual={agent.pictureUrl} size="md" />}
           onClick={onAssistantClick(agent)}
         >
           <ContextItem.Description>
