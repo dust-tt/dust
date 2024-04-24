@@ -142,7 +142,7 @@ const iconColorTable = {
 };
 
 interface PriceTableItemProps {
-  label: string;
+  label: ReactNode;
   size?: "xs" | "sm";
   variant?: "check" | "dash" | "xmark";
   className?: string;
