@@ -107,7 +107,7 @@ export function Markdown({
         ul: ({ children }) => (
           <ul
             className={classNames(
-              "s-list-disc s-py-1 s-pl-8 first:s-pt-0 last:s-pb-0",
+              "s-list-disc s-py-1 s-pl-7 first:s-pt-0 last:s-pb-0",
               textColor,
               paragraphSize
             )}
@@ -118,7 +118,7 @@ export function Markdown({
         ol: ({ children }) => (
           <ol
             className={classNames(
-              "s-list-decimal s-py-1 s-pl-8 first:s-pt-0 last:s-pb-0",
+              "s-list-decimal s-py-1 s-pl-6 first:s-pt-0 last:s-pb-0",
               textColor,
               paragraphSize
             )}
@@ -129,7 +129,7 @@ export function Markdown({
         li: ({ children }) => (
           <li
             className={classNames(
-              "first:s-pt-0 last:s-pb-0",
+              "s-py-1 s-pl-1 first:s-pt-0 last:s-pb-0",
               textColor,
               paragraphSize
             )}
@@ -137,6 +137,7 @@ export function Markdown({
             {children}
           </li>
         ),
+        hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
         blockquote: ({ children }) => {
           const [isCopied, copyToClipboard] = useCopyToClipboard();
 
