@@ -1,7 +1,16 @@
-import { Button, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import {
+  AttachmentIcon,
+  Button,
+  Hoverable,
+  Icon,
+  Markdown,
+  Modal,
+  PriceTable,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
-import React from "react";
+import React, { useState } from "react";
 
 import {
   getPriceWithCurrency,
@@ -53,8 +62,13 @@ const PRO_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited messages",
+    label: "Unlimited messages (Fair use limits apply)",
     variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Limited Programmatic usage (API)",
+    variant: "dash",
     display: ["landing", "subscribe"],
   },
   {
@@ -117,6 +131,11 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
   {
     label: "Unlimited messages",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Custom programmatic usage (API)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -261,6 +280,22 @@ function EnterprisePriceTable({
   );
 }
 
+const FAIR_USE_CONTENT = `
+# Fair use principles
+**Dust Pro** is designed company setting and team use
+of AI. It is not designed as a model wrapper for programatic usage.
+
+**Dust Enterprise** provides programatic usage (though
+API), with custom prices.
+# What is "unfair" usage?
+Is considered "Unfair" usage:
+- Sharing single seat between multiple people.
+- Using Dust programmatically at a large scale on a Pro plan.
+# "Fair use" limitations
+The following "Fair use" limitations are in place:
+For Pro plans a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
+`;
+
 export function PricePlans({
   size = "sm",
   isTabs = false,
@@ -272,89 +307,113 @@ export function PricePlans({
   isProcessing,
   display,
 }: PricePlanProps) {
+  const [isRightSideModalOpen, setIsRightSideModalOpen] = useState(false);
+  const fairUseModal = (
+    <Modal
+      isOpen={isRightSideModalOpen}
+      onClose={() => setIsRightSideModalOpen(false)}
+      hasChanged={false}
+      variant="side-sm"
+      title="Dust's Fair Use Policy"
+    >
+      <div className="flex flex-col items-start py-8">
+        <Icon visual={AttachmentIcon} size="lg" className="text-emerald-500" />
+        <Markdown content={FAIR_USE_CONTENT} size="sm" />
+      </div>
+    </Modal>
+  );
   if (isTabs) {
     return (
-      <div
-        className={classNames(
-          "mx-0 sm:mx-24",
-          "w-full max-w-md px-2 py-16 sm:px-0",
-          className
-        )}
-      >
-        <Tab.Group>
-          <Tab.List
-            className={classNames(
-              "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "s-border-structure-300/30 s-bg-white/80",
-              "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
-            )}
-          >
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
-                )
-              }
+      <>
+        {fairUseModal}
+        <div
+          className={classNames(
+            "mx-0 sm:mx-24",
+            "w-full max-w-md px-2 py-16 sm:px-0",
+            className
+          )}
+        >
+          <Tab.Group>
+            <Tab.List
+              className={classNames(
+                "flex space-x-1 rounded-full border p-1 backdrop-blur",
+                "s-border-structure-300/30 s-bg-white/80",
+                "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+              )}
             >
-              Pro
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
-                )
-              }
-            >
-              Enterprise
-            </Tab>
-          </Tab.List>
-          <Tab.Panels className="mt-8">
-            <Tab.Panel>
-              <ProPriceTable
-                display={display}
-                size={size}
-                plan={plan}
-                isProcessing={isProcessing}
-                onClick={onClickProPlan}
-              />
-            </Tab.Panel>
-            <Tab.Panel>
-              <EnterprisePriceTable
-                size={size}
-                isProcessing={isProcessing}
-                onClick={onClickEnterprisePlan}
-              />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
-      </div>
+              <Tab
+                className={({ selected }) =>
+                  classNames(
+                    "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                    "py-3 text-lg",
+                    "ring-0 focus:outline-none",
+                    selected
+                      ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
+                      : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                  )
+                }
+              >
+                Pro
+              </Tab>
+              <Tab
+                className={({ selected }) =>
+                  classNames(
+                    "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                    "py-3 text-lg",
+                    "ring-0 focus:outline-none",
+                    selected
+                      ? "bg-pink-400 text-white shadow dark:bg-pink-500"
+                      : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                  )
+                }
+              >
+                Enterprise
+              </Tab>
+            </Tab.List>
+            <Tab.Panels className="mt-8">
+              <Tab.Panel>
+                <ProPriceTable
+                  display={display}
+                  size={size}
+                  plan={plan}
+                  isProcessing={isProcessing}
+                  onClick={onClickProPlan}
+                />
+              </Tab.Panel>
+              <Tab.Panel>
+                <EnterprisePriceTable
+                  size={size}
+                  isProcessing={isProcessing}
+                  onClick={onClickEnterprisePlan}
+                />
+              </Tab.Panel>
+            </Tab.Panels>
+          </Tab.Group>
+        </div>
+      </>
     );
   } else {
     return (
-      <div className={classNames(flexCSS, className)}>
-        <ProPriceTable
-          size={size}
-          plan={plan}
-          isProcessing={isProcessing}
-          onClick={onClickProPlan}
-          display={display}
-        />
-        <EnterprisePriceTable
-          size={size}
-          isProcessing={isProcessing}
-          onClick={onClickEnterprisePlan}
-        />
-      </div>
+      <>
+        {fairUseModal}
+        <div className={classNames(flexCSS, className)}>
+          <Hoverable onClick={() => setIsRightSideModalOpen(true)}>
+            MODALTEST
+          </Hoverable>
+          <ProPriceTable
+            size={size}
+            plan={plan}
+            isProcessing={isProcessing}
+            onClick={onClickProPlan}
+            display={display}
+          />
+          <EnterprisePriceTable
+            size={size}
+            isProcessing={isProcessing}
+            onClick={onClickEnterprisePlan}
+          />
+        </div>
+      </>
     );
   }
 }
