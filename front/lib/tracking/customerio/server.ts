@@ -230,6 +230,7 @@ export class CustomerioServerSideTracking {
         first_name: user.firstName,
         last_name: user.lastName,
         created_at: user.createdAt,
+        id: user.sId,
       },
     };
 
