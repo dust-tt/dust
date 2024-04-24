@@ -229,7 +229,7 @@ export class CustomerioServerSideTracking {
         email: user.email,
         first_name: user.firstName,
         last_name: user.lastName,
-        created_at: user.createdAt,
+        created_at: Math.floor(user.createdAt / 1000),
         id: user.sId,
       },
     };
