@@ -14,6 +14,7 @@ export const ACTION_MODES = [
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
   "TABLES_QUERY",
+  "PROCESS",
 ] as const;
 
 export type ActionMode = (typeof ACTION_MODES)[number];

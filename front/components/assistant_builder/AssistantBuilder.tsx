@@ -813,10 +813,37 @@ export async function submitAssistantBuilderForm({
       }
       break;
 
+    case "PROCESS":
+      actionParam = {
+        type: "process_configuration",
+        relativeTimeFrame: {
+          duration: builderState.timeFrame.value,
+          unit: builderState.timeFrame.unit,
+        },
+        dataSources: Object.values(builderState.dataSourceConfigurations).map(
+          ({ dataSource, selectedResources, isSelectAll }) => ({
+            dataSourceId: dataSource.name,
+            workspaceId: owner.sId,
+            filter: {
+              parents: !isSelectAll
+                ? {
+                    in: selectedResources.map(
+                      (resource) => resource.internalId
+                    ),
+                    not: [],
+                  }
+                : null,
+              tags: null,
+            },
+          })
+        ),
+        // TODO(spolu): builderState schema
+        schema: [],
+      };
+      break;
+
     default:
-      ((x: never) => {
-        throw new Error(`Unknown data source mode ${x}`);
-      })(builderState.actionMode);
+      assertNever(builderState.actionMode);
   }
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
