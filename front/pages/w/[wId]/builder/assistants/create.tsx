@@ -212,51 +212,64 @@ export default function CreateAssistant({
     >
       <div id="pageContent">
         <Page variant="modal">
-          <Page.Header title="Start new" icon={PencilSquareIcon} />
-          <div className="pb-6">
-            <Link href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}>
-              <Button icon={DocumentIcon} label="New Assistant" size="md" />
-            </Link>
-          </div>
-          <Page.Separator />
-          <Page.Header title="Start from a template" icon={MagicIcon} />
-          <div className="flex flex-col gap-4">
-            <Searchbar
-              placeholder="Search templates"
-              name="input"
-              value={templateSearchTerm}
-              onChange={handleSearch}
-              size="md"
-            />
-            <div className="flex flex-row flex-wrap gap-2">
-              {filteredTemplates.tags.map((tagName) => (
-                <Button
-                  label={templateTagsMapping[tagName].label}
-                  variant="tertiary"
-                  key={tagName}
-                  size="xs"
-                  hasMagnifying={false}
-                  onClick={() => scrollToTag(tagName)}
-                />
-              ))}
+          <div className="flex flex-col gap-6 pt-9">
+            <div className="flex min-h-[20vh] flex-col justify-end gap-6">
+              <Page.Header title="Start new" icon={PencilSquareIcon} />
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
+              >
+                <Button icon={DocumentIcon} label="New Assistant" size="md" />
+              </Link>
             </div>
-          </div>
-          <Page.Separator />
-          <div className="flex flex-col pb-56">
-            {filteredTemplates.tags.map((tagName) => {
-              const templatesForTag = filteredTemplates.templates.filter(
-                (item) => item.tags.includes(tagName)
-              );
-              return (
-                <div key={tagName} ref={tagsRefsMap.current[tagName]}>
-                  <ContextItem.SectionHeader
-                    title={templateTagsMapping[tagName].label}
-                    hasBorder={false}
+            <Page.Separator />
+
+            <Page.Header title="Start from a template" icon={MagicIcon} />
+            <div className="flex flex-col gap-6">
+              <Searchbar
+                placeholder="Search templates"
+                name="input"
+                value={templateSearchTerm}
+                onChange={handleSearch}
+                size="md"
+              />
+              <div className="flex flex-row flex-wrap gap-2">
+                {filteredTemplates.tags.map((tagName) => (
+                  <Button
+                    label={templateTagsMapping[tagName].label}
+                    variant="tertiary"
+                    key={tagName}
+                    size="xs"
+                    hasMagnifying={false}
+                    onClick={() => scrollToTag(tagName)}
                   />
-                  <TemplateGrid templates={templatesForTag} />
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            </div>
+            <Page.Separator />
+            <div className="flex flex-col pb-56">
+              {templateSearchTerm?.length ? (
+                <>
+                  <TemplateGrid templates={filteredTemplates.templates} />
+                </>
+              ) : (
+                <>
+                  {filteredTemplates.tags.map((tagName) => {
+                    const templatesForTag = filteredTemplates.templates.filter(
+                      (item) => item.tags.includes(tagName)
+                    );
+                    return (
+                      <div key={tagName} ref={tagsRefsMap.current[tagName]}>
+                        <ContextItem.SectionHeader
+                          title={templateTagsMapping[tagName].label}
+                          hasBorder={false}
+                        />
+                        <TemplateGrid templates={templatesForTag} />
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
           </div>
         </Page>
         <AssistantTemplateModal
