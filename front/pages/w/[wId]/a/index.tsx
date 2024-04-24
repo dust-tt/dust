@@ -1,4 +1,12 @@
-import { Button, CommandLineIcon, Page, PlusIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  CommandLineIcon,
+  LockIcon,
+  Page,
+  PlusIcon,
+  ShapesIcon,
+  Tab,
+} from "@dust-tt/sparkle";
 import type { KeyType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
@@ -7,7 +15,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { A } from "@app/components/home/contentComponents";
@@ -117,85 +125,90 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       />
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
-          {keys.map((key) => (
-            <li key={key.secret} className="px-2 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <p
-                        className={classNames(
-                          "font-mono truncate text-sm text-slate-700"
-                        )}
-                      >
-                        {isRevealed[key.secret] ? (
-                          <>
-                            {key.secret}
-                            {key.status == "active" ? (
-                              <EyeSlashIcon
-                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                onClick={() => {
-                                  setIsRevealed({
-                                    ...isRevealed,
-                                    [key.secret]: false,
-                                  });
-                                }}
-                              />
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
-                            sk-...{key.secret.slice(-5)}
-                            {key.status == "active" ? (
-                              <EyeIcon
-                                className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                onClick={() => {
-                                  setIsRevealed({
-                                    ...isRevealed,
-                                    [key.secret]: true,
-                                  });
-                                }}
-                              />
-                            ) : null}
-                          </>
-                        )}
-                      </p>
-                      <div className="ml-2 mt-0.5 flex flex-shrink-0">
+          {keys
+            .sort((a, b) => (b.status === "active" ? 1 : -1))
+            .map((key) => (
+              <li key={key.secret} className="px-2 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex flex-col">
+                      <div className="flex flex-row">
                         <p
                           className={classNames(
-                            "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                            key.status === "active"
-                              ? "bg-green-100 text-green-800"
-                              : "ml-6 bg-gray-100 text-gray-800"
+                            "font-mono truncate text-sm text-slate-700"
                           )}
                         >
-                          {key.status === "active" ? "active" : "revoked"}
+                          {isRevealed[key.secret] ? (
+                            <>
+                              {key.secret}
+                              {key.status == "active" ? (
+                                <EyeSlashIcon
+                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                                  onClick={() => {
+                                    setIsRevealed({
+                                      ...isRevealed,
+                                      [key.secret]: false,
+                                    });
+                                  }}
+                                />
+                              ) : null}
+                            </>
+                          ) : (
+                            <>
+                              sk-...{key.secret.slice(-5)}
+                              {key.status == "active" ? (
+                                <EyeIcon
+                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
+                                  onClick={() => {
+                                    setIsRevealed({
+                                      ...isRevealed,
+                                      [key.secret]: true,
+                                    });
+                                  }}
+                                />
+                              ) : null}
+                            </>
+                          )}
                         </p>
+                        <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                          <p
+                            className={classNames(
+                              "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                              key.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "ml-6 bg-gray-100 text-gray-800"
+                            )}
+                          >
+                            {key.status === "active" ? "active" : "revoked"}
+                          </p>
+                        </div>
                       </div>
+                      <p className="front-normal text-xs text-element-700">
+                        Created {key.creator ? `by ${key.creator} ` : ""}
+                        {timeAgoFrom(key.createdAt, {
+                          useLongFormat: true,
+                        })}{" "}
+                        ago.
+                      </p>
                     </div>
-                    <p className="front-normal text-xs text-element-700">
-                      Created {key.creator ? `by ${key.creator} ` : ""}
-                      {timeAgoFrom(key.createdAt, { useLongFormat: true })} ago.
-                    </p>
                   </div>
+                  {key.status === "active" ? (
+                    <div>
+                      <Button
+                        variant="secondaryWarning"
+                        disabled={
+                          key.status != "active" || isRevoking || isGenerating
+                        }
+                        onClick={async () => {
+                          await handleRevoke(key);
+                        }}
+                        label="Revoke"
+                      />
+                    </div>
+                  ) : null}
                 </div>
-                {key.status === "active" ? (
-                  <div>
-                    <Button
-                      variant="secondaryWarning"
-                      disabled={
-                        key.status != "active" || isRevoking || isGenerating
-                      }
-                      onClick={async () => {
-                        await handleRevoke(key);
-                      }}
-                      label="Revoke"
-                    />
-                  </div>
-                ) : null}
-              </div>
-            </li>
-          ))}
+              </li>
+            ))}
         </ul>
       </div>
     </>
@@ -469,13 +482,98 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 }
 
+function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
+  const router = useRouter();
+  return (
+    <Page.Vertical align="stretch">
+      <Page.SectionHeader
+        title="Dust Apps"
+        description="Create and manage your custom Large Language Models apps."
+        action={{
+          label: "Create App",
+          variant: "primary",
+          onClick: async () => {
+            void router.push(`/w/${owner.sId}/a/new`);
+          },
+          icon: PlusIcon,
+        }}
+      />
+      <ul role="list" className="pt-4">
+        {apps.map((app) => (
+          <li key={app.sId} className="px-2">
+            <div className="py-4">
+              <div className="flex items-center justify-between">
+                <Link href={`/w/${owner.sId}/a/${app.sId}`} className="block">
+                  <p className="truncate text-base font-bold text-action-600">
+                    {app.name}
+                  </p>
+                </Link>
+                <div className="ml-2 flex flex-shrink-0">
+                  <p
+                    className={classNames(
+                      "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                      app.visibility == "public"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-800"
+                    )}
+                  >
+                    {app.visibility}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 sm:flex sm:justify-between">
+                <div className="sm:flex">
+                  <p className="flex items-center text-sm text-gray-700">
+                    {app.description}
+                  </p>
+                </div>
+                <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
+                  <p>{app.sId}</p>
+                </div>
+              </div>
+            </div>
+          </li>
+        ))}
+        {apps.length == 0 ? (
+          <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
+            <p>Welcome to the Dust developer platform 🔥</p>
+            <p className="mt-2">
+              Setup your Providers (below) or create your first app to get
+              started.
+            </p>
+            <p className="mt-6">
+              You can also visit our developer documentation:
+            </p>
+            <p className="mt-2">
+              <Link href="https://docs.dust.tt" target="_blank">
+                <Button variant="tertiary" label="View Documentation" />
+              </Link>
+            </p>
+          </div>
+        ) : null}
+      </ul>
+    </Page.Vertical>
+  );
+}
+
 export default function Developers({
   owner,
   subscription,
   apps,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [currentTab, setCurrentTab] = useState("apps");
   const router = useRouter();
+  const handleTabChange = async (tabId: string) => {
+    const query = { ...router.query, t: tabId };
+    await router.push({ query });
+  };
+
+  useEffect(() => {
+    if (router.query.t) {
+      setCurrentTab(router.query.t as string);
+    }
+  }, [router.query]);
 
   return (
     <AppLayout
@@ -504,75 +602,49 @@ export default function Developers({
             <Link href="https://github.com/dust-tt">GitHub.</Link>
           </A>
         </Page.P>
-        <Page.SectionHeader
-          title="Apps"
-          description="Your Large Language Model apps."
-          action={{
-            label: "Create App",
-            variant: "primary",
-            onClick: async () => {
-              void router.push(`/w/${owner.sId}/a/new`);
+
+        <Tab
+          tabs={[
+            {
+              label: "My Apps",
+              id: "apps",
+              current: currentTab === "apps",
+              icon: CommandLineIcon,
+              sizing: "expand",
             },
-            icon: PlusIcon,
+            {
+              label: "Providers",
+              id: "providers",
+              current: currentTab === "providers",
+              icon: ShapesIcon,
+              sizing: "expand",
+            },
+            {
+              label: "API Keys",
+              id: "apikeys",
+              current: currentTab === "apikeys",
+              icon: LockIcon,
+              sizing: "expand",
+            },
+          ]}
+          setCurrentTab={async (tabId, event) => {
+            event.preventDefault();
+            await handleTabChange(tabId);
           }}
         />
 
-        <ul role="list" className="pt-4">
-          {apps.map((app) => (
-            <li key={app.sId} className="px-2">
-              <div className="py-4">
-                <div className="flex items-center justify-between">
-                  <Link href={`/w/${owner.sId}/a/${app.sId}`} className="block">
-                    <p className="truncate text-base font-bold text-action-600">
-                      {app.name}
-                    </p>
-                  </Link>
-                  <div className="ml-2 flex flex-shrink-0">
-                    <p
-                      className={classNames(
-                        "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                        app.visibility == "public"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      )}
-                    >
-                      {app.visibility}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 sm:flex sm:justify-between">
-                  <div className="sm:flex">
-                    <p className="flex items-center text-sm text-gray-700">
-                      {app.description}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center text-sm text-gray-300 sm:mt-0">
-                    <p>{app.sId}</p>
-                  </div>
-                </div>
-              </div>
-            </li>
-          ))}
-          {apps.length == 0 ? (
-            <div className="mt-6 flex flex-col items-center justify-center text-sm text-gray-500">
-              <p>Welcome to the Dust developer platform 🔥</p>
-              <p className="mt-2">
-                Setup your Providers (below) or create your first app to get
-                started.
-              </p>
-              <p className="mt-6">
-                You can also visit our developer documentation:
-              </p>
-              <p className="mt-2">
-                <Link href="https://docs.dust.tt" target="_blank">
-                  <Button variant="tertiary" label="View Documentation" />
-                </Link>
-              </p>
-            </div>
-          ) : null}
-        </ul>
-        <Providers owner={owner} />
-        <APIKeys owner={owner} />
+        {(() => {
+          switch (currentTab) {
+            case "apps":
+              return <Apps apps={apps} owner={owner} />;
+            case "providers":
+              return <Providers owner={owner} />;
+            case "apikeys":
+              return <APIKeys owner={owner} />;
+            default:
+              return null;
+          }
+        })()}
       </Page.Vertical>
     </AppLayout>
   );
