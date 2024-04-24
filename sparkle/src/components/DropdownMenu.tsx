@@ -304,6 +304,21 @@ DropdownMenu.SectionHeader = function ({ label }: DropdownSectionHeaderProps) {
   );
 };
 
+type ItemsVariantType = "default" | "no-padding";
+
+const classNamesForVariant = (
+  variant: ItemsVariantType,
+  hasDropdownItem: boolean
+) => {
+  switch (variant) {
+    case "no-padding":
+      return "";
+
+    case "default":
+      return `s-px-5 ${hasDropdownItem ? "s-py-1.5" : "s-py-4"}`;
+  }
+};
+
 interface DropdownItemsProps {
   origin?: "topLeft" | "topRight" | "bottomLeft" | "bottomRight" | "auto";
   width?: number;
@@ -312,6 +327,7 @@ interface DropdownItemsProps {
   topBar?: React.ReactNode;
   bottomBar?: React.ReactNode;
   overflow?: "visible" | "auto";
+  variant?: ItemsVariantType;
 }
 
 DropdownMenu.Items = function ({
@@ -322,6 +338,7 @@ DropdownMenu.Items = function ({
   topBar,
   bottomBar,
   overflow = "auto",
+  variant = "default",
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
   const [buttonHeight, setButtonHeight] = useState(0);
@@ -420,8 +437,7 @@ DropdownMenu.Items = function ({
         {topBar}
         <div
           className={classNames(
-            "s-px-5",
-            hasDropdownItem ? "s-py-1.5" : "s-py-4",
+            classNamesForVariant(variant, hasDropdownItem),
             getOverflowClass(overflow)
           )}
         >
