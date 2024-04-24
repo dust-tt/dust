@@ -1,4 +1,4 @@
-import { Avatar, Button, DropdownMenu } from "@dust-tt/sparkle";
+import { Avatar, Button, DropdownMenu, EmojiPicker } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { MessageReactionType } from "@dust-tt/types";
@@ -51,12 +51,17 @@ export function EmojiSelector({
           />
         </div>
       </DropdownMenu.Button>
-      <DropdownMenu.Items width={400} origin="topRight" overflow="visible">
-        <Picker
+      <DropdownMenu.Items
+        width={350}
+        origin="topRight"
+        overflow="visible"
+        variant="no-padding"
+      >
+        <EmojiPicker
           theme="light"
           previewPosition="none"
-          data={emojiData}
-          onEmojiSelect={async (emojiData: Emoji) => {
+          data={emojiData ?? undefined}
+          onEmojiSelect={(emojiData: Emoji) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
             const hasReacted =
               (reaction &&
