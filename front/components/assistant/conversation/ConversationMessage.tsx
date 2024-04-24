@@ -2,8 +2,8 @@ import { Avatar, Button, DropdownMenu, EmojiPicker } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { MessageReactionType } from "@dust-tt/types";
+// TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
 import type { Emoji, EmojiMartData } from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import React from "react";

@@ -9,8 +9,6 @@ import {
   PaintIcon,
 } from "@dust-tt/sparkle";
 import { generateTailwindBackgroundColors } from "@dust-tt/types";
-import type { EmojiMartData } from "@emoji-mart/data";
-import data from "@emoji-mart/data";
 import React, { useEffect } from "react";
 import { useImperativeHandle, useRef, useState } from "react";
 
@@ -23,74 +21,34 @@ type SelectedEmojiType = {
   unified: string;
 };
 
-export function getEmojiAndBackgroundFromUrl(url: string) {
-  // Proposed URL structure:
-  // https://dust.tt/emojis/color/id/unified
-
-  const regex = /\/emojis\/([^//]*)\/([^//]*)\/([^//.]*)/;
-
-  const d: EmojiMartData = data;
-
-  const match = url.match(regex);
-  if (match) {
-    const [, color, id, unified] = match;
-
-    const emojiUnicodes = Object.values(d.emojis).find((e) => e.id === id);
-    if (!emojiUnicodes) {
-      return null;
-    }
-
-    console.log(">> emojiUnicodes:", emojiUnicodes);
-
-    const skinEmoji = emojiUnicodes.skins.find((s) => s.unified === unified);
-    if (!skinEmoji) {
-      return null;
-    }
-
-    return {
-      color,
-      id,
-      unified,
-      native: skinEmoji.native,
-    };
-  }
-
-  return null;
-}
-
 function makeUrlForEmojiAndBackgroud(
   emoji: SelectedEmojiType,
   backgroundColor: `bg-${string}`
 ) {
   const { id, unified } = emoji;
 
-  console.log(">> EMOJI_AVATAR_BASE_URL:", EMOJI_AVATAR_BASE_URL);
+  const avatarUrlSuffix = avatarUtils.createEmojiAndBackgroundUrlSuffix({
+    backgroundColor,
+    id,
+    unified,
+  });
 
-  const url = `${EMOJI_AVATAR_BASE_URL}${avatarUtils.createEmojiAndBackgroundUrlSuffix(
-    {
-      backgroundColor,
-      id,
-      unified,
-    }
-  )}`;
-
-  console.log(">> pictureURLLLLL:", url);
-
-  return url;
+  return `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
 }
 
-const DEFAULT_BACKGROUND_COLOR = "bg-gray-100";
+// TODO: Type.
+const DEFAULT_BACKGROUND_COLOR: `bg-${string}` = "bg-gray-100";
 
 interface AssistantBuilderEmojiPickerProps {
+  avatarUrl: string | null;
   onChange: () => void;
-  avatarUrl: string;
 }
 
 const AssistantBuilderEmojiPicker = React.forwardRef<
   AvatarPickerTabElement,
   AssistantBuilderEmojiPickerProps
 >(function EmojiAvatar(
-  { onChange, avatarUrl }: AssistantBuilderEmojiPickerProps,
+  { avatarUrl, onChange }: AssistantBuilderEmojiPickerProps,
   ref
 ) {
   const emojiButtonRef = useRef<HTMLDivElement>(null);
@@ -104,32 +62,26 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
   );
 
   useEffect(() => {
-    const emojiInfos = avatarUtils.getEmojiAndBackgroundFromUrl(avatarUrl);
-    if (emojiInfos) {
-      const { skinEmoji, id, unified, backgroundColor } = emojiInfos;
+    if (avatarUrl) {
+      const emojiInfos = avatarUtils.getEmojiAndBackgroundFromUrl(avatarUrl);
+      if (emojiInfos) {
+        const { skinEmoji, id, unified, backgroundColor } = emojiInfos;
 
-      setSelectedEmoji({
-        native: skinEmoji,
-        id,
-        unified,
-      });
-      setSelectedBgColor(`${backgroundColor}`);
+        setSelectedEmoji({
+          native: skinEmoji,
+          id,
+          unified,
+        });
+        setSelectedBgColor(`${backgroundColor}`);
+      }
     }
   }, [avatarUrl]);
 
   useImperativeHandle(ref, () => {
     return {
       getUrl: async () => {
-        // TODO: Only set isState when both are setup.
         if (selectedEmoji) {
-          const url = makeUrlForEmojiAndBackgroud(
-            selectedEmoji,
-            selectedBgColor
-          );
-
-          // getEmojiAndBackgroundFromUrl(url);
-
-          return url;
+          return makeUrlForEmojiAndBackgroud(selectedEmoji, selectedBgColor);
         }
 
         return null;
@@ -160,7 +112,6 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               theme="light"
               previewPosition="none"
               onEmojiSelect={(emoji) => {
-                console.log(">> selected emoji:", emoji);
                 setSelectedEmoji({
                   id: emoji.id,
                   native: emoji.native,
@@ -186,8 +137,14 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
             <ColorPicker
               colors={generateTailwindBackgroundColors()}
               onColorSelect={(color) => {
-                setSelectedBgColor(color);
-                onChange();
+                // TODO: Type.
+                setSelectedBgColor(color as `bg-${string}`);
+
+                // We only mark as stale if an emoji has been selected.
+                if (selectedEmoji) {
+                  onChange();
+                }
+
                 colorButtonRef.current?.click();
               }}
             />

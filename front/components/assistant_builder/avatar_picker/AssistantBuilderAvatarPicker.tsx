@@ -14,7 +14,10 @@ import AssistantBuilderCustomUpload from "@app/components/assistant_builder/avat
 import AssistantBuilderEmojiPicker from "@app/components/assistant_builder/avatar_picker/AssistantBuilderEmojiPicker";
 import type { AvatarPickerTabElement } from "@app/components/assistant_builder/avatar_picker/types";
 
-type TabId = "droids" | "spirits" | "emojis" | "upload";
+type AvatarUrlTabId = "droids" | "spirits";
+type TabId = AvatarUrlTabId | "emojis" | "upload";
+
+const DEFAULT_TAB: TabId = "droids";
 
 interface TabConfig {
   label: string;
@@ -42,15 +45,14 @@ export function AvatarPicker({
   droidAvatarUrls: string[];
   spiritAvatarUrls: string[];
 }) {
-  const [currentTab, setCurrentTab] = useState<TabId>("droids");
-
+  const [currentTab, setCurrentTab] = useState<TabId>(DEFAULT_TAB);
   const [isStale, setIsStale] = useState(false);
 
-  const avatarUrls: Record<TabId, string[]> = {
+  const avatarUrls: Record<AvatarUrlTabId, string[]> = {
     droids: droidAvatarUrls,
     spirits: spiritAvatarUrls,
-    upload: [],
   };
+
   const tabs: TabConfig[] = useMemo(
     () => [
       {
@@ -84,35 +86,29 @@ export function AvatarPicker({
   const onClose = () => {
     setOpen(false);
 
-    // wait for modal close animation to finish before resetting state
+    // Wait for modal close animation to finish before resetting state.
     setTimeout(() => {
-      // setCrop(DEFAULT_CROP);
-      setCurrentTab("droids");
-      // setSrc(null);
+      setIsStale(false);
+      setCurrentTab(DEFAULT_TAB);
     }, 300);
   };
 
   const parentRef = useRef<AvatarPickerTabElement>(null);
 
   const handleSave = async (
-    currentTab: TabId,
     parentRef: React.RefObject<AvatarPickerTabElement>
   ) => {
-    // TODO: Use `currentTab`.
     if (isStale && parentRef.current) {
       const imageUrl = await parentRef.current.getUrl();
 
-      console.log(">> imageUrl:", imageUrl);
-
-      onPick(imageUrl);
+      if (imageUrl) {
+        onPick(imageUrl);
+      }
     }
-
-    setIsStale(false);
 
     onClose();
   };
 
-  // TODO: Move outside of main component.
   const renderTabContent = (currentTab: TabId) => {
     switch (currentTab) {
       case "emojis":
@@ -163,7 +159,7 @@ export function AvatarPicker({
       title=""
       variant="side-md"
       hasChanged={isStale}
-      onSave={async () => handleSave(currentTab, parentRef)}
+      onSave={async () => handleSave(parentRef)}
     >
       <div className="h-full w-full overflow-visible">
         <Tab
