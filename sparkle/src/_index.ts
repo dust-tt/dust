@@ -82,6 +82,9 @@ export { Tooltip };
 import { ContentMessage } from "./components/ContentMessage";
 export { ContentMessage };
 
+import { ColorPicker } from "./components/ColorPicker";
+export { ColorPicker };
+
 import { Avatar } from "./components/Avatar";
 export { Avatar };
 
