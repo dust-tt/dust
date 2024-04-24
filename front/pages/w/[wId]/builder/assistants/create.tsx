@@ -105,13 +105,12 @@ export default function CreateAssistant({
       searchTerm === ""
         ? assistantTemplates
         : assistantTemplates.filter((template) =>
-            subFilter(searchTerm.toLowerCase(), template.handle.toLowerCase())
+            template.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            template.description?.toLowerCase().includes(searchTerm.toLowerCase())
           );
-    const templatesToDisplay = templatesFilteredFromSearch.filter(
-      (template) => {
-        return isTemplateTagCodeArray(template.tags);
-      }
-    );
+    const templatesToDisplay = templatesFilteredFromSearch.filter((template) => {
+      return isTemplateTagCodeArray(template.tags);
+    });
     setFilteredTemplates({
       templates: templatesToDisplay,
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
@@ -233,7 +232,7 @@ export default function CreateAssistant({
                 size="md"
               />
               <div className="flex flex-row flex-wrap gap-2">
-                {filteredTemplates.tags.map((tagName) => (
+                {filteredTemplates.tags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).map((tagName) => (
                   <Button
                     label={templateTagsMapping[tagName].label}
                     variant="tertiary"
