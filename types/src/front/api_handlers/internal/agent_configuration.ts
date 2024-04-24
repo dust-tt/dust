@@ -42,147 +42,168 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
-export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
-  assistant: t.type({
-    name: t.string,
-    description: t.string,
-    instructions: t.union([t.string, t.null]),
-    pictureUrl: t.string,
-    status: t.union([
-      t.literal("active"),
-      t.literal("archived"),
-      t.literal("draft"),
-    ]),
-    scope: t.union([
-      t.literal("workspace"),
-      t.literal("published"),
-      t.literal("private"),
-    ]),
-    actions: t.array(
-      t.intersection([
-        t.union([
+const RetrievalActionConfigurationSchema = t.type({
+  type: t.literal("retrieval_configuration"),
+  query: t.union([t.literal("auto"), t.literal("none")]),
+  relativeTimeFrame: t.union([
+    t.literal("auto"),
+    t.literal("none"),
+    t.type({
+      duration: t.number,
+      unit: TimeframeUnitCodec,
+    }),
+  ]),
+  topK: t.union([t.number, t.literal("auto")]),
+  dataSources: t.array(
+    t.type({
+      dataSourceId: t.string,
+      workspaceId: t.string,
+      filter: t.type({
+        tags: t.union([
           t.type({
-            type: t.literal("retrieval_configuration"),
-            query: t.union([t.literal("auto"), t.literal("none")]),
-            relativeTimeFrame: t.union([
-              t.literal("auto"),
-              t.literal("none"),
-              t.type({
-                duration: t.number,
-                unit: TimeframeUnitCodec,
-              }),
-            ]),
-            topK: t.union([t.number, t.literal("auto")]),
-            dataSources: t.array(
-              t.type({
-                dataSourceId: t.string,
-                workspaceId: t.string,
-                filter: t.type({
-                  tags: t.union([
-                    t.type({
-                      in: t.array(t.string),
-                      not: t.array(t.string),
-                    }),
-                    t.null,
-                  ]),
-                  parents: t.union([
-                    t.type({
-                      in: t.array(t.string),
-                      not: t.array(t.string),
-                    }),
-                    t.null,
-                  ]),
-                }),
-              })
-            ),
+            in: t.array(t.string),
+            not: t.array(t.string),
           }),
-          t.type({
-            type: t.literal("dust_app_run_configuration"),
-            appWorkspaceId: t.string,
-            appId: t.string,
-          }),
-          t.type({
-            type: t.literal("tables_query_configuration"),
-            tables: t.array(
-              t.type({
-                workspaceId: t.string,
-                dataSourceId: t.string,
-                tableId: t.string,
-              })
-            ),
-          }),
-          t.type({
-            type: t.literal("process_configuration"),
-            relativeTimeFrame: t.union([
-              t.literal("auto"),
-              t.literal("none"),
-              t.type({
-                duration: t.number,
-                unit: TimeframeUnitCodec,
-              }),
-            ]),
-            dataSources: t.array(
-              t.type({
-                dataSourceId: t.string,
-                workspaceId: t.string,
-                filter: t.type({
-                  tags: t.union([
-                    t.type({
-                      in: t.array(t.string),
-                      not: t.array(t.string),
-                    }),
-                    t.null,
-                  ]),
-                  parents: t.union([
-                    t.type({
-                      in: t.array(t.string),
-                      not: t.array(t.string),
-                    }),
-                    t.null,
-                  ]),
-                }),
-              })
-            ),
-            schema: t.array(
-              t.type({
-                name: t.string,
-                type: t.union([
-                  t.literal("string"),
-                  t.literal("number"),
-                  t.literal("boolean"),
-                ]),
-                description: t.string,
-              })
-            ),
-          }),
+          t.null,
         ]),
-        t.partial({
-          forceUseAtIteration: t.union([t.number, t.null]),
-        }),
-      ])
-    ),
-    generation: t.union([
-      t.null,
-      t.intersection([
-        t.type({
-          // enforce that the model is a supported model
-          // the modelId and providerId are checked together, so
-          // (gpt-4, anthropic) won't pass
-          model: new t.Type<SupportedModel>(
-            "SupportedModel",
-            isSupportedModel,
-            (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-            t.identity
-          ),
-          temperature: t.number,
-        }),
-        t.partial({
-          forceUseAtIteration: t.union([t.number, t.null]),
-        }),
+        parents: t.union([
+          t.type({
+            in: t.array(t.string),
+            not: t.array(t.string),
+          }),
+          t.null,
+        ]),
+      }),
+    })
+  ),
+});
+
+const DustAppRunActionConfigurationSchema = t.type({
+  type: t.literal("dust_app_run_configuration"),
+  appWorkspaceId: t.string,
+  appId: t.string,
+});
+
+const TablesQueryActionConfigurationSchema = t.type({
+  type: t.literal("tables_query_configuration"),
+  tables: t.array(
+    t.type({
+      workspaceId: t.string,
+      dataSourceId: t.string,
+      tableId: t.string,
+    })
+  ),
+});
+
+const ProcessActionConfigurationSchema = t.type({
+  type: t.literal("process_configuration"),
+  relativeTimeFrame: t.union([
+    t.literal("auto"),
+    t.literal("none"),
+    t.type({
+      duration: t.number,
+      unit: TimeframeUnitCodec,
+    }),
+  ]),
+  dataSources: t.array(
+    t.type({
+      dataSourceId: t.string,
+      workspaceId: t.string,
+      filter: t.type({
+        tags: t.union([
+          t.type({
+            in: t.array(t.string),
+            not: t.array(t.string),
+          }),
+          t.null,
+        ]),
+        parents: t.union([
+          t.type({
+            in: t.array(t.string),
+            not: t.array(t.string),
+          }),
+          t.null,
+        ]),
+      }),
+    })
+  ),
+  schema: t.array(
+    t.type({
+      name: t.string,
+      type: t.union([
+        t.literal("string"),
+        t.literal("number"),
+        t.literal("boolean"),
       ]),
+      description: t.string,
+    })
+  ),
+});
+
+const ActionConfigurationSchema = t.intersection([
+  t.union([
+    RetrievalActionConfigurationSchema,
+    DustAppRunActionConfigurationSchema,
+    TablesQueryActionConfigurationSchema,
+    ProcessActionConfigurationSchema,
+  ]),
+  t.partial({
+    forceUseAtIteration: t.union([t.number, t.null]),
+  }),
+]);
+
+// TODO(@fontanierh): change once generation is an action.
+const GenerationConfigurationSchema = t.union([
+  t.null,
+  t.intersection([
+    t.type({
+      // enforce that the model is a supported model
+      // the modelId and providerId are checked together, so
+      // (gpt-4, anthropic) won't pass
+      model: new t.Type<SupportedModel>(
+        "SupportedModel",
+        isSupportedModel,
+        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+        t.identity
+      ),
+      temperature: t.number,
+    }),
+    t.partial({
+      forceUseAtIteration: t.union([t.number, t.null]),
+    }),
+  ]),
+]);
+
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
+  t.type({
+    assistant: t.intersection([
+      t.type({
+        name: t.string,
+        description: t.string,
+        instructions: t.union([t.string, t.null]),
+        pictureUrl: t.string,
+        status: t.union([
+          t.literal("active"),
+          t.literal("archived"),
+          t.literal("draft"),
+        ]),
+        scope: t.union([
+          t.literal("workspace"),
+          t.literal("published"),
+          t.literal("private"),
+        ]),
+        actions: t.array(ActionConfigurationSchema),
+        generation: GenerationConfigurationSchema,
+      }),
+      t.partial({
+        maxToolsUsePerRun: t.number,
+      }),
     ]),
   }),
-});
+  t.partial({
+    useMultiActions: t.boolean,
+  }),
+]);
 
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
