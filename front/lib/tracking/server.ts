@@ -270,16 +270,19 @@ export class ServerSideTracking {
   static async trackUpdateMembershipRole({
     user,
     workspace,
+    previousRole,
     role,
   }: {
     user: UserType;
     workspace: LightWorkspaceType;
+    previousRole: MembershipRoleType;
     role: MembershipRoleType;
   }) {
     try {
       await CustomerioServerSideTracking.trackUpdateMembershipRole({
         user,
         workspace,
+        previousRole,
         role,
       });
     } catch (err) {

@@ -363,6 +363,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       workspace,
       transaction,
     });
+
     if (membership?.endAt && !allowTerminated) {
       return new Err({ type: "membership_already_terminated" });
     }
@@ -370,10 +371,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return new Err({ type: "not_found" });
     }
 
+    const previousRole = membership.role;
+
     // If the membership is not terminated, we update the role in place.
     // We do not historicize the roles.
     if (!membership.endAt) {
-      if (membership.role === newRole) {
+      if (previousRole === newRole) {
         return new Err({ type: "already_on_role" });
       }
       await MembershipModel.update(
@@ -394,6 +397,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     void ServerSideTracking.trackUpdateMembershipRole({
       user,
       workspace,
+      previousRole: membership.role,
       role: newRole,
     });
 

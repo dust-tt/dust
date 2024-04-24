@@ -14,7 +14,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-const CUSTOMERIO_HOST = "https://track-eu.customer.io/api/v2";
+const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
 export class CustomerioServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
@@ -93,10 +93,12 @@ export class CustomerioServerSideTracking {
   static async trackUpdateMembershipRole({
     user,
     workspace,
+    previousRole,
     role,
   }: {
     user: UserType;
     workspace: LightWorkspaceType;
+    previousRole: MembershipRoleType;
     role: MembershipRoleType;
   }) {
     await CustomerioServerSideTracking._identifyWorkspace({
@@ -110,6 +112,15 @@ export class CustomerioServerSideTracking {
           role,
         },
       ],
+    });
+    await CustomerioServerSideTracking._trackEvent({
+      eventName: "role_updated",
+      user,
+      workspace,
+      eventAttributes: {
+        newRole: role,
+        previousRole,
+      },
     });
   }
 
@@ -180,7 +191,7 @@ export class CustomerioServerSideTracking {
       return;
     }
 
-    const r = await fetch(`${CUSTOMERIO_HOST}/entity`, {
+    const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
       body: JSON.stringify({
@@ -230,7 +241,7 @@ export class CustomerioServerSideTracking {
         first_name: user.firstName,
         last_name: user.lastName,
         created_at: Math.floor(user.createdAt / 1000),
-        id: user.sId,
+        sid: user.sId,
       },
     };
 
@@ -255,7 +266,7 @@ export class CustomerioServerSideTracking {
       });
     }
 
-    const r = await fetch(`${CUSTOMERIO_HOST}/entity`, {
+    const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
       body: JSON.stringify(body),
@@ -264,6 +275,49 @@ export class CustomerioServerSideTracking {
     if (!r.ok) {
       const json = await r.json();
       throw new Error(`Failed to identify user ${user.email}: ${json}`);
+    }
+  }
+
+  static async _trackEvent({
+    user,
+    workspace,
+    eventName,
+    eventAttributes,
+  }: {
+    user: UserType;
+    workspace?: LightWorkspaceType;
+    eventName: string;
+    eventAttributes?: Record<string, any>;
+  }) {
+    if (!config.getCustomerIoEnabled()) {
+      return;
+    }
+
+    const eventData: Record<string, any> = { ...eventAttributes };
+    if (workspace) {
+      eventData.workspace_id = workspace.sId;
+      eventData.workspace_name = workspace.name;
+    }
+
+    const body: Record<string, any> = {
+      name: eventName,
+      data: eventAttributes,
+    };
+
+    const r = await fetch(
+      `${CUSTOMERIO_HOST}/v1/customers/${encodeURIComponent(
+        user.email
+      )}/events`,
+      {
+        method: "POST",
+        headers: CustomerioServerSideTracking._headers(),
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!r.ok) {
+      const json = await r.json();
+      throw new Error(`Failed to track event ${eventName}: ${json}`);
     }
   }
 
