@@ -197,11 +197,7 @@ export default function WorkspaceAssistants({
             />
             <Button.List>
               <Link
-                href={
-                  owner.flags.includes("flag_templates")
-                    ? `/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`
-                    : `/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`
-                }
+                href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
               >
                 <Button
                   variant="primary"
@@ -246,11 +242,7 @@ export default function WorkspaceAssistants({
               !assistantSearch && (
                 <div className="pt-2">
                   <EmptyCallToAction
-                    href={
-                      owner.flags.includes("flag_templates")
-                        ? `/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`
-                        : `/w/${owner.sId}/builder/assistants/new?flow=workspace_assistants`
-                    }
+                    href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
                     label="Create an Assistant"
                     icon={PlusIcon}
                   />
