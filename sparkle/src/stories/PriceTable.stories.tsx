@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Button, PriceTable } from "../index_with_tw_base";
+import { Button, Hoverable, PriceTable } from "../index_with_tw_base";
 
 const meta = {
   title: "Components/PriceTable",
@@ -23,7 +23,21 @@ export const PricingXS = () => {
           <PriceTable.ActionContainer position="top">
             <Button size="sm" variant="primary" label="Start Now" />
           </PriceTable.ActionContainer>
-          <PriceTable.Item label="Unlimited members / workspace" />
+          <PriceTable.Item
+            label={
+              <>
+                "Unlimited members / workspace"
+                <br />
+                <Hoverable
+                  onClick={() => {
+                    alert("Clicked!");
+                  }}
+                >
+                  hello
+                </Hoverable>
+              </>
+            }
+          />
           <PriceTable.Item label="Unlimited custom assistants" />
           <PriceTable.Item label="Advanced LLM models (gpt4, Claude, ...)" />
           <PriceTable.Item label="1 user" />
