@@ -10,7 +10,7 @@ interface SolutionSectionProps {
   content: SolutionSectionBlockProps | SolutionSectionBlockProps[];
 }
 
-export const SolutionSection = ({ title, content }: SolutionSectionProps) => {
+export function SolutionSection({ title, content }: SolutionSectionProps) {
   const renderBlocks = () => {
     if (Array.isArray(content)) {
       return content.map((block, index) => (
@@ -28,7 +28,7 @@ export const SolutionSection = ({ title, content }: SolutionSectionProps) => {
       {renderBlocks()}
     </>
   );
-};
+}
 
 const SolutionSectionColor = {
   pink: "from-pink-200 to-pink-300",
