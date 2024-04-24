@@ -281,10 +281,10 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-
   // @todo FIX MULTI ACTIONS
-  const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
+  const maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
+
+  let generationConfig: AgentGenerationConfigurationType | null = null;
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
