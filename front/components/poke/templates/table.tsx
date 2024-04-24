@@ -39,6 +39,7 @@ export function TemplatesDataTable() {
         <PokeDataTable
           columns={makeColumnsForTemplates()}
           data={prepareTemplatesForDisplay(assistantTemplates)}
+          pageSize={100}
         />
       )}
     </div>
