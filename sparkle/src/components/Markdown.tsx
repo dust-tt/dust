@@ -162,7 +162,7 @@ export function Markdown({
                 className={classNames(
                   "s-w-full s-italic",
                   paragraphSize,
-                  textColor
+                  "s-text-element-800"
                 )}
               >
                 {children}

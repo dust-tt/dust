@@ -1,7 +1,6 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  ContextItem,
   DropdownMenu,
   LightbulbIcon,
   MagicIcon,
@@ -157,7 +156,7 @@ export default function AssistantBuilderRightPanel({
         )}
         {rightPanelStatus.tab === "Template" && (
           <div className="mb-72 flex flex-col gap-4 px-6">
-            <div className="flex items-end justify-between">
+            <div className="flex items-end justify-between pt-2">
               <Page.Header
                 icon={LightbulbIcon}
                 title="Template's User manual"
@@ -229,10 +228,7 @@ export default function AssistantBuilderRightPanel({
             <Page.Separator />
             {template?.helpInstructions && (
               <div id="instructions-help-container">
-                <ContextItem.SectionHeader
-                  title='"Instructions" guide'
-                  hasBorder={false}
-                />
+                <Page.SectionHeader title='"Instructions" guide' />
                 <Markdown content={template?.helpInstructions ?? ""} />
               </div>
             )}
@@ -241,11 +237,12 @@ export default function AssistantBuilderRightPanel({
             )}
             {template?.helpActions && (
               <div id="actions-help-container">
-                <ContextItem.SectionHeader
-                  title='"Actions" guide'
-                  hasBorder={false}
+                <Page.SectionHeader title='"Actions" guide' />
+                <Markdown
+                  content={template?.helpActions ?? ""}
+                  className=""
+                  size="sm"
                 />
-                <Markdown content={template?.helpActions ?? ""} className="" />
               </div>
             )}
           </div>
