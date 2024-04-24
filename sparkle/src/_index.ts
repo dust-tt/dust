@@ -13,6 +13,9 @@ export { Button };
 import { CardButton } from "./components/CardButton";
 export { CardButton };
 
+import { EmojiPicker } from "./components/EmojiPicker";
+export { EmojiPicker };
+
 import { SliderToggle } from "./components/SliderToggle";
 export { SliderToggle };
 
