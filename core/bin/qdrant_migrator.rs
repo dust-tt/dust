@@ -385,22 +385,25 @@ async fn migrate_shadow_write(
             })
             .collect::<Vec<_>>();
 
-        match shadow_write_qdrant_client
-            .upsert_points(ds.qdrant_collection(), None, points, None)
-            .await
-        {
-            Ok(_) => (),
-            Err(e) => {
-                if retry < 3 {
-                    retry += 1;
-                    utils::error(&format!(
-                        "Error migrating points (write): retry={} error={:?}",
-                        retry, e
-                    ));
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    continue;
-                } else {
-                    Err(e)?
+        // Empty upserts trigger errors.
+        if count > 0 {
+            match shadow_write_qdrant_client
+                .upsert_points(ds.qdrant_collection(), None, points, None)
+                .await
+            {
+                Ok(_) => (),
+                Err(e) => {
+                    if retry < 3 {
+                        retry += 1;
+                        utils::error(&format!(
+                            "Error migrating points (write): retry={} error={:?}",
+                            retry, e
+                        ));
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                        continue;
+                    } else {
+                        Err(e)?
+                    }
                 }
             }
         }
@@ -477,6 +480,10 @@ async fn migrate(
     target_cluster: String,
     ask_confirmation: bool,
 ) -> Result<()> {
+    utils::info(&format!(
+        "Migrating collection: project_id={} data_source_id={} target_cluster={}",
+        project_id, data_source_id, target_cluster
+    ));
     let project = project::Project::new_from_id(project_id);
     let ds = match store.load_data_source(&project, &data_source_id).await? {
         Some(ds) => ds,
