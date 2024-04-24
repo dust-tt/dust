@@ -18,6 +18,7 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@dust-tt/types";
+import * as _ from "lodash";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
@@ -41,7 +42,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { new_id } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-
 const {
   DUST_DEVELOPMENT_WORKSPACE_ID,
   DUST_DEVELOPMENT_SYSTEM_API_KEY,
@@ -501,57 +501,101 @@ export async function getAPIKey(
 export async function subscriptionForWorkspace(
   workspaceId: string
 ): Promise<SubscriptionType> {
-  const workspace = await Workspace.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
-  if (!workspace) {
-    throw new Error(`Could not find workspace with sId ${workspaceId}`);
+  const res = await subscriptionForWorkspaces([workspaceId]);
+
+  const subscription = res[workspaceId];
+  if (!subscription) {
+    throw new Error(`Could not find subscription for workspace ${workspaceId}`);
   }
 
-  const activeSubscription = await Subscription.findOne({
-    attributes: [
-      "endDate",
-      "id",
-      "paymentFailingSince",
-      "sId",
-      "startDate",
-      "status",
-      "stripeSubscriptionId",
-      "trialing",
-    ],
-    where: { workspaceId: workspace.id, status: "active" },
-    include: [
-      {
-        model: Plan,
-        as: "plan",
-        required: true,
+  return subscription;
+}
+
+/**
+ * Construct the SubscriptionType for the provided workspaces.
+ * @param w WorkspaceType the workspace to get the plan for
+ * @returns SubscriptionType
+ */
+export async function subscriptionForWorkspaces(
+  workspaceIds: string[]
+): Promise<{ [key: string]: SubscriptionType }> {
+  const workspaceModelBySid = _.keyBy(
+    await Workspace.findAll({
+      where: {
+        sId: workspaceIds,
       },
-    ],
-  });
+    }),
+    "sId"
+  );
 
-  // Default values when no subscription
-  let plan: PlanAttributes = FREE_NO_PLAN_DATA;
-
-  if (activeSubscription) {
-    // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-    if (isTrial(activeSubscription)) {
-      plan = getTrialVersionForPlan(activeSubscription.plan);
-    } else if (activeSubscription.plan) {
-      plan = activeSubscription.plan;
-    } else {
-      logger.error(
-        {
-          workspaceId: workspaceId,
-          activeSubscription,
-        },
-        "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-      );
+  for (const sId of workspaceIds) {
+    if (!workspaceModelBySid[sId]) {
+      throw new Error(`Could not find workspace with sId ${sId}`);
     }
   }
 
-  return renderSubscriptionFromModels({ plan, activeSubscription });
+  const activeSubscriptionByWorkspaceId = _.keyBy(
+    await Subscription.findAll({
+      attributes: [
+        "endDate",
+        "id",
+        "paymentFailingSince",
+        "sId",
+        "startDate",
+        "status",
+        "stripeSubscriptionId",
+        "trialing",
+        "workspaceId",
+      ],
+      where: {
+        workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
+        status: "active",
+      },
+      include: [
+        {
+          model: Plan,
+          as: "plan",
+          required: true,
+        },
+      ],
+    }),
+    "workspaceId"
+  );
+
+  const renderedSubscriptionByWorkspaceSid: Record<string, SubscriptionType> =
+    {};
+
+  for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
+    const activeSubscription =
+      activeSubscriptionByWorkspaceId[workspace.id.toString()];
+
+    // Default values when no subscription
+    let plan: PlanAttributes = FREE_NO_PLAN_DATA;
+
+    if (activeSubscription) {
+      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
+      if (isTrial(activeSubscription)) {
+        plan = getTrialVersionForPlan(activeSubscription.plan);
+      } else if (activeSubscription.plan) {
+        plan = activeSubscription.plan;
+      } else {
+        logger.error(
+          {
+            workspaceId: sId,
+            activeSubscription,
+          },
+          "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+        );
+      }
+    }
+
+    renderedSubscriptionByWorkspaceSid[sId] = renderSubscriptionFromModels({
+      plan,
+      activeSubscription,
+    });
+  }
+
+  return renderedSubscriptionByWorkspaceSid;
 }
 
 /**

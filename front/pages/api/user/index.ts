@@ -50,7 +50,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      ServerSideTracking.trackUserMemberships({ user }).catch((err) => {
+      ServerSideTracking.trackGetUser({ user }).catch((err) => {
         logger.error(
           { err: err, userId: user.sId },
           "Failed to track user memberships"

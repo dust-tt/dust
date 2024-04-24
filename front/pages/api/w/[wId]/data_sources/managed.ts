@@ -387,7 +387,7 @@ async function handler(
       });
       const dataSourceType = await getDataSource(auth, dataSource.name);
       if (dataSourceType) {
-        ServerSideTracking.trackDataSourceCreated({
+        void ServerSideTracking.trackDataSourceCreated({
           dataSource: dataSourceType,
           user,
           workspace: owner,

@@ -2,28 +2,95 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   DataSourceType,
+  LightWorkspaceType,
+  MembershipRoleType,
   UserMessageType,
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
+import * as _ from "lodash";
 
+import { subscriptionForWorkspaces } from "@app/lib/auth";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
+import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import logger from "@app/logger/logger";
 
 export class ServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
     AmplitudeServerSideTracking.trackSignup({ user });
+    void CustomerioServerSideTracking.trackSignup({ user });
   }
 
-  static async trackUserMemberships({
-    user,
-  }: {
-    user: UserTypeWithWorkspaces;
-  }) {
-    return AmplitudeServerSideTracking.trackUserMemberships({ user });
+  static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
+    try {
+      const subscriptionByWorkspaceId = await subscriptionForWorkspaces(
+        user.workspaces.map((ws) => ws.sId)
+      );
+
+      // TODO(@fontanierh): This is not efficient, we should batch this.
+      const seatsByWorkspaceId = _.keyBy(
+        await Promise.all(
+          user.workspaces.map(async (workspace) => {
+            const seats = await countActiveSeatsInWorkspaceCached(
+              workspace.sId
+            );
+            return { sId: workspace.sId, seats };
+          })
+        ),
+        "sId"
+      );
+
+      const promises: Promise<unknown>[] = [];
+
+      // We overwrite every user membership on Amplitude everytime someone logs in.
+      promises.push(
+        AmplitudeServerSideTracking.trackUserMemberships({
+          user: {
+            ...user,
+            workspaces: user.workspaces.map((ws) => ({
+              ...ws,
+              planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
+              seats: seatsByWorkspaceId[ws.sId].seats,
+            })),
+          },
+        }).catch((err) => {
+          logger.error(
+            { userId: user.sId, err },
+            "Failed to track user memberships on Amplitude"
+          );
+        })
+      );
+
+      // We identify all of the user's workspaces on Customer.io everytime someone logs in,
+      // so we keep subscription info up to date.
+      // The actual customer.io call is rate limited to 1 call per day with the same data.
+      promises.push(
+        CustomerioServerSideTracking.identifyWorkspaces({
+          workspaces: user.workspaces.map((ws) => ({
+            ...ws,
+            planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
+            seats: seatsByWorkspaceId[ws.sId].seats,
+          })),
+        }).catch((err) => {
+          logger.error(
+            { userId: user.sId, err },
+            "Failed to identify workspaces on Customer.io"
+          );
+        })
+      );
+
+      await Promise.all(promises);
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, err },
+        "Failed to track user memberships"
+      );
+    }
   }
 
-  static trackUserMessage({
+  static async trackUserMessage({
     userMessage,
     workspace,
     userId,
@@ -36,16 +103,23 @@ export class ServerSideTracking {
     conversationId: string;
     agentMessages: AgentMessageType[];
   }) {
-    return AmplitudeServerSideTracking.trackUserMessage({
-      userMessage,
-      workspace,
-      userId,
-      conversationId,
-      agentMessages,
-    });
+    try {
+      await AmplitudeServerSideTracking.trackUserMessage({
+        userMessage,
+        workspace,
+        userId,
+        conversationId,
+        agentMessages,
+      });
+    } catch (err) {
+      logger.error(
+        { userId, workspaceId: workspace.sId, err },
+        "Failed to track user message on Amplitude"
+      );
+    }
   }
 
-  static trackDataSourceCreated({
+  static async trackDataSourceCreated({
     user,
     workspace,
     dataSource,
@@ -54,14 +128,21 @@ export class ServerSideTracking {
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
-    return AmplitudeServerSideTracking.trackDataSourceCreated({
-      user,
-      workspace,
-      dataSource,
-    });
+    try {
+      await AmplitudeServerSideTracking.trackDataSourceCreated({
+        user,
+        workspace,
+        dataSource,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user?.sId, workspaceId: workspace?.sId, err },
+        "Failed to track data source created on Amplitude"
+      );
+    }
   }
 
-  static trackDataSourceUpdated({
+  static async trackDataSourceUpdated({
     user,
     workspace,
     dataSource,
@@ -70,14 +151,21 @@ export class ServerSideTracking {
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
-    return AmplitudeServerSideTracking.trackDataSourceUpdated({
-      user,
-      workspace,
-      dataSource,
-    });
+    try {
+      await AmplitudeServerSideTracking.trackDataSourceUpdated({
+        user,
+        workspace,
+        dataSource,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user?.sId, workspaceId: workspace?.sId, err },
+        "Failed to track data source updated on Amplitude"
+      );
+    }
   }
 
-  static trackAssistantCreated({
+  static async trackAssistantCreated({
     user,
     workspace,
     assistant,
@@ -86,32 +174,119 @@ export class ServerSideTracking {
     workspace?: WorkspaceType;
     assistant: AgentConfigurationType;
   }) {
-    return AmplitudeServerSideTracking.trackAssistantCreated({
-      user,
-      workspace,
-      assistant,
-    });
+    try {
+      await AmplitudeServerSideTracking.trackAssistantCreated({
+        user,
+        workspace,
+        assistant,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user?.sId, workspaceId: workspace?.sId, err },
+        "Failed to track assistant created on Amplitude"
+      );
+    }
   }
 
   static async trackSubscriptionCreated({
     userId,
-    workspaceName,
-    workspaceId,
+    workspace,
     planCode,
     workspaceSeats,
   }: {
     userId: string;
-    workspaceName: string;
-    workspaceId: string;
+    workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;
   }) {
-    return AmplitudeServerSideTracking.trackSubscriptionCreated({
-      userId,
-      workspaceName,
-      workspaceId,
-      planCode,
-      workspaceSeats,
-    });
+    return Promise.all([
+      AmplitudeServerSideTracking.trackSubscriptionCreated({
+        userId,
+        workspace,
+        planCode,
+        workspaceSeats,
+      }),
+      CustomerioServerSideTracking.identifyWorkspaces({
+        workspaces: [{ ...workspace, planCode, seats: workspaceSeats }],
+      }),
+    ]);
+  }
+
+  static async trackCreateMembership({
+    user,
+    workspace,
+    role,
+    startAt,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    startAt: Date;
+  }) {
+    try {
+      await CustomerioServerSideTracking.trackCreateMembership({
+        user,
+        workspace,
+        role,
+        startAt,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track create membership on Customer.io"
+      );
+    }
+  }
+
+  static async trackRevokeMembership({
+    user,
+    workspace,
+    role,
+    startAt,
+    endAt,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    startAt: Date;
+    endAt: Date;
+  }) {
+    try {
+      await CustomerioServerSideTracking.trackRevokeMembership({
+        user,
+        workspace,
+        role,
+        startAt,
+        endAt,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track revoke membership on Customer.io"
+      );
+    }
+  }
+
+  static async trackUpdateMembershipRole({
+    user,
+    workspace,
+    role,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+  }) {
+    try {
+      await CustomerioServerSideTracking.trackUpdateMembershipRole({
+        user,
+        workspace,
+        role,
+      });
+    } catch (err) {
+      logger.error(
+        { userId: user.sId, workspaceId: workspace.sId, err },
+        "Failed to track update membership role on Customer.io"
+      );
+    }
   }
 }

@@ -3,17 +3,15 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   DataSourceType,
+  LightWorkspaceType,
   UserMessageType,
   UserType,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
 import { rateLimiter, removeNulls } from "@dust-tt/types";
 
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
-import { subscriptionForWorkspace } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   AMPLITUDE_PUBLIC_API_KEY,
   GROUP_TYPE,
@@ -54,7 +52,7 @@ function getBackendClient() {
 export class AmplitudeServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
     const amplitude = getBackendClient();
-    amplitude.identify(`user-${user.id}`, { email: user.email });
+    AmplitudeServerSideTracking._identifyUser({ user });
     amplitude.signUp(`user-${user.id}`, {
       insert_id: `signup_${user.id}`,
       time: user.createdAt,
@@ -64,7 +62,11 @@ export class AmplitudeServerSideTracking {
   static async trackUserMemberships({
     user,
   }: {
-    user: UserTypeWithWorkspaces;
+    user: UserType & {
+      workspaces: Array<
+        LightWorkspaceType & { planCode: string; seats: number }
+      >;
+    };
   }) {
     const amplitude = getBackendClient();
     const groups: string[] = [];
@@ -73,11 +75,11 @@ export class AmplitudeServerSideTracking {
       const groupId = workspace.sId;
 
       // Identify the workspace as a group.
-      const subscription = await subscriptionForWorkspace(workspace.sId);
-      const memberCount = await countActiveSeatsInWorkspace(workspace.sId);
+      const planCode = workspace.planCode;
+      const memberCount = workspace.seats;
       const groupProperties = new Identify();
       groupProperties.set("name", workspace.name);
-      groupProperties.set("plan", subscription.plan.code);
+      groupProperties.set("plan", planCode);
       groupProperties.set("memberCount", memberCount);
       const rateLimiterKey = `amplitude_workspace:${
         workspace.sId
@@ -269,23 +271,30 @@ export class AmplitudeServerSideTracking {
 
   static trackSubscriptionCreated({
     userId,
-    workspaceName,
-    workspaceId,
+    workspace,
     planCode,
     workspaceSeats,
   }: {
     userId: string;
-    workspaceName: string;
-    workspaceId: string;
+    workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;
   }) {
     const amplitude = getBackendClient();
     amplitude.subscriptionCreated(`user-${userId}`, {
-      workspaceId,
-      workspaceName,
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
       plan: planCode,
       workspaceSeats,
+    });
+  }
+
+  static _identifyUser({ user }: { user: UserType }) {
+    const amplitude = getBackendClient();
+    amplitude.identify(`user-${user.id}`, {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName ?? undefined,
     });
   }
 }

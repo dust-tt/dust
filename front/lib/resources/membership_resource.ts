@@ -18,6 +18,7 @@ import { Op } from "sequelize";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
@@ -278,6 +279,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { transaction }
     );
 
+    void ServerSideTracking.trackCreateMembership({
+      user,
+      workspace,
+      role: newMembership.role,
+      startAt: newMembership.startAt,
+    });
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -317,6 +325,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { endAt },
       { where: { id: membership.id }, transaction }
     );
+
+    void ServerSideTracking.trackRevokeMembership({
+      user,
+      workspace,
+      role: membership.role,
+      startAt: membership.startAt,
+      endAt,
+    });
+
     return new Ok(undefined);
   }
 
@@ -373,6 +390,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         transaction,
       });
     }
+
+    void ServerSideTracking.trackUpdateMembershipRole({
+      user,
+      workspace,
+      role: newRole,
+    });
 
     return new Ok(undefined);
   }

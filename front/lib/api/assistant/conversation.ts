@@ -780,7 +780,7 @@ export async function* postUserMessage(
       });
     }
   }
-  ServerSideTracking.trackUserMessage({
+  void ServerSideTracking.trackUserMessage({
     userMessage,
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
