@@ -122,7 +122,7 @@ async function handler(
       }
 
       await existingTemplate?.update({
-        backgroundColor: body.backgroundColor as `bg-${string}`,
+        backgroundColor: body.backgroundColor,
         description: body.description ?? null,
         emoji: body.emoji,
         handle: body.handle,

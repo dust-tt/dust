@@ -26,7 +26,7 @@ export class TemplateModel extends Model<
 
   declare visibility: TemplateVisibility;
 
-  declare backgroundColor: `bg-${string}`;
+  declare backgroundColor: string;
   declare emoji: string;
   declare handle: string;
 

@@ -118,7 +118,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
         unified,
         native: "",
       },
-      this.backgroundColor
+      this.backgroundColor as `bg-${string}`
     );
   }
 
