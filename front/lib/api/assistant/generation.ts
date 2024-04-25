@@ -183,7 +183,7 @@ export async function renderConversationForModel({
   let tokensUsed = promptCountRes.value + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected = [];
+  const selected: { message: ModelMessageType; tokenUseds: number }[] = [];
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
@@ -195,7 +195,7 @@ export async function renderConversationForModel({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift(messages[i]);
+      selected.unshift({ message: messages[i], tokenUseds: c });
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
@@ -213,8 +213,11 @@ export async function renderConversationForModel({
         return new Err(contentRes.error);
       }
       selected.unshift({
-        ...messages[i],
-        content: contentRes.value + truncationMessage,
+        message: {
+          ...messages[i],
+          content: contentRes.value + truncationMessage,
+        },
+        tokenUseds: remainingTokens,
       });
       tokensUsed += remainingTokens;
       break;
@@ -235,12 +238,15 @@ export async function renderConversationForModel({
     },
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
+  while (selected.length > 0 && selected[0].message.role === "agent") {
+    selected.shift();
+  }
 
   return new Ok({
     modelConversation: {
-      messages: selected,
+      messages: selected.map((s) => s.message),
     },
-    tokensUsed,
+    tokensUsed: selected.map((s) => s.tokenUseds).reduce((a, b) => a + b, 0),
   });
 }
 
