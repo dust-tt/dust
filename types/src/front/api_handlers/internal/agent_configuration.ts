@@ -140,6 +140,12 @@ const ProcessActionConfigurationSchema = t.type({
   ),
 });
 
+const multiActionsCommonFields = {
+  name: t.union([t.string, t.null]),
+  description: t.union([t.string, t.null]),
+  forceUseAtIteration: t.union([t.number, t.null]),
+};
+
 const ActionConfigurationSchema = t.intersection([
   t.union([
     RetrievalActionConfigurationSchema,
@@ -147,9 +153,7 @@ const ActionConfigurationSchema = t.intersection([
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
   ]),
-  t.partial({
-    forceUseAtIteration: t.union([t.number, t.null]),
-  }),
+  t.partial(multiActionsCommonFields),
 ]);
 
 // TODO(@fontanierh): change once generation is an action.
@@ -168,9 +172,7 @@ const GenerationConfigurationSchema = t.union([
       ),
       temperature: t.number,
     }),
-    t.partial({
-      forceUseAtIteration: t.union([t.number, t.null]),
-    }),
+    t.partial(multiActionsCommonFields),
   ]),
 ]);
 
