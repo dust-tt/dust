@@ -3,7 +3,50 @@ import * as THREE from "three";
 
 let speed = 0.08;
 const postExplodeSpeed = 0.03;
-const particleSize = 0.008; // Size of the particles
+const particleSize = 0.01; // Size of the particles
+let scene: THREE.Scene;
+let camera: THREE.PerspectiveCamera;
+let renderer: THREE.WebGLRenderer;
+let particleSystem: THREE.Points;
+const backgroundColor = 0x0f172a;
+const colorsArray = [
+  0x059669, 0x4ade80, 0xf87171, 0xf9a8d4, 0x7dd3fc, 0x3b82f6, 0xfbbf24,
+];
+
+const originalSpread = 25; // the random position of Particules at start
+let explode = false; // whether to explode the particles
+const numParticles = 10000; // number of particles
+const geometricObjectSize = 1.25;
+const rotationActive = true; // Activate the rotation of the scene
+
+// Center of the animation
+const sceneFocusX = 0;
+const sceneFocusY = 0;
+const sceneFocusZ = 0;
+let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
+
+export const shapeNames = {
+  grid: "grid",
+  wave: "wave",
+  bigSphere: "bigSphere",
+  cube: "cube",
+  bigCube: "bigCube",
+  torus: "torus",
+  sphere: "sphere",
+  pyramid: "pyramid",
+  octahedron: "octahedron",
+  cone: "cone",
+  icosahedron: "icosahedron",
+  galaxy: "galaxy",
+};
+
+export const shapeNamesArray = Object.values(shapeNames).map((value) => ({
+  name: value,
+}));
+
+export function getParticleShapeIndexByName(name: string) {
+  return shapeNamesArray.findIndex((shape) => shape.name === name);
+}
 
 interface ParticulesProps {
   currentShape: number;
@@ -38,48 +81,6 @@ export default function Particules({ currentShape }: ParticulesProps) {
       {/* Canvas will be appended here by Three.js */}
     </div>
   );
-}
-
-export const particuleShapes = [
-  { name: "grid" },
-  { name: "wave" },
-  { name: "bigSphere" },
-  { name: "cube" },
-  { name: "cube" },
-  { name: "bigCube" },
-  { name: "torus" },
-  { name: "sphere" },
-  { name: "pyramid" },
-  { name: "octahedron" },
-  { name: "cone" },
-  { name: "icosahedron" },
-  { name: "galaxy" },
-];
-
-let scene: THREE.Scene;
-let camera: THREE.PerspectiveCamera;
-let renderer: THREE.WebGLRenderer;
-let particleSystem: THREE.Points;
-const backgroundColor = 0x0f172a;
-const colorsArray = [
-  0x059669, 0x4ade80, 0xf87171, 0xf9a8d4, 0x7dd3fc, 0x3b82f6, 0xfbbf24,
-];
-
-const originalSpread = 25; // the random position of Particules at start
-let explode = false; // whether to explode the particles
-const numParticles = 10000; // number of particles
-const geometricObjectSize = 1.25;
-const rotationActive = true; // Activate the rotation of the scene
-
-// Center of the animation
-const sceneFocusX = 0;
-const sceneFocusY = 0;
-const sceneFocusZ = 0;
-let targetPositions: { x: number; y: number; z: number }[] = []; // Array to hold the target positions of all particles for each shape
-
-function handleContextLost(event: Event) {
-  event.preventDefault();
-  renderer.domElement.style.display = "none";
 }
 
 function init() {
@@ -149,6 +150,11 @@ function onWindowResize() {
 
   // Update renderer size
   renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function handleContextLost(event: Event) {
+  event.preventDefault();
+  renderer.domElement.style.display = "none";
 }
 
 function animate() {
@@ -240,11 +246,12 @@ function animateExplode() {
 }
 
 function calculateTargetPositions(currentShape = 0) {
+  speed = postExplodeSpeed;
   targetPositions = []; // Reset the target positions
   for (let i = 0; i < numParticles; i++) {
     let targetPosition = { x: 0, y: 0, z: 0 }; // Initialize targetPosition with default values
 
-    switch (particuleShapes[currentShape].name) {
+    switch (shapeNamesArray[currentShape].name) {
       case "grid":
         targetPosition = calculateGridPosition(i);
         break;

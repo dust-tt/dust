@@ -1,10 +1,17 @@
 import { Button, Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid, H3, P } from "@app/components/home/new/ContentComponents";
+import {
+  HeaderContentBlock,
+  ImgBlock,
+} from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -39,18 +46,25 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 1 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName(shapeNames.galaxy),
+    },
   };
 });
 
-const defaultFlexClasses = "flex flex-col gap-4";
-
-export default function RecruitingPeople() {
+export default function DustPlatform() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust Apps, Dust API"
-        title={<>Ever&nbsp;expending; Developper and tinkerer&nbsp;friendly</>}
+        uptitle="Dust Platform"
+        title={
+          <>
+            Developer-
+            <br />
+            and tinkerer-friendly
+          </>
+        }
         from="from-amber-200"
         to="to-amber-400"
         subtitle={
@@ -61,7 +75,7 @@ export default function RecruitingPeople() {
             <a href="https://docs.dust.tt" target="_blank">
               <Button
                 variant="primary"
-                label="Read the Documentation"
+                label="Consult our Documentation"
                 size="md"
                 className="mt-8"
               />
@@ -72,14 +86,32 @@ export default function RecruitingPeople() {
       <Grid>
         <div
           className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "sm:col-span-10 sm:col-start-2",
-            "md:col-span-6",
-            "xl:col-span-5 xl:col-start-2"
+            "col-span-12 grid grid-cols-1 gap-8",
+            "md:grid-cols-2",
+            "lg:col-span-10 lg:col-start-2"
           )}
         >
-          <div className="max-w-[360px]">
+          <ImgBlock
+            title={
+              <>
+                Dust Apps:
+                <br />
+                Expands your&nbsp;assistants' capabilities
+              </>
+            }
+            content={[
+              <>
+                Complete complex workflows and specific tasks by&nbsp;calling
+                models, reaching APIs, executing code, or&nbsp;consulting
+                Data&nbsp;Sources.
+              </>,
+              <>
+                Go beyond simple prompt/response interactions by enabling
+                a&nbsp;broader set of&nbsp;actions, chaining multiple models,
+                or&nbsp;even calling into your&nbsp;own infrastructure.
+              </>,
+            ]}
+          >
             <Hover3D
               depth={-20}
               perspective={1000}
@@ -98,32 +130,27 @@ export default function RecruitingPeople() {
                 <img src="/static/landing/apps/apps4.png" />
               </Div3D>
             </Hover3D>
-          </div>
-          <H3 className="text-white">
-            Dust Apps:
-            <br />
-            Expends your Assistants&nbsp;agency
-          </H3>
-          <P size="md">
-            Dust Apps are specialized applications designed to perform specific
-            tasks by calling models, APIs, or Data Sources.
-          </P>
-          <P size="md">
-            With Dust Apps, Assistants are not limited to information retrieval
-            and engineers are empowered to create new actions for assistants,
-            chaining multiple models or calling into their own infrastructure.
-          </P>
-        </div>
-        <div
-          className={classNames(
-            defaultFlexClasses,
-            "col-span-12",
-            "sm:col-span-10 sm:col-start-2",
-            "md:col-span-6",
-            "xl:col-span-5"
-          )}
-        >
-          <div className="max-w-[360px]">
+          </ImgBlock>
+          <ImgBlock
+            title={
+              <>
+                Dust API:
+                <br />
+                Use Dust and manage your&nbsp;Data programmatically
+              </>
+            }
+            content={[
+              <>
+                Dust’s API enables programmatic interactions with all
+                of&nbsp;Dust including Data Sources and&nbsp;assistants
+                for&nbsp;advanced use&nbsp;cases.
+              </>,
+              <>
+                Use Dust on your&nbsp;terms and&nbsp;on the&nbsp;product
+                surfaces of&nbsp;your&nbsp;choice.
+              </>,
+            ]}
+          >
             <Hover3D
               depth={-20}
               perspective={1000}
@@ -139,24 +166,14 @@ export default function RecruitingPeople() {
                 <img src="/static/landing/api/api3.png" />
               </Div3D>
             </Hover3D>
-          </div>
-          <H3 className="text-white">
-            Dust API:
-            <br />
-            Use Assistants and Data Sources programmatically
-          </H3>
-          <P size="md">
-            Dust’s API allows expending the means to interact with assistants
-            and their Data Sources from outside Dust's webapp, allowing
-            programmatic manipulation of strongly customized LLM models.
-          </P>
+          </ImgBlock>
         </div>
       </Grid>
     </>
   );
 }
 
-RecruitingPeople.getLayout = (
+DustPlatform.getLayout = (
   page: ReactElement,
   pageProps: LandingLayoutProps
 ) => {

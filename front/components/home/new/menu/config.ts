@@ -91,6 +91,9 @@ const MoreMenuConfig: MenuConfig = {
     },
     LegalMenuConfig.items[0],
     LegalMenuConfig.items[1],
+    {
+      title: " ",
+    },
     LegalMenuConfig.items[2],
     LegalMenuConfig.items[3],
   ],
@@ -105,11 +108,27 @@ const SolutionsMenuConfig: MenuConfig = {
     },
     {
       title: "Marketing & Content",
-      href: "/solutions/marketing-content",
+      href: "/solutions/marketing",
     },
     {
       title: "Recruiting & People",
       href: "/solutions/recruiting-people",
+    },
+    {
+      title: "Engineering",
+      href: "/solutions/engineering",
+    },
+    {
+      title: "Data & Analytics",
+      href: "/solutions/data-analytics",
+    },
+    {
+      title: "Sales",
+      href: "/solutions/sales",
+    },
+    {
+      title: "Knowledge Management",
+      href: "/solutions/knowledge",
     },
   ],
 };
@@ -118,12 +137,12 @@ const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {
-      title: "Dust for engineers",
-      href: "/developers",
-    },
-    {
       title: "Dust Apps & API",
       href: "/solutions/dust-platform",
+    },
+    {
+      title: "Dust for engineers",
+      href: "/solutions/engineering",
     },
     {
       title: "Platform Documentation",
@@ -159,7 +178,7 @@ export const menuConfig: DocsConfig = {
     {
       title: DevelopersMenuConfig.title,
       label: "Build with Dust",
-      rows: 4,
+      rows: 2,
       items: DevelopersMenuConfig.items,
     },
     {

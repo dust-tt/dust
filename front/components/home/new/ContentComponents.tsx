@@ -11,8 +11,6 @@ import React from "react";
 
 import { classNames } from "@app/lib/utils";
 
-const defaultGridClasses = "grid grid-cols-1 sm:grid-cols-12";
-
 const verticalGridClasses = {
   top: "items-start",
   center: "items-center",
@@ -23,12 +21,12 @@ export const Grid = ({
   children,
   verticalAlign = "top",
   className = "",
-  gap = "gap-8 md:gap-y-16 lg:gap-y-24 gap-x-8",
+  gap = "sm:gap-8 md:gap-y-12",
 }: ContentProps) => (
   <div
     className={classNames(
       className,
-      defaultGridClasses,
+      "grid grid-cols-12",
       gap,
       verticalGridClasses[verticalAlign]
     )}

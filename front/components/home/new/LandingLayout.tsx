@@ -19,7 +19,7 @@ import { A } from "@app/components/home/new/ContentComponents";
 import { FooterNavigation } from "@app/components/home/new/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/new/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/new/menu/MobileNavigation";
-import Particles, { particuleShapes } from "@app/components/home/new/Particles";
+import Particles, { shapeNamesArray } from "@app/components/home/new/Particles";
 import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -67,11 +67,11 @@ export default function LandingLayout({
       if (event.key === "ArrowLeft") {
         setCurrentShape(
           (prevShape) =>
-            (prevShape - 1 + particuleShapes.length) % particuleShapes.length
+            (prevShape - 1 + shapeNamesArray.length) % shapeNamesArray.length
         );
       } else if (event.key === "ArrowRight") {
         setCurrentShape(
-          (prevShape) => (prevShape + 1) % particuleShapes.length
+          (prevShape) => (prevShape + 1) % shapeNamesArray.length
         );
       }
     };
