@@ -1,6 +1,4 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
-import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -135,15 +133,14 @@ async function deleteTableQueryConfigurationForAgent(
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
   agent: AgentConfiguration,
-  logger: Logger,
-  execute: boolean
+  logger: Logger
 ) {
   if (agent.status !== "draft") {
     logger.info(`Agent ${agent.sId} is not in draft status. Skipping.`);
-    return false;
+    return;
   }
 
-  // Only deletes draft agent configuration without mentions.
+  // I
   const hasAtLeastOneMessage = await Mention.findOne({
     where: {
       agentConfigurationId: agent.sId,
@@ -152,11 +149,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   if (hasAtLeastOneMessage) {
     logger.info(`Agent ${agent.sId} has related messages. Skipping.`);
 
-    return false;
-  }
-
-  if (!execute) {
-    return true;
+    return;
   }
 
   // First, delete the generation configuration.
@@ -189,8 +182,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
       id: agent.id,
     },
   });
-
-  return true;
 }
 
 async function removeDraftAgentConfigurationsForWorkspace(
@@ -218,15 +209,11 @@ async function removeDraftAgentConfigurationsForWorkspace(
   );
 
   for (const agent of draftAgents) {
-    const isDeleted = await deleteDraftAgentConfigurationAndRelatedResources(
-      agent,
-      logger,
-      execute
-    );
-
-    if (isDeleted) {
-      logger.info(`Agent ${agent.sId} has been deleted.`);
+    if (execute) {
+      await deleteDraftAgentConfigurationAndRelatedResources(agent, logger);
     }
+
+    logger.info(`Agent ${agent.sId} has been deleted.`);
   }
 
   logger.info(
