@@ -115,9 +115,9 @@ async function deleteTableQueryConfigurationForAgent(
 }
 
 /**
- * This function destroy a draft agent configuration alongside all the associated configuration.
- * It does not rely on transaction since we don't want to create locks, we always delete the agent configuration
- * at the very end so it can be retried if it fails.
+ * Destroys a draft agent configuration and all associated configurations.
+ * Avoids using transactions to prevent locks.
+ * Deletes the agent configuration last, allowing retries if deletion fails.
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
   agent: AgentConfiguration,
