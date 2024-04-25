@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
+import _ from 'lodash';
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
@@ -64,16 +65,32 @@ export default function InputBlock({
     return res.dataset;
   };
 
-  const onUpdate = (
-    initializing: boolean,
-    valid: boolean,
-    currentDatasetInEditor: DatasetType,
-    schema: DatasetSchema
-  ) => {
-    if(!initializing && valid) {
-      console.log("onUpdate", currentDatasetInEditor, schema);
-    }
-  };
+const onUpdate = _.debounce(async (
+  initializing: boolean,
+  valid: boolean,
+  currentDatasetInEditor: DatasetType,
+  schema: DatasetSchema
+) => {
+  if(!initializing && valid) {
+    console.log("onUpdate", currentDatasetInEditor, schema);
+    const res = await fetch(
+      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset: currentDatasetInEditor,
+          schema: schema,
+        }),
+      }
+    );
+
+    console.log("DATASET UPDATED");
+    console.log(res);
+  }
+}, 500); // 300ms delay
 
   console.log("DATASET WITH DATA");
   console.log(block.config.datasetWithData);
