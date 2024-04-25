@@ -1,5 +1,5 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import { GPT_4_TURBO_MODEL_CONFIG, GPT_4_TURBO_MODEL_ID } from "../assistant";
+import { GPT_4_TURBO_MODEL_CONFIG } from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -224,7 +224,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       MODEL: {
         provider_id: "openai",
-        model_id: GPT_4_TURBO_MODEL_ID,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
       },
