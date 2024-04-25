@@ -8,7 +8,10 @@ import {
   AgentDustAppRunAction,
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AgentRetrievalAction,
+  AgentRetrievalConfiguration,
+} from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
@@ -19,6 +22,7 @@ import {
   AgentGenerationConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
+import { Mention } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -39,6 +43,14 @@ async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
     where: {
       retrievalConfigurationId: {
         [Op.in]: retrievalConfigurations.map((r) => r.id),
+      },
+    },
+  });
+
+  await AgentRetrievalAction.destroy({
+    where: {
+      retrievalConfigurationId: {
+        [Op.in]: retrievalConfigurations.map((r) => r.sId),
       },
     },
   });
@@ -94,7 +106,7 @@ async function deleteTableQueryConfigurationForAgent(
   await AgentTablesQueryConfigurationTable.destroy({
     where: {
       tablesQueryConfigurationId: {
-        [Op.in]: tableQueryConfigurations.map((r) => r.sId),
+        [Op.in]: tableQueryConfigurations.map((r) => r.id),
       },
     },
   });
@@ -118,6 +130,8 @@ async function deleteTableQueryConfigurationForAgent(
  * Destroys a draft agent configuration and all associated configurations.
  * Avoids using transactions to prevent locks.
  * Deletes the agent configuration last, allowing retries if deletion fails.
+ *
+ * /!\ Only deletes draft agent configuration if it hasn't been used in any messages.
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
   agent: AgentConfiguration,
@@ -125,6 +139,19 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 ) {
   if (agent.status !== "draft") {
     logger.info(`Agent ${agent.sId} is not in draft status. Skipping.`);
+    return;
+  }
+
+  // I
+  const hasAtLeastOneMessage = await Mention.findOne({
+    where: {
+      agentConfigurationId: agent.sId,
+    },
+  });
+  if (hasAtLeastOneMessage) {
+    logger.info(`Agent ${agent.sId} has related messages. Skipping.`);
+
+    return;
   }
 
   // First, delete the generation configuration.
@@ -190,6 +217,10 @@ async function removeDraftAgentConfigurationsForWorkspace(
 
     logger.info(`Agent ${agent.sId} has been deleted.`);
   }
+
+  logger.info(
+    `Done delete ${draftAgents.length} draft agents for workspace(${workspace.sId}).`
+  );
 }
 
 makeScript(
