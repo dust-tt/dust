@@ -6,7 +6,6 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@dust-tt/types";
-import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -62,17 +61,17 @@ AgentGenerationConfiguration.init(
     prompt: {
       type: DataTypes.TEXT,
       allowNull: false,
-      defaultValue: "Answer the user's question.",
+      defaultValue: "__PROMPT_PLACEHOLDER__",
     },
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "openai",
+      defaultValue: "__PROVIDER_ID_PLACEHOLDER__",
     },
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: GPT_4_TURBO_MODEL_ID,
+      defaultValue: "__MODEL_ID_PLACEHOLDER__",
     },
     temperature: {
       type: DataTypes.FLOAT,
