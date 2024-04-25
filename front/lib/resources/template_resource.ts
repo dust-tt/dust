@@ -135,7 +135,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   toJSON() {
     return {
+      backgroundColor: this.backgroundColor,
       description: this.description,
+      emoji: this.emoji,
       handle: this.handle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
