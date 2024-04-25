@@ -42,7 +42,7 @@ export default function DatasetPicker({
   }
 
   return (
-    <div className="flex items-center">
+    <div className="flex items-center border rounded px-2">
       {dataset ? (
         <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/${dataset}`}>
           <div className="text-sm font-bold text-action-500">{dataset}</div>

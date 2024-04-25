@@ -93,46 +93,44 @@ export default function InputBlock({
       onBlockNew={onBlockNew}
       canUseCache={false}
     >
-      <div className="mx-4 flex flex-col sm:flex-row sm:space-x-2">
-        <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
+      <div>
+      <div>
           {!((!block.config || !block.config.dataset) && readOnly) ? (
-            <div>
-              <div className="flex flex-initial">
-                dataset:&nbsp;
-                <DatasetPicker
-                  owner={owner}
-                  app={app}
-                  dataset={block.config ? block.config.dataset : ""}
-                  onDatasetUpdate={handleSetDataset}
-                  readOnly={readOnly}
-                />
-              </div>
-              <div className="mt-6 flex flex-row">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-                  }}
-                  icon={PencilSquareIcon}
-                  label="Edit Dataset"
-                  size="sm"
-                />
-              </div>
+            <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
+              Dataset:&nbsp;
+              <DatasetPicker
+                owner={owner}
+                app={app}
+                dataset={block.config ? block.config.dataset : ""}
+                onDatasetUpdate={handleSetDataset}
+                readOnly={readOnly}
+              />
             </div>
           ) : null}
-        </div>
       </div>
       {block.config && block.config.dataset && block.config.datasetWithData ? (
-        <DatasetView
-          readOnly={false}
-          datasets={[block.config.datasetWithData]}
-          dataset={block.config.datasetWithData}
-          schema={block.config.datasetWithData.schema}
-          onUpdate={onUpdate}
-          nameDisabled={true}
-          showDataOnly={true}
-        />
+        <div>
+          <DatasetView
+            readOnly={false}
+            datasets={[block.config.datasetWithData]}
+            dataset={block.config.datasetWithData}
+            schema={block.config.datasetWithData.schema}
+            onUpdate={onUpdate}
+            nameDisabled={true}
+            showDataOnly={true}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+            }}
+            icon={PencilSquareIcon}
+            label="Edit schema"
+            size="xs"
+          />
+        </div>
       ) : null}
+      </div>
     </Block>
   );
 }

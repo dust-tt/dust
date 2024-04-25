@@ -58,7 +58,7 @@ export default function NewBlock({
     {
       type: "curl",
       typeNames: ["curl"],
-      name: "Curl Request",
+      name: "CURL Request",
       description:
         "Perform an HTTP request to interface with external services.",
     },
@@ -145,38 +145,37 @@ export default function NewBlock({
           direction === "up" ? "bottom-9" : ""
         )}
       >
-        {blocks.map((block) => (
-          <Menu.Item
-            as="div"
-            key={block.type}
-            onClick={() => {
-              if (onClick) {
-                onClick(block.type);
-              }
-            }}
-            className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white px-0 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
-          >
-            {() => (
-              <div className="ml-4 grid max-w-md grid-cols-12 items-center">
-                <div className="col-span-4 sm:col-span-3">
-                  <div className="flex text-base font-medium text-gray-900">
-                    {block.typeNames.map((type) => (
-                      <div
-                        key={type}
-                        className="mr-1 rounded-md bg-gray-200 px-1 py-0.5 text-sm font-bold"
-                      >
-                        {type}
+        {blocks
+          .sort((a, b) =>
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          )
+          .map((block) => (
+            <Menu.Item
+              as="div"
+              key={block.type}
+              onClick={() => {
+                if (onClick) {
+                  onClick(block.type);
+                }
+              }}
+              className="my-1 flex cursor-pointer flex-row flex-nowrap gap-4 bg-white px-0 py-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+            >
+              {() => (
+                <div className="ml-4 grid max-w-md grid-cols-12 items-center">
+                  <div className="col-span-4 sm:col-span-3">
+                    <div className="flex text-base font-medium text-gray-900">
+                      <div className="mr-1 rounded-md bg-gray-200 px-1 py-0.5 text-sm font-bold">
+                        {block.name}
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                  <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
+                    {block.description}
                   </div>
                 </div>
-                <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
-                  {block.description}
-                </div>
-              </div>
-            )}
-          </Menu.Item>
-        ))}
+              )}
+            </Menu.Item>
+          ))}
       </Menu.Items>
     </Menu>
   );

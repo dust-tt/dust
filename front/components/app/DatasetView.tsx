@@ -591,13 +591,22 @@ export default function DatasetView({
         )}
 
         <div className="mt-4 sm:col-span-5">
-          <h3 className="text-sm font-medium text-gray-700">Data</h3>
-          {!readOnly ? (
+          {showDataOnly ? (
             <p className="mt-2 text-sm text-gray-500">
-              Add and edit your dataset entries below. You can insert or remove
-              entries using buttons on the right.
+              <strong>Test input data for running your app in this view only</strong>. You can edit the data below.
             </p>
-          ) : null}
+          )
+          : (
+            <>
+              <h3 className="text-sm font-medium text-gray-700">Data</h3>
+              {!readOnly ? (
+                <p className="mt-2 text-sm text-gray-500">
+                  Add and edit your dataset entries below. You can insert or remove
+                  entries using buttons on the right.
+                </p>
+              ) : null}
+              </>
+          )}
           <div className="mt-4 w-full leading-4">
             <div className="">
               <ul className="space-y-2">
