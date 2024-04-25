@@ -60,6 +60,7 @@ import type {
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
+import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
@@ -96,29 +97,6 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
-};
-
-const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
-  actionMode: "GENERIC",
-  dataSourceConfigurations: {},
-  timeFrame: {
-    value: 1,
-    unit: "month",
-  },
-  dustAppConfiguration: null,
-  tablesQueryConfiguration: {},
-  handle: null,
-  scope: "private",
-  description: null,
-  instructions: null,
-  avatarUrl: null,
-  generationSettings: {
-    modelSettings: {
-      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-    },
-    temperature: 0.7,
-  },
 };
 
 const useNavigationLock = (
@@ -229,17 +207,6 @@ export default function AssistantBuilder({
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
       ? {
-          actionMode: initialBuilderState.actionMode,
-          dataSourceConfigurations:
-            initialBuilderState.dataSourceConfigurations ?? {
-              ...DEFAULT_ASSISTANT_STATE.dataSourceConfigurations,
-            },
-          timeFrame: initialBuilderState.timeFrame ?? {
-            ...DEFAULT_ASSISTANT_STATE.timeFrame,
-          },
-          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-          tablesQueryConfiguration:
-            initialBuilderState.tablesQueryConfiguration,
           handle: initialBuilderState.handle,
           description: initialBuilderState.description,
           scope: initialBuilderState.scope,
@@ -248,6 +215,11 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...DEFAULT_ASSISTANT_STATE.generationSettings,
           },
+          actionMode: initialBuilderState.actionMode,
+          retrievalConfiguration: initialBuilderState.retrievalConfiguration,
+          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
+          tablesQueryConfiguration:
+            initialBuilderState.tablesQueryConfiguration,
         }
       : {
           ...DEFAULT_ASSISTANT_STATE,
@@ -260,10 +232,12 @@ export default function AssistantBuilder({
           },
         }
   );
+
   const [template, setTemplate] =
     useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
+
   const resetTemplate = async () => {
-    await setTemplate(null);
+    setTemplate(null);
     await router.replace(
       {
         pathname: router.pathname,
@@ -277,6 +251,7 @@ export default function AssistantBuilder({
   const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
     null
   );
+
   const resetToTemplateInstructions = useCallback(async () => {
     if (template === null) {
       return;
@@ -303,7 +278,7 @@ export default function AssistantBuilder({
     } else if (isTablesQueryConfiguration(action)) {
       actionMode = "TABLES_QUERY";
     } else if (isProcessConfiguration(action)) {
-      // not supported in the builder yet
+      // Not supported in the builder yet.
     }
 
     if (actionMode !== null) {
@@ -311,9 +286,10 @@ export default function AssistantBuilder({
       setBuilderState((builderState) => ({
         ...builderState,
         actionMode,
-        dataSourceConfigurations: {},
-        dustAppConfiguration: null,
-        tablesQueryConfiguration: {},
+        retrievalConfiguration: DEFAULT_ASSISTANT_STATE.retrievalConfiguration,
+        dustAppConfiguration: DEFAULT_ASSISTANT_STATE.dustAppConfiguration,
+        tablesQueryConfiguration:
+          DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration,
       }));
     }
   }, [template]);
@@ -416,10 +392,6 @@ export default function AssistantBuilder({
     slackChannelsInitialized,
   ]);
 
-  const configuredDataSourceCount = Object.keys(
-    builderState.dataSourceConfigurations
-  ).length;
-
   const formValidation = useCallback(async () => {
     let valid = true;
 
@@ -445,12 +417,16 @@ export default function AssistantBuilder({
       builderState.actionMode === "RETRIEVAL_SEARCH" ||
       builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
     ) {
-      if (!configuredDataSourceCount) {
+      if (
+        Object.keys(
+          builderState.retrievalConfiguration.dataSourceConfigurations
+        ).length === 0
+      ) {
         valid = false;
       }
     }
     if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
-      if (!builderState.timeFrame.value) {
+      if (!builderState.retrievalConfiguration.timeFrame.value) {
         valid = false;
         setTimeFrameError("Timeframe must be a number");
       } else {
@@ -476,12 +452,12 @@ export default function AssistantBuilder({
     builderState.handle,
     builderState.description,
     builderState.instructions,
-    configuredDataSourceCount,
-    builderState.timeFrame.value,
-    builderState.dustAppConfiguration,
-    builderState.tablesQueryConfiguration,
     owner,
     initialBuilderState?.handle,
+    // Actions
+    builderState.retrievalConfiguration,
+    builderState.dustAppConfiguration,
+    builderState.tablesQueryConfiguration,
   ]);
 
   useEffect(() => {
@@ -792,35 +768,34 @@ export async function submitAssistantBuilderForm({
         type: "retrieval_configuration",
         query: builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
         relativeTimeFrame:
-          builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
+          builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" &&
+          builderState.retrievalConfiguration
             ? {
-                duration: builderState.timeFrame.value,
-                unit: builderState.timeFrame.unit,
+                duration: builderState.retrievalConfiguration.timeFrame.value,
+                unit: builderState.retrievalConfiguration.timeFrame.unit,
               }
             : "auto",
         topK: "auto",
-        dataSources: Object.values(builderState.dataSourceConfigurations).map(
-          ({ dataSource, selectedResources, isSelectAll }) => ({
-            dataSourceId: dataSource.name,
-            workspaceId: owner.sId,
-            filter: {
-              parents: !isSelectAll
-                ? {
-                    in: selectedResources.map(
-                      (resource) => resource.internalId
-                    ),
-                    not: [],
-                  }
-                : null,
-              tags: null,
-            },
-          })
-        ),
+        dataSources: Object.values(
+          builderState.retrievalConfiguration?.dataSourceConfigurations || {}
+        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+          dataSourceId: dataSource.name,
+          workspaceId: owner.sId,
+          filter: {
+            parents: !isSelectAll
+              ? {
+                  in: selectedResources.map((resource) => resource.internalId),
+                  not: [],
+                }
+              : null,
+            tags: null,
+          },
+        })),
       };
       break;
 
     case "DUST_APP_RUN":
-      if (builderState.dustAppConfiguration) {
+      if (builderState.dustAppConfiguration.app) {
         actionParam = {
           type: "dust_app_run_configuration",
           appWorkspaceId: owner.sId,
