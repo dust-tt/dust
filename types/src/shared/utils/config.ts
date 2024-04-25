@@ -16,4 +16,14 @@ export class EnvironmentConfig {
 
     return cachedValue;
   }
+
+  static getOptionalEnvVariable(key: string): string | undefined {
+    if (!this.cache[key]) {
+      const value = process.env[key];
+      if (value) {
+        this.cache[key] = value;
+      }
+    }
+    return this.cache[key];
+  }
 }
