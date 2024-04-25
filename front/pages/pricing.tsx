@@ -6,6 +6,10 @@ import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
 import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
@@ -39,7 +43,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 2 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
+    },
   };
 });
 
@@ -56,22 +63,18 @@ export default function Pricing() {
         }}
       />
       <HeaderContentBlock
-        title={
-          <>
-            Start with Dust!
-            <br />
-            Meet our pricing plans.
-          </>
-        }
-        from="from-sky-200"
-        to="to-blue-500"
+        title={<>Meet our pricing plans.</>}
+        from="from-emerald-200"
+        to="to-emerald-500"
         subtitle={
           <>
-            <div>
+            Pro: For small teams and startups, from 1 member. <br />
+            Enterprise: From 100 members, multiple workspaces, SSO…
+            <div className="pt-8">
               <Button
                 variant="primary"
                 size="md"
-                label="Start with Dust Pro, 15 Days free trial"
+                label="Start with Pro, 15 Days free"
                 icon={RocketIcon}
                 onClick={() => {
                   window.location.href = "/api/auth/login";

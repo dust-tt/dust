@@ -18,7 +18,7 @@ const preview: Preview = {
           "Components",
           "Modules",
           "Styles",
-          "Exemple",
+          "Example",
         ], // Define your order here
       },
     },

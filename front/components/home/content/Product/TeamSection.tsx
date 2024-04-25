@@ -1,12 +1,7 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
-import {
-  Grid,
-  H2,
-  P,
-  Strong,
-} from "@app/components/home/new/ContentComponents";
+import { Grid, H2, P } from "@app/components/home/new/ContentComponents";
 
 const defaultFlexClasses = "flex flex-col gap-8";
 
@@ -35,7 +30,7 @@ export function TeamSection() {
             Adopting AI is a&nbsp;fundamental shift for&nbsp;your
             team’s&nbsp;workflows.
             <br />
-            <Strong>Spread good&nbsp;practices and AI&nbsp;knowledge.</Strong>
+            Adopt and spread best&nbsp;practices and AI&nbsp;knowledge now.
           </P>
         </div>
         <div
@@ -43,18 +38,16 @@ export function TeamSection() {
             "col-span-12",
             "grid grid-cols-1 gap-x-8 gap-y-20",
             "md:grid-cols-2 md:gap-y-28",
-            "lg:grid-cols-3",
-            "2xl:col-span-10 2xl:col-start-2"
+            "lg:col-span-10 lg:col-start-2"
           )}
         >
           <ImgBlock
-            title={
-              <>Identify your most creative and driven team&nbsp;members.</>
-            }
+            title={<>Give your&nbsp;creative team members an&nbsp;edge</>}
             content={
               <>
-                Develop your people's skills and encourage sharing in
-                the&nbsp;company.
+                Empower those with a&nbsp;builder mindset the&nbsp;right tools
+                to&nbsp;accelerate your&nbsp;company's transition
+                with&nbsp;GenAI.
               </>
             }
           >
@@ -82,12 +75,9 @@ export function TeamSection() {
           </ImgBlock>
 
           <ImgBlock
-            title={<>Ramp up your team with&nbsp;templates.</>}
+            title={<>Get your team started with&nbsp;templates</>}
             content={
-              <>
-                Practical examples to&nbsp;apply directly
-                and&nbsp;learn&nbsp;from.
-              </>
+              <>Build upon selected practical examples straight&nbsp;away.</>
             }
           >
             <Hover3D
@@ -112,42 +102,13 @@ export function TeamSection() {
 
           <ImgBlock
             title={
-              <>Package powerful workflow in easy-to-use&nbsp;assistants.</>
+              <>Package powerful workflows in easy-to-use&nbsp;assistants</>
             }
             content={
               <>
-                <Strong>
-                  <span className="text-emerald-400">@mentions</span>
-                </Strong>{" "}
-                assistants in&nbsp;discussions, or&nbsp;use assistants directy
-                Slack.
+                Team members easily&nbsp;@mention the&nbsp;assistants
+                they&nbsp;need.
               </>
-            }
-          >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={-20}>
-                <img src="/static/landing/builder/builder1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/builder/builder2.png" />
-              </Div3D>
-              <Div3D depth={30} className="absolute top-0">
-                <img src="/static/landing/builder/builder3.png" />
-              </Div3D>
-              <Div3D depth={50} className="absolute top-0">
-                <img src="/static/landing/builder/builder4.png" />
-              </Div3D>
-            </Hover3D>
-          </ImgBlock>
-
-          <ImgBlock
-            title={<>Easily share assistants across your&nbsp;team.</>}
-            content={
-              <>Spread assistants using Dust's company-wide sharing features.</>
             }
           >
             <Hover3D
@@ -171,43 +132,17 @@ export function TeamSection() {
           </ImgBlock>
 
           <ImgBlock
-            title={<>Manage workspace invitations&nbsp;seamlessly.</>}
-            content={
-              <>
-                Control your workspace with Single Sign-On (SSO) and easy
-                batch&nbsp;invites.
-              </>
-            }
-          >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={-20}>
-                <img src="/static/landing/member/member1.png" />
-              </Div3D>
-              <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/member/member2.png" />
-              </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/member/member3.png" />
-              </Div3D>
-              <Div3D depth={70} className="absolute top-0">
-                <img src="/static/landing/member/member4.png" />
-              </Div3D>
-            </Hover3D>
-          </ImgBlock>
-
-          <ImgBlock
             title={
               <>
                 Don't change everything; Let AI fit in your
-                existing&nbsp;workflow.
+                existing&nbsp;workflow
               </>
             }
             content={
-              <>Use Slack integration, Dust's&nbsp;API, and Dust&nbsp;Apps.</>
+              <>
+                Leverage Dust’s Slack&nbsp;integration, API, and&nbsp;Dust Apps
+                to&nbsp;bring Dust where you&nbsp;need&nbsp;it.
+              </>
             }
           >
             <Hover3D

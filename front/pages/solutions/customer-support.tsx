@@ -1,14 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
 import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  getParticleShapeIndexByName,
+  shapeNames,
+} from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -42,7 +42,10 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
 
   return {
-    props: { gaTrackingId: config.getGaTrackingId(), shape: 9 },
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+      shape: getParticleShapeIndexByName(shapeNames.octahedron),
+    },
   };
 });
 
@@ -58,8 +61,8 @@ export default function CustomerSupport() {
             help your&nbsp;customers.
           </>
         }
-        from="from-sky-300"
-        to="to-blue-500"
+        from="from-sky-200"
+        to="to-sky-500"
         subtitle={
           <>
             Reply faster and increase answer&nbsp;quality
@@ -69,123 +72,90 @@ export default function CustomerSupport() {
           </>
         }
       />
-      <Grid gap="gap-8">
-        <ContentAssistantBlock
-          className="col-span-8"
-          layout="vertical"
-          color="sky"
-          content={
+      <Grid>
+        <SolutionSection
+          title={
             <>
-              <Block title="Package expert knowledge in easy to use assistants in seconds">
-                Build AI assistants based on company knowledge and past support
-                conversations.
-              </Block>
-              <Block title="Understand problems faster, jump to solutions">
-                Understand customer messages faster, in any language. Find
-                informations to resolve issues quickly with semantic search and
-                access to cross company data.
-              </Block>
+              Happy Agents,
+              <br />
+              happy Customers
             </>
           }
-          assistant={customerSupportSlides[0]}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Package expert knowledge in easy to use assistants in
+                      seconds
+                    </>
+                  ),
+                  content:
+                    "Build AI assistants based on company knowledge and past support",
+                },
+                {
+                  title: <>Leverage past tickets and jump to solutions</>,
+                  content: (
+                    <>
+                      Understand customer messages faster, and technical errors
+                      in any language. Explore past tickets to resolve issues or
+                      create documentation quickly.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: assistantExamples[0],
+            },
+          ]}
         />
-        <ContentAssistantBlock
-          className="col-span-4"
-          color="pink"
-          layout="vertical"
-          content={
-            <>
-              <Block
-                title="Stay connected to the rest of the company"
-                className="col-span-6"
-              >
-                Release schedule, technical outage, program maitenance, all
-                accessible in one place.
-              </Block>
-            </>
-          }
-          assistant={customerSupportSlides[2]}
+        <SolutionSection
+          title={<>Better team collaboration</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: <>Onboard faster</>,
+                  content:
+                    "Reduce your onboarding and training time drastically. Put your documentation on processes and methods to work.",
+                },
+                {
+                  title: <>Keep your team updated</>,
+                  content: (
+                    <>
+                      Understand customer messages faster, and technical errors
+                      in any language. Explore past tickets to resolve issues or
+                      create documentation quickly.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[1]],
+            },
+          ]}
         />
-        <ContentAssistantBlock
-          className="col-span-8 col-start-3"
-          color="emerald"
-          layout="vertical"
-          content={
-            <>
-              <Block
-                title={
+        <SolutionSection
+          title={<>Better insights</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: {
+                title: <>Analyze and categorize your ticket</>,
+                content: (
                   <>
-                    Write better answers,
-                    <br />
-                    faster
+                    Understand customer messages faster, and technical errors in
+                    any language. Explore past tickets to resolve issues or
+                    create documentation quickly.
                   </>
-                }
-              >
-                Draft and correct answers following company guidelines and tone
-                of voice in&nbsp;seconds.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {customerSupportSlides[1]}
-              {customerSupportSlides[3]}
-            </>
-          }
+                ),
+              },
+
+              assistantBlocks: assistantExamples[2],
+            },
+          ]}
         />
-        {/* <div className="col-span-4">
-          <Conversation>
-            <Message
-              type="user"
-              name="Jessica Parker"
-              visual="static/humanavatar/human14.jpg"
-            >
-              <P size="sm">
-                <Handle>@supportExpert</Handle> how do we manage downgrade a
-                subscription to a less expensive option halfway through the
-                term?
-              </P>
-            </Message>
-            <Message
-              type="agent"
-              name="@supportExpert"
-              visual="https://dust.tt/static/droidavatar/Droid_Yellow_4.jpg"
-            >
-              <P size="sm">
-                We allow for changes, but there is a 10% fee associated with
-                downgrading before the term ends.
-              </P>
-              <P size="sm">The process is the following:</P>
-              <P size="sm">…</P>
-            </Message>
-            <Message
-              type="user"
-              name="Jessica Parker"
-              visual="static/humanavatar/human14.jpg"
-            >
-              <P size="sm">
-                <Handle>@customerWrite</Handle>, the customer is called Cedric.
-                Please draft an email answer explaining the 10% fee on 3 months
-                remaining to the subscription.
-              </P>
-            </Message>
-            <Message
-              type="agent"
-              name="@customerWrite"
-              visual="https://dust.tt/static/droidavatar/Droid_Red_4.jpg"
-            >
-              <P size="sm">Subject: Your Subscription Change Request</P>
-              <P size="sm">Dear Cedric, </P>
-              <P size="sm">
-                I hope this message finds you well. You've expressed an interest
-                in downgrading your current subscription plan before the end of
-                its term. We appreciate your continued support and are here to
-                assist you with your request.
-              </P>
-              <P size="sm">…</P>
-            </Message>
-          </Conversation>
-        </div> */}
       </Grid>
     </>
   );
@@ -198,33 +168,32 @@ CustomerSupport.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const customerSupportSlides = [
-  <DroidItem
-    key="1"
-    emoji="🤝"
-    avatarBackground="bg-sky-200"
-    name="@supportExpert"
-    question="Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team."
-  />,
-  <DroidItem
-    key="2"
-    emoji="🖋️"
-    avatarBackground="bg-emerald-200"
-    name="@customerWriter"
-    question="Draft answers using company tone and voice, support guidelines, and customer messages."
-  />,
-  <DroidItem
-    key="3"
-    emoji="📡"
-    avatarBackground="bg-pink-200"
-    name="@productInfo"
-    question="Answer questions on product evolutions, engineering activity, alerts, and downtime."
-  />,
-  <DroidItem
-    key="4"
-    emoji="🔮"
-    avatarBackground="bg-emerald-200"
-    name="@followUpScenario"
-    question="Help anticipate further requests from users and ensure those are covered before answering to a customer."
-  />,
+export const assistantExamples = [
+  {
+    emoji: "🤝",
+    backgroundColor: "bg-sky-300",
+    name: "@supportExpert",
+    description:
+      "Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team.",
+  },
+  {
+    emoji: "📡",
+    backgroundColor: "bg-sky-300",
+    name: "@productInfo",
+    description:
+      "Answer questions on product evolutions, engineering activity, alerts, and downtime.",
+  },
+  {
+    emoji: "🔮",
+    backgroundColor: "bg-sky-300",
+    name: "@ticketAnalyst",
+    description:
+      "Classify tickets; identify patterns, sentiment, and recurring needs.",
+  },
+  {
+    emoji: "💡",
+    backgroundColor: "bg-sky-300",
+    name: "@onboardingBuddy",
+    description: "All you need to know about people, tooling and resources.",
+  },
 ];

@@ -68,8 +68,8 @@ const PRO_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Single Sign-on (Google, GitHub)",
-    variant: "check",
+    label: "Google & GitHub Authentication",
+    variant: "dash",
     display: ["landing", "subscribe"],
   },
   {
@@ -131,7 +131,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Single Sign-on",
+    label: "Single Sign-On (SSO)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -180,6 +180,18 @@ export function ProPriceTable({
       size={size}
       magnified={false}
     >
+      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+        <PriceTable.ActionContainer position="top">
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Start now, 15 days free"
+            icon={RocketIcon}
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        </PriceTable.ActionContainer>
+      )}
       {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
         (item) => (
           <PriceTable.Item
@@ -189,20 +201,12 @@ export function ProPriceTable({
           />
         )
       )}
-
-      {display === "landing" && (
-        <PriceTable.ActionContainer>
-          <div className="text-base font-bold text-action-400">
-            Try it for free for 2 weeks
-          </div>
-        </PriceTable.ActionContainer>
-      )}
       {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
         <PriceTable.ActionContainer>
           <Button
             variant="primary"
             size={biggerButtonSize}
-            label="Start now"
+            label="Start now, 15 days free"
             icon={RocketIcon}
             disabled={isProcessing}
             onClick={onClick}
@@ -224,6 +228,17 @@ function EnterprisePriceTable({
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <PriceTable title="Enterprise" price="Custom" size={size} magnified={false}>
+      <PriceTable.ActionContainer position="top">
+        {onClick && (
+          <Button
+            variant="primary"
+            size={biggerButtonSize}
+            label="Contact us"
+            disabled={isProcessing}
+            onClick={onClick}
+          />
+        )}
+      </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item) => (
         <PriceTable.Item
           key={item.label}
@@ -278,11 +293,10 @@ export function PricePlans({
               className={({ selected }) =>
                 classNames(
                   "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-2 text-sm",
-                  "md:py-3 md:text-lg",
+                  "py-3 text-lg",
                   "ring-0 focus:outline-none",
                   selected
-                    ? "bg-sky-400 text-white shadow dark:bg-sky-500"
+                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
                     : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
                 )
               }
@@ -293,8 +307,7 @@ export function PricePlans({
               className={({ selected }) =>
                 classNames(
                   "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-2 text-sm",
-                  "md:py-3 md:text-lg",
+                  "py-3 text-lg",
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-pink-400 text-white shadow dark:bg-pink-500"
