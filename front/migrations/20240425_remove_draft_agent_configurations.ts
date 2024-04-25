@@ -1,0 +1,229 @@
+import type { LightWorkspaceType } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
+import * as _ from "lodash";
+import { Op } from "sequelize";
+
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import {
+  AgentDustAppRunAction,
+  AgentDustAppRunConfiguration,
+} from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentConfiguration,
+  AgentGenerationConfiguration,
+  AgentUserRelation,
+} from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
+import { makeScript, runOnAllWorkspaceIds } from "@app/scripts/helpers";
+
+async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
+  const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  if (retrievalConfigurations.length === 0) {
+    return;
+  }
+
+  await AgentDataSourceConfiguration.destroy({
+    where: {
+      retrievalConfigurationId: {
+        [Op.in]: retrievalConfigurations.map((r) => r.id),
+      },
+    },
+  });
+
+  await AgentRetrievalConfiguration.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+}
+
+async function deleteDustAppRunConfigurationForAgent(
+  agent: AgentConfiguration
+) {
+  const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  if (dustAppRunConfigurations.length === 0) {
+    return;
+  }
+
+  await AgentDustAppRunAction.destroy({
+    where: {
+      dustAppRunConfigurationId: {
+        [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
+      },
+    },
+  });
+
+  await AgentDustAppRunConfiguration.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+}
+
+async function deleteTableQueryConfigurationForAgent(
+  agent: AgentConfiguration
+) {
+  const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  if (tableQueryConfigurations.length === 0) {
+    return;
+  }
+
+  await AgentTablesQueryConfigurationTable.destroy({
+    where: {
+      tablesQueryConfigurationId: {
+        [Op.in]: tableQueryConfigurations.map((r) => r.sId),
+      },
+    },
+  });
+
+  await AgentTablesQueryAction.destroy({
+    where: {
+      tablesQueryConfigurationId: {
+        [Op.in]: tableQueryConfigurations.map((r) => r.sId),
+      },
+    },
+  });
+
+  await AgentTablesQueryConfiguration.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+}
+
+/**
+ * This function destroy a draft agent configuration alongside all the associated configuration.
+ * It does not rely on transaction since we don't want to create locks, we always delete the agent configuration
+ * at the very end so it can be retried if it fails.
+ */
+async function deleteDraftAgentConfigurationAndRelatedResources(
+  agent: AgentConfiguration,
+  logger: Logger
+) {
+  if (agent.status !== "draft") {
+    logger.info(`Agent ${agent.sId} is not in draft status. Skipping.`);
+  }
+
+  // First, delete the generation configuration.
+  await AgentGenerationConfiguration.destroy({
+    where: {
+      agentConfigurationId: agent.id,
+    },
+  });
+
+  // Delete the retrieval configurations.
+  await deleteRetrievalConfigurationForAgent(agent);
+
+  // Delete the dust app run configurations.
+  await deleteDustAppRunConfigurationForAgent(agent);
+
+  // Delete the table query configurations.
+  await deleteTableQueryConfigurationForAgent(agent);
+
+  // Delete the agent user relation.
+  await AgentUserRelation.destroy({
+    where: {
+      // It uses the `sId` for the relation.
+      agentConfiguration: agent.sId,
+    },
+  });
+
+  // Finally delete the agent configuration.
+  await AgentConfiguration.destroy({
+    where: {
+      id: agent.id,
+    },
+  });
+}
+
+async function removeDraftAgentConfigurationsForWorkspace(
+  workspace: LightWorkspaceType,
+  logger: Logger,
+  execute: boolean
+) {
+  const draftAgents = await AgentConfiguration.findAll({
+    where: {
+      workspaceId: workspace.id,
+      status: "draft",
+    },
+    attributes: ["id", "sId", "status"],
+  });
+
+  if (draftAgents.length === 0) {
+    logger.info(
+      `No draft agents found for workspace(${workspace.sId}). Skipping.`
+    );
+    return;
+  }
+
+  logger.info(
+    `Found ${draftAgents.length} draft agents for workspace(${workspace.sId}).`
+  );
+
+  for (const agent of draftAgents) {
+    if (execute) {
+      await deleteDraftAgentConfigurationAndRelatedResources(agent, logger);
+    }
+
+    logger.info(`Agent ${agent.sId} has been deleted.`);
+  }
+}
+
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description:
+        "List of workspace identifiers, separated by a space, for which the feature flag should be toggled.",
+    },
+  },
+  async ({ workspaceId, execute }, logger) => {
+    if (workspaceId) {
+      const workspace = await Workspace.findOne({
+        where: {
+          sId: workspaceId,
+        },
+      });
+      if (!workspace) {
+        logger.info({ workspaceId }, "Workspace not found!");
+        return;
+      }
+
+      return removeDraftAgentConfigurationsForWorkspace(
+        renderLightWorkspaceType({ workspace }),
+        logger,
+        execute
+      );
+    }
+    return runOnAllWorkspaceIds(async (workspace) => {
+      await removeDraftAgentConfigurationsForWorkspace(
+        workspace,
+        logger,
+        execute
+      );
+    });
+  }
+);
