@@ -507,9 +507,13 @@ export default function ActionScreen({
                   setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
-                    timeFrame: {
-                      value,
-                      unit: builderState.retrievalConfiguration.timeFrame.unit,
+                    retrievalConfiguration: {
+                      ...state.retrievalConfiguration,
+                      timeFrame: {
+                        value,
+                        unit: builderState.retrievalConfiguration.timeFrame
+                          .unit,
+                      },
                     },
                   }));
                 }
@@ -539,11 +543,14 @@ export default function ActionScreen({
                         setEdited(true);
                         setBuilderState((state) => ({
                           ...state,
-                          timeFrame: {
-                            value:
-                              builderState.retrievalConfiguration.timeFrame
-                                .value,
-                            unit: key as TimeframeUnit,
+                          retrievalConfiguration: {
+                            ...state.retrievalConfiguration,
+                            timeFrame: {
+                              value:
+                                builderState.retrievalConfiguration.timeFrame
+                                  .value,
+                              unit: key as TimeframeUnit,
+                            },
                           },
                         }));
                       }}

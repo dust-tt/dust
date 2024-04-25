@@ -286,9 +286,10 @@ export default function AssistantBuilder({
       setBuilderState((builderState) => ({
         ...builderState,
         actionMode,
-        dataSourceConfigurations: {},
-        dustAppConfiguration: { app: null },
-        tablesQueryConfiguration: {},
+        retrievalConfiguration: DEFAULT_ASSISTANT_STATE.retrievalConfiguration,
+        dustAppConfiguration: DEFAULT_ASSISTANT_STATE.dustAppConfiguration,
+        tablesQueryConfiguration:
+          DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration,
       }));
     }
   }, [template]);
