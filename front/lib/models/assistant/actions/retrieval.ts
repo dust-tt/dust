@@ -29,6 +29,8 @@ export class AgentRetrievalConfiguration extends Model<
   declare topK: number | null;
   declare topKMode: "auto" | "custom";
 
+  declare name: string | null;
+  declare description: string | null;
   declare forceUseAtIteration: number | null;
 }
 
@@ -79,6 +81,14 @@ AgentRetrievalConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "auto",
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     forceUseAtIteration: {
       type: DataTypes.INTEGER,

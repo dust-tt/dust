@@ -325,6 +325,38 @@ export async function createOrUpgradeAgentConfiguration({
 
     // TODO(@fontanierh): fix once generation is an action.
     maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
+  } else {
+    // Multi actions mode:
+    // Enforce that every action has a name and a description and that every name is unique.
+    const actionsWithoutName = actions.filter((action) => !action.name);
+    if (actionsWithoutName.length) {
+      throw new Error(
+        `Every action must have a name. Missing names for: ${actionsWithoutName
+          .map((action) => action.type)
+          .join(", ")}`
+      );
+    }
+    const actionsWithoutDescription = actions.filter(
+      (action) => !action.description
+    );
+    if (actionsWithoutDescription.length) {
+      throw new Error(
+        `Every action must have a description. Missing descriptions for: ${actionsWithoutDescription
+          .map((action) => action.type)
+          .join(", ")}`
+      );
+    }
+    const actionNames = new Set<string>();
+    for (const action of actions) {
+      if (!action.name) {
+        // To please the type system.
+        throw new Error(`unreachable: action.name is required.`);
+      }
+      if (actionNames.has(action.name)) {
+        throw new Error(`Duplicate action name: ${action.name}`);
+      }
+      actionNames.add(action.name);
+    }
   }
 
   if (maxToolsUsePerRun === undefined) {
@@ -363,6 +395,8 @@ export async function createOrUpgradeAgentConfiguration({
       model: generation.model,
       temperature: generation.temperature,
       agentConfiguration: agentConfigurationRes.value,
+      name: generation.name ?? null,
+      description: generation.description ?? null,
       forceUseAtIteration:
         generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
     });
@@ -382,6 +416,8 @@ export async function createOrUpgradeAgentConfiguration({
               relativeTimeFrame: action.relativeTimeFrame,
               topK: action.topK,
               dataSources: action.dataSources,
+              name: action.name ?? null,
+              description: action.description ?? null,
               forceUseAtIteration:
                 action.forceUseAtIteration ??
                 legacyForceSingleActionAtIteration,
@@ -397,6 +433,8 @@ export async function createOrUpgradeAgentConfiguration({
               type: "dust_app_run_configuration",
               appWorkspaceId: action.appWorkspaceId,
               appId: action.appId,
+              name: action.name ?? null,
+              description: action.description ?? null,
               forceUseAtIteration:
                 action.forceUseAtIteration ??
                 legacyForceSingleActionAtIteration,
@@ -411,6 +449,8 @@ export async function createOrUpgradeAgentConfiguration({
             {
               type: "tables_query_configuration",
               tables: action.tables,
+              name: action.name ?? null,
+              description: action.description ?? null,
               forceUseAtIteration:
                 action.forceUseAtIteration ??
                 legacyForceSingleActionAtIteration,
@@ -427,6 +467,8 @@ export async function createOrUpgradeAgentConfiguration({
               relativeTimeFrame: action.relativeTimeFrame,
               dataSources: action.dataSources,
               schema: action.schema,
+              name: action.name ?? null,
+              description: action.description ?? null,
               forceUseAtIteration:
                 action.forceUseAtIteration ??
                 legacyForceSingleActionAtIteration,

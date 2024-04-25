@@ -154,6 +154,8 @@ export function getAgentActionConfigurationType(
         sId: "template",
         topK: "auto",
         type: "retrieval_configuration",
+        name: "search_data_sources",
+        description: "Search the workspace's internal data sources.",
         forceUseAtIteration: 0,
       } satisfies RetrievalConfigurationType;
 
@@ -163,6 +165,8 @@ export function getAgentActionConfigurationType(
         sId: "template",
         tables: [],
         type: "tables_query_configuration",
+        name: "query_tables",
+        description: "Query the workspace's internal tables.",
         forceUseAtIteration: 0,
       } satisfies TablesQueryConfigurationType;
 
@@ -173,6 +177,8 @@ export function getAgentActionConfigurationType(
         type: "dust_app_run_configuration",
         appWorkspaceId: "template",
         appId: "template",
+        name: "run_dust_app",
+        description: "Run a Dust app.",
         forceUseAtIteration: 0,
       } satisfies DustAppRunConfigurationType;
 
@@ -184,6 +190,8 @@ export function getAgentActionConfigurationType(
         sId: "template",
         schema: [],
         type: "process_configuration",
+        name: "process_data_sources",
+        description: "Process the workspace's internal data sources.",
         forceUseAtIteration: 0,
       } satisfies ProcessConfigurationType;
 

@@ -10,6 +10,9 @@ export type TablesQueryConfigurationType = {
     dataSourceId: string;
     tableId: string;
   }>;
+
+  name: string | null;
+  description: string | null;
   forceUseAtIteration: number | null;
 };
 
