@@ -34,13 +34,12 @@ export function GalleryAssistantPreviewContainer({
     setTestModalAssistant?.(agentConfiguration);
   };
 
-  const { description, generation, lastAuthors, name, pictureUrl, scope } =
+  const { description, model, lastAuthors, name, pictureUrl, scope } =
     agentConfiguration;
 
   const isGlobal = scope === "global";
   const hasAccessToLargeModels = isUpgraded(plan);
-  const eligibleForTesting =
-    hasAccessToLargeModels || !isLargeModel(generation?.model);
+  const eligibleForTesting = hasAccessToLargeModels || !isLargeModel(model);
   const isTestable = !isGlobal && eligibleForTesting;
   return (
     <AssistantPreview

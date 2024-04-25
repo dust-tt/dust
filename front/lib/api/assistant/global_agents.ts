@@ -6,6 +6,7 @@ const readFileAsync = promisify(fs.readFile);
 
 import type {
   AgentConfigurationType,
+  AgentModelConfigurationType,
   ConnectorProvider,
   DataSourceType,
 } from "@dust-tt/types";
@@ -109,6 +110,11 @@ async function _getHelperGlobalAgent(
     status: "active",
     userListStatus: "in-list",
     scope: "global",
+    model: {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      temperature: 0.2,
+    },
     generation: {
       id: -1,
       model,
@@ -139,6 +145,11 @@ async function _getGPT35TurboGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+      modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -172,13 +183,17 @@ async function _getGPT4GlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
         providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
         modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       },
-
       temperature: 0.7,
       forceUseAtIteration: 0,
     },
@@ -206,6 +221,11 @@ async function _getClaudeInstantGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -245,6 +265,11 @@ async function _getClaude2GlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -286,6 +311,11 @@ async function _getClaude3HaikuGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -326,6 +356,11 @@ async function _getClaude3SonnetGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -365,6 +400,11 @@ async function _getClaude3OpusGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -404,6 +444,11 @@ async function _getMistralLargeGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
+      modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -443,6 +488,11 @@ async function _getMistralMediumGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
+      modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -476,6 +526,11 @@ async function _getMistralSmallGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
+      modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -514,6 +569,11 @@ async function _getGeminiProGlobalAgent({
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
     generation: {
       id: -1,
       model: {
@@ -561,6 +621,18 @@ async function _getManagedDataSourceAgent(
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
+  const model: AgentModelConfigurationType = !auth.isUpgraded()
+    ? {
+        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+      }
+    : {
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+      };
+
   // Check if deactivated by an admin
   if (settings && settings.status === "disabled_by_admin") {
     return {
@@ -576,6 +648,7 @@ async function _getManagedDataSourceAgent(
       status: "disabled_by_admin",
       scope: "global",
       userListStatus: "not-in-list",
+      model,
       generation: null,
       actions: [],
       maxToolsUsePerRun: 1,
@@ -601,6 +674,7 @@ async function _getManagedDataSourceAgent(
       scope: "global",
       userListStatus: "not-in-list",
       generation: null,
+      model,
       actions: [],
       maxToolsUsePerRun: 1,
     };
@@ -619,6 +693,7 @@ async function _getManagedDataSourceAgent(
     status: "active",
     scope: "global",
     userListStatus: "in-list",
+    model,
     generation: {
       id: -1,
       model: !auth.isUpgraded()
@@ -793,6 +868,18 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
+  const model: AgentModelConfigurationType = !auth.isUpgraded()
+    ? {
+        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+      }
+    : {
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+      };
+
   if (settings && settings.status === "disabled_by_admin") {
     return {
       id: -1,
@@ -807,6 +894,7 @@ async function _getDustGlobalAgent(
       status: "disabled_by_admin",
       scope: "global",
       userListStatus: "not-in-list",
+      model,
       generation: null,
       actions: [],
       maxToolsUsePerRun: 1,
@@ -839,6 +927,7 @@ async function _getDustGlobalAgent(
       status: "disabled_missing_datasource",
       scope: "global",
       userListStatus: "not-in-list",
+      model,
       generation: null,
       actions: [],
       maxToolsUsePerRun: 1,
@@ -860,6 +949,7 @@ async function _getDustGlobalAgent(
     status: "active",
     scope: "global",
     userListStatus: "in-list",
+    model,
     generation: {
       id: -1,
       model: !auth.isUpgraded()

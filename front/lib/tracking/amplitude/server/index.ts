@@ -145,9 +145,7 @@ export class AmplitudeServerSideTracking {
       mentionsCount: userMessage.mentions.length,
       conversationId,
       generationModels: removeNulls(
-        agentMessages.map(
-          (am) => am.configuration.generation?.model.modelId || null
-        )
+        agentMessages.map((am) => am.configuration.model.modelId || null)
       ),
       // We are mostly interested in tracking the usage of non global agents,
       // so if there is at least one non global agent in the list, that's enough to set

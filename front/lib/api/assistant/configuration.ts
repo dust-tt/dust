@@ -4,6 +4,7 @@ import type {
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   AgentMention,
+  AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
   AgentUserListStatus,
@@ -561,6 +562,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
       pictureUrl: agent.pictureUrl,
       description: agent.description,
       instructions: agent.instructions,
+      model: {
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+        temperature: agent.temperature,
+      },
       status: agent.status,
       actions,
       generation,
@@ -749,11 +755,6 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
   return contentType.includes("image");
 }
 
-type AgentConfigurationWithoutActionsType = Omit<
-  AgentConfigurationType,
-  "actions"
->;
-
 export async function createAgentConfiguration(
   auth: Authenticator,
   {
@@ -764,7 +765,7 @@ export async function createAgentConfiguration(
     pictureUrl,
     status,
     scope,
-    generation,
+    model,
     agentConfigurationId,
   }: {
     name: string;
@@ -774,10 +775,10 @@ export async function createAgentConfiguration(
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
-    generation: AgentGenerationConfigurationType | null;
+    model: AgentModelConfigurationType;
     agentConfigurationId?: string;
   }
-): Promise<Result<AgentConfigurationWithoutActionsType, Error>> {
+): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -872,6 +873,9 @@ export async function createAgentConfiguration(
             name,
             description,
             instructions,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
             maxToolsUsePerRun: maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
@@ -887,7 +891,7 @@ export async function createAgentConfiguration(
     /*
      * Final rendering.
      */
-    const agentConfiguration: AgentConfigurationWithoutActionsType = {
+    const agentConfiguration: LightAgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
@@ -898,9 +902,13 @@ export async function createAgentConfiguration(
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
+      model: {
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+        temperature: agent.temperature,
+      },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
-      generation: generation,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
     };
 
@@ -993,7 +1001,7 @@ export async function createAgentGenerationConfiguration(
     prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
-    agentConfiguration: AgentConfigurationWithoutActionsType;
+    agentConfiguration: LightAgentConfigurationType;
     forceUseAtIteration: number | null;
   }
 ): Promise<AgentGenerationConfigurationType> {
@@ -1062,7 +1070,7 @@ export async function createAgentActionConfiguration(
   ) & {
     forceUseAtIteration: number | null;
   },
-  agentConfiguration: AgentConfigurationWithoutActionsType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<AgentActionConfigurationType> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1392,7 +1400,7 @@ export async function setAgentScope(
 // Should only be called when we need to cleanup the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
-  agentConfiguration: AgentConfigurationWithoutActionsType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<void> {
   await AgentConfiguration.destroy({
     where: {
