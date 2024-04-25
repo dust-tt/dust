@@ -225,8 +225,7 @@ makeScript(
   {
     workspaceId: {
       type: "string",
-      description:
-        "List of workspace identifiers, separated by a space, for which the feature flag should be toggled.",
+      description: "A single workspace id.",
     },
   },
   async ({ workspaceId, execute }, logger) => {
