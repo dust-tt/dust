@@ -62,6 +62,7 @@ export type ConnectorType = {
   errorType?: ConnectorErrorType;
   configuration?: ConnectorConfiguration;
   pausedAt?: Date | null;
+  updatedAt: number;
 };
 
 /**
