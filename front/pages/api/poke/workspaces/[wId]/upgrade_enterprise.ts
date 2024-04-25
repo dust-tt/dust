@@ -85,7 +85,7 @@ async function handler(
         stripeSubscription.id
       );
 
-      if (subscription && subscription.workspaceId !== owner.sId) {
+      if (subscription && subscription.workspaceId !== owner.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

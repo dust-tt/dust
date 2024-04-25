@@ -63,7 +63,7 @@ export type SubscriptionType = {
   endDate: number | null;
   paymentFailingSince: number | null;
   plan: PlanType;
-  workspaceId: string | null;
+  workspaceId: number | null;
 };
 
 export const CreatePlanFormSchema = t.type({
