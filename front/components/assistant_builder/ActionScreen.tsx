@@ -116,8 +116,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
     icon: TimeIcon,
     label: "Process data",
     description: "Structured extraction",
-    // flag: "process_action",
-    flag: null,
+    flag: "process_action",
   },
 };
 

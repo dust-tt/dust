@@ -838,7 +838,7 @@ export async function submitAssistantBuilderForm({
           unit: builderState.processConfiguration.timeFrame.unit,
         },
         dataSources: Object.values(
-          builderState.retrievalConfiguration.dataSourceConfigurations
+          builderState.processConfiguration.dataSourceConfigurations
         ).map(({ dataSource, selectedResources, isSelectAll }) => ({
           dataSourceId: dataSource.name,
           workspaceId: owner.sId,
@@ -872,11 +872,6 @@ export async function submitAssistantBuilderForm({
         actions: removeNulls([actionParam]),
         generation: {
           model: builderState.generationSettings.modelSettings,
-          temperature: builderState.generationSettings.temperature,
-        },
-        model: {
-          modelId: builderState.generationSettings.modelSettings.modelId,
-          providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
       },

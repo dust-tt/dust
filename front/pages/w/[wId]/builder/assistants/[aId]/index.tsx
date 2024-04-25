@@ -74,8 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  console.log(configuration);
-
   if (!configuration) {
     return {
       notFound: true,
