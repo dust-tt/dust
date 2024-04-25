@@ -28,6 +28,8 @@ export class AgentProcessConfiguration extends Model<
 
   declare schema: ProcessSchemaPropertyType[];
 
+  declare name: string | null;
+  declare description: string | null;
   declare forceUseAtIteration: number | null;
 }
 
@@ -68,6 +70,14 @@ AgentProcessConfiguration.init(
     schema: {
       type: DataTypes.JSONB,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     forceUseAtIteration: {
       type: DataTypes.INTEGER,

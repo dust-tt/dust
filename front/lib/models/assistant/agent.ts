@@ -38,6 +38,8 @@ export class AgentGenerationConfiguration extends Model<
   declare modelId: string; // @todo MULTI_ACTIONS @daph remove
   declare temperature: number; // @todo MULTI_ACTIONS @daph remove
 
+  declare name: string | null;
+  declare description: string | null;
   declare forceUseAtIteration: number | null;
 }
 AgentGenerationConfiguration.init(
@@ -73,6 +75,14 @@ AgentGenerationConfiguration.init(
       type: DataTypes.FLOAT,
       allowNull: false,
       defaultValue: 0.7,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     forceUseAtIteration: {
       type: DataTypes.INTEGER,

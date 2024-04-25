@@ -21,6 +21,8 @@ export class AgentTablesQueryConfiguration extends Model<
 
   declare sId: string;
 
+  declare name: string | null;
+  declare description: string | null;
   declare forceUseAtIteration: number | null;
 }
 
@@ -44,6 +46,14 @@ AgentTablesQueryConfiguration.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     forceUseAtIteration: {
       type: DataTypes.INTEGER,

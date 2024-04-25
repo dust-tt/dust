@@ -485,6 +485,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
+          name: retrievalConfig.name,
+          description: retrievalConfig.description,
           forceUseAtIteration: retrievalConfig.forceUseAtIteration,
         });
       }
@@ -497,6 +499,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
+          name: dustAppRunConfig.name,
+          description: dustAppRunConfig.description,
           forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
         });
       }
@@ -514,6 +518,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
             workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
             tableId: tablesQueryConfigTable.tableId,
           })),
+          name: tablesQueryConfig.name,
+          description: tablesQueryConfig.description,
           forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
         });
       }
@@ -547,6 +553,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
         id: generationConfig.id,
         temperature: generationConfig.temperature,
         model,
+        name: generationConfig.name,
+        description: generationConfig.description,
         forceUseAtIteration: generationConfig.forceUseAtIteration,
       };
     }
@@ -996,12 +1004,16 @@ export async function createAgentGenerationConfiguration(
     model,
     temperature,
     agentConfiguration,
+    name,
+    description,
     forceUseAtIteration,
   }: {
     prompt: string; // @todo Daph remove this field
     model: SupportedModel;
     temperature: number;
     agentConfiguration: LightAgentConfigurationType;
+    name: string | null;
+    description: string | null;
     forceUseAtIteration: number | null;
   }
 ): Promise<AgentGenerationConfigurationType> {
@@ -1024,13 +1036,17 @@ export async function createAgentGenerationConfiguration(
     modelId: model.modelId,
     temperature: temperature,
     agentConfigurationId: agentConfiguration.id,
-    forceUseAtIteration: forceUseAtIteration,
+    name,
+    description,
+    forceUseAtIteration,
   });
 
   return {
     id: genConfig.id,
     temperature: genConfig.temperature,
     model,
+    name: genConfig.name,
+    description: genConfig.description,
     forceUseAtIteration,
   };
 }
@@ -1068,6 +1084,8 @@ export async function createAgentActionConfiguration(
         schema: ProcessSchemaPropertyType[];
       }
   ) & {
+    name: string | null;
+    description: string | null;
     forceUseAtIteration: number | null;
   },
   agentConfiguration: LightAgentConfigurationType
@@ -1096,6 +1114,8 @@ export async function createAgentActionConfiguration(
             topK: action.topK !== "auto" ? action.topK : null,
             topKMode: action.topK === "auto" ? "auto" : "custom",
             agentConfigurationId: agentConfiguration.id,
+            name: action.name,
+            description: action.description,
             forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
@@ -1114,6 +1134,8 @@ export async function createAgentActionConfiguration(
           relativeTimeFrame: action.relativeTimeFrame,
           topK: action.topK,
           dataSources: action.dataSources,
+          name: action.name,
+          description: action.description,
           forceUseAtIteration: action.forceUseAtIteration,
         };
       });
@@ -1133,6 +1155,8 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
+        name: action.name,
+        description: action.description,
         forceUseAtIteration: action.forceUseAtIteration,
       };
     }
@@ -1142,6 +1166,8 @@ export async function createAgentActionConfiguration(
           {
             sId: generateModelSId(),
             agentConfigurationId: agentConfiguration.id,
+            name: action.name,
+            description: action.description,
             forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
@@ -1165,6 +1191,8 @@ export async function createAgentActionConfiguration(
           sId: tablesQueryConfig.sId,
           type: "tables_query_configuration",
           tables: action.tables,
+          name: action.name,
+          description: action.description,
           forceUseAtIteration: action.forceUseAtIteration,
         };
       });
@@ -1185,6 +1213,8 @@ export async function createAgentActionConfiguration(
               : null,
             agentConfigurationId: agentConfiguration.id,
             schema: action.schema,
+            name: action.name,
+            description: action.description,
             forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
@@ -1202,6 +1232,8 @@ export async function createAgentActionConfiguration(
           relativeTimeFrame: action.relativeTimeFrame,
           schema: action.schema,
           dataSources: action.dataSources,
+          name: action.name,
+          description: action.description,
           forceUseAtIteration: action.forceUseAtIteration,
         };
       });

@@ -49,6 +49,8 @@ export type ProcessConfigurationType = {
   relativeTimeFrame: RetrievalTimeframe;
   schema: ProcessSchemaPropertyType[];
 
+  name: string | null;
+  description: string | null;
   forceUseAtIteration: number | null;
 };
 

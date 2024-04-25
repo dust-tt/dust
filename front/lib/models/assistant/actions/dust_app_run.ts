@@ -25,6 +25,8 @@ export class AgentDustAppRunConfiguration extends Model<
   declare appWorkspaceId: string;
   declare appId: string;
 
+  declare name: string | null;
+  declare description: string | null;
   declare forceUseAtIteration: number | null;
 }
 
@@ -56,6 +58,14 @@ AgentDustAppRunConfiguration.init(
     appId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     forceUseAtIteration: {
       type: DataTypes.INTEGER,

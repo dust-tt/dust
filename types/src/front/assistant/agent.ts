@@ -62,6 +62,8 @@ export type AgentGenerationConfigurationType = {
   id: ModelId;
   model: SupportedModel;
   temperature: number;
+  name: string | null;
+  description: string | null;
   forceUseAtIteration: number | null;
 };
 
