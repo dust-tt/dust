@@ -1,5 +1,5 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import { GPT_4_TURBO_MODEL_CONFIG } from "../assistant";
+import { GPT_4_TURBO_MODEL_CONFIG, GPT_4_TURBO_MODEL_ID } from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -210,6 +210,22 @@ export const DustProdActionRegistry = createActionRegistry({
         provider_id: "openai",
         model_id: "gpt-3.5-turbo",
         function_call: "send_suggestions",
+        use_cache: false,
+      },
+    },
+  },
+  "assistant-v2-use-tools": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "0e9889c787",
+      appHash:
+        "e2be0e5ee990a6ef86d1a89c8b55f924ff93dd6daaa0a502984d63b159c65ffd",
+    },
+    config: {
+      MODEL: {
+        provider_id: "openai",
+        model_id: GPT_4_TURBO_MODEL_ID,
+        function_call: "auto",
         use_cache: false,
       },
     },

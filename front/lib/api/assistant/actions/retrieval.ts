@@ -173,24 +173,27 @@ export function retrievalAutoTimeFrameInputSpecification() {
   };
 }
 
-export async function retrievalActionSpecification(
-  configuration: RetrievalConfigurationType
-): Promise<AgentActionSpecification> {
+function retrievalActionSpecification({
+  actionConfiguration,
+  name,
+  description,
+}: {
+  actionConfiguration: RetrievalConfigurationType;
+  name: string;
+  description: string;
+}): AgentActionSpecification {
   const inputs = [];
 
-  if (configuration.query === "auto") {
+  if (actionConfiguration.query === "auto") {
     inputs.push(retrievalAutoQueryInputSpecification());
   }
-  if (configuration.relativeTimeFrame === "auto") {
+  if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
   return {
-    name: "search_data_sources",
-    description:
-      "Search the data sources specified by the user for information to answer their request." +
-      " The search is based on semantic similarity between the query and chunks of information" +
-      " from the data sources.",
+    name,
+    description,
     inputs,
   };
 }
@@ -200,7 +203,11 @@ export async function generateRetrievalSpecification(
   auth: Authenticator,
   {
     actionConfiguration,
+    name = "search_data_sources",
+    description,
   }: {
+    name?: string;
+    description?: string;
     actionConfiguration: RetrievalConfigurationType;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
@@ -209,7 +216,15 @@ export async function generateRetrievalSpecification(
     throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  const spec = await retrievalActionSpecification(actionConfiguration);
+  const spec = retrievalActionSpecification({
+    actionConfiguration,
+    name,
+    description:
+      description ??
+      "Search the data sources specified by the user for information to answer their request." +
+        " The search is based on semantic similarity between the query and chunks of information" +
+        " from the data sources.",
+  });
   return new Ok(spec);
 }
 
