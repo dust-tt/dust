@@ -13,7 +13,7 @@ import type {
   AgentConfigurationType,
 } from "@dust-tt/types";
 import type { AgentMessageType, ConversationType } from "@dust-tt/types";
-import type { AppType, SpecificationType } from "@dust-tt/types";
+import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
@@ -55,24 +55,19 @@ export function renderDustAppRunActionForModel(
  */
 
 async function dustAppRunActionSpecification({
-  app,
   schema,
   name,
   description,
 }: {
-  app: AppType;
   schema: DatasetSchema | null;
-  name?: string;
-  description?: string;
+  name: string;
+  description: string;
 }): Promise<Result<AgentActionSpecification, Error>> {
-  const appName = app.name;
-  const appDescription = app.description;
-
   // If we have no schema (aka no input block) there is no need to generate any input.
   if (!schema) {
     return new Ok({
-      name: appName,
-      description: appDescription || "",
+      name,
+      description,
       inputs: [],
     });
   }
@@ -100,8 +95,8 @@ async function dustAppRunActionSpecification({
   }
 
   return new Ok({
-    name: name ?? appName,
-    description: description ?? appDescription ?? "",
+    name,
+    description,
     inputs,
   });
 }
@@ -170,7 +165,11 @@ export async function generateDustAppRunSpecification(
     }
   }
 
-  return dustAppRunActionSpecification({ app, schema, name, description });
+  return dustAppRunActionSpecification({
+    schema,
+    name: name ?? app.name,
+    description: description ?? app.description ?? "",
+  });
 }
 
 /**
