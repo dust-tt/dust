@@ -183,7 +183,7 @@ export async function renderConversationForModel({
   let tokensUsed = promptCountRes.value + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected = [];
+  const selected: ModelMessageType[] = [];
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
@@ -235,6 +235,14 @@ export async function renderConversationForModel({
     },
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
+  while (selected.length > 0 && selected[0].role === "agent") {
+    const tokenCountRes = messagesCountRes[messages.length - selected.length];
+    if (tokenCountRes.isErr()) {
+      return new Err(tokenCountRes.error);
+    }
+    tokensUsed -= tokenCountRes.value;
+    selected.shift();
+  }
 
   return new Ok({
     modelConversation: {
