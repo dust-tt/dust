@@ -432,13 +432,20 @@ export function useConnector({
         // We have an error, no need to auto refresh.
         return 0;
       }
-      if (connectorResBody?.connector.lastSyncSuccessfulTime) {
-        // no sync in progress, no need to auto refresh.
-        return 0;
+
+      // Relying on absolute time difference here because we are comparing
+      // two non synchronized clocks (front and back). It's obviously not perfect
+      // but it's good enough for our use case.
+      if (
+        connectorResBody &&
+        Math.abs(new Date().getTime() - connectorResBody.connector.updatedAt) <
+          60 * 5 * 1000
+      ) {
+        // Connector object has been updated less than 5 minutes ago, we'll refresh every 3 seconds.
+        return 3000;
       }
 
-      // We have a synchronization in progress, we'll refresh every 3 seconds.
-      return 3000;
+      return 0;
     },
   });
 

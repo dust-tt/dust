@@ -62,6 +62,7 @@ import {
   getGoogleCredentials,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
@@ -130,6 +131,8 @@ export async function createGoogleDriveConnector(
     },
     googleDriveConfigurationBlob
   );
+
+  await syncSucceeded(connector.id);
 
   return new Ok(connector.id.toString());
 }
