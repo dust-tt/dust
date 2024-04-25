@@ -183,7 +183,7 @@ export async function renderConversationForModel({
   let tokensUsed = promptCountRes.value + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected: { message: ModelMessageType; tokenUsed: number }[] = [];
+  const selected: ModelMessageType[] = [];
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
@@ -195,7 +195,7 @@ export async function renderConversationForModel({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift({ message: messages[i], tokenUsed: c });
+      selected.unshift(messages[i]);
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
@@ -213,11 +213,8 @@ export async function renderConversationForModel({
         return new Err(contentRes.error);
       }
       selected.unshift({
-        message: {
-          ...messages[i],
-          content: contentRes.value + truncationMessage,
-        },
-        tokenUsed: remainingTokens,
+        ...messages[i],
+        content: contentRes.value + truncationMessage,
       });
       tokensUsed += remainingTokens;
       break;
@@ -238,18 +235,18 @@ export async function renderConversationForModel({
     },
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
-  while (selected.length > 0 && selected[0].message.role === "agent") {
-    const m = selected.shift();
-    if (!m) {
-      // Should never happen, but Typescript doesn't know that.
-      throw new Error("Unexpected missing message");
+  while (selected.length > 0 && selected[0].role === "agent") {
+    const tokenCountRes = messagesCountRes[messages.length - selected.length];
+    if (tokenCountRes.isErr()) {
+      return new Err(tokenCountRes.error);
     }
-    tokensUsed -= m.tokenUsed;
+    tokensUsed -= tokenCountRes.value;
+    selected.shift();
   }
 
   return new Ok({
     modelConversation: {
-      messages: selected.map((s) => s.message),
+      messages: selected,
     },
     tokensUsed,
   });
