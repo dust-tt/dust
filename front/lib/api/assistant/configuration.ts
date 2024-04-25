@@ -565,6 +565,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions,
       generation,
       versionAuthorId: agent.authorId,
+      maxToolsUsePerRun: agent.maxToolsUsePerRun,
     };
 
     agentConfigurationType.userListStatus = agentUserListStatus({
@@ -900,6 +901,7 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       generation: generation,
+      maxToolsUsePerRun: agent.maxToolsUsePerRun,
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({

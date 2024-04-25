@@ -11,7 +11,6 @@ import type {
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
-  LightAgentConfigurationType,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -42,7 +41,6 @@ import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -175,7 +173,7 @@ async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runLegacyAgent(
   auth: Authenticator,
-  configuration: LightAgentConfigurationType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -189,22 +187,11 @@ export async function* runLegacyAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  const fullConfiguration = await getAgentConfiguration(
-    auth,
-    configuration.sId
-  );
-
-  if (!fullConfiguration) {
-    throw new Error(
-      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
-    );
-  }
-
-  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
+  const action = deprecatedGetFirstActionConfiguration(configuration);
 
   if (action !== null) {
     for await (const event of runAction(auth, {
-      configuration: fullConfiguration,
+      configuration,
       conversation,
       userMessage,
       agentMessage,
@@ -218,7 +205,7 @@ export async function* runLegacyAgent(
   if (configuration.generation !== null) {
     const eventStream = runGeneration(
       auth,
-      fullConfiguration,
+      configuration,
       conversation,
       userMessage,
       agentMessage
