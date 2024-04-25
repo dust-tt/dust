@@ -42,7 +42,7 @@ export default function DatasetPicker({
   }
 
   return (
-    <div className="flex items-center rounded-md border px-2">
+    <div className="flex items-center rounded-md  px-2">
       <Menu as="div" className="relative inline-block text-left">
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (
@@ -63,9 +63,10 @@ export default function DatasetPicker({
             <Menu.Button
               className={classNames(
                 "inline-flex items-center rounded-md py-1 text-sm font-normal px-3",
+                dataset ? "border px-1" : "border border-orange-400",
                 readOnly
                   ? "border-white text-gray-300"
-                  : "border-orange-400 text-gray-700",
+                  : "text-gray-700",
                 "focus:outline-none focus:ring-0"
               )}
             >

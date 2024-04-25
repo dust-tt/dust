@@ -70,7 +70,9 @@ export default function InputBlock({
     currentDatasetInEditor: DatasetType,
     schema: DatasetSchema
   ) => {
-    console.log("onUpdate", currentDatasetInEditor, schema);
+    if(!initializing && valid) {
+      console.log("onUpdate", currentDatasetInEditor, schema);
+    }
   };
 
   console.log("DATASET WITH DATA");
