@@ -476,7 +476,7 @@ export async function* runRetrieval(
     }
   }
 
-  const model = configuration.generation?.model;
+  const model = configuration.model;
 
   let topK = 16;
   if (actionConfiguration.topK === "auto") {

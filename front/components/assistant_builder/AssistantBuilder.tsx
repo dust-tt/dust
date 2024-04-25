@@ -870,8 +870,10 @@ export async function submitAssistantBuilderForm({
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         actions: removeNulls([actionParam]),
-        generation: {
-          model: builderState.generationSettings.modelSettings,
+        generation: {}, // Warning should not be empty otherwise no generation will be done
+        model: {
+          modelId: builderState.generationSettings.modelSettings.modelId,
+          providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
       },

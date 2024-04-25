@@ -204,7 +204,7 @@ export async function* runProcess(
     }
   }
 
-  const model = configuration.generation?.model;
+  const model = configuration.model;
 
   let contextSize = 16384;
   if (!model) {

@@ -164,21 +164,7 @@ const ActionConfigurationSchema = t.intersection([
 // TODO(@fontanierh): change once generation is an action.
 const GenerationConfigurationSchema = t.union([
   t.null,
-  t.intersection([
-    t.type({
-      // enforce that the model is a supported model
-      // the modelId and providerId are checked together, so
-      // (gpt-4, anthropic) won't pass
-      model: new t.Type<SupportedModel>(
-        "SupportedModel",
-        isSupportedModel,
-        (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
-        t.identity
-      ),
-      temperature: t.number,
-    }),
-    t.partial(multiActionsCommonFields),
-  ]),
+  t.partial(multiActionsCommonFields),
 ]);
 
 const ModelConfigurationSchema = t.intersection([
@@ -189,6 +175,12 @@ const ModelConfigurationSchema = t.intersection([
   }),
   t.partial(multiActionsCommonFields),
 ]);
+const IsSupportedModelSchema = new t.Type<SupportedModel>(
+  "SupportedModel",
+  isSupportedModel,
+  (i, c) => (isSupportedModel(i) ? t.success(i) : t.failure(i, c)),
+  t.identity
+);
 
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
   t.type({
@@ -208,12 +200,15 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
           t.literal("published"),
           t.literal("private"),
         ]),
+        model: t.intersection([
+          ModelConfigurationSchema,
+          IsSupportedModelSchema,
+        ]),
         actions: t.array(ActionConfigurationSchema),
         generation: GenerationConfigurationSchema,
       }),
       t.partial({
         maxToolsUsePerRun: t.number,
-        model: ModelConfigurationSchema,
       }),
     ]),
   }),

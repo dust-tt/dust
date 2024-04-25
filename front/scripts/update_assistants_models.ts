@@ -1,10 +1,7 @@
 import type { ModelId, SupportedModel } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 
-import {
-  AgentConfiguration,
-  AgentGenerationConfiguration,
-} from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -20,31 +17,23 @@ async function updateWorkspaceAssistants(
     where: { workspaceId },
   });
 
-  for (const ac of agentConfigurations) {
-    const generationConfigurations = await AgentGenerationConfiguration.findAll(
-      {
-        where: { agentConfigurationId: ac.id },
-      }
-    );
-
-    if (generationConfigurations.length === 0) {
-      console.log(
-        `Skipping  ${ac.name}(${ac.sId}): (no generation configuration).`
-      );
-      continue;
-    }
-
-    for (const generationConfiguration of generationConfigurations) {
-      if (generationConfiguration.modelId === fromModel) {
-        if (execute) {
-          await generationConfiguration.update({ modelId: toModel });
-        }
-
-        console.log(
-          `${execute ? "" : "[DRYRUN]"} Updated ${ac.name}(${ac.sId}) from ${
-            generationConfiguration.modelId
-          } to ${toModel}.`
+  for (const agent of agentConfigurations) {
+    if (agent.modelId === fromModel) {
+      if (
+        !isSupportedModel({ modelId: toModel, providerId: agent.providerId })
+      ) {
+        throw new Error(
+          `Model ${toModel} is not supported for provider ${agent.providerId}.`
         );
+      }
+
+      console.log(
+        `${execute ? "" : "[DRYRUN]"} Updated ${agent.name}(${
+          agent.sId
+        }) from ${agent.modelId} to ${toModel}.`
+      );
+      if (execute) {
+        await agent.update({ modelId: toModel });
       }
     }
   }

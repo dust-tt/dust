@@ -253,7 +253,7 @@ export class AmplitudeServerSideTracking {
       assistantScope: assistant.scope,
       assistantActionType: action?.type || "",
       assistantVersion: assistant.version,
-      assistantModel: assistant.generation?.model.modelId,
+      assistantModel: assistant.model.modelId,
     });
     amplitude.track(
       `user-${userId}`,
