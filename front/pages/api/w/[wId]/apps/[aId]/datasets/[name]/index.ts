@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import { getDatasetHash } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { Dataset } from "@app/lib/models/apps";
@@ -81,11 +82,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const getData = req.query.data === "true";
+      const datasetHash = getData ? await getDatasetHash(
+        auth,
+        app,
+        dataset.name,
+        "latest"
+      ) : null;
       res.status(200).json({
         dataset: {
           name: dataset.name,
           description: dataset.description,
-          data: null,
+          data: datasetHash?.data ?? null,
         },
       });
       return;

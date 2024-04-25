@@ -40,12 +40,27 @@ export default function InputBlock({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  const handleSetDataset = (dataset: string) => {
+
+  const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;
     onBlockUpdate(b);
+    await handleGetDatasetData();
   };
 
+  const handleGetDatasetData = async () => {
+    await fetch(
+      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}?data=true`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  }
+
+  
   return (
     <Block
       owner={owner}
@@ -78,9 +93,17 @@ export default function InputBlock({
             </>
           ) : null}
 
-          {block.config && block.config.dataset ? (
+          {block.config && block.config.dataset && block.config.dataset_hash ? (
             <div className="flex items-center">
-              <div className="ml-1 text-gray-400">{block.config.dataset}</div>
+              {/* <DatasetView
+                readOnly={false}
+                datasets={[block.spec.dataset]}
+                dataset={block.spec.dataset}
+                schema={schema}
+                onUpdate={onUpdate}
+                nameDisabled={true}
+              /> */}
+              {block.config.dataset_hash}
             </div>
           ) : null}
         </div>
