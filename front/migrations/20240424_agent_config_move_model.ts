@@ -34,23 +34,21 @@ const backfillAgentConfiguration = async (
 
   const generation = genConfigs[0];
 
-  logger.info(
-    `Updating agent ${agent.id} from generation configuration ${generation.id}. --execute: ${execute}`
-  );
-
   if (!isModelProviderId(generation.providerId)) {
-    logger.info(
-      `Skipping agent ${agent.id} (invalid provider ${agent.providerId}). --execute: ${execute}`
+    throw new Error(
+      `Invalid Provider Id for agent ${agent.id}:${agent.providerId}).`
     );
-    return;
   }
 
   if (!isModelId(generation.modelId)) {
-    logger.info(
-      `Skipping agent ${agent.id} (invalid model ${agent.modelId}). --execute: ${execute}`
+    throw new Error(
+      `Invalid Provider Id for agent ${agent.id}:${agent.modelId}).`
     );
-    return;
   }
+
+  logger.info(
+    `Updating agent ${agent.id} from generation configuration ${generation.id}. --execute: ${execute}`
+  );
 
   if (execute) {
     await agent.update({
