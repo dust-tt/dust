@@ -94,11 +94,9 @@ export { ColorPicker };
 import { Avatar } from "./components/Avatar";
 export { Avatar };
 
-import Spinner from "./components/Spinner";
-export { Spinner };
-
-import { Spinner2 } from "./components/Spinner";
+import Spinner2 from "./components/Spinner";
 export { Spinner2 };
+export { Spinner2 as Spinner };
 
 import { Modal } from "./components/Modal";
 export { Modal };
