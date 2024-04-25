@@ -10,7 +10,11 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import {
+  assertNever,
+  isMaxMessagesTimeframeType,
+  MAX_MESSAGE_TIMEFRAMES,
+} from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { classNames } from "@app/lib/utils";
@@ -27,6 +31,7 @@ export type EditingPlanType = {
   isIntercomAllowed: boolean;
   isWebCrawlerAllowed: boolean;
   maxMessages: string | number;
+  maxMessagesTimeframe: string;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
@@ -48,6 +53,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
+    maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
@@ -63,6 +69,10 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     }
     return x;
   };
+  if (!isMaxMessagesTimeframeType(editingPlan.maxMessagesTimeframe)) {
+    throw new Error("Invalid maxMessagesTimeframe");
+  }
+
   return {
     code: editingPlan.code.trim(),
     name: editingPlan.name.trim(),
@@ -70,7 +80,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       assistant: {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
-        maxMessagesTimeframe: "lifetime",
+        maxMessagesTimeframe: editingPlan.maxMessagesTimeframe,
       },
       connections: {
         isConfluenceAllowed: editingPlan.isConfluenceAllowed,
@@ -109,6 +119,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isIntercomAllowed: false,
   isWebCrawlerAllowed: false,
   maxMessages: "",
+  maxMessagesTimeframe: "day",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
@@ -206,6 +217,13 @@ export const PLAN_FIELDS = {
     width: "medium",
     title: "# Messages",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
+  },
+  maxMessagesTimeframe: {
+    type: "string",
+    width: "medium",
+    title: "/ Timeframe / Seat",
+    error: (plan: EditingPlanType) =>
+      errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
   },
   dataSourcesCount: {
     type: "number",
@@ -358,6 +376,16 @@ const errorCheckNumber = (value: string | number | undefined | null) => {
 
   if (parsed < -1) {
     return "This field must be positive or -1 (unlimited)";
+  }
+
+  return null;
+};
+
+const errorCheckMaxMessageTimeframe = (value: string) => {
+  if (!isMaxMessagesTimeframeType(value)) {
+    return `Invalid messages timeframe. Must be one of ${MAX_MESSAGE_TIMEFRAMES.join(
+      ", "
+    )}. Is: ${value}`;
   }
 
   return null;

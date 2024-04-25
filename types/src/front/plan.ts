@@ -2,7 +2,14 @@ import * as t from "io-ts";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 import { NumberFromString } from "io-ts-types/lib/NumberFromString";
 
-export type MaxMessagesTimeframeType = "day" | "lifetime";
+export const MAX_MESSAGE_TIMEFRAMES = ["day", "lifetime"] as const;
+export type MaxMessagesTimeframeType = (typeof MAX_MESSAGE_TIMEFRAMES)[number];
+
+export function isMaxMessagesTimeframeType(
+  value: string
+): value is MaxMessagesTimeframeType {
+  return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
+}
 
 /**
  *  Expresses limits for usage of the product
