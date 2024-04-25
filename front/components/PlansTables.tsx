@@ -1,7 +1,6 @@
 import {
   AttachmentIcon,
   Button,
-  Hoverable,
   Icon,
   Markdown,
   Modal,
@@ -10,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
+import type { ReactNode } from "react";
 import React, { useState } from "react";
 
 import {
@@ -34,7 +34,7 @@ interface PricePlanProps {
 type PriceTableDisplay = "landing" | "subscribe";
 
 type PriceTableItem = {
-  label: string;
+  label: ReactNode;
   variant: "check" | "dash" | "xmark";
   display: PriceTableDisplay[];
 };
@@ -62,7 +62,7 @@ const PRO_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited messages (Fair use limits apply)",
+    label: <>Unlimited messages (Fair use limits apply)</>,
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -212,9 +212,9 @@ export function ProPriceTable({
         </PriceTable.ActionContainer>
       )}
       {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
-        (item) => (
+        (item, index) => (
           <PriceTable.Item
-            key={item.label}
+            key={index}
             label={item.label}
             variant={item.variant}
           />
@@ -258,9 +258,9 @@ function EnterprisePriceTable({
           />
         )}
       </PriceTable.ActionContainer>
-      {ENTERPRISE_PLAN_ITEMS.map((item) => (
+      {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
         <PriceTable.Item
-          key={item.label}
+          key={index}
           label={item.label}
           variant={item.variant}
         />
@@ -287,13 +287,14 @@ of AI. It is not designed as a model wrapper for programatic usage.
 
 **Dust Enterprise** provides programatic usage (though
 API), with custom prices.
+___
 # What is "unfair" usage?
-Is considered "Unfair" usage:
+Is considered *"Unfair"* usage:
 - Sharing single seat between multiple people.
 - Using Dust programmatically at a large scale on a Pro plan.
+___
 # "Fair use" limitations
-The following "Fair use" limitations are in place:
-For Pro plans a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
+For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
 `;
 
 export function PricePlans({
@@ -307,16 +308,16 @@ export function PricePlans({
   isProcessing,
   display,
 }: PricePlanProps) {
-  const [isRightSideModalOpen, setIsRightSideModalOpen] = useState(false);
+  const [isFairUseModalOpen, setFairUseModalOpen] = useState(false);
   const fairUseModal = (
     <Modal
-      isOpen={isRightSideModalOpen}
-      onClose={() => setIsRightSideModalOpen(false)}
+      isOpen={isFairUseModalOpen}
+      onClose={() => setFairUseModalOpen(false)}
       hasChanged={false}
       variant="side-sm"
       title="Dust's Fair Use Policy"
     >
-      <div className="flex flex-col items-start py-8">
+      <div className="py-8">
         <Icon visual={AttachmentIcon} size="lg" className="text-emerald-500" />
         <Markdown content={FAIR_USE_CONTENT} size="sm" />
       </div>
@@ -397,9 +398,9 @@ export function PricePlans({
       <>
         {fairUseModal}
         <div className={classNames(flexCSS, className)}>
-          <Hoverable onClick={() => setIsRightSideModalOpen(true)}>
-            MODALTEST
-          </Hoverable>
+          {/* <Hoverable onClick={() => setFairUseModalOpen(true)}>
+            Fair Use
+          </Hoverable> */}
           <ProPriceTable
             size={size}
             plan={plan}
