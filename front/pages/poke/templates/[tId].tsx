@@ -435,7 +435,7 @@ function TemplatesPage({
       presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
-      emoji: "🐈‍⬛",
+      emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
       backgroundColor: "bg-pink-300",
       tags: [],
       visibility: "draft",
