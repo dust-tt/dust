@@ -32,7 +32,7 @@ const backfillAgentConfiguration = async (
     return;
   }
 
-  const generation = genConfigs[0];
+  const [generation] = genConfigs;
 
   if (!isModelProviderId(generation.providerId)) {
     throw new Error(

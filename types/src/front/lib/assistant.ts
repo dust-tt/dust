@@ -13,7 +13,7 @@ export const MODEL_PROVIDER_IDS = [
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
 export const isModelProviderId = (
-  providerId: unknown
+  providerId: string
 ): providerId is ModelProviderIdType =>
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
 
@@ -50,7 +50,7 @@ export const MODEL_IDS = [
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
-export const isModelId = (modelId: unknown): modelId is ModelIdType =>
+export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
 /**
