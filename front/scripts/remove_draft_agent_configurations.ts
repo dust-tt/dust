@@ -102,11 +102,12 @@ async function deleteTableQueryConfigurationForAgent(
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
   agent: AgentConfiguration,
-  logger: Logger
-) {
+  logger: Logger,
+  execute: boolean
+): Promise<boolean> {
   if (agent.status !== "draft") {
     logger.info(`Agent ${agent.sId} is not in draft status. Skipping.`);
-    return;
+    return false;
   }
 
   // Only deletes draft agent configuration without mentions.
@@ -118,7 +119,12 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   if (hasAtLeastOneMention) {
     logger.info(`Agent ${agent.sId} has related messages. Skipping.`);
 
-    return;
+    return false;
+  }
+
+  // If in dry run, return early.
+  if (!execute) {
+    return true;
   }
 
   // First, delete the generation configuration.
@@ -151,6 +157,8 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
       id: agent.id,
     },
   });
+
+  return true;
 }
 
 async function removeDraftAgentConfigurationsForWorkspace(
@@ -158,6 +166,8 @@ async function removeDraftAgentConfigurationsForWorkspace(
   logger: Logger,
   execute: boolean
 ) {
+  let nbAgentsDeleted = 0;
+
   const draftAgents = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
@@ -178,15 +188,20 @@ async function removeDraftAgentConfigurationsForWorkspace(
   );
 
   for (const agent of draftAgents) {
-    if (execute) {
-      await deleteDraftAgentConfigurationAndRelatedResources(agent, logger);
-    }
+    const isDeleted = await deleteDraftAgentConfigurationAndRelatedResources(
+      agent,
+      logger,
+      execute
+    );
 
-    logger.info(`Agent ${agent.sId} has been deleted.`);
+    if (isDeleted) {
+      nbAgentsDeleted++;
+      logger.info(`Agent ${agent.sId} has been deleted.`);
+    }
   }
 
   logger.info(
-    `Deleted ${draftAgents.length} draft agents for workspace(${workspace.sId}).`
+    `Deleted ${nbAgentsDeleted}/${draftAgents.length} draft agents for workspace(${workspace.sId}).`
   );
 }
 
