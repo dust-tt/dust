@@ -18,10 +18,7 @@ import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderDataSourceConfiguration,
-  AssistantBuilderInitialState,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
@@ -36,11 +33,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  >;
   dustApps: AppType[];
+  retrievalConfiguration: AssistantBuilderInitialState["retrievalConfiguration"];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration: AgentConfigurationType;
@@ -64,21 +58,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const allDataSources = await getDataSources(auth);
 
-  const dataSourceByName = allDataSources.reduce(
+  const dataSourcesByName = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
   );
-  const config = await getAgentConfiguration(
+  const configuration = await getAgentConfiguration(
     auth,
     context.params?.aId as string
   );
-  if (config?.scope === "workspace" && !auth.isBuilder()) {
+  if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
       notFound: true,
     };
   }
 
-  if (!config) {
+  if (!configuration) {
     return {
       notFound: true,
     };
@@ -93,12 +87,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const allDustApps = await getApps(auth);
 
   const {
-    dataSourceConfigurations,
+    retrievalConfiguration,
     dustAppConfiguration,
     tablesQueryConfiguration,
   } = await buildInitialState({
-    config,
-    dataSourceByName,
+    configuration,
+    dataSourcesByName,
     dustApps: allDustApps,
   });
 
@@ -109,11 +103,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
-      dataSourceConfigurations,
       dustApps: allDustApps,
+      retrievalConfiguration,
       dustAppConfiguration,
       tablesQueryConfiguration,
-      agentConfiguration: config,
+      agentConfiguration: configuration,
       flow,
       baseUrl: URL,
     },
@@ -126,8 +120,8 @@ export default function EditAssistant({
   plan,
   gaTrackingId,
   dataSources,
-  dataSourceConfigurations,
   dustApps,
+  retrievalConfiguration,
   dustAppConfiguration,
   tablesQueryConfiguration,
   agentConfiguration,
@@ -135,8 +129,6 @@ export default function EditAssistant({
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
-
-  let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
@@ -152,10 +144,6 @@ export default function EditAssistant({
         );
       }
       actionMode = "RETRIEVAL_EXHAUSTIVE";
-      timeFrame = {
-        value: action.relativeTimeFrame.duration,
-        unit: action.relativeTimeFrame.unit,
-      };
     }
     if (action.query === "auto") {
       actionMode = "RETRIEVAL_SEARCH";
@@ -184,8 +172,7 @@ export default function EditAssistant({
       flow={flow}
       initialBuilderState={{
         actionMode,
-        timeFrame,
-        dataSourceConfigurations,
+        retrievalConfiguration,
         dustAppConfiguration,
         tablesQueryConfiguration,
         scope: agentConfiguration.scope,

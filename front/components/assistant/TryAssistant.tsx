@@ -215,14 +215,10 @@ export function usePreviewAssistant({
         description: "Draft Assistant",
         instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl,
-        timeFrame: {
-          value: builderState.timeFrame.value,
-          unit: builderState.timeFrame.unit,
-        },
+        retrievalConfiguration: builderState.retrievalConfiguration,
         dustAppConfiguration: builderState.dustAppConfiguration,
         tablesQueryConfiguration: builderState.tablesQueryConfiguration,
         scope: "private",
-        dataSourceConfigurations: builderState.dataSourceConfigurations,
         generationSettings: builderState.generationSettings,
       },
 
@@ -246,12 +242,11 @@ export function usePreviewAssistant({
     builderState.handle,
     builderState.instructions,
     builderState.avatarUrl,
-    builderState.timeFrame.value,
-    builderState.timeFrame.unit,
-    builderState.dustAppConfiguration,
-    builderState.tablesQueryConfiguration,
-    builderState.dataSourceConfigurations,
     builderState.generationSettings,
+    // Actions
+    builderState.tablesQueryConfiguration,
+    builderState.dustAppConfiguration,
+    builderState.retrievalConfiguration,
   ]);
 
   useEffect(() => {
