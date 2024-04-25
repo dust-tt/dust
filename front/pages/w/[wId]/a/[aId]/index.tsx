@@ -236,21 +236,6 @@ export default function AppView({
   const handleSetBlock = async (idx: number, block: SpecificationBlockType) => {
     const s = spec.map((b) => b);
     
-    // Get dataset has for input
-    if (block.type == "input") {
-      const dataset = block.config.dataset;
-      console.log('INPUT DATASET', dataset)
-      if (dataset) {
-        // const res = await fetch(`/api/w/${owner.sId}/datasets/${dataset}`);
-        // if (res.ok) {
-          // const data = await res.json();
-          block.config.dataset_hash = "DATASET_HAS_HERE";
-          console.log(s[idx]);
-          s[idx] = block;
-        // }
-      }
-    }
-
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
       for (let i = idx; i < s.length; i++) {

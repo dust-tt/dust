@@ -5,8 +5,10 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
+import type { DatasetSchema,DatasetType } from "@dust-tt/types";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
+import DatasetView from "@app/components/app/DatasetView";
 import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
@@ -44,12 +46,12 @@ export default function InputBlock({
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;
+    b.spec.datasetWithData = await handleGetDatasetData();
     onBlockUpdate(b);
-    await handleGetDatasetData();
   };
 
   const handleGetDatasetData = async () => {
-    await fetch(
+    const datasetRes = await fetch(
       `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}?data=true`,
       {
         method: "GET",
@@ -58,7 +60,21 @@ export default function InputBlock({
         },
       }
     );
+    const res = await datasetRes.json();
+    return res.dataset
   }
+
+  const onUpdate = (
+    initializing: boolean,
+    valid: boolean,
+    currentDatasetInEditor: DatasetType,
+    schema: DatasetSchema
+  ) => {
+    console.log("onUpdate", currentDatasetInEditor, schema);
+  };
+
+  console.log('DATASET WITH DATA')
+  console.log(block.config.datasetWithData)
 
   
   return (
@@ -93,17 +109,22 @@ export default function InputBlock({
             </>
           ) : null}
 
-          {block.config && block.config.dataset && block.config.dataset_hash ? (
+          {block.config && block.config.dataset && block.config.datasetWithData ? (
             <div className="flex items-center">
               {/* <DatasetView
                 readOnly={false}
-                datasets={[block.spec.dataset]}
-                dataset={block.spec.dataset}
-                schema={schema}
+                datasets={[block.config.datasetWithData]}
+                dataset={block.config.datasetWithData}
+                schema={block.config.datasetWithData.schema}
                 onUpdate={onUpdate}
                 nameDisabled={true}
               /> */}
-              {block.config.dataset_hash}
+              {block.config.datasetWithData.schema.map((field) => (
+                <div key={field.name} className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
+                  <div className="flex flex-initial">{field.key}:</div>
+                  <div className="flex flex-initial">{field.type}</div>
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
