@@ -36,8 +36,8 @@ function makeUrlForEmojiAndBackgroud(
   return `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
 }
 
-// TODO: Type.
-const DEFAULT_BACKGROUND_COLOR: `bg-${string}` = "bg-gray-100";
+const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
+  "bg-gray-100";
 
 interface AssistantBuilderEmojiPickerProps {
   avatarUrl: string | null;
@@ -135,10 +135,11 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           </DropdownMenu.Button>
           <DropdownMenu.Items width={240} origin="topLeft" variant="no-padding">
             <ColorPicker
-              colors={generateTailwindBackgroundColors()}
+              colors={
+                generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
+              }
               onColorSelect={(color) => {
-                // TODO: Type.
-                setSelectedBgColor(color as `bg-${string}`);
+                setSelectedBgColor(color);
 
                 // We only mark as stale if an emoji has been selected.
                 if (selectedEmoji) {
