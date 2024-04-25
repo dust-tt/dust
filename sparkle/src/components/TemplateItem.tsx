@@ -8,10 +8,7 @@ interface TemplateItemProps {
   href: string | UrlObject;
   id: string;
   name: string;
-  visual: {
-    backgroundColor: string;
-    emoji: string;
-  };
+  visual: string;
 }
 
 export function TemplateItem({
@@ -20,8 +17,6 @@ export function TemplateItem({
   name,
   visual,
 }: TemplateItemProps) {
-  const { backgroundColor, emoji } = visual;
-
   return (
     <CardButton
       className="s-flex s-max-h-32 s-max-w-lg s-flex-row s-gap-5 s-p-4"
@@ -31,12 +26,7 @@ export function TemplateItem({
       replace
       shallow
     >
-      <Avatar
-        emoji={emoji}
-        size="lg"
-        isRounded
-        backgroundColor={backgroundColor}
-      />
+      <Avatar isRounded size="lg" visual={visual} />
       <div className="s-flex s-flex-col s-gap-2">
         <span className="s-text-bold s-text-lg s-font-medium s-text-element-900">
           {name}
