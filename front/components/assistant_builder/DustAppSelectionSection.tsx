@@ -17,7 +17,7 @@ export default function DustAppSelectionSection({
   canSelectDustApp,
 }: {
   show: boolean;
-  dustAppConfiguration: AssistantBuilderDustAppConfiguration | null;
+  dustAppConfiguration: AssistantBuilderDustAppConfiguration;
   openDustAppModal: () => void;
   onDelete?: (sId: string) => void;
   canSelectDustApp: boolean;
@@ -41,7 +41,7 @@ export default function DustAppSelectionSection({
       }}
     >
       <div>
-        {!dustAppConfiguration ? (
+        {!dustAppConfiguration.app ? (
           <EmptyCallToAction
             label="Select Dust App"
             disabled={!canSelectDustApp}
@@ -61,7 +61,9 @@ export default function DustAppSelectionSection({
                     label="Remove"
                     labelVisible={false}
                     onClick={() => {
-                      onDelete?.(dustAppConfiguration.app.sId);
+                      if (dustAppConfiguration.app) {
+                        onDelete?.(dustAppConfiguration.app.sId);
+                      }
                     }}
                   />
                 </Button.List>

@@ -17,18 +17,19 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
+import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
 export async function buildInitialState({
-  dataSourceByName,
-  config,
+  dataSourcesByName,
   dustApps,
+  configuration,
 }: {
-  dataSourceByName: Record<string, DataSourceType>;
-  config: AgentConfigurationType | TemplateAgentConfigurationType;
+  dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
+  configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }) {
   const coreAPI = new CoreAPI(logger);
 
@@ -38,9 +39,21 @@ export async function buildInitialState({
     isSelectAll: boolean;
   }[] = [];
 
-  const action = deprecatedGetFirstActionConfiguration(config);
+  const action = deprecatedGetFirstActionConfiguration(configuration);
+
+  const retrievalConfiguration = DEFAULT_ASSISTANT_STATE.retrievalConfiguration;
 
   if (isRetrievalConfiguration(action)) {
+    if (
+      action.relativeTimeFrame !== "auto" &&
+      action.relativeTimeFrame !== "none"
+    ) {
+      retrievalConfiguration.timeFrame = {
+        value: action.relativeTimeFrame.duration,
+        unit: action.relativeTimeFrame.unit,
+      };
+    }
+
     for (const ds of action.dataSources) {
       selectedResources.push({
         dataSourceName: ds.dataSourceId,
@@ -48,67 +61,66 @@ export async function buildInitialState({
         isSelectAll: !ds.filter.parents,
       });
     }
-  }
 
-  const dataSourceConfigurationsArray: NonNullable<
-    AssistantBuilderInitialState["dataSourceConfigurations"]
-  >[string][] = await Promise.all(
-    selectedResources.map(
-      async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
-        const dataSource = dataSourceByName[ds.dataSourceName];
-        if (!dataSource.connectorId || !ds.resources) {
+    const dataSourceConfigurationsArray: NonNullable<
+      AssistantBuilderInitialState["retrievalConfiguration"]["dataSourceConfigurations"]
+    >[string][] = await Promise.all(
+      selectedResources.map(
+        async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
+          const dataSource = dataSourcesByName[ds.dataSourceName];
+          if (!dataSource.connectorId || !ds.resources) {
+            return {
+              dataSource: dataSource,
+              selectedResources: [],
+              isSelectAll: ds.isSelectAll,
+            };
+          }
+          const connectorsAPI = new ConnectorsAPI(logger);
+          const response = await connectorsAPI.getContentNodes({
+            connectorId: dataSource.connectorId,
+            internalIds: ds.resources,
+          });
+
+          if (response.isErr()) {
+            throw response.error;
+          }
+
           return {
             dataSource: dataSource,
-            selectedResources: [],
+            selectedResources: response.value.nodes,
             isSelectAll: ds.isSelectAll,
           };
         }
-        const connectorsAPI = new ConnectorsAPI(logger);
-        const response = await connectorsAPI.getContentNodes({
-          connectorId: dataSource.connectorId,
-          internalIds: ds.resources,
-        });
+      )
+    );
 
-        if (response.isErr()) {
-          throw response.error;
-        }
+    // key: dataSourceName, value: DataSourceConfig
+    const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
+      (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
+      {} as Record<string, AssistantBuilderDataSourceConfiguration>
+    );
 
-        return {
-          dataSource: dataSource,
-          selectedResources: response.value.nodes,
-          isSelectAll: ds.isSelectAll,
-        };
-      }
-    )
-  );
+    retrievalConfiguration.dataSourceConfigurations = dataSourceConfigurations;
+  }
 
-  // key: dataSourceName, value: DataSourceConfig
-  const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-    (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
-    {} as Record<string, AssistantBuilderDataSourceConfiguration>
-  );
-
-  let dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"] =
-    null;
+  const dustAppConfiguration = DEFAULT_ASSISTANT_STATE.dustAppConfiguration;
 
   if (isDustAppRunConfiguration(action)) {
     for (const app of dustApps) {
       if (app.sId === action.appId) {
-        dustAppConfiguration = {
-          app,
-        };
+        dustAppConfiguration.app = app;
         break;
       }
     }
   }
 
-  let tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"] =
-    {};
+  let tablesQueryConfiguration =
+    DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration;
 
   if (isTablesQueryConfiguration(action) && action.tables.length) {
     const coreAPITables: CoreAPITable[] = await Promise.all(
       action.tables.map(async (t) => {
-        const dataSource = dataSourceByName[t.dataSourceId];
+        const dataSource = dataSourcesByName[t.dataSourceId];
         const coreAPITable = await coreAPI.getTable({
           projectId: dataSource.dustAPIProjectId,
           dataSourceName: dataSource.name,
@@ -139,7 +151,7 @@ export async function buildInitialState({
   }
 
   return {
-    dataSourceConfigurations,
+    retrievalConfiguration,
     dustAppConfiguration,
     tablesQueryConfiguration,
   };

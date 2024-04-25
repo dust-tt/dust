@@ -20,10 +20,8 @@ import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderDataSourceConfiguration,
-  AssistantBuilderInitialState,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
+import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
@@ -49,11 +47,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dataSources: DataSourceType[];
-  dataSourceConfigurations: Record<
-    string,
-    AssistantBuilderDataSourceConfiguration
-  > | null;
   dustApps: AppType[];
+  retrievalConfiguration: AssistantBuilderInitialState["retrievalConfiguration"];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   agentConfiguration:
@@ -76,7 +71,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const allDataSources = await getDataSources(auth);
   const allDustApps = await getApps(auth);
 
-  const dataSourceByName = allDataSources.reduce(
+  const dataSourcesByName = allDataSources.reduce(
     (acc, ds) => ({ ...acc, [ds.name]: ds }),
     {} as Record<string, DataSourceType>
   );
@@ -87,7 +82,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     ? (context.query.flow as BuilderFlow)
     : "personal_assistants";
 
-  let agentConfig:
+  let configuration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
     | null = null;
@@ -95,9 +90,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    agentConfig = await getAgentConfiguration(auth, duplicate);
+    configuration = await getAgentConfiguration(auth, duplicate);
 
-    if (!agentConfig) {
+    if (!configuration) {
       return {
         notFound: true,
       };
@@ -113,23 +108,24 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    agentConfig = agentConfigRes.value;
+    configuration = agentConfigRes.value;
   }
 
   const {
-    dataSourceConfigurations,
+    retrievalConfiguration,
     dustAppConfiguration,
     tablesQueryConfiguration,
-  } = agentConfig
+  } = configuration
     ? await buildInitialState({
-        config: agentConfig,
-        dataSourceByName,
+        configuration,
+        dataSourcesByName,
         dustApps: allDustApps,
       })
     : {
-        dataSourceConfigurations: null,
-        dustAppConfiguration: null,
-        tablesQueryConfiguration: {},
+        retrievalConfiguration: DEFAULT_ASSISTANT_STATE.retrievalConfiguration,
+        dustAppConfiguration: DEFAULT_ASSISTANT_STATE.dustAppConfiguration,
+        tablesQueryConfiguration:
+          DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration,
       };
 
   return {
@@ -139,11 +135,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: config.getGaTrackingId(),
       dataSources: allDataSources,
-      dataSourceConfigurations,
       dustApps: allDustApps,
+      retrievalConfiguration,
       dustAppConfiguration,
       tablesQueryConfiguration,
-      agentConfiguration: agentConfig,
+      agentConfiguration: configuration,
       flow,
       baseUrl: config.getAppUrl(),
       templateId,
@@ -157,8 +153,8 @@ export default function CreateAssistant({
   plan,
   gaTrackingId,
   dataSources,
-  dataSourceConfigurations,
   dustApps,
+  retrievalConfiguration,
   dustAppConfiguration,
   tablesQueryConfiguration,
   agentConfiguration,
@@ -171,8 +167,6 @@ export default function CreateAssistant({
     workspaceId: owner.sId,
   });
   let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
-
-  let timeFrame: AssistantBuilderInitialState["timeFrame"] = null;
 
   if (agentConfiguration) {
     const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
@@ -189,10 +183,6 @@ export default function CreateAssistant({
           );
         }
         actionMode = "RETRIEVAL_EXHAUSTIVE";
-        timeFrame = {
-          value: action.relativeTimeFrame.duration,
-          unit: action.relativeTimeFrame.unit,
-        };
       }
       if (action.query === "auto") {
         actionMode = "RETRIEVAL_SEARCH";
@@ -210,9 +200,11 @@ export default function CreateAssistant({
       throw new Error("Cannot edit global assistant");
     }
   }
+
   if (templateId && !assistantTemplate) {
     return null;
   }
+
   return (
     <AssistantBuilder
       owner={owner}
@@ -226,8 +218,7 @@ export default function CreateAssistant({
         agentConfiguration
           ? {
               actionMode,
-              timeFrame,
-              dataSourceConfigurations,
+              retrievalConfiguration,
               dustAppConfiguration,
               tablesQueryConfiguration,
               scope:
