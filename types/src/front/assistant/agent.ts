@@ -196,6 +196,8 @@ export interface TemplateAgentConfigurationType {
   } | null;
 
   name: string;
+  pictureUrl: string;
+
   scope: AgentConfigurationScope;
   description: string;
   actions: AgentActionConfigurationType[];

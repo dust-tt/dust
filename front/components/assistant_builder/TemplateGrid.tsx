@@ -26,10 +26,7 @@ export function TemplateGrid({ templates }: TemplateGridProps) {
       description={t.description ?? ""}
       id={t.sId}
       name={`@${t.handle}`}
-      visual={{
-        emoji: t.emoji,
-        backgroundColor: t.backgroundColor,
-      }}
+      visual={t.pictureUrl}
       href={makeTemplateModalHref(t.sId)}
     />
   ));
