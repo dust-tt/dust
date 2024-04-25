@@ -833,6 +833,11 @@ export async function submitAssistantBuilderForm({
           model: builderState.generationSettings.modelSettings,
           temperature: builderState.generationSettings.temperature,
         },
+        model: {
+          modelId: builderState.generationSettings.modelSettings.modelId,
+          providerId: builderState.generationSettings.modelSettings.providerId,
+          temperature: builderState.generationSettings.temperature,
+        },
       },
     };
 

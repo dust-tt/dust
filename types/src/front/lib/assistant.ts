@@ -1,4 +1,5 @@
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
+import { ioTsEnum } from "../../shared/utils/iots_utils";
 
 /**
  * PROVIDER IDS
@@ -16,6 +17,8 @@ export const isModelProviderId = (
   providerId: string
 ): providerId is ModelProviderIdType =>
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
+
+export const ModelProviderIdCodec = ioTsEnum(MODEL_PROVIDER_IDS);
 
 /**
  * MODEL IDS
@@ -52,6 +55,8 @@ export type ModelIdType = (typeof MODEL_IDS)[number];
 
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
+
+export const ModelIdCodec = ioTsEnum(MODEL_IDS);
 
 /**
  * MODEL CONFIGURATIONS

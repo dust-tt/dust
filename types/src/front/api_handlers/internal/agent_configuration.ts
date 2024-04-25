@@ -2,7 +2,12 @@ import * as t from "io-ts";
 
 import { createRangeCodec } from "../../../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../../assistant/actions/retrieval";
-import { isSupportedModel, SupportedModel } from "../../lib/assistant";
+import {
+  isSupportedModel,
+  ModelIdCodec,
+  ModelProviderIdCodec,
+  SupportedModel,
+} from "../../lib/assistant";
 
 const LimitCodec = createRangeCodec(0, 100);
 
@@ -176,6 +181,15 @@ const GenerationConfigurationSchema = t.union([
   ]),
 ]);
 
+const ModelConfigurationSchema = t.intersection([
+  t.type({
+    modelId: ModelIdCodec,
+    providerId: ModelProviderIdCodec,
+    temperature: t.number,
+  }),
+  t.partial(multiActionsCommonFields),
+]);
+
 export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
   t.type({
     assistant: t.intersection([
@@ -199,6 +213,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
       }),
       t.partial({
         maxToolsUsePerRun: t.number,
+        model: ModelConfigurationSchema,
       }),
     ]),
   }),
