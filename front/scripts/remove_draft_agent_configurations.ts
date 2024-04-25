@@ -140,7 +140,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     return;
   }
 
-  // I
+  // Only deletes draft agent configuration without mentions.
   const hasAtLeastOneMessage = await Mention.findOne({
     where: {
       agentConfigurationId: agent.sId,
