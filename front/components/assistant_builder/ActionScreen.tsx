@@ -47,7 +47,7 @@ const SEARCH_MODES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
   "TABLES_QUERY",
-  "PROCESS_DATA",
+  "PROCESS",
 ] as const;
 type SearchMode = (typeof SEARCH_MODES)[number];
 
@@ -111,7 +111,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
     description: "Tables, Spreadsheets, Notion DBs",
     flag: null,
   },
-  PROCESS_DATA: {
+  PROCESS: {
     actionMode: "PROCESS",
     icon: TimeIcon,
     label: "Process data",
@@ -228,7 +228,7 @@ export default function ActionScreen({
       case "TABLES_QUERY":
         return "TABLES_QUERY";
       case "PROCESS":
-        return "PROCESS_DATA";
+        return "PROCESS";
 
       case "GENERIC":
       case "DUST_APP_RUN":
