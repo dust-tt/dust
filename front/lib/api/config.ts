@@ -40,7 +40,9 @@ const config = {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_API_KEY");
   },
   getCustomerIoEnabled: (): boolean => {
-    return EnvironmentConfig.getEnvVariable("CUSTOMERIO_ENABLED") === "true";
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("CUSTOMERIO_ENABLED") === "true"
+    );
   },
 };
 
