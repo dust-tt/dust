@@ -220,6 +220,7 @@ export default function AssistantBuilder({
           dustAppConfiguration: initialBuilderState.dustAppConfiguration,
           tablesQueryConfiguration:
             initialBuilderState.tablesQueryConfiguration,
+          processConfiguration: initialBuilderState.processConfiguration,
         }
       : {
           ...DEFAULT_ASSISTANT_STATE,
@@ -278,7 +279,7 @@ export default function AssistantBuilder({
     } else if (isTablesQueryConfiguration(action)) {
       actionMode = "TABLES_QUERY";
     } else if (isProcessConfiguration(action)) {
-      // Not supported in the builder yet.
+      actionMode = "PROCESS";
     }
 
     if (actionMode !== null) {
@@ -446,6 +447,21 @@ export default function AssistantBuilder({
       }
     }
 
+    if (builderState.actionMode === "PROCESS") {
+      if (
+        Object.keys(builderState.processConfiguration.dataSourceConfigurations)
+          .length === 0
+      ) {
+        valid = false;
+      }
+      if (!builderState.processConfiguration.timeFrame.value) {
+        valid = false;
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
+      }
+    }
+
     setSubmitEnabled(valid);
   }, [
     builderState.actionMode,
@@ -458,6 +474,7 @@ export default function AssistantBuilder({
     builderState.retrievalConfiguration,
     builderState.dustAppConfiguration,
     builderState.tablesQueryConfiguration,
+    builderState.processConfiguration,
   ]);
 
   useEffect(() => {
@@ -777,7 +794,7 @@ export async function submitAssistantBuilderForm({
             : "auto",
         topK: "auto",
         dataSources: Object.values(
-          builderState.retrievalConfiguration?.dataSourceConfigurations || {}
+          builderState.retrievalConfiguration.dataSourceConfigurations
         ).map(({ dataSource, selectedResources, isSelectAll }) => ({
           dataSourceId: dataSource.name,
           workspaceId: owner.sId,
@@ -813,10 +830,34 @@ export async function submitAssistantBuilderForm({
       }
       break;
 
+    case "PROCESS":
+      actionParam = {
+        type: "process_configuration",
+        relativeTimeFrame: {
+          duration: builderState.processConfiguration.timeFrame.value,
+          unit: builderState.processConfiguration.timeFrame.unit,
+        },
+        dataSources: Object.values(
+          builderState.processConfiguration.dataSourceConfigurations
+        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+          dataSourceId: dataSource.name,
+          workspaceId: owner.sId,
+          filter: {
+            parents: !isSelectAll
+              ? {
+                  in: selectedResources.map((resource) => resource.internalId),
+                  not: [],
+                }
+              : null,
+            tags: null,
+          },
+        })),
+        schema: builderState.processConfiguration.schema,
+      };
+      break;
+
     default:
-      ((x: never) => {
-        throw new Error(`Unknown data source mode ${x}`);
-      })(builderState.actionMode);
+      assertNever(builderState.actionMode);
   }
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
@@ -831,11 +872,6 @@ export async function submitAssistantBuilderForm({
         actions: removeNulls([actionParam]),
         generation: {
           model: builderState.generationSettings.modelSettings,
-          temperature: builderState.generationSettings.temperature,
-        },
-        model: {
-          modelId: builderState.generationSettings.modelSettings.modelId,
-          providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
       },

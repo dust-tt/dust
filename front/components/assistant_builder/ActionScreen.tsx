@@ -47,6 +47,7 @@ const SEARCH_MODES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
   "TABLES_QUERY",
+  "PROCESS",
 ] as const;
 type SearchMode = (typeof SEARCH_MODES)[number];
 
@@ -110,6 +111,13 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
     description: "Tables, Spreadsheets, Notion DBs",
     flag: null,
   },
+  PROCESS: {
+    actionMode: "PROCESS",
+    icon: TimeIcon,
+    label: "Process data",
+    description: "Structured extraction",
+    flag: "process_action",
+  },
 };
 
 function ActionModeSection({
@@ -141,11 +149,14 @@ export default function ActionScreen({
   dustApps: AppType[];
   timeFrameError: string | null;
 }) {
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showRetrievalDataSourcesModal, setShowRetrievalDataSourcesModal] =
+    useState(false);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
+  const [showProcessDataSourcesModal, setShowProcessDataSourcesModal] =
+    useState(false);
 
-  const deleteDataSource = (name: string) => {
+  const deleteRetrievalDataSource = (name: string) => {
     if (builderState.retrievalConfiguration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
@@ -172,6 +183,26 @@ export default function ActionScreen({
     });
   };
 
+  const deleteProcessDataSource = (name: string) => {
+    if (builderState.processConfiguration.dataSourceConfigurations[name]) {
+      setEdited(true);
+    }
+
+    setBuilderState(({ processConfiguration, ...rest }) => {
+      const dataSourceConfigurations = {
+        ...processConfiguration.dataSourceConfigurations,
+      };
+      delete dataSourceConfigurations[name];
+      return {
+        processConfiguration: {
+          ...processConfiguration,
+          dataSourceConfigurations,
+        },
+        ...rest,
+      };
+    });
+  };
+
   const getActionType = (actionMode: ActionMode) => {
     switch (actionMode) {
       case "GENERIC":
@@ -179,6 +210,7 @@ export default function ActionScreen({
       case "RETRIEVAL_EXHAUSTIVE":
       case "RETRIEVAL_SEARCH":
       case "TABLES_QUERY":
+      case "PROCESS":
         return "USE_DATA_SOURCES";
       case "DUST_APP_RUN":
         return "RUN_DUST_APP";
@@ -195,9 +227,15 @@ export default function ActionScreen({
         return "RETRIEVAL_SEARCH";
       case "TABLES_QUERY":
         return "TABLES_QUERY";
-      default:
+      case "PROCESS":
+        return "PROCESS";
+
+      case "GENERIC":
+      case "DUST_APP_RUN":
         // Unused for non data sources related actions.
-        return "RETRIEVAL_EXHAUSTIVE";
+        return "RETRIEVAL_SEARCH";
+      default:
+        assertNever(actionMode);
     }
   };
 
@@ -249,9 +287,9 @@ export default function ActionScreen({
         tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
       <AssistantBuilderDataSourceModal
-        isOpen={showDataSourcesModal}
+        isOpen={showRetrievalDataSourcesModal}
         setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
+          setShowRetrievalDataSourcesModal(isOpen);
         }}
         owner={owner}
         dataSources={dataSources}
@@ -272,11 +310,41 @@ export default function ActionScreen({
             },
           }));
         }}
-        onDelete={deleteDataSource}
+        onDelete={deleteRetrievalDataSource}
         dataSourceConfigurations={
           builderState.retrievalConfiguration.dataSourceConfigurations
         }
       />
+      <AssistantBuilderDataSourceModal
+        isOpen={showProcessDataSourcesModal}
+        setOpen={(isOpen) => {
+          setShowProcessDataSourcesModal(isOpen);
+        }}
+        owner={owner}
+        dataSources={dataSources}
+        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            processConfiguration: {
+              ...state.processConfiguration,
+              dataSourceConfigurations: {
+                ...state.processConfiguration.dataSourceConfigurations,
+                [dataSource.name]: {
+                  dataSource,
+                  selectedResources,
+                  isSelectAll,
+                },
+              },
+            },
+          }));
+        }}
+        onDelete={deleteProcessDataSource}
+        dataSourceConfigurations={
+          builderState.processConfiguration.dataSourceConfigurations
+        }
+      />
+
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
           <Page.Header title="Action & Data sources" />
@@ -464,10 +532,10 @@ export default function ActionScreen({
               builderState.retrievalConfiguration.dataSourceConfigurations
             }
             openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
+              setShowRetrievalDataSourcesModal(true);
             }}
             canAddDataSource={dataSources.length > 0}
-            onDelete={deleteDataSource}
+            onDelete={deleteRetrievalDataSource}
           />
         </ActionModeSection>
 
@@ -482,10 +550,10 @@ export default function ActionScreen({
               builderState.retrievalConfiguration.dataSourceConfigurations
             }
             openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
+              setShowRetrievalDataSourcesModal(true);
             }}
             canAddDataSource={dataSources.length > 0}
-            onDelete={deleteDataSource}
+            onDelete={deleteRetrievalDataSource}
           />
           <div className={"flex flex-row items-center gap-4 pb-4"}>
             <div className="text-sm font-semibold text-element-900">
@@ -548,6 +616,114 @@ export default function ActionScreen({
                             timeFrame: {
                               value:
                                 builderState.retrievalConfiguration.timeFrame
+                                  .value,
+                              unit: key as TimeframeUnit,
+                            },
+                          },
+                        }));
+                      }}
+                    />
+                  )
+                )}
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </div>
+        </ActionModeSection>
+
+        <ActionModeSection
+          show={builderState.actionMode === "PROCESS" && !noDataSources}
+        >
+          <div className="text-sm text-element-700">
+            The assistant will process the data sources over the specified time
+            frame and attempt to extract structured information based on the
+            schema provided. This action can process up to 500k tokens (the
+            equivalent of 1000 pages book). Learn more about this feature in the{" "}
+            <Hoverable
+              onClick={() => {
+                window.open(
+                  "https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d",
+                  "_blank"
+                );
+              }}
+              className="cursor-pointer font-bold text-action-500"
+            >
+              documentation
+            </Hoverable>
+            .
+          </div>
+
+          <DataSourceSelectionSection
+            owner={owner}
+            dataSourceConfigurations={
+              builderState.processConfiguration.dataSourceConfigurations
+            }
+            openDataSourceModal={() => {
+              setShowProcessDataSourcesModal(true);
+            }}
+            canAddDataSource={dataSources.length > 0}
+            onDelete={deleteProcessDataSource}
+          />
+
+          <div className={"flex flex-row items-center gap-4 pb-4"}>
+            <div className="text-sm font-semibold text-element-900">
+              Process data from the last
+            </div>
+            <input
+              type="text"
+              className={classNames(
+                "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+                !timeFrameError
+                  ? "focus:border-action-500 focus:ring-action-500"
+                  : "border-red-500 focus:border-red-500 focus:ring-red-500",
+                "bg-structure-50 stroke-structure-50"
+              )}
+              value={builderState.processConfiguration.timeFrame.value || ""}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) || !e.target.value) {
+                  setEdited(true);
+                  setBuilderState((state) => ({
+                    ...state,
+                    processConfiguration: {
+                      ...state.processConfiguration,
+                      timeFrame: {
+                        value,
+                        unit: builderState.processConfiguration.timeFrame.unit,
+                      },
+                    },
+                  }));
+                }
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenu.Button tooltipPosition="above">
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    TIME_FRAME_UNIT_TO_LABEL[
+                      builderState.processConfiguration.timeFrame.unit
+                    ]
+                  }
+                  variant="secondary"
+                  size="sm"
+                />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items origin="bottomLeft">
+                {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                  ([key, value]) => (
+                    <DropdownMenu.Item
+                      key={key}
+                      label={value}
+                      onClick={() => {
+                        setEdited(true);
+                        setBuilderState((state) => ({
+                          ...state,
+                          processConfiguration: {
+                            ...state.processConfiguration,
+                            timeFrame: {
+                              value:
+                                builderState.processConfiguration.timeFrame
                                   .value,
                               unit: key as TimeframeUnit,
                             },

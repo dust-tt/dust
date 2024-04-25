@@ -10,6 +10,7 @@ import type {
   AgentUserListStatus,
   DataSourceConfiguration,
   LightAgentConfigurationType,
+  ModelId,
   ProcessSchemaPropertyType,
   Result,
   RetrievalQuery,
@@ -357,6 +358,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     retrievalConfigs,
     dustAppRunConfigs,
     tablesQueryConfigs,
+    processConfigs,
     agentUserRelations,
   ] = await Promise.all([
     AgentGenerationConfiguration.findAll({
@@ -379,6 +381,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentTablesQueryConfiguration[]>),
+    variant === "full"
+      ? AgentProcessConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentProcessConfiguration[]>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -394,7 +403,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
 
-  const agentDatasourceConfigurationsPromise = (
+  const retrievalDatasourceConfigurationsPromise = (
     Object.values(retrievalConfigs).length
       ? AgentDataSourceConfiguration.findAll({
           where: {
@@ -420,7 +429,33 @@ async function fetchWorkspaceAgentConfigurationsForView(
       : Promise.resolve([])
   ).then((dsConfigs) => _.groupBy(dsConfigs, "retrievalConfigurationId"));
 
-  const agentTablesConfigurationTablesPromise = (
+  const processDatasourceConfigurationsPromise = (
+    Object.values(processConfigs).length
+      ? AgentDataSourceConfiguration.findAll({
+          where: {
+            processConfigurationId: {
+              [Op.in]: Object.values(processConfigs).flatMap((r) =>
+                r.map((c) => c.id)
+              ),
+            },
+          },
+          include: [
+            {
+              model: DataSource,
+              as: "dataSource",
+              include: [
+                {
+                  model: Workspace,
+                  as: "workspace",
+                },
+              ],
+            },
+          ],
+        })
+      : Promise.resolve([])
+  ).then((dsConfigs) => _.groupBy(dsConfigs, "processConfigurationId"));
+
+  const agentTablesQueryConfigurationTablesPromise = (
     Object.values(tablesQueryConfigs).length
       ? AgentTablesQueryConfigurationTable.findAll({
           where: {
@@ -436,11 +471,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
     _.groupBy(tablesConfigs, "tablesQueryConfigurationId")
   );
 
-  const [agentDatasourceConfigurations, agentTablesConfigurationTables] =
-    await Promise.all([
-      agentDatasourceConfigurationsPromise,
-      agentTablesConfigurationTablesPromise,
-    ]);
+  const [
+    retrievalDatasourceConfigurations,
+    processDatasourceConfigurations,
+    agentTablesConfigurationTables,
+  ] = await Promise.all([
+    retrievalDatasourceConfigurationsPromise,
+    processDatasourceConfigurationsPromise,
+    agentTablesQueryConfigurationTablesPromise,
+  ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
@@ -450,7 +489,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const retrievalConfigurations = retrievalConfigs[agent.id] ?? [];
       for (const retrievalConfig of retrievalConfigurations) {
         const dataSourcesConfig =
-          agentDatasourceConfigurations[retrievalConfig.id] ?? [];
+          retrievalDatasourceConfigurations[retrievalConfig.id] ?? [];
         let topK: number | "auto" = "auto";
         if (retrievalConfig.topKMode === "custom") {
           if (!retrievalConfig.topK) {
@@ -521,6 +560,38 @@ async function fetchWorkspaceAgentConfigurationsForView(
           name: tablesQueryConfig.name,
           description: tablesQueryConfig.description,
           forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
+        });
+      }
+
+      const processConfigurations = processConfigs[agent.id] ?? [];
+      for (const processConfig of processConfigurations) {
+        const dataSourcesConfig =
+          processDatasourceConfigurations[processConfig.id] ?? [];
+        actions.push({
+          id: processConfig.id,
+          sId: processConfig.sId,
+          type: "process_configuration",
+          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
+          dataSources: dataSourcesConfig.map((dsConfig) => {
+            return {
+              dataSourceId: dsConfig.dataSource.name,
+              workspaceId: dsConfig.dataSource.workspace.sId,
+              filter: {
+                tags:
+                  dsConfig.tagsIn && dsConfig.tagsNotIn
+                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
+                    : null,
+                parents:
+                  dsConfig.parentsIn && dsConfig.parentsNotIn
+                    ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
+                    : null,
+              },
+            };
+          }),
+          schema: processConfig.schema,
+          name: processConfig.name,
+          description: processConfig.description,
+          forceUseAtIteration: processConfig.forceUseAtIteration,
         });
       }
     }
@@ -1120,11 +1191,11 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(
-          t,
-          action.dataSources,
-          retrievalConfig.id
-        );
+        await _createAgentDataSourcesConfigData(t, {
+          dataSourceConfigurations: action.dataSources,
+          retrievalConfigurationId: retrievalConfig.id,
+          processConfigurationId: null,
+        });
 
         return {
           id: retrievalConfig.id,
@@ -1219,11 +1290,11 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(
-          t,
-          action.dataSources,
-          processConfig.id
-        );
+        await _createAgentDataSourcesConfigData(t, {
+          dataSourceConfigurations: action.dataSources,
+          retrievalConfigurationId: null,
+          processConfigurationId: processConfig.id,
+        });
 
         return {
           id: processConfig.id,
@@ -1243,7 +1314,9 @@ export async function createAgentActionConfiguration(
   }
 }
 
-function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
+function renderRetrievalTimeframeType(
+  action: AgentRetrievalConfiguration | AgentProcessConfiguration
+) {
   let timeframe: RetrievalTimeframe = "auto";
   if (
     action.relativeTimeFrame === "custom" &&
@@ -1269,8 +1342,15 @@ function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
  */
 async function _createAgentDataSourcesConfigData(
   t: Transaction,
-  dataSourcesConfig: DataSourceConfiguration[],
-  retrievalConfigurationId: number
+  {
+    dataSourceConfigurations,
+    retrievalConfigurationId,
+    processConfigurationId,
+  }: {
+    dataSourceConfigurations: DataSourceConfiguration[];
+    retrievalConfigurationId: ModelId | null;
+    processConfigurationId: ModelId | null;
+  }
 ): Promise<AgentDataSourceConfiguration[]> {
   // dsConfig contains this format:
   // [
@@ -1282,7 +1362,7 @@ async function _createAgentDataSourcesConfigData(
   // First we get the list of workspaces because we need the mapping between workspaceSId and workspaceId
   const workspaces = await Workspace.findAll({
     where: {
-      sId: dataSourcesConfig.map((dsConfig) => dsConfig.workspaceId),
+      sId: dataSourceConfigurations.map((dsConfig) => dsConfig.workspaceId),
     },
     attributes: ["id", "sId"],
   });
@@ -1297,7 +1377,7 @@ async function _createAgentDataSourcesConfigData(
     workspaceId: number;
     dataSourceNames: string[];
   };
-  const dsNamesPerWorkspaceId = dataSourcesConfig.reduce(
+  const dsNamesPerWorkspaceId = dataSourceConfigurations.reduce(
     (acc: _DsNamesPerWorkspaceIdType[], curr: DataSourceConfiguration) => {
       // First we need to get the workspaceId from the workspaceSId
       const workspace = workspaces.find((w) => w.sId === curr.workspaceId);
@@ -1345,7 +1425,7 @@ async function _createAgentDataSourcesConfigData(
 
   const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
     await Promise.all(
-      dataSourcesConfig.map(async (dsConfig) => {
+      dataSourceConfigurations.map(async (dsConfig) => {
         const dataSource = dataSources.find(
           (ds) =>
             ds.name === dsConfig.dataSourceId &&
@@ -1365,11 +1445,13 @@ async function _createAgentDataSourcesConfigData(
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,
+            processConfigurationId: processConfigurationId,
           },
           { transaction: t }
         );
       })
     );
+
   return agentDataSourcesConfigRows;
 }
 
