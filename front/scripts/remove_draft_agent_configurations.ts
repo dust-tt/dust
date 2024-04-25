@@ -217,7 +217,7 @@ async function removeDraftAgentConfigurationsForWorkspace(
   }
 
   logger.info(
-    `Done delete ${draftAgents.length} draft agents for workspace(${workspace.sId}).`
+    `Deleted ${draftAgents.length} draft agents for workspace(${workspace.sId}).`
   );
 }
 
