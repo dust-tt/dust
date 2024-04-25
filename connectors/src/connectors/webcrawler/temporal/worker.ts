@@ -20,7 +20,7 @@ export async function runWebCrawlerWorker() {
     connection,
     reuseV8Context: true,
     namespace,
-    maxConcurrentActivityTaskExecutions: 16,
+    maxConcurrentActivityTaskExecutions: 2,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     interceptors: {
       activityInbound: [
