@@ -1,4 +1,5 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
+import Link from "next/link";
 import React from "react";
 
 import { ImgBlock } from "@app/components/home/new/ContentBlocks";
@@ -107,13 +108,9 @@ export function FutureSection() {
                 Developer- and tinkerer-friendly&nbsp;platform designed
                 to&nbsp;build custom actions and&nbsp;application orchestration
                 to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.{" "}
-                <A
-                  href="/solutions/dust-platform"
-                  target="_blank"
-                  variant="primary"
-                >
-                  More about Dust's&nbsp;Platform
-                </A>
+                <Link href="/solutions/dust-platform" shallow={true}>
+                  <A variant="primary">More about Dust's&nbsp;Platform</A>
+                </Link>
                 .
               </>
             }
