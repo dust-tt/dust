@@ -40,14 +40,8 @@ export function AssistantTemplateModal({
     return <Spinner2 variant="color" />;
   }
 
-  const {
-    backgroundColor,
-    description,
-    emoji,
-    handle,
-    presetInstructions,
-    sId,
-  } = assistantTemplate;
+  const { description, handle, pictureUrl, presetInstructions, sId } =
+    assistantTemplate;
 
   return (
     <ElementModal
@@ -60,12 +54,7 @@ export function AssistantTemplateModal({
       <Page variant="modal">
         <div className="flex flex-col gap-5 pb-6">
           <div className="flex max-h-32 max-w-lg flex-row gap-3">
-            <Avatar
-              emoji={emoji}
-              size="lg"
-              isRounded
-              backgroundColor={backgroundColor}
-            />
+            <Avatar size="lg" isRounded visual={pictureUrl} />
             <div className="flex flex-col gap-1">
               <span className="text-bold text-lg font-medium text-element-900">
                 @{handle}
