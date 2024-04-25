@@ -183,7 +183,7 @@ export async function renderConversationForModel({
   let tokensUsed = promptCountRes.value + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected: { message: ModelMessageType; tokenUseds: number }[] = [];
+  const selected: { message: ModelMessageType; tokenUsed: number }[] = [];
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
@@ -195,7 +195,7 @@ export async function renderConversationForModel({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift({ message: messages[i], tokenUseds: c });
+      selected.unshift({ message: messages[i], tokenUsed: c });
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
@@ -217,7 +217,7 @@ export async function renderConversationForModel({
           ...messages[i],
           content: contentRes.value + truncationMessage,
         },
-        tokenUseds: remainingTokens,
+        tokenUsed: remainingTokens,
       });
       tokensUsed += remainingTokens;
       break;
@@ -246,7 +246,7 @@ export async function renderConversationForModel({
     modelConversation: {
       messages: selected.map((s) => s.message),
     },
-    tokensUsed: selected.map((s) => s.tokenUseds).reduce((a, b) => a + b, 0),
+    tokensUsed: selected.map((s) => s.tokenUsed).reduce((a, b) => a + b, 0),
   });
 }
 
