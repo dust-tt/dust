@@ -7,19 +7,14 @@ import { classNames } from "@app/lib/utils";
 
 interface SolutionSectionProps {
   title: ReactNode;
-  content: SolutionSectionBlockProps | SolutionSectionBlockProps[];
+  blocks: SolutionSectionBlock[];
 }
 
-export function SolutionSection({ title, content }: SolutionSectionProps) {
+export function SolutionSection({ title, blocks }: SolutionSectionProps) {
   const renderBlocks = () => {
-    if (Array.isArray(content)) {
-      return content.map((block, index) => (
-        <SolutionSection.Block key={index} {...block} />
-      ));
-    } else {
-      return <SolutionSection.Block {...content} />;
-    }
+    return blocks.map((block) => renderSolutionSectionBlock(block));
   };
+
   return (
     <>
       <H2 className="col-span-12 pb-4 pt-8 text-center text-white lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3">
@@ -37,7 +32,7 @@ const SolutionSectionColor = {
   amber: "from-amber-200 to-amber-300",
 };
 
-interface SolutionSectionBlockProps {
+interface SolutionSectionBlock {
   contentBlocks:
     | SolutionSectionContentBlockProps
     | SolutionSectionContentBlockProps[];
@@ -48,29 +43,29 @@ interface SolutionSectionBlockProps {
   className?: string;
 }
 
-SolutionSection.Block = function SolutionSectionBlock({
+const renderSolutionSectionBlock = ({
   contentBlocks,
   assistantBlocks,
   color = "emerald",
   className = "",
-}: SolutionSectionBlockProps) {
+}: SolutionSectionBlock) => {
   const renderContentBlocks = () => {
     if (Array.isArray(contentBlocks)) {
       return contentBlocks.map((block, index) => (
-        <SolutionSection.ContentBlock key={index} {...block} />
+        <SolutionSectionContentBlock key={index} {...block} />
       ));
     } else {
-      return <SolutionSection.ContentBlock {...contentBlocks} />;
+      return <SolutionSectionContentBlock {...contentBlocks} />;
     }
   };
 
   const renderAssistantBlocks = () => {
     if (Array.isArray(assistantBlocks)) {
       return assistantBlocks.map((block, index) => (
-        <SolutionSection.AssistantBlock key={index} {...block} />
+        <SolutionSectionAssistantBlock key={index} {...block} />
       ));
     } else {
-      return <SolutionSection.AssistantBlock {...assistantBlocks} />;
+      return <SolutionSectionAssistantBlock {...assistantBlocks} />;
     }
   };
 
@@ -110,10 +105,10 @@ interface SolutionSectionContentBlockProps {
   title: ReactNode;
   content: ReactNode;
 }
-SolutionSection.ContentBlock = function SolutionSectionContentBlock({
+const SolutionSectionContentBlock = ({
   content,
   title,
-}: SolutionSectionContentBlockProps) {
+}: SolutionSectionContentBlockProps) => {
   return (
     <div className={classNames("flex grow basis-0 flex-col gap-3")}>
       <H5 className="text-slate-900">{title}</H5>
@@ -131,12 +126,12 @@ interface SolutionSectionAssistantBlockProps {
   backgroundColor: string;
 }
 
-SolutionSection.AssistantBlock = function SolutionSectionAssistantBlock({
+const SolutionSectionAssistantBlock = ({
   name,
   description,
   emoji,
   backgroundColor,
-}: SolutionSectionAssistantBlockProps) {
+}: SolutionSectionAssistantBlockProps) => {
   return (
     <div
       className={classNames("flex max-w-[500px] grow basis-0 flex-col gap-2")}

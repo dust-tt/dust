@@ -81,45 +81,68 @@ export default function CustomerSupport() {
               happy Customers
             </>
           }
-          content={{
-            color: "sky",
-            contentBlocks: [
-              {
-                title: (
-                  <>
-                    Package expert knowledge in easy to use assistants in
-                    seconds
-                  </>
-                ),
-                content:
-                  "Build AI assistants based on company knowledge and past support",
-              },
-              {
-                title: <>Leverage past tickets and jump to solutions</>,
-                content: (
-                  <>
-                    Understand customer messages faster, and technical errors in
-                    any language. Explore past tickets to resolve issues or
-                    create documentation quickly.
-                  </>
-                ),
-              },
-            ],
-            assistantBlocks: assistantExamples[0],
-          }}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Package expert knowledge in easy to use assistants in
+                      seconds
+                    </>
+                  ),
+                  content:
+                    "Build AI assistants based on company knowledge and past support",
+                },
+                {
+                  title: <>Leverage past tickets and jump to solutions</>,
+                  content: (
+                    <>
+                      Understand customer messages faster, and technical errors
+                      in any language. Explore past tickets to resolve issues or
+                      create documentation quickly.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: assistantExamples[0],
+            },
+          ]}
         />
         <SolutionSection
           title={<>Better team collaboration</>}
-          content={{
-            color: "sky",
-            contentBlocks: [
-              {
-                title: <>Onboard faster</>,
-                content:
-                  "Reduce your onboarding and training time drastically. Put your documentation on processes and methods to work.",
-              },
-              {
-                title: <>Keep your team updated</>,
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: <>Onboard faster</>,
+                  content:
+                    "Reduce your onboarding and training time drastically. Put your documentation on processes and methods to work.",
+                },
+                {
+                  title: <>Keep your team updated</>,
+                  content: (
+                    <>
+                      Understand customer messages faster, and technical errors
+                      in any language. Explore past tickets to resolve issues or
+                      create documentation quickly.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[1]],
+            },
+          ]}
+        />
+        <SolutionSection
+          title={<>Better insights</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: {
+                title: <>Analyze and categorize your ticket</>,
                 content: (
                   <>
                     Understand customer messages faster, and technical errors in
@@ -128,27 +151,10 @@ export default function CustomerSupport() {
                   </>
                 ),
               },
-            ],
-            assistantBlocks: [assistantExamples[3], assistantExamples[1]],
-          }}
-        />
-        <SolutionSection
-          title={<>Better insights</>}
-          content={{
-            color: "sky",
-            contentBlocks: {
-              title: <>Analyze and categorize your ticket</>,
-              content: (
-                <>
-                  Understand customer messages faster, and technical errors in
-                  any language. Explore past tickets to resolve issues or create
-                  documentation quickly.
-                </>
-              ),
-            },
 
-            assistantBlocks: assistantExamples[2],
-          }}
+              assistantBlocks: assistantExamples[2],
+            },
+          ]}
         />
       </Grid>
     </>
