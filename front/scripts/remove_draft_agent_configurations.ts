@@ -2,16 +2,9 @@ import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
-import {
-  AgentRetrievalAction,
-  AgentRetrievalConfiguration,
-} from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
@@ -45,14 +38,6 @@ async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
     },
   });
 
-  await AgentRetrievalAction.destroy({
-    where: {
-      retrievalConfigurationId: {
-        [Op.in]: retrievalConfigurations.map((r) => r.sId),
-      },
-    },
-  });
-
   await AgentRetrievalConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
@@ -72,14 +57,6 @@ async function deleteDustAppRunConfigurationForAgent(
   if (dustAppRunConfigurations.length === 0) {
     return;
   }
-
-  await AgentDustAppRunAction.destroy({
-    where: {
-      dustAppRunConfigurationId: {
-        [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
-      },
-    },
-  });
 
   await AgentDustAppRunConfiguration.destroy({
     where: {
@@ -109,14 +86,6 @@ async function deleteTableQueryConfigurationForAgent(
     },
   });
 
-  await AgentTablesQueryAction.destroy({
-    where: {
-      tablesQueryConfigurationId: {
-        [Op.in]: tableQueryConfigurations.map((r) => r.sId),
-      },
-    },
-  });
-
   await AgentTablesQueryConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
@@ -141,12 +110,12 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   }
 
   // Only deletes draft agent configuration without mentions.
-  const hasAtLeastOneMessage = await Mention.findOne({
+  const hasAtLeastOneMention = await Mention.findOne({
     where: {
       agentConfigurationId: agent.sId,
     },
   });
-  if (hasAtLeastOneMessage) {
+  if (hasAtLeastOneMention) {
     logger.info(`Agent ${agent.sId} has related messages. Skipping.`);
 
     return;
