@@ -46,13 +46,13 @@ export default function InputBlock({
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;
-    b.spec.datasetWithData = await handleGetDatasetData();
+    b.config.datasetWithData = await handleGetDatasetData(dataset);
     onBlockUpdate(b);
   };
 
-  const handleGetDatasetData = async () => {
+  const handleGetDatasetData = async (dataset: string) => {
     const datasetRes = await fetch(
-      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}?data=true`,
+      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${dataset}?data=true`,
       {
         method: "GET",
         headers: {
@@ -94,7 +94,7 @@ export default function InputBlock({
       canUseCache={false}
     >
       <div>
-      <div>
+        <div>
           {!((!block.config || !block.config.dataset) && readOnly) ? (
             <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
               Dataset:&nbsp;
@@ -107,29 +107,35 @@ export default function InputBlock({
               />
             </div>
           ) : null}
-      </div>
-      {block.config && block.config.dataset && block.config.datasetWithData ? (
-        <div>
-          <DatasetView
-            readOnly={false}
-            datasets={[block.config.datasetWithData]}
-            dataset={block.config.datasetWithData}
-            schema={block.config.datasetWithData.schema}
-            onUpdate={onUpdate}
-            nameDisabled={true}
-            showDataOnly={true}
-          />
-          <Button
-            variant="secondary"
-            onClick={() => {
-              window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-            }}
-            icon={PencilSquareIcon}
-            label="Edit schema"
-            size="xs"
-          />
         </div>
-      ) : null}
+
+        {block.config &&
+        block.config.dataset &&
+        block.config.datasetWithData ? (
+          <div>
+            Before view
+            <br />
+            {JSON.stringify(block.config.datasetWithData)}
+            <DatasetView
+              readOnly={false}
+              datasets={[block.config.datasetWithData]}
+              dataset={block.config.datasetWithData}
+              schema={block.config.datasetWithData.schema}
+              onUpdate={onUpdate}
+              nameDisabled={false}
+              showDataOnly={true}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+              }}
+              icon={PencilSquareIcon}
+              label="Edit schema"
+              size="xs"
+            />
+          </div>
+        ) : null}
       </div>
     </Block>
   );

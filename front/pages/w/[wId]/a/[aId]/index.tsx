@@ -252,6 +252,7 @@ export default function AppView({
         }
       }
     }
+
     s[idx] = block;
     await update(s);
   };

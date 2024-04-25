@@ -425,6 +425,14 @@ export default function DatasetView({
     datasetTypes,
   ]);
 
+  // useEffect(() => {
+  //   setDatasetKeys(checkDatasetData({ data: datasetData }));
+  //   setDatasetData(dataset.data || []);
+  //   setDatasetName(dataset.name);
+  //   setDatasetDescription(dataset.description);
+  //   setDatasetTypes([]);
+  // }, [dataset]);
+
   return (
     <div>
       <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
@@ -593,19 +601,21 @@ export default function DatasetView({
         <div className="mt-4 sm:col-span-5">
           {showDataOnly ? (
             <p className="mt-2 text-sm text-gray-500">
-              <strong>Test input data for running your app in this view only</strong>. You can edit the data below.
+              <strong>
+                Test input data for running your app in this view only
+              </strong>
+              . You can edit the data below.
             </p>
-          )
-          : (
+          ) : (
             <>
               <h3 className="text-sm font-medium text-gray-700">Data</h3>
               {!readOnly ? (
                 <p className="mt-2 text-sm text-gray-500">
-                  Add and edit your dataset entries below. You can insert or remove
-                  entries using buttons on the right.
+                  Add and edit your dataset entries below. You can insert or
+                  remove entries using buttons on the right.
                 </p>
               ) : null}
-              </>
+            </>
           )}
           <div className="mt-4 w-full leading-4">
             <div className="">
