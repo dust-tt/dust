@@ -239,14 +239,19 @@ export async function renderConversationForModel({
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
   while (selected.length > 0 && selected[0].message.role === "agent") {
-    selected.shift();
+    const m = selected.shift();
+    if (!m) {
+      // Should never happen, but Typescript doesn't know that.
+      throw new Error("Unexpected missing message");
+    }
+    tokensUsed -= m.tokenUsed;
   }
 
   return new Ok({
     modelConversation: {
       messages: selected.map((s) => s.message),
     },
-    tokensUsed: selected.map((s) => s.tokenUsed).reduce((a, b) => a + b, 0),
+    tokensUsed: tokensUsed,
   });
 }
 
