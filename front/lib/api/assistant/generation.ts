@@ -251,7 +251,7 @@ export async function renderConversationForModel({
     modelConversation: {
       messages: selected.map((s) => s.message),
     },
-    tokensUsed: tokensUsed,
+    tokensUsed,
   });
 }
 
