@@ -3,12 +3,15 @@ import type {
   AppType,
   CoreAPITable,
   DataSourceType,
+  ProcessConfigurationType,
+  RetrievalConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
   ConnectorsAPI,
   CoreAPI,
   isDustAppRunConfiguration,
+  isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
@@ -33,13 +36,67 @@ export async function buildInitialState({
 }) {
   const coreAPI = new CoreAPI(logger);
 
-  const selectedResources: {
-    dataSourceName: string;
-    resources: string[] | null;
-    isSelectAll: boolean;
-  }[] = [];
+  // Helper function to compute AssistantBuilderDataSourceConfigurations
+  const renderDataSourcesConfigurations = async (
+    action: RetrievalConfigurationType | ProcessConfigurationType
+  ) => {
+    const selectedResources: {
+      dataSourceName: string;
+      resources: string[] | null;
+      isSelectAll: boolean;
+    }[] = [];
+
+    for (const ds of action.dataSources) {
+      selectedResources.push({
+        dataSourceName: ds.dataSourceId,
+        resources: ds.filter.parents?.in ?? null,
+        isSelectAll: !ds.filter.parents,
+      });
+    }
+
+    const dataSourceConfigurationsArray: AssistantBuilderDataSourceConfiguration[] =
+      await Promise.all(
+        selectedResources.map(
+          async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
+            const dataSource = dataSourcesByName[ds.dataSourceName];
+            if (!dataSource.connectorId || !ds.resources) {
+              return {
+                dataSource: dataSource,
+                selectedResources: [],
+                isSelectAll: ds.isSelectAll,
+              };
+            }
+            const connectorsAPI = new ConnectorsAPI(logger);
+            const response = await connectorsAPI.getContentNodes({
+              connectorId: dataSource.connectorId,
+              internalIds: ds.resources,
+            });
+
+            if (response.isErr()) {
+              throw response.error;
+            }
+
+            return {
+              dataSource: dataSource,
+              selectedResources: response.value.nodes,
+              isSelectAll: ds.isSelectAll,
+            };
+          }
+        )
+      );
+
+    // key: dataSourceName, value: DataSourceConfig
+    const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
+      (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
+      {} as Record<string, AssistantBuilderDataSourceConfiguration>
+    );
+
+    return dataSourceConfigurations;
+  };
 
   const action = deprecatedGetFirstActionConfiguration(configuration);
+
+  // Retrieval configuration
 
   const retrievalConfiguration = DEFAULT_ASSISTANT_STATE.retrievalConfiguration;
 
@@ -54,54 +111,11 @@ export async function buildInitialState({
       };
     }
 
-    for (const ds of action.dataSources) {
-      selectedResources.push({
-        dataSourceName: ds.dataSourceId,
-        resources: ds.filter.parents?.in ?? null,
-        isSelectAll: !ds.filter.parents,
-      });
-    }
-
-    const dataSourceConfigurationsArray: NonNullable<
-      AssistantBuilderInitialState["retrievalConfiguration"]["dataSourceConfigurations"]
-    >[string][] = await Promise.all(
-      selectedResources.map(
-        async (ds): Promise<AssistantBuilderDataSourceConfiguration> => {
-          const dataSource = dataSourcesByName[ds.dataSourceName];
-          if (!dataSource.connectorId || !ds.resources) {
-            return {
-              dataSource: dataSource,
-              selectedResources: [],
-              isSelectAll: ds.isSelectAll,
-            };
-          }
-          const connectorsAPI = new ConnectorsAPI(logger);
-          const response = await connectorsAPI.getContentNodes({
-            connectorId: dataSource.connectorId,
-            internalIds: ds.resources,
-          });
-
-          if (response.isErr()) {
-            throw response.error;
-          }
-
-          return {
-            dataSource: dataSource,
-            selectedResources: response.value.nodes,
-            isSelectAll: ds.isSelectAll,
-          };
-        }
-      )
-    );
-
-    // key: dataSourceName, value: DataSourceConfig
-    const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-      (acc, curr) => ({ ...acc, [curr.dataSource.name]: curr }),
-      {} as Record<string, AssistantBuilderDataSourceConfiguration>
-    );
-
-    retrievalConfiguration.dataSourceConfigurations = dataSourceConfigurations;
+    retrievalConfiguration.dataSourceConfigurations =
+      await renderDataSourcesConfigurations(action);
   }
+
+  // DustAppRun configuration
 
   const dustAppConfiguration = DEFAULT_ASSISTANT_STATE.dustAppConfiguration;
 
@@ -113,6 +127,8 @@ export async function buildInitialState({
       }
     }
   }
+
+  // TablesQuery configuration
 
   let tablesQueryConfiguration =
     DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration;
@@ -150,9 +166,31 @@ export async function buildInitialState({
     }, {} as AssistantBuilderInitialState["tablesQueryConfiguration"]);
   }
 
+  // Process configuration
+
+  const processConfiguration = DEFAULT_ASSISTANT_STATE.processConfiguration;
+
+  if (isProcessConfiguration(action)) {
+    if (
+      action.relativeTimeFrame !== "auto" &&
+      action.relativeTimeFrame !== "none"
+    ) {
+      processConfiguration.timeFrame = {
+        value: action.relativeTimeFrame.duration,
+        unit: action.relativeTimeFrame.unit,
+      };
+    }
+
+    processConfiguration.dataSourceConfigurations =
+      await renderDataSourcesConfigurations(action);
+
+    processConfiguration.schema = action.schema;
+  }
+
   return {
     retrievalConfiguration,
     dustAppConfiguration,
     tablesQueryConfiguration,
+    processConfiguration,
   };
 }

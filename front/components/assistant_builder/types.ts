@@ -3,6 +3,7 @@ import type {
   AppType,
   ContentNode,
   DataSourceType,
+  ProcessSchemaPropertyType,
   SupportedModel,
   TimeframeUnit,
 } from "@dust-tt/types";
@@ -14,6 +15,7 @@ export const ACTION_MODES = [
   "RETRIEVAL_EXHAUSTIVE",
   "DUST_APP_RUN",
   "TABLES_QUERY",
+  "PROCESS",
 ] as const;
 
 export type ActionMode = (typeof ACTION_MODES)[number];
@@ -31,12 +33,14 @@ export type AssistantBuilderDataSourceConfigurations = Record<
   AssistantBuilderDataSourceConfiguration
 >;
 
+export type AssistantBuilderTimeFrame = {
+  value: number;
+  unit: TimeframeUnit;
+};
+
 export type AssistantBuilderRetrievalConfiguration = {
   dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
-  timeFrame: {
-    value: number;
-    unit: TimeframeUnit;
-  };
+  timeFrame: AssistantBuilderTimeFrame;
 };
 
 // DustAppRun configuration
@@ -60,7 +64,16 @@ export type AssistantBuilderTablesQueryConfiguration = Record<
   AssistantBuilderTableConfiguration
 >;
 
+// Process configuration
+
+export type AssistantBuilderProcessConfiguration = {
+  dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
+  timeFrame: AssistantBuilderTimeFrame;
+  schema: ProcessSchemaPropertyType[];
+};
+
 // Builder State
+
 export type AssistantBuilderState = {
   handle: string | null;
   description: string | null;
@@ -78,6 +91,7 @@ export type AssistantBuilderState = {
   retrievalConfiguration: AssistantBuilderRetrievalConfiguration;
   dustAppConfiguration: AssistantBuilderDustAppConfiguration;
   tablesQueryConfiguration: AssistantBuilderTablesQueryConfiguration;
+  processConfiguration: AssistantBuilderProcessConfiguration;
 };
 
 export type AssistantBuilderInitialState = {
@@ -95,6 +109,7 @@ export type AssistantBuilderInitialState = {
   retrievalConfiguration: AssistantBuilderState["retrievalConfiguration"];
   dustAppConfiguration: AssistantBuilderState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderState["tablesQueryConfiguration"];
+  processConfiguration: AssistantBuilderState["processConfiguration"];
 };
 
 export const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
@@ -108,6 +123,14 @@ export const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
   },
   dustAppConfiguration: { app: null },
   tablesQueryConfiguration: {},
+  processConfiguration: {
+    dataSourceConfigurations: {},
+    timeFrame: {
+      value: 1,
+      unit: "day",
+    },
+    schema: [],
+  },
   handle: null,
   scope: "private",
   description: null,
