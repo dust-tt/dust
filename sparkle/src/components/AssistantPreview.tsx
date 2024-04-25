@@ -79,10 +79,7 @@ const ItemVariantContent = ({
   return (
     <>
       <div className="s-flex s-items-center s-gap-2">
-        <Avatar
-          visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
-          size="sm"
-        />
+        <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="sm" />
         <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
           <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
             <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
@@ -127,10 +124,7 @@ const ListVariantContent = ({
 }: ListVariantAssistantPreviewProps) => {
   return (
     <div className="s-flex s-gap-2">
-      <Avatar
-        visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
-        size="lg"
-      />
+      <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="lg" />
       <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
         <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
           <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">
@@ -179,10 +173,7 @@ const GalleryVariantContent = ({
 }: GalleryVariantAssistantPreviewProps & { isHovered: boolean }) => {
   return (
     <div className="s-flex s-gap-2">
-      <Avatar
-        visual={<img src={pictureUrl} alt={`Avatar of ${title}`} />}
-        size="lg"
-      />
+      <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="lg" />
       <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-2">
         <div className="s-flex s-w-full s-min-w-0 s-flex-row s-gap-3">
           <div className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0">

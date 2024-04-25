@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import { User } from "@sparkle/icons/solid";
+import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { classNames } from "@sparkle/lib/utils";
 
 type AvatarProps = {
@@ -98,6 +99,16 @@ export function Avatar({
   disabled = false,
   className = "",
 }: AvatarProps) {
+  // Check if visual is a string and attempt to extract emoji and background color information from the url.
+  const emojiInfos =
+    typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
+
+  const backgroundColorToUse = emojiInfos
+    ? emojiInfos.backgroundColor
+    : backgroundColor;
+  const emojiToUse = emojiInfos ? emojiInfos.skinEmoji : emoji;
+  const visualToUse = emojiInfos ? null : visual;
+
   const getColor = (name: string) => {
     if (/\+/.test(name)) {
       //find if there is a plus
@@ -131,12 +142,12 @@ export function Avatar({
   const avatarClass = classNames(
     sizeClasses[size],
     isRounded ? "s-rounded-full" : roundedClasses[size],
-    backgroundColor
-      ? backgroundColor
+    backgroundColorToUse
+      ? backgroundColorToUse
       : name
       ? getColor(name)
       : "s-bg-slate-200",
-    visual ? "" : "s-border s-border-slate-950/10",
+    visualToUse ? "" : "s-border s-border-slate-950/10",
     "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
     clickableStyles,
     busyStyles
@@ -151,22 +162,22 @@ export function Avatar({
       )}
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
-      {typeof visual === "string" ? (
+      {typeof visualToUse === "string" ? (
         <img
-          src={visual}
+          src={visualToUse}
           alt={name}
           className={classNames(
             sizeClasses[size],
             "s-h-full s-w-full s-object-cover s-object-center"
           )}
         />
-      ) : visual ? (
-        visual
-      ) : emoji ? (
+      ) : visualToUse ? (
+        visualToUse
+      ) : emojiToUse ? (
         <span
           className={classNames(textSize[size], "s-select-none s-font-medium")}
         >
-          {emoji}
+          {emojiToUse}
         </span>
       ) : name ? (
         <span

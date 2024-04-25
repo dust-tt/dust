@@ -37,6 +37,13 @@ export const AvatarExample = () => (
       <Avatar size="xl" name="Omar Doe" />
       <Avatar size="xxl" name="Omar Doe" />
     </div>
+    <div>With emoji url</div>
+    <div className="s-flex s-gap-4">
+      <Avatar
+        size="xs"
+        visual="https://dust.tt/static/emojis/bg-cyan-100/lotus/1fab7"
+      />
+    </div>
     <div>With emoji</div>
     <div className="s-flex s-gap-4">
       <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
