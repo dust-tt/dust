@@ -1,6 +1,12 @@
+import type { LightWorkspaceType } from "@dust-tt/types";
 import type { Options } from "yargs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+
+import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { Logger } from "@app/logger/logger";
+import logger from "@app/logger/logger";
 
 // Define a type for the argument specification object.
 export type ArgumentSpecs = {
@@ -8,7 +14,7 @@ export type ArgumentSpecs = {
 };
 
 // Define a type for the worker function.
-type WorkerFunction<T> = (args: T) => Promise<void>;
+type WorkerFunction<T> = (args: T, logger: Logger) => Promise<void>;
 
 // Define a utility type to infer the argument types from the argument specs.
 type InferArgs<T> = {
@@ -44,13 +50,30 @@ export function makeScript<T extends ArgumentSpecs>(
   Object.entries(combinedArgumentSpecs).forEach(([key, options]) => {
     argv.option(key, options);
   });
+
   argv
     .help("h")
     .alias("h", "help")
     .parseAsync()
-    .then((args) => worker(args as InferArgs<T & { execute: boolean }>))
+    .then(async (args) => {
+      const scriptLogger = logger.child({
+        execute: args.execute,
+      });
+
+      await worker(args as InferArgs<T & { execute: boolean }>, scriptLogger);
+    })
     .catch((error) => {
       console.error("An error occurred:", error);
       process.exit(1);
     });
+}
+
+export async function runOnAllWorkspaceIds(
+  worker: (workspaceId: LightWorkspaceType) => Promise<void>
+) {
+  const workspaces = await Workspace.findAll({});
+
+  for (const workspace of workspaces) {
+    await worker(renderLightWorkspaceType({ workspace }));
+  }
 }
