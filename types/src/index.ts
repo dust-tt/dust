@@ -21,6 +21,7 @@ export * from "./front/assistant/actions/process";
 export * from "./front/assistant/actions/retrieval";
 export * from "./front/assistant/actions/tables_query";
 export * from "./front/assistant/agent";
+export * from "./front/assistant/avatar";
 export * from "./front/assistant/builder";
 export * from "./front/assistant/conversation";
 export * from "./front/assistant/templates";

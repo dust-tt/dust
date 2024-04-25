@@ -131,9 +131,8 @@ export function AssistantDetails({
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
         <Avatar
-          visual={
-            <img src={agentConfiguration.pictureUrl} alt="Assistant avatar" />
-          }
+          name="Assistant avatar"
+          visual={agentConfiguration.pictureUrl}
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
