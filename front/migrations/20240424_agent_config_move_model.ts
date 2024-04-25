@@ -14,7 +14,7 @@ const backfillAgentConfiguration = async (
 ): Promise<void> => {
   const genConfigs = await AgentGenerationConfiguration.findAll({
     where: {
-      id: agent.id,
+      agentConfigurationId: agent.id,
     },
     attributes: ["id", "providerId", "modelId", "temperature"],
   });
@@ -36,13 +36,13 @@ const backfillAgentConfiguration = async (
 
   if (!isModelProviderId(generation.providerId)) {
     throw new Error(
-      `Invalid Provider Id for agent ${agent.id}:${agent.providerId}).`
+      `Invalid Provider Id for agent ${generation.id}:${generation.providerId}).`
     );
   }
 
   if (!isModelId(generation.modelId)) {
     throw new Error(
-      `Invalid Provider Id for agent ${agent.id}:${agent.modelId}).`
+      `Invalid Provider Id for agent ${generation.id}:${generation.modelId}).`
     );
   }
 
