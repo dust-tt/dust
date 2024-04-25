@@ -311,7 +311,7 @@ function AgentViewForScope({
                   shortVersion: true,
                 })
           }
-          visual={<Avatar visual={<img src={agent.pictureUrl} />} size="md" />}
+          visual={<Avatar visual={agent.pictureUrl} size="md" />}
           onClick={() => setShowDetails(agent)}
           action={
             agent.scope === "global" ? (

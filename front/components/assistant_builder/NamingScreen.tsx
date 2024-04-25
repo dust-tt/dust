@@ -23,7 +23,7 @@ import React, {
   useState,
 } from "react";
 
-import { AvatarPicker } from "@app/components/assistant_builder/AssistantBuilderAvatarPicker";
+import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
@@ -259,6 +259,7 @@ export default function NamingScreen({
         }}
         droidAvatarUrls={DROID_AVATAR_URLS}
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
+        avatarUrl={builderState.avatarUrl}
       />
 
       <div className="flex w-full flex-col gap-5">
@@ -326,10 +327,7 @@ export default function NamingScreen({
             </div>
           </div>
           <div className="flex flex-col items-center space-y-2">
-            <Avatar
-              size="xl"
-              visual={<img src={builderState.avatarUrl || ""} />}
-            />
+            <Avatar size="xl" visual={builderState.avatarUrl} />
             <Button
               labelVisible={true}
               label={"Change"}

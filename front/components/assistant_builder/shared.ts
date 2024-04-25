@@ -233,6 +233,8 @@ export const SPIRIT_AVATAR_FILES = [
   "Spirit_Yellow_8.jpg",
 ];
 
+export const EMOJI_AVATARS_BASE_PATH = "/static/";
+
 // Avatar URLs
 const BASE_URL = "https://dust.tt/";
 const buildAvatarUrl = (basePath: string, fileName: string) => {
@@ -246,4 +248,9 @@ export const DROID_AVATAR_URLS = DROID_AVATAR_FILES.map((f) =>
 );
 export const SPIRIT_AVATAR_URLS = SPIRIT_AVATAR_FILES.map((f) =>
   buildAvatarUrl(SPIRIT_AVATARS_BASE_PATH, f)
+);
+
+export const EMOJI_AVATAR_BASE_URL = buildAvatarUrl(
+  EMOJI_AVATARS_BASE_PATH,
+  ""
 );
