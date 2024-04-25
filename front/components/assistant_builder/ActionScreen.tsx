@@ -150,11 +150,14 @@ export default function ActionScreen({
   dustApps: AppType[];
   timeFrameError: string | null;
 }) {
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showRetrievalDataSourcesModal, setShowRetrievalDataSourcesModal] =
+    useState(false);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
+  const [showProcessDataSourcesModal, setShowProcessDataSourcesModal] =
+    useState(false);
 
-  const deleteDataSource = (name: string) => {
+  const deleteRetrievalDataSource = (name: string) => {
     if (builderState.retrievalConfiguration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
@@ -178,6 +181,26 @@ export default function ActionScreen({
     setEdited(true);
     setBuilderState((state) => {
       return { ...state, dustAppConfiguration: { app: null } };
+    });
+  };
+
+  const deleteProcessDataSource = (name: string) => {
+    if (builderState.processConfiguration.dataSourceConfigurations[name]) {
+      setEdited(true);
+    }
+
+    setBuilderState(({ processConfiguration, ...rest }) => {
+      const dataSourceConfigurations = {
+        ...processConfiguration.dataSourceConfigurations,
+      };
+      delete dataSourceConfigurations[name];
+      return {
+        processConfiguration: {
+          ...processConfiguration,
+          dataSourceConfigurations,
+        },
+        ...rest,
+      };
     });
   };
 
@@ -265,9 +288,9 @@ export default function ActionScreen({
         tablesQueryConfiguration={builderState.tablesQueryConfiguration}
       />
       <AssistantBuilderDataSourceModal
-        isOpen={showDataSourcesModal}
+        isOpen={showRetrievalDataSourcesModal}
         setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
+          setShowRetrievalDataSourcesModal(isOpen);
         }}
         owner={owner}
         dataSources={dataSources}
@@ -288,11 +311,41 @@ export default function ActionScreen({
             },
           }));
         }}
-        onDelete={deleteDataSource}
+        onDelete={deleteRetrievalDataSource}
         dataSourceConfigurations={
           builderState.retrievalConfiguration.dataSourceConfigurations
         }
       />
+      <AssistantBuilderDataSourceModal
+        isOpen={showProcessDataSourcesModal}
+        setOpen={(isOpen) => {
+          setShowProcessDataSourcesModal(isOpen);
+        }}
+        owner={owner}
+        dataSources={dataSources}
+        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+          setEdited(true);
+          setBuilderState((state) => ({
+            ...state,
+            processConfiguration: {
+              ...state.processConfiguration,
+              dataSourceConfigurations: {
+                ...state.processConfiguration.dataSourceConfigurations,
+                [dataSource.name]: {
+                  dataSource,
+                  selectedResources,
+                  isSelectAll,
+                },
+              },
+            },
+          }));
+        }}
+        onDelete={deleteProcessDataSource}
+        dataSourceConfigurations={
+          builderState.processConfiguration.dataSourceConfigurations
+        }
+      />
+
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
           <Page.Header title="Action & Data sources" />
@@ -480,10 +533,10 @@ export default function ActionScreen({
               builderState.retrievalConfiguration.dataSourceConfigurations
             }
             openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
+              setShowRetrievalDataSourcesModal(true);
             }}
             canAddDataSource={dataSources.length > 0}
-            onDelete={deleteDataSource}
+            onDelete={deleteRetrievalDataSource}
           />
         </ActionModeSection>
 
@@ -498,10 +551,10 @@ export default function ActionScreen({
               builderState.retrievalConfiguration.dataSourceConfigurations
             }
             openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
+              setShowRetrievalDataSourcesModal(true);
             }}
             canAddDataSource={dataSources.length > 0}
-            onDelete={deleteDataSource}
+            onDelete={deleteRetrievalDataSource}
           />
           <div className={"flex flex-row items-center gap-4 pb-4"}>
             <div className="text-sm font-semibold text-element-900">
@@ -602,12 +655,14 @@ export default function ActionScreen({
 
           <DataSourceSelectionSection
             owner={owner}
-            dataSourceConfigurations={builderState.dataSourceConfigurations}
+            dataSourceConfigurations={
+              builderState.processConfiguration.dataSourceConfigurations
+            }
             openDataSourceModal={() => {
-              setShowDataSourcesModal(true);
+              setShowProcessDataSourcesModal(true);
             }}
             canAddDataSource={dataSources.length > 0}
-            onDelete={deleteDataSource}
+            onDelete={deleteProcessDataSource}
           />
 
           <div className={"flex flex-row items-center gap-4 pb-4"}>
@@ -623,16 +678,19 @@ export default function ActionScreen({
                   : "border-red-500 focus:border-red-500 focus:ring-red-500",
                 "bg-structure-50 stroke-structure-50"
               )}
-              value={builderState.timeFrame.value || ""}
+              value={builderState.processConfiguration.timeFrame.value || ""}
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
                 if (!isNaN(value) || !e.target.value) {
                   setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
-                    timeFrame: {
-                      value,
-                      unit: builderState.timeFrame.unit,
+                    processConfiguration: {
+                      ...state.processConfiguration,
+                      timeFrame: {
+                        value,
+                        unit: builderState.processConfiguration.timeFrame.unit,
+                      },
                     },
                   }));
                 }
@@ -643,7 +701,11 @@ export default function ActionScreen({
                 <Button
                   type="select"
                   labelVisible={true}
-                  label={TIME_FRAME_UNIT_TO_LABEL[builderState.timeFrame.unit]}
+                  label={
+                    TIME_FRAME_UNIT_TO_LABEL[
+                      builderState.processConfiguration.timeFrame.unit
+                    ]
+                  }
                   variant="secondary"
                   size="sm"
                 />
@@ -658,9 +720,14 @@ export default function ActionScreen({
                         setEdited(true);
                         setBuilderState((state) => ({
                           ...state,
-                          timeFrame: {
-                            value: builderState.timeFrame.value,
-                            unit: key as TimeframeUnit,
+                          processConfiguration: {
+                            ...state.processConfiguration,
+                            timeFrame: {
+                              value:
+                                builderState.processConfiguration.timeFrame
+                                  .value,
+                              unit: key as TimeframeUnit,
+                            },
                           },
                         }));
                       }}

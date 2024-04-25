@@ -220,6 +220,7 @@ export default function AssistantBuilder({
           dustAppConfiguration: initialBuilderState.dustAppConfiguration,
           tablesQueryConfiguration:
             initialBuilderState.tablesQueryConfiguration,
+          processConfiguration: initialBuilderState.processConfiguration,
         }
       : {
           ...DEFAULT_ASSISTANT_STATE,
@@ -446,6 +447,21 @@ export default function AssistantBuilder({
       }
     }
 
+    if (builderState.actionMode === "PROCESS") {
+      if (
+        Object.keys(builderState.processConfiguration.dataSourceConfigurations)
+          .length === 0
+      ) {
+        valid = false;
+      }
+      if (!builderState.processConfiguration.timeFrame.value) {
+        valid = false;
+        setTimeFrameError("Timeframe must be a number");
+      } else {
+        setTimeFrameError(null);
+      }
+    }
+
     setSubmitEnabled(valid);
   }, [
     builderState.actionMode,
@@ -458,6 +474,7 @@ export default function AssistantBuilder({
     builderState.retrievalConfiguration,
     builderState.dustAppConfiguration,
     builderState.tablesQueryConfiguration,
+    builderState.processConfiguration,
   ]);
 
   useEffect(() => {
@@ -777,7 +794,7 @@ export async function submitAssistantBuilderForm({
             : "auto",
         topK: "auto",
         dataSources: Object.values(
-          builderState.retrievalConfiguration?.dataSourceConfigurations || {}
+          builderState.retrievalConfiguration.dataSourceConfigurations
         ).map(({ dataSource, selectedResources, isSelectAll }) => ({
           dataSourceId: dataSource.name,
           workspaceId: owner.sId,
@@ -817,28 +834,25 @@ export async function submitAssistantBuilderForm({
       actionParam = {
         type: "process_configuration",
         relativeTimeFrame: {
-          duration: builderState.timeFrame.value,
-          unit: builderState.timeFrame.unit,
+          duration: builderState.processConfiguration.timeFrame.value,
+          unit: builderState.processConfiguration.timeFrame.unit,
         },
-        dataSources: Object.values(builderState.dataSourceConfigurations).map(
-          ({ dataSource, selectedResources, isSelectAll }) => ({
-            dataSourceId: dataSource.name,
-            workspaceId: owner.sId,
-            filter: {
-              parents: !isSelectAll
-                ? {
-                    in: selectedResources.map(
-                      (resource) => resource.internalId
-                    ),
-                    not: [],
-                  }
-                : null,
-              tags: null,
-            },
-          })
-        ),
-        // TODO(spolu): builderState schema
-        schema: [],
+        dataSources: Object.values(
+          builderState.retrievalConfiguration.dataSourceConfigurations
+        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+          dataSourceId: dataSource.name,
+          workspaceId: owner.sId,
+          filter: {
+            parents: !isSelectAll
+              ? {
+                  in: selectedResources.map((resource) => resource.internalId),
+                  not: [],
+                }
+              : null,
+            tags: null,
+          },
+        })),
+        schema: builderState.processConfiguration.schema,
       };
       break;
 

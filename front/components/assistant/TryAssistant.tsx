@@ -218,6 +218,7 @@ export function usePreviewAssistant({
         retrievalConfiguration: builderState.retrievalConfiguration,
         dustAppConfiguration: builderState.dustAppConfiguration,
         tablesQueryConfiguration: builderState.tablesQueryConfiguration,
+        processConfiguration: builderState.processConfiguration,
         scope: "private",
         generationSettings: builderState.generationSettings,
       },
@@ -247,6 +248,7 @@ export function usePreviewAssistant({
     builderState.tablesQueryConfiguration,
     builderState.dustAppConfiguration,
     builderState.retrievalConfiguration,
+    builderState.processConfiguration,
   ]);
 
   useEffect(() => {

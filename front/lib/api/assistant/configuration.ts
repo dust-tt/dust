@@ -10,6 +10,7 @@ import type {
   AgentUserListStatus,
   DataSourceConfiguration,
   LightAgentConfigurationType,
+  ModelId,
   ProcessSchemaPropertyType,
   Result,
   RetrievalQuery,
@@ -1120,11 +1121,11 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(
-          t,
-          action.dataSources,
-          retrievalConfig.id
-        );
+        await _createAgentDataSourcesConfigData(t, {
+          dataSourceConfigurations: action.dataSources,
+          retrievalConfigurationId: retrievalConfig.id,
+          processConfigurationId: null,
+        });
 
         return {
           id: retrievalConfig.id,
@@ -1219,11 +1220,11 @@ export async function createAgentActionConfiguration(
           },
           { transaction: t }
         );
-        await _createAgentDataSourcesConfigData(
-          t,
-          action.dataSources,
-          processConfig.id
-        );
+        await _createAgentDataSourcesConfigData(t, {
+          dataSourceConfigurations: action.dataSources,
+          retrievalConfigurationId: null,
+          processConfigurationId: processConfig.id,
+        });
 
         return {
           id: processConfig.id,
@@ -1269,8 +1270,15 @@ function renderRetrievalTimeframeType(action: AgentRetrievalConfiguration) {
  */
 async function _createAgentDataSourcesConfigData(
   t: Transaction,
-  dataSourcesConfig: DataSourceConfiguration[],
-  retrievalConfigurationId: number
+  {
+    dataSourceConfigurations,
+    retrievalConfigurationId,
+    processConfigurationId,
+  }: {
+    dataSourceConfigurations: DataSourceConfiguration[];
+    retrievalConfigurationId: ModelId | null;
+    processConfigurationId: ModelId | null;
+  }
 ): Promise<AgentDataSourceConfiguration[]> {
   // dsConfig contains this format:
   // [
@@ -1282,7 +1290,7 @@ async function _createAgentDataSourcesConfigData(
   // First we get the list of workspaces because we need the mapping between workspaceSId and workspaceId
   const workspaces = await Workspace.findAll({
     where: {
-      sId: dataSourcesConfig.map((dsConfig) => dsConfig.workspaceId),
+      sId: dataSourceConfigurations.map((dsConfig) => dsConfig.workspaceId),
     },
     attributes: ["id", "sId"],
   });
@@ -1297,7 +1305,7 @@ async function _createAgentDataSourcesConfigData(
     workspaceId: number;
     dataSourceNames: string[];
   };
-  const dsNamesPerWorkspaceId = dataSourcesConfig.reduce(
+  const dsNamesPerWorkspaceId = dataSourceConfigurations.reduce(
     (acc: _DsNamesPerWorkspaceIdType[], curr: DataSourceConfiguration) => {
       // First we need to get the workspaceId from the workspaceSId
       const workspace = workspaces.find((w) => w.sId === curr.workspaceId);
@@ -1345,7 +1353,7 @@ async function _createAgentDataSourcesConfigData(
 
   const agentDataSourcesConfigRows: AgentDataSourceConfiguration[] =
     await Promise.all(
-      dataSourcesConfig.map(async (dsConfig) => {
+      dataSourceConfigurations.map(async (dsConfig) => {
         const dataSource = dataSources.find(
           (ds) =>
             ds.name === dsConfig.dataSourceId &&
@@ -1365,11 +1373,15 @@ async function _createAgentDataSourcesConfigData(
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,
+            processConfigurationId: processConfigurationId,
           },
           { transaction: t }
         );
       })
     );
+
+  console.log("HERE");
+
   return agentDataSourcesConfigRows;
 }
 

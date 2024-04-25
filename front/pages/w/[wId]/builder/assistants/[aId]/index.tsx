@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,
+  isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
@@ -37,6 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   retrievalConfiguration: AssistantBuilderInitialState["retrievalConfiguration"];
   dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
+  processConfiguration: AssistantBuilderInitialState["processConfiguration"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
@@ -72,6 +74,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  console.log(configuration);
+
   if (!configuration) {
     return {
       notFound: true,
@@ -90,6 +94,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     retrievalConfiguration,
     dustAppConfiguration,
     tablesQueryConfiguration,
+    processConfiguration,
   } = await buildInitialState({
     configuration,
     dataSourcesByName,
@@ -107,6 +112,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       retrievalConfiguration,
       dustAppConfiguration,
       tablesQueryConfiguration,
+      processConfiguration,
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
@@ -124,6 +130,7 @@ export default function EditAssistant({
   retrievalConfiguration,
   dustAppConfiguration,
   tablesQueryConfiguration,
+  processConfiguration,
   agentConfiguration,
   flow,
   baseUrl,
@@ -157,6 +164,20 @@ export default function EditAssistant({
   if (isTablesQueryConfiguration(action)) {
     actionMode = "TABLES_QUERY";
   }
+
+  if (isProcessConfiguration(action)) {
+    if (
+      action.relativeTimeFrame === "auto" ||
+      action.relativeTimeFrame === "none"
+    ) {
+      /** Should never happen as not permitted for now. */
+      throw new Error(
+        "Invalid configuration: process must have a definite time frame"
+      );
+    }
+    actionMode = "PROCESS";
+  }
+
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
   }
@@ -175,6 +196,7 @@ export default function EditAssistant({
         retrievalConfiguration,
         dustAppConfiguration,
         tablesQueryConfiguration,
+        processConfiguration,
         scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
