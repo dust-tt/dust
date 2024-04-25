@@ -84,6 +84,7 @@ export function renderSubscriptionFromModels({
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
     plan: renderPlanFromModel({ plan }),
+    workspaceId: activeSubscription?.workspaceId,
   };
 }
 
