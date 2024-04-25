@@ -2,8 +2,9 @@ import type { ModelId } from "@dust-tt/types";
 import {
   ActivityCancellationType,
   CancellationScope,
-  executeChild,
+  ParentClosePolicy,
   proxyActivities,
+  startChild,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -50,12 +51,14 @@ export async function crawlWebsiteSchedulerWorkflow() {
   const connectorIds = await getConnectorIdsForWebsitesToCrawl();
 
   for (const connectorId of connectorIds) {
-    await executeChild(crawlWebsiteWorkflow, {
+    // Start a workflow to crawl the website but don't wait for it to complete.
+    await startChild(crawlWebsiteWorkflow, {
       workflowId: crawlWebsiteWorkflowId(connectorId),
       searchAttributes: {
         connectorId: [connectorId],
       },
       args: [connectorId],
+      parentClosePolicy: ParentClosePolicy.PARENT_CLOSE_POLICY_ABANDON,
       memo: workflowInfo().memo,
     });
   }
