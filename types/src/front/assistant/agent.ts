@@ -2,7 +2,11 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { ProcessConfigurationType } from "../../front/assistant/actions/process";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
-import { SupportedModel } from "../../front/lib/assistant";
+import {
+  ModelIdType,
+  ModelProviderIdType,
+  SupportedModel,
+} from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 
 /**
@@ -147,6 +151,12 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
+export type AgentModelConfigurationType = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  temperature: number;
+};
+
 export type LightAgentConfigurationType = {
   id: ModelId;
 
@@ -159,8 +169,7 @@ export type LightAgentConfigurationType = {
 
   instructions: string | null;
 
-  // If undefined, no text generation.
-  generation: AgentGenerationConfigurationType | null;
+  model: AgentModelConfigurationType;
 
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
@@ -185,6 +194,8 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are
   // performed.
   actions: AgentActionConfigurationType[];
+  // If undefined, no text generation.
+  generation: AgentGenerationConfigurationType | null;
 };
 
 export interface TemplateAgentConfigurationType {
@@ -198,6 +209,7 @@ export interface TemplateAgentConfigurationType {
   name: string;
   scope: AgentConfigurationScope;
   description: string;
+  model: AgentModelConfigurationType;
   actions: AgentActionConfigurationType[];
   instructions: string | null;
   isTemplate: true;

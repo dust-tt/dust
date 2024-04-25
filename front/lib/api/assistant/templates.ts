@@ -29,6 +29,12 @@ export async function generateMockAgentConfigurationFromTemplate(
     ]),
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
+    model: {
+      providerId: template.presetProviderId,
+      modelId: template.presetModelId,
+      temperature:
+        ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES[template.presetTemperature],
+    },
     generation: {
       model: {
         providerId: template.presetProviderId,
