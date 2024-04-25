@@ -279,7 +279,7 @@ export default function AssistantBuilder({
     } else if (isTablesQueryConfiguration(action)) {
       actionMode = "TABLES_QUERY";
     } else if (isProcessConfiguration(action)) {
-      // Not supported in the builder yet.
+      actionMode = "PROCESS";
     }
 
     if (actionMode !== null) {

@@ -1452,8 +1452,6 @@ async function _createAgentDataSourcesConfigData(
       })
     );
 
-  console.log("HERE");
-
   return agentDataSourcesConfigRows;
 }
 
