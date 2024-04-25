@@ -62,8 +62,7 @@ export default function DatasetPicker({
           ) : readOnly ? null : (
             <Menu.Button
               className={classNames(
-                "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                dataset ? "px-0" : "border px-3",
+                "inline-flex items-center rounded-md py-1 text-sm font-normal px-3",
                 readOnly
                   ? "border-white text-gray-300"
                   : "border-orange-400 text-gray-700",

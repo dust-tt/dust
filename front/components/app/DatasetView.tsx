@@ -425,13 +425,16 @@ export default function DatasetView({
     datasetTypes,
   ]);
 
-  // useEffect(() => {
-  //   setDatasetKeys(checkDatasetData({ data: datasetData }));
-  //   setDatasetData(dataset.data || []);
-  //   setDatasetName(dataset.name);
-  //   setDatasetDescription(dataset.description);
-  //   setDatasetTypes([]);
-  // }, [dataset]);
+  useEffect(() => {
+    // showDataOnly means we're editing the dataset directly from the InputBlock so we need to update state.
+    if (showDataOnly) {
+      setDatasetKeys(checkDatasetData({ data: dataset.data }));
+      setDatasetData(dataset.data || []);
+      setDatasetName(dataset.name);
+      setDatasetDescription(dataset.description);
+      setDatasetTypes([]);
+    }
+  }, [dataset, showDataOnly]);
 
   return (
     <div>
@@ -600,11 +603,12 @@ export default function DatasetView({
 
         <div className="mt-4 sm:col-span-5">
           {showDataOnly ? (
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="text-sm text-gray-500">
               <strong>
-                Test input data for running your app in this view only
+                Input data for test-running your app using the 'RUN' button.
               </strong>
-              . You can edit the data below.
+              <br />
+              Running this app from the API or an assistant will use the input data provided at runtime.
             </p>
           ) : (
             <>

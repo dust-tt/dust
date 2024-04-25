@@ -113,9 +113,6 @@ export default function InputBlock({
         block.config.dataset &&
         block.config.datasetWithData ? (
           <div>
-            Before view
-            <br />
-            {JSON.stringify(block.config.datasetWithData)}
             <DatasetView
               readOnly={false}
               datasets={[block.config.datasetWithData]}
