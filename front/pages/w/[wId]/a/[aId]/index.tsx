@@ -2,8 +2,7 @@ import {
   Button,
   DocumentDuplicateIcon,
   DocumentTextIcon,
-  RobotIcon,
-  SparklesIcon,
+  PlayIcon,
   Tab,
 } from "@dust-tt/sparkle";
 import type {
@@ -235,7 +234,7 @@ export default function AppView({
 
   const handleSetBlock = async (idx: number, block: SpecificationBlockType) => {
     const s = spec.map((b) => b);
-    
+
     // Sync map/reduce names
     if (block.type == "map" && block.name != s[idx].name) {
       for (let i = idx; i < s.length; i++) {
@@ -352,7 +351,7 @@ export default function AppView({
                 runRequested || run?.status.run == "running" ? "Running" : "Run"
               }
               onClick={() => handleRun()}
-              icon={RobotIcon}
+              icon={PlayIcon}
             />
             {runError ? (
               <div className="flex-initial px-2 text-sm text-sm font-bold text-red-400">
@@ -461,7 +460,7 @@ export default function AppView({
                       : "Run"
                   }
                   onClick={() => handleRun()}
-                  icon={SparklesIcon}
+                  icon={PlayIcon}
                 />
               </div>
               {runError ? (

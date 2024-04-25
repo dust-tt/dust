@@ -83,12 +83,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const showData = req.query.data === "true";
-      const datasetHash = showData ? await getDatasetHash(
-        auth,
-        app,
-        dataset.name,
-        "latest"
-      ) : null;
+      const datasetHash = showData
+        ? await getDatasetHash(auth, app, dataset.name, "latest")
+        : null;
       res.status(200).json({
         dataset: {
           name: dataset.name,

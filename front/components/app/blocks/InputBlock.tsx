@@ -1,3 +1,4 @@
+import { Button, PencilSquareIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -5,7 +6,7 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
-import type { DatasetSchema,DatasetType } from "@dust-tt/types";
+import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
@@ -42,7 +43,6 @@ export default function InputBlock({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;
@@ -61,8 +61,8 @@ export default function InputBlock({
       }
     );
     const res = await datasetRes.json();
-    return res.dataset
-  }
+    return res.dataset;
+  };
 
   const onUpdate = (
     initializing: boolean,
@@ -73,10 +73,9 @@ export default function InputBlock({
     console.log("onUpdate", currentDatasetInEditor, schema);
   };
 
-  console.log('DATASET WITH DATA')
-  console.log(block.config.datasetWithData)
+  console.log("DATASET WITH DATA");
+  console.log(block.config.datasetWithData);
 
-  
   return (
     <Block
       owner={owner}
@@ -97,38 +96,43 @@ export default function InputBlock({
       <div className="mx-4 flex flex-col sm:flex-row sm:space-x-2">
         <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
           {!((!block.config || !block.config.dataset) && readOnly) ? (
-            <>
-              <div className="flex flex-initial">dataset:</div>
-              <DatasetPicker
-                owner={owner}
-                app={app}
-                dataset={block.config ? block.config.dataset : ""}
-                onDatasetUpdate={handleSetDataset}
-                readOnly={readOnly}
-              />
-            </>
-          ) : null}
-
-          {block.config && block.config.dataset && block.config.datasetWithData ? (
-            <div className="flex items-center">
-              {/* <DatasetView
-                readOnly={false}
-                datasets={[block.config.datasetWithData]}
-                dataset={block.config.datasetWithData}
-                schema={block.config.datasetWithData.schema}
-                onUpdate={onUpdate}
-                nameDisabled={true}
-              /> */}
-              {block.config.datasetWithData.schema.map((field) => (
-                <div key={field.name} className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
-                  <div className="flex flex-initial">{field.key}:</div>
-                  <div className="flex flex-initial">{field.type}</div>
-                </div>
-              ))}
+            <div>
+              <div className="flex flex-initial">
+                dataset:&nbsp;
+                <DatasetPicker
+                  owner={owner}
+                  app={app}
+                  dataset={block.config ? block.config.dataset : ""}
+                  onDatasetUpdate={handleSetDataset}
+                  readOnly={readOnly}
+                />
+              </div>
+              <div className="mt-6 flex flex-row">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                  }}
+                  icon={PencilSquareIcon}
+                  label="Edit Dataset"
+                  size="sm"
+                />
+              </div>
             </div>
           ) : null}
         </div>
       </div>
+      {block.config && block.config.dataset && block.config.datasetWithData ? (
+        <DatasetView
+          readOnly={false}
+          datasets={[block.config.datasetWithData]}
+          dataset={block.config.datasetWithData}
+          schema={block.config.datasetWithData.schema}
+          onUpdate={onUpdate}
+          nameDisabled={true}
+          showDataOnly={true}
+        />
+      ) : null}
     </Block>
   );
 }
