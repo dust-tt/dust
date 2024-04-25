@@ -1,3 +1,4 @@
+import type { AgentUserListStatus } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
   AgentStatus,
@@ -5,7 +6,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@dust-tt/types";
-import type { AgentUserListStatus } from "@dust-tt/types";
+import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -32,6 +33,11 @@ export class AgentGenerationConfiguration extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
+  declare prompt?: string; // @todo MULTI_ACTIONS @daph remove
+  declare providerId?: string; // @todo MULTI_ACTIONS @daph remove
+  declare modelId?: string; // @todo MULTI_ACTIONS @daph remove
+  declare temperature?: number; // @todo MULTI_ACTIONS @daph remove
+
   declare name: string | null;
   declare description: string | null;
   declare forceUseAtIteration: number | null;
@@ -52,6 +58,26 @@ AgentGenerationConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    prompt: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: "Answer the user's question.",
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "openai",
+    },
+    modelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: GPT_4_TURBO_MODEL_ID,
+    },
+    temperature: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0.7,
     },
     name: {
       type: DataTypes.STRING,

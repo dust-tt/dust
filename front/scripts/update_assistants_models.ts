@@ -14,28 +14,25 @@ async function updateWorkspaceAssistants(
   execute: boolean
 ) {
   const agentConfigurations = await AgentConfiguration.findAll({
-    where: { workspaceId },
+    where: { workspaceId, modelId: fromModel },
   });
 
   for (const agent of agentConfigurations) {
-    if (agent.modelId === fromModel) {
-      if (
-        !isSupportedModel({ modelId: toModel, providerId: agent.providerId })
-      ) {
-        throw new Error(
-          `Model ${toModel} is not supported for provider ${agent.providerId}.`
-        );
-      }
-
-      console.log(
-        `${execute ? "" : "[DRYRUN]"} Updated ${agent.name}(${
-          agent.sId
-        }) from ${agent.modelId} to ${toModel}.`
+    if (!isSupportedModel({ modelId: toModel, providerId: agent.providerId })) {
+      throw new Error(
+        `Model ${toModel} is not supported for provider ${agent.providerId}.`
       );
-      if (execute) {
-        await agent.update({ modelId: toModel });
-      }
     }
+
+    if (execute) {
+      await agent.update({ modelId: toModel });
+    }
+
+    console.log(
+      `${execute ? "" : "[DRYRUN]"} Updated ${agent.name}(${
+        agent.sId
+      }) from ${fromModel} to ${toModel}.`
+    );
   }
 }
 

@@ -346,7 +346,7 @@ export async function* runGeneration(
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
-  const model = configuration.model;
+  const { model } = configuration;
 
   if (isLargeModel(model) && !auth.isUpgraded()) {
     yield {
