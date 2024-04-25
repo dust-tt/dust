@@ -8,6 +8,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 
+import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -108,12 +109,24 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     return this.visibility === "published";
   }
 
+  get pictureUrl() {
+    const [id, unified] = this.emoji ? this.emoji.split("/") : [];
+
+    return makeUrlForEmojiAndBackgroud(
+      {
+        id,
+        unified,
+        native: "",
+      },
+      this.backgroundColor as `bg-${string}`
+    );
+  }
+
   toListJSON() {
     return {
-      backgroundColor: this.backgroundColor,
       description: this.description,
-      emoji: this.emoji,
       handle: this.handle,
+      pictureUrl: this.pictureUrl,
       sId: this.sId,
       tags: this.tags,
       visibility: this.visibility,
@@ -128,6 +141,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       handle: this.handle,
       helpActions: this.helpActions,
       helpInstructions: this.helpInstructions,
+      pictureUrl: this.pictureUrl,
       presetAction: this.presetAction,
       presetDescription: this.presetDescription,
       presetInstructions: this.presetInstructions,

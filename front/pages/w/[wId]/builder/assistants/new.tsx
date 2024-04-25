@@ -230,7 +230,10 @@ export default function CreateAssistant({
               }`,
               description: agentConfiguration.description,
               instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
-              avatarUrl: null,
+              avatarUrl:
+                "pictureUrl" in agentConfiguration
+                  ? agentConfiguration.pictureUrl
+                  : null,
               generationSettings: agentConfiguration.generation
                 ? {
                     modelSettings: agentConfiguration.generation.model,

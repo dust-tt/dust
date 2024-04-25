@@ -12,29 +12,11 @@ import { generateTailwindBackgroundColors } from "@dust-tt/types";
 import React, { useEffect } from "react";
 import { useImperativeHandle, useRef, useState } from "react";
 
-import type { AvatarPickerTabElement } from "@app/components/assistant_builder/avatar_picker/types";
-import { EMOJI_AVATAR_BASE_URL } from "@app/components/assistant_builder/shared";
-
-type SelectedEmojiType = {
-  id: string;
-  native: string;
-  unified: string;
-};
-
-function makeUrlForEmojiAndBackgroud(
-  emoji: SelectedEmojiType,
-  backgroundColor: `bg-${string}`
-) {
-  const { id, unified } = emoji;
-
-  const avatarUrlSuffix = avatarUtils.createEmojiAndBackgroundUrlSuffix({
-    backgroundColor,
-    id,
-    unified,
-  });
-
-  return `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
-}
+import type {
+  AvatarPickerTabElement,
+  SelectedEmojiType,
+} from "@app/components/assistant_builder/avatar_picker/types";
+import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
   "bg-gray-100";

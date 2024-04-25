@@ -1,4 +1,10 @@
-import { Markdown, TemplateItem } from "@dust-tt/sparkle";
+import {
+  ColorPicker,
+  DropdownMenu,
+  EmojiPicker,
+  Markdown,
+  TemplateItem,
+} from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -17,11 +23,12 @@ import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
+import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -91,6 +98,65 @@ function InputField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
             <PokeInput placeholder={placeholder ?? name} {...field} />
+          </PokeFormControl>
+          <PokeFormMessage />
+        </PokeFormItem>
+      )}
+    />
+  );
+}
+
+type Picker = (handleSelect: (value: string) => void) => React.ReactNode;
+
+function PickerInputField({
+  buttonLabel,
+  control,
+  name,
+  picker,
+  placeholder,
+  title,
+}: {
+  buttonLabel?: string;
+  control: Control<CreateTemplateFormType>;
+  name: keyof CreateTemplateFormType;
+  picker: Picker;
+  placeholder?: string;
+  title?: string;
+}) {
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <PokeFormField
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <PokeFormItem>
+          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
+          <PokeFormControl>
+            <div className="flex flex-row gap-2">
+              <PokeInput
+                readOnly
+                placeholder={placeholder ?? name}
+                {...field}
+              />
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <div ref={pickerRef}>
+                    <PokeButton variant="outline">{buttonLabel}</PokeButton>
+                  </div>
+                </DropdownMenu.Button>
+                <DropdownMenu.Items
+                  width={350}
+                  origin="topLeft"
+                  variant="no-padding"
+                >
+                  {picker((value: string) => {
+                    field.onChange(value);
+                    pickerRef.current?.click();
+                  })}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            </div>
           </PokeFormControl>
           <PokeFormMessage />
         </PokeFormItem>
@@ -215,6 +281,19 @@ function SelectField({
 function PreviewDialog({ form }: { form: any }) {
   const [open, setOpen] = useState(false);
 
+  const emoji = form.getValues("emoji");
+  const backgroundColor = form.getValues("backgroundColor");
+  const [id, unified] = emoji ? emoji.split("/") : [];
+
+  const avatarVisual = makeUrlForEmojiAndBackgroud(
+    {
+      id,
+      unified,
+      native: "",
+    },
+    backgroundColor
+  );
+
   return (
     <PokeDialog open={open} onOpenChange={setOpen}>
       <PokeDialogTrigger asChild>
@@ -230,10 +309,7 @@ function PreviewDialog({ form }: { form: any }) {
           name={form.getValues("handle")}
           id="1"
           description={form.getValues("description") ?? ""}
-          visual={{
-            backgroundColor: form.getValues("backgroundColor"),
-            emoji: form.getValues("emoji"),
-          }}
+          visual={avatarVisual}
           href={""}
         />
       </PokeDialogContent>
@@ -244,8 +320,9 @@ function PreviewDialog({ form }: { form: any }) {
 function TemplatesPage({
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const { assistantTemplate } = usePokeAssistantTemplate({
@@ -358,7 +435,7 @@ function TemplatesPage({
       presetAction: "reply",
       helpInstructions: "",
       helpActions: "",
-      emoji: "🐈‍⬛",
+      emoji: "black_cat/1f408-200d-2b1b", // 🐈‍⬛.
       backgroundColor: "bg-pink-300",
       tags: [],
       visibility: "draft",
@@ -464,15 +541,33 @@ function TemplatesPage({
               />
             </div>
             <div className="grid grid-cols-3 gap-4">
-              <InputField control={form.control} name="emoji" />
-              <SelectField
+              <PickerInputField
+                control={form.control}
+                name="emoji"
+                picker={(handleSelect) => (
+                  <EmojiPicker
+                    theme="light"
+                    previewPosition="none"
+                    onEmojiSelect={(emoji) =>
+                      handleSelect(`${emoji.id}/${emoji.unified}`)
+                    }
+                  />
+                )}
+                buttonLabel="🙂"
+              />
+              <PickerInputField
                 control={form.control}
                 name="backgroundColor"
                 title="Background Color"
-                options={generateTailwindBackgroundColors().map((v) => ({
-                  value: v,
-                  display: v,
-                }))}
+                picker={(handleSelect) => (
+                  <ColorPicker
+                    colors={generateTailwindBackgroundColors()}
+                    onColorSelect={(color) => {
+                      handleSelect(color);
+                    }}
+                  />
+                )}
+                buttonLabel="🎨"
               />
               <div className="flex h-full flex-col justify-end">
                 <PreviewDialog form={form} />
