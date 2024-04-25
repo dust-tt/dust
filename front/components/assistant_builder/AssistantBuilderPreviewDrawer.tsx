@@ -1,7 +1,6 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  ContextItem,
   DropdownMenu,
   LightbulbIcon,
   MagicIcon,
@@ -11,8 +10,12 @@ import {
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useContext, useEffect, useMemo, useState } from "react";
+import type {
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -28,13 +31,14 @@ import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
-export default function AssistantBuilderPreviewDrawer({
+export default function AssistantBuilderRightPanel({
   template,
   resetTemplate,
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  previewDrawerOpenedAt,
+  rightPanelStatus,
+  openRightPanelTab,
   builderState,
 }: {
   template: FetchAssistantTemplateResponse | null;
@@ -42,34 +46,32 @@ export default function AssistantBuilderPreviewDrawer({
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  previewDrawerOpenedAt: number | null;
+  rightPanelStatus: AssistantBuilderRightPanelStatus;
+  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
 }) {
   const confirm = useContext(ConfirmContext);
-  const [previewDrawerCurrentTab, setPreviewDrawerCurrentTab] = useState<
-    "Preview" | "Template"
-  >(template ? "Template" : "Preview");
 
-  const previewDrawerTabs = useMemo(
+  const tabsConfig = useMemo(
     () => [
       {
         label: "Template",
-        current: previewDrawerCurrentTab === "Template",
+        current: rightPanelStatus.tab === "Template",
         onClick: () => {
-          setPreviewDrawerCurrentTab("Template");
+          openRightPanelTab("Template");
         },
         icon: MagicIcon,
       },
       {
         label: "Preview",
-        current: previewDrawerCurrentTab === "Preview",
+        current: rightPanelStatus.tab === "Preview",
         onClick: () => {
-          setPreviewDrawerCurrentTab("Preview");
+          openRightPanelTab("Preview");
         },
         icon: ChatBubbleBottomCenterTextIcon,
       },
     ],
-    [previewDrawerCurrentTab]
+    [rightPanelStatus.tab, openRightPanelTab]
   );
 
   const {
@@ -99,11 +101,7 @@ export default function AssistantBuilderPreviewDrawer({
     <div className="flex h-full flex-col">
       {template && (
         <div className="shrink-0 bg-white pt-5">
-          <Tab
-            tabs={previewDrawerTabs}
-            variant="default"
-            className="hidden lg:flex"
-          />
+          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
         </div>
       )}
       <div
@@ -112,19 +110,20 @@ export default function AssistantBuilderPreviewDrawer({
             ? "grow-1 mb-5 h-full overflow-y-auto rounded-b-xl border-x border-b border-structure-200 bg-structure-50 pt-5"
             : "grow-1 mb-5 mt-5 h-full overflow-y-auto rounded-xl border border-structure-200 bg-structure-50",
           shouldAnimatePreviewDrawer &&
-            previewDrawerOpenedAt != null &&
+            rightPanelStatus.tab === "Preview" &&
+            rightPanelStatus.openedAt != null &&
             // Only animate the reload if the drawer has been open for at least 1 second.
             // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - previewDrawerOpenedAt > 1000
+            Date.now() - rightPanelStatus.openedAt > 1000
             ? "animate-reload"
             : ""
         )}
       >
-        {previewDrawerCurrentTab === "Preview" && user && draftAssistant && (
-          <div className="flex h-full w-full flex-1 flex-col justify-between">
+        {rightPanelStatus.tab === "Preview" && user && draftAssistant && (
+          <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
             <GenerationContextProvider>
               <div
-                className="flex-grow overflow-y-auto overflow-x-hidden"
+                className="flex-grow overflow-y-auto"
                 id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
               >
                 {conversation && (
@@ -155,9 +154,9 @@ export default function AssistantBuilderPreviewDrawer({
             </GenerationContextProvider>
           </div>
         )}
-        {previewDrawerCurrentTab === "Template" && (
+        {rightPanelStatus.tab === "Template" && (
           <div className="mb-72 flex flex-col gap-4 px-6">
-            <div className="flex justify-between">
+            <div className="flex items-end justify-between pt-2">
               <Page.Header
                 icon={LightbulbIcon}
                 title="Template's User manual"
@@ -181,11 +180,11 @@ export default function AssistantBuilderPreviewDrawer({
                       const confirmed = await confirm({
                         title: "Are you sure you want to close the template?",
                         message:
-                          "Once removed, you will no longer have access to the associated user manual.",
+                          "Your assistant will remain as it is but will not display template's help any more.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
-                        setPreviewDrawerCurrentTab("Preview");
+                        openRightPanelTab("Preview");
                         await resetTemplate();
                       }
                     }}
@@ -198,7 +197,7 @@ export default function AssistantBuilderPreviewDrawer({
                       const confirmed = await confirm({
                         title: "Are you sure?",
                         message:
-                          "Resetting to the default settings will erase all changes made to the Assistant's instructions.",
+                          "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
@@ -214,7 +213,7 @@ export default function AssistantBuilderPreviewDrawer({
                       const confirmed = await confirm({
                         title: "Are you sure?",
                         message:
-                          "Resetting to the default settings will erase all changes made to the Assistant's actions.",
+                          "You will lose the changes you have made to the assistant's actions and go back to the template's default settings.",
                         validateVariant: "primaryWarning",
                       });
                       if (confirmed) {
@@ -227,25 +226,25 @@ export default function AssistantBuilderPreviewDrawer({
               </DropdownMenu>
             </div>
             <Page.Separator />
-            <div id="instructions-help-container">
-              <ContextItem.SectionHeader
-                title='"Instructions" guide'
-                hasBorder={false}
-              />
-              <Markdown
-                content={template?.helpInstructions ?? ""}
-                className=""
-              />
-            </div>
-            <Page.Separator />
-
-            <div id="actions-help-container">
-              <ContextItem.SectionHeader
-                title='"Actions" guide'
-                hasBorder={false}
-              />
-              <Markdown content={template?.helpActions ?? ""} className="" />
-            </div>
+            {template?.helpInstructions && (
+              <div id="instructions-help-container">
+                <Page.SectionHeader title='"Instructions" guide' />
+                <Markdown content={template?.helpInstructions ?? ""} />
+              </div>
+            )}
+            {template?.helpInstructions && template?.helpActions && (
+              <Page.Separator />
+            )}
+            {template?.helpActions && (
+              <div id="actions-help-container">
+                <Page.SectionHeader title='"Actions" guide' />
+                <Markdown
+                  content={template?.helpActions ?? ""}
+                  className=""
+                  size="sm"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

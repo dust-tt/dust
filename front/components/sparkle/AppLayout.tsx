@@ -17,8 +17,8 @@ import type {
 import { topNavigation } from "@app/components/sparkle/navigation";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { getBrowserClient, trackPageView } from "@app/lib/amplitude/browser";
 import { useUser } from "@app/lib/swr";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 /* Set to true when there is an incident, to show the banner (customize
@@ -223,16 +223,12 @@ export default function AppLayout({
   }, []);
 
   useEffect(() => {
-    const amplitude = getBrowserClient();
-    if (user?.user?.id) {
-      const userId = `user-${user?.user?.id}`;
-      amplitude.identify(userId);
-      trackPageView({
-        pathname: router.pathname,
-        workspaceId: owner.sId,
-      });
-    }
-  }, [owner.sId, router.pathname, user?.user?.id]);
+    ClientSideTracking.trackPageView({
+      user: user?.user ?? undefined,
+      workspaceId: owner.sId,
+      pathname: router.pathname,
+    });
+  }, [owner.sId, router.pathname, user?.user]);
 
   return (
     <>

@@ -149,36 +149,48 @@ export function renderRetrievalActionForModel(
  * Params generation.
  */
 
+export function retrievalAutoQueryInputSpecification() {
+  return {
+    name: "query",
+    description:
+      "The string used to retrieve relevant chunks of information using semantic similarity" +
+      " based on the user request and conversation context." +
+      " Include as much semantic signal based on the entire conversation history," +
+      " paraphrasing if necessary. longer queries are generally better.",
+    type: "string" as const,
+  };
+}
+
+export function retrievalAutoTimeFrameInputSpecification() {
+  return {
+    name: "relativeTimeFrame",
+    description:
+      "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+      " on the user request and past conversation context." +
+      " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+      " where {k} is a number. Be strict, do not invent invalid values.",
+    type: "string" as const,
+  };
+}
+
 export async function retrievalActionSpecification(
   configuration: RetrievalConfigurationType
 ): Promise<AgentActionSpecification> {
   const inputs = [];
 
   if (configuration.query === "auto") {
-    inputs.push({
-      name: "query",
-      description:
-        "The string used to retrieve relevant chunks of information using semantic similarity" +
-        " based on the user request and conversation context." +
-        " Include as much semantic signal based on the entire conversation history, paraphrasing if necessary. longer queries are generally better.",
-      type: "string" as const,
-    });
+    inputs.push(retrievalAutoQueryInputSpecification());
   }
   if (configuration.relativeTimeFrame === "auto") {
-    inputs.push({
-      name: "relativeTimeFrame",
-      description:
-        "The time frame (relative to LOCAL_TIME) to restrict the search based on the user request and past conversation context." +
-        " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y` where {k} is a number. Be strict, do not invent invalid values.",
-      type: "string" as const,
-    });
+    inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
   return {
     name: "search_data_sources",
     description:
       "Search the data sources specified by the user for information to answer their request." +
-      " The search is based on semantic similarity between the query and chunks of information from the data sources.",
+      " The search is based on semantic similarity between the query and chunks of information" +
+      " from the data sources.",
     inputs,
   };
 }
@@ -459,7 +471,7 @@ export async function* runRetrieval(
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
         },
-        "Retrieval topK mode is set to auto, but there is no model to infer it from. Defaulting to 16."
+        "Retrieval topK mode is set to auto, but there is no model to infer it. Defaulting to 16."
       );
     } else {
       const supportedModel = getSupportedModelConfig(model);
@@ -491,8 +503,8 @@ export async function* runRetrieval(
       id: action.id,
       type: "retrieval_action",
       params: {
-        relativeTimeFrame: relativeTimeFrame,
-        query: query,
+        relativeTimeFrame,
+        query,
         topK,
       },
       documents: null,
@@ -559,7 +571,7 @@ export async function* runRetrieval(
 
   const res = await runActionStreamed(auth, "assistant-v2-retrieval", config, [
     {
-      query: query,
+      query,
     },
   ]);
 

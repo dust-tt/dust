@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import type Stripe from "stripe";
 
 import { Workspace } from "@app/lib/models/workspace";
@@ -23,6 +24,14 @@ export async function countActiveSeatsInWorkspace(
     activeOnly: true,
   });
 }
+
+export const countActiveSeatsInWorkspaceCached = cacheWithRedis(
+  countActiveSeatsInWorkspace,
+  (workspaceId) => {
+    return `count-active-seats-in-workspace:${workspaceId}`;
+  },
+  60 * 10 * 1000 // 10 minutes
+);
 
 export async function reportActiveSeats(
   stripeSubscriptionItem: Stripe.SubscriptionItem,

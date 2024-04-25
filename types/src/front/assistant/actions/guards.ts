@@ -2,16 +2,20 @@ import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
-import { AgentActionConfigurationType } from "../../../front/assistant/agent";
-import { AgentActionType } from "../../../front/assistant/conversation";
+import {
+  ProcessActionType,
+  ProcessConfigurationType,
+} from "../../../front/assistant/actions/process";
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
-} from "../../assistant/actions/retrieval";
+} from "../../../front/assistant/actions/retrieval";
 import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
-} from "../../assistant/actions/tables_query";
+} from "../../../front/assistant/actions/tables_query";
+import { AgentActionConfigurationType } from "../../../front/assistant/agent";
+import { AgentActionType } from "../../../front/assistant/conversation";
 
 export function isTablesQueryConfiguration(
   arg: AgentActionConfigurationType | null
@@ -47,4 +51,16 @@ export function isRetrievalActionType(
   arg: AgentActionType
 ): arg is RetrievalActionType {
   return arg.type === "retrieval_action";
+}
+
+export function isProcessConfiguration(
+  arg: AgentActionConfigurationType | null
+): arg is ProcessConfigurationType {
+  return arg !== null && arg.type && arg.type === "process_configuration";
+}
+
+export function isProcessActionType(
+  arg: AgentActionType
+): arg is ProcessActionType {
+  return arg.type === "process_action";
 }

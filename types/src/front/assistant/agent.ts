@@ -1,4 +1,5 @@
 import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_app_run";
+import { ProcessConfigurationType } from "../../front/assistant/actions/process";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
 import { SupportedModel } from "../../front/lib/assistant";
@@ -14,7 +15,8 @@ import { ModelId } from "../../shared/model_id";
 export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
   | RetrievalConfigurationType
-  | DustAppRunConfigurationType;
+  | DustAppRunConfigurationType
+  | ProcessConfigurationType;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 
@@ -175,6 +177,8 @@ export type LightAgentConfigurationType = {
   lastAuthors?: AgentRecentAuthors;
   // Usage is expensive to compute, so we only compute it when needed.
   usage?: AgentUsageType;
+
+  maxToolsUsePerRun: number;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

@@ -3,8 +3,9 @@ import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
+import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/MentionStorage";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
@@ -150,37 +151,36 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
 }: CustomEditorProps) => {
-  // Memoize the suggestion configuration to avoid recreating the object on every render
-  const getSuggestions = useMemo(
-    () => makeGetAssistantSuggestions(suggestions),
-    [suggestions]
-  );
+  const editor = useEditor({
+    autofocus: disableAutoFocus ? false : "end",
+    enableInputRules: false, // Disable Markdown when typing.
+    enablePasteRules: false, // Disable Markdown when pasting.
+    extensions: [
+      StarterKit.configure({
+        heading: false,
+      }),
+      MentionStorage,
+      Mention.configure({
+        HTMLAttributes: {
+          class:
+            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
+        },
+        suggestion: makeGetAssistantSuggestions(),
+      }),
+      Placeholder.configure({
+        placeholder: "Ask a question or get some @help",
+        emptyNodeClass:
+          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+      }),
+    ],
+  });
 
-  const editor = useEditor(
-    {
-      autofocus: disableAutoFocus ? false : "end",
-      enableInputRules: false, // Disable Markdown when typing.
-      enablePasteRules: false, // Disable Markdown when pasting.
-      extensions: [
-        StarterKit.configure({
-          heading: false,
-        }),
-        Mention.configure({
-          HTMLAttributes: {
-            class:
-              "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
-          },
-          suggestion: getSuggestions,
-        }),
-        Placeholder.configure({
-          placeholder: "Ask a question or get some @help",
-          emptyNodeClass:
-            "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
-        }),
-      ],
-    },
-    [getSuggestions]
-  );
+  // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
+  useEffect(() => {
+    if (editor) {
+      editor.storage.MentionStorage.suggestions = suggestions;
+    }
+  }, [suggestions, editor]);
 
   editor?.setOptions({
     editorProps: {

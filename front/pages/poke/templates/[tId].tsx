@@ -1,4 +1,4 @@
-import { TemplateItem } from "@dust-tt/sparkle";
+import { Markdown, TemplateItem } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -104,11 +104,13 @@ function TextareaField({
   name,
   title,
   placeholder,
+  previewMardown = false,
 }: {
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
+  previewMardown?: boolean;
 }) {
   return (
     <PokeFormField
@@ -117,9 +119,33 @@ function TextareaField({
       render={({ field }) => (
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeTextarea placeholder={placeholder ?? name} {...field} />
-          </PokeFormControl>
+          {previewMardown &&
+          typeof field.value === "string" &&
+          field.value.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <PokeFormControl>
+                  <PokeTextarea
+                    placeholder={placeholder ?? name}
+                    rows={30}
+                    {...field}
+                  />
+                </PokeFormControl>
+              </div>
+
+              <div className="rounded-xl border p-2">
+                <Markdown content={field.value} />
+              </div>
+            </div>
+          ) : (
+            <PokeFormControl>
+              <PokeTextarea
+                placeholder={placeholder ?? name}
+                rows={30}
+                {...field}
+              />
+            </PokeFormControl>
+          )}
           <PokeFormMessage />
         </PokeFormItem>
       )}
@@ -172,7 +198,7 @@ function SelectField({
                 <div className="bg-slate-100">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
-                      {option.display ? option.display : option.value}
+                      {option.display ?? option.value}
                     </PokeSelectItem>
                   ))}
                 </div>
@@ -192,7 +218,7 @@ function PreviewDialog({ form }: { form: any }) {
   return (
     <PokeDialog open={open} onOpenChange={setOpen}>
       <PokeDialogTrigger asChild>
-        <PokeButton variant="outline">✨ Preview Template</PokeButton>
+        <PokeButton variant="secondary">✨ Preview Template Card</PokeButton>
       </PokeDialogTrigger>
       <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
         <PokeDialogHeader>
@@ -351,7 +377,7 @@ function TemplatesPage({
   if (isSubmitting) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-structure-50">
-        <div className="text-structure-900">Creating template...</div>
+        <div className="text-structure-900">Creating/Updating template...</div>
       </div>
     );
   }
@@ -364,110 +390,128 @@ function TemplatesPage({
   return (
     <div className="min-h-screen bg-structure-50 pb-48">
       <PokeNavbar />
-      <div className="mx-auto h-full max-w-2xl flex-grow flex-col items-center justify-center pt-8">
+      <div className="mx-auto h-full max-w-7xl flex-grow flex-col items-center justify-center pt-8">
         <PokeForm {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <InputField
+          <form className="space-y-8">
+            <div className="grid grid-cols-3 gap-4">
+              <InputField
+                control={form.control}
+                name="handle"
+                placeholder="myAssistant"
+              />
+              <SelectField
+                control={form.control}
+                name="visibility"
+                title="Visibility"
+                options={TEMPLATE_VISIBILITIES.map((v) => ({
+                  value: v,
+                  display: v,
+                }))}
+              />
+              <PokeFormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <PokeFormItem>
+                    <PokeFormLabel>Tags</PokeFormLabel>
+                    <PokeFormControl>
+                      <MultiSelect
+                        options={tagOptions}
+                        value={field.value.map((tag: TemplateTagCodeType) => ({
+                          label: TEMPLATES_TAGS_CONFIG[tag].label,
+                          value: tag,
+                        }))}
+                        onChange={(
+                          tags: { label: string; value: string }[]
+                        ) => {
+                          field.onChange(tags.map((tag) => tag.value));
+                        }}
+                        labelledBy="Select"
+                        hasSelectAll={false}
+                      />
+                    </PokeFormControl>
+                    <PokeFormMessage />
+                  </PokeFormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <SelectField
+                control={form.control}
+                name="presetModelId"
+                title="Preset Model"
+                options={USED_MODEL_CONFIGS.map((config) => ({
+                  value: config.modelId,
+                  display: config.displayName,
+                }))}
+              />
+              <SelectField
+                control={form.control}
+                name="presetTemperature"
+                title="Preset Temperature"
+                options={ASSISTANT_CREATIVITY_LEVELS.map((acl) => ({
+                  value: acl,
+                }))}
+              />
+              <SelectField
+                control={form.control}
+                name="presetAction"
+                title="Preset Action"
+                options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
+                  value: k,
+                  display: v,
+                }))}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <InputField control={form.control} name="emoji" />
+              <SelectField
+                control={form.control}
+                name="backgroundColor"
+                title="Background Color"
+                options={generateTailwindBackgroundColors().map((v) => ({
+                  value: v,
+                  display: v,
+                }))}
+              />
+              <div className="flex h-full flex-col justify-end">
+                <PreviewDialog form={form} />
+              </div>
+            </div>
+            <TextareaField
               control={form.control}
-              name="handle"
-              placeholder="myAssistant"
+              name="presetInstructions"
+              title="preset Instructions"
+              placeholder="Instructions"
             />
             <TextareaField
               control={form.control}
               name="description"
               placeholder="A short description"
-            />
-            <TextareaField
-              control={form.control}
-              name="presetInstructions"
-              placeholder="Instructions"
-            />
-            <SelectField
-              control={form.control}
-              name="presetModelId"
-              title="Preset Model"
-              options={USED_MODEL_CONFIGS.map((config) => ({
-                value: config.modelId,
-                display: config.displayName,
-              }))}
-            />
-            <SelectField
-              control={form.control}
-              name="presetTemperature"
-              title="Preset Temperature"
-              options={ASSISTANT_CREATIVITY_LEVELS.map((acl) => ({
-                value: acl,
-              }))}
-            />
-            <SelectField
-              control={form.control}
-              name="presetAction"
-              title="Preset Action"
-              options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
-                value: k,
-                display: v,
-              }))}
+              previewMardown={true}
             />
             <TextareaField
               control={form.control}
               name="helpInstructions"
               title="Help Instructions"
               placeholder="Instructions help bubble..."
+              previewMardown={true}
             />
             <TextareaField
               control={form.control}
               name="helpActions"
               title="Help Actions"
               placeholder="Actions help bubble..."
+              previewMardown={true}
             />
-            <PokeFormField
-              control={form.control}
-              name="tags"
-              render={({ field }) => (
-                <PokeFormItem>
-                  <PokeFormLabel>Tags</PokeFormLabel>
-                  <PokeFormControl>
-                    <MultiSelect
-                      options={tagOptions}
-                      value={field.value.map((tag: TemplateTagCodeType) => ({
-                        label: TEMPLATES_TAGS_CONFIG[tag].label,
-                        value: tag,
-                      }))}
-                      onChange={(tags: { label: string; value: string }[]) => {
-                        field.onChange(tags.map((tag) => tag.value));
-                      }}
-                      labelledBy="Select"
-                      hasSelectAll={false}
-                    />
-                  </PokeFormControl>
-                  <PokeFormMessage />
-                </PokeFormItem>
-              )}
-            />
-            <InputField control={form.control} name="emoji" />
-            <SelectField
-              control={form.control}
-              name="backgroundColor"
-              title="Background Color"
-              options={generateTailwindBackgroundColors().map((v) => ({
-                value: v,
-                display: v,
-              }))}
-            />
-            <SelectField
-              control={form.control}
-              name="visibility"
-              title="Visibility"
-              options={TEMPLATE_VISIBILITIES.map((v) => ({
-                value: v,
-                display: v,
-              }))}
-            />
-            <div className="space flex justify-between">
-              <PokeButton type="submit" className="border border-structure-300">
+
+            <div className="space flex gap-2">
+              <PokeButton
+                onClick={form.handleSubmit(onSubmit)}
+                className="border border-structure-300"
+              >
                 Save
               </PokeButton>
-              <PreviewDialog form={form} />
               <PokeButton
                 type="button"
                 variant="destructive"

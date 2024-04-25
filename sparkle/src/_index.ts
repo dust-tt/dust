@@ -1,6 +1,9 @@
 import { SparkleContext } from "./context";
 export { SparkleContext };
 
+import * as avatarUtils from "./lib/avatar/utils";
+export { avatarUtils };
+
 import { Div3D, Hover3D } from "./components/Hover3D";
 export { Div3D, Hover3D };
 
@@ -12,6 +15,9 @@ export { Button };
 
 import { CardButton } from "./components/CardButton";
 export { CardButton };
+
+import { EmojiPicker } from "./components/EmojiPicker";
+export { EmojiPicker };
 
 import { SliderToggle } from "./components/SliderToggle";
 export { SliderToggle };
@@ -81,6 +87,9 @@ export { Tooltip };
 
 import { ContentMessage } from "./components/ContentMessage";
 export { ContentMessage };
+
+import { ColorPicker } from "./components/ColorPicker";
+export { ColorPicker };
 
 import { Avatar } from "./components/Avatar";
 export { Avatar };

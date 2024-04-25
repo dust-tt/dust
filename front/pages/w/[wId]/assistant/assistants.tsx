@@ -108,7 +108,7 @@ export default function MyAssistants({
         <Button.List>
           <Tooltip label="Create your own assistant">
             <Link
-              href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants`}
+              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
             >
               <Button
                 variant="primary"

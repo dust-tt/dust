@@ -48,7 +48,6 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { trackUserMessage } from "@app/lib/amplitude/node";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -68,6 +67,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   ContentFragmentResource,
   fileAttachmentLocation,
@@ -75,6 +75,7 @@ import {
 } from "@app/lib/resources/content_fragment_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -779,7 +780,7 @@ export async function* postUserMessage(
       });
     }
   }
-  trackUserMessage({
+  void ServerSideTracking.trackUserMessage({
     userMessage,
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
@@ -1650,6 +1651,10 @@ async function* streamRunAgentEvents(
           await agentMessageRow.update({
             agentTablesQueryActionId: event.action.id,
           });
+        } else if (event.action.type === "process_action") {
+          await agentMessageRow.update({
+            agentProcessActionId: event.action.id,
+          });
         } else {
           ((action: never) => {
             throw new Error(
@@ -1694,6 +1699,7 @@ async function* streamRunAgentEvents(
       case "dust_app_run_block":
       case "tables_query_params":
       case "tables_query_output":
+      case "process_params":
         yield event;
         break;
       case "generation_tokens":
@@ -1722,10 +1728,11 @@ async function isMessagesLimitReached({
   if (plan.limits.assistant.maxMessages === -1) {
     return false;
   }
+  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
   const remaining = await rateLimiter({
     key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
-    maxPerTimeframe: maxMessages,
+    maxPerTimeframe: maxMessages * activeSeats,
     timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
     logger,
   });

@@ -2,8 +2,10 @@ import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
+import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
+import { ProcessConfigurationType } from "./actions/process";
 import { RetrievalConfigurationType } from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
@@ -96,6 +98,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   dust_app_run_configuration: "Run Dust app",
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
+  process_configuration: "Process data sources",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
@@ -219,7 +222,18 @@ export function getAgentActionConfigurationType(
         forceUseAtIteration: 0,
       } satisfies DustAppRunConfigurationType;
 
+    case "process_configuration":
+      return {
+        dataSources: [],
+        id: -1,
+        relativeTimeFrame: "auto",
+        sId: "template",
+        schema: [],
+        type: "process_configuration",
+        forceUseAtIteration: 0,
+      } satisfies ProcessConfigurationType;
+
     default:
-      return null;
+      assertNever(action);
   }
 }

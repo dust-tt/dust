@@ -10,23 +10,19 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
-  DustAppRunBlockEvent,
-  DustAppRunParamsEvent,
   GenerationTokensEvent,
-  LightAgentConfigurationType,
   Result,
-  RetrievalParamsEvent,
-  TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
   UserMessageType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isDustAppRunConfiguration,
+  isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   Ok,
@@ -45,7 +41,6 @@ import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -54,6 +49,8 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
+
+import { generateProcessSpecification, runProcess } from "./actions/process";
 
 /**
  * Action Inputs generation.
@@ -176,7 +173,7 @@ async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runLegacyAgent(
   auth: Authenticator,
-  configuration: LightAgentConfigurationType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -187,30 +184,14 @@ export async function* runLegacyAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
-  const fullConfiguration = await getAgentConfiguration(
-    auth,
-    configuration.sId
-  );
-
-  if (!fullConfiguration) {
-    throw new Error(
-      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
-    );
-  }
-
-  const action = deprecatedGetFirstActionConfiguration(fullConfiguration);
+  const action = deprecatedGetFirstActionConfiguration(configuration);
 
   if (action !== null) {
     for await (const event of runAction(auth, {
-      configuration: fullConfiguration,
+      configuration,
       conversation,
       userMessage,
       agentMessage,
@@ -224,7 +205,7 @@ export async function* runLegacyAgent(
   if (configuration.generation !== null) {
     const eventStream = runGeneration(
       auth,
-      fullConfiguration,
+      configuration,
       conversation,
       userMessage,
       agentMessage
@@ -305,11 +286,7 @@ async function* runAction(
     action: AgentActionConfigurationType;
   }
 ): AsyncGenerator<
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent
+  | AgentActionEvent
   | AgentErrorEvent
   | AgentActionEvent
   | AgentActionSuccessEvent,
@@ -328,6 +305,10 @@ async function* runAction(
     });
   } else if (isTablesQueryConfiguration(action)) {
     specRes = await generateTablesQuerySpecification(auth);
+  } else if (isProcessConfiguration(action)) {
+    specRes = await generateProcessSpecification(auth, {
+      actionConfiguration: action,
+    });
   } else {
     ((a: never) => {
       throw new Error(`Unexpected action type: ${a}`);
@@ -444,10 +425,7 @@ async function* runAction(
           break;
 
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
@@ -495,10 +473,7 @@ async function* runAction(
           break;
 
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
+          assertNever(event);
       }
     }
   } else if (isTablesQueryConfiguration(action)) {
@@ -542,15 +517,55 @@ async function* runAction(
           agentMessage.action = event.action;
           break;
         default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
+          assertNever(event);
+      }
+    }
+  } else if (isProcessConfiguration(action)) {
+    const eventStream = runProcess(auth, {
+      configuration,
+      actionConfiguration: action,
+      conversation,
+      userMessage,
+      agentMessage,
+      rawInputs,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "process_params":
+          yield event;
+          break;
+        case "process_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
           return;
+        case "process_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.action = event.action;
+          break;
+
+        default:
+          assertNever(event);
       }
     }
   } else {
-    ((a: never) => {
-      throw new Error(`Unexpected action type: ${a}`);
-    })(action);
+    assertNever(action);
   }
 }

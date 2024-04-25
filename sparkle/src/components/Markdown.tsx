@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { ClipboardCheckIcon, ClipboardIcon, IconButton } from "@sparkle/index";
+import { Button, ClipboardCheckIcon, ClipboardIcon } from "@sparkle/index";
+import { classNames } from "@sparkle/lib/utils";
 
 function useCopyToClipboard(
   resetInterval = 2000
@@ -29,56 +30,114 @@ function useCopyToClipboard(
   return [isCopied, copy];
 }
 
+const textColor = "s-text-element-900";
+const paragraphSize = "s-text-base";
+const headingSize = {
+  sm: {
+    h1: "s-text-xl s-font-bold",
+    h2: "s-text-xl s-font-regular",
+    h3: "s-text-lg s-font-bold",
+  },
+  md: {
+    h1: "s-text-5xl s-font-semibold",
+    h2: "s-text-4xl s-font-semibold",
+    h3: "s-text-2xl s-font-semibold",
+  },
+};
+
 export function Markdown({
   content,
+  size = "sm",
   className = "",
 }: {
   content: string;
+  size?: "sm" | "md";
   className?: string;
 }) {
   return (
     <ReactMarkdown
       components={{
         h1: ({ children }) => (
-          <h1 className="s-pb-2 s-pt-4 s-text-5xl s-font-semibold s-text-element-900">
+          <h1
+            className={classNames(
+              "s-pb-2 s-pt-4",
+              headingSize[size].h1,
+              textColor
+            )}
+          >
             {children}
           </h1>
         ),
         h2: ({ children }) => (
-          <h2 className="s-pb-2 s-pt-4 s-text-4xl s-font-semibold s-text-element-900">
+          <h2
+            className={classNames(
+              "s-pb-2 s-pt-4",
+              headingSize[size].h2,
+              textColor
+            )}
+          >
             {children}
           </h2>
         ),
         h3: ({ children }) => (
-          <h3 className="s-pb-2 s-pt-4 s-text-2xl s-font-semibold s-text-element-900">
+          <h3
+            className={classNames(
+              "s-pb-2 s-pt-4",
+              headingSize[size].h3,
+              textColor
+            )}
+          >
             {children}
           </h3>
         ),
         p: ({ children }) => (
-          <div className="s-first:pt-0 s-last:pb-0 s-whitespace-pre-wrap s-py-2 s-text-base s-text-element-900">
+          <div
+            className={classNames(
+              "s-first:pt-0 s-last:pb-0 s-whitespace-pre-wrap s-py-2 s-text-base",
+              textColor,
+              paragraphSize
+            )}
+          >
             {children}
           </div>
         ),
         strong: ({ children }) => (
-          <strong className="s-font-semibold s-text-element-900">
-            {children}
-          </strong>
+          <strong className="s-font-semibold">{children}</strong>
         ),
         ul: ({ children }) => (
-          <ul className="s-list-disc s-py-1 s-pl-8 s-text-element-800 first:s-pt-0 last:s-pb-0">
+          <ul
+            className={classNames(
+              "s-list-disc s-py-1 s-pl-7 first:s-pt-0 last:s-pb-0",
+              textColor,
+              paragraphSize
+            )}
+          >
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="s-list-decimal s-py-1 s-pl-8 s-text-element-800 first:s-pt-0 last:s-pb-0">
+          <ol
+            className={classNames(
+              "s-list-decimal s-py-1 s-pl-6 first:s-pt-0 last:s-pb-0",
+              textColor,
+              paragraphSize
+            )}
+          >
             {children}
           </ol>
         ),
         li: ({ children }) => (
-          <li className=" s-text-element-800 first:s-pt-0 last:s-pb-0">
+          <li
+            className={classNames(
+              "s-py-1 s-pl-1 first:s-pt-0 last:s-pb-0",
+              textColor,
+              paragraphSize
+            )}
+          >
             {children}
           </li>
         ),
+        hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
         blockquote: ({ children }) => {
           const [isCopied, copyToClipboard] = useCopyToClipboard();
 
@@ -98,21 +157,28 @@ export function Markdown({
           };
 
           return (
-            <div className="s-relative">
-              <div className="s-dark:border-structure-200-dark s-relative s-w-auto s-overflow-x-auto s-rounded-lg s-border s-border-structure-200">
-                <blockquote className="s-md:pl-8 s-md:mx-10 s-mx-4 s-my-8 s-border-l-4 s-border-gray-500 s-py-4 s-pl-4 s-italic">
-                  <div className="s-text-lg s-font-medium">{children}</div>
-                </blockquote>
-              </div>
+            <div className="s-my-2 s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
+              <blockquote
+                className={classNames(
+                  "s-w-full s-italic",
+                  paragraphSize,
+                  "s-text-element-800"
+                )}
+              >
+                {children}
+              </blockquote>
               {childrenContent && (
-                <div className="s-absolute s-right-2 s-top-2 s-mx-2 s-rounded-xl s-bg-structure-50">
-                  <IconButton
-                    variant="tertiary"
-                    size="xs"
-                    icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-                    onClick={handleCopy}
-                  />
-                </div>
+                <Button
+                  size="xs"
+                  variant="tertiary"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    await handleCopy();
+                  }}
+                  label="Copy"
+                  labelVisible={false}
+                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                />
               )}
             </div>
           );

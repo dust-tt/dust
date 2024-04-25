@@ -40,16 +40,10 @@ import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
-import type { Editor } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -100,7 +94,7 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
 const useInstructionEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
     return {
-      resetContent(content: string) {
+      resetContent(content: JSONContent) {
         return editor?.commands.setContent(content);
       },
     };
@@ -155,7 +149,9 @@ export function InstructionScreen({
 
   useEffect(() => {
     if (resetAt != null) {
-      editorService.resetContent(builderState.instructions || "");
+      editorService.resetContent(
+        tipTapContentFromPlainText(builderState.instructions || "")
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
@@ -344,32 +340,48 @@ function Suggestions({
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const updateSuggestions = useCallback(async () => {
-    if (!instructions) {
-      return;
-    }
-    setLoading(true);
-    const suggestions = await getInstructionsSuggestions(owner, instructions);
-    if (suggestions.isErr()) {
-      setError(suggestions.error);
-      setLoading(false);
-      return;
-    }
-
-    setSuggestions(suggestions.value);
-    setError(null);
-    setLoading(false);
-  }, [owner, instructions]);
+  // the ref allows comparing previous instructions to current instructions
+  // in the effect below
+  const previousInstructions = useRef<string | null>(instructions);
 
   useEffect(() => {
-    if (!instructions) {
+    // update suggestions when (and only when) instructions change
+    if (instructions === previousInstructions.current) {
+      return;
+    }
+    previousInstructions.current = instructions;
+
+    if (!instructions.trim()) {
       setError(null);
       setLoading(false);
       setSuggestions(STATIC_SUGGESTIONS);
+      clearTimeout(debounceHandle.current);
+      return;
     }
 
+    const updateSuggestions = async () => {
+      setLoading(true);
+      const updatedSuggestions = await getUpdatedInstructionsSuggestions({
+        owner,
+        currentInstructions: instructions,
+        formerSuggestions:
+          suggestions.status === "ok"
+            ? suggestions.suggestions.slice(0, 2)
+            : [],
+      });
+      if (updatedSuggestions.isErr()) {
+        setError(updatedSuggestions.error);
+        setLoading(false);
+        return;
+      }
+
+      setSuggestions(updatedSuggestions.value);
+      setError(null);
+      setLoading(false);
+    };
+
     debounce(debounceHandle, updateSuggestions);
-  }, [instructions, updateSuggestions]);
+  }, [instructions, owner, suggestions]);
 
   return (
     <Transition
@@ -460,10 +472,19 @@ function Suggestions({
   );
 }
 
-async function getInstructionsSuggestions(
-  owner: WorkspaceType,
-  instructions: string
-): Promise<Result<BuilderSuggestionsType, APIError>> {
+/* Return a list of suggestions:
+ * - empty array if the instructions are good;
+ * - otherwise, former suggestions + 2 new suggestions, ranked by order of relevance.
+ */
+async function getUpdatedInstructionsSuggestions({
+  owner,
+  currentInstructions,
+  formerSuggestions,
+}: {
+  owner: WorkspaceType;
+  currentInstructions: string;
+  formerSuggestions: string[];
+}): Promise<Result<BuilderSuggestionsType, APIError>> {
   const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
     method: "POST",
     headers: {
@@ -471,7 +492,10 @@ async function getInstructionsSuggestions(
     },
     body: JSON.stringify({
       type: "instructions",
-      inputs: { current_instructions: instructions },
+      inputs: {
+        current_instructions: currentInstructions,
+        former_suggestions: formerSuggestions,
+      },
     }),
   });
   if (!res.ok) {

@@ -5,7 +5,6 @@ import { pipeline, Writable } from "stream";
 import Stripe from "stripe";
 import { promisify } from "util";
 
-import { getBackendClient } from "@app/lib/amplitude/node";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -23,7 +22,9 @@ import {
 import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import {
@@ -235,12 +236,11 @@ async function handler(
               const workspaceSeats = await countActiveSeatsInWorkspace(
                 workspace.sId
               );
-              const amplitude = getBackendClient();
-              amplitude.subscriptionCreated(`user-${userId}`, {
-                workspaceId: workspace.sId,
-                workspaceName: workspace.name,
-                plan: plan.code,
-                workspaceSeats: workspaceSeats,
+              await ServerSideTracking.trackSubscriptionCreated({
+                userId,
+                workspace: renderLightWorkspaceType({ workspace }),
+                planCode,
+                workspaceSeats,
               });
             }
             await unpauseAllConnectorsAndCancelScrub(

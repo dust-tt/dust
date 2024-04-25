@@ -35,7 +35,10 @@ export function isUrlValid(url: string) {
     if (url.trim().length === 0) {
       return false;
     }
-    new URL(url);
+    const u = new URL(url);
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return false;
+    }
     return true;
   } catch (e) {
     return false;

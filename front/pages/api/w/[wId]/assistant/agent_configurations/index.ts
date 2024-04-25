@@ -17,7 +17,6 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { trackAssistantCreated } from "@app/lib/amplitude/node";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -29,6 +28,7 @@ import {
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { safeRedisClient } from "@app/lib/redis";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -197,10 +197,50 @@ async function handler(
         });
       }
 
+      if (
+        bodyValidation.right.useMultiActions &&
+        !owner.flags.includes("multi_actions")
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "Multi-actions is not enabled on this workspace.",
+          },
+        });
+      }
+
+      if (
+        !bodyValidation.right.useMultiActions &&
+        bodyValidation.right.assistant.maxToolsUsePerRun !== undefined
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "maxToolsUsePerRun is only supported in multi-actions mode.",
+          },
+        });
+      }
+
+      if (
+        bodyValidation.right.useMultiActions &&
+        bodyValidation.right.assistant.maxToolsUsePerRun === undefined
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "maxToolsUsePerRun is required in multi-actions mode.",
+          },
+        });
+      }
+
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: bodyValidation.right.assistant,
-        legacySingleActionMode: true,
+        legacySingleActionMode: !bodyValidation.right.useMultiActions,
       });
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
@@ -247,6 +287,7 @@ export async function createOrUpgradeAgentConfiguration({
     status,
     scope,
     instructions,
+    maxToolsUsePerRun,
   },
   agentConfigurationId,
   legacySingleActionMode,
@@ -279,13 +320,16 @@ export async function createOrUpgradeAgentConfiguration({
     } else {
       legacyForceGenerationAtIteration = 0;
     }
+
+    // TODO(@fontanierh): fix once generation is an action.
+    maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
+  }
+
+  if (maxToolsUsePerRun === undefined) {
+    throw new Error("maxToolsUsePerRun is required.");
   }
 
   let generationConfig: AgentGenerationConfigurationType | null = null;
-
-  // @todo FIX MULTI ACTIONS
-  const maxToolsUsePerRun = actions.length + (generationConfig ? 1 : 0);
-
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
@@ -363,6 +407,22 @@ export async function createOrUpgradeAgentConfiguration({
             agentConfigurationRes.value
           )
         );
+      } else if (action.type === "process_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "process_configuration",
+              relativeTimeFrame: action.relativeTimeFrame,
+              dataSources: action.dataSources,
+              schema: action.schema,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
       } else {
         assertNever(action);
       }
@@ -381,7 +441,11 @@ export async function createOrUpgradeAgentConfiguration({
 
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {
-    trackAssistantCreated(auth, { assistant: agentConfiguration });
+    void ServerSideTracking.trackAssistantCreated({
+      user: auth.user() ?? undefined,
+      workspace: auth.workspace() ?? undefined,
+      assistant: agentConfiguration,
+    });
   }
 
   return new Ok(agentConfiguration);

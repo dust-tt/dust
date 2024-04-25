@@ -2,10 +2,10 @@ import type { Session } from "@auth0/nextjs-auth0";
 import type { UserProviderType, UserType } from "@dust-tt/types";
 import { sanitizeString } from "@dust-tt/types";
 
-import { trackSignup } from "@app/lib/amplitude/node";
 import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstandLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 
@@ -142,18 +142,20 @@ export async function createOrUpdateUser(
       lastName: externalUser.family_name ?? lastName,
     });
 
-    trackSignup({
-      sId: u.sId,
-      id: u.id,
-      createdAt: u.createdAt.getTime(),
-      provider: u.provider,
-      username: u.username,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      image: u.imageUrl,
-      fullName: u.name,
-    } satisfies UserType);
+    ServerSideTracking.trackSignup({
+      user: {
+        sId: u.sId,
+        id: u.id,
+        createdAt: u.createdAt.getTime(),
+        provider: u.provider,
+        username: u.username,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        image: u.imageUrl,
+        fullName: u.name,
+      },
+    });
 
     return { user: renderUserType(u), created: true };
   }

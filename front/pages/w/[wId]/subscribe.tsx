@@ -9,10 +9,10 @@ import { ProPriceTable } from "@app/components/PlansTables";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { getBrowserClient, trackPageView } from "@app/lib/amplitude/browser";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -46,16 +46,14 @@ export default function Subscribe({
   const { user } = useUser();
 
   useEffect(() => {
-    const amplitude = getBrowserClient();
     if (user?.id) {
-      const userId = `user-${user.id}`;
-      amplitude.identify(userId);
-      trackPageView({
+      ClientSideTracking.trackPageView({
+        user,
         pathname: router.pathname,
         workspaceId: owner.sId,
       });
     }
-  }, [owner.sId, router.pathname, user?.id]);
+  }, [owner.sId, router.pathname, user]);
 
   const { submit: handleSubscribePlan } = useSubmitFunction(async () => {
     const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {

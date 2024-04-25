@@ -4,6 +4,7 @@ export const WHITELISTABLE_FEATURES = [
   "okta_enterprise_connection",
   "labs_transcripts",
   "labs_extract",
+  "multi_actions",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
