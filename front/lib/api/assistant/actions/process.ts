@@ -66,20 +66,24 @@ export function renderProcessActionForModel(
  * Params generation.
  */
 
-export async function processActionSpecification(
-  configuration: ProcessConfigurationType
-): Promise<AgentActionSpecification> {
+async function processActionSpecification({
+  actionConfiguration,
+  name,
+  description,
+}: {
+  actionConfiguration: ProcessConfigurationType;
+  name: string;
+  description: string;
+}): Promise<AgentActionSpecification> {
   const inputs = [];
 
-  if (configuration.relativeTimeFrame === "auto") {
+  if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
   return {
-    name: "process_data_sources",
-    description:
-      "Process data sources specified by the user by performing a search and extracting" +
-      " structured information (complying to a fixed schema) from the retrieved information.",
+    name,
+    description,
     inputs,
   };
 }
@@ -89,8 +93,12 @@ export async function generateProcessSpecification(
   auth: Authenticator,
   {
     actionConfiguration,
+    name = "process_data_sources",
+    description,
   }: {
     actionConfiguration: ProcessConfigurationType;
+    name?: string;
+    description?: string;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
@@ -98,7 +106,14 @@ export async function generateProcessSpecification(
     throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  const spec = await processActionSpecification(actionConfiguration);
+  const spec = await processActionSpecification({
+    actionConfiguration,
+    name,
+    description:
+      description ??
+      "Process data sources specified by the user by performing a search and extracting" +
+        " structured information (complying to a fixed schema) from the retrieved information.",
+  });
   return new Ok(spec);
 }
 

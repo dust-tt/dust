@@ -49,11 +49,16 @@ export function renderTablesQueryActionForModel(
 
 // Generate the specification for the TablesQuery app. This is the instruction given to the LLM to
 // understand the task.
-async function tablesQueryActionSpecification(): Promise<AgentActionSpecification> {
+async function tablesQueryActionSpecification({
+  name,
+  description,
+}: {
+  name: string;
+  description: string;
+}): Promise<AgentActionSpecification> {
   return {
-    name: "query_tables",
-    description:
-      "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
+    name,
+    description,
     inputs: [
       {
         name: "question",
@@ -67,14 +72,18 @@ async function tablesQueryActionSpecification(): Promise<AgentActionSpecificatio
 
 // Generates the action specification for generation of rawInputs passed to `runTablesQuery`.
 export async function generateTablesQuerySpecification(
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    name = "query_tables",
+    description = "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
+  }: { name?: string; description?: string } = {}
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  const spec = await tablesQueryActionSpecification();
+  const spec = await tablesQueryActionSpecification({ name, description });
   return new Ok(spec);
 }
 

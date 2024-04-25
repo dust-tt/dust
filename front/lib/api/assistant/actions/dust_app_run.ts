@@ -54,10 +54,17 @@ export function renderDustAppRunActionForModel(
  * Params generation.
  */
 
-export async function dustAppRunActionSpecification(
-  app: AppType,
-  schema: DatasetSchema | null
-): Promise<Result<AgentActionSpecification, Error>> {
+async function dustAppRunActionSpecification({
+  app,
+  schema,
+  name,
+  description,
+}: {
+  app: AppType;
+  schema: DatasetSchema | null;
+  name?: string;
+  description?: string;
+}): Promise<Result<AgentActionSpecification, Error>> {
   const appName = app.name;
   const appDescription = app.description;
 
@@ -93,8 +100,8 @@ export async function dustAppRunActionSpecification(
   }
 
   return new Ok({
-    name: appName,
-    description: appDescription || "",
+    name: name ?? appName,
+    description: description ?? appDescription ?? "",
     inputs,
   });
 }
@@ -104,8 +111,12 @@ export async function generateDustAppRunSpecification(
   auth: Authenticator,
   {
     actionConfiguration,
+    name,
+    description,
   }: {
     actionConfiguration: DustAppRunConfigurationType;
+    name?: string;
+    description?: string;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
@@ -159,7 +170,7 @@ export async function generateDustAppRunSpecification(
     }
   }
 
-  return dustAppRunActionSpecification(app, schema);
+  return dustAppRunActionSpecification({ app, schema, name, description });
 }
 
 /**
