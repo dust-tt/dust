@@ -148,13 +148,13 @@ export default function InputBlock({
           ) : null}
         </div>
 
-        {block.config && block.config.dataset && datasetWithData ? (
+        {datasetWithData && datasetWithData.schema ? (
           <div className="max-h-[800px] overflow-y-auto">
             <DatasetView
               readOnly={false}
               datasets={[datasetWithData]}
               dataset={datasetWithData}
-              schema={block.config.datasetWithData.schema}
+              schema={datasetWithData.schema}
               onUpdate={onUpdate}
               nameDisabled={false}
               showDataOnly={true}
