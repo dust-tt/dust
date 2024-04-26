@@ -435,8 +435,7 @@ pub const SQL_INDEXES: [&'static str; 22] = [
        idx_datasets_joins ON datasets_joins (dataset, point);",
     "CREATE INDEX IF NOT EXISTS
        idx_runs_joins ON runs_joins (run, block_execution);",
-    // TODO(2024-04-26 flav) Remove `CONCURRENTLY` once index has been created.
-    "CREATE INDEX CONCURRENTLY IF NOT EXISTS
+    "CREATE INDEX IF NOT EXISTS
        idx_runs_joins_block_execution ON runs_joins (block_execution);",
     "CREATE INDEX IF NOT EXISTS
        idx_cache_project_hash ON cache (project, hash);",
