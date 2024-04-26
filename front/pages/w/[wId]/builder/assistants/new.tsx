@@ -22,7 +22,7 @@ import AssistantBuilder, {
 } from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
-import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
+import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
@@ -125,11 +125,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         dustApps: allDustApps,
       })
     : {
-        retrievalConfiguration: DEFAULT_ASSISTANT_STATE.retrievalConfiguration,
-        dustAppConfiguration: DEFAULT_ASSISTANT_STATE.dustAppConfiguration,
+        retrievalConfiguration:
+          getDefaultAssistantState().retrievalConfiguration,
+        dustAppConfiguration: getDefaultAssistantState().dustAppConfiguration,
         tablesQueryConfiguration:
-          DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration,
-        processConfiguration: DEFAULT_ASSISTANT_STATE.processConfiguration,
+          getDefaultAssistantState().tablesQueryConfiguration,
+        processConfiguration: getDefaultAssistantState().processConfiguration,
       };
 
   return {
