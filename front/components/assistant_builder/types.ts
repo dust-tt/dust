@@ -112,35 +112,38 @@ export type AssistantBuilderInitialState = {
   processConfiguration: AssistantBuilderState["processConfiguration"];
 };
 
-export const DEFAULT_ASSISTANT_STATE: AssistantBuilderState = {
-  actionMode: "GENERIC",
-  retrievalConfiguration: {
-    dataSourceConfigurations: {},
-    timeFrame: {
-      value: 1,
-      unit: "month",
+// Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
+export function getDefaultAssistantState(): AssistantBuilderState {
+  return {
+    actionMode: "GENERIC",
+    retrievalConfiguration: {
+      dataSourceConfigurations: {},
+      timeFrame: {
+        value: 1,
+        unit: "month",
+      },
     },
-  },
-  dustAppConfiguration: { app: null },
-  tablesQueryConfiguration: {},
-  processConfiguration: {
-    dataSourceConfigurations: {},
-    timeFrame: {
-      value: 1,
-      unit: "day",
+    dustAppConfiguration: { app: null },
+    tablesQueryConfiguration: {},
+    processConfiguration: {
+      dataSourceConfigurations: {},
+      timeFrame: {
+        value: 1,
+        unit: "day",
+      },
+      schema: [],
     },
-    schema: [],
-  },
-  handle: null,
-  scope: "private",
-  description: null,
-  instructions: null,
-  avatarUrl: null,
-  generationSettings: {
-    modelSettings: {
-      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+    handle: null,
+    scope: "private",
+    description: null,
+    instructions: null,
+    avatarUrl: null,
+    generationSettings: {
+      modelSettings: {
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+      },
+      temperature: 0.7,
     },
-    temperature: 0.7,
-  },
-};
+  };
+}
