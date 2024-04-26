@@ -1402,7 +1402,7 @@ async function _createAgentDataSourcesConfigData(
         );
         if (!dataSource) {
           throw new Error(
-            "Can't create AgentDataSourcesConfig: datasource not found."
+            `Can't create AgentDataSourcesConfig: datasource not found. dataSourceId: ${dsConfig.dataSourceId}`
           );
         }
         return AgentDataSourceConfiguration.create(
