@@ -140,7 +140,7 @@ export function InstructionScreen({
       editorProps: {
         attributes: {
           class:
-            "min-h-60 border-structure-200 border bg-structure-50 transition-all " +
+            "overflow-auto min-h-[240px] h-full border-structure-200 border bg-structure-50 transition-all " +
             "duration-200 rounded-xl focus:border-action-300 focus:ring-action-300 p-2 focus:outline-action-200",
         },
       },
@@ -157,7 +157,7 @@ export function InstructionScreen({
   }, [resetAt]);
 
   return (
-    <div className="flex h-full w-full flex-col gap-4">
+    <div className="flex grow flex-col gap-4">
       <div className="flex flex-col sm:flex-row">
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
@@ -183,8 +183,11 @@ export function InstructionScreen({
           />
         </div>
       </div>
-      <div className="flex flex-col gap-1 p-px">
-        <EditorContent editor={editor} />
+      <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+        <EditorContent
+          editor={editor}
+          className="absolute bottom-0 left-0 right-0 top-0"
+        />
       </div>
       {isDevelopmentOrDustWorkspace(owner) && (
         <Suggestions
