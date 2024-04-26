@@ -575,8 +575,8 @@ export default function AssistantBuilder({
       >
         <BuilderLayout
           leftPanel={
-            <div className="flex min-h-[64vh] flex-col gap-5 pb-16 pt-4">
-              <div className="flex flex-col flex-wrap justify-between gap-4 sm:flex-row">
+            <div className="flex h-full flex-col gap-5 pb-6 pt-4">
+              <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="self-end pt-0.5">
                   <SharingButton
@@ -703,7 +703,7 @@ function PrevNextButtons({
   setScreen: (screen: BuilderScreen) => void;
 }) {
   return (
-    <div className="flex flex-grow pt-6">
+    <div className="flex pt-6">
       {screen !== "instructions" && (
         <Button
           label="Previous"
