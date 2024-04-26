@@ -1,13 +1,10 @@
 import {
   AnthropicLogo,
   Button,
-  ChevronRightIcon,
   ContentMessage,
   DropdownMenu,
   GoogleLogo,
-  IconButton,
   MistralLogo,
-  Modal,
   OpenaiLogo,
   Page,
   Spinner2,
@@ -345,8 +342,6 @@ function Suggestions({
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const [showSuggestionsHistory, setShowSuggestionsHistory] = useState(false);
-
   // the ref allows comparing previous instructions to current instructions
   // in the effect below
   const previousInstructions = useRef<string | null>(instructions);
@@ -407,19 +402,12 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
-      <SuggestionsHistoryDialog
-        open={showSuggestionsHistory}
-        suggestions={suggestions}
-        onClose={() => {
-          setShowSuggestionsHistory(false);
-        }}
-      />
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-base font-bold text-element-800">
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner2 size="sm" />}
         </div>
-        <div>
+        <div className="overflow-y-auto scrollbar-hide">
           {(() => {
             if (error) {
               return (
@@ -437,31 +425,18 @@ function Suggestions({
               );
             }
             return (
-              <div className="flex gap-2">
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions[0]}
-                </ContentMessage>
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions[1]}
-                </ContentMessage>
-                <IconButton
-                  icon={ChevronRightIcon}
-                  size="sm"
-                  variant="tertiary"
-                  onClick={() => {
-                    setShowSuggestionsHistory(true);
-                  }}
-                />
+              <div className="flex w-max gap-2">
+                {suggestions.map((suggestion, index) => (
+                  <ContentMessage
+                    key={index}
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="min-width-[320px] transition-all"
+                  >
+                    {suggestion}
+                  </ContentMessage>
+                ))}
               </div>
             );
           })()}
@@ -530,40 +505,4 @@ function mergeSuggestions(
     }
   }
   return suggestions;
-}
-
-function SuggestionsHistoryDialog({
-  open,
-  suggestions,
-  onClose,
-}: {
-  open: boolean;
-  suggestions: string[];
-  onClose: () => void;
-}) {
-  return (
-    <Modal
-      title="Suggestions List"
-      onClose={onClose}
-      variant="side-sm"
-      isOpen={open}
-      hasChanged={false}
-    >
-      <div className="flex flex-col gap-2 pt-6">
-        <div className="flex flex-col gap-2">
-          {suggestions.map((suggestion, index) => (
-            <ContentMessage
-              key={index}
-              size="sm"
-              title=""
-              variant="sky"
-              className="transition-all"
-            >
-              {suggestion}
-            </ContentMessage>
-          ))}
-        </div>
-      </div>
-    </Modal>
-  );
 }
