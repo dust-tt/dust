@@ -319,6 +319,13 @@ const STATIC_SUGGESTIONS = [
   "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
 ];
 
+type SuggestionStatus =
+  | "no_suggestions"
+  | "loading"
+  | "suggestions_available"
+  | "instructions_are_good"
+  | "error";
+
 function Suggestions({
   owner,
   instructions,
@@ -330,13 +337,9 @@ function Suggestions({
   const [suggestions, setSuggestions] = useState<string[]>(
     !instructions ? STATIC_SUGGESTIONS : []
   );
-  const [suggestionsStatus, setSuggestionsStatus] = useState<
-    | "no_suggestions"
-    | "loading"
-    | "suggestions_available"
-    | "instructions_are_good"
-    | "error"
-  >(!instructions ? "suggestions_available" : "no_suggestions");
+  const [suggestionsStatus, setSuggestionsStatus] = useState<SuggestionStatus>(
+    !instructions ? "suggestions_available" : "no_suggestions"
+  );
 
   const [error, setError] = useState<APIError | null>(null);
 
@@ -379,6 +382,7 @@ function Suggestions({
         !updatedSuggestions.value.suggestions.length
       ) {
         setSuggestionsStatus("instructions_are_good");
+        return;
       }
       setSuggestions(mergeSuggestions(suggestions, updatedSuggestions.value));
       setError(null);
@@ -387,14 +391,16 @@ function Suggestions({
 
     debounce(debounceHandle, updateSuggestions);
     return () => {
-      clearTimeout(debounceHandle.current);
-      debounceHandle.current = undefined;
+      if (debounceHandle.current) {
+        clearTimeout(debounceHandle.current);
+        debounceHandle.current = undefined;
+      }
     };
   }, [instructions, owner, suggestions]);
 
   return (
     <Transition
-      show={!(suggestionsStatus === "no_suggestions")}
+      show={suggestionsStatus !== "no_suggestions"}
       enter="transition-[max-height] duration-1000"
       enterFrom="max-h-0"
       enterTo="max-h-full"
@@ -492,6 +498,7 @@ function mergeSuggestions(
   suggestions: string[],
   dustAppSuggestions: BuilderSuggestionsType
 ): string[] {
+  const mergedSuggestions = [...suggestions];
   if (dustAppSuggestions.status === "ok") {
     const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
     const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
@@ -500,9 +507,9 @@ function mergeSuggestions(
     );
     for (const suggestion of bestRankedSuggestions) {
       if (!visibleSuggestions.includes(suggestion)) {
-        suggestions.unshift(suggestion);
+        mergedSuggestions.unshift(suggestion);
       }
     }
   }
-  return suggestions;
+  return mergedSuggestions;
 }
