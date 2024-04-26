@@ -6,7 +6,7 @@ import {
   Page,
   Searchbar,
   ServerIcon,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type { ContentNode, WorkspaceType } from "@dust-tt/types";
 import type {
@@ -321,7 +321,7 @@ export default function AssistantBuilderTablesModal({
     >
       <div className="w-full pt-12">
         {isInitializingNodes || isInitializingParents ? (
-          <Spinner />
+          <Spinner2 />
         ) : !selectedDataSource ? (
           <PickDataSource
             dataSources={supportedDataSources}

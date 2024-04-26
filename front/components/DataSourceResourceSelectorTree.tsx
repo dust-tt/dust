@@ -4,7 +4,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   DocumentTextIcon,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   ContentNode,
@@ -159,7 +159,7 @@ function DataSourceResourceSelectorChildren({
   return (
     <>
       {isResourcesLoading ? (
-        <Spinner />
+        <Spinner2 />
       ) : (
         <div className="flex-1 space-y-1">
           {resources.map((r) => {
