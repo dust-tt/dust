@@ -153,6 +153,7 @@ export default function AppView({
   const [spec, setSpec] = useState(
     JSON.parse(app.savedSpecification || `[]`) as SpecificationType
   );
+
   const [config, setConfig] = useState(
     extractConfig(JSON.parse(app.savedSpecification || `{}`))
   );

@@ -427,7 +427,7 @@ export default function DatasetView({
 
   useEffect(() => {
     // showDataOnly means we're editing the dataset directly from the InputBlock so we need to update state.
-    if (showDataOnly) {
+    if (dataset && showDataOnly) {
       setDatasetKeys(checkDatasetData({ data: dataset.data }));
       setDatasetData(dataset.data || []);
       setDatasetName(dataset.name);
@@ -608,7 +608,8 @@ export default function DatasetView({
                 Input data for test-running your app using the 'RUN' button.
               </strong>
               <br />
-              Running this app from the API or an assistant will use the input data provided at runtime.
+              Running this app from the API or an assistant will use the input
+              data provided at runtime.
             </p>
           ) : (
             <>

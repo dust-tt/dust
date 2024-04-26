@@ -7,7 +7,8 @@ import type {
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
-import _ from 'lodash';
+import _ from "lodash";
+import { useEffect, useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
@@ -44,10 +45,14 @@ export default function InputBlock({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const [datasetWithData, setDatasetWithData] = useState<DatasetType | null>(
+    null
+  );
+
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = dataset;
-    b.config.datasetWithData = await handleGetDatasetData(dataset);
+    setDatasetWithData(await handleGetDatasetData(dataset));
     onBlockUpdate(b);
   };
 
@@ -65,35 +70,41 @@ export default function InputBlock({
     return res.dataset;
   };
 
-const onUpdate = _.debounce(async (
-  initializing: boolean,
-  valid: boolean,
-  currentDatasetInEditor: DatasetType,
-  schema: DatasetSchema
-) => {
-  if(!initializing && valid) {
-    console.log("onUpdate", currentDatasetInEditor, schema);
-    const res = await fetch(
-      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dataset: currentDatasetInEditor,
-          schema: schema,
-        }),
+  useEffect(
+    () => {
+      if (block.config && block.config.dataset) {
+        void handleSetDataset(block.config.dataset);
       }
-    );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
-    console.log("DATASET UPDATED");
-    console.log(res);
-  }
-}, 500); // 300ms delay
-
-  console.log("DATASET WITH DATA");
-  console.log(block.config.datasetWithData);
+  const onUpdate = _.debounce(
+    async (
+      initializing: boolean,
+      valid: boolean,
+      currentDatasetInEditor: DatasetType,
+      schema: DatasetSchema
+    ) => {
+      if (!initializing && valid) {
+        await fetch(
+          `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              dataset: currentDatasetInEditor,
+              schema: schema,
+            }),
+          }
+        );
+      }
+    },
+    800
+  );
 
   return (
     <Block
@@ -124,31 +135,29 @@ const onUpdate = _.debounce(async (
                 onDatasetUpdate={handleSetDataset}
                 readOnly={readOnly}
               />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                }}
+                icon={PencilSquareIcon}
+                label="Edit"
+                size="xs"
+              />
             </div>
           ) : null}
         </div>
 
-        {block.config &&
-        block.config.dataset &&
-        block.config.datasetWithData ? (
-          <div>
+        {block.config && block.config.dataset && datasetWithData ? (
+          <div className="max-h-[800px] overflow-y-auto">
             <DatasetView
               readOnly={false}
-              datasets={[block.config.datasetWithData]}
-              dataset={block.config.datasetWithData}
+              datasets={[datasetWithData]}
+              dataset={datasetWithData}
               schema={block.config.datasetWithData.schema}
               onUpdate={onUpdate}
               nameDisabled={false}
               showDataOnly={true}
-            />
-            <Button
-              variant="secondary"
-              onClick={() => {
-                window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-              }}
-              icon={PencilSquareIcon}
-              label="Edit schema"
-              size="xs"
             />
           </div>
         ) : null}
