@@ -244,7 +244,6 @@ export class AgentMessage extends Model<
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
   declare agentDustAppRunActionId: ForeignKey<
     AgentDustAppRunAction["id"]
   > | null;
@@ -315,7 +314,6 @@ AgentMessage.init(
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
         const actionsTypes: (keyof AgentMessage)[] = [
-          "agentRetrievalActionId",
           "agentDustAppRunActionId",
           "agentTablesQueryActionId",
           "agentProcessActionId",
@@ -325,7 +323,7 @@ AgentMessage.init(
         );
         if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "Only one of agentRetrievalActionId, agentDustAppRunActionId or agentTablesQueryActionId can be set"
+            "Only one of agentDustAppRunActionId or agentTablesQueryActionId can be set"
           );
         }
       },
