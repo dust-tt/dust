@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok, rateLimiter } from "@dust-tt/types";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -54,13 +55,15 @@ export async function launchUpdateUsageWorkflow({
 
     return new Ok(undefined);
   } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
-      },
-      "Failed starting usage workflow."
-    );
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
+      logger.error(
+        {
+          workflowId,
+          error: e,
+        },
+        "Failed starting usage workflow."
+      );
+    }
     return new Err(e as Error);
   }
 }
