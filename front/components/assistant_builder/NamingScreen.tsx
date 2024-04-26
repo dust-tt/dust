@@ -6,7 +6,7 @@ import {
   Page,
   PencilSquareIcon,
   SparklesIcon,
-  Spinner2,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -373,7 +373,7 @@ export default function NamingScreen({
               />
             </div>
             {generatingDescription ? (
-              <Spinner2 size="sm" />
+              <Spinner size="sm" />
             ) : (
               <IconButton
                 icon={SparklesIcon}

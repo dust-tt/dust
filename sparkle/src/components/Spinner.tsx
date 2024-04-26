@@ -11,7 +11,7 @@ import animLightXS from "@sparkle/lottie/spinnerLight";
 import animLightLG from "@sparkle/lottie/spinnerLightLG";
 import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
-export interface Spinner2Props {
+export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
   variant?: "color" | "light" | "dark";
 }
@@ -24,7 +24,7 @@ const pxSizeClasses = {
   xxl: "192",
 };
 
-const Spinner2: React.FC<Spinner2Props> = ({
+const Spinner: React.FC<SpinnerProps> = ({
   size = "md",
   variant = "color",
 }) => {
@@ -89,4 +89,4 @@ const Spinner2: React.FC<Spinner2Props> = ({
   );
 };
 
-export default Spinner2;
+export default Spinner;

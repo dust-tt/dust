@@ -8,7 +8,7 @@ import {
   Folder,
   Square3Stack3D,
 } from "@sparkle/icons/stroke";
-import { Spinner2 } from "@sparkle/index";
+import { Spinner } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
@@ -23,7 +23,7 @@ export interface TreeProps {
 export function Tree({ children, isLoading }: TreeProps) {
   return isLoading ? (
     <div className="s-py-2 s-pl-4">
-      <Spinner2 size="xs" variant="dark" />
+      <Spinner size="xs" variant="dark" />
     </div>
   ) : (
     <div className="s-flex s-flex-col s-gap-1 s-overflow-hidden">

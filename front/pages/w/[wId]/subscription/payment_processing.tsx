@@ -1,4 +1,4 @@
-import { BarHeader, Page, Spinner2 } from "@dust-tt/sparkle";
+import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -74,7 +74,7 @@ export default function PaymentProcessing({
       <Page>
         <div className="flex h-full w-full flex-col	items-center justify-center gap-2">
           <div>
-            <Spinner2 size="xl" />
+            <Spinner size="xl" />
           </div>
           <div>
             <Page.P>Processing</Page.P>

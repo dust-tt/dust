@@ -7,7 +7,7 @@ import {
   IconButton,
   Page,
   ServerIcon,
-  Spinner2,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -511,7 +511,7 @@ function TablesQuerySection({
   return (
     <div className="flex flex-col gap-2">
       {isLoading ? (
-        <Spinner2 />
+        <Spinner />
       ) : !tablesQueryConfig.tables.length ? (
         <span>No tables are currently linked to this assistant.</span>
       ) : tables ? (
