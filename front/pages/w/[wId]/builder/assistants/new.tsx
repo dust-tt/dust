@@ -255,12 +255,13 @@ export default function CreateAssistant({
                 "pictureUrl" in agentConfiguration
                   ? agentConfiguration.pictureUrl
                   : null,
-              generationSettings: agentConfiguration.generation
-                ? {
-                    modelSettings: agentConfiguration.generation.model,
-                    temperature: agentConfiguration.generation.temperature,
-                  }
-                : null,
+              generationSettings: {
+                modelSettings: {
+                  providerId: agentConfiguration.model.providerId,
+                  modelId: agentConfiguration.model.modelId,
+                },
+                temperature: agentConfiguration.model.temperature,
+              },
             }
           : null
       }

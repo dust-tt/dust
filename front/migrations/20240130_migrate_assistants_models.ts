@@ -1,10 +1,7 @@
 import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 
-import {
-  AgentConfiguration,
-  AgentGenerationConfiguration,
-} from "@app/lib/models/assistant/agent";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 
 const { LIVE, WORKSPACE } = process.env;
@@ -35,45 +32,23 @@ async function updateWorkspaceAssistants(wId: string) {
     where: { workspaceId: w.id },
   });
 
-  for (const c of agentConfigurations) {
-    const genConfigs = await AgentGenerationConfiguration.findAll({
-      where: {
-        agentConfigurationId: c.id,
-      },
-    });
-    if (genConfigs.length === 0) {
-      console.log(
-        "Skipping agent (no generation configuration)",
-        c.sId,
-        c.name
-      );
-      continue;
-    }
-
-    if (genConfigs.length > 1) {
-      throw new Error(
-        "Unexpected: legacy migration, agents could not have multiple generation configurations at the time"
-      );
-    }
-
-    const g = genConfigs[0];
-
-    if (FROM_MODELS.includes(g.modelId)) {
+  for (const agent of agentConfigurations) {
+    if (FROM_MODELS.includes(agent.modelId)) {
       if (LIVE) {
-        const oldModel = g.modelId;
-        await g.update({ modelId: TO_MODEL });
+        const oldModel = agent.modelId;
+        await agent.update({ modelId: TO_MODEL });
         console.log(
           "Updated",
-          c.sId,
-          c.name,
+          agent.sId,
+          agent.name,
           "from " + oldModel + " to " + TO_MODEL
         );
       } else {
         console.log(
           "Would update",
-          c.sId,
-          c.name,
-          "from " + g.modelId + " to " + TO_MODEL
+          agent.sId,
+          agent.name,
+          "from " + agent.modelId + " to " + TO_MODEL
         );
       }
     }

@@ -2,7 +2,6 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
-  AgentModelConfigurationType,
   LightAgentConfigurationType,
   Result,
   WithAPIErrorReponse,
@@ -10,7 +9,6 @@ import type {
 import {
   assertNever,
   GetAgentConfigurationsQuerySchema,
-  GPT_4_TURBO_MODEL_CONFIG,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
 } from "@dust-tt/types";
@@ -283,6 +281,7 @@ export async function createOrUpgradeAgentConfiguration({
   assistant: {
     actions,
     generation,
+    model,
     name,
     description,
     pictureUrl,
@@ -357,17 +356,6 @@ export async function createOrUpgradeAgentConfiguration({
   if (maxToolsUsePerRun === undefined) {
     throw new Error("maxToolsUsePerRun is required.");
   }
-
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-
-  // @todo MULTI_ACTIONS @daph remove default value since model config is mandatory
-  const model: AgentModelConfigurationType = {
-    providerId:
-      generation?.model.providerId ?? GPT_4_TURBO_MODEL_CONFIG.providerId,
-    modelId: generation?.model.modelId ?? GPT_4_TURBO_MODEL_CONFIG.modelId,
-    temperature: generation?.temperature ?? 0.7,
-  };
-
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
@@ -384,11 +372,9 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
+  let generationConfig: AgentGenerationConfigurationType | null = null;
   if (generation) {
     generationConfig = await createAgentGenerationConfiguration(auth, {
-      prompt: instructions || "", // @todo Daph remove this field
-      model: generation.model,
-      temperature: generation.temperature,
       agentConfiguration: agentConfigurationRes.value,
       name: generation.name ?? null,
       description: generation.description ?? null,

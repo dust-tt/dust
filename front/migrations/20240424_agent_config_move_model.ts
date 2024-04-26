@@ -1,5 +1,5 @@
-import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
-import { isModelId, isModelProviderId } from "@dust-tt/types";
+// import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
+// import { isModelId, isModelProviderId } from "@dust-tt/types";
 
 import {
   AgentConfiguration,
@@ -32,30 +32,30 @@ const backfillAgentConfiguration = async (
     return;
   }
 
-  const [generation] = genConfigs;
+  // const [generation] = genConfigs;
 
-  if (!isModelProviderId(generation.providerId)) {
-    throw new Error(
-      `Invalid Provider Id for agent ${generation.id}:${generation.providerId}).`
-    );
-  }
+  // if (!isModelProviderId(generation.providerId)) {
+  //   throw new Error(
+  //     `Invalid Provider Id for agent ${generation.id}:${generation.providerId}).`
+  //   );
+  // }
 
-  if (!isModelId(generation.modelId)) {
-    throw new Error(
-      `Invalid Provider Id for agent ${generation.id}:${generation.modelId}).`
-    );
-  }
+  // if (!isModelId(generation.modelId)) {
+  //   throw new Error(
+  //     `Invalid Provider Id for agent ${generation.id}:${generation.modelId}).`
+  //   );
+  // }
 
-  logger.info(
-    `Updating agent ${agent.id} from generation configuration ${generation.id}. --execute: ${execute}`
-  );
+  // logger.info(
+  //   `Updating agent ${agent.id} from generation configuration ${generation.id}. --execute: ${execute}`
+  // );
 
   if (execute) {
-    await agent.update({
-      modelId: generation.modelId as ModelIdType,
-      providerId: generation.providerId as ModelProviderIdType,
-      temperature: generation.temperature,
-    });
+    // await agent.update({
+    //   modelId: generation.modelId as ModelIdType,
+    //   providerId: generation.providerId as ModelProviderIdType,
+    //   temperature: generation.temperature,
+    // });
   }
 };
 
@@ -81,5 +81,6 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
+  throw new Error("This migration is deprecated and should not be run.");
   await backfillAgentConfigurations(execute);
 });

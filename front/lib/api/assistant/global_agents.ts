@@ -117,8 +117,6 @@ async function _getHelperGlobalAgent(
     },
     generation: {
       id: -1,
-      model,
-      temperature: 0.2,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -154,11 +152,6 @@ async function _getGPT35TurboGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -194,11 +187,6 @@ async function _getGPT4GlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -234,11 +222,6 @@ async function _getClaudeInstantGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -280,11 +263,6 @@ async function _getClaude2GlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -328,11 +306,6 @@ async function _getClaude3HaikuGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -375,11 +348,6 @@ async function _getClaude3SonnetGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -421,11 +389,6 @@ async function _getClaude3OpusGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -467,11 +430,6 @@ async function _getMistralLargeGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
-        modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -513,11 +471,6 @@ async function _getMistralMediumGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
-        modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -553,11 +506,6 @@ async function _getMistralSmallGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
-        modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -598,11 +546,6 @@ async function _getGeminiProGlobalAgent({
     },
     generation: {
       id: -1,
-      model: {
-        providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
-        modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
-      },
-      temperature: 0.7,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 0,
@@ -720,16 +663,6 @@ async function _getManagedDataSourceAgent(
     model,
     generation: {
       id: -1,
-      model: !auth.isUpgraded()
-        ? {
-            providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-          }
-        : {
-            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-          },
-      temperature: 0.4,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 1,
@@ -980,16 +913,6 @@ async function _getDustGlobalAgent(
     model,
     generation: {
       id: -1,
-      model: !auth.isUpgraded()
-        ? {
-            providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-          }
-        : {
-            providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-            modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-          },
-      temperature: 0.4,
       name: "send_message_to_user",
       description: "Send a message to the user",
       forceUseAtIteration: 1,
