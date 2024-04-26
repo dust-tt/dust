@@ -1,4 +1,4 @@
-import { Spinner2 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -209,7 +209,7 @@ export default function EnterpriseUpgradeDialog({
           </PokeDialogDescription>
         </PokeDialogHeader>
         {error && <div className="text-red-500">{error}</div>}
-        {isSubmitting && <Spinner2 />}
+        {isSubmitting && <Spinner />}
         {!isSubmitting && (
           <PokeForm {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

@@ -9,7 +9,7 @@ import {
   MistralLogo,
   OpenaiLogo,
   Page,
-  Spinner2,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -404,7 +404,7 @@ function Suggestions({
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-base font-bold text-element-800">
           <div>Tips</div>
-          {loading && <Spinner2 size="sm" />}
+          {loading && <Spinner size="sm" />}
         </div>
         <div>
           {(() => {

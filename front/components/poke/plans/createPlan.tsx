@@ -1,4 +1,4 @@
-import { Spinner2 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
 import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -209,7 +209,7 @@ export default function CreatePlanForm({ owner }: { owner: WorkspaceType }) {
               placeholder="1000"
             />
             <PokeButton type="submit" variant="outline">
-              {isSubmitting && <Spinner2 size="sm" />} Submit
+              {isSubmitting && <Spinner size="sm" />} Submit
             </PokeButton>
 
             {error && <div className="text-red-500">{error}</div>}

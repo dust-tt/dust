@@ -1,4 +1,4 @@
-import { Spinner2 } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -34,7 +34,7 @@ export function TemplatesDataTable() {
         </PokeButton>
       </div>
       {isAssistantTemplatesLoading ? (
-        <Spinner2 variant="color" />
+        <Spinner variant="color" />
       ) : (
         <PokeDataTable
           columns={makeColumnsForTemplates()}

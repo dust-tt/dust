@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Spinner, Spinner2 } from "../index_with_tw_base";
+import { Spinner } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Spinner",
@@ -17,91 +17,91 @@ export const SpinnerExample = () => {
       Size = XS
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="xs" />
+          <Spinner variant="color" size="xs" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="xs" />
+          <Spinner variant="light" size="xs" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="xs" />
+          <Spinner variant="light" size="xs" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="xs" />
+          <Spinner variant="dark" size="xs" />
         </div>
       </div>
       Size = SM
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="sm" />
+          <Spinner variant="color" size="sm" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="sm" />
+          <Spinner variant="light" size="sm" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="sm" />
+          <Spinner variant="light" size="sm" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="sm" />
+          <Spinner variant="dark" size="sm" />
         </div>
       </div>
       Size = MD
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="md" />
+          <Spinner variant="color" size="md" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="md" />
+          <Spinner variant="light" size="md" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="md" />
+          <Spinner variant="light" size="md" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="md" />
+          <Spinner variant="dark" size="md" />
         </div>
       </div>
       Size = LG
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="lg" />
+          <Spinner variant="color" size="lg" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="lg" />
+          <Spinner variant="light" size="lg" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="lg" />
+          <Spinner variant="light" size="lg" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="lg" />
+          <Spinner variant="dark" size="lg" />
         </div>
       </div>
       Size = XL
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="xl" />
+          <Spinner variant="color" size="xl" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="xl" />
+          <Spinner variant="light" size="xl" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="xl" />
+          <Spinner variant="light" size="xl" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="xl" />
+          <Spinner variant="dark" size="xl" />
         </div>
       </div>
       Size = XXL
       <div className="s-flex s-gap-4">
         <div className="s-p-20">
-          <Spinner2 variant="color" size="xxl" />
+          <Spinner variant="color" size="xxl" />
         </div>
         <div className="s-bg-slate-900 s-p-20">
-          <Spinner2 variant="light" size="xxl" />
+          <Spinner variant="light" size="xxl" />
         </div>
         <div className="s-bg-emerald-500 s-p-20">
-          <Spinner2 variant="light" size="xxl" />
+          <Spinner variant="light" size="xxl" />
         </div>
         <div className="s-p-20">
-          <Spinner2 variant="dark" size="xxl" />
+          <Spinner variant="dark" size="xxl" />
         </div>
       </div>
     </div>

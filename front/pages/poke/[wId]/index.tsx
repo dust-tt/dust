@@ -1,4 +1,4 @@
-import { Button, DropdownMenu, Modal, Spinner2 } from "@dust-tt/sparkle";
+import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
   DataSourceType,
@@ -380,7 +380,7 @@ function DeleteWorkspaceModal({
             {isLoading ? (
               <p className="text-warning mb-4 text-sm ">
                 Deleting workspace data...
-                <Spinner2 />
+                <Spinner />
               </p>
             ) : (
               <Button
