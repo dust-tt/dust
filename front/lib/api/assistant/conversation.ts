@@ -736,6 +736,7 @@ export async function* postUserMessage(
                 row: agentMessageRow,
                 m: {
                   id: messageRow.id,
+                  agentMessageId: agentMessageRow.id,
                   created: agentMessageRow.createdAt.getTime(),
                   sId: messageRow.sId,
                   type: "agent_message",
@@ -1180,6 +1181,7 @@ export async function* editUserMessage(
               row: agentMessageRow,
               m: {
                 id: messageRow.id,
+                agentMessageId: agentMessageRow.id,
                 created: agentMessageRow.createdAt.getTime(),
                 sId: messageRow.sId,
                 type: "agent_message",
@@ -1397,6 +1399,7 @@ export async function* retryAgentMessage(
       );
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
+        agentMessageId: agentMessageRow.id,
         created: m.createdAt.getTime(),
         sId: m.sId,
         type: "agent_message",

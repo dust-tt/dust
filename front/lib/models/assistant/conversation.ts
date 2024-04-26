@@ -497,6 +497,16 @@ Message.belongsTo(ContentFragmentModel, {
   foreignKey: { name: "contentFragmentId", allowNull: true },
 });
 
+AgentRetrievalAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentMessage.hasMany(AgentRetrievalAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
 export class MessageReaction extends Model<
   InferAttributes<MessageReaction>,
   InferCreationAttributes<MessageReaction>
