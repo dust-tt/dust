@@ -204,21 +204,10 @@ export async function* runProcess(
     }
   }
 
-  const model = configuration.generation?.model;
+  const { model } = configuration;
 
-  let contextSize = 16384;
-  if (!model) {
-    logger.warn(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-      },
-      "Process is executed, but there is no model. Defaulting contextSize to 16384."
-    );
-  } else {
-    const supportedModel = getSupportedModelConfig(model);
-    contextSize = supportedModel.contextSize;
-  }
+  const supportedModel = getSupportedModelConfig(model);
+  const contextSize = supportedModel.contextSize;
 
   // Create the AgentProcessAction object in the database and yield an event for the generation of
   // the params. We store the action here as the params have been generated, if an error occurs

@@ -1,4 +1,5 @@
 import type {
+  AgentModelConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
@@ -20,7 +21,9 @@ export function isLargeModel(model: unknown): model is SupportedModel {
   return false;
 }
 
-export function getSupportedModelConfig(supportedModel: SupportedModel) {
+export function getSupportedModelConfig(
+  supportedModel: SupportedModel | AgentModelConfigurationType
+) {
   // here it is safe to cast the result to non-nullable because SupportedModel
   // is derived from the const array of configs above
   return SUPPORTED_MODEL_CONFIGS.find(

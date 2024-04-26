@@ -200,12 +200,13 @@ export default function EditAssistant({
         description: agentConfiguration.description,
         instructions: agentConfiguration.instructions || "", // TODO we don't support null in the UI yet
         avatarUrl: agentConfiguration.pictureUrl,
-        generationSettings: agentConfiguration.generation
-          ? {
-              modelSettings: agentConfiguration.generation.model,
-              temperature: agentConfiguration.generation.temperature,
-            }
-          : null,
+        generationSettings: {
+          modelSettings: {
+            modelId: agentConfiguration.model.modelId,
+            providerId: agentConfiguration.model.providerId,
+          },
+          temperature: agentConfiguration.model.temperature,
+        },
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}

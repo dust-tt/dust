@@ -1,3 +1,4 @@
+import type { AgentUserListStatus } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
   AgentStatus,
@@ -5,8 +6,6 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@dust-tt/types";
-import type { AgentUserListStatus } from "@dust-tt/types";
-import { GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -33,10 +32,10 @@ export class AgentGenerationConfiguration extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
-  declare prompt: string; // @todo MULTI_ACTIONS @daph remove
-  declare providerId: string; // @todo MULTI_ACTIONS @daph remove
-  declare modelId: string; // @todo MULTI_ACTIONS @daph remove
-  declare temperature: number; // @todo MULTI_ACTIONS @daph remove
+  declare prompt?: string; // @todo MULTI_ACTIONS @daph remove
+  declare providerId?: string; // @todo MULTI_ACTIONS @daph remove
+  declare modelId?: string; // @todo MULTI_ACTIONS @daph remove
+  declare temperature?: number; // @todo MULTI_ACTIONS @daph remove
 
   declare name: string | null;
   declare description: string | null;
@@ -62,14 +61,17 @@ AgentGenerationConfiguration.init(
     prompt: {
       type: DataTypes.TEXT,
       allowNull: false,
+      defaultValue: "__PROMPT_PLACEHOLDER__",
     },
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "__PROVIDER_ID_PLACEHOLDER__",
     },
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: "__MODEL_ID_PLACEHOLDER__",
     },
     temperature: {
       type: DataTypes.FLOAT,
@@ -187,17 +189,15 @@ AgentConfiguration.init(
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: GPT_4_TURBO_MODEL_CONFIG.providerId, // @todo MULTI_ACTIONS @daph remove
     },
     modelId: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: GPT_4_TURBO_MODEL_CONFIG.modelId, // @todo MULTI_ACTIONS @daph remove
     },
     temperature: {
       type: DataTypes.FLOAT,
       allowNull: false,
-      defaultValue: 0.7, // @todo MULTI_ACTIONS @daph remove
+      defaultValue: 0.7,
     },
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,

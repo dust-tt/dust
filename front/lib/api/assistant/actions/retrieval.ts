@@ -476,22 +476,12 @@ export async function* runRetrieval(
     }
   }
 
-  const model = configuration.generation?.model;
+  const { model } = configuration;
 
   let topK = 16;
   if (actionConfiguration.topK === "auto") {
-    if (!model) {
-      logger.warn(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-        },
-        "Retrieval topK mode is set to auto, but there is no model to infer it. Defaulting to 16."
-      );
-    } else {
-      const supportedModel = getSupportedModelConfig(model);
-      topK = supportedModel.recommendedTopK;
-    }
+    const supportedModel = getSupportedModelConfig(model);
+    topK = supportedModel.recommendedTopK;
   } else {
     topK = actionConfiguration.topK;
   }

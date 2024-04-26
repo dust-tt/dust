@@ -15,16 +15,9 @@ import type {
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
-  SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isSupportedModel,
-  isTimeFrame,
-  Ok,
-} from "@dust-tt/types";
+import { assertNever, Err, isTimeFrame, Ok } from "@dust-tt/types";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -612,18 +605,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
     })();
 
-    if (generationConfig) {
-      const model = {
-        providerId: generationConfig.providerId,
-        modelId: generationConfig.modelId,
-      };
-      if (!isSupportedModel(model)) {
-        throw new Error(`Unknown model ${model.providerId}/${model.modelId}`);
-      }
+    if (generationConfig !== null) {
       generation = {
         id: generationConfig.id,
-        temperature: generationConfig.temperature,
-        model,
         name: generationConfig.name,
         description: generationConfig.description,
         forceUseAtIteration: generationConfig.forceUseAtIteration,
@@ -1071,17 +1055,11 @@ export async function restoreAgentConfiguration(
 export async function createAgentGenerationConfiguration(
   auth: Authenticator,
   {
-    prompt, // @todo Daph remove this field
-    model,
-    temperature,
     agentConfiguration,
     name,
     description,
     forceUseAtIteration,
   }: {
-    prompt: string; // @todo Daph remove this field
-    model: SupportedModel;
-    temperature: number;
     agentConfiguration: LightAgentConfigurationType;
     name: string | null;
     description: string | null;
@@ -1097,15 +1075,7 @@ export async function createAgentGenerationConfiguration(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  if (temperature < 0) {
-    throw new Error("Temperature must be positive.");
-  }
-
   const genConfig = await AgentGenerationConfiguration.create({
-    prompt: prompt, // @todo Daph remove this field
-    providerId: model.providerId,
-    modelId: model.modelId,
-    temperature: temperature,
     agentConfigurationId: agentConfiguration.id,
     name,
     description,
@@ -1114,8 +1084,6 @@ export async function createAgentGenerationConfiguration(
 
   return {
     id: genConfig.id,
-    temperature: genConfig.temperature,
-    model,
     name: genConfig.name,
     description: genConfig.description,
     forceUseAtIteration,

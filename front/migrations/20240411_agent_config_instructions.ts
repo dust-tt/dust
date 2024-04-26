@@ -27,16 +27,16 @@ const backfillAgentConfiguration = async (
     return;
   }
 
-  const prompt = genConfigs[0].prompt;
-  if (!prompt) {
-    logger.info(`Skipping agent (no generation configuration) ${agent.id}`);
-    return;
-  }
+  // const prompt = genConfigs[0].prompt;
+  // if (!prompt) {
+  //   logger.info(`Skipping agent (no generation configuration) ${agent.id}`);
+  //   return;
+  // }
 
   if (execute) {
-    await agent.update({
-      instructions: prompt,
-    });
+    // await agent.update({
+    //   instructions: prompt,
+    // });
   }
 };
 
@@ -66,5 +66,6 @@ const backfillAgentConfigurations = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
+  throw new Error("This migration is deprecated and should not be run.");
   await backfillAgentConfigurations(execute);
 });

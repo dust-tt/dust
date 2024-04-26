@@ -1,9 +1,10 @@
-import { AgentGenerationConfiguration } from "@app/lib/models/assistant/agent";
+//import { AgentGenerationConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-const { LIVE } = process.env;
+// const { LIVE } = process.env;
 
 async function main() {
+  throw new Error("This migration is deprecated and should not be run.");
   console.log("Updating GPT-4 agents...");
   const gpt4GenerationConfigIdsRes = await frontSequelize.query(
     `
@@ -29,12 +30,12 @@ async function main() {
 
   console.log(`Found ${gpt4GenerationConfigIds.length} GPT-4 agents to update`);
 
-  if (LIVE) {
-    await AgentGenerationConfiguration.update(
-      { modelId: "gpt-3.5-turbo" },
-      { where: { id: gpt4GenerationConfigIds } }
-    );
-  }
+  // if (LIVE) {
+  //   await AgentGenerationConfiguration.update(
+  //     { modelId: "gpt-3.5-turbo" },
+  //     { where: { id: gpt4GenerationConfigIds } }
+  //   );
+  // }
 
   console.log("Updating claude-2 agents...");
 
@@ -64,12 +65,12 @@ async function main() {
     `Found ${claude2GenerationConfigIds.length} Claude-2 agents to update`
   );
 
-  if (LIVE) {
-    await AgentGenerationConfiguration.update(
-      { modelId: "claude-instant-1.2" },
-      { where: { id: claude2GenerationConfigIds } }
-    );
-  }
+  // if (LIVE) {
+  //   await AgentGenerationConfiguration.update(
+  //     { modelId: "claude-instant-1.2" },
+  //     { where: { id: claude2GenerationConfigIds } }
+  //   );
+  // }
 
   console.log("Done");
 }
