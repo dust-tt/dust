@@ -415,7 +415,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 21] = [
+pub const SQL_INDEXES: [&'static str; 22] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -435,6 +435,8 @@ pub const SQL_INDEXES: [&'static str; 21] = [
        idx_datasets_joins ON datasets_joins (dataset, point);",
     "CREATE INDEX IF NOT EXISTS
        idx_runs_joins ON runs_joins (run, block_execution);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_runs_joins_block_execution ON runs_joins (block_execution);",
     "CREATE INDEX IF NOT EXISTS
        idx_cache_project_hash ON cache (project, hash);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
