@@ -196,6 +196,7 @@ AgentRetrievalAction.init(
     indexes: [
       {
         fields: ["agentMessageId"],
+        concurrently: true,
       },
     ],
     hooks: {
