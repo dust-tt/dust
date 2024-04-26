@@ -60,7 +60,7 @@ import type {
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
+import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
@@ -213,7 +213,7 @@ export default function AssistantBuilder({
           instructions: initialBuilderState.instructions,
           avatarUrl: initialBuilderState.avatarUrl,
           generationSettings: initialBuilderState.generationSettings ?? {
-            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+            ...getDefaultAssistantState().generationSettings,
           },
           actionMode: initialBuilderState.actionMode,
           retrievalConfiguration: initialBuilderState.retrievalConfiguration,
@@ -223,10 +223,10 @@ export default function AssistantBuilder({
           processConfiguration: initialBuilderState.processConfiguration,
         }
       : {
-          ...DEFAULT_ASSISTANT_STATE,
+          ...getDefaultAssistantState(),
           scope: defaultScope,
           generationSettings: {
-            ...DEFAULT_ASSISTANT_STATE.generationSettings,
+            ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
               : GPT_4_TURBO_MODEL_CONFIG,
@@ -283,14 +283,16 @@ export default function AssistantBuilder({
     }
 
     if (actionMode !== null) {
+      const defaultAssistantState = getDefaultAssistantState();
+
       setEdited(true);
       setBuilderState((builderState) => ({
         ...builderState,
         actionMode,
-        retrievalConfiguration: DEFAULT_ASSISTANT_STATE.retrievalConfiguration,
-        dustAppConfiguration: DEFAULT_ASSISTANT_STATE.dustAppConfiguration,
+        retrievalConfiguration: defaultAssistantState.retrievalConfiguration,
+        dustAppConfiguration: defaultAssistantState.dustAppConfiguration,
         tablesQueryConfiguration:
-          DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration,
+          defaultAssistantState.tablesQueryConfiguration,
       }));
     }
   }, [template]);

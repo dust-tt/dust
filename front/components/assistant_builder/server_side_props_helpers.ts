@@ -20,7 +20,7 @@ import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
-import { DEFAULT_ASSISTANT_STATE } from "@app/components/assistant_builder/types";
+import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
@@ -98,7 +98,8 @@ export async function buildInitialState({
 
   // Retrieval configuration
 
-  const retrievalConfiguration = DEFAULT_ASSISTANT_STATE.retrievalConfiguration;
+  const retrievalConfiguration =
+    getDefaultAssistantState().retrievalConfiguration;
 
   if (isRetrievalConfiguration(action)) {
     if (
@@ -117,7 +118,7 @@ export async function buildInitialState({
 
   // DustAppRun configuration
 
-  const dustAppConfiguration = DEFAULT_ASSISTANT_STATE.dustAppConfiguration;
+  const dustAppConfiguration = getDefaultAssistantState().dustAppConfiguration;
 
   if (isDustAppRunConfiguration(action)) {
     for (const app of dustApps) {
@@ -131,7 +132,7 @@ export async function buildInitialState({
   // TablesQuery configuration
 
   let tablesQueryConfiguration =
-    DEFAULT_ASSISTANT_STATE.tablesQueryConfiguration;
+    getDefaultAssistantState().tablesQueryConfiguration;
 
   if (isTablesQueryConfiguration(action) && action.tables.length) {
     const coreAPITables: CoreAPITable[] = await Promise.all(
@@ -168,7 +169,7 @@ export async function buildInitialState({
 
   // Process configuration
 
-  const processConfiguration = DEFAULT_ASSISTANT_STATE.processConfiguration;
+  const processConfiguration = getDefaultAssistantState().processConfiguration;
 
   if (isProcessConfiguration(action)) {
     if (
