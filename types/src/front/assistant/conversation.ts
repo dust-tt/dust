@@ -101,6 +101,7 @@ export type AgentMessageStatus =
  */
 export type AgentMessageType = {
   id: ModelId;
+  agentMessageId: ModelId;
   created: number;
   type: "agent_message";
   sId: string;
