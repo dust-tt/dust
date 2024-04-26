@@ -86,7 +86,7 @@ User.init(
       allowNull: true,
     },
     imageUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     isDustSuperUser: {
