@@ -312,11 +312,6 @@ export async function createOrUpgradeAgentConfiguration({
 
   if (legacySingleActionMode) {
     if (actions.length) {
-      if (actions[0].forceUseAtIteration || generation?.forceUseAtIteration) {
-        throw new Error(
-          "Explicit forceUseAtIteration is not supported in legacy mode."
-        );
-      }
       legacyForceSingleActionAtIteration = 0;
       legacyForceGenerationAtIteration = 1;
     } else {

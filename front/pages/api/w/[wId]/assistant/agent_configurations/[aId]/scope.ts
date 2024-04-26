@@ -4,6 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { isLegacyAgent } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -133,9 +134,7 @@ async function handler(
           status: assistant.status as AgentStatus,
         },
         agentConfigurationId: assistant.sId,
-        // Here we want to preserve whatever is in the exising configuration,
-        // so we don't want to use the legacySingleActionMode (which overwrites `forceUseAtIteration`)
-        legacySingleActionMode: false,
+        legacySingleActionMode: isLegacyAgent(assistant),
       });
       if (result.isErr()) {
         return apiError(req, res, {
