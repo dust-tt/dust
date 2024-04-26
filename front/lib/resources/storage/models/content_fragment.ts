@@ -69,7 +69,7 @@ ContentFragmentModel.init(
       allowNull: true,
     },
     userContextProfilePictureUrl: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(2048),
       allowNull: true,
     },
     userContextUsername: {
