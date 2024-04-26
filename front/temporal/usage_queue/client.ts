@@ -55,15 +55,7 @@ export async function launchUpdateUsageWorkflow({
 
     return new Ok(undefined);
   } catch (e) {
-    if (e instanceof WorkflowExecutionAlreadyStartedError) {
-      logger.info(
-        {
-          workflowId,
-        },
-        "Usage workflow already started."
-      );
-      return new Ok(undefined);
-    } else {
+    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
       logger.error(
         {
           workflowId,
