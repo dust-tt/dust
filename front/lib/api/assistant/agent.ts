@@ -88,7 +88,7 @@ export async function* runAgent(
 // This function returns true if the agent is a "legacy" agent with a forced schedule,
 // i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
 // and every tool is forced at a certain iteration.
-function isLegacyAgent(configuration: AgentConfigurationType): boolean {
+export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
   // TODO(@fontanierh): change once generation is part of actions.
   const actions = removeNulls([
     ...configuration.actions,
