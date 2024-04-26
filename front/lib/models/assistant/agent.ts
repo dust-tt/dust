@@ -32,11 +32,6 @@ export class AgentGenerationConfiguration extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
-  declare prompt?: string; // @todo MULTI_ACTIONS @daph remove
-  declare providerId?: string; // @todo MULTI_ACTIONS @daph remove
-  declare modelId?: string; // @todo MULTI_ACTIONS @daph remove
-  declare temperature?: number; // @todo MULTI_ACTIONS @daph remove
-
   declare name: string | null;
   declare description: string | null;
   declare forceUseAtIteration: number | null;
@@ -57,26 +52,6 @@ AgentGenerationConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    prompt: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-      defaultValue: "__PROMPT_PLACEHOLDER__",
-    },
-    providerId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "__PROVIDER_ID_PLACEHOLDER__",
-    },
-    modelId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "__MODEL_ID_PLACEHOLDER__",
-    },
-    temperature: {
-      type: DataTypes.FLOAT,
-      allowNull: false,
-      defaultValue: 0.7,
     },
     name: {
       type: DataTypes.STRING,
