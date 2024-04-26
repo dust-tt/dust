@@ -7,6 +7,7 @@ import {
   GoogleLogo,
   IconButton,
   MistralLogo,
+  Modal,
   OpenaiLogo,
   Page,
   Spinner2,
@@ -314,16 +315,12 @@ function AdvancedSettings({
   );
 }
 
-const STATIC_SUGGESTIONS = {
-  status: "ok" as const,
-  suggestions: [
-    "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-    "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
-    "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
-    "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
-    "Brevity prompt useful in productivity setups: 'When replying to the user, go straight to the point. Answer with precision and brevity.'",
-  ],
-};
+const STATIC_SUGGESTIONS = [
+  "Break down your instructions into steps to leverage the model's reasoning capabilities.",
+  "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
+  "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
+  "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
+];
 
 function Suggestions({
   owner,
@@ -332,16 +329,23 @@ function Suggestions({
   owner: WorkspaceType;
   instructions: string;
 }) {
-  const [suggestions, setSuggestions] = useState<BuilderSuggestionsType>(
-    !instructions
-      ? STATIC_SUGGESTIONS
-      : { status: "unavailable", reason: "irrelevant" }
+  // history of all suggestions. The first two are displayed.
+  const [suggestions, setSuggestions] = useState<string[]>(
+    !instructions ? STATIC_SUGGESTIONS : []
   );
+  const [suggestionsStatus, setSuggestionsStatus] = useState<
+    | "no_suggestions"
+    | "loading"
+    | "suggestions_available"
+    | "instructions_are_good"
+    | "error"
+  >(!instructions ? "suggestions_available" : "no_suggestions");
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<APIError | null>(null);
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const [showSuggestionsHistory, setShowSuggestionsHistory] = useState(false);
 
   // the ref allows comparing previous instructions to current instructions
   // in the effect below
@@ -356,44 +360,46 @@ function Suggestions({
 
     if (!instructions.trim()) {
       setError(null);
-      setLoading(false);
-      setSuggestions(STATIC_SUGGESTIONS);
+      setSuggestionsStatus(
+        suggestions.length > 0 ? "suggestions_available" : "no_suggestions"
+      );
       clearTimeout(debounceHandle.current);
       return;
     }
 
     const updateSuggestions = async () => {
-      setLoading(true);
-      const updatedSuggestions = await getUpdatedInstructionsSuggestions({
+      setSuggestionsStatus("loading");
+      const updatedSuggestions = await getRankedSuggestions({
         owner,
         currentInstructions: instructions,
-        formerSuggestions:
-          suggestions.status === "ok"
-            ? suggestions.suggestions.slice(0, 2)
-            : [],
+        formerSuggestions: suggestions.slice(0, 2),
       });
       if (updatedSuggestions.isErr()) {
         setError(updatedSuggestions.error);
-        setLoading(false);
+        setSuggestionsStatus("error");
         return;
       }
-
-      setSuggestions(updatedSuggestions.value);
+      if (
+        updatedSuggestions.value.status === "ok" &&
+        !updatedSuggestions.value.suggestions.length
+      ) {
+        setSuggestionsStatus("instructions_are_good");
+      }
+      setSuggestions(mergeSuggestions(suggestions, updatedSuggestions.value));
       setError(null);
-      setLoading(false);
+      setSuggestionsStatus("suggestions_available");
     };
 
     debounce(debounceHandle, updateSuggestions);
+    return () => {
+      clearTimeout(debounceHandle.current);
+      debounceHandle.current = undefined;
+    };
   }, [instructions, owner, suggestions]);
 
   return (
     <Transition
-      show={
-        !(
-          suggestions.status === "unavailable" &&
-          suggestions.reason === "irrelevant"
-        )
-      }
+      show={!(suggestionsStatus === "no_suggestions")}
       enter="transition-[max-height] duration-1000"
       enterFrom="max-h-0"
       enterTo="max-h-full"
@@ -401,73 +407,63 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
+      <SuggestionsHistoryDialog
+        open={showSuggestionsHistory}
+        suggestions={suggestions}
+        onClose={() => {
+          setShowSuggestionsHistory(false);
+        }}
+      />
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-base font-bold text-element-800">
           <div>Tips</div>
-          {loading && <Spinner2 size="sm" />}
+          {suggestionsStatus === "loading" && <Spinner2 size="sm" />}
         </div>
         <div>
           {(() => {
             if (error) {
               return (
                 <ContentMessage size="sm" title="Error" variant="red">
+                  Error loading new suggestions:
                   {error.message}
                 </ContentMessage>
               );
             }
-            if (suggestions.status === "ok") {
-              if (suggestions.suggestions.length === 0) {
-                return (
-                  <ContentMessage size="sm" variant="slate" title="">
-                    Looking good! 🎉
-                  </ContentMessage>
-                );
-              }
-              return (
-                <div className="flex gap-2">
-                  <ContentMessage
-                    size="sm"
-                    title=""
-                    variant="sky"
-                    className="transition-all"
-                  >
-                    {suggestions.suggestions[0]}
-                  </ContentMessage>
-                  <ContentMessage
-                    size="sm"
-                    title=""
-                    variant="sky"
-                    className="transition-all"
-                  >
-                    {suggestions.suggestions[1]}
-                  </ContentMessage>
-                  <IconButton
-                    icon={ChevronRightIcon}
-                    size="sm"
-                    variant="tertiary"
-                    onClick={() => {
-                      setSuggestions({
-                        status: "ok",
-                        suggestions: [
-                          ...suggestions.suggestions.slice(2),
-                          ...suggestions.suggestions.slice(0, 2),
-                        ],
-                      });
-                    }}
-                  />
-                </div>
-              );
-            }
-            if (
-              suggestions.status === "unavailable" &&
-              suggestions.reason === "user_not_finished"
-            ) {
+            if (suggestionsStatus === "instructions_are_good") {
               return (
                 <ContentMessage size="sm" variant="slate" title="">
-                  Suggestions will appear when you're done writing.
+                  Looking good! 🎉
                 </ContentMessage>
               );
             }
+            return (
+              <div className="flex gap-2">
+                <ContentMessage
+                  size="sm"
+                  title=""
+                  variant="sky"
+                  className="transition-all"
+                >
+                  {suggestions[0]}
+                </ContentMessage>
+                <ContentMessage
+                  size="sm"
+                  title=""
+                  variant="sky"
+                  className="transition-all"
+                >
+                  {suggestions[1]}
+                </ContentMessage>
+                <IconButton
+                  icon={ChevronRightIcon}
+                  size="sm"
+                  variant="tertiary"
+                  onClick={() => {
+                    setShowSuggestionsHistory(true);
+                  }}
+                />
+              </div>
+            );
           })()}
         </div>
       </div>
@@ -475,11 +471,11 @@ function Suggestions({
   );
 }
 
-/* Return a list of suggestions:
+/*  Returns suggestions as per the dust app:
  * - empty array if the instructions are good;
- * - otherwise, former suggestions + 2 new suggestions, ranked by order of relevance.
+ * - otherwise, 2 former suggestions + 2 new suggestions, ranked by order of relevance.
  */
-async function getUpdatedInstructionsSuggestions({
+async function getRankedSuggestions({
   owner,
   currentInstructions,
   formerSuggestions,
@@ -508,4 +504,66 @@ async function getUpdatedInstructionsSuggestions({
     });
   }
   return new Ok(await res.json());
+}
+
+const VISIBLE_SUGGESTIONS_NUMBER = 2;
+/**
+ *
+ * @param suggestions existing suggestions
+ * @param dustAppSuggestions suggestions returned by the dust app via getRankedSuggestions
+ * @returns suggestions updated with the new ones that ranked better than the visible ones if any
+ */
+function mergeSuggestions(
+  suggestions: string[],
+  dustAppSuggestions: BuilderSuggestionsType
+): string[] {
+  if (dustAppSuggestions.status === "ok") {
+    const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
+    const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
+      0,
+      VISIBLE_SUGGESTIONS_NUMBER
+    );
+    for (const suggestion of bestRankedSuggestions) {
+      if (!visibleSuggestions.includes(suggestion)) {
+        suggestions.unshift(suggestion);
+      }
+    }
+  }
+  return suggestions;
+}
+
+function SuggestionsHistoryDialog({
+  open,
+  suggestions,
+  onClose,
+}: {
+  open: boolean;
+  suggestions: string[];
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      title="Suggestions List"
+      onClose={onClose}
+      variant="side-sm"
+      isOpen={open}
+      hasChanged={false}
+    >
+      <div className="flex flex-col gap-2 pt-6">
+        <div className="flex flex-col gap-2">
+          {suggestions.map((suggestion, index) => (
+            <ContentMessage
+              key={index}
+              size="sm"
+              title=""
+              variant="sky"
+              className="transition-all"
+            >
+              {suggestion}
+            </ContentMessage>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
 }
