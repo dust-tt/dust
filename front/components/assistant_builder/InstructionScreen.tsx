@@ -1,13 +1,10 @@
 import {
   AnthropicLogo,
   Button,
-  ChevronRightIcon,
   ContentMessage,
   DropdownMenu,
   GoogleLogo,
-  IconButton,
   MistralLogo,
-  Modal,
   OpenaiLogo,
   Page,
   Spinner2,
@@ -322,6 +319,13 @@ const STATIC_SUGGESTIONS = [
   "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
 ];
 
+type SuggestionStatus =
+  | "no_suggestions"
+  | "loading"
+  | "suggestions_available"
+  | "instructions_are_good"
+  | "error";
+
 function Suggestions({
   owner,
   instructions,
@@ -333,19 +337,13 @@ function Suggestions({
   const [suggestions, setSuggestions] = useState<string[]>(
     !instructions ? STATIC_SUGGESTIONS : []
   );
-  const [suggestionsStatus, setSuggestionsStatus] = useState<
-    | "no_suggestions"
-    | "loading"
-    | "suggestions_available"
-    | "instructions_are_good"
-    | "error"
-  >(!instructions ? "suggestions_available" : "no_suggestions");
+  const [suggestionsStatus, setSuggestionsStatus] = useState<SuggestionStatus>(
+    !instructions ? "suggestions_available" : "no_suggestions"
+  );
 
   const [error, setError] = useState<APIError | null>(null);
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  const [showSuggestionsHistory, setShowSuggestionsHistory] = useState(false);
 
   // the ref allows comparing previous instructions to current instructions
   // in the effect below
@@ -384,6 +382,7 @@ function Suggestions({
         !updatedSuggestions.value.suggestions.length
       ) {
         setSuggestionsStatus("instructions_are_good");
+        return;
       }
       setSuggestions(mergeSuggestions(suggestions, updatedSuggestions.value));
       setError(null);
@@ -392,14 +391,16 @@ function Suggestions({
 
     debounce(debounceHandle, updateSuggestions);
     return () => {
-      clearTimeout(debounceHandle.current);
-      debounceHandle.current = undefined;
+      if (debounceHandle.current) {
+        clearTimeout(debounceHandle.current);
+        debounceHandle.current = undefined;
+      }
     };
   }, [instructions, owner, suggestions]);
 
   return (
     <Transition
-      show={!(suggestionsStatus === "no_suggestions")}
+      show={suggestionsStatus !== "no_suggestions"}
       enter="transition-[max-height] duration-1000"
       enterFrom="max-h-0"
       enterTo="max-h-full"
@@ -407,19 +408,12 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
-      <SuggestionsHistoryDialog
-        open={showSuggestionsHistory}
-        suggestions={suggestions}
-        onClose={() => {
-          setShowSuggestionsHistory(false);
-        }}
-      />
       <div className="flex flex-col gap-2">
         <div className="flex gap-1 text-base font-bold text-element-800">
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner2 size="sm" />}
         </div>
-        <div>
+        <div className="overflow-y-auto scrollbar-hide">
           {(() => {
             if (error) {
               return (
@@ -437,31 +431,18 @@ function Suggestions({
               );
             }
             return (
-              <div className="flex gap-2">
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions[0]}
-                </ContentMessage>
-                <ContentMessage
-                  size="sm"
-                  title=""
-                  variant="sky"
-                  className="transition-all"
-                >
-                  {suggestions[1]}
-                </ContentMessage>
-                <IconButton
-                  icon={ChevronRightIcon}
-                  size="sm"
-                  variant="tertiary"
-                  onClick={() => {
-                    setShowSuggestionsHistory(true);
-                  }}
-                />
+              <div className="flex w-max gap-2">
+                {suggestions.map((suggestion, index) => (
+                  <ContentMessage
+                    key={index}
+                    size="sm"
+                    title=""
+                    variant="sky"
+                    className="min-width-[320px] transition-all"
+                  >
+                    {suggestion}
+                  </ContentMessage>
+                ))}
               </div>
             );
           })()}
@@ -517,6 +498,7 @@ function mergeSuggestions(
   suggestions: string[],
   dustAppSuggestions: BuilderSuggestionsType
 ): string[] {
+  const mergedSuggestions = [...suggestions];
   if (dustAppSuggestions.status === "ok") {
     const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
     const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
@@ -525,45 +507,9 @@ function mergeSuggestions(
     );
     for (const suggestion of bestRankedSuggestions) {
       if (!visibleSuggestions.includes(suggestion)) {
-        suggestions.unshift(suggestion);
+        mergedSuggestions.unshift(suggestion);
       }
     }
   }
-  return suggestions;
-}
-
-function SuggestionsHistoryDialog({
-  open,
-  suggestions,
-  onClose,
-}: {
-  open: boolean;
-  suggestions: string[];
-  onClose: () => void;
-}) {
-  return (
-    <Modal
-      title="Suggestions List"
-      onClose={onClose}
-      variant="side-sm"
-      isOpen={open}
-      hasChanged={false}
-    >
-      <div className="flex flex-col gap-2 pt-6">
-        <div className="flex flex-col gap-2">
-          {suggestions.map((suggestion, index) => (
-            <ContentMessage
-              key={index}
-              size="sm"
-              title=""
-              variant="sky"
-              className="transition-all"
-            >
-              {suggestion}
-            </ContentMessage>
-          ))}
-        </div>
-      </div>
-    </Modal>
-  );
+  return mergedSuggestions;
 }
