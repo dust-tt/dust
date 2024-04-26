@@ -8,6 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentRetrievalConfiguration extends Model<
@@ -149,6 +150,7 @@ export class AgentRetrievalAction extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 AgentRetrievalAction.init(
   {
@@ -191,6 +193,11 @@ AgentRetrievalAction.init(
   {
     modelName: "agent_retrieval_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+      },
+    ],
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalAction) => {
         // Validation for Timeframe

@@ -254,6 +254,7 @@ export async function batchRenderAgentMessages(
 
     const m = {
       id: message.id,
+      agentMessageId: agentMessage.id,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "agent_message",
