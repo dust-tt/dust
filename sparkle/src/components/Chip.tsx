@@ -3,7 +3,6 @@ import React, { ComponentType, ReactNode } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import Spinner from "./Spinner";
 
 type ChipProps = {
   size?: "xs" | "sm";
@@ -61,7 +60,6 @@ export function Chip({
       aria-label={label}
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-      {/* {isBusy && <Spinner size={size} variant="darkGrey" />} */}
       {label && (
         <span
           className={classNames(

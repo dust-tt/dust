@@ -1,4 +1,4 @@
-import { Button, Tab } from "@dust-tt/sparkle";
+import { Button, Spinner2, Tab } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -30,7 +30,6 @@ import {
   subNavigationApp,
   subNavigationBuild,
 } from "@app/components/sparkle/navigation";
-import { Spinner } from "@app/components/Spinner";
 import { getApp } from "@app/lib/api/app";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { extractConfig } from "@app/lib/config";
@@ -181,7 +180,7 @@ function ExecuteOutputLine({
           <div>
             {lastEventForBlock.content.status === "running" ? (
               <div className="ml-1">
-                <Spinner />
+                <Spinner2 />
               </div>
             ) : lastEventForBlock.content.status === "errored" ? (
               <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />

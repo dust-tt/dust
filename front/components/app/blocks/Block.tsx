@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  Spinner2,
   Square3Stack3DStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -15,7 +16,6 @@ import type { BlockType, RunType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import NewBlock from "@app/components/app/NewBlock";
-import { Spinner } from "@app/components/Spinner";
 import { classNames } from "@app/lib/utils";
 
 import Output from "./Output";
@@ -194,7 +194,7 @@ export default function Block({
         !["map", "reduce", "end"].includes(block.type) ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
             <div className="ml-2 mr-2">
-              <Spinner />
+              <Spinner2 />
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
@@ -202,7 +202,7 @@ export default function Block({
           <div className="flex flex-row items-center text-sm text-gray-400">
             <div role="status">
               <div className="ml-2 mr-2">
-                <Spinner />
+                <Spinner2 />
               </div>
             </div>
             {` 0 successes 0 errors`}

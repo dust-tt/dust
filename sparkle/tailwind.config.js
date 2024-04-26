@@ -150,7 +150,6 @@ module.exports = {
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "move-square": "move-square 3s ease-out infinite",
-        breathing: "breathing 4s infinite ease-in-out",
       },
       colors: {
         brand: {

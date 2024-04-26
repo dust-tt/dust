@@ -7,7 +7,7 @@ import {
   MoreIcon,
   Page,
   ShapesIcon,
-  Spinner,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -317,7 +317,7 @@ export default function Subscription({
           <Page.H variant="h5">Your plan </Page.H>
           <div>
             {isWebhookProcessing ? (
-              <Spinner />
+              <Spinner2 />
             ) : (
               <>
                 <Page.Horizontal gap="sm">
