@@ -52,7 +52,6 @@ import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
@@ -191,12 +190,10 @@ export function InstructionScreen({
           className="absolute bottom-0 left-0 right-0 top-0"
         />
       </div>
-      {isDevelopmentOrDustWorkspace(owner) && (
-        <Suggestions
-          owner={owner}
-          instructions={builderState.instructions || ""}
-        />
-      )}
+      <Suggestions
+        owner={owner}
+        instructions={builderState.instructions || ""}
+      />
     </div>
   );
 }
