@@ -4,7 +4,6 @@ import {
   CommandLineIcon,
   ContentMessage,
   DropdownMenu,
-  Hoverable,
   MagnifyingGlassIcon,
   Page,
   Square3Stack3DIcon,
@@ -12,29 +11,26 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 import type {
+  AppType,
   DataSourceType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AppType, TimeframeUnit } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
-import { useState } from "react";
 
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
-import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
-import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
+import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
+import {
+  ActionRetrievalExhaustive,
+  ActionRetrievalSearch,
+} from "@app/components/assistant_builder/actions/RetrievalAction";
+import { ActionTablesQuery } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
   ActionMode,
   AssistantBuilderState,
-  AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
-import { tableKey } from "@app/lib/client/tables_query";
-import { classNames } from "@app/lib/utils";
+
+import { ActionDustAppRun } from "./actions/DustAppRunAction";
 
 const BASIC_ACTION_TYPES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
 const ADVANCED_ACTION_TYPES = ["RUN_DUST_APP"] as const;
@@ -149,60 +145,6 @@ export default function ActionScreen({
   dustApps: AppType[];
   timeFrameError: string | null;
 }) {
-  const [showRetrievalDataSourcesModal, setShowRetrievalDataSourcesModal] =
-    useState(false);
-  const [showDustAppsModal, setShowDustAppsModal] = useState(false);
-  const [showTableModal, setShowTableModal] = useState(false);
-  const [showProcessDataSourcesModal, setShowProcessDataSourcesModal] =
-    useState(false);
-
-  const deleteRetrievalDataSource = (name: string) => {
-    if (builderState.retrievalConfiguration.dataSourceConfigurations[name]) {
-      setEdited(true);
-    }
-
-    setBuilderState(({ retrievalConfiguration, ...rest }) => {
-      const dataSourceConfigurations = {
-        ...retrievalConfiguration.dataSourceConfigurations,
-      };
-      delete dataSourceConfigurations[name];
-      return {
-        retrievalConfiguration: {
-          ...retrievalConfiguration,
-          dataSourceConfigurations,
-        },
-        ...rest,
-      };
-    });
-  };
-
-  const deleteDustApp = () => {
-    setEdited(true);
-    setBuilderState((state) => {
-      return { ...state, dustAppConfiguration: { app: null } };
-    });
-  };
-
-  const deleteProcessDataSource = (name: string) => {
-    if (builderState.processConfiguration.dataSourceConfigurations[name]) {
-      setEdited(true);
-    }
-
-    setBuilderState(({ processConfiguration, ...rest }) => {
-      const dataSourceConfigurations = {
-        ...processConfiguration.dataSourceConfigurations,
-      };
-      delete dataSourceConfigurations[name];
-      return {
-        processConfiguration: {
-          ...processConfiguration,
-          dataSourceConfigurations,
-        },
-        ...rest,
-      };
-    });
-  };
-
   const getActionType = (actionMode: ActionMode) => {
     switch (actionMode) {
       case "GENERIC":
@@ -244,107 +186,9 @@ export default function ActionScreen({
     Object.keys(
       builderState.retrievalConfiguration?.dataSourceConfigurations || {}
     ).length === 0;
-  const noDustApp = dustApps.length === 0;
 
   return (
     <>
-      <AssistantBuilderDustAppModal
-        isOpen={showDustAppsModal}
-        setOpen={(isOpen) => {
-          setShowDustAppsModal(isOpen);
-        }}
-        dustApps={dustApps}
-        onSave={({ app }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dustAppConfiguration: {
-              app,
-            },
-          }));
-        }}
-      />
-      <AssistantBuilderTablesModal
-        isOpen={showTableModal}
-        setOpen={(isOpen) => setShowTableModal(isOpen)}
-        owner={owner}
-        dataSources={dataSources}
-        onSave={(tables) => {
-          setEdited(true);
-          const newTables: Record<string, AssistantBuilderTableConfiguration> =
-            {};
-          for (const t of tables) {
-            newTables[tableKey(t)] = t;
-          }
-          setBuilderState((state) => ({
-            ...state,
-            tablesQueryConfiguration: {
-              ...state.tablesQueryConfiguration,
-              ...newTables,
-            },
-          }));
-        }}
-        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
-      />
-      <AssistantBuilderDataSourceModal
-        isOpen={showRetrievalDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowRetrievalDataSourcesModal(isOpen);
-        }}
-        owner={owner}
-        dataSources={dataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            retrievalConfiguration: {
-              ...state.retrievalConfiguration,
-              dataSourceConfigurations: {
-                ...state.retrievalConfiguration.dataSourceConfigurations,
-                [dataSource.name]: {
-                  dataSource,
-                  selectedResources,
-                  isSelectAll,
-                },
-              },
-            },
-          }));
-        }}
-        onDelete={deleteRetrievalDataSource}
-        dataSourceConfigurations={
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        }
-      />
-      <AssistantBuilderDataSourceModal
-        isOpen={showProcessDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowProcessDataSourcesModal(isOpen);
-        }}
-        owner={owner}
-        dataSources={dataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
-          setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            processConfiguration: {
-              ...state.processConfiguration,
-              dataSourceConfigurations: {
-                ...state.processConfiguration.dataSourceConfigurations,
-                [dataSource.name]: {
-                  dataSource,
-                  selectedResources,
-                  isSelectAll,
-                },
-              },
-            },
-          }));
-        }}
-        onDelete={deleteProcessDataSource}
-        dataSourceConfigurations={
-          builderState.processConfiguration.dataSourceConfigurations
-        }
-      />
-
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
           <Page.Header title="Action & Data sources" />
@@ -526,16 +370,12 @@ export default function ActionScreen({
             builderState.actionMode === "RETRIEVAL_SEARCH" && !noDataSources
           }
         >
-          <DataSourceSelectionSection
+          <ActionRetrievalSearch
             owner={owner}
-            dataSourceConfigurations={
-              builderState.retrievalConfiguration.dataSourceConfigurations
-            }
-            openDataSourceModal={() => {
-              setShowRetrievalDataSourcesModal(true);
-            }}
-            canAddDataSource={dataSources.length > 0}
-            onDelete={deleteRetrievalDataSource}
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -544,306 +384,49 @@ export default function ActionScreen({
             builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" && !noDataSources
           }
         >
-          <DataSourceSelectionSection
+          <ActionRetrievalExhaustive
             owner={owner}
-            dataSourceConfigurations={
-              builderState.retrievalConfiguration.dataSourceConfigurations
-            }
-            openDataSourceModal={() => {
-              setShowRetrievalDataSourcesModal(true);
-            }}
-            canAddDataSource={dataSources.length > 0}
-            onDelete={deleteRetrievalDataSource}
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            dataSources={dataSources}
+            timeFrameError={timeFrameError}
           />
-          <div className={"flex flex-row items-center gap-4 pb-4"}>
-            <div className="text-sm font-semibold text-element-900">
-              Collect data from the last
-            </div>
-            <input
-              type="text"
-              className={classNames(
-                "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-                !timeFrameError
-                  ? "focus:border-action-500 focus:ring-action-500"
-                  : "border-red-500 focus:border-red-500 focus:ring-red-500",
-                "bg-structure-50 stroke-structure-50"
-              )}
-              value={builderState.retrievalConfiguration.timeFrame.value || ""}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) || !e.target.value) {
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    retrievalConfiguration: {
-                      ...state.retrievalConfiguration,
-                      timeFrame: {
-                        value,
-                        unit: builderState.retrievalConfiguration.timeFrame
-                          .unit,
-                      },
-                    },
-                  }));
-                }
-              }}
-            />
-            <DropdownMenu>
-              <DropdownMenu.Button tooltipPosition="above">
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    TIME_FRAME_UNIT_TO_LABEL[
-                      builderState.retrievalConfiguration.timeFrame.unit
-                    ]
-                  }
-                  variant="secondary"
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="bottomLeft">
-                {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                  ([key, value]) => (
-                    <DropdownMenu.Item
-                      key={key}
-                      label={value}
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          retrievalConfiguration: {
-                            ...state.retrievalConfiguration,
-                            timeFrame: {
-                              value:
-                                builderState.retrievalConfiguration.timeFrame
-                                  .value,
-                              unit: key as TimeframeUnit,
-                            },
-                          },
-                        }));
-                      }}
-                    />
-                  )
-                )}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
         </ActionModeSection>
 
         <ActionModeSection
           show={builderState.actionMode === "PROCESS" && !noDataSources}
         >
-          <div className="text-sm text-element-700">
-            The assistant will process the data sources over the specified time
-            frame and attempt to extract structured information based on the
-            schema provided. This action can process up to 500k tokens (the
-            equivalent of 1000 pages book). Learn more about this feature in the{" "}
-            <Hoverable
-              onClick={() => {
-                window.open(
-                  "https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d",
-                  "_blank"
-                );
-              }}
-              className="cursor-pointer font-bold text-action-500"
-            >
-              documentation
-            </Hoverable>
-            .
-          </div>
-
-          <DataSourceSelectionSection
+          <ActionProcess
             owner={owner}
-            dataSourceConfigurations={
-              builderState.processConfiguration.dataSourceConfigurations
-            }
-            openDataSourceModal={() => {
-              setShowProcessDataSourcesModal(true);
-            }}
-            canAddDataSource={dataSources.length > 0}
-            onDelete={deleteProcessDataSource}
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            dataSources={dataSources}
+            timeFrameError={timeFrameError}
           />
-
-          <div className={"flex flex-row items-center gap-4 pb-4"}>
-            <div className="text-sm font-semibold text-element-900">
-              Process data from the last
-            </div>
-            <input
-              type="text"
-              className={classNames(
-                "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-                !timeFrameError
-                  ? "focus:border-action-500 focus:ring-action-500"
-                  : "border-red-500 focus:border-red-500 focus:ring-red-500",
-                "bg-structure-50 stroke-structure-50"
-              )}
-              value={builderState.processConfiguration.timeFrame.value || ""}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (!isNaN(value) || !e.target.value) {
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    processConfiguration: {
-                      ...state.processConfiguration,
-                      timeFrame: {
-                        value,
-                        unit: builderState.processConfiguration.timeFrame.unit,
-                      },
-                    },
-                  }));
-                }
-              }}
-            />
-            <DropdownMenu>
-              <DropdownMenu.Button tooltipPosition="above">
-                <Button
-                  type="select"
-                  labelVisible={true}
-                  label={
-                    TIME_FRAME_UNIT_TO_LABEL[
-                      builderState.processConfiguration.timeFrame.unit
-                    ]
-                  }
-                  variant="secondary"
-                  size="sm"
-                />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="bottomLeft">
-                {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                  ([key, value]) => (
-                    <DropdownMenu.Item
-                      key={key}
-                      label={value}
-                      onClick={() => {
-                        setEdited(true);
-                        setBuilderState((state) => ({
-                          ...state,
-                          processConfiguration: {
-                            ...state.processConfiguration,
-                            timeFrame: {
-                              value:
-                                builderState.processConfiguration.timeFrame
-                                  .value,
-                              unit: key as TimeframeUnit,
-                            },
-                          },
-                        }));
-                      }}
-                    />
-                  )
-                )}
-              </DropdownMenu.Items>
-            </DropdownMenu>
-          </div>
         </ActionModeSection>
 
         <ActionModeSection
           show={builderState.actionMode === "TABLES_QUERY" && !noDataSources}
         >
-          <div className="text-sm text-element-700">
-            The assistant will generate a SQL query from your request, execute
-            it on the tables selected and use the results to generate an answer.
-            Learn more about this feature in the{" "}
-            <Hoverable
-              onClick={() => {
-                window.open(
-                  "https://dust-tt.notion.site/Table-queries-on-Dust-2f8c6ea53518464b8b7780d55ac7057d",
-                  "_blank"
-                );
-              }}
-              className="cursor-pointer font-bold text-action-500"
-            >
-              documentation
-            </Hoverable>
-            .
-          </div>
-
-          <TablesSelectionSection
-            show={builderState.actionMode === "TABLES_QUERY"}
-            tablesQueryConfiguration={builderState.tablesQueryConfiguration}
-            openTableModal={() => {
-              setShowTableModal(true);
-            }}
-            onDelete={(key) => {
-              setEdited(true);
-              setBuilderState((state) => {
-                const tablesQueryConfiguration = state.tablesQueryConfiguration;
-                delete tablesQueryConfiguration[key];
-                return {
-                  ...state,
-                  tablesQueryConfiguration,
-                };
-              });
-            }}
-            canSelectTable={dataSources.length !== 0}
+          <ActionTablesQuery
+            owner={owner}
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            dataSources={dataSources}
           />
         </ActionModeSection>
 
         <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
-          {noDustApp ? (
-            <ContentMessage
-              title="You don't have any Dust Application available"
-              variant="warning"
-            >
-              <div className="flex flex-col gap-y-3">
-                {(() => {
-                  switch (owner.role) {
-                    case "admin":
-                    case "builder":
-                      return (
-                        <div>
-                          <strong>
-                            Visit the "Developer Tools" section in the Build
-                            panel to build your first Dust Application.
-                          </strong>
-                        </div>
-                      );
-                    case "user":
-                      return (
-                        <div>
-                          <strong>
-                            Only Admins and Builders can build Dust
-                            Applications.
-                          </strong>
-                        </div>
-                      );
-                    case "none":
-                      return <></>;
-                    default:
-                      assertNever(owner.role);
-                  }
-                })()}
-              </div>
-            </ContentMessage>
-          ) : (
-            <>
-              <div className="text-sm text-element-700">
-                The assistant will execute a{" "}
-                <a
-                  className="font-bold"
-                  href="https://docs.dust.tt"
-                  target="_blank"
-                >
-                  Dust Application
-                </a>{" "}
-                of your design before replying. The output of the app (last
-                block) is injected in context for the model to generate an
-                answer. The inputs of the app will be automatically generated
-                from the context of the conversation based on the descriptions
-                you provided in the application's input block dataset schema.
-              </div>
-              <DustAppSelectionSection
-                show={builderState.actionMode === "DUST_APP_RUN"}
-                dustAppConfiguration={builderState.dustAppConfiguration}
-                openDustAppModal={() => {
-                  setShowDustAppsModal(true);
-                }}
-                onDelete={deleteDustApp}
-                canSelectDustApp={dustApps.length !== 0}
-              />
-            </>
-          )}
+          <ActionDustAppRun
+            owner={owner}
+            builderState={builderState}
+            setBuilderState={setBuilderState}
+            setEdited={setEdited}
+            dustApps={dustApps}
+          />
         </ActionModeSection>
       </div>
     </>
