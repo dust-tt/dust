@@ -100,21 +100,35 @@ const renderSolutionSectionBlock = ({
     </div>
   );
 };
-
 interface SolutionSectionContentBlockProps {
   title: ReactNode;
-  content: ReactNode;
+  content: ReactNode | ReactNode[];
 }
+
 const SolutionSectionContentBlock = ({
   content,
   title,
 }: SolutionSectionContentBlockProps) => {
+  const renderContentBlocks = () => {
+    if (Array.isArray(content)) {
+      return content.map((block, index) => (
+        <P size="xs" className="max-w-[500px] text-slate-600" key={index}>
+          {block}
+        </P>
+      ));
+    } else {
+      return (
+        <P size="xs" className="max-w-[500px] text-slate-600">
+          {content}
+        </P>
+      );
+    }
+  };
+
   return (
     <div className={classNames("flex grow basis-0 flex-col gap-3")}>
       <H5 className="text-slate-900">{title}</H5>
-      <P size="xs" className="max-w-[500px] text-slate-600">
-        {content}
-      </P>
+      {renderContentBlocks()}
     </div>
   );
 };
