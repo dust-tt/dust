@@ -426,7 +426,7 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
-      <div className="relative flex flex-col gap-3">
+      <div className="relative flex flex-col">
         <div
           className="flex items-center gap-2 text-base font-bold text-element-800"
           onClick={() => {
@@ -442,7 +442,7 @@ function Suggestions({
           {suggestionsStatus === "loading" && <Spinner size="xs" />}
         </div>
         <div
-          className="overflow-y-auto px-2 scrollbar-hide"
+          className="overflow-y-auto pt-2 scrollbar-hide"
           onScroll={handleScroll}
         >
           <div
@@ -475,7 +475,7 @@ function Suggestions({
               );
             }
             return (
-              <div className="flex w-max gap-3">
+              <div className="flex w-max">
                 {suggestions.map((suggestion) => (
                   <AnimatedSuggestion
                     suggestion={suggestion}
@@ -502,17 +502,17 @@ function AnimatedSuggestion({
     <Transition
       appear={true}
       enter="transition-all ease-out duration-300"
-      enterFrom="opacity-0 -translate-x-16"
-      enterTo="opacity-100 translate-x-0"
+      enterFrom="opacity-0 w-0"
+      enterTo="opacity-100 w-[320px]"
       leave="ease-in duration-300"
-      leaveFrom="opacity-100 translate-x-0"
-      leaveTo="opacity-0 -translate-x-16"
+      leaveFrom="opacity-100 w-[320px]"
+      leaveTo="opacity-0 w-0"
     >
       <ContentMessage
         size="sm"
         title=""
         variant={variant}
-        className="h-fit w-[320px]"
+        className="h-fit w-[308px]"
       >
         {suggestion}
       </ContentMessage>
