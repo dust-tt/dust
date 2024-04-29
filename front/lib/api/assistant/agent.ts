@@ -318,7 +318,8 @@ export async function getNextAction(
     Error
   >
 > {
-  const prompt = await constructPrompt(
+  // TODO(@fontanierh): Make a new one for multi actions.
+  let prompt = await constructPrompt(
     auth,
     userMessage,
     agentConfiguration,
@@ -331,6 +332,7 @@ export async function getNextAction(
   const MIN_GENERATION_TOKENS = 2048;
 
   // Turn the conversation into a digest that can be presented to the model.
+  // TODO(@fontanierh): Make a new one for multi actions.
   const modelConversationRes = await renderConversationForModel({
     conversation,
     model,
@@ -404,6 +406,7 @@ export async function getNextAction(
         "Reply to the user with a message. You don't need to generate any arguments for this function.",
       inputs: [],
     });
+    prompt = `${prompt}\nIf you don't know which function to use, use \`reply_to_user\`.`;
   }
 
   const config = cloneBaseConfig(
