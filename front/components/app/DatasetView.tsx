@@ -426,7 +426,7 @@ export default function DatasetView({
   ]);
 
   useEffect(() => {
-    // showDataOnly means we're editing the dataset directly from the InputBlock so we need to update state.
+    // showDataOnly means we're editing the dataset directly from the Input Block so we need to update state.
     if (dataset && showDataOnly) {
       setDatasetKeys(checkDatasetData({ data: dataset.data }));
       setDatasetData(dataset.data || []);
