@@ -1,4 +1,4 @@
-use super::llm::{ChatFunction, ChatFunctionCall, ChatMessage};
+use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls, ChatMessage};
 use super::sentencepiece::sentencepiece::{
     decode_async, encode_async, mistral_instruct_tokenizer_240216_model_v2_base_singleton,
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
@@ -10,8 +10,8 @@ use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, L
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 
 use crate::run::Credentials;
-use crate::utils::ParseError;
 use crate::utils::{self, now};
+use crate::utils::{new_id, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -121,6 +121,18 @@ impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     }
 }
 
+impl TryFrom<&MistralToolCall> for ChatFunctionCalls {
+    type Error = anyhow::Error;
+
+    fn try_from(tc: &MistralToolCall) -> Result<Self, Self::Error> {
+        Ok(ChatFunctionCalls {
+            id: new_id(),
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
+    }
+}
+
 impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
@@ -198,11 +210,23 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             None => None,
         };
 
+        let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
+            let cfc = tool_calls
+                .into_iter()
+                .map(|tc| ChatFunctionCalls::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+
+            Some(cfc)
+        } else {
+            None
+        };
+
         Ok(ChatMessage {
             content,
             role,
             name: None,
             function_call,
+            function_calls,
         })
     }
 }

@@ -454,6 +454,7 @@ impl LLM for GoogleAiStudioLLM {
             completions: vec![ChatMessage {
                 name: None,
                 function_call: None,
+                function_calls: None,
                 role: ChatMessageRole::Assistant,
                 content: match c.candidates {
                     None => None,

@@ -20,7 +20,7 @@ use std::io::prelude::*;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::llm::{ChatFunction, ChatFunctionCall};
+use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -83,12 +83,24 @@ struct ToolUse {
     input: Value,
 }
 
-impl TryFrom<&ToolUse> for ChatFunctionCall {
+impl TryFrom<&ChatFunctionCalls> for ChatFunctionCall {
+    type Error = anyhow::Error;
+
+    fn try_from(cfc: &ChatFunctionCalls) -> Result<Self, Self::Error> {
+        Ok(ChatFunctionCall {
+            name: cfc.name.clone(),
+            arguments: cfc.arguments.clone(),
+        })
+    }
+}
+
+impl TryFrom<&ToolUse> for ChatFunctionCalls {
     type Error = anyhow::Error;
 
     fn try_from(tool_use: &ToolUse) -> Result<Self, Self::Error> {
         let arguments = serde_json::to_string(&tool_use.input)?;
-        Ok(ChatFunctionCall {
+        Ok(ChatFunctionCalls {
+            id: tool_use.id.clone(),
             name: tool_use.name.clone(),
             arguments,
         })
@@ -112,31 +124,6 @@ impl TryFrom<AnthropicStreamContent> for AnthropicResponseContent {
             }),
             _ => Err(anyhow!("Type not supported in streaming.")),
         }
-    }
-}
-
-impl TryFrom<&AnthropicResponseContent> for ChatMessage {
-    type Error = anyhow::Error;
-
-    fn try_from(cm: &AnthropicResponseContent) -> Result<Self, Self::Error> {
-        let role = ChatMessageRole::Assistant;
-
-        let content = match cm.get_text() {
-            Some(c) => Some(c.clone()),
-            None => None,
-        };
-
-        let function_call = match cm.get_tool_use() {
-            Some(tc) => Some(ChatFunctionCall::try_from(tc)?),
-            None => None,
-        };
-
-        Ok(ChatMessage {
-            content,
-            role,
-            name: None,
-            function_call,
-        })
     }
 }
 
@@ -291,18 +278,32 @@ impl TryFrom<ChatResponse> for ChatMessage {
             })
             .collect();
 
-        let function_call = tool_uses
-            .into_iter()
-            .map(|fc| ChatFunctionCall::try_from(fc))
-            .collect::<Result<Vec<_>, _>>()?
-            .first()
-            .cloned();
+        let function_calls = if !tool_uses.is_empty() {
+            let cfc = tool_uses
+                .into_iter()
+                .map(|tc| ChatFunctionCalls::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+
+            Some(cfc)
+        } else {
+            None
+        };
+
+        let function_call = if let Some(fcs) = function_calls.as_ref() {
+            match fcs.first() {
+                Some(fc) => Some(ChatFunctionCall::try_from(fc)?),
+                None => None,
+            }
+        } else {
+            None
+        };
 
         Ok(ChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
             function_call,
+            function_calls,
         })
     }
 }

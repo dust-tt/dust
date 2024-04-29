@@ -331,6 +331,7 @@ impl Block for Chat {
                                     },
                                     content: Some(c.clone()),
                                     function_call: None,
+                                    function_calls: None,
                                 })
                             }
                             (Some(Value::String(r)), None, Some(Value::Object(fc))) => {
@@ -348,6 +349,8 @@ impl Block for Chat {
                                                 name: n.clone(),
                                                 arguments: a.clone(),
                                             }),
+                                            // TODO: (2024-04-29 flav) Support function_calls in input.
+                                            function_calls: Some(vec![]),
                                         })
                                     }
                                     _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
@@ -443,6 +446,7 @@ impl Block for Chat {
                     name: None,
                     content: Some(i),
                     function_call: None,
+                    function_calls: None,
                 },
             );
         }

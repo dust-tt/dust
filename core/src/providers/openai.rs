@@ -27,7 +27,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::llm::{ChatFunction, ChatFunctionCall};
+use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -156,6 +156,8 @@ pub struct OpenAIToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIToolCall {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
     r#type: OpenAIToolType,
     pub function: OpenAIToolCallFunction,
 }
@@ -165,6 +167,7 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(OpenAIToolCall {
+            id: None,
             r#type: OpenAIToolType::Function,
             function: OpenAIToolCallFunction {
                 name: cf.name.clone(),
@@ -179,6 +182,23 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
         Ok(ChatFunctionCall {
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
+    }
+}
+
+impl TryFrom<&OpenAIToolCall> for ChatFunctionCalls {
+    type Error = anyhow::Error;
+
+    fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
+        let id = tc
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow!("Missing tool call id."))?;
+
+        Ok(ChatFunctionCalls {
+            id: id.clone(),
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
         })
@@ -238,6 +258,17 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             None => None,
         };
 
+        let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
+            let cfc = tool_calls
+                .into_iter()
+                .map(|tc| ChatFunctionCalls::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+
+            Some(cfc)
+        } else {
+            None
+        };
+
         let name = match cm.name.as_ref() {
             Some(c) => Some(c.clone()),
             None => None,
@@ -248,6 +279,7 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             role,
             name,
             function_call,
+            function_calls,
         })
     }
 }
@@ -995,15 +1027,17 @@ pub async fn streamed_chat_completion(
                     for tool_call in tool_calls {
                         match (
                             tool_call.get("type").and_then(|v| v.as_str()),
+                            tool_call.get("id").and_then(|v| v.as_str()),
                             tool_call.get("function"),
                         ) {
-                            (Some("function"), Some(f)) => {
+                            (Some("function"), Some(id), Some(f)) => {
                                 if let Some(Value::String(name)) = f.get("name") {
                                     c.choices[j]
                                         .message
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
+                                            id: Some(id.to_string()),
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
@@ -1012,7 +1046,7 @@ pub async fn streamed_chat_completion(
                                         });
                                 }
                             }
-                            (None, Some(f)) => {
+                            (None, None, Some(f)) => {
                                 if let (Some(Value::Number(idx)), Some(Value::String(a))) =
                                     (tool_call.get("index"), f.get("arguments"))
                                 {
