@@ -30,11 +30,11 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  md5,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
-  md5,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
