@@ -163,27 +163,42 @@ export const assistantExamples = [
     emoji: "🤝",
     backgroundColor: "bg-sky-300",
     name: "@supportExpert",
-    description:
-      "Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team.",
+    description: (
+      <>
+        Surface best information from&nbsp;your Help Center, FAQs, knowledge
+        base, online documentation, and&nbsp;tickets. Understand errors codes
+        without help from&nbsp;the Tech&nbsp;team.
+      </>
+    ),
   },
   {
     emoji: "📡",
     backgroundColor: "bg-sky-300",
     name: "@productInfo",
-    description:
-      "Answer questions on product evolutions, engineering activity, alerts, and downtime.",
+    description: (
+      <>
+        Answer questions on&nbsp;product evolutions, engineering activity,
+        alerts, and&nbsp;downtime.
+      </>
+    ),
   },
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
     name: "@ticketAnalyst",
-    description:
-      "Classify tickets; identify patterns, sentiment, and recurring needs.",
+    description: (
+      <>
+        Classify tickets; identify patterns, sentiment,
+        and&nbsp;recurring&nbsp;needs.
+      </>
+    ),
   },
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
     name: "@onboardingBuddy",
-    description: "All you need to know about people, tooling and resources.",
+    description: (
+      <>All you need to&nbsp;know about people, tooling and&nbsp;resources.</>
+    ),
   },
 ];

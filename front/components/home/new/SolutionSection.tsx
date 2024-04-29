@@ -75,7 +75,12 @@ const renderSolutionSectionBlock = ({
         className,
         "my-4 flex flex-col overflow-hidden rounded-[28px] bg-slate-50 sm:my-0",
         Array.isArray(contentBlocks) || Array.isArray(assistantBlocks)
-          ? "col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
+          ? classNames(
+              "col-span-12",
+              Array.isArray(contentBlocks) && contentBlocks.length > 2
+                ? "lg:col-span-12 xl:col-span-10 xl:col-start-2"
+                : "lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
+            )
           : "col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
       )}
     >
@@ -135,7 +140,7 @@ const SolutionSectionContentBlock = ({
 
 interface SolutionSectionAssistantBlockProps {
   name: string;
-  description: string;
+  description: ReactNode;
   emoji: string;
   backgroundColor: string;
 }
