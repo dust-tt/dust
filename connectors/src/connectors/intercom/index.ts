@@ -37,7 +37,10 @@ import {
   launchIntercomSyncWorkflow,
   stopIntercomSyncWorkflow,
 } from "@connectors/connectors/intercom/temporal/client";
-import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import type {
+  ConnectorConfigGetter,
+  ConnectorPermissionRetriever,
+} from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   IntercomArticle,
@@ -82,6 +85,8 @@ export async function createIntercomConnector(
       name: intercomWorkspace.name,
       conversationsSlidingWindow: 90,
       region: intercomWorkspace.region,
+      shouldSyncAllConversations: false,
+      shouldSyncNotes: true,
     };
 
     connector = await ConnectorResource.makeNew(
@@ -781,4 +786,89 @@ export async function unpauseIntercomConnector(connectorId: ModelId) {
   }
 
   return new Ok(undefined);
+}
+
+export const getIntercomConfig: ConnectorConfigGetter = async function (
+  connectorId: ModelId,
+  configKey: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "intercomConversationsNotesSyncEnabled": {
+      const connectorState = await IntercomWorkspace.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      return new Ok(connectorState.shouldSyncNotes.toString());
+    }
+    default:
+      return new Err(new Error(`Invalid config key ${configKey}`));
+  }
+};
+
+export async function setIntercomConfig(
+  connectorId: ModelId,
+  configKey: string,
+  configValue: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(
+      new Error(`Connector not found (connectorId: ${connectorId})`)
+    );
+  }
+
+  switch (configKey) {
+    case "intercomConversationsNotesSyncEnabled": {
+      const connectorState = await IntercomWorkspace.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!connectorState) {
+        return new Err(
+          new Error(`Connector state not found (connectorId: ${connector.id})`)
+        );
+      }
+
+      await connectorState.update({
+        shouldSyncNotes: configValue === "true",
+      });
+
+      const teamsIds = await IntercomTeam.findAll({
+        where: {
+          connectorId,
+        },
+        attributes: ["teamId"],
+      });
+      const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
+      const r = await launchIntercomSyncWorkflow({
+        connectorId,
+        teamIds: toBeSignaledTeamIds,
+        forceResync: true,
+      });
+      if (r.isErr()) {
+        return r;
+      }
+
+      return new Ok(void 0);
+    }
+
+    default: {
+      return new Err(new Error(`Invalid config key ${configKey}`));
+    }
+  }
 }
