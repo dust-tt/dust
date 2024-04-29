@@ -693,5 +693,7 @@ async function* runAction(
           assertNever(event);
       }
     }
+  } else {
+    assertNever(actionConfiguration);
   }
 }
