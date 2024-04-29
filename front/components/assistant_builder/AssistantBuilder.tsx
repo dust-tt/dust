@@ -614,6 +614,7 @@ export default function AssistantBuilder({
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
                         resetAt={instructionsResetAt}
+                        isUsingTemplate={template !== null}
                       />
                     );
                   case "actions":
