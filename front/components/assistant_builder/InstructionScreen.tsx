@@ -42,7 +42,6 @@ import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { random } from "lodash";
 import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
