@@ -1,0 +1,4 @@
+ALTER TABLE block_executions
+ADD COLUMN project BIGINT,
+ADD COLUMN created BIGINT,
+ADD FOREIGN KEY (project) REFERENCES projects(id);

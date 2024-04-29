@@ -333,9 +333,12 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
     "-- block executions
     CREATE TABLE IF NOT EXISTS block_executions (
-       id        BIGSERIAL PRIMARY KEY,
-       hash      TEXT NOT NULL,
-       execution TEXT NOT NULL
+       id                   BIGSERIAL PRIMARY KEY,
+       hash                 TEXT NOT NULL,
+       execution            TEXT NOT NULL,
+       project              BIGINT,
+       created              BIGINT,
+       FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- runs to block_executions association (avoid duplication)
     CREATE TABLE IF NOT EXISTS runs_joins (
@@ -470,6 +473,7 @@ pub const SQL_INDEXES: [&'static str; 22] = [
 
 pub const SQL_FUNCTIONS: [&'static str; 3] = [
     // SQL function to delete the project runs / runs_joins / block_executions
+    // TODO(2024-04-29 flav): Remove this stored function.
     r#"
         CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
         RETURNS void AS $$
