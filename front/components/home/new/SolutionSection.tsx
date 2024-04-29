@@ -36,7 +36,7 @@ interface SolutionSectionBlock {
   contentBlocks:
     | SolutionSectionContentBlockProps
     | SolutionSectionContentBlockProps[];
-  assistantBlocks:
+  assistantBlocks?:
     | SolutionSectionAssistantBlockProps
     | SolutionSectionAssistantBlockProps[];
   color?: "pink" | "sky" | "emerald" | "amber";
@@ -64,7 +64,7 @@ const renderSolutionSectionBlock = ({
       return assistantBlocks.map((block, index) => (
         <SolutionSectionAssistantBlock key={index} {...block} />
       ));
-    } else {
+    } else if (assistantBlocks) {
       return <SolutionSectionAssistantBlock {...assistantBlocks} />;
     }
   };
@@ -87,21 +87,23 @@ const renderSolutionSectionBlock = ({
       <div className="flex grow basis-0 flex-col gap-8 p-8 md:flex-row">
         {renderContentBlocks()}
       </div>
-      <div
-        className={classNames(
-          "flex grow basis-0 flex-col gap-4 border border-slate-800/10 bg-gradient-to-br p-8 pt-6",
-          SolutionSectionColor[color]
-        )}
-      >
-        <div className="text-sm uppercase text-slate-800/60">
-          {Array.isArray(assistantBlocks)
-            ? "The assistants for the job:"
-            : "The assistant for the job:"}
+      {assistantBlocks && (
+        <div
+          className={classNames(
+            "flex grow basis-0 flex-col gap-4 border border-slate-800/10 bg-gradient-to-br p-8 pt-6",
+            SolutionSectionColor[color]
+          )}
+        >
+          <div className="text-sm uppercase text-slate-800/60">
+            {Array.isArray(assistantBlocks)
+              ? "The assistants for the job:"
+              : "The assistant for the job:"}
+          </div>
+          <div className="flex grow basis-0 flex-col justify-start gap-8 md:flex-row">
+            {renderAssistantBlocks()}
+          </div>
         </div>
-        <div className="flex grow basis-0 flex-col justify-start gap-8 md:flex-row">
-          {renderAssistantBlocks()}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
