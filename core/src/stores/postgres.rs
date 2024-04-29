@@ -10,7 +10,7 @@ use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, ExecutionWithTimestamp, Run, RunConfig, RunStatus, RunType};
+use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
 use crate::sqlite_workers::client::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
@@ -667,19 +667,8 @@ impl Store for PostgresStore {
                             .iter()
                             .enumerate()
                             .map(|(map_idx, execution)| {
-                                // TODO(2024-04-29 flav): Remove once we phase out `hash` column from `block_executions` table.
-                                let execution_with_timestamp = ExecutionWithTimestamp {
-                                    execution: execution.clone(),
-                                    created: utils::now() as i64,
-                                };
-                                let execution_with_timestamp_json =
-                                    serde_json::to_string(&execution_with_timestamp)?;
-
                                 let execution_json = serde_json::to_string(&execution)?;
 
-                                let mut hasher = blake3::Hasher::new();
-                                hasher.update(execution_with_timestamp_json.as_bytes());
-                                let hash = format!("{}", hasher.finalize().to_hex());
                                 Ok((
                                     block_idx,
                                     block_type.clone(),
@@ -687,7 +676,6 @@ impl Store for PostgresStore {
                                     input_idx,
                                     map_idx,
                                     execution_json,
-                                    hash,
                                 ))
                             })
                             .collect::<Result<Vec<_>>>()
@@ -708,22 +696,19 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let stmt = tx
             .prepare(
-                "INSERT INTO block_executions (id, hash, execution, project, created) VALUES (DEFAULT, $1, $2, $3, $4)
+                "INSERT INTO block_executions (id, execution, project, created) VALUES (DEFAULT, $1, $2, $3)
                    RETURNING id",
             )
             .await?;
 
         let mut ex_row_ids: Vec<(usize, BlockType, String, usize, usize, i64)> = vec![];
-        for (block_idx, block_type, block_name, input_idx, map_idx, execution_json, hash) in
-            executions
-        {
+        for (block_idx, block_type, block_name, input_idx, map_idx, execution_json) in executions {
             let created = utils::now() as i64;
 
             let row_id = tx
                 .query_one(
                     &stmt,
                     &[
-                        &hash.clone(),
                         &execution_json.clone(),
                         &project.project_id().clone(),
                         &created,

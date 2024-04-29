@@ -334,7 +334,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     "-- block executions
     CREATE TABLE IF NOT EXISTS block_executions (
        id                   BIGSERIAL PRIMARY KEY,
-       hash                 TEXT NOT NULL,
+       hash                 TEXT,
        execution            TEXT NOT NULL,
        project              BIGINT,
        created              BIGINT,
