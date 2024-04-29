@@ -110,7 +110,7 @@ export function ActionDustAppRun({
               setShowDustAppsModal(true);
             }}
             onDelete={deleteDustApp}
-            canSelectDustApp={dustApps.length !== 0}
+            canSelectDustApp={!noDustApp}
           />
         </>
       )}
