@@ -26,8 +26,7 @@ export function ActionProcess({
   dataSources: DataSourceType[];
   timeFrameError: string | null;
 }) {
-  const [showDataSourcesModal, setShowDataSourcesModal] =
-    useState(false);
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
   const deleteDataSource = (name: string) => {
     if (builderState.processConfiguration.dataSourceConfigurations[name]) {
