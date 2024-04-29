@@ -566,7 +566,7 @@ export default function Developers({
   const router = useRouter();
   const handleTabChange = async (tabId: string) => {
     const query = { ...router.query, t: tabId };
-    await router.replace({ query });
+    await router.push({ query });
   };
 
   useEffect(() => {
