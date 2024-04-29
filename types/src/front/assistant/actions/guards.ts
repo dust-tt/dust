@@ -14,13 +14,18 @@ import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
-import { AgentActionConfigurationType } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { AgentActionConfigurationType } from "../agent";
 
 export function isTablesQueryConfiguration(
-  arg: AgentActionConfigurationType | null
+  arg: unknown
 ): arg is TablesQueryConfigurationType {
-  return arg?.type === "tables_query_configuration";
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "tables_query_configuration"
+  );
 }
 
 export function isTablesQueryActionType(
@@ -30,9 +35,14 @@ export function isTablesQueryActionType(
 }
 
 export function isDustAppRunConfiguration(
-  arg: AgentActionConfigurationType | null
+  arg: unknown
 ): arg is DustAppRunConfigurationType {
-  return arg !== null && arg.type && arg.type === "dust_app_run_configuration";
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "dust_app_run_configuration"
+  );
 }
 
 export function isDustAppRunActionType(
@@ -42,9 +52,14 @@ export function isDustAppRunActionType(
 }
 
 export function isRetrievalConfiguration(
-  arg: AgentActionConfigurationType | null
+  arg: unknown
 ): arg is RetrievalConfigurationType {
-  return arg !== null && arg.type && arg.type === "retrieval_configuration";
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "retrieval_configuration"
+  );
 }
 
 export function isRetrievalActionType(
@@ -54,13 +69,29 @@ export function isRetrievalActionType(
 }
 
 export function isProcessConfiguration(
-  arg: AgentActionConfigurationType | null
+  arg: unknown
 ): arg is ProcessConfigurationType {
-  return arg !== null && arg.type && arg.type === "process_configuration";
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "process_configuration"
+  );
 }
 
 export function isProcessActionType(
   arg: AgentActionType
 ): arg is ProcessActionType {
   return arg.type === "process_action";
+}
+
+export function isAgentConfiguration(
+  arg: unknown
+): arg is AgentActionConfigurationType {
+  return (
+    isTablesQueryConfiguration(arg) ||
+    isDustAppRunConfiguration(arg) ||
+    isRetrievalConfiguration(arg) ||
+    isProcessConfiguration(arg)
+  );
 }
