@@ -4,7 +4,7 @@ import {
   ElementModal,
   Markdown,
   Page,
-  Spinner2,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
@@ -37,7 +37,7 @@ export function AssistantTemplateModal({
   }
 
   if (isAssistantTemplateLoading || !assistantTemplate) {
-    return <Spinner2 variant="color" />;
+    return <Spinner variant="color" />;
   }
 
   const { description, handle, pictureUrl, presetInstructions, sId } =

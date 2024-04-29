@@ -4,7 +4,7 @@ import {
   CloudArrowLeftRightIcon,
   Page,
   SliderToggle,
-  Spinner2,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -113,7 +113,7 @@ export default function LabsTranscriptsIndex({
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {
-    return <Spinner2 />;
+    return <Spinner />;
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");

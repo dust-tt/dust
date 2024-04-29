@@ -1,4 +1,4 @@
-import { Button, Spinner2, Tab } from "@dust-tt/sparkle";
+import { Button, Spinner, Tab } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -180,7 +180,7 @@ function ExecuteOutputLine({
           <div>
             {lastEventForBlock.content.status === "running" ? (
               <div className="ml-1">
-                <Spinner2 />
+                <Spinner />
               </div>
             ) : lastEventForBlock.content.status === "errored" ? (
               <ExclamationCircleIcon className="ml-1 h-4 w-4 text-red-500" />
