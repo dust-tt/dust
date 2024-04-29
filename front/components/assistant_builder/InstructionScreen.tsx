@@ -9,6 +9,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/cjs/components/ContentMessage";
 import type {
   APIError,
   AssistantCreativityLevel,
@@ -29,6 +30,7 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  md5,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -424,13 +426,13 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
-      <div className="relative flex flex-col gap-3">
+      <div className="relative flex flex-col">
         <div className="flex items-center gap-2 text-base font-bold text-element-800">
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner size="xs" />}
         </div>
         <div
-          className="overflow-y-auto px-2 scrollbar-hide"
+          className="overflow-y-auto pt-2 scrollbar-hide"
           onScroll={handleScroll}
         >
           <div
@@ -448,33 +450,62 @@ function Suggestions({
           {(() => {
             if (error) {
               return (
-                <ContentMessage size="sm" title="Error" variant="red">
-                  Error loading new suggestions:
-                  {error.message}
-                </ContentMessage>
+                <AnimatedSuggestion
+                  variant="red"
+                  suggestion={`Error loading new suggestions:\n${error.message}`}
+                />
               );
             }
             if (suggestionsStatus === "instructions_are_good") {
               return (
-                <ContentMessage size="sm" variant="slate" title="">
-                  Looking good! 🎉
-                </ContentMessage>
+                <AnimatedSuggestion
+                  variant="slate"
+                  suggestion="Looking good! 🎉"
+                />
               );
             }
             return (
-              <div className="flex w-max gap-3">
-                {suggestions.map((suggestion, index) => (
-                  <div key={index} className="w-[320px] transition-all">
-                    <ContentMessage size="sm" title="" variant="sky">
-                      {suggestion}
-                    </ContentMessage>
-                  </div>
+              <div className="flex w-max">
+                {suggestions.map((suggestion) => (
+                  <AnimatedSuggestion
+                    suggestion={suggestion}
+                    key={md5(suggestion)}
+                  />
                 ))}
               </div>
             );
           })()}
         </div>
       </div>
+    </Transition>
+  );
+}
+
+function AnimatedSuggestion({
+  suggestion,
+  variant = "sky",
+}: {
+  suggestion: string;
+  variant?: ContentMessageProps["variant"];
+}) {
+  return (
+    <Transition
+      appear={true}
+      enter="transition-all ease-out duration-300"
+      enterFrom="opacity-0 w-0"
+      enterTo="opacity-100 w-[320px]"
+      leave="ease-in duration-300"
+      leaveFrom="opacity-100 w-[320px]"
+      leaveTo="opacity-0 w-0"
+    >
+      <ContentMessage
+        size="sm"
+        title=""
+        variant={variant}
+        className="h-fit w-[308px]"
+      >
+        {suggestion}
+      </ContentMessage>
     </Transition>
   );
 }
@@ -525,18 +556,29 @@ function mergeSuggestions(
   suggestions: string[],
   dustAppSuggestions: BuilderSuggestionsType
 ): string[] {
-  const mergedSuggestions = [...suggestions];
   if (dustAppSuggestions.status === "ok") {
     const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
     const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
       0,
       VISIBLE_SUGGESTIONS_NUMBER
     );
+
+    // Reorder existing suggestions with best ranked first
+    const mergedSuggestions = [
+      ...suggestions.filter((suggestion) =>
+        bestRankedSuggestions.includes(suggestion)
+      ),
+      ...suggestions.filter(
+        (suggestion) => !bestRankedSuggestions.includes(suggestion)
+      ),
+    ];
+    // insert new good ones
     for (const suggestion of bestRankedSuggestions) {
       if (!visibleSuggestions.includes(suggestion)) {
         mergedSuggestions.unshift(suggestion);
       }
     }
+    return mergedSuggestions;
   }
-  return mergedSuggestions;
+  return suggestions;
 }
