@@ -1643,9 +1643,9 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         // Store action in database.
         if (event.action.type === "retrieval_action") {
-          // await agentMessageRow.update({
-          //   agentRetrievalActionId: event.action.id,
-          // });
+          // no-op since PR #4891. We'll remove the entire if / else once we have inverted all
+          // relations.
+          // Keeping this branch to not remove the assert never down below.
         } else if (event.action.type === "dust_app_run_action") {
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,

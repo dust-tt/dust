@@ -237,10 +237,8 @@ export async function batchRenderAgentMessages(
 
     let action: AgentActionType | null = null;
     if (retrievalActionByAgentMessageId[agentMessage.id]) {
-      action =
-        agentRetrievalActions.find(
-          (a) => a.id === retrievalActionByAgentMessageId[agentMessage.id].id
-        ) || null;
+      const actionId = retrievalActionByAgentMessageId[agentMessage.id].id;
+      action = agentRetrievalActions.find((a) => a.id === actionId) || null;
     } else if (agentMessage.agentDustAppRunActionId) {
       action =
         agentDustAppRunActions.find(
