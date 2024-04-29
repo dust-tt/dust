@@ -1,7 +1,7 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -41,6 +41,7 @@ export function ActionRetrievalSearch({
   builderState,
   setBuilderState,
   setEdited,
+  setRetrievalValid,
   dataSources,
 }: {
   owner: WorkspaceType;
@@ -49,9 +50,24 @@ export function ActionRetrievalSearch({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  setRetrievalValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+
+  useEffect(() => {
+    let valid = true;
+    if (
+      Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+        .length === 0
+    ) {
+      valid = false;
+    }
+    setRetrievalValid(valid);
+  }, [
+    builderState.retrievalConfiguration.dataSourceConfigurations,
+    setRetrievalValid,
+  ]);
 
   return (
     <>
@@ -109,8 +125,8 @@ export function ActionRetrievalExhaustive({
   builderState,
   setBuilderState,
   setEdited,
+  setRetrievalValid,
   dataSources,
-  timeFrameError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -118,10 +134,34 @@ export function ActionRetrievalExhaustive({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  setRetrievalValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
-  timeFrameError: string | null;
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let valid = true;
+    if (
+      Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+        .length === 0
+    ) {
+      valid = false;
+    }
+
+    if (!builderState.retrievalConfiguration.timeFrame.value) {
+      valid = false;
+      setTimeFrameError("Timeframe must be a number");
+    } else {
+      setTimeFrameError(null);
+    }
+
+    setRetrievalValid(valid);
+  }, [
+    builderState.retrievalConfiguration.dataSourceConfigurations,
+    builderState.retrievalConfiguration.timeFrame.value,
+    setRetrievalValid,
+  ]);
 
   return (
     <>

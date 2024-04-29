@@ -303,11 +303,11 @@ export default function AssistantBuilder({
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
+  const [actionsValid, setActionsValid] = useState(true);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
     string | null
   >(null);
-  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -416,67 +416,18 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (
-      builderState.actionMode === "RETRIEVAL_SEARCH" ||
-      builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
-    ) {
-      if (
-        Object.keys(
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        ).length === 0
-      ) {
-        valid = false;
-      }
-    }
-    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
-      if (!builderState.retrievalConfiguration.timeFrame.value) {
-        valid = false;
-        setTimeFrameError("Timeframe must be a number");
-      } else {
-        setTimeFrameError(null);
-      }
-    }
-
-    if (builderState.actionMode === "DUST_APP_RUN") {
-      if (!builderState.dustAppConfiguration) {
-        valid = false;
-      }
-    }
-
-    if (builderState.actionMode === "TABLES_QUERY") {
-      if (!builderState.tablesQueryConfiguration) {
-        valid = false;
-      }
-    }
-
-    if (builderState.actionMode === "PROCESS") {
-      if (
-        Object.keys(builderState.processConfiguration.dataSourceConfigurations)
-          .length === 0
-      ) {
-        valid = false;
-      }
-      if (!builderState.processConfiguration.timeFrame.value) {
-        valid = false;
-        setTimeFrameError("Timeframe must be a number");
-      } else {
-        setTimeFrameError(null);
-      }
+    if (!actionsValid) {
+      valid = false;
     }
 
     setSubmitEnabled(valid);
   }, [
-    builderState.actionMode,
     builderState.handle,
     builderState.description,
     builderState.instructions,
     owner,
     initialBuilderState?.handle,
-    // Actions
-    builderState.retrievalConfiguration,
-    builderState.dustAppConfiguration,
-    builderState.tablesQueryConfiguration,
-    builderState.processConfiguration,
+    actionsValid,
   ]);
 
   useEffect(() => {
@@ -621,11 +572,11 @@ export default function AssistantBuilder({
                       <ActionScreen
                         owner={owner}
                         builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
                         dataSources={dataSources}
                         dustApps={dustApps}
-                        timeFrameError={timeFrameError}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                        setActionsValid={setActionsValid}
                       />
                     );
                   case "naming":

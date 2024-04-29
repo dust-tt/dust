@@ -18,6 +18,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
@@ -129,21 +130,21 @@ function ActionModeSection({
 export default function ActionScreen({
   owner,
   builderState,
-  setBuilderState,
-  setEdited,
   dustApps,
   dataSources,
-  timeFrameError,
+  setBuilderState,
+  setEdited,
+  setActionsValid,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  dataSources: DataSourceType[];
+  dustApps: AppType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
-  timeFrameError: string | null;
+  setActionsValid: (valid: boolean) => void;
 }) {
   const getActionType = (actionMode: ActionMode) => {
     switch (actionMode) {
@@ -180,6 +181,38 @@ export default function ActionScreen({
         assertNever(actionMode);
     }
   };
+
+  const [retrievalValid, setRetrievalValid] = useState(true);
+  const [processValid, setProcessValid] = useState(true);
+  const [dustAppRunValid, setDustAppRunValid] = useState(true);
+  const [tablesQueryValid, setTablesQueryValid] = useState(true);
+
+  useEffect(() => {
+    let valid = true;
+    if (builderState.actionMode === "RETRIEVAL_SEARCH") {
+      valid = retrievalValid;
+    }
+    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
+      valid = retrievalValid;
+    }
+    if (builderState.actionMode === "PROCESS") {
+      valid = processValid;
+    }
+    if (builderState.actionMode === "DUST_APP_RUN") {
+      valid = dustAppRunValid;
+    }
+    if (builderState.actionMode === "TABLES_QUERY") {
+      valid = tablesQueryValid;
+    }
+    setActionsValid(valid);
+  }, [
+    setActionsValid,
+    builderState.actionMode,
+    retrievalValid,
+    processValid,
+    dustAppRunValid,
+    tablesQueryValid,
+  ]);
 
   const noDataSources =
     dataSources.length === 0 &&
@@ -375,6 +408,7 @@ export default function ActionScreen({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
+            setRetrievalValid={setRetrievalValid}
             dataSources={dataSources}
           />
         </ActionModeSection>
@@ -389,8 +423,8 @@ export default function ActionScreen({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
+            setRetrievalValid={setRetrievalValid}
             dataSources={dataSources}
-            timeFrameError={timeFrameError}
           />
         </ActionModeSection>
 
@@ -402,8 +436,8 @@ export default function ActionScreen({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
+            setProcessValid={setProcessValid}
             dataSources={dataSources}
-            timeFrameError={timeFrameError}
           />
         </ActionModeSection>
 
@@ -415,6 +449,7 @@ export default function ActionScreen({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
+            setTablesQueryValid={setTablesQueryValid}
             dataSources={dataSources}
           />
         </ActionModeSection>
@@ -425,6 +460,7 @@ export default function ActionScreen({
             builderState={builderState}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
+            setDustAppRunValid={setDustAppRunValid}
             dustApps={dustApps}
           />
         </ActionModeSection>

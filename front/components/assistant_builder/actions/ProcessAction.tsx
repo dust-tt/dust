@@ -1,7 +1,7 @@
 import { Button, DropdownMenu, Hoverable } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -14,8 +14,8 @@ export function ActionProcess({
   builderState,
   setBuilderState,
   setEdited,
+  setProcessValid,
   dataSources,
-  timeFrameError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -23,10 +23,34 @@ export function ActionProcess({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  setProcessValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
-  timeFrameError: string | null;
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let valid = true;
+    if (
+      Object.keys(builderState.processConfiguration.dataSourceConfigurations)
+        .length === 0
+    ) {
+      valid = false;
+    }
+
+    if (!builderState.processConfiguration.timeFrame.value) {
+      valid = false;
+      setTimeFrameError("Timeframe must be a number");
+    } else {
+      setTimeFrameError(null);
+    }
+
+    setProcessValid(valid);
+  }, [
+    builderState.processConfiguration.dataSourceConfigurations,
+    builderState.processConfiguration.timeFrame.value,
+    setProcessValid,
+  ]);
 
   const deleteDataSource = (name: string) => {
     if (builderState.processConfiguration.dataSourceConfigurations[name]) {
