@@ -105,7 +105,8 @@ export default function NewBlock({
       type: "database",
       typeNames: ["database"],
       name: "Database",
-      description: "Query a database by executing SQL queries on structured data sources.",
+      description:
+        "Query a database by executing SQL queries on structured data sources.",
     },
   ];
 
@@ -182,7 +183,8 @@ export default function NewBlock({
                   </div>
                 </div>
                 <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
-                  <strong>{block.name}</strong><br/>
+                  <strong>{block.name}</strong>
+                  <br />
                   {block.description}
                 </div>
               </div>
