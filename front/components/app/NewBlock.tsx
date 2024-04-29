@@ -30,7 +30,7 @@ export default function NewBlock({
     {
       type: "chat",
       typeNames: ["chat"],
-      name: "Call a Large Language Model (LLM)",
+      name: "Interact with a Large Language Model (LLM)",
       description:
         "Query a Large Language Model using a message-based interface.",
     },
