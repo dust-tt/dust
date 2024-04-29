@@ -1,7 +1,17 @@
-import { Button, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import {
+  AttachmentIcon,
+  Button,
+  Hoverable,
+  Icon,
+  Markdown,
+  Modal,
+  PriceTable,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
-import React from "react";
+import type { ReactNode } from "react";
+import React, { useCallback, useState } from "react";
 
 import {
   getPriceWithCurrency,
@@ -25,69 +35,10 @@ interface PricePlanProps {
 type PriceTableDisplay = "landing" | "subscribe";
 
 type PriceTableItem = {
-  label: string;
+  label: ReactNode;
   variant: "check" | "dash" | "xmark";
   display: PriceTableDisplay[];
 };
-
-const PRO_PLAN_ITEMS: PriceTableItem[] = [
-  { label: "From 1 user", variant: "check", display: ["landing", "subscribe"] },
-  {
-    label: "One workspace",
-    variant: "dash",
-    display: ["landing"],
-  },
-  {
-    label: "Privacy and Data Security",
-    variant: "check",
-    display: ["landing"],
-  },
-  {
-    label: "Advanced models (GPT-4, Claude…)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Unlimited custom assistants",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Unlimited messages",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Up to 1Gb/user of data sources",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Google & GitHub Authentication",
-    variant: "dash",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Dust Slackbot",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Assistants can execute actions",
-    variant: "check",
-    display: ["landing", "subscribe"],
-  },
-  {
-    label: "Workspace role and permissions",
-    variant: "dash",
-    display: ["landing"],
-  },
-];
 
 const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   {
@@ -117,6 +68,11 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
   {
     label: "Unlimited messages",
+    variant: "check",
+    display: ["landing", "subscribe"],
+  },
+  {
+    label: "Custom programmatic usage (API)",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -170,50 +126,150 @@ export function ProPriceTable({
   isProcessing?: boolean;
   display: PriceTableDisplay;
 }) {
+  const [isFairUseModalOpen, setFairUseModalOpen] = useState(false);
+  const toggleFairUseModal = useCallback(
+    () => setFairUseModalOpen((open) => !open),
+    []
+  );
+
+  const PRO_PLAN_ITEMS: PriceTableItem[] = [
+    {
+      label: "From 1 user",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "One workspace",
+      variant: "dash",
+      display: ["landing"],
+    },
+    {
+      label: "Privacy and Data Security",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: "Advanced models (GPT-4, Claude…)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Unlimited custom assistants",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: (
+        <>
+          Unlimited messages (
+          <Hoverable onClick={toggleFairUseModal}>
+            Fair use limits apply*
+          </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Limited Programmatic usage (API)",
+      variant: "dash",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Up to 1Gb/user of data sources",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Google & GitHub Authentication",
+      variant: "dash",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Dust Slackbot",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Assistants can execute actions",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Workspace role and permissions",
+      variant: "dash",
+      display: ["landing"],
+    },
+  ];
+
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
-    <PriceTable
-      title="Pro"
-      price={getPriceWithCurrency(PRO_PLAN_29_COST)}
-      color="emerald"
-      priceLabel="/ month / user, excl. tax"
-      size={size}
-      magnified={false}
-    >
-      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-        <PriceTable.ActionContainer position="top">
-          <Button
-            variant="primary"
-            size={biggerButtonSize}
-            label="Start now, 15 days free"
-            icon={RocketIcon}
-            disabled={isProcessing}
-            onClick={onClick}
+    <>
+      <Modal
+        isOpen={isFairUseModalOpen}
+        onClose={toggleFairUseModal}
+        hasChanged={false}
+        variant="side-sm"
+        title="Dust's Fair Use Policy"
+      >
+        <div className="py-8">
+          <Icon
+            visual={AttachmentIcon}
+            size="lg"
+            className="text-emerald-500"
           />
-        </PriceTable.ActionContainer>
-      )}
-      {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
-        (item) => (
-          <PriceTable.Item
-            key={item.label}
-            label={item.label}
-            variant={item.variant}
-          />
-        )
-      )}
-      {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
-        <PriceTable.ActionContainer>
-          <Button
-            variant="primary"
-            size={biggerButtonSize}
-            label="Start now, 15 days free"
-            icon={RocketIcon}
-            disabled={isProcessing}
-            onClick={onClick}
-          />
-        </PriceTable.ActionContainer>
-      )}
-    </PriceTable>
+          <Markdown content={FAIR_USE_CONTENT} size="sm" />
+        </div>
+      </Modal>
+      <PriceTable
+        title="Pro"
+        price={getPriceWithCurrency(PRO_PLAN_29_COST)}
+        color="emerald"
+        priceLabel="/ month / user, excl. tax"
+        size={size}
+        magnified={false}
+      >
+        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+          <PriceTable.ActionContainer position="top">
+            <Button
+              variant="primary"
+              size={biggerButtonSize}
+              label="Start now, 15 days free"
+              icon={RocketIcon}
+              disabled={isProcessing}
+              onClick={onClick}
+            />
+          </PriceTable.ActionContainer>
+        )}
+        {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
+          (item, index) => (
+            <PriceTable.Item
+              key={index}
+              label={item.label}
+              variant={item.variant}
+            />
+          )
+        )}
+        {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
+          <PriceTable.ActionContainer>
+            <Button
+              variant="primary"
+              size={biggerButtonSize}
+              label="Start now, 15 days free"
+              icon={RocketIcon}
+              disabled={isProcessing}
+              onClick={onClick}
+            />
+          </PriceTable.ActionContainer>
+        )}
+      </PriceTable>
+    </>
   );
 }
 function EnterprisePriceTable({
@@ -239,9 +295,9 @@ function EnterprisePriceTable({
           />
         )}
       </PriceTable.ActionContainer>
-      {ENTERPRISE_PLAN_ITEMS.map((item) => (
+      {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
         <PriceTable.Item
-          key={item.label}
+          key={index}
           label={item.label}
           variant={item.variant}
         />
@@ -260,6 +316,23 @@ function EnterprisePriceTable({
     </PriceTable>
   );
 }
+
+const FAIR_USE_CONTENT = `
+# Fair use principles
+**Dust Pro** is designed company setting and team use
+of AI. It is not designed as a model wrapper for programatic usage.
+
+**Dust Enterprise** provides programatic usage (though
+API), with custom prices.
+___
+# What is "unfair" usage?
+Is considered *"Unfair"* usage:
+- Sharing single seat between multiple people.
+- Using Dust programmatically at a large scale on a Pro plan.
+___
+# "Fair use" limitations
+For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
+`;
 
 export function PricePlans({
   size = "sm",
