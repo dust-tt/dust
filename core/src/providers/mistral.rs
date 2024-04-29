@@ -10,8 +10,8 @@ use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, L
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 
 use crate::run::Credentials;
-use crate::utils::ParseError;
 use crate::utils::{self, now};
+use crate::utils::{new_id, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -121,6 +121,18 @@ impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     }
 }
 
+impl TryFrom<&MistralToolCall> for ChatFunctionCall {
+    type Error = anyhow::Error;
+
+    fn try_from(tc: &MistralToolCall) -> Result<Self, Self::Error> {
+        Ok(ChatFunctionCall {
+            id: format!("fc_{}", new_id()),
+            name: tc.function.name.clone(),
+            arguments: tc.function.arguments.clone(),
+        })
+    }
+}
+
 impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
@@ -184,18 +196,25 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             None => None,
         };
 
-        let function_call = match cm.tool_calls.as_ref() {
-            Some(tc) => {
-                if tc.len() > 0 {
-                    Some(ChatFunctionCall {
-                        name: tc[0].function.name.clone(),
-                        arguments: tc[0].function.arguments.clone(),
-                    })
-                } else {
-                    None
-                }
+        let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
+            let cfc = tool_calls
+                .into_iter()
+                .map(|tc| ChatFunctionCall::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
+
+            Some(cfc)
+        } else {
+            None
+        };
+
+        let function_call = if let Some(fcs) = function_calls.as_ref() {
+            match fcs.first() {
+                Some(fc) => Some(fc),
+                None => None,
             }
-            None => None,
+            .cloned()
+        } else {
+            None
         };
 
         Ok(ChatMessage {
@@ -203,6 +222,7 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             role,
             name: None,
             function_call,
+            function_calls,
         })
     }
 }
