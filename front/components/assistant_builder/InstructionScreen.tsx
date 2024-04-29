@@ -427,17 +427,7 @@ function Suggestions({
       leaveTo="max-h-0"
     >
       <div className="relative flex flex-col">
-        <div
-          className="flex items-center gap-2 text-base font-bold text-element-800"
-          onClick={() => {
-            setSuggestions((s) => [
-              `${random(
-                100
-              )} - Test suggestion, to perform smooth animations when needed lol yes yes`,
-              ...s,
-            ]);
-          }}
-        >
+        <div className="flex items-center gap-2 text-base font-bold text-element-800">
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner size="xs" />}
         </div>
