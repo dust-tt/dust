@@ -168,10 +168,15 @@ export async function deleteConversationsActivity({
                   transaction: t,
                 });
                 if (agentMessage) {
-                  if (agentMessage.agentRetrievalActionId) {
+                  const retrievalAction = await AgentRetrievalAction.findOne({
+                    where: {
+                      agentMessageId: agentMessage.id,
+                    },
+                  });
+                  if (retrievalAction) {
                     const retrievalDocuments = await RetrievalDocument.findAll({
                       where: {
-                        retrievalActionId: agentMessage.agentRetrievalActionId,
+                        retrievalActionId: retrievalAction.id,
                       },
                       transaction: t,
                     });
@@ -185,7 +190,7 @@ export async function deleteConversationsActivity({
                       await retrievalDocument.destroy({ transaction: t });
                     }
                     await AgentRetrievalAction.destroy({
-                      where: { id: agentMessage.agentRetrievalActionId },
+                      where: { id: retrievalAction.id },
                       transaction: t,
                     });
                   }

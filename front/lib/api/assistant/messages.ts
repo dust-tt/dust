@@ -22,6 +22,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentMessage,
@@ -129,7 +130,7 @@ export async function batchRenderAgentMessages(
 
   const [
     agentConfigurations,
-    agentRetrievalActions,
+    retrievalActionByAgentMessageId,
     agentDustAppRunActions,
     agentTablesQueryActions,
   ] = await Promise.all([
@@ -154,13 +155,23 @@ export async function batchRenderAgentMessages(
       return agents;
     })(),
     (async () => {
-      return renderRetrievalActionsByModelId(
-        removeNulls(
-          agentMessages.map(
-            (m) => m.agentMessage?.agentRetrievalActionId ?? null
-          )
-        )
+      const agentMessageIds = removeNulls(
+        agentMessages.map((m) => m.agentMessageId || null)
       );
+      return (
+        await AgentRetrievalAction.findAll({
+          attributes: ["id", "agentMessageId"],
+          where: {
+            agentMessageId: agentMessageIds,
+          },
+        })
+      ).reduce((acc, action) => {
+        if (action.agentMessageId) {
+          acc[action.agentMessageId] = action;
+        }
+
+        return acc;
+      }, {} as Record<ModelId, AgentRetrievalAction>);
     })(),
     (async () => {
       const actions = await AgentDustAppRunAction.findAll({
@@ -206,6 +217,17 @@ export async function batchRenderAgentMessages(
     })(),
   ]);
 
+  const agentRetrievalActions = await renderRetrievalActionsByModelId(
+    removeNulls(
+      agentMessages.map(
+        (m) =>
+          (m.agentMessageId &&
+            retrievalActionByAgentMessageId[m.agentMessageId]?.id) ||
+          null
+      )
+    )
+  );
+
   return agentMessages.map((message) => {
     if (!message.agentMessage) {
       throw new Error(
@@ -215,11 +237,9 @@ export async function batchRenderAgentMessages(
     const agentMessage = message.agentMessage;
 
     let action: AgentActionType | null = null;
-    if (agentMessage.agentRetrievalActionId) {
-      action =
-        agentRetrievalActions.find(
-          (a) => a.id === agentMessage.agentRetrievalActionId
-        ) || null;
+    if (retrievalActionByAgentMessageId[agentMessage.id]) {
+      const actionId = retrievalActionByAgentMessageId[agentMessage.id].id;
+      action = agentRetrievalActions.find((a) => a.id === actionId) || null;
     } else if (agentMessage.agentDustAppRunActionId) {
       action =
         agentDustAppRunActions.find(
