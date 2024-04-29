@@ -117,19 +117,13 @@ const SolutionSectionContentBlock = ({
   title,
 }: SolutionSectionContentBlockProps) => {
   const renderContentBlocks = () => {
-    if (Array.isArray(content)) {
-      return content.map((block, index) => (
-        <P size="xs" className="max-w-[500px] text-slate-600" key={index}>
-          {block}
-        </P>
-      ));
-    } else {
-      return (
-        <P size="xs" className="max-w-[500px] text-slate-600">
-          {content}
-        </P>
-      );
-    }
+    const contents = Array.isArray(content) ? content : [content];
+
+    return contents.map((block, index) => (
+      <P size="xs" className="max-w-[500px] text-slate-600" key={index}>
+        {block}
+      </P>
+    ));
   };
 
   return (
