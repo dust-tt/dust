@@ -20,7 +20,7 @@ use std::io::prelude::*;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls};
+use super::llm::{ChatFunction, ChatFunctionCall};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -83,23 +83,13 @@ struct ToolUse {
     input: Value,
 }
 
-impl TryFrom<&ChatFunctionCalls> for ChatFunctionCall {
-    type Error = anyhow::Error;
-
-    fn try_from(cfc: &ChatFunctionCalls) -> Result<Self, Self::Error> {
-        Ok(ChatFunctionCall {
-            name: cfc.name.clone(),
-            arguments: cfc.arguments.clone(),
-        })
-    }
-}
-
-impl TryFrom<&ToolUse> for ChatFunctionCalls {
+impl TryFrom<&ToolUse> for ChatFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(tool_use: &ToolUse) -> Result<Self, Self::Error> {
         let arguments = serde_json::to_string(&tool_use.input)?;
-        Ok(ChatFunctionCalls {
+
+        Ok(ChatFunctionCall {
             id: tool_use.id.clone(),
             name: tool_use.name.clone(),
             arguments,
@@ -281,8 +271,8 @@ impl TryFrom<ChatResponse> for ChatMessage {
         let function_calls = if !tool_uses.is_empty() {
             let cfc = tool_uses
                 .into_iter()
-                .map(|tc| ChatFunctionCalls::try_from(tc))
-                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+                .map(|tc| ChatFunctionCall::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
 
             Some(cfc)
         } else {
@@ -291,9 +281,10 @@ impl TryFrom<ChatResponse> for ChatMessage {
 
         let function_call = if let Some(fcs) = function_calls.as_ref() {
             match fcs.first() {
-                Some(fc) => Some(ChatFunctionCall::try_from(fc)?),
+                Some(fc) => Some(fc),
                 None => None,
             }
+            .cloned()
         } else {
             None
         };

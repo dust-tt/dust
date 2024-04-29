@@ -64,15 +64,9 @@ impl FromStr for ChatMessageRole {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ChatFunctionCall {
-    pub name: String,
-    pub arguments: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ChatFunctionCalls {
-    pub name: String,
     pub arguments: String,
     pub id: String,
+    pub name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -84,7 +78,7 @@ pub struct ChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_call: Option<ChatFunctionCall>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub function_calls: Option<Vec<ChatFunctionCalls>>,
+    pub function_calls: Option<Vec<ChatFunctionCall>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

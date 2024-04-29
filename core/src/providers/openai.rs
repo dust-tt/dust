@@ -27,7 +27,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
-use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls};
+use super::llm::{ChatFunction, ChatFunctionCall};
 use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -181,23 +181,12 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
-        Ok(ChatFunctionCall {
-            name: tc.function.name.clone(),
-            arguments: tc.function.arguments.clone(),
-        })
-    }
-}
-
-impl TryFrom<&OpenAIToolCall> for ChatFunctionCalls {
-    type Error = anyhow::Error;
-
-    fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
         let id = tc
             .id
             .as_ref()
             .ok_or_else(|| anyhow!("Missing tool call id."))?;
 
-        Ok(ChatFunctionCalls {
+        Ok(ChatFunctionCall {
             id: id.clone(),
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
@@ -245,26 +234,23 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             None => None,
         };
 
-        let function_call = match cm.tool_calls.as_ref() {
-            Some(tcs) => {
-                if !tcs.is_empty() {
-                    // Consider only the first tool call, ignoring the rest.
-                    tcs.first()
-                        .and_then(|tc| ChatFunctionCall::try_from(tc).ok())
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-
         let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
             let cfc = tool_calls
                 .into_iter()
-                .map(|tc| ChatFunctionCalls::try_from(tc))
-                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+                .map(|tc| ChatFunctionCall::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
 
             Some(cfc)
+        } else {
+            None
+        };
+
+        let function_call = if let Some(fcs) = function_calls.as_ref() {
+            match fcs.first() {
+                Some(fc) => Some(fc),
+                None => None,
+            }
+            .cloned()
         } else {
             None
         };

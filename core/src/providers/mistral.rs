@@ -1,4 +1,4 @@
-use super::llm::{ChatFunction, ChatFunctionCall, ChatFunctionCalls, ChatMessage};
+use super::llm::{ChatFunction, ChatFunctionCall, ChatMessage};
 use super::sentencepiece::sentencepiece::{
     decode_async, encode_async, mistral_instruct_tokenizer_240216_model_v2_base_singleton,
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
@@ -121,12 +121,12 @@ impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     }
 }
 
-impl TryFrom<&MistralToolCall> for ChatFunctionCalls {
+impl TryFrom<&MistralToolCall> for ChatFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(tc: &MistralToolCall) -> Result<Self, Self::Error> {
-        Ok(ChatFunctionCalls {
-            id: new_id(),
+        Ok(ChatFunctionCall {
+            id: format!("fc_{}", new_id()),
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
         })
@@ -196,27 +196,23 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             None => None,
         };
 
-        let function_call = match cm.tool_calls.as_ref() {
-            Some(tc) => {
-                if tc.len() > 0 {
-                    Some(ChatFunctionCall {
-                        name: tc[0].function.name.clone(),
-                        arguments: tc[0].function.arguments.clone(),
-                    })
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-
         let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
             let cfc = tool_calls
                 .into_iter()
-                .map(|tc| ChatFunctionCalls::try_from(tc))
-                .collect::<Result<Vec<ChatFunctionCalls>, _>>()?;
+                .map(|tc| ChatFunctionCall::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
 
             Some(cfc)
+        } else {
+            None
+        };
+
+        let function_call = if let Some(fcs) = function_calls.as_ref() {
+            match fcs.first() {
+                Some(fc) => Some(fc),
+                None => None,
+            }
+            .cloned()
         } else {
             None
         };
