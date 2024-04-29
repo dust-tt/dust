@@ -406,7 +406,7 @@ export async function getNextAction(
         "Reply to the user with a message. You don't need to generate any arguments for this function.",
       inputs: [],
     });
-    prompt = `${prompt}\nIf you don't know which function to use, use \`reply_to_user\`.`;
+    prompt = `${prompt}\nIf you don't know which function to use, use \`reply_to_user\`. Never attempt to directly send a message to the user without using this function.`;
   }
 
   const config = cloneBaseConfig(
