@@ -75,7 +75,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Only the users that are `builders` for the current workspace interact with datasets",
+          "Only the users that are `builders` for the current workspace can interact with datasets",
       },
     });
   }

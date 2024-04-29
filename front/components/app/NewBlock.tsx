@@ -64,7 +64,7 @@ export default function NewBlock({
     {
       type: "curl",
       typeNames: ["curl"],
-      name: "CURL Request",
+      name: "cURL Request",
       description:
         "Perform an HTTP request to interface with external services.",
     },
@@ -110,12 +110,11 @@ export default function NewBlock({
     },
   ];
 
-  // sort by name
   blocks.sort((a, b) =>
     a.type.toLowerCase().localeCompare(b.type.toLowerCase())
   );
 
-  // add input block on top if it doesn't exist
+  // Add input block on top if it doesn't exist.
   if (!containsInput) {
     blocks.splice(0, 0, {
       type: "input",
