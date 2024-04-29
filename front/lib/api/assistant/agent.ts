@@ -126,206 +126,6 @@ export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
   );
 }
 
-// This method is used by the multi-actions execution loop to pick the next action
-// to execute and generate its inputs.
-export async function getNextAction(
-  auth: Authenticator,
-  {
-    agentConfiguration,
-    conversation,
-    userMessage,
-    availableActions,
-    isGenerationAllowed = true,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
-    availableActions: AgentActionConfigurationType[];
-    // TODO(@fontanierh): remove this once generation is part of actions.
-    isGenerationAllowed: boolean;
-  }
-): Promise<
-  Result<
-    {
-      action: AgentActionConfigurationType | AgentGenerationConfigurationType;
-      inputs: Record<string, string | boolean | number>;
-      specification: AgentActionSpecification | null;
-    },
-    Error
-  >
-> {
-  const prompt = await constructPrompt(
-    auth,
-    userMessage,
-    agentConfiguration,
-    "You are a conversational assistant with access to function calling."
-  );
-
-  // TODO(@fontanierh): revisit
-  const model = GPT_4_TURBO_MODEL_CONFIG;
-
-  const MIN_GENERATION_TOKENS = 2048;
-
-  // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel({
-    conversation,
-    model,
-    prompt,
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
-  });
-
-  if (modelConversationRes.isErr()) {
-    return modelConversationRes;
-  }
-
-  const specifications: AgentActionSpecification[] = [];
-  for (const a of availableActions) {
-    if (isRetrievalConfiguration(a)) {
-      const r = await generateRetrievalSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isDustAppRunConfiguration(a)) {
-      const r = await generateDustAppRunSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isTablesQueryConfiguration(a)) {
-      const r = await generateTablesQuerySpecification(auth, {
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isProcessConfiguration(a)) {
-      const r = await generateProcessSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else {
-      assertNever(a);
-    }
-  }
-
-  // TODO(@fontanierh): remove this once generation is part of actions.
-  if (agentConfiguration.generation && isGenerationAllowed) {
-    specifications.push({
-      name: "reply_to_user",
-      description:
-        "Reply to the user with a message. You don't need to generate any arguments for this function.",
-      inputs: [],
-    });
-  }
-
-  const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-use-tools"].config
-  );
-  config.MODEL.function_call = "auto";
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-  if (specifications.length === 1) {
-    config.MODEL.function_call = specifications[0].name;
-  }
-
-  const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
-    {
-      conversation: modelConversationRes.value.modelConversation,
-      specifications,
-      prompt,
-    },
-  ]);
-
-  if (res.isErr()) {
-    return new Err(
-      new Error(
-        `Error running use-tools action: [${res.error.type}] ${res.error.message}`
-      )
-    );
-  }
-
-  const { eventStream } = res.value;
-
-  const output: {
-    name?: string;
-    arguments?: Record<string, string | boolean | number>;
-  } = {};
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(`Error generating action inputs: ${event.content.message}`)
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(new Error(`Error generating action inputs: ${e.error}`));
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (Array.isArray(v)) {
-          const first = v[0];
-          if ("name" in first) {
-            output.name = first.name;
-          }
-          if ("arguments" in first) {
-            output.arguments = first.arguments;
-          }
-        }
-      }
-    }
-  }
-
-  if (!output.name) {
-    return new Err(new Error("No action found"));
-  }
-  output.arguments = output.arguments ?? {};
-
-  const action =
-    output.name === "reply_to_user"
-      ? agentConfiguration.generation
-      : agentConfiguration.actions.find((a) => a.name === output.name);
-
-  const spec = specifications.find((s) => s.name === output.name) ?? null;
-
-  if (!action) {
-    return new Err(new Error(`Action ${output.name} not found`));
-  }
-
-  return new Ok({
-    action,
-    inputs: output.arguments,
-    specification: spec,
-  });
-}
-
 export async function* runMultiActionsAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
@@ -364,6 +164,7 @@ export async function* runMultiActionsAgent(
       userMessage,
       availableActions: actions,
       isGenerationAllowed: !forcedAction,
+      forcedActionName: forcedAction?.name ?? undefined,
     });
 
     if (actionToRun.isErr()) {
@@ -485,6 +286,205 @@ export async function* runMultiActionsAgent(
     messageId: agentMessage.sId,
     message: agentMessage,
   };
+}
+
+// This method is used by the multi-actions execution loop to pick the next action
+// to execute and generate its inputs.
+export async function getNextAction(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    conversation,
+    userMessage,
+    availableActions,
+    isGenerationAllowed = true,
+    forcedActionName,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    userMessage: UserMessageType;
+    availableActions: AgentActionConfigurationType[];
+    // TODO(@fontanierh): remove this once generation is part of actions.
+    isGenerationAllowed: boolean;
+    forcedActionName?: string;
+  }
+): Promise<
+  Result<
+    {
+      action: AgentActionConfigurationType | AgentGenerationConfigurationType;
+      inputs: Record<string, string | boolean | number>;
+      specification: AgentActionSpecification | null;
+    },
+    Error
+  >
+> {
+  const prompt = await constructPrompt(
+    auth,
+    userMessage,
+    agentConfiguration,
+    "You are a conversational assistant with access to function calling."
+  );
+
+  // TODO(@fontanierh): revisit
+  const model = GPT_4_TURBO_MODEL_CONFIG;
+
+  const MIN_GENERATION_TOKENS = 2048;
+
+  // Turn the conversation into a digest that can be presented to the model.
+  const modelConversationRes = await renderConversationForModel({
+    conversation,
+    model,
+    prompt,
+    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
+  });
+
+  if (modelConversationRes.isErr()) {
+    return modelConversationRes;
+  }
+
+  const specifications: AgentActionSpecification[] = [];
+  for (const a of availableActions) {
+    if (isRetrievalConfiguration(a)) {
+      const r = await generateRetrievalSpecification(auth, {
+        actionConfiguration: a,
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (r.isErr()) {
+        return r;
+      }
+
+      specifications.push(r.value);
+    } else if (isDustAppRunConfiguration(a)) {
+      const r = await generateDustAppRunSpecification(auth, {
+        actionConfiguration: a,
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (r.isErr()) {
+        return r;
+      }
+
+      specifications.push(r.value);
+    } else if (isTablesQueryConfiguration(a)) {
+      const r = await generateTablesQuerySpecification(auth, {
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (r.isErr()) {
+        return r;
+      }
+
+      specifications.push(r.value);
+    } else if (isProcessConfiguration(a)) {
+      const r = await generateProcessSpecification(auth, {
+        actionConfiguration: a,
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (r.isErr()) {
+        return r;
+      }
+
+      specifications.push(r.value);
+    } else {
+      assertNever(a);
+    }
+  }
+
+  // TODO(@fontanierh): remove this once generation is part of actions.
+  if (agentConfiguration.generation && isGenerationAllowed) {
+    specifications.push({
+      name: "reply_to_user",
+      description:
+        "Reply to the user with a message. You don't need to generate any arguments for this function.",
+      inputs: [],
+    });
+  }
+
+  const config = cloneBaseConfig(
+    DustProdActionRegistry["assistant-v2-use-tools"].config
+  );
+  config.MODEL.function_call = forcedActionName ?? "auto";
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
+    {
+      conversation: modelConversationRes.value.modelConversation,
+      specifications,
+      prompt,
+    },
+  ]);
+
+  if (res.isErr()) {
+    return new Err(
+      new Error(
+        `Error running use-tools action: [${res.error.type}] ${res.error.message}`
+      )
+    );
+  }
+
+  const { eventStream } = res.value;
+
+  const output: {
+    name?: string;
+    arguments?: Record<string, string | boolean | number>;
+  } = {};
+
+  for await (const event of eventStream) {
+    if (event.type === "error") {
+      return new Err(
+        new Error(`Error generating action inputs: ${event.content.message}`)
+      );
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
+        return new Err(new Error(`Error generating action inputs: ${e.error}`));
+      }
+
+      if (event.content.block_name === "OUTPUT" && e.value) {
+        const v = e.value as any;
+        if (Array.isArray(v)) {
+          const first = v[0];
+          if ("name" in first) {
+            output.name = first.name;
+          }
+          if ("arguments" in first) {
+            output.arguments = first.arguments;
+          }
+        }
+      }
+    }
+  }
+
+  if (!output.name) {
+    return new Err(new Error("No action found"));
+  }
+  output.arguments = output.arguments ?? {};
+
+  const action =
+    output.name === "reply_to_user"
+      ? agentConfiguration.generation
+      : agentConfiguration.actions.find((a) => a.name === output.name);
+
+  const spec = specifications.find((s) => s.name === output.name) ?? null;
+
+  if (!action) {
+    return new Err(new Error(`Action ${output.name} not found`));
+  }
+
+  return new Ok({
+    action,
+    inputs: output.arguments,
+    specification: spec,
+  });
 }
 
 async function* runAction(
