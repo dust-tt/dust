@@ -19,8 +19,11 @@ export class IntercomWorkspace extends Model<
 
   declare intercomWorkspaceId: string;
   declare name: string;
-  declare conversationsSlidingWindow: number;
   declare region: string;
+
+  declare conversationsSlidingWindow: number;
+  declare shouldSyncAllConversations: boolean;
+  declare shouldSyncNotes: boolean;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -53,6 +56,16 @@ IntercomWorkspace.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 90,
+    },
+    shouldSyncAllConversations: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    shouldSyncNotes: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     region: {
       type: DataTypes.STRING,

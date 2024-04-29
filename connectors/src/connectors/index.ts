@@ -53,11 +53,13 @@ import {
   cleanupIntercomConnector,
   createIntercomConnector,
   fullResyncIntercomSyncWorkflow,
+  getIntercomConfig,
   pauseIntercomConnector,
   resumeIntercomConnector,
   retrieveIntercomConnectorPermissions,
   retrieveIntercomContentNodeParents,
   retrieveIntercomContentNodes,
+  setIntercomConfig,
   setIntercomConnectorPermissions,
   stopIntercomConnector,
   unpauseIntercomConnector,
@@ -289,9 +291,7 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
   },
   github: setGithubConfig,
   google_drive: setGoogleDriveConfig,
-  intercom: async () => {
-    throw new Error("Not implemented");
-  },
+  intercom: setIntercomConfig,
   webcrawler: async () => {
     throw new Error("Not implemented");
   },
@@ -311,9 +311,7 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
   },
   github: getGithubConfig,
   google_drive: getGoogleDriveConfig,
-  intercom: async () => {
-    throw new Error("Not implemented");
-  },
+  intercom: getIntercomConfig,
   webcrawler: () => {
     throw new Error("Not implemented");
   },
