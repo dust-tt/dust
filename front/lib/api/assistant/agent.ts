@@ -102,18 +102,19 @@ export async function* runAgent(
   }
 
   for (let i = 0; i < configuration.maxToolsUsePerRun; i++) {
+    const localLogger = logger.child({
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      multiActionLoopIteration: i,
+    });
+
+    localLogger.info("Starting multi-action loop iteration");
+
     const forcedAction = fullConfiguration.actions.find(
       (a) => a.forceUseAtIteration === i
     );
-
     const actions = forcedAction ? [forcedAction] : fullConfiguration.actions;
-    logger.info(
-      {
-        iteration: i,
-        workspaceId: conversation.owner.sId,
-      },
-      "Starting multi-action loop iteration"
-    );
+
     const actionToRun = await getNextAction(auth, {
       agentConfiguration: fullConfiguration,
       conversation,
@@ -123,13 +124,10 @@ export async function* runAgent(
     });
 
     if (actionToRun.isErr()) {
-      logger.error(
+      localLogger.error(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
           elapsedTime: Date.now() - now,
           error: actionToRun.error,
-          multiActionLoopIteration: i,
         },
         "Error getting next action"
       );
@@ -146,12 +144,9 @@ export async function* runAgent(
       return;
     }
 
-    logger.info(
+    localLogger.info(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
         elapsed: Date.now() - now,
-        multiActionLoopIteration: i,
       },
       "[ASSISTANT_TRACE] Action inputs generation"
     );
