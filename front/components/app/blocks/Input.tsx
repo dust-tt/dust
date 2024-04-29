@@ -135,15 +135,17 @@ export default function Input({
                 onDatasetUpdate={handleSetDataset}
                 readOnly={readOnly}
               />
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-                }}
-                icon={PencilSquareIcon}
-                label="Edit"
-                size="xs"
-              />
+              {block.config && block.config.dataset ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                  }}
+                  icon={PencilSquareIcon}
+                  label="Edit schema"
+                  size="xs"
+                />
+              ) : null}
             </div>
           ) : null}
         </div>
