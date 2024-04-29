@@ -904,7 +904,7 @@ function IntercomConfigView({
   return (
     <ContextItem.List>
       <ContextItem
-        title="Extract Intercom Notes from conversations"
+        title="Sync Intercom Notes from conversations"
         visual={<ContextItem.Visual visual={IntercomLogo} />}
         action={
           <div className="relative">
