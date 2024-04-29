@@ -123,7 +123,7 @@ export default function Input({
       onBlockNew={onBlockNew}
       canUseCache={false}
     >
-      <div>
+      <div className="w-full">
         <div>
           {!((!block.config || !block.config.dataset) && readOnly) ? (
             <div className="flex flex-row items-center space-x-2 text-sm font-medium leading-8 text-gray-700">
@@ -159,7 +159,7 @@ export default function Input({
               schema={datasetWithData.schema}
               onUpdate={onUpdate}
               nameDisabled={false}
-              showDataOnly={true}
+              viewType="block"
             />
           </div>
         ) : null}

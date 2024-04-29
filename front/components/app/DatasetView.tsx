@@ -8,7 +8,12 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type { DatasetEntry, DatasetSchema, DatasetType } from "@dust-tt/types";
+import type {
+  DatasetEntry,
+  DatasetSchema,
+  DatasetType,
+  DatasetViewType,
+} from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -87,7 +92,7 @@ export default function DatasetView({
   schema,
   onUpdate,
   nameDisabled,
-  showDataOnly,
+  viewType,
 }: {
   readOnly: boolean;
   datasets: DatasetType[];
@@ -100,7 +105,7 @@ export default function DatasetView({
     schema: DatasetSchema
   ) => void;
   nameDisabled: boolean;
-  showDataOnly: boolean;
+  viewType: DatasetViewType;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -426,20 +431,20 @@ export default function DatasetView({
   ]);
 
   useEffect(() => {
-    // showDataOnly means we're editing the dataset directly from the Input Block so we need to update state.
-    if (dataset && showDataOnly) {
+    // If in block view, update the dataset keys and data
+    if (dataset && viewType == "block") {
       setDatasetKeys(checkDatasetData({ data: dataset.data }));
       setDatasetData(dataset.data || []);
       setDatasetName(dataset.name);
       setDatasetDescription(dataset.description);
       setDatasetTypes([]);
     }
-  }, [dataset, showDataOnly]);
+  }, [dataset, viewType]);
 
   return (
     <div>
       <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">
-        {!showDataOnly && (
+        {viewType == "full" && (
           <>
             <div className="sm:col-span-1">
               <label
@@ -602,7 +607,7 @@ export default function DatasetView({
         )}
 
         <div className="mt-4 sm:col-span-5">
-          {showDataOnly ? (
+          {viewType == "block" ? (
             <p className="text-sm text-gray-500">
               <strong>
                 Input data for test-running your app using the 'RUN' button.
@@ -719,7 +724,7 @@ export default function DatasetView({
                 ))}
               </ul>
             </div>
-            {showDataOnly ? null : (
+            {viewType == "full" && (
               <div className="mt-6 flex flex-row">
                 {!readOnly ? (
                   <Button
