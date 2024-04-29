@@ -7,7 +7,7 @@ import {
   MistralLogo,
   OpenaiLogo,
   Page,
-  Spinner2,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -51,6 +51,7 @@ import {
 } from "@app/lib/client/assistant_builder/instructions";
 import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
 export const CREATIVITY_LEVELS = Object.entries(
@@ -398,6 +399,21 @@ function Suggestions({
     };
   }, [instructions, owner, suggestions]);
 
+  const [showLeftGradients, setshowLeftGradients] = useState(false);
+  const [showRightGradients, setshowRightGradients] = useState(false);
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const scrollableDiv = event.target as HTMLDivElement;
+    const scrollLeft = scrollableDiv.scrollLeft;
+    const isScrollable = scrollableDiv.scrollWidth > scrollableDiv.clientWidth;
+
+    setshowLeftGradients(scrollLeft > 0);
+    setshowRightGradients(
+      isScrollable &&
+        scrollLeft < scrollableDiv.scrollWidth - scrollableDiv.clientWidth
+    );
+  };
+
   return (
     <Transition
       show={suggestionsStatus !== "no_suggestions"}
@@ -408,12 +424,27 @@ function Suggestions({
       leaveFrom="max-h-full"
       leaveTo="max-h-0"
     >
-      <div className="flex flex-col gap-2">
-        <div className="flex gap-1 text-base font-bold text-element-800">
+      <div className="relative flex flex-col gap-3">
+        <div className="flex items-center gap-2 text-base font-bold text-element-800">
           <div>Tips</div>
-          {suggestionsStatus === "loading" && <Spinner2 size="sm" />}
+          {suggestionsStatus === "loading" && <Spinner size="xs" />}
         </div>
-        <div className="overflow-y-auto scrollbar-hide">
+        <div
+          className="overflow-y-auto px-2 scrollbar-hide"
+          onScroll={handleScroll}
+        >
+          <div
+            className={classNames(
+              "absolute bottom-0 left-0 top-8 w-8 border-l border-structure-200/80 bg-gradient-to-l from-white/0 to-white/70 transition-opacity duration-700 ease-out",
+              showLeftGradients ? "opacity-100" : "opacity-0"
+            )}
+          />
+          <div
+            className={classNames(
+              "absolute bottom-0 right-0 top-8 w-8 border-r border-structure-200/80 bg-gradient-to-r from-white/0 to-white/70 transition-opacity duration-700 ease-out",
+              showRightGradients ? "opacity-100" : "opacity-0"
+            )}
+          />
           {(() => {
             if (error) {
               return (
@@ -431,17 +462,13 @@ function Suggestions({
               );
             }
             return (
-              <div className="flex w-max gap-2">
+              <div className="flex w-max gap-3">
                 {suggestions.map((suggestion, index) => (
-                  <ContentMessage
-                    key={index}
-                    size="sm"
-                    title=""
-                    variant="sky"
-                    className="min-width-[320px] transition-all"
-                  >
-                    {suggestion}
-                  </ContentMessage>
+                  <div key={index} className="w-[320px] transition-all">
+                    <ContentMessage size="sm" title="" variant="sky">
+                      {suggestion}
+                    </ContentMessage>
+                  </div>
                 ))}
               </div>
             );
