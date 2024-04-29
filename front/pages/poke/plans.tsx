@@ -4,7 +4,7 @@ import {
   IconButton,
   PencilSquareIcon,
   PlusIcon,
-  Spinner2,
+  Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
@@ -121,7 +121,7 @@ const PlansPage = () => {
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
       {isPlansLoading ? (
-        <Spinner2 />
+        <Spinner />
       ) : (
         <div className="flex h-full flex-col items-center justify-center">
           <div className="h-full py-8 text-2xl font-bold">Plans</div>
