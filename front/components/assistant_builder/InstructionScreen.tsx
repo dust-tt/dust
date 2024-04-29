@@ -34,6 +34,7 @@ import {
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
+  md5,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
@@ -468,7 +469,7 @@ function Suggestions({
                 {suggestions.map((suggestion) => (
                   <AnimatedSuggestion
                     suggestion={suggestion}
-                    key={suggestion}
+                    key={md5(suggestion)}
                   />
                 ))}
               </div>
@@ -555,30 +556,29 @@ function mergeSuggestions(
   suggestions: string[],
   dustAppSuggestions: BuilderSuggestionsType
 ): string[] {
-  const mergedSuggestions = [...suggestions];
   if (dustAppSuggestions.status === "ok") {
     const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
     const bestRankedSuggestions = dustAppSuggestions.suggestions.slice(
       0,
       VISIBLE_SUGGESTIONS_NUMBER
     );
-    // shift right deprecated suggestions
-    for (const suggestion of visibleSuggestions) {
-      if (!bestRankedSuggestions.includes(suggestion)) {
-        const shiftedElement = mergedSuggestions.splice(
-          mergedSuggestions.indexOf(suggestion),
-          1
-        )[0];
-        mergedSuggestions.splice(VISIBLE_SUGGESTIONS_NUMBER, 0, shiftedElement);
-      }
-    }
 
+    // Reorder existing suggestions with best ranked first
+    const mergedSuggestions = [
+      ...suggestions.filter((suggestion) =>
+        bestRankedSuggestions.includes(suggestion)
+      ),
+      ...suggestions.filter(
+        (suggestion) => !bestRankedSuggestions.includes(suggestion)
+      ),
+    ];
     // insert new good ones
     for (const suggestion of bestRankedSuggestions) {
       if (!visibleSuggestions.includes(suggestion)) {
         mergedSuggestions.unshift(suggestion);
       }
     }
+    return mergedSuggestions;
   }
-  return mergedSuggestions;
+  return suggestions;
 }
