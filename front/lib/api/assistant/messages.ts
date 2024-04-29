@@ -155,13 +155,14 @@ export async function batchRenderAgentMessages(
       return agents;
     })(),
     (async () => {
+      const agentMessageIds = removeNulls(
+        agentMessages.map((m) => m.agentMessageId || null)
+      );
       return (
         await AgentRetrievalAction.findAll({
-          attributes: ["id"],
+          attributes: ["id", "agentMessageId"],
           where: {
-            agentMessageId: removeNulls(
-              agentMessages.map((m) => m.agentMessageId || null)
-            ),
+            agentMessageId: agentMessageIds,
           },
         })
       ).reduce((acc, action) => {
