@@ -245,7 +245,10 @@ export async function syncConversation({
         : null;
       const type = part.part_type === "note" ? "Internal note" : "Message";
 
-      if (messageContent) {
+      const shouldSync =
+        part.part_type !== "note" || intercomWorkspace.shouldSyncNotes;
+
+      if (messageContent && shouldSync) {
         markdown += `**[${type}] ${messageAuthor.name} (${messageAuthor.type})**\n`;
         markdown += `${messageContent}\n\n`;
       }
