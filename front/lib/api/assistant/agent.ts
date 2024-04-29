@@ -172,6 +172,8 @@ export async function* runAgent(
       ((g: AgentGenerationConfigurationType) => {
         void g;
       })(action);
+      // If the next action is the generation, we simply break out of the loop,
+      // as we always run the generation after the actions loop.
       break;
     }
   }
