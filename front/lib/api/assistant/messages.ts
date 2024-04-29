@@ -128,26 +128,9 @@ export async function batchRenderAgentMessages(
 ): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
 
-  const retrievalActionByAgentMessageId = (
-    await AgentRetrievalAction.findAll({
-      attributes: ["id"],
-      where: {
-        agentMessageId: removeNulls(
-          agentMessages.map((m) => m.agentMessageId || null)
-        ),
-      },
-    })
-  ).reduce((acc, action) => {
-    if (action.agentMessageId) {
-      acc[action.agentMessageId] = action;
-    }
-
-    return acc;
-  }, {} as Record<ModelId, AgentRetrievalAction>);
-
   const [
     agentConfigurations,
-    agentRetrievalActions,
+    retrievalActionByAgentMessageId,
     agentDustAppRunActions,
     agentTablesQueryActions,
   ] = await Promise.all([
@@ -172,16 +155,22 @@ export async function batchRenderAgentMessages(
       return agents;
     })(),
     (async () => {
-      return renderRetrievalActionsByModelId(
-        removeNulls(
-          agentMessages.map(
-            (m) =>
-              (m.agentMessageId &&
-                retrievalActionByAgentMessageId[m.agentMessageId]?.id) ||
-              null
-          )
-        )
-      );
+      return (
+        await AgentRetrievalAction.findAll({
+          attributes: ["id"],
+          where: {
+            agentMessageId: removeNulls(
+              agentMessages.map((m) => m.agentMessageId || null)
+            ),
+          },
+        })
+      ).reduce((acc, action) => {
+        if (action.agentMessageId) {
+          acc[action.agentMessageId] = action;
+        }
+
+        return acc;
+      }, {} as Record<ModelId, AgentRetrievalAction>);
     })(),
     (async () => {
       const actions = await AgentDustAppRunAction.findAll({
@@ -226,6 +215,17 @@ export async function batchRenderAgentMessages(
       });
     })(),
   ]);
+
+  const agentRetrievalActions = await renderRetrievalActionsByModelId(
+    removeNulls(
+      agentMessages.map(
+        (m) =>
+          (m.agentMessageId &&
+            retrievalActionByAgentMessageId[m.agentMessageId]?.id) ||
+          null
+      )
+    )
+  );
 
   return agentMessages.map((message) => {
     if (!message.agentMessage) {
