@@ -62,15 +62,15 @@ export default function DustPlatform() {
           <>
             Developer-
             <br />
-            and tinkerer-friendly
+            and&nbsp;tinkerer-friendly
           </>
         }
         from="from-amber-200"
         to="to-amber-400"
         subtitle={
           <>
-            Build custom actions and application orchestration to&nbsp;fit your
-            team’s exact&nbsp;needs.
+            Build custom actions and&nbsp;application orchestration to&nbsp;fit
+            your team's exact&nbsp;needs.
             <br />
             <a href="https://docs.dust.tt" target="_blank">
               <Button
@@ -101,14 +101,14 @@ export default function DustPlatform() {
             }
             content={[
               <>
-                Complete complex workflows and specific tasks by&nbsp;calling
-                models, reaching APIs, executing code, or&nbsp;consulting
-                Data&nbsp;Sources.
+                Complete complex workflows and&nbsp;specific tasks
+                by&nbsp;calling models, reaching APIs, executing code,
+                or&nbsp;consulting Data&nbsp;Sources.
               </>,
               <>
-                Go beyond simple prompt/response interactions by enabling
+                Go beyond simple prompt/response interactions by&nbsp;enabling
                 a&nbsp;broader set of&nbsp;actions, chaining multiple models,
-                or&nbsp;even calling into your&nbsp;own infrastructure.
+                or&nbsp;even calling into&nbsp;your&nbsp;own infrastructure.
               </>,
             ]}
           >
@@ -136,17 +136,17 @@ export default function DustPlatform() {
               <>
                 Dust API:
                 <br />
-                Use Dust and manage your&nbsp;Data programmatically
+                Use Dust and&nbsp;manage your&nbsp;Data programmatically
               </>
             }
             content={[
               <>
-                Dust’s API enables programmatic interactions with all
+                Dust's API enables programmatic interactions with all
                 of&nbsp;Dust including Data Sources and&nbsp;assistants
                 for&nbsp;advanced use&nbsp;cases.
               </>,
               <>
-                Use Dust on your&nbsp;terms and&nbsp;on the&nbsp;product
+                Use Dust on&nbsp;your&nbsp;terms and&nbsp;on the&nbsp;product
                 surfaces of&nbsp;your&nbsp;choice.
               </>,
             ]}

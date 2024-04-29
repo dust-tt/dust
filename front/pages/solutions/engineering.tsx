@@ -53,7 +53,7 @@ export default function Engineering() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Engineers and Developers"
+        uptitle="Dust for Engineers and&nbsp;Developers"
         title={
           <>
             Work Smarter,
@@ -66,8 +66,8 @@ export default function Engineering() {
         subtitle={
           <>
             Speed-up incident response, reduce interruptions, help your
-            engineers produce better code, and accelerate new&nbsp;engineers
-            on-boarding.
+            engineers produce better code, and&nbsp;accelerate
+            new&nbsp;engineers on-boarding.
           </>
         }
       />
@@ -89,10 +89,11 @@ export default function Engineering() {
                   content: (
                     <>
                       Your incident assistant will perform a&nbsp;semantic
-                      search on your Notion, Confluence internal documentation,
-                      incident Slack channels, or&nbsp;GitHub issues
-                      to&nbsp;surface useful context and&nbsp;propose actionable
-                      next steps to&nbsp;resolve the&nbsp;problem at&nbsp;hand.
+                      search on&nbsp;your Notion, Confluence internal
+                      documentation, incident Slack channels, or&nbsp;GitHub
+                      issues to&nbsp;surface useful context and&nbsp;propose
+                      actionable next steps to&nbsp;resolve the&nbsp;problem
+                      at&nbsp;hand.
                     </>
                   ),
                 },
@@ -118,20 +119,18 @@ export default function Engineering() {
           blocks={[
             {
               color: "emerald",
-              contentBlocks: [
-                {
-                  title: <>Have your team assistant answer first.</>,
-                  content: (
-                    <>
-                      Give it the&nbsp;right context and&nbsp;documentation
-                      and&nbsp;add it to Slack to&nbsp;answer questions from
-                      the&nbsp;rest of&nbsp;the&nbsp;company without creating
-                      an&nbsp;interruption for your team.
-                    </>
-                  ),
-                },
-              ],
-              assistantBlocks: [assistantExamples[2]],
+              contentBlocks: {
+                title: <>Have your team assistant answer first.</>,
+                content: (
+                  <>
+                    Give it the&nbsp;right context and&nbsp;documentation
+                    and&nbsp;add it to&nbsp;Slack to&nbsp;answer questions from
+                    the&nbsp;rest of&nbsp;the&nbsp;company without creating
+                    an&nbsp;interruption for your team.
+                  </>
+                ),
+              },
+              assistantBlocks: assistantExamples[2],
             },
           ]}
         />
@@ -147,7 +146,7 @@ export default function Engineering() {
                     <>
                       Specialize the&nbsp;best models (GPT4, Mistral)
                       to&nbsp;answer code general questions with context
-                      on&nbsp;your stack and preferences
+                      on&nbsp;your stack and&nbsp;preferences
                       as&nbsp;an&nbsp;engineering team. Reduce
                       the&nbsp;verbosity of&nbsp;the&nbsp;model to&nbsp;get
                       concise and&nbsp;straight-to-the-point answers.
@@ -159,10 +158,11 @@ export default function Engineering() {
                   content: (
                     <>
                       Give your assistant access to&nbsp;your team
-                      or&nbsp;the&nbsp;entire company’s code base. Let it answer
+                      or&nbsp;the&nbsp;entire company's code base. Let it answer
                       any question about your code. Accelerate
-                      the&nbsp;onboarding of&nbsp;new engineers and diminish
-                      interruptions from other engineering teams.
+                      the&nbsp;onboarding of&nbsp;new engineers
+                      and&nbsp;diminish interruptions from other engineering
+                      teams.
                     </>
                   ),
                 },

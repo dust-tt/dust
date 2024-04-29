@@ -53,7 +53,7 @@ export default function RecruitingPeople() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Recruiting and People teams"
+        uptitle="Dust for Recruiting and&nbsp;People teams"
         title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers.</>}
         from="from-amber-300"
         to="to-amber-400"
@@ -82,7 +82,7 @@ export default function RecruitingPeople() {
                     <>
                       Transform your onboarding process using an&nbsp;AI
                       assistant designed to&nbsp;guide newcomers through your
-                      methods, processes, people, and culture.
+                      methods, processes, people, and&nbsp;culture.
                     </>
                   ),
                 },
@@ -91,7 +91,7 @@ export default function RecruitingPeople() {
                   content: (
                     <>
                       Create an&nbsp;assistant capable of&nbsp;answering any
-                      questions, point to the right internal resources,
+                      questions, point to&nbsp;the right internal resources,
                       and&nbsp;spread your company culture and&nbsp;methods.
                     </>
                   ),
@@ -112,19 +112,20 @@ export default function RecruitingPeople() {
                   content: (
                     <>
                       Use information from internal data sources, such
-                      as&nbsp;onboarding guides, process documents, and best
-                      practices, to&nbsp;create training scripts and materials
-                      tailored to&nbsp;each role or&nbsp;department.
+                      as&nbsp;onboarding guides, process documents,
+                      and&nbsp;best practices, to&nbsp;create training scripts
+                      and&nbsp;materials tailored to&nbsp;each role
+                      or&nbsp;department.
                     </>
                   ),
                 },
                 {
-                  title: <>Improve feedback and reviews.</>,
+                  title: <>Improve feedback and&nbsp;reviews.</>,
                   content: [
                     <>
-                      Collect data from various channels to get a&nbsp;holistic
-                      view of&nbsp;each employee's work and make more accurate
-                      evaluations.
+                      Collect data from various channels to&nbsp;get
+                      a&nbsp;holistic view of&nbsp;each employee's work
+                      and&nbsp;make more accurate evaluations.
                     </>,
                     <>
                       Help your team write more thoughtfully,
@@ -150,20 +151,21 @@ export default function RecruitingPeople() {
                   content: [
                     <>
                       Make your&nbsp;company hiring practices, guidelines,
-                      and&nbsp;knowledge easy to find and leverage for everyone.
+                      and&nbsp;knowledge easy to&nbsp;find and&nbsp;leverage for
+                      everyone.
                     </>,
                     <>
                       Train your team at&nbsp;writing exercises
                       and&nbsp;questions, reviewing exercises' responses,
-                      and&nbsp;reading through candidates’ subtexts.
+                      and&nbsp;reading through candidates' subtexts.
                     </>,
                   ],
                 },
                 {
-                  title: <>Customized written analysis assitance.</>,
+                  title: <>Customized written analysis assistance.</>,
                   content: [
                     <>
-                      Score a&nbsp;candidate’s take-home answers with
+                      Score a&nbsp;candidate's take-home answers with
                       your&nbsp;rubric in&nbsp;mind.
                     </>,
                   ],
@@ -181,11 +183,11 @@ export default function RecruitingPeople() {
               color: "amber",
               contentBlocks: [
                 {
-                  title: <>Analyse &&nbsp;extract.</>,
+                  title: <>Analyze &&nbsp;extract.</>,
                   content: [
                     <>
-                      Analyze a candidate’s CV in a&nbsp;second. Extract
-                      information from&nbsp;texts, normalize lists
+                      Analyze a&nbsp;candidate's CV in&nbsp;a&nbsp;second.
+                      Extract information from&nbsp;texts, normalize lists
                       of&nbsp;emails and&nbsp;names, and&nbsp;batch-write
                       content.
                     </>,
@@ -236,7 +238,7 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer all questions about processes, methodes, people and&nbsp;roles
+        Answer all questions about processes, methods, people and&nbsp;roles
         based&nbsp;on company documentation directly on&nbsp;Slack.
       </>
     ),
@@ -258,7 +260,7 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Help read and&nbsp;analyse candidate expert according to&nbsp;company
+        Help read and&nbsp;analyze candidate expert according to&nbsp;company
         principles.
       </>
     ),

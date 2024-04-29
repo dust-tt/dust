@@ -53,7 +53,7 @@ export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Success and Support&nbsp;Teams"
+        uptitle="Dust for Success and&nbsp;Support&nbsp;Teams"
         title="Help your Success and&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
         from="from-sky-200"
         to="to-sky-500"
@@ -78,7 +78,7 @@ export default function CustomerSupport() {
                   content: [
                     <>
                       Help them parse customer inquiries faster,
-                      leveraging&nbsp;past tickets and the&nbsp;latest
+                      leveraging&nbsp;past tickets and&nbsp;the&nbsp;latest
                       information on&nbsp;product updates
                       or&nbsp;downtime&nbsp;alerts.
                     </>,
@@ -91,7 +91,7 @@ export default function CustomerSupport() {
                     <>Classify tickets along your&nbsp;internal priorities.</>,
                     <>
                       Help your Support, Success and&nbsp;Product teams better
-                      understand your users’&nbsp;needs.
+                      understand your users'&nbsp;needs.
                     </>,
                   ],
                 },
@@ -109,15 +109,16 @@ export default function CustomerSupport() {
                 {
                   title: "Onboard faster.",
                   content:
-                    "Reduce your onboarding and training time drastically. Put your documentation on processes and methods to work.",
+                    "Reduce your onboarding and&nbsp;training time drastically. Put your documentation on&nbsp;processes and&nbsp;methods to&nbsp;work.",
                 },
                 {
                   title: "Keep your team updated.",
                   content: (
                     <>
-                      Understand customer messages faster, and technical errors
-                      in&nbsp;any language. Explore past tickets to&nbsp;resolve
-                      issues or create documentation&nbsp;quickly.
+                      Understand customer messages faster, and&nbsp;technical
+                      errors in&nbsp;any language. Explore past tickets
+                      to&nbsp;resolve issues or create
+                      documentation&nbsp;quickly.
                     </>
                   ),
                 },
@@ -132,12 +133,12 @@ export default function CustomerSupport() {
             {
               color: "sky",
               contentBlocks: {
-                title: "Analyze and categorize your ticket",
+                title: "Analyze and&nbsp;categorize your ticket",
                 content: [
                   <>Classify your tickets using Dust Apps.</>,
                   <>
                     Help your Customer Support and&nbsp;Product team better
-                    understand your&nbsp;users’ needs.
+                    understand your&nbsp;users' needs.
                   </>,
                 ],
               },

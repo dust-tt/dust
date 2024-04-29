@@ -59,9 +59,9 @@ export default function DataAnalytics() {
         to="to-amber-500"
         subtitle={
           <>
-            Dedicate yourself&nbsp;to first-of-a-kind analyses for the product
-            and&nbsp;business while your assistants help your team with more
-            standard queries and&nbsp;charts.
+            Dedicate yourself&nbsp;to first-of-a-kind analyses for
+            the&nbsp;product and&nbsp;business, while your assistants help your
+            team with more standard queries and&nbsp;charts.
           </>
         }
       />
@@ -82,8 +82,8 @@ export default function DataAnalytics() {
                   ),
                   content: (
                     <>
-                      Give your databases’ schemas, your functions,
-                      and&nbsp;your company’s business definition to&nbsp;your
+                      Give your databases' schemas, your functions,
+                      and&nbsp;your company's business definition to&nbsp;your
                       assistant. Let your SQL assistant answer your team's level
                       one SQL questions.
                     </>
@@ -106,7 +106,7 @@ export default function DataAnalytics() {
           ]}
         />
         <SolutionSection
-          title={<>Stop being the perpetual help desk</>}
+          title={<>Stop being the&nbsp;perpetual help desk</>}
           blocks={[
             {
               color: "amber",
@@ -117,7 +117,7 @@ export default function DataAnalytics() {
                   ),
                   content: (
                     <>
-                      Give new members of the data team access
+                      Give new members of&nbsp;the data team access
                       to&nbsp;continuously updated runbooks and&nbsp;internal
                       documentation with flexible and&nbsp;pedagogical
                       conversational assistants.
@@ -130,9 +130,10 @@ export default function DataAnalytics() {
                   ),
                   content: (
                     <>
-                      Help everyone in the team and&nbsp;beyond know what fields
-                      or tables exist, what they mean, and&nbsp;how they relate
-                      to&nbsp;each other. Clean up or draft great documentation.
+                      Help everyone in&nbsp;the team and&nbsp;beyond know what
+                      fields or tables exist, what they mean, and&nbsp;how they
+                      relate to&nbsp;each other. Clean up or draft great
+                      documentation.
                     </>
                   ),
                 },
@@ -182,8 +183,8 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer questions about the process, runbooks, and&nbsp;documentation of
-        the data team.
+        Answer questions about the&nbsp;process, runbooks,
+        and&nbsp;documentation of the&nbsp;data team.
       </>
     ),
   },
@@ -194,7 +195,7 @@ export const assistantExamples = [
     description: (
       <>
         Your data Rolodex to&nbsp;know everything about data and&nbsp;metadata
-        at the company.
+        at the&nbsp;company.
       </>
     ),
   },

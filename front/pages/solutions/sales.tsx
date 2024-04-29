@@ -85,8 +85,8 @@ export default function Sales() {
                     <>
                       Craft personalized cold emails or follow-ups effortlessly.
                       Ensure your sales reps connect more effectively with
-                      prospects, reducing the fatigue associated with manual
-                      email personalization.
+                      prospects, reducing the&nbsp;fatigue associated with
+                      manual email personalization.
                     </>
                   ),
                 },
@@ -97,7 +97,7 @@ export default function Sales() {
                       Integrate Dust with your CRM, Slack, Notion,
                       and&nbsp;other platforms to&nbsp;generate account
                       snapshots, reports or emails. Help your sales team
-                      to&nbsp;focus more on strategic tasks rather than
+                      to&nbsp;focus more on&nbsp;strategic tasks rather than
                       administrative duties.
                     </>
                   ),
@@ -131,9 +131,9 @@ export default function Sales() {
                   content: (
                     <>
                       Transforms sales reporting by&nbsp;offering real-time
-                      insights into sales metrics and&nbsp;trends. Interface
-                      your assistants with your sales dashboard,
-                      to&nbsp;generate instant reports and&nbsp; summaries.
+                      insights into&nbsp;sales metrics and&nbsp;trends.
+                      Interface your assistants with your sales dashboard,
+                      to&nbsp;generate instant reports and&nbsp;summaries.
                     </>
                   ),
                 },
@@ -147,7 +147,7 @@ export default function Sales() {
           ]}
         />
         <SolutionSection
-          title={<>Embedded in your Workflow</>}
+          title={<>Embedded in&nbsp;your Workflow</>}
           blocks={[
             {
               color: "emerald",
@@ -158,8 +158,8 @@ export default function Sales() {
                     Assistants are not limited to&nbsp;information retrieval.
                     Dust apps empower engineers to&nbsp;create custom actions
                     by&nbsp;Rev ops and&nbsp;Sales assistants, possibly chaining
-                    multiple models or calling into your CRM. Build custom
-                    assistant actions and&nbsp; application orchestration
+                    multiple models or calling into&nbsp;your CRM. Build custom
+                    assistant actions and&nbsp;application orchestration
                     to&nbsp;fit your team's needs.
                   </>,
                   <>
@@ -191,7 +191,8 @@ export const assistantExamples = [
     description: (
       <>
         Prompt GPT-4 or Claude to&nbsp;generate personalized and&nbsp;effective
-        cold emails or follow-up emails with the context of the relationship.
+        cold emails or follow-up emails with the&nbsp;context of&nbsp;the
+        relationship.
       </>
     ),
   },
@@ -201,8 +202,8 @@ export const assistantExamples = [
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Create snapshots of an account by&nbsp;retrieving data from our CRM,
-        Slack, Notion.
+        Create snapshots of&nbsp;an account by&nbsp;retrieving data from our
+        CRM, Slack, Notion.
       </>
     ),
   },
@@ -224,8 +225,8 @@ export const assistantExamples = [
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Answer any question on our metrics. Available in the sales Slack
-        channel.
+        Answer any question on&nbsp;our metrics. Available in&nbsp;the sales
+        Slack channel.
       </>
     ),
   },
@@ -236,7 +237,8 @@ export const assistantExamples = [
     description: (
       <>
         Chronologically process call transcripts to&nbsp;extract recurring
-        themes or insights. Refactor this information in tables or summaries.
+        themes or insights. Refactor this information in&nbsp;tables or
+        summaries.
       </>
     ),
   },

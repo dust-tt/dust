@@ -65,7 +65,7 @@ export default function Knowledge() {
         to="to-sky-500"
         subtitle={
           <>
-            Make your content discoverable, accessible, truely actionable.
+            Make your content discoverable, accessible, truly actionable.
             <br />
             Speed up content creation, identify uncovered documentation needs.
           </>
@@ -89,7 +89,7 @@ export default function Knowledge() {
                 content: (
                   <>
                     Leverage your product and&nbsp;tech team's knowledge
-                    alongside proven documentation and&nbsp;reduce the time
+                    alongside proven documentation and&nbsp;reduce the&nbsp;time
                     and&nbsp;effort to&nbsp;update and&nbsp;create new material.
                   </>
                 ),
@@ -99,7 +99,7 @@ export default function Knowledge() {
           ]}
         />
         <SolutionSection
-          title={<>Turn tickets into an opportunity for&nbsp;growth</>}
+          title={<>Turn tickets into&nbsp;an opportunity for&nbsp;growth</>}
           blocks={[
             {
               color: "sky",
@@ -118,7 +118,10 @@ export default function Knowledge() {
                 },
                 {
                   title: (
-                    <>Create a better training experience for&nbsp;your users</>
+                    <>
+                      Create a&nbsp;better training experience for&nbsp;your
+                      users
+                    </>
                   ),
                   content: (
                     <>
@@ -141,13 +144,13 @@ export default function Knowledge() {
               color: "sky",
               contentBlocks: [
                 {
-                  title: <>Keep your team ahead of the curve</>,
+                  title: <>Keep your team ahead of&nbsp;the curve</>,
                   content: (
                     <>
-                      Dust facilitates rapid onboarding onto new subjects,
+                      Dust facilitates rapid onboarding onto&nbsp;new subjects,
                       enabling your team to&nbsp;quickly comprehend
                       and&nbsp;create content on&nbsp;emerging topics. Fostering
-                      an environment of continuous learning.
+                      an&nbsp;environment of&nbsp;continuous learning.
                     </>
                   ),
                 },
@@ -156,8 +159,8 @@ export default function Knowledge() {
                   content: (
                     <>
                       Foster seamless collaboration across tech, support,
-                      product and&nbsp;education teams by synchronizing
-                      everyone’s knowledge.
+                      product and&nbsp;education teams by&nbsp;synchronizing
+                      everyone's knowledge.
                     </>
                   ),
                 },
@@ -195,7 +198,7 @@ export const assistantExamples = [
       <>
         Explore tickets and&nbsp;conversations between our support team
         and&nbsp;users to&nbsp;extract operational knowledge worth formalizing
-        into&nbsp;a document.
+        into&nbsp;SQL.
       </>
     ),
   },
@@ -205,7 +208,7 @@ export const assistantExamples = [
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        A replica of our users based&nbsp;on detailed personae to&nbsp;test
+        A replica of our users based&nbsp;on detailed personas to&nbsp;test
         documentation and&nbsp;training scripts.
       </>
     ),
