@@ -441,6 +441,7 @@ export async function generateConversationTitle(
     model,
     prompt: "", // There is no prompt for title generation.
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    removeTrailingAgentMessages: false,
   });
 
   if (modelConversationRes.isErr()) {

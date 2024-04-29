@@ -338,6 +338,7 @@ export async function getNextAction(
     model,
     prompt,
     allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
+    removeTrailingAgentMessages: true,
   });
 
   if (modelConversationRes.isErr()) {

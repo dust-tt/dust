@@ -59,11 +59,13 @@ export async function renderConversationForModel({
   model,
   prompt,
   allowedTokenCount,
+  removeTrailingAgentMessages,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   prompt: string;
   allowedTokenCount: number;
+  removeTrailingAgentMessages: boolean;
 }): Promise<
   Result<
     { modelConversation: ModelConversationType; tokensUsed: number },
@@ -235,13 +237,15 @@ export async function renderConversationForModel({
     },
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
-  while (selected.length > 0 && selected[0].role === "agent") {
-    const tokenCountRes = messagesCountRes[messages.length - selected.length];
-    if (tokenCountRes.isErr()) {
-      return new Err(tokenCountRes.error);
+  if (removeTrailingAgentMessages) {
+    while (selected.length > 0 && selected[0].role === "agent") {
+      const tokenCountRes = messagesCountRes[messages.length - selected.length];
+      if (tokenCountRes.isErr()) {
+        return new Err(tokenCountRes.error);
+      }
+      tokensUsed -= tokenCountRes.value;
+      selected.shift();
     }
-    tokensUsed -= tokenCountRes.value;
-    selected.shift();
   }
 
   return new Ok({
@@ -380,6 +384,7 @@ export async function* runGeneration(
     model,
     prompt,
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    removeTrailingAgentMessages: true,
   });
 
   if (modelConversationRes.isErr()) {

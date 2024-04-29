@@ -96,6 +96,7 @@ async function generateActionInputs(
     model,
     prompt,
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    removeTrailingAgentMessages: true,
   });
 
   if (modelConversationRes.isErr()) {
