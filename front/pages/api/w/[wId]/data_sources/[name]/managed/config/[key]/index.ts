@@ -87,7 +87,13 @@ async function handler(
   // We only allow setting and retrieving `botEnabled` (slack) and `codeSyncEnabled` (github). This
   // is mainly to prevent users from enabling other configs that are not released (e.g. google_drive
   // `pdfEnabled`).
-  if (!["botEnabled", "codeSyncEnabled"].includes(configKey)) {
+  if (
+    ![
+      "botEnabled",
+      "codeSyncEnabled",
+      "intercomConversationsNotesSyncEnabled",
+    ].includes(configKey)
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
