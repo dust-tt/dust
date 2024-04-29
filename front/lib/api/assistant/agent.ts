@@ -385,6 +385,9 @@ export async function getNextAction(
   config.MODEL.function_call = "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+  if (specifications.length === 1) {
+    config.MODEL.function_call = specifications[0].name;
+  }
 
   const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
     {
