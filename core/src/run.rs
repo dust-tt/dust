@@ -18,6 +18,13 @@ pub struct BlockExecution {
     pub meta: Option<Value>,
 }
 
+// TODO(2024-04-29 flav) Temporary step until we remove `hash` from the `block_executions` table.
+#[derive(Serialize)]
+pub struct ExecutionWithTimestamp {
+    pub execution: BlockExecution,
+    pub created: i64,
+}
+
 pub type Credentials = HashMap<String, String>;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
