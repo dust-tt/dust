@@ -315,6 +315,7 @@ AgentMessage.init(
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
         const actionsTypes: (keyof AgentMessage)[] = [
+          "agentRetrievalActionId",
           "agentDustAppRunActionId",
           "agentTablesQueryActionId",
           "agentProcessActionId",
@@ -324,7 +325,7 @@ AgentMessage.init(
         );
         if (nonNullActionTypes.length > 1) {
           throw new Error(
-            "Only one of agentDustAppRunActionId or agentTablesQueryActionId can be set"
+            "Only one of agentRetrievalActionId, agentDustAppRunActionId or agentTablesQueryActionId can be set"
           );
         }
       },

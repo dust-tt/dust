@@ -98,11 +98,9 @@ async function updateMessage(
   workspace: Workspace
 ) {
   const m = await AgentMessage.findByPk(agentMessageId);
-  // @ts-expect-error model changed
   if (m?.agentRetrievalActionId) {
     const documents = await RetrievalDocument.findAll({
       where: {
-        // @ts-expect-error model changed
         retrievalActionId: m.agentRetrievalActionId,
       },
     });
@@ -117,7 +115,6 @@ async function updateMessage(
         },
         {
           where: {
-            // @ts-expect-error model changed
             retrievalActionId: m.agentRetrievalActionId,
           },
         }
