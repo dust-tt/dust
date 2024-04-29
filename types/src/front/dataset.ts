@@ -16,6 +16,4 @@ export type DatasetSchema = {
   description: string | null;
 }[];
 
-export type DatasetViewType = {
-  type: "full" | "block"
-};
+export type DatasetViewType = "full" | "block";
