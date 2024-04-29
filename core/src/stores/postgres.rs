@@ -10,7 +10,7 @@ use crate::http::request::{HttpRequest, HttpResponse};
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
+use crate::run::{BlockExecution, ExecutionWithTimestamp, Run, RunConfig, RunStatus, RunType};
 use crate::sqlite_workers::client::SqliteWorker;
 use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
 use crate::utils;
@@ -667,9 +667,18 @@ impl Store for PostgresStore {
                             .iter()
                             .enumerate()
                             .map(|(map_idx, execution)| {
+                                // TODO(2024-04-29 flav): Remove once we phase out `hash` column from `block_executions` table.
+                                let execution_with_timestamp = ExecutionWithTimestamp {
+                                    execution: execution.clone(),
+                                    created: utils::now() as i64,
+                                };
+                                let execution_with_timestamp_json =
+                                    serde_json::to_string(&execution_with_timestamp)?;
+
                                 let execution_json = serde_json::to_string(&execution)?;
+
                                 let mut hasher = blake3::Hasher::new();
-                                hasher.update(execution_json.as_bytes());
+                                hasher.update(execution_with_timestamp_json.as_bytes());
                                 let hash = format!("{}", hasher.finalize().to_hex());
                                 Ok((
                                     block_idx,
@@ -699,8 +708,7 @@ impl Store for PostgresStore {
         let tx = c.transaction().await?;
         let stmt = tx
             .prepare(
-                "INSERT INTO block_executions (id, hash, execution) VALUES (DEFAULT, $1, $2)
-                   ON CONFLICT(hash) DO UPDATE SET hash = EXCLUDED.hash
+                "INSERT INTO block_executions (id, hash, execution, project, created) VALUES (DEFAULT, $1, $2, $3, $4)
                    RETURNING id",
             )
             .await?;
@@ -709,26 +717,20 @@ impl Store for PostgresStore {
         for (block_idx, block_type, block_name, input_idx, map_idx, execution_json, hash) in
             executions
         {
-            let r = tx
-                .query(
-                    "SELECT id FROM block_executions WHERE hash = $1",
-                    &[&hash.clone()],
+            let created = utils::now() as i64;
+
+            let row_id = tx
+                .query_one(
+                    &stmt,
+                    &[
+                        &hash.clone(),
+                        &execution_json.clone(),
+                        &project.project_id().clone(),
+                        &created,
+                    ],
                 )
-                .await?;
-
-            let row_id: Option<i64> = match r.len() {
-                0 => None,
-                1 => Some(r[0].get(0)),
-                _ => unreachable!(),
-            };
-
-            let row_id = match row_id {
-                Some(row_id) => row_id,
-                None => tx
-                    .query_one(&stmt, &[&hash.clone(), &execution_json.clone()])
-                    .await?
-                    .get(0),
-            };
+                .await?
+                .get(0);
 
             ex_row_ids.push((
                 block_idx.clone(),
