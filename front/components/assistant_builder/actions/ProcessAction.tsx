@@ -26,10 +26,10 @@ export function ActionProcess({
   dataSources: DataSourceType[];
   timeFrameError: string | null;
 }) {
-  const [showProcessDataSourcesModal, setShowProcessDataSourcesModal] =
+  const [showDataSourcesModal, setShowDataSourcesModal] =
     useState(false);
 
-  const deleteProcessDataSource = (name: string) => {
+  const deleteDataSource = (name: string) => {
     if (builderState.processConfiguration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
@@ -52,9 +52,9 @@ export function ActionProcess({
   return (
     <>
       <AssistantBuilderDataSourceModal
-        isOpen={showProcessDataSourcesModal}
+        isOpen={showDataSourcesModal}
         setOpen={(isOpen) => {
-          setShowProcessDataSourcesModal(isOpen);
+          setShowDataSourcesModal(isOpen);
         }}
         owner={owner}
         dataSources={dataSources}
@@ -75,7 +75,7 @@ export function ActionProcess({
             },
           }));
         }}
-        onDelete={deleteProcessDataSource}
+        onDelete={deleteDataSource}
         dataSourceConfigurations={
           builderState.processConfiguration.dataSourceConfigurations
         }
@@ -106,10 +106,10 @@ export function ActionProcess({
           builderState.processConfiguration.dataSourceConfigurations
         }
         openDataSourceModal={() => {
-          setShowProcessDataSourcesModal(true);
+          setShowDataSourcesModal(true);
         }}
         canAddDataSource={dataSources.length > 0}
-        onDelete={deleteProcessDataSource}
+        onDelete={deleteDataSource}
       />
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
