@@ -156,6 +156,8 @@ pub struct OpenAIToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIToolCall {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
     r#type: OpenAIToolType,
     pub function: OpenAIToolCallFunction,
 }
@@ -165,6 +167,7 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(OpenAIToolCall {
+            id: None,
             r#type: OpenAIToolType::Function,
             function: OpenAIToolCallFunction {
                 name: cf.name.clone(),
@@ -178,7 +181,13 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
+        let id = tc
+            .id
+            .as_ref()
+            .ok_or_else(|| anyhow!("Missing tool call id."))?;
+
         Ok(ChatFunctionCall {
+            id: id.clone(),
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
         })
@@ -225,17 +234,25 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             None => None,
         };
 
-        let function_call = match cm.tool_calls.as_ref() {
-            Some(tcs) => {
-                if !tcs.is_empty() {
-                    // Consider only the first tool call, ignoring the rest.
-                    tcs.first()
-                        .and_then(|tc| ChatFunctionCall::try_from(tc).ok())
-                } else {
-                    None
-                }
+        let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
+            let cfc = tool_calls
+                .into_iter()
+                .map(|tc| ChatFunctionCall::try_from(tc))
+                .collect::<Result<Vec<ChatFunctionCall>, _>>()?;
+
+            Some(cfc)
+        } else {
+            None
+        };
+
+        let function_call = if let Some(fcs) = function_calls.as_ref() {
+            match fcs.first() {
+                Some(fc) => Some(fc),
+                None => None,
             }
-            None => None,
+            .cloned()
+        } else {
+            None
         };
 
         let name = match cm.name.as_ref() {
@@ -248,6 +265,7 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             role,
             name,
             function_call,
+            function_calls,
         })
     }
 }
@@ -995,15 +1013,17 @@ pub async fn streamed_chat_completion(
                     for tool_call in tool_calls {
                         match (
                             tool_call.get("type").and_then(|v| v.as_str()),
+                            tool_call.get("id").and_then(|v| v.as_str()),
                             tool_call.get("function"),
                         ) {
-                            (Some("function"), Some(f)) => {
+                            (Some("function"), Some(id), Some(f)) => {
                                 if let Some(Value::String(name)) = f.get("name") {
                                     c.choices[j]
                                         .message
                                         .tool_calls
                                         .get_or_insert_with(Vec::new)
                                         .push(OpenAIToolCall {
+                                            id: Some(id.to_string()),
                                             r#type: OpenAIToolType::Function,
                                             function: OpenAIToolCallFunction {
                                                 name: name.clone(),
@@ -1012,7 +1032,7 @@ pub async fn streamed_chat_completion(
                                         });
                                 }
                             }
-                            (None, Some(f)) => {
+                            (None, None, Some(f)) => {
                                 if let (Some(Value::Number(idx)), Some(Value::String(a))) =
                                     (tool_call.get("index"), f.get("arguments"))
                                 {
