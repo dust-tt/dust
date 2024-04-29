@@ -141,7 +141,7 @@ export default function Block({
                 </div>
               </Tooltip>
             ) : (
-              <Tooltip label="Results are not cached (slower)" position="above">
+              <Tooltip label="Results are computed at each run" position="above">
                 <div
                   className="flex flex-initial cursor-pointer text-gray-400"
                   onClick={() => {
