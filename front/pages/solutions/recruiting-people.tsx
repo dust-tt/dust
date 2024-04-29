@@ -140,23 +140,28 @@ export default function RecruitingPeople() {
           ]}
         />
         <SolutionSection
-          title={<>Boost your team hiring&nbsp;efforts.</>}
+          title="Scale your hiring."
           blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
-                  title: <>Level up your team on hiring.</>,
+                  title: <>Next level training & guidance.</>,
                   content: [
                     <>
                       Make your&nbsp;company hiring practices, guidelines,
                       and&nbsp;knowledge easy to find and leverage for everyone.
                     </>,
                     <>
-                      Make your team better at&nbsp;writing exercises
+                      Train your team at&nbsp;writing exercises
                       and&nbsp;questions, reviewing exercises' responses,
                       and&nbsp;reading through candidates’ subtexts.
                     </>,
+                  ],
+                },
+                {
+                  title: <>Customized written analysis assitance.</>,
+                  content: [
                     <>
                       Score a&nbsp;candidate’s take-home answers with
                       your&nbsp;rubric in&nbsp;mind.
@@ -166,11 +171,17 @@ export default function RecruitingPeople() {
               ],
               assistantBlocks: [assistantExamples[2], assistantExamples[3]],
             },
+          ]}
+        />
+
+        <SolutionSection
+          title="Automate recurrent hiring tasks."
+          blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
-                  title: <>Your AI assistant takes the recurring tasks.</>,
+                  title: <>Analyse &&nbsp;extract.</>,
                   content: [
                     <>
                       Analyze a candidate’s CV in a&nbsp;second. Extract
@@ -178,6 +189,11 @@ export default function RecruitingPeople() {
                       of&nbsp;emails and&nbsp;names, and&nbsp;batch-write
                       content.
                     </>,
+                  ],
+                },
+                {
+                  title: <>The page is&nbsp;never white.</>,
+                  content: [
                     <>
                       Draft job description, social media posts, outbound
                       emails, interview questions in&nbsp;minutes,
@@ -186,7 +202,7 @@ export default function RecruitingPeople() {
                   ],
                 },
               ],
-              assistantBlocks: [assistantExamples[4], assistantExamples[5]],
+              assistantBlocks: [assistantExamples[5], assistantExamples[4]],
             },
           ]}
         />
