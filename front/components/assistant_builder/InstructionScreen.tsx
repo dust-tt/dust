@@ -111,6 +111,7 @@ export function InstructionScreen({
   setBuilderState,
   setEdited,
   resetAt,
+  isUsingTemplate,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -120,6 +121,7 @@ export function InstructionScreen({
   ) => void;
   setEdited: (edited: boolean) => void;
   resetAt: number | null;
+  isUsingTemplate: boolean;
 }) {
   const editor = useEditor({
     extensions: [Document, Text, Paragraph],
@@ -190,10 +192,12 @@ export function InstructionScreen({
           className="absolute bottom-0 left-0 right-0 top-0"
         />
       </div>
-      <Suggestions
-        owner={owner}
-        instructions={builderState.instructions || ""}
-      />
+      {!isUsingTemplate && (
+        <Suggestions
+          owner={owner}
+          instructions={builderState.instructions || ""}
+        />
+      )}
     </div>
   );
 }
