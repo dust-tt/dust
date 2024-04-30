@@ -21,7 +21,6 @@ import { Err, Ok, Result } from "../../shared/result";
 import { WhitelistableFeature } from "../feature_flags";
 import { WorkspaceDomain } from "../workspace";
 import {
-  AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationSuccessEvent,
 } from "./api/assistant/agent";
@@ -30,6 +29,11 @@ import { GenerationTokensEvent } from "./api/assistant/generation";
 import { APIError, isAPIError } from "./error";
 
 const { DUST_PROD_API = "https://dust.tt", NODE_ENV } = process.env;
+
+// Event sent once the action is completed, we're moving to generating a message if applicable.
+interface AgentActionSuccessEvent {
+  type: "agent_action_success";
+}
 
 export type DustAppType = {
   workspaceId: string;
