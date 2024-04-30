@@ -153,21 +153,21 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                           </p>
                         </div>
                         <div>
-                        <p
-                          className={classNames(
-                            "font-mono truncate text-sm text-slate-700"
-                          )}
-                        >
-                          <strong>{key.name ? key.name : "Unnamed"}</strong>
-                        </p>
-                        <pre className="text-sm">{key.secret}</pre>
-                        <p className="front-normal text-xs text-element-700">
-                        Created {key.creator ? `by ${key.creator} ` : ""}
-                        {timeAgoFrom(key.createdAt, {
-                          useLongFormat: true,
-                        })}{" "}
-                        ago.
-                      </p>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          </p>
+                          <pre className="text-sm">{key.secret}</pre>
+                          <p className="front-normal text-xs text-element-700">
+                            Created {key.creator ? `by ${key.creator} ` : ""}
+                            {timeAgoFrom(key.createdAt, {
+                              useLongFormat: true,
+                            })}{" "}
+                            ago.
+                          </p>
                         </div>
                       </div>
                     </div>
