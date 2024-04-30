@@ -634,6 +634,7 @@ export async function retrieveGoogleDriveContentNodes(
   const sheets = sheetIds.length
     ? await GoogleDriveSheet.findAll({
         where: {
+          connectorId: connectorId,
           [Op.or]: sheetIds.map((s) => ({
             [Op.and]: [
               {
