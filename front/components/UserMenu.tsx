@@ -40,14 +40,14 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenu.SectionHeader label="Beta" />
-            {owner.flags.includes("labs_transcripts") ||
-              (isDevelopmentOrDustWorkspace(owner) && (
-                <DropdownMenu.Item
-                  label="Transcripts processing"
-                  href={`/w/${owner.sId}/assistant/labs/transcripts`}
-                  icon={BookOpenIcon}
-                />
-              ))}
+            {(owner.flags.includes("labs_transcripts") ||
+              isDevelopmentOrDustWorkspace(owner)) && (
+              <DropdownMenu.Item
+                label="Transcripts processing"
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
+                icon={BookOpenIcon}
+              />
+            )}
             {(owner.flags.includes("labs_extract") ||
               isDevelopmentOrDustWorkspace(owner)) && (
               <DropdownMenu.Item
