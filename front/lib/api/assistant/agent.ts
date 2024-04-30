@@ -18,10 +18,10 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  GPT_4_TURBO_MODEL_CONFIG,
   isAgentConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -327,7 +327,7 @@ export async function getNextAction(
   );
 
   // TODO(@fontanierh): revisit
-  const model = GPT_4_TURBO_MODEL_CONFIG;
+  const model = CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
 
   const MIN_GENERATION_TOKENS = 2048;
 
@@ -403,10 +403,17 @@ export async function getNextAction(
     specifications.push({
       name: "reply_to_user",
       description:
-        "Reply to the user with a message. You don't need to generate any arguments for this function.",
-      inputs: [],
+        "Reply to the user with a message. It is mandatory to call this function before replying to the user, otherwise they won't be able to see the message.",
+      inputs: [
+        {
+          name: "language",
+          type: "string",
+          description:
+            "The language of the message to send. Should always be 'en' (for english) or 'fr' (for french).",
+        },
+      ],
     });
-    prompt = `${prompt}\nIf you don't know which function to use, use \`reply_to_user\`. Never attempt to directly send a message to the user without using this function.`;
+    prompt = `${prompt}\nNever attempt to directly send a message to the user without using the 'reply_to_user' function. When there is no other action to perform, use this function to send a message to the user.`;
   }
 
   const config = cloneBaseConfig(
