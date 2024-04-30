@@ -4,7 +4,6 @@ import type { InferGetServerSidePropsType } from "next";
 
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { ExtractEventSchemaForm } from "@app/components/use/EventSchemaForm";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
