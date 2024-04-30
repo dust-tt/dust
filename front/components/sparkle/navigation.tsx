@@ -1,5 +1,4 @@
 import {
-  ArrowUpOnSquareIcon,
   ChatBubbleLeftRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
@@ -18,8 +17,6 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
@@ -37,8 +34,7 @@ export type SubNavigationAssistantsId =
   | "workspace_assistants"
   | "personal_assistants"
   | "data_sources_url"
-  | "developers"
-  | "extract";
+  | "developers";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
 
@@ -48,7 +44,6 @@ export type SubNavigationAppId =
   | "execute"
   | "runs"
   | "settings";
-export type SubNavigationLabId = "extract";
 
 export type SparkleAppLayoutNavigation = {
   id:
@@ -204,36 +199,6 @@ export const subNavigationBuild = ({
       },
     ],
   });
-
-  const hasBetaAccess =
-    owner.flags?.some((flag: string) => flag.startsWith("labs_")) ||
-    isDevelopmentOrDustWorkspace(owner);
-
-  const betaMenus: SparkleAppLayoutNavigation[] = [];
-
-  if (hasBetaAccess) {
-    if (
-      owner.flags.includes("labs_extract") ||
-      isDevelopmentOrDustWorkspace(owner)
-    ) {
-      betaMenus.push({
-        id: "extract",
-        label: "Extract",
-        icon: ArrowUpOnSquareIcon,
-        href: `/w/${owner.sId}/builder/labs/extract`,
-        current: current === "extract",
-        subMenuLabel: current === "extract" ? subMenuLabel : undefined,
-        subMenu: current === "extract" ? subMenu : undefined,
-      });
-    }
-
-    nav.push({
-      id: "beta",
-      label: "Beta",
-      variant: "secondary",
-      menus: betaMenus,
-    });
-  }
 
   return nav;
 };
