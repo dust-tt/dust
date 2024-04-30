@@ -36,19 +36,19 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import {
   generateDustAppRunSpecification,
   runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
+} from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
 import {
   generateProcessSpecification,
   runProcess,
-} from "@app/lib/api/assistant/actions/process";
+} from "@app/lib/api/assistant/actions/process/process";
 import {
   generateRetrievalSpecification,
   runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
+} from "@app/lib/api/assistant/actions/retrieval/retrieval";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
-} from "@app/lib/api/assistant/actions/tables_query";
+} from "@app/lib/api/assistant/actions/tables_query/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,

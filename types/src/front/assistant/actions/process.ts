@@ -1,10 +1,3 @@
-import {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-  TimeFrame,
-} from "../../../front/assistant/actions/retrieval";
-import { ModelId } from "../../../shared/model_id";
-
 // Properties in the process configuration table are stored as an array of objects.
 export type ProcessSchemaPropertyType = {
   name: string;
@@ -38,30 +31,3 @@ export function renderSchemaPropertiesAsJSONSchema(
 
   return jsonSchema;
 }
-
-export type ProcessConfigurationType = {
-  id: ModelId;
-  sId: string;
-
-  type: "process_configuration";
-
-  dataSources: DataSourceConfiguration[];
-  relativeTimeFrame: RetrievalTimeframe;
-  schema: ProcessSchemaPropertyType[];
-
-  name: string | null;
-  description: string | null;
-  forceUseAtIteration: number | null;
-};
-
-export type ProcessActionType = {
-  id: ModelId;
-
-  type: "process_action";
-
-  params: {
-    relativeTimeFrame: TimeFrame | null;
-  };
-  schema: ProcessSchemaPropertyType[];
-  outputs: unknown[] | null;
-};

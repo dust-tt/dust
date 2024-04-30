@@ -26,7 +26,7 @@ import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
   timeFrameFromNow,
-} from "@app/lib/api/assistant/actions/retrieval";
+} from "@app/lib/api/assistant/actions/retrieval/retrieval";
 import { constructPrompt } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";

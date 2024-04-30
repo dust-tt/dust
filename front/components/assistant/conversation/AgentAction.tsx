@@ -1,13 +1,10 @@
 import type { AgentActionType } from "@dust-tt/types";
-import {
-  isDustAppRunActionType,
-  isRetrievalActionType,
-  isTablesQueryActionType,
-} from "@dust-tt/types";
+import { isRetrievalActionType, isTablesQueryActionType } from "@dust-tt/types";
 
 import DustAppRunAction from "@app/components/assistant/conversation/DustAppRunAction";
 import RetrievalAction from "@app/components/assistant/conversation/RetrievalAction";
 import TablesQueryAction from "@app/components/assistant/conversation/TablesQueryAction";
+import { isDustAppRunActionType } from "@app/lib/api/assistant/actions/dust_app_run/types";
 
 export function AgentAction({ action }: { action: AgentActionType }) {
   if (isRetrievalActionType(action)) {

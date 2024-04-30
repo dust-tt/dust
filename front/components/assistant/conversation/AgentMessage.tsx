@@ -21,7 +21,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { RetrievalDocumentType } from "@dust-tt/types";
 import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import { assertNever, isRetrievalActionType } from "@dust-tt/types";
 import Link from "next/link";
@@ -40,6 +39,7 @@ import {
 } from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { RetrievalDocumentType } from "@app/lib/api/assistant/actions/retrieval/types";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {

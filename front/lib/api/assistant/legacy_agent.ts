@@ -32,15 +32,15 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import {
   generateDustAppRunSpecification,
   runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
+} from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
 import {
   generateRetrievalSpecification,
   runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
+} from "@app/lib/api/assistant/actions/retrieval/retrieval";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
-} from "@app/lib/api/assistant/actions/tables_query";
+} from "@app/lib/api/assistant/actions/tables_query/tables_query";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -50,7 +50,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
-import { generateProcessSpecification, runProcess } from "./actions/process";
+import {
+  generateProcessSpecification,
+  runProcess,
+} from "./actions/process/process";
 
 /**
  * Action Inputs generation.

@@ -18,7 +18,6 @@ import {
   Err,
   isAgentMessageType,
   isContentFragmentType,
-  isDustAppRunActionType,
   isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -29,12 +28,13 @@ import {
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
+import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
+import { isDustAppRunActionType } from "@app/lib/api/assistant/actions/dust_app_run/types";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
-} from "@app/lib/api/assistant/actions/retrieval";
-import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+} from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -44,7 +44,7 @@ import { getContentFragmentText } from "@app/lib/resources/content_fragment_reso
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
-import { renderProcessActionForModel } from "./actions/process";
+import { renderProcessActionForModel } from "./actions/process/process";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 

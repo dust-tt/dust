@@ -1,7 +1,3 @@
-import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
-import { ProcessActionType } from "../../front/assistant/actions/process";
-import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
-import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
@@ -80,12 +76,6 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
  * Agent messages
  */
 
-export type AgentActionType =
-  | RetrievalActionType
-  | DustAppRunActionType
-  | TablesQueryActionType
-  | ProcessActionType;
-
 export type AgentMessageStatus =
   | "created"
   | "succeeded"
@@ -110,6 +100,7 @@ export type AgentMessageType = {
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
+  // TODO:
   action: AgentActionType | null;
   content: string | null;
   error: {

@@ -4,7 +4,6 @@ import type {
   CoreAPITable,
   DataSourceType,
   ProcessConfigurationType,
-  RetrievalConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -21,6 +20,7 @@ import type {
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
+import type { RetrievalConfigurationType } from "@app/lib/api/assistant/actions/retrieval/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";

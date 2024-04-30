@@ -5,12 +5,7 @@ import type {
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
 } from "@dust-tt/types";
-import type {
-  RetrievalActionType,
-  RetrievalConfigurationType,
-  RetrievalDocumentType,
-  TimeFrame,
-} from "@dust-tt/types";
+import type { TimeFrame } from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   AgentConfigurationType,
@@ -21,6 +16,11 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type {
+  RetrievalActionType,
+  RetrievalConfigurationType,
+  RetrievalDocumentType,
+} from "@app/lib/api/assistant/actions/retrieval/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
