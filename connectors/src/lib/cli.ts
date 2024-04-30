@@ -2,6 +2,7 @@ import type {
   AdminCommandType,
   AdminSuccessResponseType,
   BatchCommandType,
+  BatchRestartAllResponseType,
   ConnectorsCommandType,
   GithubCommandType,
   GoogleDriveCheckFileResponseType,
@@ -1148,7 +1149,9 @@ export const slack = async ({
 export const batch = async ({
   command,
   args,
-}: BatchCommandType): Promise<AdminSuccessResponseType> => {
+}: BatchCommandType): Promise<
+  AdminSuccessResponseType | BatchRestartAllResponseType
+> => {
   const logger = topLogger.child({ majorCommand: "batch", command, args });
   switch (command) {
     case "full-resync": {
@@ -1196,6 +1199,59 @@ export const batch = async ({
         );
       }
       return { success: true };
+    }
+    case "restart-all": {
+      if (!args.provider) {
+        throw new Error("Missing --provider argument");
+      }
+      const queue = new PQueue({ concurrency: 10 });
+      const promises: Promise<void>[] = [];
+      const connectors = await ConnectorModel.findAll({
+        where: {
+          type: args.provider,
+          errorType: null,
+        },
+      });
+      for (const connector of connectors) {
+        promises.push(
+          queue.add(async () => {
+            await throwOnError(
+              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id)
+            );
+            await throwOnError(
+              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id)
+            );
+          })
+        );
+      }
+      let succeeded = 0;
+      let failed = 0;
+
+      const logInfo = () => {
+        const completed = succeeded + failed;
+
+        if (
+          (completed && completed % 10 === 0) ||
+          completed === connectors.length
+        ) {
+          logger.info(
+            `[Admin] completed ${completed} / ${connectors.length} (${failed} failed)`
+          );
+        }
+      };
+
+      queue.on("completed", () => {
+        succeeded++;
+        logInfo();
+      });
+      queue.on("error", () => {
+        failed++;
+        logInfo();
+      });
+
+      await Promise.all(promises);
+
+      return { succeeded, failed };
     }
     default:
       throw new Error("Unknown batch command: " + command);
