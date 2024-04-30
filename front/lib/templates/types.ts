@@ -2,14 +2,7 @@ import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
-import { assertNever } from "../../shared/utils/assert_never";
-import { ioTsEnum } from "../../shared/utils/iots_utils";
-import { DustAppRunConfigurationType } from "./actions/dust_app_run";
-import { ProcessConfigurationType } from "./actions/process";
-import { RetrievalConfigurationType } from "./actions/retrieval";
-import { TablesQueryConfigurationType } from "./actions/tables_query";
-import { AgentAction, AgentActionConfigurationType } from "./agent";
-import { AssistantCreativityLevelCodec } from "./builder";
+import type { AgentAction } from "@app/lib/api/assistant/actions/types";
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -198,4 +191,7 @@ export function getAgentActionConfigurationType(
     default:
       assertNever(action);
   }
+}
+function ioTsEnum<T>(arg0: string[], arg1: string) {
+  throw new Error("Function not implemented.");
 }

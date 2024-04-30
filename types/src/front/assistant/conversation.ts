@@ -101,7 +101,7 @@ export type AgentMessageType = {
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   // TODO:
-  action: AgentActionType | null;
+  action: unknown | null;
   content: string | null;
   error: {
     code: string;

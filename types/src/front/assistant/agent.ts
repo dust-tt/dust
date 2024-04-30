@@ -171,15 +171,15 @@ export type LightAgentConfigurationType = {
   maxToolsUsePerRun: number;
 };
 
-export type AgentConfigurationType = LightAgentConfigurationType & {
+export type AgentConfigurationType<T> = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are
   // performed.
-  actions: AgentActionConfigurationType[];
+  actions: T[];
   // If undefined, no text generation.
   generation: AgentGenerationConfigurationType | null;
 };
 
-export interface TemplateAgentConfigurationType {
+export interface TemplateAgentConfigurationType<T> {
   // If undefined, no text generation.
   generation: {
     model: SupportedModel;
@@ -193,7 +193,7 @@ export interface TemplateAgentConfigurationType {
   scope: AgentConfigurationScope;
   description: string;
   model: AgentModelConfigurationType;
-  actions: AgentActionConfigurationType[];
+  actions: T[];
   instructions: string | null;
   isTemplate: true;
 }
