@@ -1,6 +1,8 @@
 import {
   Button,
   CommandLineIcon,
+  Dialog,
+  Input,
   LockIcon,
   Page,
   PlusIcon,
@@ -68,6 +70,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
+  const [newApiKeyName, setNewApiKeyName] = useState("");
+  const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
 
   const { keys } = useKeys(owner);
   const { submit: handleGenerate, isSubmitting: isGenerating } =
@@ -81,14 +85,8 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       });
       // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/keys`);
-      // scroll to bottom
-      const mainTag = document.querySelector("main");
-      if (mainTag) {
-        mainTag.scrollTo({
-          top: mainTag.scrollHeight,
-          behavior: "smooth",
-        });
-      }
+      setIsNewApiKeyPromptOpen(false);
+      setNewApiKeyName("");
     });
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
@@ -106,6 +104,19 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   return (
     <>
+      <Dialog
+        isOpen={isNewApiKeyPromptOpen}
+        title="New API Key"
+        onValidate={() => handleGenerate(newApiKeyName)}
+        onCancel={() => setIsNewApiKeyPromptOpen(false)}
+      >
+        <Input
+          name="API Key"
+          placeholder="Type an API key name"
+          value={newApiKeyName}
+          onChange={(e) => setNewApiKeyName(e)}
+        />
+      </Dialog>
       <Page.SectionHeader
         title="API Keys"
         description="Keys used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
@@ -113,8 +124,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
           label: "Create API Key",
           variant: "primary",
           onClick: async () => {
-            const newName = prompt("Name this API Key");
-            await handleGenerate(newName ?? "");
+            setIsNewApiKeyPromptOpen(true);
           },
           icon: PlusIcon,
           disabled: isGenerating || isRevoking,
