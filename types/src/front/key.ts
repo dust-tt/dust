@@ -3,4 +3,5 @@ export type KeyType = {
   creator: string | null;
   secret: string;
   status: string;
+  name: string | null;
 };
