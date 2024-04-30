@@ -18,7 +18,7 @@ export type PostKeysResponseBody = {
   key: KeyType;
 };
 
-const Name = t.type({
+const CreateKeyPostBodySchema = t.type({
   name: t.string,
 });
 
@@ -91,7 +91,7 @@ async function handler(
       return;
 
     case "POST":
-      const bodyValidation = Name.decode(req.body);
+      const bodyValidation = CreateKeyPostBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         return apiError(req, res, {
           status_code: 404,
