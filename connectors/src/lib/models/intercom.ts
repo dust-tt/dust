@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
@@ -22,7 +23,8 @@ export class IntercomWorkspace extends Model<
   declare region: string;
 
   declare conversationsSlidingWindow: number;
-  declare shouldSyncAllConversations: boolean;
+  declare syncAllConversations: IntercomSyncAllConversationsStatus;
+  declare shouldSyncAllConversations: boolean; // @todo daph remove
   declare shouldSyncNotes: boolean;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -57,7 +59,13 @@ IntercomWorkspace.init(
       allowNull: false,
       defaultValue: 90,
     },
+    syncAllConversations: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "disabled",
+    },
     shouldSyncAllConversations: {
+      // @todo daph remove
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
@@ -442,7 +450,7 @@ export class IntercomConversation extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare conversationId: string;
-  declare teamId: string;
+  declare teamId: string | null;
   declare conversationCreatedAt: Date;
 
   declare lastUpsertedTs: Date;
@@ -473,7 +481,7 @@ IntercomConversation.init(
     },
     teamId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     conversationCreatedAt: {
       type: DataTypes.DATE,

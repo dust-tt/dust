@@ -25,8 +25,11 @@ const {
   syncTeamOnlyActivity,
   getNextConversationBatchToSyncActivity,
   syncConversationBatchActivity,
-  getNextConversationsBatchToDeleteActivity,
+  getNextOldConversationsBatchToDeleteActivity,
+  getNextRevokedConversationsBatchToDeleteActivity,
   deleteConversationBatchActivity,
+  getSyncAllConversationsStatusActivity,
+  setSyncAllConversationsStatusActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -52,6 +55,7 @@ export async function intercomSyncWorkflow({
   const uniqueHelpCenterIds = new Set<string>();
   const uniqueTeamIds = new Set<string>();
   const signaledHelpCenters: IntercomUpdateSignal[] = [];
+  let hasUpdatedSelectAllConvos = false;
 
   // If we get a signal, update the workflow state by adding help center ids.
   // We send a signal when permissions are updated by the admin.
@@ -64,6 +68,8 @@ export async function intercomSyncWorkflow({
           signaledHelpCenters.push(signal);
         } else if (signal.type === "team") {
           uniqueTeamIds.add(signal.intercomId);
+        } else if (signal.type === "all_conversations") {
+          hasUpdatedSelectAllConvos = true;
         }
       });
     }
@@ -71,7 +77,11 @@ export async function intercomSyncWorkflow({
 
   // If we got no signal, then we're on the hourly execution
   // We will only refresh the Help Center data as Conversations have webhooks
-  if (uniqueHelpCenterIds.size === 0 && uniqueTeamIds.size === 0) {
+  if (
+    uniqueHelpCenterIds.size === 0 &&
+    uniqueTeamIds.size === 0 &&
+    !hasUpdatedSelectAllConvos
+  ) {
     const helpCenterIds = await getHelpCenterIdsToSyncActivity(connectorId);
     helpCenterIds.forEach((i) => uniqueHelpCenterIds.add(i));
   }
@@ -144,6 +154,20 @@ export async function intercomSyncWorkflow({
     }
   }
 
+  if (hasUpdatedSelectAllConvos) {
+    await executeChild(intercomAllConversationsSyncWorkflow, {
+      workflowId: `${workflowId}-all-conversations`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+          currentSyncMs,
+        },
+      ],
+      memo,
+    });
+  }
+
   await intercomOldConversationsCleanup({
     connectorId,
   });
@@ -167,13 +191,13 @@ export async function intercomHelpCenterSyncWorklow({
   currentSyncMs: number;
   forceResync: boolean;
 }) {
-  const hasPermission = await syncHelpCenterOnlyActivity({
+  const shouldSyncArticles = await syncHelpCenterOnlyActivity({
     connectorId,
     helpCenterId,
     currentSyncMs,
   });
 
-  if (!hasPermission) {
+  if (!shouldSyncArticles) {
     // We don't have permission anymore on this help center, we don't sync it.
     return;
   }
@@ -222,14 +246,14 @@ export async function intercomTeamFullSyncWorkflow({
   currentSyncMs: number;
 }) {
   // Updates the Team name and make sure we're still allowed to sync it.
-  // If the team is not allowed anymore (permission to none or object not in Intercom anymore), it will delete all its data.
-  const hasPermission = await syncTeamOnlyActivity({
+  // If the team is not allowed anymore (permission to none or object not in Intercom anymore), it will delete all the attached conversations.
+  const shouldSyncConversations = await syncTeamOnlyActivity({
     connectorId,
     teamId,
     currentSyncMs,
   });
 
-  if (!hasPermission) {
+  if (!shouldSyncConversations) {
     // We don't have permission anymore on this team, we don't sync it.
     return;
   }
@@ -257,6 +281,71 @@ export async function intercomTeamFullSyncWorkflow({
 }
 
 /**
+ * Sync Workflow for a All Conversations.
+ * Launched by the IntercomSyncWorkflow if a signal is received (meaning the admin updated the permissions and ticked or unticked the "All Conversations" checkbox).
+ */
+export async function intercomAllConversationsSyncWorkflow({
+  connectorId,
+  currentSyncMs,
+}: {
+  connectorId: ModelId;
+  currentSyncMs: number;
+}) {
+  const syncAllConvosStatus = await getSyncAllConversationsStatusActivity({
+    connectorId,
+  });
+
+  let cursor = null;
+  let convosIdsToDelete = [];
+
+  switch (syncAllConvosStatus) {
+    case "activated":
+    case "disabled":
+      // Nothing to do, we're already in the right state.
+      break;
+    case "scheduled_activate":
+      // We loop over the conversations to sync them all.
+      do {
+        const { conversationIds, nextPageCursor } =
+          await getNextConversationBatchToSyncActivity({
+            connectorId,
+            cursor,
+          });
+        await syncConversationBatchActivity({
+          connectorId,
+          conversationIds,
+          currentSyncMs,
+        });
+        cursor = nextPageCursor;
+      } while (cursor);
+      // We mark the status as activated.
+      await setSyncAllConversationsStatusActivity({
+        connectorId,
+        status: "activated",
+      });
+      break;
+    case "scheduled_revoke":
+      // We loop over the conversations delete all those that does not belong to a Team in "read".
+      do {
+        convosIdsToDelete =
+          await getNextRevokedConversationsBatchToDeleteActivity({
+            connectorId,
+          });
+        await deleteConversationBatchActivity({
+          connectorId,
+          conversationIds: convosIdsToDelete,
+        });
+      } while (convosIdsToDelete.length > 0);
+      // We mark the status as disabled.
+      await setSyncAllConversationsStatusActivity({
+        connectorId,
+        status: "disabled",
+      });
+      break;
+  }
+}
+
+/**
  * Cleaning Workflow to remove old convos.
  * Launched by the IntercomSyncWorkflow, it will sync a given Team.
  * We sync a Team by fetching the conversations attached to this team.
@@ -268,7 +357,7 @@ export async function intercomOldConversationsCleanup({
 }) {
   let conversationIds = [];
   do {
-    conversationIds = await getNextConversationsBatchToDeleteActivity({
+    conversationIds = await getNextOldConversationsBatchToDeleteActivity({
       connectorId,
     });
     await deleteConversationBatchActivity({

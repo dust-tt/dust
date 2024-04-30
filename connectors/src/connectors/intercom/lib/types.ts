@@ -109,3 +109,12 @@ export type IntercomAuthor = {
   name: string;
   email: string;
 };
+
+export const INTERCOM_SYNC_ALL_CONVO_STATUSES = [
+  "activated",
+  "disabled",
+  "scheduled_activate",
+  "scheduled_revoke",
+] as const;
+export type IntercomSyncAllConversationsStatus =
+  (typeof INTERCOM_SYNC_ALL_CONVO_STATUSES)[number];

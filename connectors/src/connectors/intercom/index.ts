@@ -31,6 +31,7 @@ import {
   getTeamIdFromInternalId,
   getTeamInternalId,
   getTeamsInternalId,
+  isInternalIdForAllConversations,
   isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
@@ -85,7 +86,8 @@ export async function createIntercomConnector(
       name: intercomWorkspace.name,
       conversationsSlidingWindow: 90,
       region: intercomWorkspace.region,
-      shouldSyncAllConversations: false,
+      syncAllConversations: "disabled" as const,
+      shouldSyncAllConversations: false, // @todo daph remove
       shouldSyncNotes: true,
     };
 
@@ -415,6 +417,7 @@ export async function setIntercomConnectorPermissions(
 
   const toBeSignaledHelpCenterIds = new Set<string>();
   const toBeSignaledTeamIds = new Set<string>();
+  let toBeSignaledSelectAllConversations = false;
 
   try {
     for (const [id, permission] of Object.entries(permissions)) {
@@ -428,6 +431,10 @@ export async function setIntercomConnectorPermissions(
 
       const helpCenterId = getHelpCenterIdFromInternalId(connectorId, id);
       const collectionId = getHelpCenterCollectionIdFromInternalId(
+        connectorId,
+        id
+      );
+      const isAllConversations = isInternalIdForAllConversations(
         connectorId,
         id
       );
@@ -471,6 +478,18 @@ export async function setIntercomConnectorPermissions(
             toBeSignaledHelpCenterIds.add(newCollection.helpCenterId);
           }
         }
+      } else if (isAllConversations) {
+        if (permission === "none") {
+          await intercomWorkspace.update({
+            syncAllConversations: "scheduled_revoke",
+          });
+          toBeSignaledSelectAllConversations = true;
+        } else if (permission === "read") {
+          await intercomWorkspace.update({
+            syncAllConversations: "scheduled_activate",
+          });
+          toBeSignaledSelectAllConversations = true;
+        }
       } else if (teamId) {
         if (permission === "none") {
           const revokedTeam = await revokeSyncTeam({
@@ -494,11 +513,16 @@ export async function setIntercomConnectorPermissions(
       }
     }
 
-    if (toBeSignaledHelpCenterIds.size > 0 || toBeSignaledTeamIds.size > 0) {
+    if (
+      toBeSignaledHelpCenterIds.size > 0 ||
+      toBeSignaledTeamIds.size > 0 ||
+      toBeSignaledSelectAllConversations
+    ) {
       const sendSignalToWorkflowResult = await launchIntercomSyncWorkflow({
         connectorId,
         helpCenterIds: [...toBeSignaledHelpCenterIds],
         teamIds: [...toBeSignaledTeamIds],
+        hasUpdatedSelectAllConversations: toBeSignaledSelectAllConversations,
       });
       if (sendSignalToWorkflowResult.isErr()) {
         return new Err(sendSignalToWorkflowResult.error);

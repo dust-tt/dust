@@ -276,7 +276,7 @@ export async function fetchIntercomTeam(
  * Return the paginated list of Conversation for a given Team.
  * Filtered on a slidingWindow and closed Conversations.
  */
-export async function fetchIntercomConversationsForTeamId({
+export async function fetchIntercomConversations({
   nangoConnectionId,
   teamId,
   slidingWindow,
@@ -284,7 +284,7 @@ export async function fetchIntercomConversationsForTeamId({
   pageSize = 20,
 }: {
   nangoConnectionId: string;
-  teamId: string;
+  teamId?: string;
   slidingWindow: number;
   cursor: string | null;
   pageSize?: number;
@@ -302,6 +302,31 @@ export async function fetchIntercomConversationsForTeamId({
   );
   const minCreatedAt = Math.floor(minCreatedAtDate.getTime() / 1000);
 
+  const queryFilters: {
+    field: string;
+    operator: string;
+    value: string | number | boolean | [] | null;
+  }[] = [
+    {
+      field: "open",
+      operator: "=",
+      value: false,
+    },
+    {
+      field: "created_at",
+      operator: ">",
+      value: minCreatedAt,
+    },
+  ];
+
+  if (teamId) {
+    queryFilters.push({
+      field: "team_assignee_id",
+      operator: "=",
+      value: teamId,
+    });
+  }
+
   const response = await queryIntercomAPI({
     nangoConnectionId,
     path: `conversations/search`,
@@ -309,23 +334,7 @@ export async function fetchIntercomConversationsForTeamId({
     body: {
       query: {
         operator: "AND",
-        value: [
-          {
-            field: "open",
-            operator: "=",
-            value: false,
-          },
-          {
-            field: "team_assignee_id",
-            operator: "=",
-            value: teamId,
-          },
-          {
-            field: "created_at",
-            operator: ">",
-            value: minCreatedAt,
-          },
-        ],
+        value: queryFilters,
       },
       pagination: {
         per_page: pageSize,
