@@ -1,5 +1,5 @@
 import type { KeyType } from "@dust-tt/types";
-import { formatUserFullName } from "@dust-tt/types";
+import { formatUserFullName, redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -70,7 +70,7 @@ async function handler(
             const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
 
             if (differenceInMinutes > 10) {
-              return k.secret.slice(0, 4) + "..." + k.secret.slice(-4);
+              return redactString(k.secret, 4);
             } else {
               return k.secret;
             }
