@@ -197,6 +197,12 @@ export function ActionProcess({
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+
+        <div className="flex flex-row items-start">
+          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+            Extraction schema
+          </div>
+        </div>
     </>
   );
 }
