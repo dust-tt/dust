@@ -140,6 +140,7 @@ export async function* runTablesQuery(
     tablesQueryConfigurationId: configuration.sId,
     params: rawInputs,
     output,
+    agentMessageId: agentMessage.agentMessageId,
   });
 
   yield {

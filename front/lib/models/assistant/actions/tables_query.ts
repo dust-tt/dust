@@ -7,6 +7,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -167,6 +168,7 @@ export class AgentTablesQueryAction extends Model<
 
   declare params: unknown | null;
   declare output: unknown | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 
 AgentTablesQueryAction.init(
@@ -204,5 +206,11 @@ AgentTablesQueryAction.init(
   {
     modelName: "agent_tables_query_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
   }
 );

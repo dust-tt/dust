@@ -8,6 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentDustAppRunConfiguration extends Model<
@@ -110,6 +111,7 @@ export class AgentDustAppRunAction extends Model<
 
   declare params: DustAppParameters;
   declare output: unknown | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 AgentDustAppRunAction.init(
   {
@@ -159,5 +161,11 @@ AgentDustAppRunAction.init(
   {
     modelName: "agent_dust_app_run_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
   }
 );
