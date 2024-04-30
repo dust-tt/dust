@@ -87,7 +87,7 @@ async function handler(
       return;
 
     case "POST":
-      const name = req.body.name;
+      const { name } = req.body;
       const secret = `sk-${new_id().slice(0, 32)}`;
 
       const key = await Key.create({
