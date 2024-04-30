@@ -8,7 +8,6 @@ import type {
 import type { BlockType, RunType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import _ from "lodash";
-import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
@@ -46,7 +45,6 @@ export default function Input({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-
   const { dataset, isDatasetLoading, isDatasetError, mutateDataset } =
     useDataset(owner, app, block.config.dataset, true);
 
