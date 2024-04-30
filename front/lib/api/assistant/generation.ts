@@ -59,11 +59,13 @@ export async function renderConversationForModel({
   model,
   prompt,
   allowedTokenCount,
+  excludeActions,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   prompt: string;
   allowedTokenCount: number;
+  excludeActions?: boolean;
 }): Promise<
   Result<
     { modelConversation: ModelConversationType; tokensUsed: number },
@@ -91,7 +93,9 @@ export async function renderConversationForModel({
           content: m.content,
         });
       }
-      if (m.action) {
+      // There are contexts where we want to exclude the actions from the rendering.
+      // Eg: During the conversation title generation step.
+      if (m.action && !excludeActions) {
         if (isRetrievalActionType(m.action)) {
           if (includeRetrieval) {
             foundRetrieval = true;
