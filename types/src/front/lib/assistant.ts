@@ -71,6 +71,7 @@ export type ModelConfigurationType = {
   largeModel: boolean;
   description: string;
   shortDescription: string;
+  supportsMultiActions: boolean;
 };
 
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -82,6 +83,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "OpenAI's most powerful and recent model (128k context).",
   shortDescription: "OpenAI's smartest model.",
+  supportsMultiActions: true,
 };
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -93,6 +95,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "OpenAI's cost-effective and high throughput model (16k context).",
   shortDescription: "OpenAI's fast model.",
+  supportsMultiActions: false,
 };
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -105,6 +108,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
+  supportsMultiActions: true,
 };
 export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -116,6 +120,7 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
   shortDescription: "Anthropic's balanced model.",
+  supportsMultiActions: true,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -127,6 +132,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
   shortDescription: "Anthropic's quick model.",
+  supportsMultiActions: true,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -137,6 +143,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's smartest model.",
+  supportsMultiActions: false,
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -148,6 +155,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
   shortDescription: "Anthropic's fast model.",
+  supportsMultiActions: false,
 };
 
 export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
@@ -159,6 +167,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Mistral's latest `large` model (32k context).",
   shortDescription: "Mistral's large model.",
+  supportsMultiActions: true,
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -169,6 +178,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Mistral's latest `medium` model (32k context).",
   shortDescription: "Mistral's smartest model.",
+  supportsMultiActions: false,
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -179,6 +189,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
+  supportsMultiActions: false,
 };
 
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -191,6 +202,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Google's best model for scaling across a wide range of tasks (1M context).",
   shortDescription: "Google's smartest model.",
+  supportsMultiActions: false,
 };
 
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [

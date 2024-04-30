@@ -29,6 +29,7 @@ import {
   isTablesQueryConfiguration,
   Ok,
   removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -326,8 +327,13 @@ export async function getNextAction(
     "You are a conversational assistant with access to function calling."
   );
 
-  // TODO(@fontanierh): revisit
-  const model = CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+  const model =
+    SUPPORTED_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === agentConfiguration.model.modelId &&
+        m.providerId === agentConfiguration.model.providerId &&
+        m.supportsMultiActions
+    ) ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
 
   const MIN_GENERATION_TOKENS = 2048;
 
@@ -422,6 +428,7 @@ export async function getNextAction(
   config.MODEL.function_call = forcedActionName ?? "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
+  config.MODEL.temperature = 0.2;
 
   const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
     {
