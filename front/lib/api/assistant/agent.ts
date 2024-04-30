@@ -428,7 +428,7 @@ export async function getNextAction(
   config.MODEL.function_call = forcedActionName ?? "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = 0.2;
+  config.MODEL.temperature = agentConfiguration.model.temperature;
 
   const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
     {
