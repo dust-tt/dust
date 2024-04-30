@@ -3,6 +3,7 @@ import {
   DropdownMenu,
   Hoverable,
   IconButton,
+  Input,
   PlusIcon,
   SparklesIcon,
   Tooltip,
@@ -44,57 +45,6 @@ export function isActionProcessValid(builderState: AssistantBuilderState) {
   return (
     Object.keys(builderState.processConfiguration.dataSourceConfigurations)
       .length > 0 && !!builderState.processConfiguration.timeFrame.value
-  );
-}
-
-function TextField({
-  name,
-  label,
-  value,
-  onChange,
-  error,
-  disabled,
-  className = "",
-  showLabel = true,
-}: {
-  name: string;
-  label: string;
-  value?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  disabled?: boolean;
-  className: string;
-  showLabel: boolean;
-}) {
-  return (
-    <div className={classNames(className, disabled ? "text-gray-400" : "")}>
-      {showLabel && (
-        <div className="flex justify-between">
-          <label
-            htmlFor={name}
-            className="block text-sm font-medium text-gray-700"
-          >
-            {label}
-          </label>
-        </div>
-      )}
-      <div className="mt-1 flex rounded-md shadow-sm">
-        <input
-          type="text"
-          name={name}
-          id={name}
-          className={classNames(
-            "block w-full min-w-0 flex-1 rounded-md text-sm",
-            error
-              ? "border-red-500 focus:ring-red-500"
-              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
-          )}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -143,85 +93,94 @@ function PropertiesFields({
   }
 
   return (
-    <div className="mb-12 grid grid-cols-12 gap-x-4 gap-y-4 sm:grid-cols-12">
+    <div className="mb-12 grid grid-cols-12 grid-cols-12 gap-x-4 gap-y-4">
       {properties.map(
         (
           prop: { name: string; type: string; description: string },
           index: number
         ) => (
           <React.Fragment key={index}>
-            <TextField
-              name={`name-${index}`}
-              label="Property"
-              value={prop["name"]}
-              onChange={(e) => {
-                handlePropertyChange(index, "name", e.target.value);
-              }}
-              disabled={readOnly}
-              className="sm:col-span-2"
-              showLabel={index === 0}
-              error={
-                prop["name"].length === 0
-                  ? "Name is required"
-                  : properties.find(
-                      (p, i) => p.name === prop.name && i !== index
-                    )
-                  ? "Name must be unique"
-                  : undefined
-              }
-            />
-            <div className="sm:col-span-2">
+            <div className="col-span-2">
+              <Input
+                placeholder="Name"
+                size="sm"
+                name={`name-${index}`}
+                label={index === 0 ? "Property" : undefined}
+                value={prop["name"]}
+                onChange={(v) => {
+                  handlePropertyChange(index, "name", v);
+                }}
+                disabled={readOnly}
+                error={
+                  prop["name"].length === 0
+                    ? "Name is required"
+                    : properties.find(
+                        (p, i) => p.name === prop.name && i !== index
+                      )
+                    ? "Name must be unique"
+                    : undefined
+                }
+              />
+            </div>
+
+            <div className="col-span-2">
               {index === 0 && (
                 <div className="flex justify-between">
                   <label
                     htmlFor={`type-${index}`}
-                    className="block text-sm font-medium text-gray-700"
+                    className="block pb-1 pt-[1px] text-sm text-element-800"
                   >
                     Type
                   </label>
                 </div>
               )}
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <select
-                  name={`type-${index}`}
-                  id={`type-${index}`}
-                  className={classNames(
-                    "w-full cursor-pointer rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500",
-                    readOnly ? "text-gray-400" : ""
-                  )}
-                  onChange={(e) => {
-                    handleTypeChange(
-                      index,
-                      e.target.value as "string" | "number" | "boolean"
-                    );
-                  }}
-                  disabled={readOnly}
-                >
-                  {["string", "number", "boolean"].map((option) => (
-                    <option key={option} value={option} disabled={readOnly}>
-                      {option}
-                    </option>
+              <DropdownMenu>
+                <DropdownMenu.Button tooltipPosition="above">
+                  <Button
+                    type="select"
+                    labelVisible={true}
+                    label={prop["type"]}
+                    variant="secondary"
+                    size="sm"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items origin="bottomLeft">
+                  {["string", "number", "boolean"].map((value, i) => (
+                    <DropdownMenu.Item
+                      key={`${value}-${i}`}
+                      label={value}
+                      onClick={() => {
+                        handleTypeChange(
+                          index,
+                          value as "string" | "number" | "boolean"
+                        );
+                      }}
+                    />
                   ))}
-                </select>
-              </div>
+                </DropdownMenu.Items>
+              </DropdownMenu>
             </div>
-            <TextField
-              name={`description-${index}`}
-              label="Description"
-              value={prop["description"]}
-              onChange={(e) => {
-                handlePropertyChange(index, "description", e.target.value);
-              }}
-              disabled={readOnly}
-              className="col-span-7"
-              showLabel={index === 0}
-              error={
-                prop["description"].length === 0
-                  ? "Description is required"
-                  : undefined
-              }
-            />
-            <div className="col-span-1 flex items-end pb-1">
+
+            <div className="col-span-7">
+              <Input
+                placeholder="Description"
+                size="sm"
+                name={`description-${index}`}
+                label={index === 0 ? "Description" : undefined}
+                value={prop["description"]}
+                onChange={(v) => {
+                  handlePropertyChange(index, "description", v);
+                }}
+                disabled={readOnly}
+                error={
+                  prop["description"].length === 0
+                    ? "Description is required"
+                    : undefined
+                }
+              />
+            </div>
+
+            <div className="col-span-1 flex items-end pb-2">
               <IconButton
                 icon={XCircleIcon}
                 tooltip="Remove Property"
@@ -235,7 +194,7 @@ function PropertiesFields({
           </React.Fragment>
         )
       )}
-      <div className="sm:col-span-12">
+      <div className="col-span-12">
         {properties.length > 0 && (
           <Button
             label={"Add property"}
