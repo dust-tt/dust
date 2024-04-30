@@ -23,6 +23,7 @@ import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetTableResponseBody } from "@app/pages/api/v1/w/[wId]/data_sources/[name]/tables/[tId]";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
+import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets/[name]";
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
@@ -75,6 +76,29 @@ export function useDatasets(owner: WorkspaceType, app: AppType) {
     datasets: useMemo(() => (data ? data.datasets : []), [data]),
     isDatasetsLoading: !error && !data,
     isDatasetsError: !!error,
+  };
+}
+
+export function useDataset(
+  owner: WorkspaceType,
+  app: AppType,
+  dataset: string,
+  showData = false
+) {
+  const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${owner.sId}/apps/${app.sId}/datasets/${dataset}${
+      showData ? "?data=true" : ""
+    }`,
+    datasetFetcher
+  );
+
+  return {
+    dataset: data ? data.dataset : null,
+    isDatasetLoading: !error && !data,
+    isDatasetError: !!error,
+    mutateDataset: mutate,
   };
 }
 

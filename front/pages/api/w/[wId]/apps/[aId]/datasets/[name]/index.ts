@@ -14,7 +14,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { PostDatasetRequestBodySchema } from "..";
 
-type GetDatasetResponseBody = { dataset: DatasetType };
+export type GetDatasetResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,
