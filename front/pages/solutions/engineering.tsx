@@ -98,7 +98,7 @@ export default function Engineering() {
                   ),
                 },
                 {
-                  title: <>Create reports effortlessly.</>,
+                  title: "Create reports effortlessly.",
                   content: (
                     <>
                       Generate weekly summaries of&nbsp;shipped features and
@@ -120,7 +120,7 @@ export default function Engineering() {
             {
               color: "emerald",
               contentBlocks: {
-                title: <>Have your team assistant answer first.</>,
+                title: "Have your team assistant answer first.",
                 content: (
                   <>
                     Give it the&nbsp;right context and&nbsp;documentation
@@ -135,13 +135,13 @@ export default function Engineering() {
           ]}
         />
         <SolutionSection
-          title={<>Improve Code Quality.</>}
+          title="Improve Code Quality."
           blocks={[
             {
               color: "emerald",
               contentBlocks: [
                 {
-                  title: <>Create your own copilot.</>,
+                  title: "Create your own copilot.",
                   content: (
                     <>
                       Specialize the&nbsp;best models (GPT4, Mistral)
@@ -154,7 +154,7 @@ export default function Engineering() {
                   ),
                 },
                 {
-                  title: <>With your codebase.</>,
+                  title: "With your codebase.",
                   content: (
                     <>
                       Give your assistant access to&nbsp;your team
