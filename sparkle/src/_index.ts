@@ -58,9 +58,6 @@ export { Page };
 import { Conversation } from "./components/Conversation";
 export { Conversation };
 
-import { BuilderLayout } from "./components/BuilderLayout";
-export { BuilderLayout };
-
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
 
