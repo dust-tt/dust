@@ -1,10 +1,11 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 export type DataSources = {
@@ -17,7 +18,7 @@ export type DataSources = {
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
+  agentConfigurations: AgentConfigurationType<AgentActionConfigurationType>[],
   reload: () => void
 ): ColumnDef<DataSources>[] {
   return [
@@ -115,7 +116,7 @@ export function makeColumnsForDataSources(
 
 async function deleteDataSource(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
+  agentConfigurations: AgentConfigurationType<AgentActionConfigurationType>[],
   dataSourceName: string,
   reload: () => void
 ) {

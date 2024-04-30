@@ -1,4 +1,3 @@
-import type { DustAppParameters } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -7,6 +6,7 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
+import type { DustAppParameters } from "@app/lib/api/assistant/actions/dust_app_run/types";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 

@@ -8,13 +8,13 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { CloudArrowDownIcon } from "@dust-tt/sparkle";
-import type { TablesQueryActionType } from "@dust-tt/types";
 import { stringify } from "csv-stringify";
 import dynamic from "next/dynamic";
 import { useContext, useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { TablesQueryActionType } from "@app/lib/api/assistant/actions/tables_query/types";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),

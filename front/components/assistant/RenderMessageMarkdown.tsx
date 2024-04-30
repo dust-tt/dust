@@ -7,7 +7,6 @@ import {
   WrenchIcon,
 } from "@dust-tt/sparkle";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
-import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
@@ -33,6 +32,7 @@ import {
   MermaidGraph,
   useMermaidDisplay,
 } from "@app/components/assistant/RenderMermaid";
+import type { RetrievalDocumentType } from "@app/lib/api/assistant/actions/retrieval/types";
 import { classNames } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(

@@ -18,10 +18,6 @@ import {
   Err,
   isAgentMessageType,
   isContentFragmentType,
-  isProcessActionType,
-  isRetrievalActionType,
-  isRetrievalConfiguration,
-  isTablesQueryActionType,
   isUserMessageType,
   Ok,
 } from "@dust-tt/types";
@@ -30,11 +26,14 @@ import moment from "moment-timezone";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
 import { isDustAppRunActionType } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import { isProcessActionType } from "@app/lib/api/assistant/actions/process/types";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import { isRetrievalActionType } from "@app/lib/api/assistant/actions/retrieval/types";
 import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query/tables_query";
+import { isTablesQueryActionType } from "@app/lib/api/assistant/actions/tables_query/types";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -85,6 +84,7 @@ export async function renderConversationForModel({
     const versions = conversation.content[i];
     const m = versions[versions.length - 1];
 
+    // TODO:
     if (isAgentMessageType(m)) {
       if (m.content) {
         messages.unshift({

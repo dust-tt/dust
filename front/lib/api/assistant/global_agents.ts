@@ -26,6 +26,7 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -69,7 +70,7 @@ class HelperAssistantPrompt {
  */
 async function _getHelperGlobalAgent(
   auth: Authenticator
-): Promise<AgentConfigurationType> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let prompt = "";
 
   const user = auth.user();
@@ -130,7 +131,7 @@ async function _getGPT35TurboGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   const status = settings ? settings.status : "active";
   return {
     id: -1,
@@ -165,7 +166,7 @@ async function _getGPT4GlobalAgent({
   auth,
 }: {
   auth: Authenticator;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   const status = !auth.isUpgraded() ? "disabled_free_workspace" : "active";
   return {
     id: -1,
@@ -200,7 +201,7 @@ async function _getClaudeInstantGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -237,7 +238,7 @@ async function _getClaude2GlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -276,7 +277,7 @@ async function _getClaude3HaikuGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   const status = settings ? settings.status : "disabled_by_admin";
 
   return {
@@ -321,7 +322,7 @@ async function _getClaude3SonnetGlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -363,7 +364,7 @@ async function _getClaude3OpusGlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -404,7 +405,7 @@ async function _getMistralLargeGlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -445,7 +446,7 @@ async function _getMistralMediumGlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -484,7 +485,7 @@ async function _getMistralSmallGlobalAgent({
   settings,
 }: {
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   const status = settings ? settings.status : "disabled_by_admin";
   return {
     id: -1,
@@ -521,7 +522,7 @@ async function _getGeminiProGlobalAgent({
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
-}): Promise<AgentConfigurationType> {
+}): Promise<AgentConfigurationType<AgentActionConfigurationType>> {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
@@ -580,7 +581,7 @@ async function _getManagedDataSourceAgent(
     pictureUrl: string;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -700,7 +701,7 @@ async function _getGoogleDriveGlobalAgent(
     settings: GlobalAgentSettings | null;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
@@ -773,7 +774,7 @@ async function _getNotionGlobalAgent(
     settings: GlobalAgentSettings | null;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
@@ -797,7 +798,7 @@ async function _getIntercomGlobalAgent(
     settings: GlobalAgentSettings | null;
     dataSources: DataSourceType[];
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "intercom",
@@ -819,7 +820,7 @@ async function _getDustGlobalAgent(
   }: {
     settings: GlobalAgentSettings | null;
   }
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -951,7 +952,7 @@ export async function getGlobalAgent(
   auth: Authenticator,
   sId: string | number,
   preFetchedDataSources: DataSourceType[] | null
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Cannot find Global Agent Configuration: no workspace.");
@@ -971,7 +972,8 @@ export async function getGlobalAgent(
   const settings = await GlobalAgentSettings.findOne({
     where: { workspaceId: owner.id, agentId: sId },
   });
-  let agentConfiguration: AgentConfigurationType | null = null;
+  let agentConfiguration: AgentConfigurationType<AgentActionConfigurationType> | null =
+    null;
   switch (sId) {
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = await _getHelperGlobalAgent(auth);
@@ -1070,7 +1072,7 @@ const RETIRED_GLOABL_AGENTS_SID = [
 export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[]
-): Promise<AgentConfigurationType[]> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType>[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
   }
@@ -1115,7 +1117,8 @@ export async function getGlobalAgents(
     )
   );
 
-  const globalAgents: AgentConfigurationType[] = [];
+  const globalAgents: AgentConfigurationType<AgentActionConfigurationType>[] =
+    [];
 
   for (const agentFetcherResult of agentCandidates) {
     if (agentFetcherResult) {

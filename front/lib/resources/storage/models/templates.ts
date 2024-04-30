@@ -1,10 +1,7 @@
 import type {
-  ActionPreset,
   AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
-  TemplateTagCodeType,
-  TemplateVisibility,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -14,6 +11,11 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import type {
+  ActionPreset,
+  TemplateTagCodeType,
+  TemplateVisibility,
+} from "@app/lib/templates/types";
 
 export class TemplateModel extends Model<
   InferAttributes<TemplateModel>,

@@ -1,8 +1,20 @@
+import {
+  assertNever,
+  AssistantCreativityLevelCodec,
+  ioTsEnum,
+} from "@dust-tt/types";
 import * as t from "io-ts";
 import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
-import type { AgentAction } from "@app/lib/api/assistant/actions/types";
+import type { DustAppRunConfigurationType } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import type { ProcessConfigurationType } from "@app/lib/api/assistant/actions/process/types";
+import type { RetrievalConfigurationType } from "@app/lib/api/assistant/actions/retrieval/types";
+import type { TablesQueryConfigurationType } from "@app/lib/api/assistant/actions/tables_query/types";
+import type {
+  AgentAction,
+  AgentActionConfigurationType,
+} from "@app/lib/api/assistant/actions/types";
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -191,7 +203,4 @@ export function getAgentActionConfigurationType(
     default:
       assertNever(action);
   }
-}
-function ioTsEnum<T>(arg0: string[], arg1: string) {
-  throw new Error("Function not implemented.");
 }

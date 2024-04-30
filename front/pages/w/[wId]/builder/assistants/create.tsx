@@ -7,13 +7,7 @@ import {
   PencilSquareIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
+import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -29,6 +23,14 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr";
+import type {
+  TemplateTagCodeType,
+  TemplateTagsType,
+} from "@app/lib/templates/types";
+import {
+  isTemplateTagCodeArray,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/lib/templates/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;

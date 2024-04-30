@@ -1,5 +1,4 @@
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
@@ -22,6 +21,7 @@ import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -59,16 +59,18 @@ type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 interface SortStrategy {
   dbOrder: Order | undefined;
   compareFunction: (
-    a: AgentConfigurationType,
-    b: AgentConfigurationType
+    a: AgentConfigurationType<AgentActionConfigurationType>,
+    b: AgentConfigurationType<AgentActionConfigurationType>
   ) => number;
 }
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
     dbOrder: [["name", "ASC"]],
-    compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
-      a.name.localeCompare(b.name),
+    compareFunction: (
+      a: AgentConfigurationType<AgentActionConfigurationType>,
+      b: AgentConfigurationType<AgentActionConfigurationType>
+    ) => a.name.localeCompare(b.name),
   },
   priority: {
     dbOrder: [["name", "ASC"]],
@@ -87,7 +89,7 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 export async function getAgentConfiguration(
   auth: Authenticator,
   agentId: string
-): Promise<AgentConfigurationType | null> {
+): Promise<AgentConfigurationType<AgentActionConfigurationType> | null> {
   const res = await getAgentConfigurations({
     auth,
     agentsGetView: { agentId },
@@ -97,7 +99,7 @@ export async function getAgentConfiguration(
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
-  return (results: AgentConfigurationType[]) => {
+  return (results: AgentConfigurationType<AgentActionConfigurationType>[]) => {
     const sortStrategy = sort && sortStrategies[sort];
 
     const sortedResults = sortStrategy
@@ -474,7 +476,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentTablesQueryConfigurationTablesPromise,
   ]);
 
-  let agentConfigurationTypes: AgentConfigurationType[] = [];
+  let agentConfigurationTypes: AgentConfigurationType<AgentActionConfigurationType>[] =
+    [];
   for (const agent of agentConfigurations) {
     const actions: AgentActionConfigurationType[] = [];
 
@@ -614,28 +617,29 @@ async function fetchWorkspaceAgentConfigurationsForView(
       };
     }
 
-    const agentConfigurationType: AgentConfigurationType = {
-      id: agent.id,
-      sId: agent.sId,
-      versionCreatedAt: agent.createdAt.toISOString(),
-      version: agent.version,
-      scope: agent.scope,
-      userListStatus: null,
-      name: agent.name,
-      pictureUrl: agent.pictureUrl,
-      description: agent.description,
-      instructions: agent.instructions,
-      model: {
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-        temperature: agent.temperature,
-      },
-      status: agent.status,
-      actions,
-      generation,
-      versionAuthorId: agent.authorId,
-      maxToolsUsePerRun: agent.maxToolsUsePerRun,
-    };
+    const agentConfigurationType: AgentConfigurationType<AgentActionConfigurationType> =
+      {
+        id: agent.id,
+        sId: agent.sId,
+        versionCreatedAt: agent.createdAt.toISOString(),
+        version: agent.version,
+        scope: agent.scope,
+        userListStatus: null,
+        name: agent.name,
+        pictureUrl: agent.pictureUrl,
+        description: agent.description,
+        instructions: agent.instructions,
+        model: {
+          providerId: agent.providerId,
+          modelId: agent.modelId,
+          temperature: agent.temperature,
+        },
+        status: agent.status,
+        actions,
+        generation,
+        versionAuthorId: agent.authorId,
+        maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      };
 
     agentConfigurationType.userListStatus = agentUserListStatus({
       agentConfiguration: agentConfigurationType,
@@ -683,7 +687,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   limit?: number;
   sort?: SortStrategyType;
 }): Promise<
-  V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
+  V extends "light"
+    ? LightAgentConfigurationType[]
+    : AgentConfigurationType<AgentActionConfigurationType>[]
 > {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {

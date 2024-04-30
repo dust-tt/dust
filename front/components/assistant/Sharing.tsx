@@ -27,6 +27,7 @@ import { useState } from "react";
 import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
 import { SlackIntegration } from "@app/components/assistant/SlackIntegration";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr";
 
 type ConfirmationModalDataType = {
@@ -290,7 +291,7 @@ export function SharingDropdown({
   setNewScope,
 }: {
   owner: WorkspaceType;
-  agentConfiguration: AgentConfigurationType | null;
+  agentConfiguration: AgentConfigurationType<AgentActionType> | null;
   disabled?: boolean;
   initialScope: AgentConfigurationScope;
   newScope: AgentConfigurationScope;

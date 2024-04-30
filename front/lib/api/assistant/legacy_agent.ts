@@ -1,8 +1,5 @@
 import type {
-  AgentActionConfigurationType,
-  AgentActionEvent,
   AgentActionSpecification,
-  AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -21,10 +18,6 @@ import {
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
   Ok,
 } from "@dust-tt/types";
 
@@ -33,14 +26,23 @@ import {
   generateDustAppRunSpecification,
   runDustApp,
 } from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
 import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query/tables_query";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type {
+  AgentActionConfigurationType,
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+} from "@app/lib/api/assistant/actions/types";
 import {
   constructPrompt,
   renderConversationForModel,
@@ -62,7 +64,7 @@ import {
 // This method is used by actions to generate its inputs if needed.
 async function generateActionInputs(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationType<AgentActionConfigurationType>,
   specification: AgentActionSpecification,
   conversation: ConversationType,
   userMessage: UserMessageType
@@ -176,7 +178,7 @@ async function generateActionInputs(
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runLegacyAgent(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationType<AgentActionConfigurationType>,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -282,7 +284,7 @@ async function* runAction(
     agentMessage,
     action,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;

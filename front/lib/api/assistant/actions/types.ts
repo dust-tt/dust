@@ -65,3 +65,12 @@ export type AgentActionEvent =
   | TablesQueryParamsEvent
   | TablesQueryOutputEvent
   | ProcessParamsEvent;
+
+// Event sent once the action is completed, we're moving to generating a message if applicable.
+export type AgentActionSuccessEvent = {
+  type: "agent_action_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: AgentActionType;
+};

@@ -9,8 +9,6 @@ import type {
 } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type {
-  AgentActionEvent,
-  AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -24,6 +22,10 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import type {
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+} from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { redisClient } from "@app/lib/redis";

@@ -5,19 +5,11 @@ import {
   Markdown,
   TemplateItem,
 } from "@dust-tt/sparkle";
-import type {
-  CreateTemplateFormType,
-  TemplateTagCodeType,
-} from "@dust-tt/types";
 import {
-  ACTION_PRESETS,
   ASSISTANT_CREATIVITY_LEVELS,
-  CreateTemplateFormSchema,
   generateTailwindBackgroundColors,
   GPT_4_TURBO_MODEL_CONFIG,
   removeNulls,
-  TEMPLATE_VISIBILITIES,
-  TEMPLATES_TAGS_CONFIG,
 } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
@@ -59,6 +51,16 @@ import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type {
+  CreateTemplateFormType,
+  TemplateTagCodeType,
+} from "@app/lib/templates/types";
+import {
+  ACTION_PRESETS,
+  CreateTemplateFormSchema,
+  TEMPLATE_VISIBILITIES,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/lib/templates/types";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{

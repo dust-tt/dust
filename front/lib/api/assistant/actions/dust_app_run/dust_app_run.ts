@@ -1,12 +1,4 @@
-import type {
-  DustAppRunBlockEvent,
-  DustAppRunConfigurationType,
-  DustAppRunErrorEvent,
-  DustAppRunParamsEvent,
-  DustAppRunSuccessEvent,
-  ModelId,
-  ModelMessageType,
-} from "@dust-tt/types";
+import type { ModelId, ModelMessageType } from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   AgentConfigurationType,
@@ -22,7 +14,13 @@ import { getApp } from "@app/lib/api/app";
 import type {
   DustAppParameters,
   DustAppRunActionType,
+  DustAppRunBlockEvent,
+  DustAppRunConfigurationType,
+  DustAppRunErrorEvent,
+  DustAppRunParamsEvent,
+  DustAppRunSuccessEvent,
 } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -222,7 +220,7 @@ export async function* runDustApp(
     spec,
     rawInputs,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     actionConfiguration: DustAppRunConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;

@@ -11,6 +11,7 @@ import type {
 } from "@dust-tt/types";
 import * as _ from "lodash";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { subscriptionForWorkspaces } from "@app/lib/auth";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
@@ -172,7 +173,7 @@ export class ServerSideTracking {
   }: {
     user?: UserType;
     workspace?: WorkspaceType;
-    assistant: AgentConfigurationType;
+    assistant: AgentConfigurationType<AgentActionConfigurationType>;
   }) {
     try {
       await AmplitudeServerSideTracking.trackAssistantCreated({

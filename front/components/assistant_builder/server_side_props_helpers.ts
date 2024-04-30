@@ -3,24 +3,22 @@ import type {
   AppType,
   CoreAPITable,
   DataSourceType,
-  ProcessConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
+import { ConnectorsAPI, CoreAPI } from "@dust-tt/types";
 
 import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderInitialState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import type { ProcessConfigurationType } from "@app/lib/api/assistant/actions/process/types";
+import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
 import type { RetrievalConfigurationType } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
@@ -32,7 +30,10 @@ export async function buildInitialState({
 }: {
   dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
-  configuration: AgentConfigurationType | TemplateAgentConfigurationType;
+  configuration:
+    | AgentConfigurationType<AgentActionType>
+    // TODO:
+    | TemplateAgentConfigurationType;
 }) {
   const coreAPI = new CoreAPI(logger);
 

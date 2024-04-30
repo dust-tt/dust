@@ -1,9 +1,13 @@
 import { Chip, IconButton } from "@dust-tt/sparkle";
-import type { TemplateTagCodeType, TemplateVisibility } from "@dust-tt/types";
-import { TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
+
+import type {
+  TemplateTagCodeType,
+  TemplateVisibility,
+} from "@app/lib/templates/types";
+import { TEMPLATES_TAGS_CONFIG } from "@app/lib/templates/types";
 
 export interface TemplatesDisplayType {
   id: string;

@@ -23,8 +23,6 @@ import type {
 import type { PlanType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type {
-  AgentActionEvent,
-  AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -48,6 +46,10 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type {
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+} from "@app/lib/api/assistant/actions/types";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";

@@ -26,14 +26,9 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import {
   assertNever,
-  getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
   removeNulls,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
@@ -71,8 +66,14 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
+import { getAgentActionConfigurationType } from "@app/lib/templates/types";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
@@ -698,7 +699,9 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
-}): Promise<LightAgentConfigurationType | AgentConfigurationType> {
+}): Promise<
+  LightAgentConfigurationType | AgentConfigurationType<AgentActionType>
+> {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   let { handle, description, instructions, avatarUrl } = builderState;
   if (!handle || !description || !instructions || !avatarUrl) {
@@ -843,7 +846,9 @@ export async function submitAssistantBuilderForm({
   }
 
   const newAgentConfiguration: {
-    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
+    agentConfiguration:
+      | LightAgentConfigurationType
+      | AgentConfigurationType<AgentActionType>;
   } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 

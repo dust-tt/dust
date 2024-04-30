@@ -7,12 +7,6 @@ import type {
   TemplateAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
@@ -24,6 +18,11 @@ import { buildInitialState } from "@app/components/assistant_builder/server_side
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
@@ -54,8 +53,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
   processConfiguration: AssistantBuilderInitialState["processConfiguration"];
   agentConfiguration:
-    | AgentConfigurationType
-    | TemplateAgentConfigurationType
+    | AgentConfigurationType<AgentActionConfigurationType>
+    | TemplateAgentConfigurationType<AgentActionConfigurationType>
     | null;
   flow: BuilderFlow;
   baseUrl: string;
@@ -85,8 +84,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     : "personal_assistants";
 
   let configuration:
-    | AgentConfigurationType
-    | TemplateAgentConfigurationType
+    | AgentConfigurationType<AgentActionConfigurationType>
+    | TemplateAgentConfigurationType<AgentActionConfigurationType>
     | null = null;
   const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
     context.query

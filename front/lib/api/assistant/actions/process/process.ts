@@ -5,11 +5,6 @@ import type {
   ConversationType,
   ModelId,
   ModelMessageType,
-  ProcessActionType,
-  ProcessConfigurationType,
-  ProcessErrorEvent,
-  ProcessParamsEvent,
-  ProcessSuccessEvent,
   Result,
   TimeFrame,
   UserMessageType,
@@ -22,11 +17,19 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type {
+  ProcessActionType,
+  ProcessConfigurationType,
+  ProcessErrorEvent,
+  ProcessParamsEvent,
+  ProcessSuccessEvent,
+} from "@app/lib/api/assistant/actions/process/types";
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
   timeFrameFromNow,
 } from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { constructPrompt } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -170,7 +173,7 @@ export async function* runProcess(
     agentMessage,
     rawInputs,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     actionConfiguration: ProcessConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;

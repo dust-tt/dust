@@ -10,6 +10,7 @@ import type {
 } from "@dust-tt/types";
 import { rateLimiter, removeNulls } from "@dust-tt/types";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import {
@@ -237,7 +238,7 @@ export class AmplitudeServerSideTracking {
   }: {
     user?: UserType;
     workspace?: WorkspaceType;
-    assistant: AgentConfigurationType;
+    assistant: AgentConfigurationType<AgentActionConfigurationType>;
   }) {
     if (!workspace || !user) {
       return;

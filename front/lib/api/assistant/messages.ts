@@ -1,11 +1,4 @@
-import type {
-  AgentActionType,
-  DustAppParameters,
-  MessageWithRankType,
-  ModelId,
-  Result,
-  TablesQueryActionType,
-} from "@dust-tt/types";
+import type { MessageWithRankType, ModelId, Result } from "@dust-tt/types";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -16,8 +9,13 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import type { DustAppRunActionType } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import type {
+  DustAppParameters,
+  DustAppRunActionType,
+} from "@app/lib/api/assistant/actions/dust_app_run/types";
 import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import type { TablesQueryActionType } from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";

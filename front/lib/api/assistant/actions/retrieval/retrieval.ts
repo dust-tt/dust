@@ -1,10 +1,4 @@
-import type {
-  ModelId,
-  ModelMessageType,
-  RetrievalErrorEvent,
-  RetrievalParamsEvent,
-  RetrievalSuccessEvent,
-} from "@dust-tt/types";
+import type { ModelId, ModelMessageType } from "@dust-tt/types";
 import type { TimeFrame } from "@dust-tt/types";
 import type {
   AgentActionSpecification,
@@ -20,7 +14,11 @@ import type {
   RetrievalActionType,
   RetrievalConfigurationType,
   RetrievalDocumentType,
+  RetrievalErrorEvent,
+  RetrievalParamsEvent,
+  RetrievalSuccessEvent,
 } from "@app/lib/api/assistant/actions/retrieval/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -425,7 +423,7 @@ export async function* runRetrieval(
     agentMessage,
     rawInputs,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     actionConfiguration: RetrievalConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;

@@ -3,19 +3,22 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
-  DustAppParameters,
   ModelMessageType,
   Result,
+} from "@dust-tt/types";
+import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
+
+import { runActionStreamed } from "@app/lib/actions/server";
+import type { DustAppParameters } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
   TablesQueryErrorEvent,
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
-} from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
-
-import { runActionStreamed } from "@app/lib/actions/server";
+} from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
@@ -100,7 +103,7 @@ export async function* runTablesQuery(
     agentMessage,
     rawInputs,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     actionConfiguration: TablesQueryConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;

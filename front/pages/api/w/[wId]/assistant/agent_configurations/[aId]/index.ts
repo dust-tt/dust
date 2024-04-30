@@ -7,6 +7,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
@@ -17,7 +18,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 export type GetAgentConfigurationResponseBody = {
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: AgentConfigurationType<AgentActionConfigurationType>;
 };
 export type DeleteAgentConfigurationResponseBody = {
   success: boolean;

@@ -89,7 +89,7 @@ export type AgentMessageStatus =
  * them together in case of error of either. We store an error only here whether it's an error
  * coming from the action or from the message generation.
  */
-export type AgentMessageType = {
+export type AgentMessageType<T = unknown> = {
   id: ModelId;
   agentMessageId: ModelId;
   created: number;
@@ -101,7 +101,7 @@ export type AgentMessageType = {
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
   // TODO:
-  action: unknown | null;
+  action: T | null;
   content: string | null;
   error: {
     code: string;

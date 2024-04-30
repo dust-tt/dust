@@ -7,14 +7,14 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  RetrievalActionType,
-  RetrievalDocumentType,
-} from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { useState } from "react";
 
+import type {
+  RetrievalActionType,
+  RetrievalDocumentType,
+} from "@app/lib/api/assistant/actions/retrieval/types";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames } from "@app/lib/utils";
 

@@ -1,5 +1,4 @@
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationType,
   AgentGenerationConfigurationType,
   LightAgentConfigurationType,
@@ -17,6 +16,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -301,7 +301,9 @@ export async function createOrUpgradeAgentConfiguration({
   // TODO(@fontanierh): We'll remove this mode once we switch to multi-actions.
   // For now, this allows to keep the forceUseAtIteration backwards compatibility logic in a single place.
   legacySingleActionMode: boolean;
-}): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<
+  Result<AgentConfigurationType<AgentActionConfigurationType>, Error>
+> {
   if (legacySingleActionMode && actions.length > 1) {
     throw new Error("Only one action is supported in legacy mode.");
   }
@@ -468,11 +470,12 @@ export async function createOrUpgradeAgentConfiguration({
     throw e;
   }
 
-  const agentConfiguration: AgentConfigurationType = {
-    ...agentConfigurationRes.value,
-    actions: actionConfigs,
-    generation: generationConfig,
-  };
+  const agentConfiguration: AgentConfigurationType<AgentActionConfigurationType> =
+    {
+      ...agentConfigurationRes.value,
+      actions: actionConfigs,
+      generation: generationConfig,
+    };
 
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {

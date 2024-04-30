@@ -3,10 +3,13 @@ import type {
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import logger from "@app/logger/logger";
 
 export function deprecatedGetFirstActionConfiguration(
-  config: AgentConfigurationType | TemplateAgentConfigurationType
+  config:
+    | AgentConfigurationType<AgentActionConfigurationType>
+    | TemplateAgentConfigurationType<AgentActionConfigurationType>
 ) {
   if (config.actions.length > 1) {
     logger.warn(

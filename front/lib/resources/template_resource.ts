@@ -1,4 +1,4 @@
-import type { Result, TemplateVisibility } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -12,6 +12,7 @@ import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/a
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { TemplateVisibility } from "@app/lib/templates/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

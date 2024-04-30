@@ -1,18 +1,17 @@
 import { ContextItem, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: AgentConfigurationType<AgentActionConfigurationType>[];
 }>(async (context, auth) => {
   const aId = context.params?.aId;
   if (!aId || typeof aId !== "string") {

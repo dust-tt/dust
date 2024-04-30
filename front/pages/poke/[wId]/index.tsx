@@ -20,6 +20,7 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import {
@@ -37,7 +38,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
   subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: AgentConfigurationType<AgentActionConfigurationType>[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
 }>(async (context, auth) => {

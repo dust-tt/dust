@@ -10,19 +10,18 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  AgentActionEvent,
-  AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
+  AgentMessageType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  MessageReactionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
-import { assertNever, isRetrievalActionType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -40,6 +39,11 @@ import {
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { RetrievalDocumentType } from "@app/lib/api/assistant/actions/retrieval/types";
+import { isRetrievalActionType } from "@app/lib/api/assistant/actions/retrieval/types";
+import type {
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+} from "@app/lib/api/assistant/actions/types";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {

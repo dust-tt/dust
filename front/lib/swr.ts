@@ -16,6 +16,7 @@ import type { Fetcher } from "swr";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
@@ -821,7 +822,7 @@ export function useAgentConfiguration({
   agentConfigurationId: string | null;
 }) {
   const agentConfigurationFetcher: Fetcher<{
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentConfigurationType<AgentActionConfigurationType>;
   }> = fetcher;
 
   const { data, error, mutate } = useSWR(

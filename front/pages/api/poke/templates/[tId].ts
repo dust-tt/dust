@@ -1,8 +1,4 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import {
-  CreateTemplateFormSchema,
-  isTemplateTagCodeArray,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -10,6 +6,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import {
+  CreateTemplateFormSchema,
+  isTemplateTagCodeArray,
+} from "@app/lib/templates/types";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PokeFetchAssistantTemplateResponse = ReturnType<

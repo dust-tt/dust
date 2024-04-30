@@ -1,8 +1,5 @@
 import type {
-  AgentActionConfigurationType,
-  AgentActionEvent,
   AgentActionSpecification,
-  AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -22,11 +19,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isAgentConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
   Ok,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -37,18 +29,28 @@ import {
   generateDustAppRunSpecification,
   runDustApp,
 } from "@app/lib/api/assistant/actions/dust_app_run/dust_app_run";
+import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run/types";
 import {
   generateProcessSpecification,
   runProcess,
 } from "@app/lib/api/assistant/actions/process/process";
+import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
 import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval/retrieval";
+import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query/tables_query";
+import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
+import type {
+  AgentActionConfigurationType,
+  AgentActionEvent,
+  AgentActionSuccessEvent,
+} from "@app/lib/api/assistant/actions/types";
+import { isAgentConfiguration } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPrompt,
@@ -111,7 +113,9 @@ export async function* runAgent(
 // This function returns true if the agent is a "legacy" agent with a forced schedule,
 // i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
 // and every tool is forced at a certain iteration.
-export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
+export function isLegacyAgent(
+  configuration: AgentConfigurationType<AgentActionConfigurationType>
+): boolean {
   // TODO(@fontanierh): change once generation is part of actions.
   const actions = removeNulls([
     ...configuration.actions,
@@ -129,7 +133,7 @@ export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
 
 export async function* runMultiActionsAgent(
   auth: Authenticator,
-  configuration: AgentConfigurationType,
+  configuration: AgentConfigurationType<AgentActionConfigurationType>,
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
@@ -301,7 +305,7 @@ export async function getNextAction(
     isGenerationAllowed = true,
     forcedActionName,
   }: {
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentConfigurationType<AgentActionConfigurationType>;
     conversation: ConversationType;
     userMessage: UserMessageType;
     availableActions: AgentActionConfigurationType[];
@@ -515,7 +519,7 @@ async function* runAction(
     inputs,
     specification,
   }: {
-    configuration: AgentConfigurationType;
+    configuration: AgentConfigurationType<AgentActionConfigurationType>;
     actionConfiguration: AgentActionConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;

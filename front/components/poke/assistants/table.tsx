@@ -10,11 +10,12 @@ import { useState } from "react";
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { usePokeAgentConfigurations } from "@app/lib/swr";
 
 interface AssistantsDataTableProps {
-  agentConfigurations: AgentConfigurationType[];
+  agentConfigurations: AgentConfigurationType<AgentActionConfigurationType>[];
   owner: WorkspaceType;
 }
 
