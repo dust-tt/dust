@@ -374,6 +374,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
       if (isTablesView) {
         sheets = await GoogleDriveSheet.findAll({
           where: {
+            connectorId: connectorId,
             driveFileId: parentInternalId,
           },
         });
