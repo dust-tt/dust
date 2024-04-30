@@ -7,8 +7,8 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getEventSchema, getExtractedEvent } from "@app/lib/api/extract";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -77,8 +77,8 @@ export default function AppExtractEventsCreate({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
-      subNavigation={subNavigationBuild({ owner, current: "extract" })}
+      topNavigationCurrent="conversations"
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Page.Header
         title="Extract"

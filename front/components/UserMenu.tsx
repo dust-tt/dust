@@ -3,8 +3,11 @@ import {
   BookOpenIcon,
   DropdownMenu,
   LogoutIcon,
+  RobotIcon,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
+
+import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
 
 export function UserMenu({
   user,
@@ -13,9 +16,9 @@ export function UserMenu({
   user: UserType;
   owner: WorkspaceType;
 }) {
-  const hasBetaAccess = owner.flags?.some((flag: string) =>
-    flag.startsWith("labs_")
-  );
+  const hasBetaAccess =
+    owner.flags?.some((flag: string) => flag.startsWith("labs_")) ||
+    isDevelopmentOrDustWorkspace(owner);
 
   return (
     <DropdownMenu>
@@ -37,11 +40,20 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenu.SectionHeader label="Beta" />
-            {owner.flags.includes("labs_transcripts") && (
+            {(owner.flags.includes("labs_transcripts") ||
+              isDevelopmentOrDustWorkspace(owner)) && (
               <DropdownMenu.Item
                 label="Transcripts processing"
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
                 icon={BookOpenIcon}
+              />
+            )}
+            {(owner.flags.includes("labs_extract") ||
+              isDevelopmentOrDustWorkspace(owner)) && (
+              <DropdownMenu.Item
+                label="Extract"
+                href={`/w/${owner.sId}/builder/labs/extract`}
+                icon={RobotIcon}
               />
             )}
           </>

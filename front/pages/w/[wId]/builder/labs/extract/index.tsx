@@ -6,8 +6,8 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useEventSchemas } from "@app/lib/swr";
 
@@ -50,8 +50,8 @@ export default function AppExtractEvents({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
-      subNavigation={subNavigationBuild({ owner, current: "extract" })}
+      topNavigationCurrent="conversations"
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Page.Header
         title="Extract"
