@@ -281,3 +281,66 @@ User.hasMany(Key, {
   onDelete: "SET NULL",
 });
 Key.belongsTo(User);
+
+
+export class Secret extends Model<
+  InferAttributes<Secret>,
+  InferCreationAttributes<Secret>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare name: string;
+  declare hash: string;
+
+  declare userId: ForeignKey<User["id"]>;
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare user: NonAttribute<User>;
+}
+Secret.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    hash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "secrets",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["userId"] },
+      { fields: ["workspaceId"] },
+    ],
+  }
+);
+Workspace.hasMany(Secret, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+// We don't want to delete keys when a user gets deleted.
+User.hasMany(Secret, {
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
+});
+Secret.belongsTo(User);
