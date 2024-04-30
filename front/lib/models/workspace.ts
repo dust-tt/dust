@@ -218,6 +218,7 @@ export class Key extends Model<
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
+  declare name: string | null;
   declare user: NonAttribute<User>;
 }
 Key.init(
@@ -244,6 +245,10 @@ Key.init(
     status: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     isSystem: {
       type: DataTypes.BOOLEAN,

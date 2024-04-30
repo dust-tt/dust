@@ -71,17 +71,14 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
 
   const { keys } = useKeys(owner);
-  const [isRevealed, setIsRevealed] = useState(
-    {} as { [key: string]: boolean }
-  );
-
   const { submit: handleGenerate, isSubmitting: isGenerating } =
-    useSubmitFunction(async () => {
+    useSubmitFunction(async (name: string) => {
       await fetch(`/api/w/${owner.sId}/keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ name }),
       });
       // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/keys`);
@@ -111,13 +108,14 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
   return (
     <>
       <Page.SectionHeader
-        title="Secret API Keys"
-        description="Secrets used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
+        title="API Keys"
+        description="Keys used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
         action={{
-          label: "Create Secret API Key",
+          label: "Create API Key",
           variant: "primary",
           onClick: async () => {
-            await handleGenerate();
+            const newName = prompt("Name this API Key");
+            await handleGenerate(newName ?? "");
           },
           icon: PlusIcon,
           disabled: isGenerating || isRevoking,
@@ -138,37 +136,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                             "font-mono truncate text-sm text-slate-700"
                           )}
                         >
-                          {isRevealed[key.secret] ? (
-                            <>
-                              {key.secret}
-                              {key.status == "active" ? (
-                                <EyeSlashIcon
-                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                  onClick={() => {
-                                    setIsRevealed({
-                                      ...isRevealed,
-                                      [key.secret]: false,
-                                    });
-                                  }}
-                                />
-                              ) : null}
-                            </>
-                          ) : (
-                            <>
-                              sk-...{key.secret.slice(-5)}
-                              {key.status == "active" ? (
-                                <EyeIcon
-                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                  onClick={() => {
-                                    setIsRevealed({
-                                      ...isRevealed,
-                                      [key.secret]: true,
-                                    });
-                                  }}
-                                />
-                              ) : null}
-                            </>
-                          )}
+                          {key.secret}
                         </p>
                         <div className="ml-2 mt-0.5 flex flex-shrink-0">
                           <p

@@ -41,7 +41,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const keys = await Key.findAll({
-        attributes: ["createdAt", "secret", "status", "userId"],
+        attributes: ["createdAt", "secret", "status", "userId", "name"],
         where: {
           workspaceId: owner.id,
           isSystem: false,
@@ -60,10 +60,11 @@ async function handler(
 
       res.status(200).json({
         keys: keys.map((k) => {
+          const truncatedSecret = k.secret.slice(0, 4) + "..." + k.secret.slice(-4);
           return {
             createdAt: k.createdAt.getTime(),
             creator: formatUserFullName(k.user),
-            secret: k.secret,
+            secret: k.name || truncatedSecret,
             status: k.status,
           };
         }),
@@ -71,9 +72,12 @@ async function handler(
       return;
 
     case "POST":
+      console.log("REQUEST BODY", req.body)
+      const name = req.body.name;
       const secret = `sk-${new_id().slice(0, 32)}`;
 
       const key = await Key.create({
+        name: name,
         secret: secret,
         status: "active",
         userId: user?.id,
