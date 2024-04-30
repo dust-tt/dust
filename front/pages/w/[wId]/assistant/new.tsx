@@ -234,17 +234,17 @@ export default function AssistantNew({
                 conversationId={null}
                 hideQuickActions={false}
                 disableAutoFocus={false}
-                animationDelay={500}
+                animationDelay={700}
               />
             </div>
           </div>
 
-      <div className="flex flex-col gap-4 pt-9 h-80 w-full">
+      <div className="flex flex-col gap-4 pt-9 h-80 w-full px-4">
       <Page.SectionHeader title="Chat with..." />
         <div id="search-container" className="flex flex-row gap-4 w-full justify-center align-middle items-center">
           <Searchbar
             name="search"
-            size="md"
+            size="sm"
             placeholder="Search (Name)"
             value={assistantSearch}
             onChange={(s) => {
@@ -287,18 +287,23 @@ export default function AssistantNew({
         </div>
       </div>
 
-      <Button
-        icon={HeartAltIcon}
-        labelVisible={false}
-        label="Quick Start Guide"
-        onClick={() => setShowQuickGuide(true)}
-        size="xs"
-        tooltipPosition="below"
-        variant="primary"
-        hasMagnifying={true}
-        disabledTooltip={false}
-        className="fixed top-4 right-4 z-50"
-      />
+      <div 
+  id="quick-start-guide-button"
+  className="fixed top-4 right-6 lg:bottom-6 lg:right-6 lg:top-auto z-50"
+>
+  <Button
+    icon={HeartAltIcon}
+    labelVisible={false}
+    label="Quick Start Guide"
+    onClick={() => setShowQuickGuide(true)}
+    size="sm"
+    tooltipPosition="below"
+    variant="primary"
+    hasMagnifying={true}
+    disabledTooltip={false}
+    className=""
+  />
+</div>
 
       <ReachedLimitPopup
         isOpened={planLimitReached}
