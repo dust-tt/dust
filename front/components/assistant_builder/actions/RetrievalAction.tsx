@@ -36,12 +36,20 @@ const deleteDataSource = (
   });
 };
 
+export function isActionRetrievalSearchValid(
+  builderState: AssistantBuilderState
+) {
+  return (
+    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+      .length > 0
+  );
+}
+
 export function ActionRetrievalSearch({
   owner,
   builderState,
   setBuilderState,
   setEdited,
-  setRetrievalValid,
   dataSources,
 }: {
   owner: WorkspaceType;
@@ -50,24 +58,9 @@ export function ActionRetrievalSearch({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setRetrievalValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-
-  useEffect(() => {
-    let valid = true;
-    if (
-      Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
-        .length === 0
-    ) {
-      valid = false;
-    }
-    setRetrievalValid(valid);
-  }, [
-    builderState.retrievalConfiguration.dataSourceConfigurations,
-    setRetrievalValid,
-  ]);
 
   return (
     <>
@@ -120,12 +113,20 @@ export function ActionRetrievalSearch({
   );
 }
 
+export function isActionRetrievalExhaustiveValid(
+  builderState: AssistantBuilderState
+) {
+  return (
+    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+      .length > 0 && !!builderState.retrievalConfiguration.timeFrame.value
+  );
+}
+
 export function ActionRetrievalExhaustive({
   owner,
   builderState,
   setBuilderState,
   setEdited,
-  setRetrievalValid,
   dataSources,
 }: {
   owner: WorkspaceType;
@@ -134,33 +135,20 @@ export function ActionRetrievalExhaustive({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setRetrievalValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   useEffect(() => {
-    let valid = true;
-    if (
-      Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
-        .length === 0
-    ) {
-      valid = false;
-    }
-
     if (!builderState.retrievalConfiguration.timeFrame.value) {
-      valid = false;
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
-
-    setRetrievalValid(valid);
   }, [
     builderState.retrievalConfiguration.dataSourceConfigurations,
     builderState.retrievalConfiguration.timeFrame.value,
-    setRetrievalValid,
   ]);
 
   return (

@@ -44,7 +44,9 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import ActionScreen from "@app/components/assistant_builder/ActionScreen";
+import ActionScreen, {
+  isActionValid,
+} from "@app/components/assistant_builder/ActionScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
@@ -303,7 +305,6 @@ export default function AssistantBuilder({
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [submitEnabled, setSubmitEnabled] = useState(false);
-  const [actionsValid, setActionsValid] = useState(true);
 
   const [assistantHandleError, setAssistantHandleError] = useState<
     string | null
@@ -416,19 +417,12 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (!actionsValid) {
+    if (!isActionValid(builderState)) {
       valid = false;
     }
 
     setSubmitEnabled(valid);
-  }, [
-    builderState.handle,
-    builderState.description,
-    builderState.instructions,
-    owner,
-    initialBuilderState?.handle,
-    actionsValid,
-  ]);
+  }, [builderState, owner, initialBuilderState?.handle]);
 
   useEffect(() => {
     void formValidation();
@@ -576,7 +570,6 @@ export default function AssistantBuilder({
                         dustApps={dustApps}
                         setBuilderState={setBuilderState}
                         setEdited={setEdited}
-                        setActionsValid={setActionsValid}
                       />
                     );
                   case "naming":

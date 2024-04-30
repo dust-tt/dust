@@ -1,18 +1,21 @@
 import { ContentMessage } from "@dust-tt/sparkle";
 import type { AppType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+
+export function isActionDustAppRunValid(builderState: AssistantBuilderState) {
+  return !!builderState.dustAppConfiguration.app;
+}
 
 export function ActionDustAppRun({
   owner,
   builderState,
   setBuilderState,
   setEdited,
-  setDustAppRunValid,
   dustApps,
 }: {
   owner: WorkspaceType;
@@ -21,18 +24,9 @@ export function ActionDustAppRun({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setDustAppRunValid: (valid: boolean) => void;
   dustApps: AppType[];
 }) {
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
-
-  useEffect(() => {
-    let valid = true;
-    if (!builderState.dustAppConfiguration.app) {
-      valid = false;
-    }
-    setDustAppRunValid(valid);
-  }, [builderState.dustAppConfiguration.app, setDustAppRunValid]);
 
   const deleteDustApp = () => {
     setEdited(true);

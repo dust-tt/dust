@@ -1,6 +1,6 @@
 import { Hoverable } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
@@ -10,12 +10,15 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 
+export function isActionTablesQueryValid(builderState: AssistantBuilderState) {
+  return !!builderState.tablesQueryConfiguration;
+}
+
 export function ActionTablesQuery({
   owner,
   builderState,
   setBuilderState,
   setEdited,
-  setTablesQueryValid,
   dataSources,
 }: {
   owner: WorkspaceType;
@@ -24,18 +27,9 @@ export function ActionTablesQuery({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setTablesQueryValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
-
-  useEffect(() => {
-    let valid = true;
-    if (!builderState.tablesQueryConfiguration) {
-      valid = false;
-    }
-    setTablesQueryValid(valid);
-  }, [builderState.tablesQueryConfiguration, setTablesQueryValid]);
 
   return (
     <>

@@ -9,12 +9,18 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
+export function isActionProcessValid(builderState: AssistantBuilderState) {
+  return (
+    Object.keys(builderState.processConfiguration.dataSourceConfigurations)
+      .length > 0 && !!builderState.processConfiguration.timeFrame.value
+  );
+}
+
 export function ActionProcess({
   owner,
   builderState,
   setBuilderState,
   setEdited,
-  setProcessValid,
   dataSources,
 }: {
   owner: WorkspaceType;
@@ -23,33 +29,20 @@ export function ActionProcess({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setProcessValid: (valid: boolean) => void;
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   useEffect(() => {
-    let valid = true;
-    if (
-      Object.keys(builderState.processConfiguration.dataSourceConfigurations)
-        .length === 0
-    ) {
-      valid = false;
-    }
-
     if (!builderState.processConfiguration.timeFrame.value) {
-      valid = false;
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
-
-    setProcessValid(valid);
   }, [
     builderState.processConfiguration.dataSourceConfigurations,
     builderState.processConfiguration.timeFrame.value,
-    setProcessValid,
   ]);
 
   const deleteDataSource = (name: string) => {

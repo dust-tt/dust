@@ -20,18 +20,28 @@ import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
+import {
+  ActionProcess,
+  isActionProcessValid,
+} from "@app/components/assistant_builder/actions/ProcessAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
+  isActionRetrievalSearchValid,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
-import { ActionTablesQuery } from "@app/components/assistant_builder/actions/TablesQueryAction";
+import {
+  ActionTablesQuery,
+  isActionTablesQueryValid,
+} from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
   ActionMode,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 
-import { ActionDustAppRun } from "./actions/DustAppRunAction";
+import {
+  ActionDustAppRun,
+  isActionDustAppRunValid,
+} from "./actions/DustAppRunAction";
 
 const BASIC_ACTION_TYPES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
 const ADVANCED_ACTION_TYPES = ["RUN_DUST_APP"] as const;
@@ -127,6 +137,25 @@ function ActionModeSection({
   return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
+export function isActionValid(builderState: AssistantBuilderState): boolean {
+  switch (builderState.actionMode) {
+    case "GENERIC":
+      return true;
+    case "RETRIEVAL_SEARCH":
+      return isActionRetrievalSearchValid(builderState);
+    case "RETRIEVAL_EXHAUSTIVE":
+      return isActionRetrievalSearchValid(builderState);
+    case "PROCESS":
+      return isActionProcessValid(builderState);
+    case "DUST_APP_RUN":
+      return isActionDustAppRunValid(builderState);
+    case "TABLES_QUERY":
+      return isActionTablesQueryValid(builderState);
+    default:
+      assertNever(builderState.actionMode);
+  }
+}
+
 export default function ActionScreen({
   owner,
   builderState,
@@ -134,7 +163,6 @@ export default function ActionScreen({
   dataSources,
   setBuilderState,
   setEdited,
-  setActionsValid,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -144,7 +172,6 @@ export default function ActionScreen({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  setActionsValid: (valid: boolean) => void;
 }) {
   const getActionType = (actionMode: ActionMode) => {
     switch (actionMode) {
@@ -181,38 +208,6 @@ export default function ActionScreen({
         assertNever(actionMode);
     }
   };
-
-  const [retrievalValid, setRetrievalValid] = useState(true);
-  const [processValid, setProcessValid] = useState(true);
-  const [dustAppRunValid, setDustAppRunValid] = useState(true);
-  const [tablesQueryValid, setTablesQueryValid] = useState(true);
-
-  useEffect(() => {
-    let valid = true;
-    if (builderState.actionMode === "RETRIEVAL_SEARCH") {
-      valid = retrievalValid;
-    }
-    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
-      valid = retrievalValid;
-    }
-    if (builderState.actionMode === "PROCESS") {
-      valid = processValid;
-    }
-    if (builderState.actionMode === "DUST_APP_RUN") {
-      valid = dustAppRunValid;
-    }
-    if (builderState.actionMode === "TABLES_QUERY") {
-      valid = tablesQueryValid;
-    }
-    setActionsValid(valid);
-  }, [
-    setActionsValid,
-    builderState.actionMode,
-    retrievalValid,
-    processValid,
-    dustAppRunValid,
-    tablesQueryValid,
-  ]);
 
   const noDataSources =
     dataSources.length === 0 &&
