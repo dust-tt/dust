@@ -2,7 +2,6 @@
  * Action execution.
  */
 
-import { ProcessActionType } from "../../../../../front/assistant/actions/process";
 import { DataSourceConfiguration } from "../../../../../front/assistant/actions/retrieval";
 
 // Event sent before the execution with the finalized params to be used.
@@ -12,7 +11,7 @@ export type ProcessParamsEvent = {
   configurationId: string;
   messageId: string;
   dataSources: DataSourceConfiguration[];
-  action: ProcessActionType;
+  action: unknown; // ProcessActionType;
 };
 
 export type ProcessErrorEvent = {
@@ -31,5 +30,5 @@ export type ProcessSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: ProcessActionType;
+  action: unknown; // ProcessActionType;
 };

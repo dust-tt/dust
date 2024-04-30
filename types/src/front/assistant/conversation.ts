@@ -1,5 +1,4 @@
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
-import { ProcessActionType } from "../../front/assistant/actions/process";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
@@ -84,7 +83,7 @@ export type AgentActionType =
   | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
-  | ProcessActionType;
+  | unknown;
 
 export type AgentMessageStatus =
   | "created"

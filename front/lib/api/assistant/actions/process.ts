@@ -5,10 +5,10 @@ import type {
   ConversationType,
   ModelId,
   ModelMessageType,
-  ProcessActionType,
   ProcessConfigurationType,
   ProcessErrorEvent,
   ProcessParamsEvent,
+  ProcessSchemaPropertyType,
   ProcessSuccessEvent,
   Result,
   TimeFrame,
@@ -22,6 +22,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { Action } from "@app/lib/api/assistant/actions";
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
@@ -33,33 +34,57 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
-/**
- * Model rendering of process actions.
- */
+interface ProcessActionArgs {
+  id: ModelId;
 
-export function renderProcessActionForModel(
-  action: ProcessActionType
-): ModelMessageType {
-  let content = "";
-  if (action.outputs === null) {
-    throw new Error(
-      "Output not set on process action; this usually means the process action is not finished."
-    );
-  }
+  type: "process_action";
 
-  content += "PROCESSED OUTPUTS:\n";
-
-  // TODO(spolu): figure out if we want to add the schema here?
-
-  for (const o of action.outputs) {
-    content += `${JSON.stringify(o)}\n`;
-  }
-
-  return {
-    role: "action" as const,
-    name: "process_data_sources",
-    content,
+  params: {
+    relativeTimeFrame: TimeFrame | null;
   };
+  schema: ProcessSchemaPropertyType[];
+  outputs: unknown[] | null;
+}
+
+interface ProcessActionParams {
+  relativeTimeFrame: TimeFrame | null;
+}
+
+export class ProcessAction extends Action {
+  readonly params: ProcessActionParams;
+  readonly schema: ProcessSchemaPropertyType[];
+  readonly outputs: unknown[] | null;
+
+  constructor(blob: ProcessActionArgs) {
+    super(blob.id, blob.type);
+
+    this.params = blob.params;
+    this.schema = blob.schema;
+    this.outputs = blob.outputs;
+  }
+
+  renderForModel(): ModelMessageType {
+    let content = "";
+    if (this.outputs === null) {
+      throw new Error(
+        "Output not set on process action; this usually means the process action is not finished."
+      );
+    }
+
+    content += "PROCESSED OUTPUTS:\n";
+
+    // TODO(spolu): figure out if we want to add the schema here?
+
+    for (const o of this.outputs) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+
+    return {
+      role: "action" as const,
+      name: "process_data_sources",
+      content,
+    };
+  }
 }
 
 /**
@@ -115,40 +140,6 @@ export async function generateProcessSpecification(
         " structured information (complying to a fixed schema) from the retrieved information.",
   });
   return new Ok(spec);
-}
-
-/**
- * Action rendering.
- */
-
-// Internal interface for the retrieval and rendering of a Process action. This should not be used
-// outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
-// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderProcessActionByModelId(
-  id: ModelId
-): Promise<ProcessActionType> {
-  const action = await AgentProcessAction.findByPk(id);
-  if (!action) {
-    throw new Error(`No Process action found with id ${id}`);
-  }
-
-  let relativeTimeFrame: TimeFrame | null = null;
-  if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
-    relativeTimeFrame = {
-      duration: action.relativeTimeFrameDuration,
-      unit: action.relativeTimeFrameUnit,
-    };
-  }
-
-  return {
-    id: action.id,
-    type: "process_action",
-    params: {
-      relativeTimeFrame,
-    },
-    schema: action.schema,
-    outputs: action.outputs,
-  };
 }
 
 /**

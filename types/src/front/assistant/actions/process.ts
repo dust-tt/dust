@@ -1,7 +1,6 @@
 import {
   DataSourceConfiguration,
   RetrievalTimeframe,
-  TimeFrame,
 } from "../../../front/assistant/actions/retrieval";
 import { ModelId } from "../../../shared/model_id";
 
@@ -52,16 +51,4 @@ export type ProcessConfigurationType = {
   name: string | null;
   description: string | null;
   forceUseAtIteration: number | null;
-};
-
-export type ProcessActionType = {
-  id: ModelId;
-
-  type: "process_action";
-
-  params: {
-    relativeTimeFrame: TimeFrame | null;
-  };
-  schema: ProcessSchemaPropertyType[];
-  outputs: unknown[] | null;
 };

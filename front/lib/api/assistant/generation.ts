@@ -19,7 +19,6 @@ import {
   isAgentMessageType,
   isContentFragmentType,
   isDustAppRunActionType,
-  isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
   isTablesQueryActionType,
@@ -35,6 +34,7 @@ import {
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
 import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+import { isActionClass } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -43,8 +43,6 @@ import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-
-import { renderProcessActionForModel } from "./actions/process";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
@@ -101,10 +99,11 @@ export async function renderConversationForModel({
           messages.unshift(renderDustAppRunActionForModel(m.action));
         } else if (isTablesQueryActionType(m.action)) {
           messages.unshift(renderTablesQueryActionForModel(m.action));
-        } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderProcessActionForModel(m.action));
+        } else if (isActionClass(m.action)) {
+          messages.unshift(m.action.renderForModel());
         } else {
-          assertNever(m.action);
+          console.log("Unhandled action type:", m.action);
+          // assertNever(m.action);
         }
       }
     } else if (isUserMessageType(m)) {

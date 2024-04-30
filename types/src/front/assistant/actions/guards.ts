@@ -2,10 +2,7 @@ import {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "../../../front/assistant/actions/dust_app_run";
-import {
-  ProcessActionType,
-  ProcessConfigurationType,
-} from "../../../front/assistant/actions/process";
+import { ProcessConfigurationType } from "../../../front/assistant/actions/process";
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
@@ -77,12 +74,6 @@ export function isProcessConfiguration(
     "type" in arg &&
     arg.type === "process_configuration"
   );
-}
-
-export function isProcessActionType(
-  arg: AgentActionType
-): arg is ProcessActionType {
-  return arg.type === "process_action";
 }
 
 export function isAgentConfiguration(
