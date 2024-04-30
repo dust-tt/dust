@@ -1,7 +1,11 @@
 import { Button, DropdownMenu, Hoverable } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  ProcessSchemaPropertyType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -13,6 +17,196 @@ export function isActionProcessValid(builderState: AssistantBuilderState) {
   return (
     Object.keys(builderState.processConfiguration.dataSourceConfigurations)
       .length > 0 && !!builderState.processConfiguration.timeFrame.value
+  );
+}
+
+function TextField({
+  name,
+  label,
+  description,
+  value,
+  onChange,
+  error,
+  disabled,
+  className = "",
+}: {
+  name: string;
+  label: string;
+  description?: string;
+  value?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  disabled?: boolean;
+  className: string;
+}) {
+  return (
+    <div className={classNames(className, disabled ? "text-gray-400" : "")}>
+      <div className="flex justify-between">
+        <label
+          htmlFor={name}
+          className="block text-sm font-medium text-gray-700"
+        >
+          {label}
+        </label>
+      </div>
+      <div className="mt-1 flex rounded-md shadow-sm">
+        <input
+          type="text"
+          name={name}
+          id={name}
+          className={classNames(
+            "block w-full min-w-0 flex-1 rounded-md text-sm",
+            error
+              ? "border-red-500 focus:ring-red-500"
+              : "border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+          )}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      </div>
+      {description && (
+        <p className="mt-2 text-sm text-gray-500">{description}</p>
+      )}
+      {error && <p className="text-sm font-bold text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function PropertiesFields({
+  properties,
+  setProperties,
+  error,
+  setError,
+  readOnly,
+}: {
+  properties: ProcessSchemaPropertyType[];
+  setProperties: (properties: ProcessSchemaPropertyType[]) => void;
+  error: string;
+  setError: (message: string) => void;
+  readOnly?: boolean;
+}) {
+  function handlePropertyChange(
+    index: number,
+    field: "name" | "type" | "description",
+    value: string
+  ) {
+    const newProperties = [...properties];
+    newProperties[index][field] = value;
+    setProperties(newProperties);
+  }
+
+  function addProperty() {
+    const newProperties = [...properties];
+    newProperties.push({
+      name: "",
+      type: "string",
+      description: "",
+    });
+    setProperties(newProperties);
+  }
+
+  function removeProperty(index: number) {
+    const newProperties = [...properties];
+    newProperties.splice(index, 1);
+    setProperties(newProperties);
+  }
+
+  return (
+    <>
+      {properties.map(
+        (
+          prop: { name: string; type: string; description: string },
+          index: number
+        ) => (
+          <React.Fragment key={index}>
+            <TextField
+              name={`name-${index}`}
+              label="Property"
+              value={prop["name"]}
+              onChange={(e) => {
+                setError("");
+                handlePropertyChange(index, "name", e.target.value);
+              }}
+              disabled={readOnly}
+              className="sm:col-span-2"
+            />
+            <div className="sm:col-span-2">
+              <div className="flex justify-between">
+                <label
+                  htmlFor={`type-${index}`}
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Type
+                </label>
+              </div>
+              <div className="mt-1 flex rounded-md shadow-sm">
+                <select
+                  name={`type-${index}`}
+                  id={`type-${index}`}
+                  className={classNames(
+                    "w-full rounded-md border-gray-300 text-sm focus:border-violet-500 focus:ring-violet-500",
+                    readOnly ? "text-gray-400" : ""
+                  )}
+                  onChange={(e) => {
+                    setError("");
+                    handlePropertyChange(index, "type", e.target.value);
+                  }}
+                >
+                  {eventSchemaPropertyAllTypes.map((option) => (
+                    <option
+                      key={option}
+                      value={option}
+                      selected={option === prop["type"]}
+                      disabled={readOnly && option !== prop["type"]}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <TextField
+              name={`description-${index}`}
+              label="Description"
+              value={prop["description"]}
+              onChange={(e) => {
+                setError("");
+                handlePropertyChange(index, "description", e.target.value);
+              }}
+              disabled={readOnly}
+              className="col-span-7"
+            />
+            <div className="col-span-1 flex items-end">
+              <IconButton
+                icon={XCircleIcon}
+                tooltip="Remove Property"
+                variant="tertiary"
+                onClick={async () => {
+                  removeProperty(index);
+                }}
+                className="ml-1"
+              />
+            </div>
+          </React.Fragment>
+        )
+      )}
+      {error && (
+        <p className="text-sm font-bold text-red-400 sm:col-span-6">{error}</p>
+      )}
+      <div className="sm:col-span-12">
+        <Button
+          label={
+            properties.length
+              ? "Add another property"
+              : "Define what to extract!"
+          }
+          icon={PlusIcon}
+          onClick={addProperty}
+          disabled={readOnly}
+        />
+      </div>
+    </>
   );
 }
 
@@ -198,11 +392,11 @@ export function ActionProcess({
         </DropdownMenu>
       </div>
 
-        <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
-            Extraction schema
-          </div>
+      <div className="flex flex-row items-start">
+        <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+          Extraction schema
         </div>
+      </div>
     </>
   );
 }
