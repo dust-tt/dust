@@ -67,7 +67,8 @@ async function handler(
             currentTime.getTime() - createdAt.getTime()
           );
           const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-          const secret = differenceInMinutes > 10 ? redactString(k.secret, 4) : k.secret;
+          const secret =
+            differenceInMinutes > 10 ? redactString(k.secret, 4) : k.secret;
 
           return {
             id: k.id,
