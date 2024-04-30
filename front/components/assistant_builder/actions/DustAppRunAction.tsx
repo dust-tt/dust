@@ -7,6 +7,10 @@ import AssistantBuilderDustAppModal from "@app/components/assistant_builder/Assi
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 
+export function isActionDustAppRunValid(builderState: AssistantBuilderState) {
+  return !!builderState.dustAppConfiguration.app;
+}
+
 export function ActionDustAppRun({
   owner,
   builderState,

@@ -1,7 +1,7 @@
 import { Button, DropdownMenu, Hoverable } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -9,13 +9,19 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
+export function isActionProcessValid(builderState: AssistantBuilderState) {
+  return (
+    Object.keys(builderState.processConfiguration.dataSourceConfigurations)
+      .length > 0 && !!builderState.processConfiguration.timeFrame.value
+  );
+}
+
 export function ActionProcess({
   owner,
   builderState,
   setBuilderState,
   setEdited,
   dataSources,
-  timeFrameError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -24,9 +30,20 @@ export function ActionProcess({
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
-  timeFrameError: string | null;
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!builderState.processConfiguration.timeFrame.value) {
+      setTimeFrameError("Timeframe must be a number");
+    } else {
+      setTimeFrameError(null);
+    }
+  }, [
+    builderState.processConfiguration.dataSourceConfigurations,
+    builderState.processConfiguration.timeFrame.value,
+  ]);
 
   const deleteDataSource = (name: string) => {
     if (builderState.processConfiguration.dataSourceConfigurations[name]) {

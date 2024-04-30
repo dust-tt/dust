@@ -19,18 +19,28 @@ import type {
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
 
-import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
+import {
+  ActionProcess,
+  isActionProcessValid,
+} from "@app/components/assistant_builder/actions/ProcessAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
+  isActionRetrievalSearchValid,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
-import { ActionTablesQuery } from "@app/components/assistant_builder/actions/TablesQueryAction";
+import {
+  ActionTablesQuery,
+  isActionTablesQueryValid,
+} from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
   ActionMode,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 
-import { ActionDustAppRun } from "./actions/DustAppRunAction";
+import {
+  ActionDustAppRun,
+  isActionDustAppRunValid,
+} from "./actions/DustAppRunAction";
 
 const BASIC_ACTION_TYPES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
 const ADVANCED_ACTION_TYPES = ["RUN_DUST_APP"] as const;
@@ -126,24 +136,41 @@ function ActionModeSection({
   return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
+export function isActionValid(builderState: AssistantBuilderState): boolean {
+  switch (builderState.actionMode) {
+    case "GENERIC":
+      return true;
+    case "RETRIEVAL_SEARCH":
+      return isActionRetrievalSearchValid(builderState);
+    case "RETRIEVAL_EXHAUSTIVE":
+      return isActionRetrievalSearchValid(builderState);
+    case "PROCESS":
+      return isActionProcessValid(builderState);
+    case "DUST_APP_RUN":
+      return isActionDustAppRunValid(builderState);
+    case "TABLES_QUERY":
+      return isActionTablesQueryValid(builderState);
+    default:
+      assertNever(builderState.actionMode);
+  }
+}
+
 export default function ActionScreen({
   owner,
   builderState,
-  setBuilderState,
-  setEdited,
   dustApps,
   dataSources,
-  timeFrameError,
+  setBuilderState,
+  setEdited,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  dataSources: DataSourceType[];
+  dustApps: AppType[];
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
-  dataSources: DataSourceType[];
-  dustApps: AppType[];
-  timeFrameError: string | null;
 }) {
   const getActionType = (actionMode: ActionMode) => {
     switch (actionMode) {
@@ -373,9 +400,9 @@ export default function ActionScreen({
           <ActionRetrievalSearch
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -387,10 +414,9 @@ export default function ActionScreen({
           <ActionRetrievalExhaustive
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            dataSources={dataSources}
-            timeFrameError={timeFrameError}
           />
         </ActionModeSection>
 
@@ -400,10 +426,9 @@ export default function ActionScreen({
           <ActionProcess
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            dataSources={dataSources}
-            timeFrameError={timeFrameError}
           />
         </ActionModeSection>
 
@@ -413,9 +438,9 @@ export default function ActionScreen({
           <ActionTablesQuery
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -423,9 +448,9 @@ export default function ActionScreen({
           <ActionDustAppRun
             owner={owner}
             builderState={builderState}
+            dustApps={dustApps}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            dustApps={dustApps}
           />
         </ActionModeSection>
       </div>
