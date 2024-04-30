@@ -89,10 +89,6 @@ impl Store for PostgresStore {
         let mut c = pool.get().await?;
         let tx = c.transaction().await?;
 
-        // Block executions, Runs & Runs joins: we execute a SQL function
-        tx.execute("SELECT delete_project_runs($1)", &[&project_id])
-            .await?;
-
         // Datasets joins & Datasets points & Datasets: we execute a SQL function
         tx.execute("SELECT delete_project_datasets($1)", &[&project_id])
             .await?;
