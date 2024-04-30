@@ -1,4 +1,4 @@
-import type { KeyType } from "@dust-tt/types";
+import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
 import { formatUserFullName, redactString } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -8,7 +8,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { Key } from "@app/lib/models/workspace";
 import { new_id } from "@app/lib/utils";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetKeysResponseBody = {
   keys: KeyType[];
@@ -18,9 +18,16 @@ export type PostKeysResponseBody = {
   key: KeyType;
 };
 
+const Name = t.type({
+  name: t.string,
+});
+
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetKeysResponseBody | PostKeysResponseBody>
+  res: NextApiResponse<
+  WithAPIErrorReponse<GetKeysResponseBody | PostKeysResponseBody>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -94,13 +101,15 @@ async function handler(
       return;
 
     case "POST":
-      const Name = t.type({
-        name: t.string,
-      });
-
       const bodyValidation = Name.decode(req.body);
       if (isLeft(bodyValidation)) {
-        throw new Error("Invalid request body");
+        return apiError(req, res,{
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body",
+          }
+      });
       }
       const { name } = bodyValidation.right;
       const secret = `sk-${new_id().slice(0, 32)}`;

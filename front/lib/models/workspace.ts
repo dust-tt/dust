@@ -210,7 +210,7 @@ export class Key extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare lastUsedAt: Date | null;
+  declare lastUsedAt: CreationOptional<Date>;
 
   declare secret: string;
   declare status: "active" | "disabled";
