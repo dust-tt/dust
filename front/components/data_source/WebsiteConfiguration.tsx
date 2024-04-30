@@ -126,20 +126,18 @@ export default function WebsiteConfiguration({
         exists = true;
       }
     });
+    const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
 
     if (exists) {
       setDataSourceNameError("A Folder with the same name already exists");
       valid = false;
-    }
-    const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
-    if (dataSourceNameRes.isErr()) {
+    } else if (dataSourceNameRes.isErr()) {
       setDataSourceNameError(dataSourceNameRes.error);
       valid = false;
     } else {
       setDataSourceNameError("");
       valid = true;
     }
-
     setIsEdited(true);
     setIsValid(valid);
   }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
