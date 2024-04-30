@@ -43,7 +43,15 @@ async function handler(
   switch (req.method) {
     case "GET":
       const keys = await Key.findAll({
-        attributes: ["id", "createdAt", "secret", "status", "userId", "name"],
+        attributes: [
+          "id",
+          "createdAt",
+          "lastUsedAt",
+          "secret",
+          "status",
+          "userId",
+          "name",
+        ],
         where: {
           workspaceId: owner.id,
           isSystem: false,
@@ -75,6 +83,7 @@ async function handler(
           return {
             id: k.id,
             createdAt: k.createdAt.getTime(),
+            lastUsedAt: k.lastUsedAt?.getTime() ?? null,
             creator: formatUserFullName(k.user),
             name: k.name,
             secret,
@@ -110,6 +119,7 @@ async function handler(
           id: key.id,
           createdAt: key.createdAt.getTime(),
           creator: formatUserFullName(key.user),
+          lastUsedAt: null,
           name: key.name,
           secret: key.secret,
           status: key.status,

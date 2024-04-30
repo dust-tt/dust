@@ -168,6 +168,19 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                             })}{" "}
                             ago.
                           </p>
+                          <p className="front-normal text-xs text-element-700">
+                            {key.lastUsedAt ? (
+                              <>
+                                Last used&nbsp;
+                                {timeAgoFrom(key.lastUsedAt, {
+                                  useLongFormat: true,
+                                })}{" "}
+                                ago.
+                              </>
+                            ) : (
+                              <>Never used</>
+                            )}
+                          </p>
                         </div>
                       </div>
                     </div>

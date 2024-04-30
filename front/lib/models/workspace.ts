@@ -210,6 +210,7 @@ export class Key extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUsedAt: Date | null;
 
   declare secret: string;
   declare status: "active" | "disabled";
@@ -237,6 +238,10 @@ Key.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastUsedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     secret: {
       type: DataTypes.STRING,
