@@ -50,7 +50,7 @@ export async function handleFileUploadToText(
               return item.str;
             }
           });
-          text += strings.join(" ") + "\n";
+          text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
         return resolve(new Ok({ title: file.name, content: text }));
       } catch (e) {
