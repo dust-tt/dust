@@ -91,7 +91,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
-      await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
+      await fetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -152,22 +152,24 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                             {key.status === "active" ? "active" : "revoked"}
                           </p>
                         </div>
+                        <div>
                         <p
                           className={classNames(
                             "font-mono truncate text-sm text-slate-700"
                           )}
                         >
                           <strong>{key.name ? key.name : "Unnamed"}</strong>
-                          <pre>{key.secret}</pre>
                         </p>
-                      </div>
-                      <p className="front-normal text-xs text-element-700">
+                        <pre className="text-sm">{key.secret}</pre>
+                        <p className="front-normal text-xs text-element-700">
                         Created {key.creator ? `by ${key.creator} ` : ""}
                         {timeAgoFrom(key.createdAt, {
                           useLongFormat: true,
                         })}{" "}
                         ago.
                       </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   {key.status === "active" ? (
