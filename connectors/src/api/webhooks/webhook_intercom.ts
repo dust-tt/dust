@@ -112,24 +112,29 @@ const _webhookIntercomAPIHandler = async (
     return res.status(200).end();
   }
 
-  if (!conversation.team_assignee_id) {
-    // Check we have the permissions to sync this conversation
-    logger.info(
-      "[Intercom] Received webhook for conversation without team, skipping."
-    );
-    return res.status(200).end();
-  } else {
-    const team = await IntercomTeam.findOne({
-      where: {
-        connectorId: connector.id,
-        teamId: conversation.team_assignee_id.toString(),
-      },
-    });
-    if (!team || team.permission !== "read") {
+  const isSelectedAllConvos =
+    intercomWorskpace.syncAllConversations === "activated";
+
+  if (!isSelectedAllConvos) {
+    if (!conversation.team_assignee_id) {
+      // Check we have the permissions to sync this conversation
       logger.info(
-        "[Intercom] Received webhook for conversation attached to team without read permission, skipping."
+        "[Intercom] Received webhook for conversation without team, skipping."
       );
       return res.status(200).end();
+    } else {
+      const team = await IntercomTeam.findOne({
+        where: {
+          connectorId: connector.id,
+          teamId: conversation.team_assignee_id.toString(),
+        },
+      });
+      if (!team || team.permission !== "read") {
+        logger.info(
+          "[Intercom] Received webhook for conversation attached to team without read permission, skipping."
+        );
+        return res.status(200).end();
+      }
     }
   }
 

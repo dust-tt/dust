@@ -42,6 +42,10 @@ export function getConversationInternalId(
   return `intercom-conversation-${connectorId}-${conversationId}`;
 }
 
+export function getAllConversationsInternalId(connectorId: ModelId): string {
+  return `intercom-conversations-all-${connectorId}`;
+}
+
 /**
  * From internalId to id
  */
@@ -65,6 +69,12 @@ export function getHelpCenterArticleIdFromInternalId(
   internalId: string
 ): string | null {
   return _getIdFromInternal(internalId, `intercom-article-${connectorId}-`);
+}
+export function isInternalIdForAllConversations(
+  connectorId: ModelId,
+  internalId: string
+): boolean {
+  return internalId === `intercom-conversations-all-${connectorId}`;
 }
 export function isInternalIdForAllTeams(
   connectorId: ModelId,

@@ -132,7 +132,7 @@ export const IntercomCheckConversationResponseSchema = t.type({
   isConversationOnIntercom: t.boolean,
   isConversationOnDB: t.boolean,
   conversationTeamIdOnIntercom: t.union([t.string, t.undefined]),
-  conversationTeamIdOnDB: t.union([t.string, t.undefined]),
+  conversationTeamIdOnDB: t.union([t.string, t.undefined, t.null]),
 });
 export type IntercomCheckConversationResponseType = t.TypeOf<
   typeof IntercomCheckConversationResponseSchema

@@ -16,12 +16,14 @@ export async function launchIntercomSyncWorkflow({
   fromTs = null,
   helpCenterIds = [],
   teamIds = [],
+  hasUpdatedSelectAllConversations = false,
   forceResync = false,
 }: {
   connectorId: ModelId;
   fromTs?: number | null;
   helpCenterIds?: string[];
   teamIds?: string[];
+  hasUpdatedSelectAllConversations?: boolean;
   forceResync?: boolean;
 }): Promise<Result<string, Error>> {
   if (fromTs) {
@@ -49,7 +51,21 @@ export async function launchIntercomSyncWorkflow({
     intercomId: teamId,
     forceResync,
   }));
-  const signals = [...signaledHelpCenterIds, ...signaledTeamIds];
+  const signaledHasUpdatedSelectAllConvos: IntercomUpdateSignal[] =
+    hasUpdatedSelectAllConversations
+      ? [
+          {
+            type: "all_conversations",
+            intercomId: "all_conversations",
+            forceResync: false,
+          },
+        ]
+      : [];
+  const signals = [
+    ...signaledHelpCenterIds,
+    ...signaledTeamIds,
+    ...signaledHasUpdatedSelectAllConvos,
+  ];
 
   // When the workflow is inactive, we omit passing helpCenterIds as they are only used to signal modifications within a currently active full sync workflow.
   try {

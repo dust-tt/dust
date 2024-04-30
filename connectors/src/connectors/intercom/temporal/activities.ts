@@ -4,10 +4,11 @@ import { Op } from "sequelize";
 import {
   fetchIntercomArticles,
   fetchIntercomCollection,
-  fetchIntercomConversationsForTeamId,
+  fetchIntercomConversations,
   fetchIntercomHelpCenter,
   fetchIntercomTeam,
 } from "@connectors/connectors/intercom/lib/intercom_api";
+import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/intercom/lib/types";
 import {
   deleteConversation,
   deleteTeamAndConversations,
@@ -492,7 +493,7 @@ export async function getNextConversationBatchToSyncActivity({
   cursor,
 }: {
   connectorId: ModelId;
-  teamId: string;
+  teamId?: string;
   cursor: string | null;
 }): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
@@ -506,13 +507,24 @@ export async function getNextConversationBatchToSyncActivity({
     throw new Error("[Intercom] Workspace not found");
   }
 
-  const result = await fetchIntercomConversationsForTeamId({
-    nangoConnectionId: connector.connectionId,
-    teamId,
-    slidingWindow: intercomWorkspace.conversationsSlidingWindow,
-    cursor,
-    pageSize: INTERCOM_CONVO_BATCH_SIZE,
-  });
+  let result;
+
+  if (teamId) {
+    result = await fetchIntercomConversations({
+      nangoConnectionId: connector.connectionId,
+      teamId,
+      slidingWindow: intercomWorkspace.conversationsSlidingWindow,
+      cursor,
+      pageSize: INTERCOM_CONVO_BATCH_SIZE,
+    });
+  } else {
+    result = await fetchIntercomConversations({
+      nangoConnectionId: connector.connectionId,
+      slidingWindow: intercomWorkspace.conversationsSlidingWindow,
+      cursor,
+      pageSize: INTERCOM_CONVO_BATCH_SIZE,
+    });
+  }
 
   const conversationIds = result.conversations.map((c) => c.id);
   const nextPageCursor = result.pages.next
@@ -532,7 +544,7 @@ export async function syncConversationBatchActivity({
   currentSyncMs,
 }: {
   connectorId: ModelId;
-  teamId: string;
+  teamId?: string;
   conversationIds: string[];
   currentSyncMs: number;
 }): Promise<void> {
@@ -544,7 +556,7 @@ export async function syncConversationBatchActivity({
     connectorId,
     provider: "intercom",
     dataSourceName: dataSourceConfig.dataSourceName,
-    teamId,
+    teamId: teamId ?? null,
   };
 
   await concurrentExecutor(
@@ -565,9 +577,40 @@ export async function syncConversationBatchActivity({
 
 /**
  * This activity is responsible for fetching a batch of conversations
+ * that belong to a team that is not allowed anymore, or no team.
+ */
+export async function getNextRevokedConversationsBatchToDeleteActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<string[]> {
+  const authorizedTeams = await IntercomTeam.findAll({
+    attributes: ["teamId"],
+    where: {
+      connectorId,
+      permission: "read",
+    },
+  });
+  const authorizedTeamIds = authorizedTeams.map((t) => t.teamId);
+  const conversations = await IntercomConversation.findAll({
+    attributes: ["conversationId"],
+    where: {
+      connectorId,
+      teamId: {
+        [Op.or]: [null, { [Op.notIn]: authorizedTeamIds }],
+      },
+    },
+    limit: INTERCOM_CONVO_BATCH_SIZE,
+  });
+
+  return conversations.map((c) => c.conversationId);
+}
+
+/**
+ * This activity is responsible for fetching a batch of conversations
  * that are older than 90 days and ready to be deleted.
  */
-export async function getNextConversationsBatchToDeleteActivity({
+export async function getNextOldConversationsBatchToDeleteActivity({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -609,4 +652,47 @@ export async function deleteConversationBatchActivity({
       }),
     { concurrency: 10 }
   );
+}
+
+/**
+ * This activity is responsible for updating the status of syncAllConversations of a given connector.
+ */
+export async function setSyncAllConversationsStatusActivity({
+  connectorId,
+  status,
+}: {
+  connectorId: ModelId;
+  status: IntercomSyncAllConversationsStatus;
+}): Promise<void> {
+  await IntercomWorkspace.update(
+    {
+      syncAllConversations: status,
+    },
+    {
+      where: {
+        connectorId,
+      },
+    }
+  );
+}
+
+/**
+ * This activity is responsible for fetching if the syncAllConversations of a given connector.
+ */
+export async function getSyncAllConversationsStatusActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<IntercomSyncAllConversationsStatus> {
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: {
+      connectorId,
+    },
+  });
+
+  if (!intercomWorkspace) {
+    throw new Error("[Intercom] Workspace not found");
+  }
+
+  return intercomWorkspace.syncAllConversations;
 }
