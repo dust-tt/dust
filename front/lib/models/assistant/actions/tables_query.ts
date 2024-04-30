@@ -206,5 +206,11 @@ AgentTablesQueryAction.init(
   {
     modelName: "agent_tables_query_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
   }
 );

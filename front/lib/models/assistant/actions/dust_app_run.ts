@@ -161,5 +161,11 @@ AgentDustAppRunAction.init(
   {
     modelName: "agent_dust_app_run_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
   }
 );

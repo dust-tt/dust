@@ -171,6 +171,12 @@ AgentProcessAction.init(
   {
     modelName: "agent_process_action",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
     hooks: {
       beforeValidate: (p: AgentProcessAction) => {
         // Validation for Timeframe
