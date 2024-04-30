@@ -1,7 +1,7 @@
 import { ModelId } from "../shared/model_id";
 
 export type KeyType = {
-  id: ModelId
+  id: ModelId;
   createdAt: number;
   lastUsedAt: number | null;
   creator: string | null;
