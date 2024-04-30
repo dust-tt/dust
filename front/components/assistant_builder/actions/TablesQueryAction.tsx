@@ -10,6 +10,10 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 
+export function isActionTablesQueryValid(builderState: AssistantBuilderState) {
+  return Object.keys(builderState.tablesQueryConfiguration).length > 0;
+}
+
 export function ActionTablesQuery({
   owner,
   builderState,

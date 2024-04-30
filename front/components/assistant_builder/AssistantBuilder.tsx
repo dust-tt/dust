@@ -44,7 +44,9 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import ActionScreen from "@app/components/assistant_builder/ActionScreen";
+import ActionScreen, {
+  isActionValid,
+} from "@app/components/assistant_builder/ActionScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
@@ -307,7 +309,6 @@ export default function AssistantBuilder({
   const [assistantHandleError, setAssistantHandleError] = useState<
     string | null
   >(null);
-  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -416,68 +417,12 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (
-      builderState.actionMode === "RETRIEVAL_SEARCH" ||
-      builderState.actionMode === "RETRIEVAL_EXHAUSTIVE"
-    ) {
-      if (
-        Object.keys(
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        ).length === 0
-      ) {
-        valid = false;
-      }
-    }
-    if (builderState.actionMode === "RETRIEVAL_EXHAUSTIVE") {
-      if (!builderState.retrievalConfiguration.timeFrame.value) {
-        valid = false;
-        setTimeFrameError("Timeframe must be a number");
-      } else {
-        setTimeFrameError(null);
-      }
-    }
-
-    if (builderState.actionMode === "DUST_APP_RUN") {
-      if (!builderState.dustAppConfiguration) {
-        valid = false;
-      }
-    }
-
-    if (builderState.actionMode === "TABLES_QUERY") {
-      if (!builderState.tablesQueryConfiguration) {
-        valid = false;
-      }
-    }
-
-    if (builderState.actionMode === "PROCESS") {
-      if (
-        Object.keys(builderState.processConfiguration.dataSourceConfigurations)
-          .length === 0
-      ) {
-        valid = false;
-      }
-      if (!builderState.processConfiguration.timeFrame.value) {
-        valid = false;
-        setTimeFrameError("Timeframe must be a number");
-      } else {
-        setTimeFrameError(null);
-      }
+    if (!isActionValid(builderState)) {
+      valid = false;
     }
 
     setSubmitEnabled(valid);
-  }, [
-    builderState.actionMode,
-    builderState.handle,
-    builderState.description,
-    builderState.instructions,
-    owner,
-    initialBuilderState?.handle,
-    // Actions
-    builderState.retrievalConfiguration,
-    builderState.dustAppConfiguration,
-    builderState.tablesQueryConfiguration,
-    builderState.processConfiguration,
-  ]);
+  }, [builderState, owner, initialBuilderState?.handle]);
 
   useEffect(() => {
     void formValidation();
@@ -621,11 +566,10 @@ export default function AssistantBuilder({
                       <ActionScreen
                         owner={owner}
                         builderState={builderState}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
                         dataSources={dataSources}
                         dustApps={dustApps}
-                        timeFrameError={timeFrameError}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
                       />
                     );
                   case "naming":

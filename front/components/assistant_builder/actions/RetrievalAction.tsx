@@ -1,7 +1,7 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -35,6 +35,15 @@ const deleteDataSource = (
     };
   });
 };
+
+export function isActionRetrievalSearchValid(
+  builderState: AssistantBuilderState
+) {
+  return (
+    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+      .length > 0
+  );
+}
 
 export function ActionRetrievalSearch({
   owner,
@@ -104,13 +113,21 @@ export function ActionRetrievalSearch({
   );
 }
 
+export function isActionRetrievalExhaustiveValid(
+  builderState: AssistantBuilderState
+) {
+  return (
+    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
+      .length > 0 && !!builderState.retrievalConfiguration.timeFrame.value
+  );
+}
+
 export function ActionRetrievalExhaustive({
   owner,
   builderState,
   setBuilderState,
   setEdited,
   dataSources,
-  timeFrameError,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -119,9 +136,20 @@ export function ActionRetrievalExhaustive({
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
-  timeFrameError: string | null;
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!builderState.retrievalConfiguration.timeFrame.value) {
+      setTimeFrameError("Timeframe must be a number");
+    } else {
+      setTimeFrameError(null);
+    }
+  }, [
+    builderState.retrievalConfiguration.dataSourceConfigurations,
+    builderState.retrievalConfiguration.timeFrame.value,
+  ]);
 
   return (
     <>
