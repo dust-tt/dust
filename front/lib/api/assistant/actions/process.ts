@@ -218,6 +218,7 @@ export async function* runProcess(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
+    agentMessageId: agentMessage.id,
   });
 
   const now = Date.now();

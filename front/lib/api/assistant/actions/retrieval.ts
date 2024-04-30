@@ -500,7 +500,6 @@ export async function* runRetrieval(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     topK,
     retrievalConfigurationId: actionConfiguration.sId,
-
     agentMessageId: agentMessage.agentMessageId,
   });
 
