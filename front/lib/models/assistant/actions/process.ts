@@ -8,6 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentProcessConfiguration extends Model<
@@ -127,6 +128,7 @@ export class AgentProcessAction extends Model<
 
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: unknown[] | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
 }
 AgentProcessAction.init(
   {
