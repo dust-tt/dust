@@ -99,6 +99,12 @@ AgentRetrievalConfiguration.init(
   {
     modelName: "agent_retrieval_configuration",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+    ],
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {
         // Validation for Timeframe
