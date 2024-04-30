@@ -55,6 +55,7 @@ async function handler(
           id: key.id,
           createdAt: key.createdAt.getTime(),
           creator: null,
+          lastUsedAt: key.lastUsedAt?.getTime() || null,
           secret: key.secret,
           status: key.status,
           name: key.name,

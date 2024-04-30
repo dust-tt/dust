@@ -488,7 +488,6 @@ export async function getAPIKey(
     });
   }
 
-  console.log('SAVING KEY LAST USED AT')
   key.lastUsedAt = new Date();
   await key.save();
 
