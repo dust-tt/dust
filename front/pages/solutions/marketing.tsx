@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,9 +49,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function Marketing() {
   return (
     <>
@@ -63,9 +56,9 @@ export default function Marketing() {
         uptitle="Dust for Marketing Teams"
         title={
           <>
-            Enhance
+            Ensure brand voice
             <br />
-            Content&nbsp;Production and&nbsp;Creativity
+            and&nbsp;content consistency across all&nbsp;mediums and&nbsp;teams.
           </>
         }
         from="from-pink-200"
@@ -80,103 +73,130 @@ export default function Marketing() {
       />
 
       <Grid>
-        <H2 className={defaultHClasses}>
-          Create better content,
-          <br />
-          faster and on-brand
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="pink"
-          content={
+        <SolutionSection
+          title={
             <>
-              <Block
-                title={
-                  <>
-                    Accelerate your content generation across blogs, websites,
-                    and social media.
-                  </>
-                }
-              >
-                <>
-                  Your assistants integrate with your brand's voice and past
-                  content, making creation quick and intuitive.
-                </>
-              </Block>
-              <Block
-                title={
-                  <>
-                    Unified brand voice and content consistency across all
-                    mediums and teams
-                  </>
-                }
-              >
-                Ensure your Product, Brand, Sales, and Success teams create
-                consistent content on every touchpoint.
-              </Block>
+              Create better content,
+              <br />
+              faster and on-brand.
             </>
           }
-          assistant={assistantExamples[0]}
+          blocks={[
+            {
+              color: "pink",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Accelerate your&nbsp;content generation across&nbsp;blogs,
+                      websites, and&nbsp;social media.
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Your assistants integrate with your&nbsp;brand's voice
+                      and&nbsp;past content, making&nbsp;creation quick
+                      and&nbsp;intuitive.
+                    </>
+                  ),
+                },
+                {
+                  title: (
+                    <>
+                      Unified brand voice and&nbsp;content consistency across
+                      all&nbsp;mediums and&nbsp;teams.
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Ensure your Product, Brand, Sales, and&nbsp;Success teams
+                      create consistent content on&nbsp;every touchpoint.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Repurpose with&nbsp;purpose.</>,
+                  content: [
+                    <>
+                      Repackage past materials into&nbsp;fresh content
+                      for&nbsp;your blogs, social media, and&nbsp;product
+                      documentation.
+                    </>,
+                    <>
+                      Maximize your&nbsp;past investments and&nbsp;learnings.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>
-          Gain Competitive Insights, Repurpose With Purpose
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="pink"
-          content={
-            <>
-              <Block title={<>Set up a live competitive intelligence feed</>}>
-                Gain an edge by creating competitive analysis assistants and
-                improve your market intelligence velocity and impact. Dive into
-                competitors' strategies, extract insights, and generate reports
-                to inform your decisions.
-              </Block>
-              <Block title={<>Repurpose and repackage past content.</>}>
-                Transform past materials into fresh content for your blogs,
-                social media, and product documentation. Maximize your past
-                investments and learnings.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[4]}
-              {assistantExamples[1]}
-            </>
-          }
+
+        <SolutionSection
+          title="Gain competitive insights."
+          blocks={[
+            {
+              color: "pink",
+              contentBlocks: {
+                title: <>Set up a&nbsp;live competitive intelligence feed.</>,
+                content: [
+                  <>
+                    Gain an edge by&nbsp;creating competitive analysis
+                    assistants and&nbsp;improve your market intelligence
+                    velocity and&nbsp;impact.
+                  </>,
+                  <>
+                    Dive into&nbsp;competitors' strategies, extract insights,
+                    and&nbsp;generate reports to&nbsp;inform
+                    your&nbsp;decisions.
+                  </>,
+                ],
+              },
+              assistantBlocks: assistantExamples[4],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>
-          Better collaboration with Sales, Product, and Support teams.
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="pink"
-          content={
+
+        <SolutionSection
+          title={
             <>
-              <Block title={<>Simplify collaboration across teams.</>}>
-                Create assistants to bridge the gap between Marketing, Sales,
-                Product, and Support, translating marketing decisions,
-                objectives, and strategies into the language of the recipient
-                team.
-              </Block>
-              <Block
-                title={<>Level everyone’s data analysis playing field. </>}
-              >
-                Point this assistant to CSV data with answers to marketing and
-                user surveys to categorize answers and get insights.
-              </Block>
+              Marketing, Sales, Product, Support&nbsp;teams, hands
+              in&nbsp;hands.
             </>
           }
-          assistant={
-            <>
-              {assistantExamples[2]}
-              {assistantExamples[3]}
-            </>
-          }
+          blocks={[
+            {
+              color: "pink",
+              contentBlocks: [
+                {
+                  title: <>Simplify collaboration across&nbsp;teams.</>,
+                  content: [
+                    <>
+                      Create assistants to&nbsp;bridge the&nbsp;gap between
+                      Marketing, Sales, Product, and&nbsp;Support.
+                    </>,
+                    <>
+                      Translate marketing decisions, objectives,
+                      and&nbsp;strategies into the&nbsp;language of
+                      the&nbsp;recipient team.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Level everyone’s data analysis playing field.</>,
+                  content: (
+                    <>
+                      Point this assistant to&nbsp;CSV data with answers
+                      to&nbsp;marketing and&nbsp;user surveys to&nbsp;categorize
+                      answers and get&nbsp;insights.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
+            },
+          ]}
         />
       </Grid>
     </>
@@ -188,39 +208,60 @@ Marketing.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="🖋️"
-    avatarBackground="bg-pink-300"
-    name="@contentWriter"
-    question="Create content based on examples of previous similar best-in-class content."
-  />,
-  <DroidItem
-    key="1"
-    emoji="🔎"
-    avatarBackground="bg-pink-300"
-    name="@copyMaster"
-    question="Improve marketing copy and suggest new concepts to appeal to your audience."
-  />,
-  <DroidItem
-    key="2"
-    emoji="⭐️"
-    avatarBackground="bg-pink-300"
-    name="@marketing"
-    question="Answer any question about your team's marketing knowledge base. Can help your team resurface past ideas and create new ones."
-  />,
-  <DroidItem
-    key="3"
-    emoji="🔬"
-    avatarBackground="bg-pink-300"
-    name="@dataAnalyzer"
-    question="Turn your questions into SQL queries to analyze user and customer surveys."
-  />,
-  <DroidItem
-    key="4"
-    emoji="🧐"
-    avatarBackground="bg-pink-300"
-    name="@competitiveIntelligence"
-    question="Synchronize your competitor websites, blogs, and job boards and get insights, ideas, and feedback to create and improve your market positioning. "
-  />,
+  {
+    emoji: "🖋️",
+    name: "@contentWriter",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Create content based&nbsp;on examples of&nbsp;previous similar
+        best-in-class&nbsp;content
+      </>
+    ),
+  },
+  {
+    emoji: "🔎",
+    name: "@copyMaster",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Improve marketing copy and&nbsp;suggest new concepts to&nbsp;appeal
+        to&nbsp;your&nbsp;audience
+      </>
+    ),
+  },
+  {
+    emoji: "⭐️",
+    name: "@marketing",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Answer any&nbsp;question about your&nbsp;team's marketing knowledge
+        base. Resurface past ideas and&nbsp;create new&nbsp;ones.
+      </>
+    ),
+  },
+  {
+    emoji: "🔬",
+    name: "@dataAnalyzer",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Turn your questions into&nbsp;SQL queries to&nbsp;analyze user
+        and&nbsp;customer&nbsp;surveys
+      </>
+    ),
+  },
+  {
+    emoji: "🧐",
+    name: "@competitiveIntelligence",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Synchronize your competitor websites, blogs, and&nbsp;job boards
+        and&nbsp;get insights, ideas, and&nbsp;feedback to&nbsp;create
+        and&nbsp;improve your market&nbsp;positioning
+      </>
+    ),
+  },
 ];
