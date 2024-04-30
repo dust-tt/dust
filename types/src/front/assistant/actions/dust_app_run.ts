@@ -32,3 +32,7 @@ export type DustAppRunActionType = {
   } | null;
   output: unknown | null;
 };
+
+export interface ActionBase {
+  type: "dust_app_run_action";
+}

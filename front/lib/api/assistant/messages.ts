@@ -16,6 +16,7 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import type { Action } from "@app/lib/api/assistant/actions";
 import { DustAppRunAction } from "@app/lib/api/assistant/actions/dust_app_run";
 import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -236,7 +237,7 @@ export async function batchRenderAgentMessages(
     }
     const agentMessage = message.agentMessage;
 
-    let action: AgentActionType | null = null;
+    let action: AgentActionType | DustAppRunAction | null = null;
     if (retrievalActionByAgentMessageId[agentMessage.id]) {
       const actionId = retrievalActionByAgentMessageId[agentMessage.id].id;
       action = agentRetrievalActions.find((a) => a.id === actionId) || null;
@@ -284,7 +285,7 @@ export async function batchRenderAgentMessages(
       parentMessageId:
         messages.find((m) => m.id === message.parentId)?.sId ?? null,
       status: agentMessage.status,
-      action,
+      action: action && "toJSON" in action ? action.toJSON() : action,
       content: agentMessage.content,
       error,
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.

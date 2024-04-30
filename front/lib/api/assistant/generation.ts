@@ -108,7 +108,7 @@ export async function renderConversationForModel({
         } else if (isProcessActionType(m.action)) {
           messages.unshift(renderProcessActionForModel(m.action));
         } else {
-          console.log(">> m.action (assertNever):", m.action);
+          // TODO:
           assertNever(m.action);
         }
       }

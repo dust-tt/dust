@@ -1,12 +1,13 @@
-import type { ModelId, ModelMessageType } from "@dust-tt/types";
+import type { ActionBase, ModelId, ModelMessageType } from "@dust-tt/types";
 
 export interface GenerateSpecificationParams {
   name?: string;
   description?: string;
 }
 
-export abstract class Action {
-  constructor(readonly id: ModelId, readonly type: string) {}
+export abstract class Action implements ActionBase {
+  // TODO(2024-04-30 flav) Remove the hardcoded value for type.
+  constructor(readonly id: ModelId, readonly type: "dust_app_run_action") {}
 
   abstract renderForModel(): ModelMessageType;
 
