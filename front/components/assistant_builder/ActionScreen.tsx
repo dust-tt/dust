@@ -18,7 +18,6 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useState } from "react";
 
 import {
   ActionProcess,
@@ -401,10 +400,9 @@ export default function ActionScreen({
           <ActionRetrievalSearch
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            setRetrievalValid={setRetrievalValid}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -416,10 +414,9 @@ export default function ActionScreen({
           <ActionRetrievalExhaustive
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            setRetrievalValid={setRetrievalValid}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -429,10 +426,9 @@ export default function ActionScreen({
           <ActionProcess
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            setProcessValid={setProcessValid}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -442,10 +438,9 @@ export default function ActionScreen({
           <ActionTablesQuery
             owner={owner}
             builderState={builderState}
+            dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            setTablesQueryValid={setTablesQueryValid}
-            dataSources={dataSources}
           />
         </ActionModeSection>
 
@@ -453,10 +448,9 @@ export default function ActionScreen({
           <ActionDustAppRun
             owner={owner}
             builderState={builderState}
+            dustApps={dustApps}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
-            setDustAppRunValid={setDustAppRunValid}
-            dustApps={dustApps}
           />
         </ActionModeSection>
       </div>
