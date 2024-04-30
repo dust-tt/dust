@@ -22,11 +22,10 @@ const Name = t.type({
   name: t.string,
 });
 
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-  WithAPIErrorReponse<GetKeysResponseBody | PostKeysResponseBody>
+    WithAPIErrorReponse<GetKeysResponseBody | PostKeysResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -50,15 +49,6 @@ async function handler(
   switch (req.method) {
     case "GET":
       const keys = await Key.findAll({
-        attributes: [
-          "id",
-          "createdAt",
-          "lastUsedAt",
-          "secret",
-          "status",
-          "userId",
-          "name",
-        ],
         where: {
           workspaceId: owner.id,
           isSystem: false,
@@ -103,13 +93,13 @@ async function handler(
     case "POST":
       const bodyValidation = Name.decode(req.body);
       if (isLeft(bodyValidation)) {
-        return apiError(req, res,{
+        return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "invalid_request_error",
             message: "Invalid request body",
-          }
-      });
+          },
+        });
       }
       const { name } = bodyValidation.right;
       const secret = `sk-${new_id().slice(0, 32)}`;
