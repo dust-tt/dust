@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,14 +49,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function RecruitingPeople() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Recruiting and People teams"
+        uptitle="Dust for Recruiting and&nbsp;People teams"
         title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers.</>}
         from="from-amber-300"
         to="to-amber-400"
@@ -72,103 +65,148 @@ export default function RecruitingPeople() {
         }
       />
       <Grid>
-        <H2 className={defaultHClasses}>
-          Share knowledge better,
-          <br />
-          free time for you.
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 mb-4 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="amber"
-          content={
-            <>
-              <Block
-                title={
-                  <>
-                    Onboard new people with accessible information at their own
-                    pace
-                  </>
-                }
-              >
-                Transform your onboarding process using an AI assistant designed
-                to guide newcomers through your methods, processes, people, and
-                culture.
-              </Block>
-              <Block title={<>Put your internal documentation to work</>}>
-                Create an assistant capable of answering any questions, point to
-                the right internal resources, and spread your company culture
-                and methods.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[0]}
-              {assistantExamples[1]}
-            </>
-          }
+        <SolutionSection
+          title="Eliminate repetitive tasks."
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Onboard new&nbsp;people with readily available information
+                      at&nbsp;their own&nbsp;pace.
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Transform your onboarding process using an&nbsp;AI
+                      assistant designed to&nbsp;guide newcomers through your
+                      methods, processes, people, and&nbsp;culture.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Put your internal documentation to&nbsp;work.</>,
+                  content: (
+                    <>
+                      Create an&nbsp;assistant capable of&nbsp;answering any
+                      questions, point to&nbsp;the right internal resources,
+                      and&nbsp;spread your company culture and&nbsp;methods.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>Help your people grow.</H2>
-        <ContentAssistantBlock
-          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
-          layout="vertical"
-          color="amber"
-          content={
-            <>
-              <Block title={<>Improve Feedback and Reviews</>}>
-                Collect data from various channels to get a holistic view of
-                each employee's work and make more accurate evaluations. Help
-                your team write more thoughtfully, with AI-powered feedback on
-                tone, references to company principles, priorities and business
-                objectives.
-              </Block>
-            </>
-          }
-          assistant={<>{assistantExamples[6]}</>}
+        <SolutionSection
+          title="Nurture Employee Growth."
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: "Create engaging learning experiences.",
+                  content: (
+                    <>
+                      Use information from internal data sources, such
+                      as&nbsp;onboarding guides, process documents,
+                      and&nbsp;best practices, to&nbsp;create training scripts
+                      and&nbsp;materials tailored to&nbsp;each role
+                      or&nbsp;department.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Improve feedback and&nbsp;reviews.</>,
+                  content: [
+                    <>
+                      Collect data from various channels to&nbsp;get
+                      a&nbsp;holistic view of&nbsp;each employee's work
+                      and&nbsp;make more accurate evaluations.
+                    </>,
+                    <>
+                      Help your team write more thoughtfully,
+                      with&nbsp;AI-powered feedback on&nbsp;tone, references
+                      to&nbsp;company principles, priorities, and&nbsp;business
+                      objectives.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [assistantExamples[7], assistantExamples[6]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>
-          Boost your team hiring&nbsp;efforts.
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-6"
-          layout="column sm:vertical"
-          color="amber"
-          content={
-            <>
-              <Block title="Level your team up on hiring">
-                Make your company hiring practices, guidelines and knowledge
-                easy to find and leverage for everyone. Make your team better at
-                writing exercises, questions, revieweing exercises response,
-                read through candidates subtext. Score a candidate’s take-home
-                answers with your rubric in mind.
-              </Block>
-            </>
-          }
-          assistant=<>
-            {assistantExamples[2]}
-            {assistantExamples[3]}
-          </>
+        <SolutionSection
+          title="Scale your hiring."
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: <>Next level training & guidance.</>,
+                  content: [
+                    <>
+                      Make your&nbsp;company hiring practices, guidelines,
+                      and&nbsp;knowledge easy to&nbsp;find and&nbsp;leverage for
+                      everyone.
+                    </>,
+                    <>
+                      Train your team at&nbsp;writing exercises
+                      and&nbsp;questions, reviewing exercises' responses,
+                      and&nbsp;reading through candidates' subtexts.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Customized written analysis assistance.</>,
+                  content: [
+                    <>
+                      Score a&nbsp;candidate's take-home answers with
+                      your&nbsp;rubric in&nbsp;mind.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
+            },
+          ]}
         />
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-6"
-          layout="column sm:vertical"
-          color="amber"
-          content={
-            <>
-              <Block title="Make AI work for you">
-                Analyse candidate’s CV in a second Extract information from
-                texts, normalise lists of emails and names, batch write content.
-                Draft job description, social media posts, outbound emails,
-                interview questions in minutes, with company tones and
-                structure.
-              </Block>
-            </>
-          }
-          assistant=<>
-            {assistantExamples[4]}
-            {assistantExamples[5]}
-          </>
+
+        <SolutionSection
+          title="Automate recurrent hiring tasks."
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: <>Analyze &&nbsp;extract.</>,
+                  content: [
+                    <>
+                      Analyze a&nbsp;candidate's CV in&nbsp;a&nbsp;second.
+                      Extract information from&nbsp;texts, normalize lists
+                      of&nbsp;emails and&nbsp;names, and&nbsp;batch-write
+                      content.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>The page is&nbsp;never white.</>,
+                  content: [
+                    <>
+                      Draft job description, social media posts, outbound
+                      emails, interview questions in&nbsp;minutes,
+                      with&nbsp;company tones and&nbsp;structure.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [assistantExamples[5], assistantExamples[4]],
+            },
+          ]}
         />
       </Grid>
     </>
@@ -183,53 +221,92 @@ RecruitingPeople.getLayout = (
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="🌱"
-    avatarBackground="bg-amber-300"
-    name="@onboardingBuddy"
-    question="Your friendly guide to help new team members feel welcomed, informed, and integrated from day one."
-  />,
-  <DroidItem
-    key="1"
-    emoji="👋"
-    avatarBackground="bg-amber-300"
-    name="@people"
-    question="Answer on slack all questions about processes, methodes, people and roles based on company documentation."
-  />,
-  <DroidItem
-    key="2"
-    emoji="🖋️"
-    avatarBackground="bg-amber-300"
-    name="@hiringOps"
-    question="Draft job descriptions, emails, social media coms based on company standards."
-  />,
-  <DroidItem
-    key="3"
-    emoji="🔬"
-    avatarBackground="bg-amber-300"
-    name="@interviewReading"
-    question="Help read and analyse candidate expert according to company principles."
-  />,
-  <DroidItem
-    key="4"
-    emoji="💬"
-    avatarBackground="bg-amber-300"
-    name="@hiringQuestions"
-    question="Draft questions depending on the role, type of interview and stage in the process."
-  />,
-  <DroidItem
-    key="5"
-    emoji="🧐"
-    avatarBackground="bg-amber-300"
-    name="@candidate"
-    question="Summarize available information about a candidate based on Company DB."
-  />,
-  <DroidItem
-    key="6"
-    emoji="🏅"
-    avatarBackground="bg-amber-300"
-    name="@feedbackReview"
-    question="Collects achievements, drafts actionable reviews, helps formulate feedback."
-  />,
+  {
+    emoji: "🌱",
+    name: "@onboardingBuddy",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Your friendly guide to&nbsp;help new team members feel welcomed,
+        informed, and&nbsp;integrated from day one.
+      </>
+    ),
+  },
+  {
+    emoji: "👋",
+    name: "@people",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Answer all questions about processes, methods, people and&nbsp;roles
+        based&nbsp;on company documentation directly on&nbsp;Slack.
+      </>
+    ),
+  },
+  {
+    emoji: "🖋️",
+    name: "@hiringOps",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Draft job descriptions, emails, social media coms based&nbsp;on company
+        standards.
+      </>
+    ),
+  },
+  {
+    emoji: "🔬",
+    name: "@interviewReading",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Help read and&nbsp;analyze candidate expert according to&nbsp;company
+        principles.
+      </>
+    ),
+  },
+  {
+    emoji: "💬",
+    name: "@hiringQuestions",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Draft questions depending on&nbsp;the role, type of&nbsp;interview
+        and&nbsp;stage in&nbsp;the process.
+      </>
+    ),
+  },
+  {
+    emoji: "🧐",
+    name: "@candidate",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Summarize available information about a&nbsp;candidate based
+        on&nbsp;your&nbsp;company database.
+      </>
+    ),
+  },
+  {
+    emoji: "🏅",
+    name: "@feedbackReview",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Collects achievements, drafts actionable reviews, helps formulate
+        feedback.
+      </>
+    ),
+  },
+  {
+    emoji: "🧑‍🏫",
+    name: "@trainingCurator",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Curates learning paths, designs training modules, and&nbsp;crafts
+        employee development&nbsp;plans.
+      </>
+    ),
+  },
 ];

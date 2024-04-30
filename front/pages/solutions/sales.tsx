@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { A, Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,14 +49,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function Sales() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Sales Teams"
+        uptitle="Dust&nbsp;for Sales Teams"
         title={
           <>
             Accelerate your funnel,
@@ -72,95 +65,114 @@ export default function Sales() {
         to="to-emerald-500"
         subtitle={
           <>
-            Boost qualification, prospecting, and closing.
+            Boost qualification, prospecting, and&nbsp;closing.
             <br />
-            Practice demos, objection handling, and closing techniques.
+            Practice demos, objection handling, and&nbsp;closing techniques.
           </>
         }
       />
 
       <Grid>
-        <H2 className={defaultHClasses}>
-          Better communication,
-          <br />
-          Reduced fatigue
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="emerald"
-          content={
-            <>
-              <Block title={<>Improved personalization</>}>
-                <>
-                  Craft personalized cold emails or follow-ups effortlessly.
-                  Ensure your sales reps connect more effectively with
-                  prospects, reducing the fatigue associated with manual email
-                  personalization.
-                </>
-              </Block>
-              <Block title={<>Account snapshots, reports or emails</>}>
-                Integrate Dust with your CRM, Slack, Notion, and other platforms
-                to generate account snapshots, reports or emails. Help your
-                sales team to focus more on strategic tasks rather than
-                administrative duties.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[0]}
-              {assistantExamples[1]}
-            </>
-          }
+        <SolutionSection
+          title={<>Better communication, Reduced fatigue</>}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: [
+                {
+                  title: <>Improved personalization</>,
+                  content: (
+                    <>
+                      Craft personalized cold emails or follow-ups effortlessly.
+                      Ensure your sales reps connect more effectively with
+                      prospects, reducing the&nbsp;fatigue associated with
+                      manual email personalization.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Account snapshots, reports or emails</>,
+                  content: (
+                    <>
+                      Integrate Dust with your CRM, Slack, Notion,
+                      and&nbsp;other platforms to&nbsp;generate account
+                      snapshots, reports or emails. Help your sales team
+                      to&nbsp;focus more on&nbsp;strategic tasks rather than
+                      administrative duties.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>Scale your Sales Operations</H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="emerald"
-          content={
-            <>
-              <Block title={<>Onboard faster and keep your team updated</>}>
-                As your sales organization grows, ramping up and aligning
-                distributed teams gets harder. With Dust, your templates and
-                playbooks are encoded into assistants, ensuring consistency
-                across regions.
-              </Block>
-              <Block
-                title={<>Create reports faster and improve decision-making</>}
-              >
-                Transforms sales reporting by offering real-time insights into
-                sales metrics and trends. Interface your assistants with your
-                sales dashboard, to generate instant reports and summaries.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[2]}
-              {assistantExamples[3]}
-              {assistantExamples[4]}
-            </>
-          }
+        <SolutionSection
+          title={<>Scale your Sales Operations</>}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: [
+                {
+                  title: <>Onboard faster and&nbsp;keep your team updated</>,
+                  content: (
+                    <>
+                      As your sales organization grows, ramping up
+                      and&nbsp;aligning distributed teams gets harder. With
+                      Dust, your templates and&nbsp;playbooks are encoded into
+                      assistants, ensuring consistency across regions.
+                    </>
+                  ),
+                },
+                {
+                  title: (
+                    <>Create reports faster and&nbsp;improve decision-making</>
+                  ),
+                  content: (
+                    <>
+                      Transforms sales reporting by&nbsp;offering real-time
+                      insights into&nbsp;sales metrics and&nbsp;trends.
+                      Interface your assistants with your sales dashboard,
+                      to&nbsp;generate instant reports and&nbsp;summaries.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [
+                assistantExamples[2],
+                assistantExamples[3],
+                assistantExamples[4],
+              ],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>Embedded in your Workflow</H2>
-        <ContentAssistantBlock
-          layout="vertical"
-          color="emerald"
-          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
-          content={
-            <>
-              <Block title={<>Leverage Dust modular and extensible platform</>}>
-                Assistants are not limited to information retrieval. Dust apps
-                empower engineers to create custom actions by Rev ops and Sales
-                assistants, possibly chaining multiple models or calling into
-                your CRM. Build custom assistant actions and application
-                orchestration to fit your team’s needs.
-              </Block>
-            </>
-          }
-          assistant={<>More info https://docs.dust.tt</>}
+        <SolutionSection
+          title={<>Embedded in&nbsp;your Workflow</>}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: {
+                title: <>Leverage Dust modular and&nbsp;extensible platform</>,
+                content: [
+                  <>
+                    Assistants are not limited to&nbsp;information retrieval.
+                    Dust apps empower engineers to&nbsp;create custom actions
+                    by&nbsp;Rev ops and&nbsp;Sales assistants, possibly chaining
+                    multiple models or calling into&nbsp;your CRM. Build custom
+                    assistant actions and&nbsp;application orchestration
+                    to&nbsp;fit your team's needs.
+                  </>,
+                  <>
+                    More info Dust Platform's{" "}
+                    <A href="https://docs.dust.tt" target="_blank">
+                      Documentation
+                    </A>
+                    .
+                  </>,
+                ],
+              },
+            },
+          ]}
         />
       </Grid>
     </>
@@ -172,39 +184,62 @@ Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="🖋️"
-    avatarBackground="bg-emerald-300"
-    name="@emailWriter"
-    question="Prompt GPT-4 or Claude to generate personalized and effective cold emails or follow-up emails with the context of the relationship."
-  />,
-  <DroidItem
-    key="1"
-    emoji="🔎"
-    avatarBackground="bg-emerald-300"
-    name="@accountSummary"
-    question="Create snapshots of an account by retrieving data from our CRM, Slack, Notion."
-  />,
-  <DroidItem
-    key="2"
-    emoji="📞"
-    avatarBackground="bg-emerald-300"
-    name="@prepCall"
-    question="Point this assistant to battle cards, competitive intelligence data, and objection handling documentation. Help you prepare an important call."
-  />,
-  <DroidItem
-    key="3"
-    emoji="📊"
-    avatarBackground="bg-emerald-300"
-    name="@metricsGuru"
-    question="Answer any question on our metrics. Available in the sales Slack channel."
-  />,
-  <DroidItem
-    key="4"
-    emoji="🔮"
-    avatarBackground="bg-emerald-300"
-    name="@callInsight"
-    question="Chronologically process call transcripts to extract recurring themes or insights. Refactor this information in tables or summaries."
-  />,
+  {
+    emoji: "🖋️",
+    name: "@emailWriter",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Prompt GPT-4 or Claude to&nbsp;generate personalized and&nbsp;effective
+        cold emails or follow-up emails with the&nbsp;context of&nbsp;the
+        relationship.
+      </>
+    ),
+  },
+  {
+    emoji: "🔎",
+    name: "@accountSummary",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Create snapshots of&nbsp;an account by&nbsp;retrieving data from our
+        CRM, Slack, Notion.
+      </>
+    ),
+  },
+  {
+    emoji: "📞",
+    name: "@prepCall",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Point this assistant to&nbsp;battle cards, competitive intelligence
+        data, and&nbsp;objection handling documentation. Help you prepare an
+        important call.
+      </>
+    ),
+  },
+  {
+    emoji: "📊",
+    name: "@metricsGuru",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Answer any question on&nbsp;our metrics. Available in&nbsp;the sales
+        Slack channel.
+      </>
+    ),
+  },
+  {
+    emoji: "🔮",
+    name: "@callInsight",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Chronologically process call transcripts to&nbsp;extract recurring
+        themes or insights. Refactor this information in&nbsp;tables or
+        summaries.
+      </>
+    ),
+  },
 ];

@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,91 +49,98 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function DataAnalytics() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Data and Analyrics Teams"
-        title={<>From Data to Action</>}
+        uptitle="Dust&nbsp;for Data and&nbsp;Analytics Teams"
+        title={<>From Data to&nbsp;Action</>}
         from="from-amber-200"
         to="to-amber-500"
         subtitle={
           <>
-            Dedicate yourself to first-of-a-kind analyses for the product and
-            business while your assistants help your team with more standard
-            queries and charts.
+            Dedicate yourself&nbsp;to first-of-a-kind analyses for
+            the&nbsp;product and&nbsp;business, while your assistants help your
+            team with more standard queries and&nbsp;charts.
           </>
         }
       />
 
       <Grid>
-        <H2 className={defaultHClasses}>
-          Make all your team SQL fluent and Data litterate
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="amber"
-          content={
-            <>
-              <Block
-                title={
-                  <>
-                    Package expert knowledge in easy-to-use assistants in
-                    seconds
-                  </>
-                }
-              >
-                <>
-                  Give your databases’ schemas, your functions, and your
-                  company’s business definition to your assistant. Let your SQL
-                  assistant answer your team's level one SQL questions.
-                </>
-              </Block>
-              <Block title={<>Reduce data analysis time</>}>
-                Create data assistants to turn natural language questions into
-                SQL queries. Ask questions to your CSVs, Notion Database, and
-                Google Spreadsheets.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[0]}
-              {assistantExamples[1]}
-            </>
-          }
+        <SolutionSection
+          title={<>Make all your team SQL fluent and&nbsp;Data literate</>}
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Package expert knowledge in&nbsp;easy-to-use assistants
+                      in&nbsp;seconds
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Give your databases' schemas, your functions,
+                      and&nbsp;your company's business definition to&nbsp;your
+                      assistant. Let your SQL assistant answer your team's level
+                      one SQL questions.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Reduce data analysis time</>,
+                  content: (
+                    <>
+                      Create data assistants to&nbsp;turn natural language
+                      questions into&nbsp;SQL queries. Ask questions
+                      to&nbsp;your CSVs, Notion Database, and&nbsp;Google
+                      Spreadsheets.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>Stop being the perpetual help desk</H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="amber"
-          content={
-            <>
-              <Block
-                title={<>Allow new team members to onboard autonomously</>}
-              >
-                Give new members of the data team access to continuously updated
-                runbooks and internal documentation with flexible and
-                pedagogical conversational assistants.
-              </Block>
-              <Block title={<>Talk to the data but also to the metadata</>}>
-                Help everyone in the team and beyond know what fields or tables
-                exist, what they mean, and how they relate to each other. Clean
-                up or draft great documentation.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[2]}
-              {assistantExamples[3]}
-            </>
-          }
+        <SolutionSection
+          title={<>Stop being the&nbsp;perpetual help desk</>}
+          blocks={[
+            {
+              color: "amber",
+              contentBlocks: [
+                {
+                  title: (
+                    <>Allow new team members to&nbsp;onboard autonomously</>
+                  ),
+                  content: (
+                    <>
+                      Give new members of&nbsp;the data team access
+                      to&nbsp;continuously updated runbooks and&nbsp;internal
+                      documentation with flexible and&nbsp;pedagogical
+                      conversational assistants.
+                    </>
+                  ),
+                },
+                {
+                  title: (
+                    <>Talk to&nbsp;the data but also to&nbsp;the metadata</>
+                  ),
+                  content: (
+                    <>
+                      Help everyone in&nbsp;the team and&nbsp;beyond know what
+                      fields or tables exist, what they mean, and&nbsp;how they
+                      relate to&nbsp;each other. Clean up or draft great
+                      documentation.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
+            },
+          ]}
         />
       </Grid>
     </>
@@ -152,32 +155,48 @@ DataAnalytics.getLayout = (
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="💬"
-    avatarBackground="bg-amber-300"
-    name="@SQLbuddy"
-    question="Your SQL copilot to generate simple queries, improve queries, and fix errors."
-  />,
-  <DroidItem
-    key="1"
-    emoji="🔬"
-    avatarBackground="bg-amber-300"
-    name="@userMetrics"
-    question="Answer advanced questions about our users by querying our usage data."
-  />,
-  <DroidItem
-    key="2"
-    emoji="📈"
-    avatarBackground="bg-amber-300"
-    name="@data"
-    question="Answer questions about the process, runbooks, and documentation of the data team."
-  />,
-  <DroidItem
-    key="3"
-    emoji="📚"
-    avatarBackground="bg-amber-300"
-    name="@rolodex"
-    question="Your data Rolodex to know everything about data and metadata at the company."
-  />,
+  {
+    emoji: "💬",
+    name: "@SQLbuddy",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Your SQL copilot to&nbsp;generate simple queries, improve queries,
+        and&nbsp;fix errors.
+      </>
+    ),
+  },
+  {
+    emoji: "🔬",
+    name: "@userMetrics",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Answer advanced questions about our users by&nbsp;querying our usage
+        data.
+      </>
+    ),
+  },
+  {
+    emoji: "📈",
+    name: "@data",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Answer questions about the&nbsp;process, runbooks,
+        and&nbsp;documentation of the&nbsp;data team.
+      </>
+    ),
+  },
+  {
+    emoji: "📚",
+    name: "@rolodex",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Your data Rolodex to&nbsp;know everything about data and&nbsp;metadata
+        at the&nbsp;company.
+      </>
+    ),
+  },
 ];

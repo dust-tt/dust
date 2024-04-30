@@ -36,7 +36,7 @@ interface SolutionSectionBlock {
   contentBlocks:
     | SolutionSectionContentBlockProps
     | SolutionSectionContentBlockProps[];
-  assistantBlocks:
+  assistantBlocks?:
     | SolutionSectionAssistantBlockProps
     | SolutionSectionAssistantBlockProps[];
   color?: "pink" | "sky" | "emerald" | "amber";
@@ -64,7 +64,7 @@ const renderSolutionSectionBlock = ({
       return assistantBlocks.map((block, index) => (
         <SolutionSectionAssistantBlock key={index} {...block} />
       ));
-    } else {
+    } else if (assistantBlocks) {
       return <SolutionSectionAssistantBlock {...assistantBlocks} />;
     }
   };
@@ -75,53 +75,68 @@ const renderSolutionSectionBlock = ({
         className,
         "my-4 flex flex-col overflow-hidden rounded-[28px] bg-slate-50 sm:my-0",
         Array.isArray(contentBlocks) || Array.isArray(assistantBlocks)
-          ? "col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
+          ? classNames(
+              "col-span-12",
+              Array.isArray(contentBlocks) && contentBlocks.length > 2
+                ? "lg:col-span-12 xl:col-span-10 xl:col-start-2"
+                : "lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
+            )
           : "col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
       )}
     >
       <div className="flex grow basis-0 flex-col gap-8 p-8 md:flex-row">
         {renderContentBlocks()}
       </div>
-      <div
-        className={classNames(
-          "flex grow basis-0 flex-col gap-4 border border-slate-800/10 bg-gradient-to-br p-8 pt-6",
-          SolutionSectionColor[color]
-        )}
-      >
-        <div className="text-sm uppercase text-slate-800/60">
-          {Array.isArray(assistantBlocks)
-            ? "The assistants for the job:"
-            : "The assistant for the job:"}
+      {assistantBlocks && (
+        <div
+          className={classNames(
+            "flex grow basis-0 flex-col gap-4 border border-slate-800/10 bg-gradient-to-br p-8 pt-6",
+            SolutionSectionColor[color]
+          )}
+        >
+          <div className="text-sm uppercase text-slate-800/60">
+            {Array.isArray(assistantBlocks)
+              ? "The assistants for the job:"
+              : "The assistant for the job:"}
+          </div>
+          <div className="flex grow basis-0 flex-col justify-start gap-8 md:flex-row">
+            {renderAssistantBlocks()}
+          </div>
         </div>
-        <div className="flex grow basis-0 flex-col justify-start gap-8 md:flex-row">
-          {renderAssistantBlocks()}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
-
 interface SolutionSectionContentBlockProps {
   title: ReactNode;
-  content: ReactNode;
+  content: ReactNode | ReactNode[];
 }
+
 const SolutionSectionContentBlock = ({
   content,
   title,
 }: SolutionSectionContentBlockProps) => {
+  const renderContentBlocks = () => {
+    const contents = Array.isArray(content) ? content : [content];
+
+    return contents.map((block, index) => (
+      <P size="xs" className="max-w-[500px] text-slate-600" key={index}>
+        {block}
+      </P>
+    ));
+  };
+
   return (
     <div className={classNames("flex grow basis-0 flex-col gap-3")}>
       <H5 className="text-slate-900">{title}</H5>
-      <P size="xs" className="max-w-[500px] text-slate-600">
-        {content}
-      </P>
+      {renderContentBlocks()}
     </div>
   );
 };
 
 interface SolutionSectionAssistantBlockProps {
   name: string;
-  description: string;
+  description: ReactNode;
   emoji: string;
   backgroundColor: string;
 }

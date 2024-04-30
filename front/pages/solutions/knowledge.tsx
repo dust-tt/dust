@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,9 +49,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function Knowledge() {
   return (
     <>
@@ -72,7 +65,7 @@ export default function Knowledge() {
         to="to-sky-500"
         subtitle={
           <>
-            Make your content discoverable, accessible, truely actionable.
+            Make your content discoverable, accessible, truly actionable.
             <br />
             Speed up content creation, identify uncovered documentation needs.
           </>
@@ -80,81 +73,101 @@ export default function Knowledge() {
       />
 
       <Grid>
-        <H2 className={defaultHClasses}>
-          Keep your documentation
-          <br />
-          up-to-date.
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
-          layout="vertical"
-          color="sky"
-          content={
+        <SolutionSection
+          title={
             <>
-              <Block title={<>Documentation efficiency</>}>
-                <>
-                  Leverage your product and tech team's knowledge alongside
-                  proven documentation and reduce the time and effort to update
-                  and create new material.
-                </>
-              </Block>
+              Keep your documentation
+              <br />
+              up-to-date.
             </>
           }
-          assistant={<>{assistantExamples[0]}</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: {
+                title: <>Documentation efficiency</>,
+                content: (
+                  <>
+                    Leverage your product and&nbsp;tech team's knowledge
+                    alongside proven documentation and&nbsp;reduce the&nbsp;time
+                    and&nbsp;effort to&nbsp;update and&nbsp;create new material.
+                  </>
+                ),
+              },
+              assistantBlocks: assistantExamples[0],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>
-          Turn tickets into an opportunity for&nbsp;growth
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="sky"
-          content={
-            <>
-              <Block
-                title={<>Tailor your documentation to answer unmet needs</>}
-              >
-                Turn user tickets into actionable insights to tailor
-                documentation and training materials more closely to user
-                demands.
-              </Block>
-              <Block
-                title={<>Create a better training experience for your users</>}
-              >
-                Test your documentation and training scripts thanks to feedback
-                assistants that behave like your users to refine your materials.
-                Improve knowledge transfer.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[1]}
-              {assistantExamples[2]}
-            </>
-          }
+        <SolutionSection
+          title={<>Turn tickets into&nbsp;an opportunity for&nbsp;growth</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: (
+                    <>Tailor your documentation to&nbsp;answer unmet needs</>
+                  ),
+                  content: (
+                    <>
+                      Turn user tickets into&nbsp;actionable insights
+                      to&nbsp;tailor documentation and&nbsp;training materials
+                      more closely to&nbsp;user demands.
+                    </>
+                  ),
+                },
+                {
+                  title: (
+                    <>
+                      Create a&nbsp;better training experience for&nbsp;your
+                      users
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Test your documentation and&nbsp;training scripts thanks
+                      to&nbsp;feedback assistants that behave like
+                      your&nbsp;users to&nbsp;refine your materials. Improve
+                      knowledge transfer.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[1], assistantExamples[2]],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>
-          Improve collaboration between&nbsp;teams.
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="sky"
-          content={
-            <>
-              <Block title={<>Keep your team ahead of the curve</>}>
-                Dust facilitates rapid onboarding onto new subjects, enabling
-                your team to quickly comprehend and create content on emerging
-                topics. Fostering an environment of continuous learning.
-              </Block>
-              <Block title={<>Prepare for Babel's imminent end</>}>
-                Foster seamless collaboration across tech, support, product and
-                education teams by synchronizing everyone’s knowledge.
-              </Block>
-            </>
-          }
-          assistant={<>{assistantExamples[3]}</>}
+        <SolutionSection
+          title={<>Improve collaboration between&nbsp;teams.</>}
+          blocks={[
+            {
+              color: "sky",
+              contentBlocks: [
+                {
+                  title: <>Keep your team ahead of&nbsp;the curve</>,
+                  content: (
+                    <>
+                      Dust facilitates rapid onboarding onto&nbsp;new subjects,
+                      enabling your team to&nbsp;quickly comprehend
+                      and&nbsp;create content on&nbsp;emerging topics. Fostering
+                      an&nbsp;environment of&nbsp;continuous learning.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Prepare for Babel's imminent end</>,
+                  content: (
+                    <>
+                      Foster seamless collaboration across tech, support,
+                      product and&nbsp;education teams by&nbsp;synchronizing
+                      everyone's knowledge.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[3]],
+            },
+          ]}
         />
       </Grid>
     </>
@@ -166,32 +179,49 @@ Knowledge.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="🖋️"
-    avatarBackground="bg-sky-300"
-    name="@docWriter"
-    question="Create documentation based on product and tech team’s knowledge."
-  />,
-  <DroidItem
-    key="1"
-    emoji="🔎"
-    avatarBackground="bg-sky-300"
-    name="@ticketExplorer"
-    question="Explore tickets and conversations between our support team and users to extract operational knowledge worth formalizing into a document."
-  />,
-  <DroidItem
-    key="2"
-    emoji="💁"
-    avatarBackground="bg-sky-300"
-    name="@dearUser"
-    question="A replica of our users based on detailed personae to test documentation and training scripts."
-  />,
-  <DroidItem
-    key="3"
-    emoji="🔬"
-    avatarBackground="bg-sky-300"
-    name="@CXquisite"
-    question="Answer questions about our product, our tech, domain expertise, and training best practices."
-  />,
+  {
+    emoji: "🖋️",
+    name: "@docWriter",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Create documentation based&nbsp;on product and&nbsp;tech team's
+        knowledge.
+      </>
+    ),
+  },
+  {
+    emoji: "🔎",
+    name: "@ticketExplorer",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Explore tickets and&nbsp;conversations between our support team
+        and&nbsp;users to&nbsp;extract operational knowledge worth formalizing
+        into&nbsp;SQL.
+      </>
+    ),
+  },
+  {
+    emoji: "💁",
+    name: "@dearUser",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        A replica of our users based&nbsp;on detailed personas to&nbsp;test
+        documentation and&nbsp;training scripts.
+      </>
+    ),
+  },
+  {
+    emoji: "🔬",
+    name: "@CXquisite",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Answer questions about our product, our tech, domain expertise,
+        and&nbsp;training best practices.
+      </>
+    ),
+  },
 ];

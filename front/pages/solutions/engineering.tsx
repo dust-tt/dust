@@ -1,18 +1,14 @@
 import type { ReactElement } from "react";
 
-import {
-  Block,
-  ContentAssistantBlock,
-  DroidItem,
-  HeaderContentBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid, H2 } from "@app/components/home/new/ContentComponents";
+import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/new/Particles";
+import { SolutionSection } from "@app/components/home/new/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -53,19 +49,16 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
-const defaultHClasses =
-  "text-white col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3 pt-8 pb-4 text-center";
-
 export default function Engineering() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Engineers and Developers"
+        uptitle="Dust for Engineers and&nbsp;Developers"
         title={
           <>
             Work Smarter,
             <br />
-            Resolve Faster
+            Resolve Faster.
           </>
         }
         from="from-emerald-200"
@@ -73,95 +66,110 @@ export default function Engineering() {
         subtitle={
           <>
             Speed-up incident response, reduce interruptions, help your
-            engineers produce better code, and accelerate new&nbsp;engineers
-            on-boarding.
+            engineers produce better code, and&nbsp;accelerate
+            new&nbsp;engineers on-boarding.
           </>
         }
       />
 
       <Grid>
-        <H2 className={defaultHClasses}>
-          Respond Faster to Incidents and Report Better
-        </H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="emerald"
-          content={
-            <>
-              <Block
-                title={
+        <SolutionSection
+          title={<>Respond Faster to&nbsp;Incidents and&nbsp;Report Better.</>}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Retrieve useful context and&nbsp;previous relevant
+                      resolution in&nbsp;seconds.
+                    </>
+                  ),
+                  content: (
+                    <>
+                      Your incident assistant will perform a&nbsp;semantic
+                      search on&nbsp;your Notion, Confluence internal
+                      documentation, incident Slack channels, or&nbsp;GitHub
+                      issues to&nbsp;surface useful context and&nbsp;propose
+                      actionable next steps to&nbsp;resolve the&nbsp;problem
+                      at&nbsp;hand.
+                    </>
+                  ),
+                },
+                {
+                  title: "Create reports effortlessly.",
+                  content: (
+                    <>
+                      Generate weekly summaries of&nbsp;shipped features and
+                      incidents. Run them before your team meetings
+                      to&nbsp;create structured, easy-to-parse tables
+                      automatically or periodically post their output
+                      to&nbsp;the&nbsp;rest of&nbsp;the&nbsp;company.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+            },
+          ]}
+        />
+        <SolutionSection
+          title={<>Reduce Interruptions.</>}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: {
+                title: "Have your team assistant answer first.",
+                content: (
                   <>
-                    Retrieve useful context and previous relevant resolution in
-                    seconds
+                    Give it the&nbsp;right context and&nbsp;documentation
+                    and&nbsp;add it to&nbsp;Slack to&nbsp;answer questions from
+                    the&nbsp;rest of&nbsp;the&nbsp;company without creating
+                    an&nbsp;interruption for your team.
                   </>
-                }
-              >
-                <>
-                  Your incident assistant will perform a semantic search on your
-                  Notion, Confluence internal documentation, incident Slack
-                  channels, or GitHub issues to surface useful context and
-                  propose actionable next steps to resolve the problem at hand.
-                </>
-              </Block>
-              <Block title={<>Create reports effortlessly</>}>
-                Generate weekly summaries of shipped features and incidents. Run
-                them before your team meetings to create structured,
-                easy-to-parse tables automatically or periodically post their
-                output to the rest of the company.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[0]}
-              {assistantExamples[1]}
-            </>
-          }
+                ),
+              },
+              assistantBlocks: assistantExamples[2],
+            },
+          ]}
         />
-        <H2 className={defaultHClasses}>Reduce Interruptions</H2>
-        <ContentAssistantBlock
-          className="col-span-12 md:col-span-8 md:col-start-3 lg:col-span-6 lg:col-start-4 xl:col-span-4 xl:col-start-5"
-          layout="vertical"
-          color="emerald"
-          content={
-            <>
-              <Block title={<>Have your team assistant answer first</>}>
-                Give it the right context and documentation and add it to Slack
-                to answer questions from the rest of the company without
-                creating an interruption for your team.
-              </Block>
-            </>
-          }
-          assistant={<>{assistantExamples[2]}</>}
-        />
-        <H2 className={defaultHClasses}>Improve Code Quality</H2>
-        <ContentAssistantBlock
-          className="col-span-12 lg:col-span-10 lg:col-start-2 xl:col-span-8 xl:col-start-3"
-          layout="vertical"
-          color="emerald"
-          content={
-            <>
-              <Block title={<>Create your own copilot</>}>
-                Specialize the best models (GPT4, Mistral) to answer code
-                general questions with context on your stack and preferences as
-                an engineering team. Reduce the verbosity of the model to get
-                concise and straight-to-the-point answers.
-              </Block>
-              <Block title={<>With your codebase</>}>
-                Give your assistant access to your team or the entire company’s
-                code base. Let it answer any question about your code.
-                Accelerate the onboarding of new engineers and diminish
-                interruptions from other engineering teams.
-              </Block>
-            </>
-          }
-          assistant={
-            <>
-              {assistantExamples[2]}
-              {assistantExamples[3]}
-            </>
-          }
+        <SolutionSection
+          title="Improve Code Quality."
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: [
+                {
+                  title: "Create your own copilot.",
+                  content: (
+                    <>
+                      Specialize the&nbsp;best models (GPT4, Mistral)
+                      to&nbsp;answer code general questions with context
+                      on&nbsp;your stack and&nbsp;preferences
+                      as&nbsp;an&nbsp;engineering team. Reduce
+                      the&nbsp;verbosity of&nbsp;the&nbsp;model to&nbsp;get
+                      concise and&nbsp;straight-to-the-point answers.
+                    </>
+                  ),
+                },
+                {
+                  title: "With your codebase.",
+                  content: (
+                    <>
+                      Give your assistant access to&nbsp;your team
+                      or&nbsp;the&nbsp;entire company's code base. Let it answer
+                      any question about your code. Accelerate
+                      the&nbsp;onboarding of&nbsp;new engineers
+                      and&nbsp;diminish interruptions from other engineering
+                      teams.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[4]],
+            },
+          ]}
         />
       </Grid>
     </>
@@ -173,39 +181,48 @@ Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 };
 
 export const assistantExamples = [
-  <DroidItem
-    key="0"
-    emoji="🚨"
-    avatarBackground="bg-emerald-300"
-    name="@incident"
-    question="Search runbooks, past incidents discussions and resolution notes to provide actionable next-steps to resolve a new problem."
-  />,
-  <DroidItem
-    key="1"
-    emoji="📡"
-    avatarBackground="bg-emerald-300"
-    name="@weekly"
-    question="Chronologically process Notion pages or Slack channels to extract recent incidents or shipped features and generate a report. "
-  />,
-  <DroidItem
-    key="2"
-    emoji="⭐️"
-    avatarBackground="bg-emerald-300"
-    name="@engineering"
-    question="Answer any question about engineering at company."
-  />,
-  <DroidItem
-    key="3"
-    emoji="🏴‍☠️"
-    avatarBackground="bg-emerald-300"
-    name="@codeGenius"
-    question="Answer general code questions."
-  />,
-  <DroidItem
-    key="4"
-    emoji="🤝"
-    avatarBackground="bg-emerald-300"
-    name="@codeCopilot"
-    question="Draft code based on your codebase and infrastructure."
-  />,
+  {
+    emoji: "🚨",
+    name: "@incident",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Search runbooks, past incidents discussions and&nbsp;resolution notes
+        to&nbsp;provide actionable next-steps to&nbsp;resolve a&nbsp;new
+        problem.
+      </>
+    ),
+  },
+  {
+    emoji: "📡",
+    name: "@weekly",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Chronologically process Notion pages or&nbsp;Slack channels
+        to&nbsp;extract recent incidents or&nbsp;shipped features
+        and&nbsp;generate a&nbsp;report.
+      </>
+    ),
+  },
+  {
+    emoji: "⭐️",
+    name: "@engineering",
+    backgroundColor: "bg-emerald-300",
+    description: <>Answer any question about engineering at&nbsp;company.</>,
+  },
+  {
+    emoji: "🏴‍☠️",
+    name: "@codeGenius",
+    backgroundColor: "bg-emerald-300",
+    description: <>Answer general code questions.</>,
+  },
+  {
+    emoji: "🤝",
+    name: "@codeCopilot",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>Draft code based&nbsp;on your codebase and&nbsp;infrastructure.</>
+    ),
+  },
 ];

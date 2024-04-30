@@ -53,32 +53,20 @@ export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Customer Support"
-        title={
-          <>
-            Help your Support&nbsp;Team,
-            <br />
-            help your&nbsp;customers.
-          </>
-        }
+        uptitle="Dust for Success and&nbsp;Support&nbsp;Teams"
+        title="Help your Success and&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
         from="from-sky-200"
         to="to-sky-500"
-        subtitle={
-          <>
-            Reply faster and increase answer&nbsp;quality
-            <br />
-            by augmenting your&nbsp;Customer&nbsp;Support with
-            AI&nbsp;assistants.
-          </>
-        }
+        subtitle="Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate
+            issue resolution and&nbsp;increase customer&nbsp;satisfaction."
       />
       <Grid>
         <SolutionSection
           title={
             <>
-              Happy Agents,
+              Elevate Support,
               <br />
-              happy Customers
+              exceed Customer&nbsp;expectations.
             </>
           }
           blocks={[
@@ -86,24 +74,26 @@ export default function CustomerSupport() {
               color: "sky",
               contentBlocks: [
                 {
-                  title: (
+                  title: "Keep your team spot-on.",
+                  content: [
                     <>
-                      Package expert knowledge in easy to use assistants in
-                      seconds
-                    </>
-                  ),
-                  content:
-                    "Build AI assistants based on company knowledge and past support",
+                      Help them parse customer inquiries faster,
+                      leveraging&nbsp;past tickets and&nbsp;the&nbsp;latest
+                      information on&nbsp;product updates
+                      or&nbsp;downtime&nbsp;alerts.
+                    </>,
+                    <>All in&nbsp;50+&nbsp;languages.</>,
+                  ],
                 },
                 {
-                  title: <>Leverage past tickets and jump to solutions</>,
-                  content: (
+                  title: <>Analyze and&nbsp;categorize your&nbsp;tickets.</>,
+                  content: [
+                    <>Classify tickets along your&nbsp;internal priorities.</>,
                     <>
-                      Understand customer messages faster, and technical errors
-                      in any language. Explore past tickets to resolve issues or
-                      create documentation quickly.
-                    </>
-                  ),
+                      Help your Support, Success and&nbsp;Product teams better
+                      understand your users'&nbsp;needs.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: assistantExamples[0],
@@ -111,23 +101,24 @@ export default function CustomerSupport() {
           ]}
         />
         <SolutionSection
-          title={<>Better team collaboration</>}
+          title="Better team collaboration."
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: <>Onboard faster</>,
+                  title: "Onboard faster.",
                   content:
-                    "Reduce your onboarding and training time drastically. Put your documentation on processes and methods to work.",
+                    "Reduce your onboarding and&nbsp;training time drastically. Put your documentation on&nbsp;processes and&nbsp;methods to&nbsp;work.",
                 },
                 {
-                  title: <>Keep your team updated</>,
+                  title: "Keep your team updated.",
                   content: (
                     <>
-                      Understand customer messages faster, and technical errors
-                      in any language. Explore past tickets to resolve issues or
-                      create documentation quickly.
+                      Understand customer messages faster, and&nbsp;technical
+                      errors in&nbsp;any language. Explore past tickets
+                      to&nbsp;resolve issues or create
+                      documentation&nbsp;quickly.
                     </>
                   ),
                 },
@@ -137,19 +128,19 @@ export default function CustomerSupport() {
           ]}
         />
         <SolutionSection
-          title={<>Better insights</>}
+          title="Better insights."
           blocks={[
             {
               color: "sky",
               contentBlocks: {
-                title: <>Analyze and categorize your ticket</>,
-                content: (
+                title: "Analyze and&nbsp;categorize your ticket",
+                content: [
+                  <>Classify your tickets using Dust Apps.</>,
                   <>
-                    Understand customer messages faster, and technical errors in
-                    any language. Explore past tickets to resolve issues or
-                    create documentation quickly.
-                  </>
-                ),
+                    Help your Customer Support and&nbsp;Product team better
+                    understand your&nbsp;users' needs.
+                  </>,
+                ],
               },
 
               assistantBlocks: assistantExamples[2],
@@ -173,27 +164,42 @@ export const assistantExamples = [
     emoji: "🤝",
     backgroundColor: "bg-sky-300",
     name: "@supportExpert",
-    description:
-      "Surface best information from your Help Center, FAQs, knowledge base, online documentation, and tickets.  Understand errors codes without help from the tech team.",
+    description: (
+      <>
+        Surface best information from&nbsp;your Help Center, FAQs, knowledge
+        base, online documentation, and&nbsp;tickets. Understand errors codes
+        without help from&nbsp;the Tech&nbsp;team.
+      </>
+    ),
   },
   {
     emoji: "📡",
     backgroundColor: "bg-sky-300",
     name: "@productInfo",
-    description:
-      "Answer questions on product evolutions, engineering activity, alerts, and downtime.",
+    description: (
+      <>
+        Answer questions on&nbsp;product evolutions, engineering activity,
+        alerts, and&nbsp;downtime.
+      </>
+    ),
   },
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
     name: "@ticketAnalyst",
-    description:
-      "Classify tickets; identify patterns, sentiment, and recurring needs.",
+    description: (
+      <>
+        Classify tickets; identify patterns, sentiment,
+        and&nbsp;recurring&nbsp;needs.
+      </>
+    ),
   },
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
     name: "@onboardingBuddy",
-    description: "All you need to know about people, tooling and resources.",
+    description: (
+      <>All you need to&nbsp;know about people, tooling and&nbsp;resources.</>
+    ),
   },
 ];
