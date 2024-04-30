@@ -56,6 +56,7 @@ async function handler(
           creator: null,
           secret: key.secret,
           status: key.status,
+          name: key.name,
         },
       });
       return;

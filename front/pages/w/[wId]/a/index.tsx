@@ -130,7 +130,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                   <div className="flex items-center">
                     <div className="flex flex-col">
                       <div className="flex flex-row">
-                      <div className="mr-2 mt-0.5 flex flex-shrink-0 my-auto">
+                        <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
                           <p
                             className={classNames(
                               "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
