@@ -11,7 +11,6 @@ import type { KeyType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -131,25 +130,26 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                   <div className="flex items-center">
                     <div className="flex flex-col">
                       <div className="flex flex-row">
-                        <p
-                          className={classNames(
-                            "font-mono truncate text-sm text-slate-700"
-                          )}
-                        >
-                          {key.secret}
-                        </p>
-                        <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                      <div className="mr-2 mt-0.5 flex flex-shrink-0 my-auto">
                           <p
                             className={classNames(
                               "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                               key.status === "active"
                                 ? "bg-green-100 text-green-800"
-                                : "ml-6 bg-gray-100 text-gray-800"
+                                : "bg-gray-100 text-gray-800"
                             )}
                           >
                             {key.status === "active" ? "active" : "revoked"}
                           </p>
                         </div>
+                        <p
+                          className={classNames(
+                            "font-mono truncate text-sm text-slate-700"
+                          )}
+                        >
+                          <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          <pre>{key.secret}</pre>
+                        </p>
                       </div>
                       <p className="front-normal text-xs text-element-700">
                         Created {key.creator ? `by ${key.creator} ` : ""}

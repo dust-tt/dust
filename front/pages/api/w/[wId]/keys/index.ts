@@ -60,11 +60,26 @@ async function handler(
 
       res.status(200).json({
         keys: keys.map((k) => {
-          const truncatedSecret = k.secret.slice(0, 4) + "..." + k.secret.slice(-4);
+          // We only display the full secret key for the first 10 minutes after creation.
+          const getSecret = () => {
+            const currentTime = new Date();
+            const createdAt = new Date(k.createdAt);
+            const timeDifference = Math.abs(
+              currentTime.getTime() - createdAt.getTime()
+            );
+            const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+
+            if (differenceInMinutes > 10) {
+              return k.secret.slice(0, 4) + "..." + k.secret.slice(-4);
+            } else {
+              return k.secret;
+            }
+          };
           return {
             createdAt: k.createdAt.getTime(),
             creator: formatUserFullName(k.user),
-            secret: k.name || truncatedSecret,
+            name: k.name,
+            secret: getSecret(),
             status: k.status,
           };
         }),
@@ -72,7 +87,6 @@ async function handler(
       return;
 
     case "POST":
-      console.log("REQUEST BODY", req.body)
       const name = req.body.name;
       const secret = `sk-${new_id().slice(0, 32)}`;
 
@@ -89,6 +103,7 @@ async function handler(
         key: {
           createdAt: key.createdAt.getTime(),
           creator: formatUserFullName(key.user),
+          name: key.name,
           secret: key.secret,
           status: key.status,
         },
