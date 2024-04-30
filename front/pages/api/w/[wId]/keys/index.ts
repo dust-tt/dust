@@ -1,6 +1,6 @@
 import type { KeyType } from "@dust-tt/types";
 import { formatUserFullName, redactString } from "@dust-tt/types";
-import { isLeft } from 'fp-ts/Either';
+import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,7 +9,6 @@ import { User } from "@app/lib/models/user";
 import { Key } from "@app/lib/models/workspace";
 import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
-
 
 export type GetKeysResponseBody = {
   keys: KeyType[];
@@ -89,12 +88,12 @@ async function handler(
       const Name = t.type({
         name: t.string,
       });
-        
-      const result = Name.decode(req.body);
-      if (isLeft(result)) {
-        throw new Error('Invalid request body');
+
+      const bodyValidation = Name.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        throw new Error("Invalid request body");
       }
-      const { name } = result.right;
+      const { name } = bodyValidation.right;
       const secret = `sk-${new_id().slice(0, 32)}`;
 
       const key = await Key.create({
