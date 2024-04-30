@@ -1,4 +1,4 @@
-import { Button, PencilSquareIcon, Spinner2 } from "@dust-tt/sparkle";
+import { Button, Modal,PencilSquareIcon, Spinner2 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -8,6 +8,7 @@ import type {
 import type { BlockType, RunType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
 import _ from "lodash";
+import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
@@ -45,6 +46,7 @@ export default function Input({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
+  const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const { dataset, isDatasetLoading, isDatasetError, mutateDataset } =
     useDataset(owner, app, block.config.dataset, true);
 
@@ -112,22 +114,31 @@ export default function Input({
                   readOnly={readOnly}
                 />
                 {block.config && block.config.dataset ? (
+                  <>
                   <Button
                     variant="secondary"
-                    onClick={() => {
-                      window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-                    }}
+                    onClick={() => setIsDatasetModalOpen(true)}
                     icon={PencilSquareIcon}
-                    label="Edit schema"
+                    label="Edit"
                     size="xs"
                   />
+                  </>
                 ) : null}
               </div>
             ) : null}
           </div>
 
           {dataset && dataset.schema ? (
-            <div className="max-h-[800px] overflow-y-auto">
+            <Modal isOpen={isDatasetModalOpen} onClose={() => setIsDatasetModalOpen(false)} hasChanged={false} variant="side-md" title={block.config.dataset}>
+              <Button
+                    className="ml-auto mt-2"
+                    variant="secondary"
+                    onClick={() => {
+                      window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                    }}
+                    icon={PencilSquareIcon}
+                    label="Edit schema"
+                  />
               <DatasetView
                 readOnly={false}
                 datasets={[dataset]}
@@ -137,7 +148,7 @@ export default function Input({
                 nameDisabled={false}
                 viewType="block"
               />
-            </div>
+            </Modal>
           ) : null}
         </div>
       ) : (
