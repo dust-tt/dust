@@ -1171,6 +1171,7 @@ export const batch = async ({
         where: {
           type: args.provider,
           errorType: null,
+          pausedAt: null,
         },
       });
       for (const connector of connectors) {
