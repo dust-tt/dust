@@ -194,15 +194,6 @@ export type AdminSuccessResponseType = t.TypeOf<
   typeof AdminSuccessResponseSchema
 >;
 
-export const NotionRestartAllResponseSchema = t.type({
-  restartSuccesses: t.number,
-  restartFailures: t.number,
-});
-
-export type NotionRestartAllResponseType = t.TypeOf<
-  typeof NotionRestartAllResponseSchema
->;
-
 export const NotionUpsertResponseSchema = t.type({
   workflowId: t.string,
   workflowUrl: t.union([t.string, t.undefined]),
@@ -293,7 +284,7 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 
 export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
-  NotionRestartAllResponseSchema,
+  BatchRestartAllResponseSchema,
   NotionUpsertResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionCheckUrlResponseSchema,

@@ -15,7 +15,6 @@ import type {
   NotionCheckUrlResponseType,
   NotionCommandType,
   NotionMeResponseType,
-  NotionRestartAllResponseType,
   NotionSearchPagesResponseType,
   NotionUpsertResponseType,
   Result,
@@ -313,7 +312,6 @@ export const notion = async ({
   args,
 }: NotionCommandType): Promise<
   | AdminSuccessResponseType
-  | NotionRestartAllResponseType
   | NotionUpsertResponseType
   | NotionSearchPagesResponseType
   | NotionCheckUrlResponseType
@@ -321,57 +319,6 @@ export const notion = async ({
 > => {
   const logger = topLogger.child({ majorCommand: "notion", command, args });
   switch (command) {
-    case "restart-all": {
-      const queue = new PQueue({ concurrency: 10 });
-      const promises: Promise<void>[] = [];
-      const connectors = await ConnectorModel.findAll({
-        where: {
-          type: "notion",
-          errorType: null,
-        },
-      });
-      for (const connector of connectors) {
-        promises.push(
-          queue.add(async () => {
-            await throwOnError(
-              STOP_CONNECTOR_BY_TYPE[connector.type](connector.id)
-            );
-            await throwOnError(
-              RESUME_CONNECTOR_BY_TYPE[connector.type](connector.id)
-            );
-          })
-        );
-      }
-      let success = 0;
-      let failed = 0;
-
-      const logInfo = () => {
-        const completed = success + failed;
-
-        if (
-          (completed && completed % 10 === 0) ||
-          completed === connectors.length
-        ) {
-          logger.info(
-            `[Admin] completed ${completed} / ${connectors.length} (${failed} failed)`
-          );
-        }
-      };
-
-      queue.on("completed", () => {
-        success++;
-        logInfo();
-      });
-      queue.on("error", () => {
-        failed++;
-        logInfo();
-      });
-
-      await Promise.all(promises);
-
-      return { restartSuccesses: success, restartFailures: failed };
-    }
-
     case "skip-page": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -1204,6 +1151,20 @@ export const batch = async ({
       if (!args.provider) {
         throw new Error("Missing --provider argument");
       }
+      const PROVIDERS_ALLOWING_RESTART = [
+        "notion",
+        "intercom",
+        "confluence",
+        "github",
+      ];
+      if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
+        throw new Error(
+          `Can't restart-all for ${
+            args.provider
+          }. Allowed providers: ${PROVIDERS_ALLOWING_RESTART.join(" ")}`
+        );
+      }
+
       const queue = new PQueue({ concurrency: 10 });
       const promises: Promise<void>[] = [];
       const connectors = await ConnectorModel.findAll({
