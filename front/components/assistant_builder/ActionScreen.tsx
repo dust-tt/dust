@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   MagnifyingGlassIcon,
   Page,
+  RobotIcon,
   Square3Stack3DIcon,
   TableIcon,
   TimeIcon,
@@ -119,7 +120,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
   },
   PROCESS: {
     actionMode: "PROCESS",
-    icon: TimeIcon,
+    icon: RobotIcon,
     label: "Process data",
     description: "Structured extraction",
     flag: "process_action",
