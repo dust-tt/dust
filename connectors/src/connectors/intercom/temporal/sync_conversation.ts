@@ -105,7 +105,7 @@ export async function fetchAndSyncConversation({
   conversationId: string;
   currentSyncMs: number;
   syncType: "incremental" | "batch";
-  loggerArgs: Record<string, string | number>;
+  loggerArgs: Record<string, string | number | null>;
 }) {
   const conversation = await fetchIntercomConversation({
     nangoConnectionId,
@@ -143,32 +143,8 @@ export async function syncConversation({
   conversation: IntercomConversationWithPartsType;
   currentSyncMs: number;
   syncType: "incremental" | "batch";
-  loggerArgs: Record<string, string | number>;
+  loggerArgs: Record<string, string | number | null>;
 }) {
-  if (!conversation.team_assignee_id) {
-    logger.error(
-      "[Intercom] Conversation has no team assignee. Skipping sync",
-      {
-        conversationId: conversation.id,
-        loggerArgs,
-      }
-    );
-    return;
-  }
-  const team = await IntercomTeam.findOne({
-    where: {
-      connectorId,
-      teamId: conversation.team_assignee_id.toString(),
-    },
-  });
-  if (!team || team.permission !== "read") {
-    logger.error(
-      "[Intercom] Conversation team unknown or non allowed. Skipping sync",
-      { conversationId: conversation.id, loggerArgs }
-    );
-    return;
-  }
-
   const intercomWorkspace = await IntercomWorkspace.findOne({
     where: {
       connectorId,
@@ -180,6 +156,37 @@ export async function syncConversation({
       loggerArgs,
     });
     return;
+  }
+
+  const conversationTeamId = conversation.team_assignee_id?.toString() ?? null;
+
+  if (
+    intercomWorkspace.syncAllConversations !== "activated" &&
+    intercomWorkspace.syncAllConversations !== "scheduled_activate"
+  ) {
+    if (!conversationTeamId) {
+      logger.error(
+        "[Intercom] Conversation has no team assignee & sync all convo is not activated. Skipping sync",
+        {
+          conversationId: conversation.id,
+          loggerArgs,
+        }
+      );
+      return;
+    }
+    const team = await IntercomTeam.findOne({
+      where: {
+        connectorId,
+        teamId: conversationTeamId,
+      },
+    });
+    if (!team || team.permission !== "read") {
+      logger.error(
+        "[Intercom] Conversation team unknown or non allowed while sync all convo is disabled. Skipping sync",
+        { conversationId: conversation.id, loggerArgs }
+      );
+      return;
+    }
   }
 
   let conversationOnDB = await IntercomConversation.findOne({
@@ -196,13 +203,13 @@ export async function syncConversation({
     conversationOnDB = await IntercomConversation.create({
       connectorId,
       conversationId: conversation.id,
-      teamId: conversation.team_assignee_id.toString(),
+      teamId: conversationTeamId,
       conversationCreatedAt: createdAtDate,
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
     await conversationOnDB.update({
-      teamId: conversation.team_assignee_id.toString(),
+      teamId: conversationTeamId,
       conversationCreatedAt: createdAtDate,
       lastUpsertedTs: new Date(currentSyncMs),
     });
@@ -293,6 +300,12 @@ export async function syncConversation({
     datasourceTags.push(`tag:${tag.name}`);
   });
 
+  const parents = [];
+  if (conversationTeamId) {
+    parents.push(getTeamInternalId(connectorId, conversationTeamId));
+  }
+  parents.push(getTeamsInternalId(connectorId));
+
   await upsertToDatasource({
     dataSourceConfig,
     documentId: getConversationInternalId(connectorId, conversation.id),
@@ -300,10 +313,7 @@ export async function syncConversation({
     documentUrl: conversationUrl,
     timestampMs: updatedAtDate.getTime(),
     tags: datasourceTags,
-    parents: [
-      getTeamInternalId(connectorId, team.teamId),
-      getTeamsInternalId(connectorId),
-    ],
+    parents,
     loggerArgs: {
       ...loggerArgs,
       conversationId: conversation.id,

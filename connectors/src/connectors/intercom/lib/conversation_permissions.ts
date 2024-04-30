@@ -5,11 +5,14 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
+  getAllConversationsInternalId,
   getTeamInternalId,
-  getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { IntercomTeam } from "@connectors/lib/models/intercom";
+import {
+  IntercomTeam,
+  IntercomWorkspace,
+} from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -88,21 +91,30 @@ export async function retrieveIntercomConversationsPermissions({
     throw new Error("Connector not found");
   }
 
+  const intercomWorkspace = await IntercomWorkspace.findOne({
+    where: { connectorId },
+  });
+  if (!intercomWorkspace) {
+    logger.error({ connectorId }, "[Intercom] IntercomWorkspace not found.");
+    throw new Error("IntercomWorkspace not found");
+  }
+
   const isReadPermissionsOnly = filterPermission === "read";
   const isRootLevel = !parentInternalId;
-  const teamsInternalId = getTeamsInternalId(connectorId);
+  const allConvosInternalId = getAllConversationsInternalId(connectorId);
   const nodes: ContentNode[] = [];
 
   const rootConversationNode: ContentNode = {
     provider: "intercom",
-    internalId: teamsInternalId,
+    internalId: allConvosInternalId,
     parentInternalId: null,
     type: "channel",
     title: "Conversations",
     sourceUrl: null,
     expandable: true,
-    preventSelection: true,
-    permission: "none",
+    preventSelection: false,
+    permission:
+      intercomWorkspace.syncAllConversations === "activated" ? "read" : "none",
     dustDocumentId: null,
     lastUpdatedAt: null,
   };
@@ -121,12 +133,12 @@ export async function retrieveIntercomConversationsPermissions({
     if (isRootLevel && teamsWithReadPermission.length > 0) {
       nodes.push(rootConversationNode);
     }
-    if (parentInternalId === teamsInternalId) {
+    if (parentInternalId === allConvosInternalId) {
       teamsWithReadPermission.forEach((team) => {
         nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.teamId),
-          parentInternalId: teamsInternalId,
+          parentInternalId: allConvosInternalId,
           type: "folder",
           title: team.name,
           sourceUrl: null,
@@ -140,15 +152,9 @@ export async function retrieveIntercomConversationsPermissions({
   } else {
     const teams = await fetchIntercomTeams(connector.connectionId);
     if (isRootLevel) {
-      // This is an ugly hack
-      // Since we only sync conversations attached to a Team, if there are no teams, we display "No conversations"
-      if (teams.length === 0) {
-        rootConversationNode.title = "No conversations available for sync";
-        rootConversationNode.expandable = false;
-      }
       nodes.push(rootConversationNode);
     }
-    if (parentInternalId === teamsInternalId) {
+    if (parentInternalId === allConvosInternalId) {
       teams.forEach((team) => {
         const isTeamInDb = teamsWithReadPermission.some((teamFromDb) => {
           return teamFromDb.teamId === team.id;
@@ -156,7 +162,7 @@ export async function retrieveIntercomConversationsPermissions({
         nodes.push({
           provider: connector.type,
           internalId: getTeamInternalId(connectorId, team.id),
-          parentInternalId: teamsInternalId,
+          parentInternalId: allConvosInternalId,
           type: "folder",
           title: team.name,
           sourceUrl: null,
