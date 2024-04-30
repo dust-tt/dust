@@ -333,6 +333,13 @@ function ScopeSection({
     return null;
   }
 
+  const scrollToInputBar = () => {
+    const scrollContainerElement = document.getElementById("assistant-input-container");
+    if (scrollContainerElement) {
+      scrollContainerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <>
       <ContextItem.SectionHeader
@@ -351,9 +358,7 @@ function ScopeSection({
             });
             setAnimate(true);
             setTimeout(() => {
-              document.getElementById('assistant-input-container')?.scrollIntoView({
-                behavior: 'smooth'
-              });
+              scrollToInputBar();
             }, 0);
           }}
         >
