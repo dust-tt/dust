@@ -56,6 +56,7 @@ export function AssistantInputBar({
   hideQuickActions,
   disableAutoFocus = false,
   isFloating = true,
+  animationDelay = 0,
 }: {
   owner: WorkspaceType;
   onSubmit: (
@@ -69,6 +70,7 @@ export function AssistantInputBar({
   hideQuickActions: boolean;
   disableAutoFocus: boolean;
   isFloating?: boolean;
+  animationDelay?: number;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -285,7 +287,7 @@ export function AssistantInputBar({
               isFloating
                 ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
-              isAnimating ? "animate-shake" : ""
+                isAnimating ? `animate-shake delay-${animationDelay}` : ""
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">

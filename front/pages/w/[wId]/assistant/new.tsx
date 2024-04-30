@@ -234,6 +234,7 @@ export default function AssistantNew({
                 conversationId={null}
                 hideQuickActions={false}
                 disableAutoFocus={false}
+                animationDelay={500}
               />
             </div>
           </div>
