@@ -18,7 +18,6 @@ import {
   Err,
   isAgentMessageType,
   isContentFragmentType,
-  isDustAppRunActionType,
   isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -29,12 +28,12 @@ import {
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
 import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+import { isActionClass } from "@app/lib/api/assistant/actions/types";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -101,13 +100,15 @@ export async function renderConversationForModel({
             foundRetrieval = true;
             messages.unshift(renderRetrievalActionForModel(m.action));
           }
-        } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(renderDustAppRunActionForModel(m.action));
+        } else if (isActionClass(m.action)) {
+          console.log(">> m.action:", m.action);
+          messages.unshift(m.action.renderForModel());
         } else if (isTablesQueryActionType(m.action)) {
           messages.unshift(renderTablesQueryActionForModel(m.action));
         } else if (isProcessActionType(m.action)) {
           messages.unshift(renderProcessActionForModel(m.action));
         } else {
+          console.log(">> m.action (assertNever):", m.action);
           assertNever(m.action);
         }
       }

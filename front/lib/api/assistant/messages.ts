@@ -1,7 +1,6 @@
 import type {
   AgentActionType,
   DustAppParameters,
-  DustAppRunActionType,
   MessageWithRankType,
   ModelId,
   Result,
@@ -17,6 +16,7 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { DustAppRunAction } from "@app/lib/api/assistant/actions/dust_app_run";
 import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
@@ -183,18 +183,18 @@ export async function batchRenderAgentMessages(
           },
         },
       });
-      return actions.map((action) => {
-        return {
-          id: action.id,
-          type: "dust_app_run_action",
-          appWorkspaceId: action.appWorkspaceId,
-          appId: action.appId,
-          appName: action.appName,
-          params: action.params,
-          runningBlock: null,
-          output: action.output,
-        } satisfies DustAppRunActionType;
-      });
+      return actions.map(
+        (action) =>
+          new DustAppRunAction({
+            id: action.id,
+            appWorkspaceId: action.appWorkspaceId,
+            appId: action.appId,
+            appName: action.appName,
+            params: action.params,
+            runningBlock: null,
+            output: action.output,
+          })
+      );
     })(),
     (async () => {
       const actions = await AgentTablesQueryAction.findAll({
@@ -251,6 +251,7 @@ export async function batchRenderAgentMessages(
           (a) => a.id === agentMessage.agentTablesQueryActionId
         ) || null;
     }
+    // TODO: ???
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === agentMessage.agentConfigurationId
     );

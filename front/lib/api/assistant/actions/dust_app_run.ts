@@ -7,7 +7,7 @@ import type {
   ModelId,
   ModelMessageType,
 } from "@dust-tt/types";
-import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
+import type { DustAppParameters } from "@dust-tt/types";
 import type {
   AgentActionSpecification,
   AgentConfigurationType,
@@ -20,6 +20,7 @@ import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { getApp } from "@app/lib/api/app";
+import { Action } from "@app/lib/api/assistant/actions";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -27,27 +28,91 @@ import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import logger from "@app/logger/logger";
 
-/**
- * Model rendering of DustAppRuns.
- */
+interface DustAppRunningBlock {
+  type: string;
+  name: string;
+  status: "running" | "succeeded" | "errored";
+}
 
-export function renderDustAppRunActionForModel(
-  action: DustAppRunActionType
-): ModelMessageType {
-  let content = "";
-  if (!action.output) {
-    throw new Error(
-      "Output not set on DustAppRun action; execution is likely not finished."
-    );
+interface DustAppRunActionBlob {
+  id: ModelId; // AgentDustAppRun.
+  appWorkspaceId: string;
+  appId: string;
+  appName: string;
+  params: DustAppParameters;
+  runningBlock: DustAppRunningBlock | null;
+  output: unknown | null;
+}
+
+export class DustAppRunAction extends Action {
+  readonly appWorkspaceId: string;
+  readonly appId: string;
+  readonly appName: string;
+  readonly params: DustAppParameters;
+
+  private _runningBlock: any;
+  private _output: unknown | null;
+
+  constructor(blob: DustAppRunActionBlob) {
+    super(blob.id, "dust_app_run_action");
+
+    this.appWorkspaceId = blob.appWorkspaceId;
+    this.appId = blob.appId;
+    this.appName = blob.appName;
+    this.params = blob.params;
+    this.runningBlock = blob.runningBlock;
+    this.output = blob.output;
   }
-  content += `OUTPUT:\n`;
-  content += `${JSON.stringify(action.output, null, 2)}\n`;
 
-  return {
-    role: "action" as const,
-    name: action.appName,
-    content,
-  };
+  renderForModel(): ModelMessageType {
+    let content = "";
+    if (this.isRunning()) {
+      throw new Error(
+        "Output not set on DustAppRun action; execution is likely not finished."
+      );
+    }
+    content += `OUTPUT:\n`;
+    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    return {
+      role: "action" as const,
+      name: this.appName,
+      content,
+    };
+  }
+
+  isRunning(): boolean {
+    return !this.runningBlock;
+  }
+
+  set runningBlock(rb: DustAppRunningBlock | null) {
+    this._runningBlock = rb;
+  }
+
+  get runningBlock() {
+    return this._runningBlock;
+  }
+
+  set output(o: unknown | null) {
+    this._output = o;
+  }
+
+  get output() {
+    return this._output;
+  }
+
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      appWorkspaceId: this.appWorkspaceId,
+      appId: this.appId,
+      appName: this.appName,
+      params: this.params,
+      runningBlock: this.runningBlock,
+      output: this.output,
+    };
+  }
 }
 
 /**
@@ -173,33 +238,6 @@ export async function generateDustAppRunSpecification(
 }
 
 /**
- * Action rendering.
- */
-
-// Internal interface for the retrieval and rendering of a DustAppRun action. This should not be
-// used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
-// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderDustAppRunActionByModelId(
-  id: ModelId
-): Promise<DustAppRunActionType> {
-  const action = await AgentDustAppRunAction.findByPk(id);
-  if (!action) {
-    throw new Error(`No DustAppRun action found with id ${id}`);
-  }
-
-  return {
-    id: action.id,
-    type: "dust_app_run_action",
-    appWorkspaceId: action.appWorkspaceId,
-    appId: action.appId,
-    appName: action.appName,
-    params: action.params,
-    runningBlock: null,
-    output: action.output,
-  };
-}
-
-/**
  * Action execution.
  */
 
@@ -292,21 +330,17 @@ export async function* runDustApp(
     params,
   });
 
+  const dustAppRunAction = new DustAppRunAction({
+    ...action,
+    runningBlock: null,
+  });
+
   yield {
     type: "dust_app_run_params",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
-      id: action.id,
-      type: "dust_app_run_action",
-      appWorkspaceId: actionConfiguration.appWorkspaceId,
-      appId: actionConfiguration.appId,
-      appName: app.name,
-      params,
-      runningBlock: null,
-      output: null,
-    },
+    action: dustAppRunAction,
   };
 
   // Let's run the app now.
@@ -365,25 +399,18 @@ export async function* runDustApp(
     }
 
     if (event.type === "block_status") {
+      dustAppRunAction.runningBlock = {
+        type: event.content.block_type,
+        name: event.content.name,
+        status: event.content.status,
+      };
+
       yield {
         type: "dust_app_run_block",
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
-        action: {
-          id: action.id,
-          type: "dust_app_run_action",
-          appWorkspaceId: actionConfiguration.appWorkspaceId,
-          appId: actionConfiguration.appId,
-          appName: app.name,
-          params,
-          runningBlock: {
-            type: event.content.block_type,
-            name: event.content.name,
-            status: event.content.status,
-          },
-          output: null,
-        },
+        action: dustAppRunAction,
       };
     }
 
@@ -421,20 +448,14 @@ export async function* runDustApp(
     "[ASSISTANT_TRACE] DustAppRun acion run execution"
   );
 
+  dustAppRunAction.runningBlock = null;
+  dustAppRunAction.output = lastBlockOutput;
+
   yield {
     type: "dust_app_run_success",
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
-      id: action.id,
-      type: "dust_app_run_action",
-      appWorkspaceId: actionConfiguration.appWorkspaceId,
-      appId: actionConfiguration.appId,
-      appName: app.name,
-      params,
-      runningBlock: null,
-      output: lastBlockOutput,
-    },
+    action: dustAppRunAction,
   };
 }
