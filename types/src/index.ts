@@ -56,6 +56,7 @@ export * from "./front/plan";
 export * from "./front/project";
 export * from "./front/provider";
 export * from "./front/run";
+export * from "./front/secret";
 export * from "./front/user";
 export * from "./front/workspace";
 export * from "./shared/cache";

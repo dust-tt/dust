@@ -47,6 +47,7 @@ import { User, UserMetadata } from "@app/lib/models/user";
 import {
   Key,
   MembershipInvitation,
+  Secret,
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
@@ -71,6 +72,7 @@ async function main() {
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
   await Key.sync({ alter: true });
+  await Secret.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
