@@ -56,7 +56,7 @@ export default function DataSourceSelectionSection({
       <div className="overflow-hidden pt-4">
         <div className="flex flex-row items-start">
           <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
-            Selected Data sources:
+            Selected Data sources
           </div>
           <div>
             {Object.keys(dataSourceConfigurations).length > 0 && (
