@@ -61,26 +61,20 @@ async function handler(
       res.status(200).json({
         keys: keys.map((k) => {
           // We only display the full secret key for the first 10 minutes after creation.
-          const getSecret = () => {
-            const currentTime = new Date();
-            const createdAt = new Date(k.createdAt);
-            const timeDifference = Math.abs(
-              currentTime.getTime() - createdAt.getTime()
-            );
-            const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+          const currentTime = new Date();
+          const createdAt = new Date(k.createdAt);
+          const timeDifference = Math.abs(
+            currentTime.getTime() - createdAt.getTime()
+          );
+          const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
+          const secret = differenceInMinutes > 10 ? redactString(k.secret, 4) : k.secret;
 
-            if (differenceInMinutes > 10) {
-              return redactString(k.secret, 4);
-            } else {
-              return k.secret;
-            }
-          };
           return {
             id: k.id,
             createdAt: k.createdAt.getTime(),
             creator: formatUserFullName(k.user),
             name: k.name,
-            secret: getSecret(),
+            secret,
             status: k.status,
           };
         }),
