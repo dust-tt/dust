@@ -481,7 +481,11 @@ export async function* runRetrieval(
   let topK = 16;
   if (actionConfiguration.topK === "auto") {
     const supportedModel = getSupportedModelConfig(model);
-    topK = supportedModel.recommendedTopK;
+    if (actionConfiguration.query === "none") {
+      topK = supportedModel.recommendedExhaustiveTopK;
+    } else {
+      topK = supportedModel.recommendedTopK;
+    }
   } else {
     topK = actionConfiguration.topK;
   }
