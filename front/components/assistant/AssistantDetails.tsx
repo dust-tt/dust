@@ -17,14 +17,7 @@ import type {
   CoreAPITable,
   DataSourceConfiguration,
   DataSourceType,
-  DustAppRunConfigurationType,
-  TablesQueryConfigurationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";

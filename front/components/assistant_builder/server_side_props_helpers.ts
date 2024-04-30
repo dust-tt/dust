@@ -18,7 +18,7 @@ import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/t
 import type { RetrievalConfigurationType } from "@app/lib/api/assistant/actions/retrieval/types";
 import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
 import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
-import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
@@ -31,9 +31,8 @@ export async function buildInitialState({
   dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
   configuration:
-    | AgentConfigurationType<AgentActionType>
-    // TODO:
-    | TemplateAgentConfigurationType;
+    | AgentConfigurationType<AgentActionConfigurationType>
+    | TemplateAgentConfigurationType<AgentActionConfigurationType>;
 }) {
   const coreAPI = new CoreAPI(logger);
 

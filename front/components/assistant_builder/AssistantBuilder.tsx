@@ -70,7 +70,7 @@ import { isDustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_a
 import { isProcessConfiguration } from "@app/lib/api/assistant/actions/process/types";
 import { isRetrievalConfiguration } from "@app/lib/api/assistant/actions/retrieval/types";
 import { isTablesQueryConfiguration } from "@app/lib/api/assistant/actions/tables_query/types";
-import type { AgentActionType } from "@app/lib/api/assistant/actions/types";
+import type { AgentActionConfigurationType } from "@app/lib/api/assistant/actions/types";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { getAgentActionConfigurationType } from "@app/lib/templates/types";
@@ -700,7 +700,8 @@ export async function submitAssistantBuilderForm({
   };
   isDraft?: boolean;
 }): Promise<
-  LightAgentConfigurationType | AgentConfigurationType<AgentActionType>
+  | LightAgentConfigurationType
+  | AgentConfigurationType<AgentActionConfigurationType>
 > {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   let { handle, description, instructions, avatarUrl } = builderState;
@@ -848,7 +849,7 @@ export async function submitAssistantBuilderForm({
   const newAgentConfiguration: {
     agentConfiguration:
       | LightAgentConfigurationType
-      | AgentConfigurationType<AgentActionType>;
+      | AgentConfigurationType<AgentActionConfigurationType>;
   } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
