@@ -59,13 +59,13 @@ export async function renderConversationForModel({
   model,
   prompt,
   allowedTokenCount,
-  excludeRetrieval,
+  excludeActions,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   prompt: string;
   allowedTokenCount: number;
-  excludeRetrieval?: boolean;
+  excludeActions?: boolean;
 }): Promise<
   Result<
     { modelConversation: ModelConversationType; tokensUsed: number },
@@ -93,15 +93,13 @@ export async function renderConversationForModel({
           content: m.content,
         });
       }
-      if (m.action) {
+      // There are contexts where we want to exclude the actions from the rendering.
+      // Eg: During the conversation title generation step.
+      if (m.action && !excludeActions) {
         if (isRetrievalActionType(m.action)) {
-          // There are contexts where we want to exclude the retrieval action from the rendering.
-          // Eg: During the conversation title generation step.
-          if (!excludeRetrieval) {
-            if (includeRetrieval) {
-              foundRetrieval = true;
-              messages.unshift(renderRetrievalActionForModel(m.action));
-            }
+          if (includeRetrieval) {
+            foundRetrieval = true;
+            messages.unshift(renderRetrievalActionForModel(m.action));
           }
         } else if (isDustAppRunActionType(m.action)) {
           messages.unshift(renderDustAppRunActionForModel(m.action));
@@ -238,7 +236,6 @@ export async function renderConversationForModel({
       tokensUsed,
       messageSelected: selected.length,
       elapsed: Date.now() - now,
-      selected,
     },
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
