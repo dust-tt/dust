@@ -360,7 +360,7 @@ export function ActionProcess({
         onDelete={deleteDataSource}
       />
 
-      <div className={"flex flex-row items-center gap-4 pb-4 pt-4"}>
+      <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-element-900">
           Process data from the last
         </div>
