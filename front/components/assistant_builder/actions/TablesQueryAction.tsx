@@ -11,7 +11,7 @@ import type {
 import { tableKey } from "@app/lib/client/tables_query";
 
 export function isActionTablesQueryValid(builderState: AssistantBuilderState) {
-  return !!builderState.tablesQueryConfiguration;
+  return Object.keys(builderState.tablesQueryConfiguration).length > 0;
 }
 
 export function ActionTablesQuery({
