@@ -2527,8 +2527,8 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let stmt = c
             .prepare(
-                "INSERT INTO cache (id, project, created, hash, request, response, type)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
+                "INSERT INTO cache (id, project, created, hash, request, response, type, version)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
             )
             .await?;
         let created = generation.created as i64;
@@ -2543,6 +2543,7 @@ impl Store for PostgresStore {
                 &request_data,
                 &generation_data,
                 &LLMRequest::request_type(),
+                &LLMRequest::version(),
             ],
         )
         .await?;
@@ -2593,8 +2594,8 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let stmt = c
             .prepare(
-                "INSERT INTO cache (id, project, created, hash, request, response, type)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
+                "INSERT INTO cache (id, project, created, hash, request, response, type, version)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
             )
             .await?;
         let created = generation.created as i64;
@@ -2609,6 +2610,7 @@ impl Store for PostgresStore {
                 &request_data,
                 &generation_data,
                 &LLMChatRequest::request_type(),
+                &LLMChatRequest::version(),
             ],
         )
         .await?;
@@ -2659,8 +2661,8 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let stmt = c
             .prepare(
-                "INSERT INTO cache (id, project, created, hash, request, response, type)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
+                "INSERT INTO cache (id, project, created, hash, request, response, type, version)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
             )
             .await?;
         let created = embedding.created as i64;
@@ -2675,6 +2677,7 @@ impl Store for PostgresStore {
                 &request_data,
                 &embedding_data,
                 &EmbedderRequest::request_type(),
+                &EmbedderRequest::version(),
             ],
         )
         .await?;
@@ -2725,8 +2728,8 @@ impl Store for PostgresStore {
         let c = pool.get().await?;
         let stmt = c
             .prepare(
-                "INSERT INTO cache (id, project, created, hash, request, response, type)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
+                "INSERT INTO cache (id, project, created, hash, request, response, type, version)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7) RETURNING id",
             )
             .await?;
         let created = response.created as i64;
@@ -2741,6 +2744,7 @@ impl Store for PostgresStore {
                 &request_data,
                 &response_data,
                 &LLMRequest::request_type(),
+                &LLMRequest::version(),
             ],
         )
         .await?;
