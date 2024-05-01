@@ -27,6 +27,30 @@ export class ConfluenceCastKnownErrorsInterceptor
           error: err,
         };
       }
+      if (
+        err instanceof ConfluenceClientError &&
+        err.type === "http_response_error" &&
+        err.status === 502
+      ) {
+        throw {
+          __is_dust_error: true,
+          message: "502 Bad Gateway",
+          type: "network_error",
+          error: err,
+        };
+      }
+      if (
+        err instanceof ConfluenceClientError &&
+        err.type === "http_response_error" &&
+        err.status === 504
+      ) {
+        throw {
+          __is_dust_error: true,
+          message: "Request timed out",
+          type: "network_timeout_error",
+          error: err,
+        };
+      }
       throw err;
     }
   }
