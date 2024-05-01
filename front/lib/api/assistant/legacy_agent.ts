@@ -119,7 +119,12 @@ async function generateActionInputs(
         specification,
         prompt,
       },
-    ]
+    ],
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      userMessageId: userMessage.sId,
+    }
   );
 
   if (res.isErr()) {

@@ -426,12 +426,22 @@ export async function* runGeneration(
     "[ASSISTANT_TRACE] Generation exection"
   );
 
-  const res = await runActionStreamed(auth, "assistant-v2-generator", config, [
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-generator",
+    config,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+        prompt,
+      },
+    ],
     {
-      conversation: modelConversationRes.value.modelConversation,
-      prompt,
-    },
-  ]);
+      conversationId: conversation.sId,
+      userMessageId: userMessage.sId,
+      workspaceId: conversation.owner.sId,
+    }
+  );
 
   if (res.isErr()) {
     yield {
