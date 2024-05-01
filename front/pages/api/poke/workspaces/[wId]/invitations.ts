@@ -1,7 +1,4 @@
-import type {
-  MembershipInvitationType,
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -9,26 +6,15 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handleMembersInvitation } from "@app/lib/api/invitation";
-import { getPendingInvitations } from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetWorkspaceInvitationsResponseBody = {
-  invitations: MembershipInvitationType[];
-};
+const PokePostInvitationRequestBodySchema = t.type({
+  email: t.string,
+  role: ActiveRoleSchema,
+});
 
-export const PostInvitationRequestBodySchema = t.array(
-  t.type({
-    email: t.string,
-    role: ActiveRoleSchema,
-  })
-);
-
-export type PostInvitationRequestBody = t.TypeOf<
-  typeof PostInvitationRequestBodySchema
->;
-
-export type PostInvitationResponseBody = {
+type PokePostInvitationResponseBody = {
   success: boolean;
   email: string;
   error_message?: string;
@@ -36,11 +22,7 @@ export type PostInvitationResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorReponse<
-      GetWorkspaceInvitationsResponseBody | PostInvitationResponseBody
-    >
-  >
+  res: NextApiResponse<WithAPIErrorReponse<PokePostInvitationResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -50,23 +32,12 @@ async function handler(
 
   const owner = auth.workspace();
   const user = auth.user();
-  if (!owner || !user) {
+  if (!owner || !user || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
         message: "The workspace was not found.",
-      },
-    });
-  }
-
-  if (!auth.isAdmin()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can see membership invitations or modify it.",
       },
     });
   }
@@ -84,13 +55,10 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      const invitations = await getPendingInvitations(auth);
-      res.status(200).json({ invitations });
-      return;
-
     case "POST":
-      const bodyValidation = PostInvitationRequestBodySchema.decode(req.body);
+      const bodyValidation = PokePostInvitationRequestBodySchema.decode(
+        req.body
+      );
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -117,14 +85,16 @@ async function handler(
         owner,
         user,
         subscription,
-        invitationRequests: bodyValidation.right,
+        invitationRequests: [bodyValidation.right],
       });
 
       if (invitationRes.isErr()) {
         return apiError(req, res, invitationRes.error);
       }
 
-      res.status(200).json(invitationRes.value);
+      const [result] = invitationRes.value;
+
+      res.status(200).json(result);
       return;
 
     default:
