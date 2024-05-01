@@ -93,6 +93,8 @@ export async function runActionStreamed(
     return new Err(res.error);
   }
 
+  // Don't await the dustRunid promise before you are done iterating on the eventStream,
+  // it will block the event stream, which is in charge of resolving that promise.
   const { eventStream, dustRunId } = res.value;
   dustRunId
     .then((runId) => {
