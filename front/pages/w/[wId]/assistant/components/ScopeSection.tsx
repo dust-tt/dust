@@ -1,5 +1,8 @@
 import { Avatar, ContextItem } from "@dust-tt/sparkle";
-import type { AgentConfigurationScope, LightAgentConfigurationType } from "@dust-tt/types";
+import type {
+  AgentConfigurationScope,
+  LightAgentConfigurationType,
+} from "@dust-tt/types";
 
 import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 
@@ -9,9 +12,13 @@ interface ScopeSectionProps {
   onClick: (agent: LightAgentConfigurationType) => void;
 }
 
-export function ScopeSection({ assistantList, scope, onClick }: ScopeSectionProps) {
+export function ScopeSection({
+  assistantList,
+  scope,
+  onClick,
+}: ScopeSectionProps) {
   const filteredList = assistantList.filter((agent) => agent.scope === scope);
-  
+
   if (filteredList.length === 0) {
     return null;
   }
@@ -26,7 +33,9 @@ export function ScopeSection({ assistantList, scope, onClick }: ScopeSectionProp
         <ContextItem
           key={agent.sId}
           title={`@${agent.name}`}
-          subElement={`By: ${agent.lastAuthors?.map((author) => author).join(", ")}`}
+          subElement={`By: ${agent.lastAuthors
+            ?.map((author) => author)
+            .join(", ")}`}
           visual={<Avatar visual={agent.pictureUrl} size="md" />}
           onClick={() => onClick(agent)}
         >

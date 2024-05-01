@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Button,
   ContextItem,
   HeartAltIcon,
@@ -26,7 +25,6 @@ import ConversationLayout from "@app/components/assistant/conversation/Conversat
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -38,6 +36,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
+import { ScopeSection } from "@app/pages/w/[wId]/assistant/components/ScopeSection";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -86,6 +85,7 @@ export default function AssistantNew({
   const router = useRouter();
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
   // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
@@ -95,14 +95,12 @@ export default function AssistantNew({
     sort: "priority",
   }).agentConfigurations;
 
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors"],
-  });
+  const { agentConfigurations, isAgentConfigurationsLoading } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list",
+      includes: ["authors"],
+    });
 
   const workspaceAgentConfigurations = isBuilder
     ? []
@@ -114,11 +112,11 @@ export default function AssistantNew({
         sort: "alphabetical",
       }).agentConfigurations;
 
-      const [assistantSearch, setAssistantSearch] = useState<string>("");
-    
-      const searchFilteredAssistants = agentConfigurations.filter((a) => {
-        return subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase());
-      });
+  const [assistantSearch, setAssistantSearch] = useState<string>("");
+
+  const searchFilteredAssistants = agentConfigurations.filter((agent) => {
+    return subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase());
+  });
 
   const displayedAgents = [
     ...globalAgentConfigurations,
@@ -186,10 +184,8 @@ export default function AssistantNew({
     )
   );
 
-
   const [greeting, setGreeting] = useState<string>("");
-  const { animate, setAnimate } =
-    useContext(InputBarContext);
+  const { animate, setAnimate } = useContext(InputBarContext);
 
   useEffect(() => {
     if (animate) {
@@ -201,7 +197,7 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
-  const { submit: persistQuickGuideSeen } = useSubmitFunction(async () => {
+  const { submit: handleQuickGuideClose } = useSubmitFunction(async () => {
     setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" })
       .then(() => {
         return mutateQuickGuideSeen();
@@ -210,6 +206,25 @@ export default function AssistantNew({
     setShowQuickGuide(false);
   });
 
+  const scrollToInputBar = useCallback(() => {
+    const scrollContainerElement = document.getElementById(
+      "assistant-input-header"
+    );
+    if (scrollContainerElement) {
+      scrollContainerElement.scrollIntoView({ behavior: "smooth" });
+    }
+  }, []);
+
+  const handleAssistantClick = (agent: LightAgentConfigurationType) => {
+    setSelectedAssistant({
+      configurationId: agent.sId,
+    });
+    scrollToInputBar();
+    setTimeout(() => {
+      setAnimate(true);
+    }, 500);
+  };
+
   return (
     <>
       <QuickStartGuide
@@ -217,93 +232,116 @@ export default function AssistantNew({
         user={user}
         show={showQuickGuide}
         onClose={() => {
-          void persistQuickGuideSeen();
+          void handleQuickGuideClose();
         }}
       />
-      <div className="flex h-full items-center pb-20">
-        <div className="flex flex-col text-sm font-normal text-element-800 w-full h-full">
-          <div id="assistant-input-container" className="flex flex-col h-[70%] items-center justify-center w-full">
-            <div className="flex w-full flex-col justify-between px-4 py-2 mb-4">
-              <Page.SectionHeader title={greeting} />
-              <Page.SectionHeader title="Start a conversation" />
-            </div>
-            <div id="assistant-input-bar" className="flex items-center justify-center w-full">
-              <AssistantInputBar
-                owner={owner}
-                onSubmit={handleSubmit}
-                conversationId={null}
-                hideQuickActions={false}
-                disableAutoFocus={false}
-                animationDelay={700}
-              />
-            </div>
+      <div
+        id="assistant-new-page"
+        className="flex min-h-screen flex-col items-center border-2 border-black bg-yellow-300 pb-20 text-sm font-normal text-element-800"
+      >
+        {/* Assistant input */}
+        <div
+          id="assistant-input-container"
+          className="flex h-[70vh] w-full flex-col items-center justify-center bg-red-300"
+        >
+          <div
+            id="assistant-input-header"
+            className="mb-2 flex h-fit w-full flex-col justify-between bg-blue-300 px-4 py-2"
+          >
+            <Page.SectionHeader title={greeting} />
+            <Page.SectionHeader title="Start a conversation" />
           </div>
-
-      <div className="flex flex-col gap-4 pt-9 h-80 w-full px-4">
-      <Page.SectionHeader title="Chat with..." />
-        <div id="search-container" className="flex flex-row gap-4 w-full justify-center align-middle items-center">
-          <Searchbar
-            name="search"
-            size="sm"
-            placeholder="Search (Name)"
-            value={assistantSearch}
-            onChange={(s) => {
-              setAssistantSearch(s);
-            }}
-          />
-          <Button.List>
-            <Tooltip label="Create your own assistant">
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              >
-                <Button
-                  variant="primary"
-                  icon={PlusIcon}
-                  label="Create An Assistant"
-                  size="sm"
-                />
-              </Link>
-            </Tooltip>
-          </Button.List>
-          </div>
-        <ContextItem.List>
-          {displayedAgents.length === 0 && searchFilteredAssistants.length === 0 &&
-            !isAgentConfigurationsLoading && (
-              <ContextItem
-                title="No assistant found matching the search."
-                visual={undefined}
-              />
-            )}
-          {["private", "published", "workspace", "global"].map((scope) => (
-            <ScopeSection
-              key={scope}
-              assistantList={displayedAgents.concat(searchFilteredAssistants)}
-              scope={scope as AgentConfigurationScope}
-              setAnimate={setAnimate}
+          <div
+            id="assistant-input-bar"
+            className="flex h-fit w-full items-center justify-center bg-purple-300"
+          >
+            <AssistantInputBar
+              owner={owner}
+              onSubmit={handleSubmit}
+              conversationId={null}
+              hideQuickActions={false}
+              disableAutoFocus={false}
             />
-          ))}
-        </ContextItem.List>
-      </div>
+          </div>
+        </div>
+        {/* Assistant list */}
+        <div
+          id="assistants-list-container"
+          className="flex h-full w-full flex-col gap-4 bg-cyan-300 px-0 pt-9"
+        >
+          <div id="assistants-list-header" className="bg-pink-300 px-4">
+            <Page.SectionHeader title="Chat with..." />
+          </div>
+          <div
+            id="search-container"
+            className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+          >
+            <Searchbar
+              name="search"
+              size="sm"
+              placeholder="Search (Name)"
+              value={assistantSearch}
+              onChange={(s) => {
+                setAssistantSearch(s);
+              }}
+            />
+            <Button.List>
+              <Tooltip label="Create your own assistant">
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                >
+                  <Button
+                    variant="primary"
+                    icon={PlusIcon}
+                    label="Create An Assistant"
+                    size="sm"
+                  />
+                </Link>
+              </Tooltip>
+            </Button.List>
+          </div>
+          <div id="assistants-list" className="flex h-fit bg-slate-300 px-4">
+            <ContextItem.List>
+              {displayedAgents.length === 0 &&
+                searchFilteredAssistants.length === 0 &&
+                !isAgentConfigurationsLoading && (
+                  <ContextItem
+                    title="No assistant found matching the search."
+                    visual={undefined}
+                  />
+                )}
+              {["private", "published", "workspace", "global"].map((scope) => (
+                <ScopeSection
+                  key={scope}
+                  assistantList={displayedAgents.concat(
+                    searchFilteredAssistants
+                  )}
+                  scope={scope as AgentConfigurationScope}
+                  onClick={(agent) => handleAssistantClick(agent)}
+                />
+              ))}
+            </ContextItem.List>
+          </div>
         </div>
       </div>
 
-      <div 
-  id="quick-start-guide-button"
-  className="fixed top-4 right-6 lg:bottom-6 lg:right-6 lg:top-auto z-50"
->
-  <Button
-    icon={HeartAltIcon}
-    labelVisible={false}
-    label="Quick Start Guide"
-    onClick={() => setShowQuickGuide(true)}
-    size="sm"
-    tooltipPosition="below"
-    variant="primary"
-    hasMagnifying={true}
-    disabledTooltip={false}
-    className=""
-  />
-</div>
+      <div
+        id="quick-start-guide-button"
+        className="fixed right-6 top-4 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
+      >
+        <Button
+          icon={HeartAltIcon}
+          labelVisible={false}
+          label="Quick Start Guide"
+          onClick={() => setShowQuickGuide(true)}
+          size="sm"
+          tooltipPosition="below"
+          variant="primary"
+          hasMagnifying={true}
+          disabledTooltip={false}
+          className=""
+        />
+      </div>
 
       <ReachedLimitPopup
         isOpened={planLimitReached}
@@ -322,59 +360,3 @@ AssistantNew.getLayout = (
 ) => {
   return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
 };
-
-function ScopeSection({
-  assistantList,
-  scope,
-  setAnimate, // Add this prop to pass the setAnimate function
-}: {
-  assistantList: LightAgentConfigurationType[];
-  scope: AgentConfigurationScope;
-  setAnimate: (animate: boolean) => void; // Add this type
-}) {
-  const { setSelectedAssistant } = useContext(InputBarContext);
-
-  const filteredList = assistantList.filter((a) => a.scope === scope);
-  if (filteredList.length === 0) {
-    return null;
-  }
-
-  const scrollToInputBar = () => {
-    const scrollContainerElement = document.getElementById("assistant-input-container");
-    if (scrollContainerElement) {
-      scrollContainerElement.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <>
-      <ContextItem.SectionHeader
-        title={SCOPE_INFO[scope].label + "s"}
-        description={SCOPE_INFO[scope].text}
-      />
-      {filteredList.map((agent) => (
-        <ContextItem
-          key={agent.sId}
-          title={`@${agent.name}`}
-          subElement={`By: ${agent.lastAuthors?.map((a) => a).join(", ")}`}
-          visual={<Avatar visual={agent.pictureUrl} size="md" />}
-          onClick={() => {
-            setSelectedAssistant({
-              configurationId: agent.sId,
-            });
-            setAnimate(true);
-            setTimeout(() => {
-              scrollToInputBar();
-            }, 0);
-          }}
-        >
-          <ContextItem.Description>
-            <div className="line-clamp-2 text-element-700">
-              {agent.description}
-            </div>
-          </ContextItem.Description>
-        </ContextItem>
-      ))}
-    </>
-  );
-}
