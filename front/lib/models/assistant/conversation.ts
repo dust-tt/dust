@@ -244,7 +244,6 @@ export class AgentMessage extends Model<
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
   declare agentDustAppRunActionId: ForeignKey<
     AgentDustAppRunAction["id"]
   > | null;
@@ -314,7 +313,6 @@ AgentMessage.init(
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
         const actionsTypes: (keyof AgentMessage)[] = [
-          "agentRetrievalActionId",
           "agentDustAppRunActionId",
           "agentTablesQueryActionId",
         ];
@@ -332,14 +330,6 @@ AgentMessage.init(
 );
 
 // LEGACY (to be removed)
-
-AgentRetrievalAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
-  onDelete: "CASCADE",
-});
-AgentMessage.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
-});
 
 AgentDustAppRunAction.hasOne(AgentMessage, {
   foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
@@ -360,13 +350,11 @@ AgentMessage.belongsTo(AgentTablesQueryAction, {
 // END LEGACY
 
 AgentRetrievalAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 AgentMessage.hasMany(AgentRetrievalAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 AgentDustAppRunAction.belongsTo(AgentMessage, {

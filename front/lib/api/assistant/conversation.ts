@@ -1644,9 +1644,7 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         // Store action in database.
         if (event.action.type === "retrieval_action") {
-          await agentMessageRow.update({
-            agentRetrievalActionId: event.action.id,
-          });
+          // Nothing to do.
         } else if (event.action.type === "dust_app_run_action") {
           await agentMessageRow.update({
             agentDustAppRunActionId: event.action.id,
@@ -1656,9 +1654,7 @@ async function* streamRunAgentEvents(
             agentTablesQueryActionId: event.action.id,
           });
         } else if (event.action.type === "process_action") {
-          await agentMessageRow.update({
-            agentProcessActionId: event.action.id,
-          });
+          // Nothing to do.
         } else {
           ((action: never) => {
             throw new Error(

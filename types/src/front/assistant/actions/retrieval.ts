@@ -90,6 +90,7 @@ export type RetrievalDocumentType = {
 
 export type RetrievalActionType = {
   id: ModelId; // AgentRetrieval.
+  agentMessageId: ModelId;
 
   type: "retrieval_action";
 

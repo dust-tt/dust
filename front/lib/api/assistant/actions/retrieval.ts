@@ -235,25 +235,27 @@ export async function generateRetrievalSpecification(
 // Internal interface for the retrieval and rendering of a Retrieval action. This should not be used
 // outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderRetrievalActionsByModelId(
-  ids: ModelId[]
+export async function retrievalActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
 ): Promise<RetrievalActionType[]> {
-  const actionById = (
-    await AgentRetrievalAction.findAll({
-      where: {
-        id: ids,
-      },
-    })
-  ).reduce<{
+  const models = await AgentRetrievalAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  const actionById = models.reduce<{
     [id: ModelId]: AgentRetrievalAction;
   }>((acc, a) => {
     acc[a.id] = a;
     return acc;
   }, {});
 
-  if (Object.keys(actionById).length !== ids.length) {
+  const ids = models.map((a) => a.id);
+
+  if (Object.keys(actionById).length !== models.length) {
     throw new Error(
-      "Not all retrieval actions could be found in the database."
+      "Unexpected duplicate model ids in `renderRetrievalActionTypes`"
     );
   }
 
@@ -356,6 +358,7 @@ export async function renderRetrievalActionsByModelId(
 
     actions.push({
       id: action.id,
+      agentMessageId: action.agentMessageId,
       type: "retrieval_action",
       params: {
         query: action.query,
@@ -367,12 +370,6 @@ export async function renderRetrievalActionsByModelId(
   }
 
   return actions;
-}
-
-export async function renderRetrievalActionByModelId(
-  id: ModelId
-): Promise<RetrievalActionType> {
-  return (await renderRetrievalActionsByModelId([id]))[0];
 }
 
 /**
@@ -511,6 +508,7 @@ export async function* runRetrieval(
     dataSources: actionConfiguration.dataSources,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "retrieval_action",
       params: {
         relativeTimeFrame,
@@ -763,6 +761,7 @@ export async function* runRetrieval(
     messageId: agentMessage.sId,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "retrieval_action",
       params: {
         relativeTimeFrame: relativeTimeFrame,

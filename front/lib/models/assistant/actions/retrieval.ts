@@ -156,7 +156,7 @@ export class AgentRetrievalAction extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentRetrievalAction.init(
   {
