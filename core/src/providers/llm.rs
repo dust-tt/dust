@@ -1,3 +1,4 @@
+use crate::cached_request::CachedRequest;
 use crate::project::Project;
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
@@ -140,6 +141,12 @@ pub trait LLM {
     ) -> Result<LLMChatGeneration>;
 }
 
+impl CachedRequest for LLMRequest {
+    /// The version of the cache. This should be incremented whenever the inputs or
+    /// outputs of the request are changed, to ensure that the cached data is invalidated.
+    const VERSION: i32 = 1;
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMRequest {
     hash: String,
@@ -176,6 +183,8 @@ impl LLMRequest {
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
         hasher.update(prompt.as_bytes());
+        hasher.update(LLMRequest::version().to_string().as_bytes());
+
         if !max_tokens.is_none() {
             hasher.update(max_tokens.unwrap().to_string().as_bytes());
         }
@@ -320,6 +329,12 @@ impl LLMRequest {
     }
 }
 
+impl CachedRequest for LLMChatRequest {
+    /// The version of the cache. This should be incremented whenever the inputs or
+    /// outputs of the request are changed, to ensure that the cached data is invalidated.
+    const VERSION: i32 = 1;
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatRequest {
     hash: String,
@@ -336,7 +351,6 @@ pub struct LLMChatRequest {
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
     extras: Option<Value>,
-    version: i32,
 }
 
 impl LLMChatRequest {
@@ -354,13 +368,12 @@ impl LLMChatRequest {
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
         extras: Option<Value>,
-        version: i32,
     ) -> Self {
         let mut hasher = blake3::Hasher::new();
 
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
-        hasher.update(version.to_string().as_bytes());
+        hasher.update(LLMChatRequest::version().to_string().as_bytes());
 
         messages.iter().for_each(|m| {
             hasher.update(serde_json::to_string(m).unwrap().as_bytes());
@@ -407,7 +420,6 @@ impl LLMChatRequest {
             presence_penalty,
             frequency_penalty,
             extras,
-            version,
         }
     }
 

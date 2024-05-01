@@ -16,10 +16,6 @@ use serde_json::{json, Value};
 use std::str::FromStr;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 
-/// The version of the chat block cache. This should be incremented whenever the inputs or
-/// outputs of the chat block are changed, to ensure that the cached data is invalidated.
-const CACHE_VERSION: i32 = 1;
-
 #[derive(Clone)]
 pub struct Chat {
     instructions: Option<String>,
@@ -475,7 +471,6 @@ impl Block for Chat {
             self.presence_penalty,
             self.frequency_penalty,
             extras,
-            CACHE_VERSION,
         );
 
         let g = match use_stream {
