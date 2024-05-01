@@ -2,6 +2,7 @@ import {
   Avatar,
   BracesIcon,
   CommandLineIcon,
+  ContentMessage,
   ElementModal,
   ExternalLinkIcon,
   IconButton,
@@ -142,34 +143,50 @@ export function AssistantDetails({
               agentConfiguration.name.length > 20 ? "text-md" : "text-lg"
             )}
           >{`@${agentConfiguration.name}`}</div>
-          <SharingDropdown
-            owner={owner}
-            agentConfiguration={agentConfiguration}
-            initialScope={agentConfiguration.scope}
-            newScope={agentConfiguration.scope}
-            disabled={isUpdatingScope}
-            setNewScope={(scope) => updateScope(scope)}
-          />
-          <AssistantListActions
-            agentConfiguration={agentConfiguration}
-            owner={owner}
-            isParentHovered={true}
-            onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
-          />
+          {agentConfiguration.status === "active" && (
+            <>
+              <SharingDropdown
+                owner={owner}
+                agentConfiguration={agentConfiguration}
+                initialScope={agentConfiguration.scope}
+                newScope={agentConfiguration.scope}
+                disabled={isUpdatingScope}
+                setNewScope={(scope) => updateScope(scope)}
+              />
+              <AssistantListActions
+                agentConfiguration={agentConfiguration}
+                owner={owner}
+                isParentHovered={true}
+                onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
+              />
+            </>
+          )}
         </div>
-        <div>
-          <AssistantEditionMenu
-            agentConfigurationId={agentConfiguration.sId}
-            owner={owner}
-            variant="button"
-            tryButton
-            onAgentDeletion={() => {
-              void mutateCurrentAgentConfiguration();
-              void mutateAgentConfigurations?.();
-            }}
-          />
-        </div>
+        {agentConfiguration.status === "active" && (
+          <div>
+            <AssistantEditionMenu
+              agentConfigurationId={agentConfiguration.sId}
+              owner={owner}
+              variant="button"
+              tryButton
+              onAgentDeletion={() => {
+                void mutateCurrentAgentConfiguration();
+                void mutateAgentConfigurations?.();
+              }}
+            />
+          </div>
+        )}
       </div>
+      {agentConfiguration.status === "archived" && (
+        <ContentMessage
+          variant="amber"
+          title="This assistant has been deleted."
+          size="md"
+        >
+          It is no longer active and cannot be used.
+        </ContentMessage>
+      )}
+
       <div className="text-sm text-element-900">
         {agentConfiguration.description}
       </div>
