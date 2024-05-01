@@ -70,17 +70,20 @@ export default function InviteMemberDialog({
       setIsSubmitting(true);
       setError(null);
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/invitations`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(cleanedValues),
-        });
+        const res = await fetch(
+          `/api/poke/workspaces/${owner.sId}/invitations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cleanedValues),
+          }
+        );
 
-        if (!r.ok) {
+        if (!res.ok) {
           throw new Error(
-            `Something went wrong: ${r.status} ${await r.text()}`
+            `Something went wrong: ${res.status} ${await res.text()}`
           );
         }
 

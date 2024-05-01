@@ -282,7 +282,13 @@ interface MembershipInvitationBlob {
   role: ActiveRoleType;
 }
 
-export async function handleMembersInvitation(
+interface HandleMembershipInvitationResult {
+  success: boolean;
+  email: string;
+  error_message?: string;
+}
+
+export async function handleMembershipInvitations(
   auth: Authenticator,
   {
     invitationRequests,
@@ -295,7 +301,7 @@ export async function handleMembersInvitation(
     user: UserType;
     invitationRequests: MembershipInvitationBlob[];
   }
-): Promise<Result<any, APIErrorWithStatusCode>> {
+): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
   const availableSeats =
     maxUsers -
@@ -363,7 +369,7 @@ export async function handleMembersInvitation(
 
   if (
     !emailsToSendInvitations.length &&
-    !invitationsToUnrevoke &&
+    !invitationsToUnrevoke.length &&
     invitationRequests.length > 0
   ) {
     return new Err({

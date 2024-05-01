@@ -8,7 +8,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { handleMembersInvitation } from "@app/lib/api/invitation";
+import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -113,7 +113,7 @@ async function handler(
         });
       }
 
-      const invitationRes = await handleMembersInvitation(auth, {
+      const invitationRes = await handleMembershipInvitations(auth, {
         owner,
         user,
         subscription,
