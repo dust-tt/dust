@@ -49,7 +49,7 @@ export async function runActionStreamed(
   actionName: DustRegistryActionName,
   config: DustAppConfigType,
   inputs: Array<unknown>,
-  tracingRecords: Record<string, any>
+  tracingRecords: Record<string, string>
 ) {
   const owner = auth.workspace();
   if (!owner) {
