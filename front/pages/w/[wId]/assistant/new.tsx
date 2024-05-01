@@ -26,6 +26,7 @@ import { AssistantInputBar } from "@app/components/assistant/conversation/input_
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
+import { ScopeSection } from "@app/components/ScopeSection";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
@@ -36,7 +37,6 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
-import { ScopeSection } from "@app/pages/w/[wId]/assistant/components/ScopeSection";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -339,7 +339,6 @@ export default function AssistantNew({
           variant="primary"
           hasMagnifying={true}
           disabledTooltip={false}
-          className=""
         />
       </div>
 
