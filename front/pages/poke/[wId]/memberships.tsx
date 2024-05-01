@@ -16,7 +16,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const owner = auth.workspace();
   const user = auth.user();
 
-  if (!owner) {
+  if (!owner || !user) {
     return {
       notFound: true,
     };
