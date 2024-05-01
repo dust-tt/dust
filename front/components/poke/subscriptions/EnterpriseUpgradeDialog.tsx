@@ -4,7 +4,6 @@ import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import type { Control } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -17,109 +16,12 @@ import {
   PokeDialogTitle,
   PokeDialogTrigger,
 } from "@app/components/poke/shadcn/ui/dialog";
+import { PokeForm } from "@app/components/poke/shadcn/ui/form";
 import {
-  PokeForm,
-  PokeFormControl,
-  PokeFormField,
-  PokeFormItem,
-  PokeFormLabel,
-  PokeFormMessage,
-} from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
+  InputField,
+  SelectField,
+} from "@app/components/poke/shadcn/ui/form/fields";
 import { usePokePlans } from "@app/lib/swr";
-
-interface SelectFieldOption {
-  value: string;
-  display?: string;
-}
-
-function SelectField({
-  control,
-  name,
-  title,
-  options,
-}: {
-  control: Control<EnterpriseUpgradeFormType>;
-  name: keyof EnterpriseUpgradeFormType;
-  title?: string;
-  options: SelectFieldOption[];
-}) {
-  return (
-    <PokeFormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeSelect
-              onValueChange={field.onChange}
-              value={field.value as string}
-            >
-              <PokeFormControl>
-                <PokeSelectTrigger>
-                  <PokeSelectValue placeholder={title ?? name} />
-                </PokeSelectTrigger>
-              </PokeFormControl>
-              <PokeSelectContent>
-                <div className="bg-slate-100">
-                  {options.map((option) => (
-                    <PokeSelectItem key={option.value} value={option.value}>
-                      {option.display ? option.display : option.value}
-                    </PokeSelectItem>
-                  ))}
-                </div>
-              </PokeSelectContent>
-            </PokeSelect>
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
-    />
-  );
-}
-
-function InputField({
-  control,
-  name,
-  title,
-  type,
-  placeholder,
-}: {
-  control: Control<EnterpriseUpgradeFormType>;
-  name: keyof EnterpriseUpgradeFormType;
-  title?: string;
-  type?: "text" | "number";
-  placeholder?: string;
-}) {
-  return (
-    <PokeFormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeInput
-              placeholder={placeholder ?? name}
-              type={type}
-              {...field}
-              value={field.value}
-            />
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
-    />
-  );
-}
 
 export default function EnterpriseUpgradeDialog({
   disabled,
