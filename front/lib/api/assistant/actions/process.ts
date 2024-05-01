@@ -218,7 +218,7 @@ export async function* runProcess(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
-    agentMessageId: agentMessage.id,
+    agentMessageId: agentMessage.agentMessageId,
   });
 
   const now = Date.now();
