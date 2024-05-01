@@ -1,0 +1,3 @@
+ALTER TABLE cache
+ADD COLUMN version INTEGER,
+ADD COLUMN request_type TEXT;
