@@ -237,23 +237,23 @@ export default function AssistantNew({
       />
       <div
         id="assistant-new-page"
-        className="flex min-h-screen flex-col items-center border-2 border-black bg-yellow-300 pb-20 text-sm font-normal text-element-800"
+        className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
       >
         {/* Assistant input */}
         <div
           id="assistant-input-container"
-          className="flex h-[70vh] w-full flex-col items-center justify-center bg-red-300"
+          className="flex h-[70vh] w-full flex-col items-center justify-center"
         >
           <div
             id="assistant-input-header"
-            className="mb-2 flex h-fit w-full flex-col justify-between bg-blue-300 px-4 py-2"
+            className="mb-2 flex h-fit w-full flex-col justify-between px-4 py-2"
           >
             <Page.SectionHeader title={greeting} />
             <Page.SectionHeader title="Start a conversation" />
           </div>
           <div
             id="assistant-input-bar"
-            className="flex h-fit w-full items-center justify-center bg-purple-300"
+            className="flex h-fit w-full items-center justify-center"
           >
             <AssistantInputBar
               owner={owner}
@@ -267,9 +267,9 @@ export default function AssistantNew({
         {/* Assistant list */}
         <div
           id="assistants-list-container"
-          className="flex h-full w-full flex-col gap-4 bg-cyan-300 px-0 pt-9"
+          className="flex h-full w-full flex-col gap-4 pt-9"
         >
-          <div id="assistants-list-header" className="bg-pink-300 px-4">
+          <div id="assistants-list-header" className="px-4">
             <Page.SectionHeader title="Chat with..." />
           </div>
           <div
@@ -300,7 +300,7 @@ export default function AssistantNew({
               </Tooltip>
             </Button.List>
           </div>
-          <div id="assistants-list" className="flex h-fit bg-slate-300 px-4">
+          <div id="assistants-list" className="flex h-fit px-4">
             <ContextItem.List>
               {displayedAgents.length === 0 &&
                 searchFilteredAssistants.length === 0 &&
