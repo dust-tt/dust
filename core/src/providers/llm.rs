@@ -336,6 +336,7 @@ pub struct LLMChatRequest {
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
     extras: Option<Value>,
+    version: i32,
 }
 
 impl LLMChatRequest {
@@ -353,10 +354,14 @@ impl LLMChatRequest {
         presence_penalty: Option<f32>,
         frequency_penalty: Option<f32>,
         extras: Option<Value>,
+        version: i32,
     ) -> Self {
         let mut hasher = blake3::Hasher::new();
+
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
+        hasher.update(version.to_string().as_bytes());
+
         messages.iter().for_each(|m| {
             hasher.update(serde_json::to_string(m).unwrap().as_bytes());
         });
@@ -402,6 +407,7 @@ impl LLMChatRequest {
             presence_penalty,
             frequency_penalty,
             extras,
+            version,
         }
     }
 
