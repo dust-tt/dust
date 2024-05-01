@@ -303,12 +303,6 @@ AgentMessage.init(
   },
   {
     modelName: "agent_message",
-    indexes: [
-      {
-        unique: true,
-        fields: ["agentRetrievalActionId"],
-      },
-    ],
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
