@@ -378,7 +378,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        hash                 TEXT NOT NULL,
        request              TEXT NOT NULL,
        response             TEXT NOT NULL,
-       block_type           TEXT,
+       type                 TEXT,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources

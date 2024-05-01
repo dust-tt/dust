@@ -34,6 +34,8 @@ impl CachedRequest for HttpRequest {
     /// The version of the cache. This should be incremented whenever the inputs or
     /// outputs of the request are changed, to ensure that the cached data is invalidated.
     const VERSION: i32 = 1;
+
+    const REQUEST_TYPE: &'static str = "http";
 }
 
 impl HttpRequest {
