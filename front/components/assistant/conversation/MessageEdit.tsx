@@ -104,7 +104,7 @@ export function MessageEdit({
           )}
         />
       </div>
-      <div className="flex flex-1 items-center justify-center gap-3">
+      <div className="flex flex-1 gap-3">
         <Button
           variant="secondary"
           label="Cancel"
