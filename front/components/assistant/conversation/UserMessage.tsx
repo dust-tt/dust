@@ -10,11 +10,16 @@ import type { MessageSizeType } from "@app/components/assistant/conversation/Con
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
+import {ArrowPathIcon, ClipboardIcon} from "@dust-tt/sparkle";
+import {EditIcon} from "lucide-react";
+import {useState} from "react";
+import {MessageEdit} from "@app/components/assistant/conversation/MessageEdit";
 
 interface UserMessageProps {
   conversationId: string;
   hideReactions?: boolean;
   isLastMessage: boolean;
+  isLastUserMessage: boolean,
   latestMentions: string[];
   message: UserMessageType;
   owner: WorkspaceType;
@@ -28,6 +33,7 @@ export function UserMessage({
   conversationId,
   hideReactions,
   isLastMessage,
+  isLastUserMessage,
   latestMentions,
   message,
   owner,
@@ -40,7 +46,22 @@ export function UserMessage({
     workspaceId: owner.sId,
     agentsGetView: { conversationId },
   });
-
+  
+  const [editing, setEditing] = useState(false)
+  
+  const buttons = !isLastUserMessage
+    ? []
+    : [
+      {
+        label: "Edit",
+        icon: EditIcon,
+        onClick: () => {
+          setEditing(editing => !editing)
+        },
+      }
+    ];
+  
+  
   return (
     <ConversationMessage
       owner={owner}
@@ -50,6 +71,7 @@ export function UserMessage({
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
       reactions={reactions}
+      buttons={buttons}
       enableEmojis={!hideReactions}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
@@ -57,17 +79,26 @@ export function UserMessage({
       size={size}
     >
       <div className="flex flex-col gap-4">
-        <div>
-          <RenderMessageMarkdown
-            content={message.content}
-            isStreaming={false}
-            agentConfigurations={agentConfigurations}
-          />
-        </div>
-        {message.mentions.length === 0 && isLastMessage && (
+        {!editing && (
+          <div>
+            <RenderMessageMarkdown
+              content={message.content}
+              isStreaming={false}
+              agentConfigurations={agentConfigurations}
+            />
+          </div>
+        )}
+        {!editing && message.mentions.length === 0 && isLastMessage && (
           <AgentSuggestion
             conversationId={conversationId}
             latestMentions={latestMentions}
+            owner={owner}
+            userMessage={message}
+          />
+        )}
+        {editing && (
+          <MessageEdit
+            conversationId={conversationId}
             owner={owner}
             userMessage={message}
           />
