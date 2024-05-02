@@ -291,14 +291,6 @@ export const subNavigationApp = ({
   if (isUser(owner)) {
     nav = nav.concat([
       {
-        id: "execute",
-        label: "Run",
-        icon: PaperAirplaneIcon,
-        href: `/w/${owner.sId}/a/${app.sId}/execute`,
-        sizing: "expand",
-        current: current === "execute",
-      },
-      {
         id: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
