@@ -251,18 +251,12 @@ export async function retrievalActionTypesFromAgentMessageIds(
     return acc;
   }, {});
 
-  const ids = models.map((a) => a.id);
-
-  if (Object.keys(actionById).length !== models.length) {
-    throw new Error(
-      "Unexpected duplicate model ids in `renderRetrievalActionTypes`"
-    );
-  }
+  const actionIds = models.map((a) => a.id);
 
   const documentRowsByActionId = (
     await RetrievalDocument.findAll({
       where: {
-        retrievalActionId: ids,
+        retrievalActionId: actionIds,
       },
     })
   ).reduce<{
@@ -295,7 +289,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   const actions: RetrievalActionType[] = [];
 
-  for (const id of ids) {
+  for (const id of actionIds) {
     const action = actionById[id];
     const documentRows = documentRowsByActionId[id] ?? [];
     const chunkRows = documentRows.flatMap(
