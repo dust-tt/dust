@@ -188,7 +188,12 @@ export async function* runTablesQuery(
         question,
         instructions: configuration.instructions,
       },
-    ]
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentMessageId: agentMessage.sId,
+    }
   );
 
   if (res.isErr()) {

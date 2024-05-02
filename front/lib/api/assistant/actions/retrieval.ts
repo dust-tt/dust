@@ -579,11 +579,21 @@ export async function* runRetrieval(
   // Handle top k.
   config.DATASOURCE.top_k = topK;
 
-  const res = await runActionStreamed(auth, "assistant-v2-retrieval", config, [
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-retrieval",
+    config,
+    [
+      {
+        query,
+      },
+    ],
     {
-      query,
-    },
-  ]);
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      agentMessageId: agentMessage.sId,
+    }
+  );
 
   if (res.isErr()) {
     logger.error(

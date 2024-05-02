@@ -48,7 +48,8 @@ export async function runActionStreamed(
   auth: Authenticator,
   actionName: DustRegistryActionName,
   config: DustAppConfigType,
-  inputs: Array<unknown>
+  inputs: Array<unknown>,
+  tracingRecords: Record<string, string>
 ) {
   const owner = auth.workspace();
   if (!owner) {
@@ -92,7 +93,30 @@ export async function runActionStreamed(
     return new Err(res.error);
   }
 
+  // Don't await the dustRunid promise before you are done iterating on the eventStream,
+  // it will block the event stream, which is in charge of resolving that promise.
   const { eventStream, dustRunId } = res.value;
+  dustRunId
+    .then((runId) => {
+      logger.info(
+        {
+          runId,
+          loggerArgs,
+          tracingRecords,
+        },
+        "Got runId for runActionStreamed"
+      );
+    })
+    .catch((err) => {
+      logger.error(
+        {
+          error: err,
+          loggerArgs,
+          tracingRecords,
+        },
+        "Failed to get runId for runActionStreamed"
+      );
+    });
 
   const streamEvents = async function* () {
     for await (const event of eventStream) {
@@ -119,7 +143,7 @@ export async function runActionStreamed(
     );
   };
 
-  return new Ok({ eventStream: streamEvents(), dustRunId });
+  return new Ok({ eventStream: streamEvents() });
 }
 
 /**
