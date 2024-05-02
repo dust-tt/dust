@@ -45,9 +45,9 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
+  DustAppSecret,
   Key,
   MembershipInvitation,
-  Secret,
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
@@ -72,7 +72,7 @@ async function main() {
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
   await Key.sync({ alter: true });
-  await Secret.sync({ alter: true });
+  await DustAppSecret.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });

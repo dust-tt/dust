@@ -16,7 +16,9 @@ export type PostSecretsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetSecretsResponseBody | PostSecretsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorReponse<GetSecretsResponseBody | PostSecretsResponseBody>
+  >
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -106,13 +108,13 @@ async function handler(
         workspaceId: owner.id,
         name: postSecretName,
         hash: encryptedValue,
-        status: "active"
+        status: "active",
       });
 
       res.status(201).json({
         secret: {
           name: postSecretName,
-          value: secretValue
+          value: secretValue,
         },
       });
       return;
@@ -122,7 +124,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET, POST or DELETE is expected.",
+          message:
+            "The method passed is not supported, GET, POST or DELETE is expected.",
         },
       });
   }
