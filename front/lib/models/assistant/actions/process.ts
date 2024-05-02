@@ -8,7 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentProcessConfiguration extends Model<
@@ -129,7 +129,7 @@ export class AgentProcessAction extends Model<
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: unknown[] | null;
 
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentProcessAction.init(
   {
@@ -193,3 +193,10 @@ AgentProcessAction.init(
     },
   }
 );
+
+AgentProcessAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+AgentMessage.hasMany(AgentProcessAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});

@@ -14,8 +14,6 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -343,13 +341,7 @@ AgentMessage.belongsTo(AgentTablesQueryAction, {
 
 // END LEGACY
 
-AgentRetrievalAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentRetrievalAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
+// TO BE MOVED TO RESPECTIVE MODELS POST INVERSION
 
 AgentDustAppRunAction.belongsTo(AgentMessage, {
   // allow null for now until we proceed to the backfill.
@@ -371,12 +363,7 @@ AgentMessage.hasMany(AgentTablesQueryAction, {
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
-AgentProcessAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-AgentMessage.hasMany(AgentProcessAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
+// END TO BE MOVED
 
 export class Message extends Model<
   InferAttributes<Message>,

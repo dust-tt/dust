@@ -8,7 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentRetrievalConfiguration extends Model<
@@ -220,6 +220,14 @@ AgentRetrievalAction.init(
     },
   }
 );
+
+AgentRetrievalAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMessage.hasMany(AgentRetrievalAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
 
 export class RetrievalDocument extends Model<
   InferAttributes<RetrievalDocument>,
