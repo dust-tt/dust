@@ -66,7 +66,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 const TABS = [
   { name: "Design", runType: "local", ownerOwnly: true },
-  { name: "Execute", runType: "execute", ownerOwnly: false },
   { name: "API", runType: "deploy", ownerOwnly: false },
 ] as { name: string; runType: RunRunType; ownerOwnly: boolean }[];
 
