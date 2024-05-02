@@ -10,8 +10,7 @@ import type { MessageSizeType } from "@app/components/assistant/conversation/Con
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
-import {ArrowPathIcon, ClipboardIcon} from "@dust-tt/sparkle";
-import {EditIcon} from "lucide-react";
+import {PencilSquareIcon} from "@dust-tt/sparkle";
 import {useState} from "react";
 import {MessageEdit} from "@app/components/assistant/conversation/MessageEdit";
 
@@ -54,7 +53,7 @@ export function UserMessage({
     : [
       {
         label: "Edit",
-        icon: EditIcon,
+        icon: PencilSquareIcon,
         onClick: () => {
           setEditing(editing => !editing)
         },
@@ -101,6 +100,7 @@ export function UserMessage({
             conversationId={conversationId}
             owner={owner}
             userMessage={message}
+            agentConfigurations={agentConfigurations}
           />
         )}
       </div>
