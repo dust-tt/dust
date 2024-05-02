@@ -7,6 +7,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   Chip,
   ListAddIcon,
+  MoreIcon,
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof AssistantPreview> = {
@@ -202,5 +203,75 @@ export const AssistantPreviewExample = () => (
         }}
       />
     </div>
+    <h2>Minimal Gallery</h2>
+    <div className="s-grid s-grid-cols-3 s-w-full s-gap-2">
+      <div className="s-border s-border-structure-100 s-rounded-xl">
+        <AssistantPreview
+          title={"gpt4"}
+          pictureUrl={"https://dust.tt/static/systemavatar/gpt4_avatar_full.png"}
+          subtitle={"Dust"}
+          description=""
+          variant="minimalGallery"
+          actions={
+            <div className="s-flex s-justify-end s-pt-1">
+              <Button
+                label=""
+                icon={MoreIcon}
+                variant="tertiary" 
+                size="sm" 
+                onClick={() => console.log("clicked")}
+                labelVisible={false}
+              />
+            </div>
+          }
+          onClick={() => console.log("clicked")}
+        />
+      </div>
+      <div className="s-border s-border-structure-100 s-rounded-xl">
+        <AssistantPreview
+          title={"SQLGod"}
+          pictureUrl={"https://dust.tt/static/droidavatar/Droid_Green_2.jpg"}
+          subtitle={"Dust"}
+          description=""
+          variant="minimalGallery"
+          actions={
+            <div className="s-flex s-justify-end s-align-middle">
+              <Button
+                label=""
+                icon={MoreIcon}
+                variant="tertiary" 
+                size="sm" 
+                onClick={() => console.log("clicked")}
+                labelVisible={false}
+              />
+            </div>
+          }
+          onClick={() => console.log("clicked")}
+        />
+      </div>
+      <div className="s-border s-border-structure-100 s-rounded-xl">
+        <AssistantPreview
+          title={"salesfr"}
+          pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
+          subtitle={"Dust"}
+          description=""
+          variant="minimalGallery"
+          actions={
+            <div className="s-flex s-justify-end s-pt-1">
+              <Button
+                label=""
+                icon={MoreIcon}
+                variant="tertiary" 
+                size="sm" 
+                onClick={() => console.log("clicked")}
+                labelVisible={false}
+              />
+            </div>
+          }
+          onClick={() => console.log("clicked")}
+        />
+      </div>
+    </div>
+
   </div>
 );
