@@ -15,3 +15,5 @@ export type DatasetSchema = {
   type: "string" | "number" | "boolean" | "json";
   description: string | null;
 }[];
+
+export type DatasetViewType = "full" | "block";

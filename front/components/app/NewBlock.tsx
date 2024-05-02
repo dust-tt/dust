@@ -37,35 +37,35 @@ export default function NewBlock({
     {
       type: "data",
       typeNames: ["data"],
-      name: "Data",
+      name: "Data array",
       description:
         "Load a dataset and output its elements as an array. Typically used to seed few-shot prompts.",
     },
     {
       type: "code",
       typeNames: ["code"],
-      name: "JavaScript",
+      name: "Run Javascript",
       description:
         "Run a snippet of JavaScript to modify, augment, or combine results from other blocks.",
     },
     {
       type: "data_source",
       typeNames: ["data_source"],
-      name: "DataSource",
+      name: "Search a datasource",
       description:
         "Perform semantic search against chunked documents from a DataSource.",
     },
     {
       type: "curl",
       typeNames: ["curl"],
-      name: "Curl Request",
+      name: "cURL Request",
       description:
         "Perform an HTTP request to interface with external services.",
     },
     {
       type: "browser",
       typeNames: ["browser"],
-      name: "Browser",
+      name: "Extract website data",
       description:
         "Download the HTML or text content of page on the web (or a portion of it).",
     },
@@ -79,30 +79,36 @@ export default function NewBlock({
     {
       type: "map_reduce",
       typeNames: ["map", "reduce"],
-      name: "Map Reduce",
+      name: "Map Reduce loop",
       description:
         "Map over an array and execute a sequence of blocks in parallel.",
     },
     {
       type: "while_end",
       typeNames: ["while", "end"],
-      name: "While End",
+      name: "While loop",
       description: "Loop over a set of blocks until a condition is met.",
     },
     {
       type: "database_schema",
       typeNames: ["database_schema"],
-      name: "Database Schema",
+      name: "Retrieve a database schema",
       description: "Retrieve the schema of a database.",
     },
     {
       type: "database",
       typeNames: ["database"],
-      name: "Database",
-      description: "Query a database.",
+      name: "Query a database",
+      description:
+        "Query a database by executing SQL queries on structured data sources.",
     },
   ];
 
+  blocks.sort((a, b) =>
+    a.type.toLowerCase().localeCompare(b.type.toLowerCase())
+  );
+
+  // Add input block on top if it doesn't exist.
   if (!containsInput) {
     blocks.splice(0, 0, {
       type: "input",
@@ -160,18 +166,19 @@ export default function NewBlock({
               <div className="ml-4 grid max-w-md grid-cols-12 items-center">
                 <div className="col-span-4 sm:col-span-3">
                   <div className="flex text-base font-medium text-gray-900">
-                    {block.typeNames.map((type) => (
-                      <div
-                        key={type}
-                        className="mr-1 rounded-md bg-gray-200 px-1 py-0.5 text-sm font-bold"
-                      >
-                        {type}
-                      </div>
-                    ))}
+                    <div
+                      className={`mr-1 rounded-md px-1 py-0.5 text-sm font-bold ${
+                        block.type === "input" ? "bg-orange-200" : "bg-gray-200"
+                      }`}
+                    >
+                      {block.type}
+                    </div>
                   </div>
                 </div>
                 <div className="col-span-8 pr-2 text-sm text-gray-700 sm:col-span-9 sm:pl-6">
-                  {block.description}
+                  <strong>{block.name}</strong>
+                  <br />
+                  <p className="text-sm">{block.description}</p>
                 </div>
               </div>
             )}
