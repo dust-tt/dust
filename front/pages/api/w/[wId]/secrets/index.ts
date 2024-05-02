@@ -1,24 +1,24 @@
 import type { SecretType } from "@dust-tt/types";
 import { formatUserFullName } from "@dust-tt/types";
+import { decrypt,encrypt } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { Secret } from "@app/lib/models/workspace";
-import { new_id } from "@app/lib/utils";
 import { withLogging } from "@app/logger/withlogging";
 
 export type GetSecretsResponseBody = {
-  keys: SecretType[];
+  secrets: SecretType[];
 };
 
-export type PostKeysResponseBody = {
-  key: SecretType;
+export type PostSecretsResponseBody = {
+  secret: SecretType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetSecretsResponseBody | PostKeysResponseBody>
+  res: NextApiResponse<GetSecretsResponseBody | PostSecretsResponseBody>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -58,35 +58,37 @@ async function handler(
       });
 
       res.status(200).json({
-        keys: secrets.map((s) => {
-          const decipheredSecret = s.hash;
+        secrets: secrets.map((s) => {
+          const clearSecret = decrypt(s.hash, owner.sId);
           return {
             createdAt: s.createdAt.getTime(),
             creator: formatUserFullName(s.user),
             name: s.name,
-            value: decipheredSecret,
+            value: clearSecret,
           };
         }),
       });
       return;
 
     case "POST":
-      const secret = `sk-${new_id().slice(0, 32)}`;
+      const secretName = req.body.name;
+      const secretValue = req.body.value;
+      // We feed the workspace sid as key that will be added to the salt.
+      const hashValue = encrypt(secretValue, owner.sId);
 
-      const key = await Key.create({
-        secret: secret,
-        status: "active",
+      const key = await Secret.create({
         userId: user?.id,
         workspaceId: owner.id,
-        isSystem: false,
+        name: secretName,
+        hash: hashValue,
       });
 
       res.status(201).json({
-        key: {
+        secret: {
           createdAt: key.createdAt.getTime(),
           creator: formatUserFullName(key.user),
-          secret: key.secret,
-          status: key.status,
+          name: secretName,
+          value: secretValue,
         },
       });
       return;
