@@ -430,17 +430,6 @@ export default function DatasetView({
     datasetTypes,
   ]);
 
-  useEffect(() => {
-    // If in block view, update the dataset keys and data
-    if (dataset && viewType == "block") {
-      setDatasetKeys(checkDatasetData({ data: dataset.data }));
-      setDatasetData(dataset.data || []);
-      setDatasetName(dataset.name);
-      setDatasetDescription(dataset.description);
-      setDatasetTypes([]);
-    }
-  }, [dataset, viewType]);
-
   return (
     <div>
       <div className="mt-2 grid gap-x-4 gap-y-4 sm:grid-cols-5">

@@ -59,20 +59,10 @@ export default function Input({
   );
   const sendNotification = useContext(SendNotificationsContext);
 
-  const handleSetDataset = async (datasetName: string) => {
+  const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);
-    b.config.dataset = datasetName;
+    b.config.dataset = dataset;
     onBlockUpdate(b);
-  };
-
-  const onUpdate = (
-    initializing: boolean,
-    valid: boolean,
-    currentDatasetInEditor: DatasetType
-  ) => {
-    if (!initializing && valid) {
-      setDatasetModalData(currentDatasetInEditor);
-    }
   };
 
   const onDatasetDataModalSave = async () => {
@@ -170,7 +160,15 @@ export default function Input({
                 datasets={[dataset]}
                 dataset={dataset}
                 schema={dataset.schema}
-                onUpdate={onUpdate}
+                onUpdate={(
+                  initializing: boolean,
+                  valid: boolean,
+                  currentDatasetInEditor: DatasetType
+                ) => {
+                  if (!initializing && valid) {
+                    setDatasetModalData(currentDatasetInEditor);
+                  }
+                }}
                 nameDisabled={true}
                 viewType="block"
               />
