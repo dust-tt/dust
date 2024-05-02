@@ -1,6 +1,6 @@
-use crate::project::Project;
 use crate::stores::store::Store;
 use crate::utils;
+use crate::{cached_request::CachedRequest, project::Project};
 use anyhow::{anyhow, Result};
 use dns_lookup::lookup_host;
 use hyper::body::Buf;
@@ -30,6 +30,14 @@ pub struct HttpResponse {
     pub body: Value,
 }
 
+impl CachedRequest for HttpRequest {
+    /// The version of the cache. This should be incremented whenever the inputs or
+    /// outputs of the request are changed, to ensure that the cached data is invalidated.
+    const VERSION: i32 = 1;
+
+    const REQUEST_TYPE: &'static str = "http";
+}
+
 impl HttpRequest {
     pub fn new(method: &str, url: &str, headers: Value, body: Value) -> Result<Self> {
         let mut hasher = blake3::Hasher::new();
@@ -37,6 +45,7 @@ impl HttpRequest {
         hasher.update(url.as_bytes());
         hasher.update(serde_json::to_string(&headers)?.as_bytes());
         hasher.update(serde_json::to_string(&body)?.as_bytes());
+        hasher.update(HttpRequest::version().to_string().as_bytes());
 
         let hash = format!("{}", hasher.finalize().to_hex());
 

@@ -1,3 +1,4 @@
+use crate::cached_request::CachedRequest;
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use anyhow::{anyhow, Result};
@@ -29,6 +30,14 @@ pub trait Embedder {
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>>;
 }
 
+impl CachedRequest for EmbedderRequest {
+    /// The version of the cache. This should be incremented whenever the inputs or
+    /// outputs of the request are changed, to ensure that the cached data is invalidated.
+    const VERSION: i32 = 1;
+
+    const REQUEST_TYPE: &'static str = "embedder";
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EmbedderRequest {
     hash: String,
@@ -48,6 +57,8 @@ impl EmbedderRequest {
         let mut hasher = blake3::Hasher::new();
         hasher.update(provider_id.to_string().as_bytes());
         hasher.update(model_id.as_bytes());
+        hasher.update(EmbedderRequest::version().to_string().as_bytes());
+
         text.iter().for_each(|s| {
             hasher.update(s.as_bytes());
         });
