@@ -129,7 +129,7 @@ export class AgentProcessAction extends Model<
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: unknown[] | null;
 
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentProcessAction.init(
   {

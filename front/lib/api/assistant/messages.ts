@@ -34,6 +34,7 @@ import { ContentFragmentResource } from "@app/lib/resources/content_fragment_res
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
+import { processActionTypesFromAgentMessageIds } from "./actions/process";
 
 export async function batchRenderUserMessages(
   messages: Message[]
@@ -136,6 +137,7 @@ export async function batchRenderAgentMessages(
     agentRetrievalActions,
     agentDustAppRunActions,
     agentTablesQueryActions,
+    agentProcessActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -200,6 +202,7 @@ export async function batchRenderAgentMessages(
         } satisfies TablesQueryActionType;
       });
     })(),
+    (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -233,6 +236,14 @@ export async function batchRenderAgentMessages(
         agentTablesQueryActions.find(
           (a) => a.id === agentMessage.agentTablesQueryActionId
         ) || null;
+    }
+    if (
+      agentProcessActions.filter((a) => a.agentMessageId === agentMessage.id)
+        .length > 0
+    ) {
+      action =
+        agentProcessActions.find((a) => a.agentMessageId === agentMessage.id) ||
+        null;
     }
 
     const agentConfiguration = agentConfigurations.find(

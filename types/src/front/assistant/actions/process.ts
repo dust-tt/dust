@@ -55,7 +55,8 @@ export type ProcessConfigurationType = {
 };
 
 export type ProcessActionType = {
-  id: ModelId;
+  id: ModelId; // AgentProcessAction
+  agentMessageId: ModelId; // AgentMessage
 
   type: "process_action";
 
