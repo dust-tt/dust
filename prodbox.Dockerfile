@@ -20,6 +20,8 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 # Set the working directory to /dust
 WORKDIR /dust
 
+COPY . .
+
 # Types dependencies
 COPY /types/package*.json ./types/
 RUN cd types && npm ci
