@@ -1,4 +1,4 @@
-export type SecretType = {
+export type DustAppSecretType = {
   name: string;
   value: string;
 };

@@ -282,9 +282,9 @@ User.hasMany(Key, {
 });
 Key.belongsTo(User);
 
-export class Secret extends Model<
-  InferAttributes<Secret>,
-  InferCreationAttributes<Secret>
+export class DustAppSecret extends Model<
+  InferAttributes<DustAppSecret>,
+  InferCreationAttributes<DustAppSecret>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -298,7 +298,7 @@ export class Secret extends Model<
 
   declare user: NonAttribute<User>;
 }
-Secret.init(
+DustAppSecret.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -325,18 +325,18 @@ Secret.init(
     },
   },
   {
-    modelName: "secrets",
+    modelName: "dust_app_secrets",
     sequelize: frontSequelize,
     indexes: [{ fields: ["status", "workspaceId"] }],
   }
 );
-Workspace.hasMany(Secret, {
+Workspace.hasMany(DustAppSecret, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
 // We don't want to delete keys when a user gets deleted.
-User.hasMany(Secret, {
+User.hasMany(DustAppSecret, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
-Secret.belongsTo(User);
+DustAppSecret.belongsTo(User);

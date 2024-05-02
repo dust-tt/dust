@@ -1,22 +1,22 @@
-import type { SecretType } from "@dust-tt/types";
+import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
 import { decrypt, encrypt } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Secret } from "@app/lib/models/workspace";
-import { withLogging } from "@app/logger/withlogging";
+import { DustAppSecret } from "@app/lib/models/workspace";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSecretsResponseBody = {
-  secrets: SecretType[];
+  secrets: DustAppSecretType[];
 };
 
 export type PostSecretsResponseBody = {
-  secret: SecretType;
+  secret: DustAppSecretType;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<GetSecretsResponseBody | PostSecretsResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<GetSecretsResponseBody | PostSecretsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -27,18 +27,28 @@ async function handler(
   const owner = auth.workspace();
   const user = auth.user();
   if (!owner || !user) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace or user is missing.",
+      },
+    });
   }
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "You do not have the required permissions.",
+      },
+    });
   }
 
   switch (req.method) {
     case "GET":
-      const secrets = await Secret.findAll({
+      const secrets = await DustAppSecret.findAll({
         where: {
           workspaceId: owner.id,
           status: "active",
@@ -60,7 +70,7 @@ async function handler(
 
     case "DELETE":
       const { name: deleteSecretName } = req.body;
-      const secret = await Secret.findOne({
+      const secret = await DustAppSecret.findOne({
         where: {
           name: deleteSecretName,
           workspaceId: owner.id,
@@ -69,8 +79,13 @@ async function handler(
       });
 
       if (!secret) {
-        res.status(404).end();
-        return;
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "dust_app_secret_not_found",
+            message: "Dust app secret not found.",
+          },
+        });
       }
 
       await secret.update({
@@ -86,7 +101,7 @@ async function handler(
 
       const hashValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      await Secret.create({
+      await DustAppSecret.create({
         userId: user.id,
         workspaceId: owner.id,
         name: postSecretName,
@@ -103,8 +118,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, GET, POST or DELETE is expected.",
+        },
+      });
   }
 }
 
