@@ -1,6 +1,6 @@
 import type { SecretType } from "@dust-tt/types";
 import { formatUserFullName } from "@dust-tt/types";
-import { decrypt,encrypt } from "@dust-tt/types";
+import { decrypt, encrypt } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -68,6 +68,25 @@ async function handler(
           };
         }),
       });
+      return;
+
+    case "DELETE":
+      const secretId = req.body.id;
+      const secret = await Secret.findOne({
+        where: {
+          id: secretId,
+          workspaceId: owner.id,
+        },
+      });
+
+      if (!secret) {
+        res.status(404).end();
+        return;
+      }
+
+      await secret.destroy();
+
+      res.status(204).end();
       return;
 
     case "POST":
