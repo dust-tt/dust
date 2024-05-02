@@ -24,7 +24,6 @@ export class IntercomWorkspace extends Model<
 
   declare conversationsSlidingWindow: number;
   declare syncAllConversations: IntercomSyncAllConversationsStatus;
-  declare shouldSyncAllConversations: boolean; // @todo daph remove
   declare shouldSyncNotes: boolean;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -63,12 +62,6 @@ IntercomWorkspace.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "disabled",
-    },
-    shouldSyncAllConversations: {
-      // @todo daph remove
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
     shouldSyncNotes: {
       type: DataTypes.BOOLEAN,

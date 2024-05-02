@@ -87,7 +87,6 @@ export async function createIntercomConnector(
       conversationsSlidingWindow: 90,
       region: intercomWorkspace.region,
       syncAllConversations: "disabled" as const,
-      shouldSyncAllConversations: false, // @todo daph remove
       shouldSyncNotes: true,
     };
 
