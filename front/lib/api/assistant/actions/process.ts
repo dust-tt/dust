@@ -29,7 +29,7 @@ import {
   timeFrameFromNow,
 } from "@app/lib/api/assistant/actions/retrieval";
 import { constructPrompt } from "@app/lib/api/assistant/generation";
-import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
   isDevelopment,
