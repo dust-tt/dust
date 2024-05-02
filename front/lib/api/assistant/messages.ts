@@ -17,12 +17,10 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { renderRetrievalActionsByModelId } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentMessage,
@@ -34,6 +32,8 @@ import {
 import { User } from "@app/lib/models/user";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+
+import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
 export async function batchRenderUserMessages(
   messages: Message[]
@@ -127,10 +127,13 @@ export async function batchRenderAgentMessages(
   messages: Message[]
 ): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
   const agentMessages = messages.filter((m) => !!m.agentMessage);
+  const agentMessageIds = removeNulls(
+    agentMessages.map((m) => m.agentMessageId || null)
+  );
 
   const [
     agentConfigurations,
-    retrievalActionByAgentMessageId,
+    agentRetrievalActions,
     agentDustAppRunActions,
     agentTablesQueryActions,
   ] = await Promise.all([
@@ -154,25 +157,7 @@ export async function batchRenderAgentMessages(
       ).filter((a) => a !== null) as LightAgentConfigurationType[];
       return agents;
     })(),
-    (async () => {
-      const agentMessageIds = removeNulls(
-        agentMessages.map((m) => m.agentMessageId || null)
-      );
-      return (
-        await AgentRetrievalAction.findAll({
-          attributes: ["id", "agentMessageId"],
-          where: {
-            agentMessageId: agentMessageIds,
-          },
-        })
-      ).reduce((acc, action) => {
-        if (action.agentMessageId) {
-          acc[action.agentMessageId] = action;
-        }
-
-        return acc;
-      }, {} as Record<ModelId, AgentRetrievalAction>);
-    })(),
+    (async () => retrievalActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => {
       const actions = await AgentDustAppRunAction.findAll({
         where: {
@@ -217,17 +202,6 @@ export async function batchRenderAgentMessages(
     })(),
   ]);
 
-  const agentRetrievalActions = await renderRetrievalActionsByModelId(
-    removeNulls(
-      agentMessages.map(
-        (m) =>
-          (m.agentMessageId &&
-            retrievalActionByAgentMessageId[m.agentMessageId]?.id) ||
-          null
-      )
-    )
-  );
-
   return agentMessages.map((message) => {
     if (!message.agentMessage) {
       throw new Error(
@@ -237,20 +211,30 @@ export async function batchRenderAgentMessages(
     const agentMessage = message.agentMessage;
 
     let action: AgentActionType | null = null;
-    if (retrievalActionByAgentMessageId[agentMessage.id]) {
-      const actionId = retrievalActionByAgentMessageId[agentMessage.id].id;
-      action = agentRetrievalActions.find((a) => a.id === actionId) || null;
-    } else if (agentMessage.agentDustAppRunActionId) {
+
+    // TODO: Allow multiple actions per agent messages.
+    if (
+      agentRetrievalActions.filter((a) => a.agentMessageId === agentMessage.id)
+        .length > 0
+    ) {
+      action =
+        agentRetrievalActions.find(
+          (a) => a.agentMessageId === agentMessage.id
+        ) || null;
+    }
+    if (agentMessage.agentDustAppRunActionId) {
       action =
         agentDustAppRunActions.find(
           (a) => a.id === agentMessage.agentDustAppRunActionId
         ) || null;
-    } else if (agentMessage.agentTablesQueryActionId) {
+    }
+    if (agentMessage.agentTablesQueryActionId) {
       action =
         agentTablesQueryActions.find(
           (a) => a.id === agentMessage.agentTablesQueryActionId
         ) || null;
     }
+
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === agentMessage.agentConfigurationId
     );
