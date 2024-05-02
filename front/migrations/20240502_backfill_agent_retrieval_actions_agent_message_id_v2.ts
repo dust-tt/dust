@@ -1,12 +1,10 @@
 // import type { ModelId } from "@dust-tt/types";
 // import { QueryTypes } from "sequelize";
-//
 // import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 // import { AgentMessage } from "@app/lib/models/assistant/conversation";
 // import { frontSequelize } from "@app/lib/resources/storage";
 // import logger from "@app/logger/logger";
 // import { makeScript } from "@app/scripts/helpers";
-//
 // const backRetrievalActions = async (execute: boolean) => {
 //   let retrievalActions: AgentRetrievalAction[] = [];
 //   retrievalActions = await AgentRetrievalAction.findAll({
@@ -48,7 +46,6 @@
 //       );
 //     }
 //   }
-//
 //   // checking that all pairs are correct
 //   const errors: { id: ModelId }[] = await frontSequelize.query(
 //     `
@@ -76,7 +73,6 @@
 //     logger.info("No error found");
 //   }
 // };
-//
 // makeScript({}, async ({ execute }) => {
 //   await backRetrievalActions(execute);
 // });

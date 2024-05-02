@@ -345,12 +345,12 @@ AgentMessage.belongsTo(AgentTablesQueryAction, {
 
 AgentDustAppRunAction.belongsTo(AgentMessage, {
   // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 AgentMessage.hasMany(AgentDustAppRunAction, {
   // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 AgentTablesQueryAction.belongsTo(AgentMessage, {
