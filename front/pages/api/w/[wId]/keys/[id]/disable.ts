@@ -33,7 +33,7 @@ async function handler(
   const [key] = await Promise.all([
     Key.findOne({
       where: {
-        secret: req.query.secret,
+        id: req.query.id,
         workspaceId: owner.id,
       },
     }),
@@ -52,10 +52,13 @@ async function handler(
 
       res.status(200).json({
         key: {
+          id: key.id,
           createdAt: key.createdAt.getTime(),
           creator: null,
+          lastUsedAt: key.lastUsedAt?.getTime() || null,
           secret: key.secret,
           status: key.status,
+          name: key.name,
         },
       });
       return;
