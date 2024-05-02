@@ -53,91 +53,73 @@ export default function DataAnalytics() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust&nbsp;for Data and&nbsp;Analytics Teams"
+        uptitle="Dust&nbsp;for Data and&nbsp;Analytics"
         title={<>From Data to&nbsp;Action</>}
         from="from-amber-200"
         to="to-amber-500"
         subtitle={
           <>
-            Dedicate yourself&nbsp;to first-of-a-kind analyses for
-            the&nbsp;product and&nbsp;business, while your assistants help your
-            team with more standard queries and&nbsp;charts.
+            Focus on&nbsp;generating first-of-a-kind insights while AI helps
+            with routine queries and&nbsp;standard reports across teams.
           </>
         }
       />
 
       <Grid>
         <SolutionSection
-          title={<>Make all your team SQL fluent and&nbsp;Data literate</>}
+          title={<>Give everyone access to&nbsp;data analysis.</>}
           blocks={[
             {
               color: "amber",
-              contentBlocks: [
-                {
-                  title: (
-                    <>
-                      Package expert knowledge in&nbsp;easy-to-use assistants
-                      in&nbsp;seconds
-                    </>
-                  ),
-                  content: (
-                    <>
-                      Give your databases' schemas, your functions,
-                      and&nbsp;your company's business definition to&nbsp;your
-                      assistant. Let your SQL assistant answer your team's level
-                      one SQL questions.
-                    </>
-                  ),
-                },
-                {
-                  title: <>Reduce data analysis time</>,
-                  content: (
-                    <>
-                      Create data assistants to&nbsp;turn natural language
-                      questions into&nbsp;SQL queries. Ask questions
-                      to&nbsp;your CSVs, Notion Database, and&nbsp;Google
-                      Spreadsheets.
-                    </>
-                  ),
-                },
-              ],
+              contentBlocks: {
+                title: (
+                  <>
+                    Share the&nbsp;gift of&nbsp;data analysis.
+                    <br />
+                    Reduce time to&nbsp;data insights.
+                  </>
+                ),
+                content: [
+                  <>Enable anyone at&nbsp;the company to&nbsp;analyze data.</>,
+                  <>
+                    Ask questions using natural language instead of&nbsp;SQL
+                    and&nbsp;process data sources such as&nbsp;.csv files,
+                    Notion, and&nbsp;Google Spreadsheets using an&nbsp;assistant
+                    that understands your&nbsp;company's business terminology,
+                    custom functions and&nbsp;database schemas.
+                  </>,
+                ],
+              },
+
               assistantBlocks: [assistantExamples[0], assistantExamples[1]],
             },
           ]}
         />
         <SolutionSection
-          title={<>Stop being the&nbsp;perpetual help desk</>}
+          title={
+            <>Free the&nbsp;team from&nbsp;being a&nbsp;perpetual help desk.</>
+          }
           blocks={[
             {
               color: "amber",
-              contentBlocks: [
-                {
-                  title: (
-                    <>Allow new team members to&nbsp;onboard autonomously</>
-                  ),
-                  content: (
-                    <>
-                      Give new members of&nbsp;the data team access
-                      to&nbsp;continuously updated runbooks and&nbsp;internal
-                      documentation with flexible and&nbsp;pedagogical
-                      conversational assistants.
-                    </>
-                  ),
-                },
-                {
-                  title: (
-                    <>Talk to&nbsp;the data but also to&nbsp;the metadata</>
-                  ),
-                  content: (
-                    <>
-                      Help everyone in&nbsp;the team and&nbsp;beyond know what
-                      fields or tables exist, what they mean, and&nbsp;how they
-                      relate to&nbsp;each other. Clean up or draft great
-                      documentation.
-                    </>
-                  ),
-                },
-              ],
+              contentBlocks: {
+                title: <>Streamline data team onboarding</>,
+                content: [
+                  <>
+                    Share up-to-date runbooks and&nbsp;internal documentation
+                    with&nbsp;conversational assistants, for&nbsp;new data team
+                    members to&nbsp;ramp up efficiently and&nbsp;autonomously.
+                  </>,
+                  <>
+                    Help Explain fields, tables, and&nbsp;the&nbsp;relationships
+                    between them&nbsp;all.
+                  </>,
+                  <>
+                    Clean up or&nbsp;draft great documentation about
+                    your&nbsp;infrastructure.
+                  </>,
+                ],
+              },
               assistantBlocks: [assistantExamples[2], assistantExamples[3]],
             },
           ]}
@@ -161,8 +143,8 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Your SQL copilot to&nbsp;generate simple queries, improve queries,
-        and&nbsp;fix errors.
+        Generates simple SQL queries that understand business logic
+        and&nbsp;fixes or&nbsp;improves existing ones
       </>
     ),
   },
@@ -172,30 +154,30 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer advanced questions about our users by&nbsp;querying our usage
-        data.
+        Answers advanced questions about existing users by&nbsp;querying
+        internal data.
       </>
     ),
   },
   {
     emoji: "📈",
-    name: "@data",
+    name: "@dataRun",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer questions about the&nbsp;process, runbooks,
-        and&nbsp;documentation of the&nbsp;data team.
+        Answers questions about internal processes and&nbsp;runbooks on&nbsp;the
+        data team
       </>
     ),
   },
   {
     emoji: "📚",
-    name: "@rolodex",
+    name: "@dataModel",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Your data Rolodex to&nbsp;know everything about data and&nbsp;metadata
-        at the&nbsp;company.
+        Knows everything about data schemas and&nbsp;data model relationships
+        at&nbsp;the company
       </>
     ),
   },
