@@ -34,6 +34,10 @@ import {
   runDustApp,
 } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
+  generateProcessSpecification,
+  runProcess,
+} from "@app/lib/api/assistant/actions/process";
+import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -49,8 +53,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
-
-import { generateProcessSpecification, runProcess } from "./actions/process";
 
 /**
  * Action Inputs generation.

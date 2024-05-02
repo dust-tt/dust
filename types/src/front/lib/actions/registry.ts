@@ -1,5 +1,8 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import { GPT_4_TURBO_MODEL_CONFIG } from "../assistant";
+import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+} from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -22,8 +25,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-4-32k",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
       },
@@ -38,8 +41,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo-16k",
+        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
         function_call: "update_title",
         use_cache: false,
       },
@@ -75,6 +78,12 @@ export const DustProdActionRegistry = createActionRegistry({
         filter: { tags: null, parents: null, timestamp: null },
         use_cache: false,
       },
+      MODEL: {
+        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        function_call: "extract_data",
+        use_cache: false,
+      },
     },
   },
   "assistant-v2-generator": {
@@ -86,8 +95,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-4",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: null,
         use_cache: false,
         use_stream: true,
@@ -127,8 +136,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       SUGGEST_CHANGES: {
-        provider_id: "openai",
-        model_id: "gpt-4",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         use_cache: false,
         function_call: "suggest_changes",
       },
@@ -143,8 +152,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
-        model_id: "gpt-4",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         use_cache: false,
         function_call: "extract_events",
       },
@@ -159,7 +168,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
         model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         use_cache: false,
         function_call: "execute_sql_query",
@@ -175,7 +184,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: "openai",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
         model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "send_ranked_suggestions",
         use_cache: false,
@@ -191,8 +200,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
+        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -207,8 +216,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: "openai",
-        model_id: "gpt-3.5-turbo",
+        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -223,7 +232,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: "openai",
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
         model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,

@@ -5,6 +5,7 @@ import type {
   ConversationType,
   ModelId,
   ModelMessageType,
+  ProcessActionOutputsType,
   ProcessActionType,
   ProcessConfigurationType,
   ProcessErrorEvent,
@@ -30,6 +31,10 @@ import {
 import { constructPrompt } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  isDevelopment,
+  PRODUCTION_DUST_WORKSPACE_ID,
+} from "@app/lib/development";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
@@ -51,8 +56,10 @@ export function renderProcessActionForModel(
 
   // TODO(spolu): figure out if we want to add the schema here?
 
-  for (const o of action.outputs) {
-    content += `${JSON.stringify(o)}\n`;
+  if (action.outputs) {
+    for (const o of action.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
   }
 
   return {
@@ -256,9 +263,16 @@ export async function* runProcess(
     DustProdActionRegistry["assistant-v2-process"].config
   );
 
+  // Set the process action model configuration to the assistant model configuration.
+  config.MODEL.provider_id = configuration.model.providerId;
+  config.MODEL.model_id = configuration.model.modelId;
+  config.MODEL.temperature = configuration.model.temperature;
+
   // Handle data sources list and parents/tags filtering.
   config.DATASOURCE.data_sources = actionConfiguration.dataSources.map((d) => ({
-    workspace_id: d.workspaceId,
+    workspace_id: isDevelopment()
+      ? PRODUCTION_DUST_WORKSPACE_ID
+      : d.workspaceId,
     data_source_id: d.dataSourceId,
   }));
 
@@ -349,7 +363,7 @@ export async function* runProcess(
   }
 
   const { eventStream } = res.value;
-  let outputs: unknown[] = [];
+  let outputs: ProcessActionOutputsType | null = null;
 
   for await (const event of eventStream) {
     if (event.type === "error") {
@@ -399,7 +413,7 @@ export async function* runProcess(
       }
 
       if (event.content.block_name === "OUTPUT" && e.value) {
-        outputs = e.value as unknown[];
+        outputs = e.value as ProcessActionOutputsType;
       }
     }
   }

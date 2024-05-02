@@ -54,6 +54,17 @@ export type ProcessConfigurationType = {
   forceUseAtIteration: number | null;
 };
 
+export type ProcessActionOutputsType = {
+  data: unknown[];
+  minTimestamp: number;
+  totalDocuments: number;
+  totalChinks: number;
+  totalTokens: number;
+  skipDocuments: number;
+  skipChunks: number;
+  skipTokens: number;
+};
+
 export type ProcessActionType = {
   id: ModelId; // AgentProcessAction
   agentMessageId: ModelId; // AgentMessage
@@ -64,5 +75,5 @@ export type ProcessActionType = {
     relativeTimeFrame: TimeFrame | null;
   };
   schema: ProcessSchemaPropertyType[];
-  outputs: unknown[] | null;
+  outputs: ProcessActionOutputsType | null;
 };
