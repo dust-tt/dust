@@ -1,6 +1,8 @@
 import {
   Button,
   CommandLineIcon,
+  Dialog,
+  Input,
   LockIcon,
   Page,
   PlusIcon,
@@ -11,7 +13,6 @@ import type { KeyType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -69,35 +70,28 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
+  const [newApiKeyName, setNewApiKeyName] = useState("");
+  const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
 
   const { keys } = useKeys(owner);
-  const [isRevealed, setIsRevealed] = useState(
-    {} as { [key: string]: boolean }
-  );
-
   const { submit: handleGenerate, isSubmitting: isGenerating } =
-    useSubmitFunction(async () => {
+    useSubmitFunction(async (name: string) => {
       await fetch(`/api/w/${owner.sId}/keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ name }),
       });
       // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/keys`);
-      // scroll to bottom
-      const mainTag = document.querySelector("main");
-      if (mainTag) {
-        mainTag.scrollTo({
-          top: mainTag.scrollHeight,
-          behavior: "smooth",
-        });
-      }
+      setIsNewApiKeyPromptOpen(false);
+      setNewApiKeyName("");
     });
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (key: KeyType) => {
-      await fetch(`/api/w/${owner.sId}/keys/${key.secret}/disable`, {
+      await fetch(`/api/w/${owner.sId}/keys/${key.id}/disable`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,14 +104,27 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   return (
     <>
+      <Dialog
+        isOpen={isNewApiKeyPromptOpen}
+        title="New API Key"
+        onValidate={() => handleGenerate(newApiKeyName)}
+        onCancel={() => setIsNewApiKeyPromptOpen(false)}
+      >
+        <Input
+          name="API Key"
+          placeholder="Type an API key name"
+          value={newApiKeyName}
+          onChange={(e) => setNewApiKeyName(e)}
+        />
+      </Dialog>
       <Page.SectionHeader
-        title="Secret API Keys"
-        description="Secrets used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
+        title="API Keys"
+        description="Keys used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
         action={{
-          label: "Create Secret API Key",
+          label: "Create API Key",
           variant: "primary",
           onClick: async () => {
-            await handleGenerate();
+            setIsNewApiKeyPromptOpen(true);
           },
           icon: PlusIcon,
           disabled: isGenerating || isRevoking,
@@ -133,63 +140,49 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
                   <div className="flex items-center">
                     <div className="flex flex-col">
                       <div className="flex flex-row">
-                        <p
-                          className={classNames(
-                            "font-mono truncate text-sm text-slate-700"
-                          )}
-                        >
-                          {isRevealed[key.secret] ? (
-                            <>
-                              {key.secret}
-                              {key.status == "active" ? (
-                                <EyeSlashIcon
-                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                  onClick={() => {
-                                    setIsRevealed({
-                                      ...isRevealed,
-                                      [key.secret]: false,
-                                    });
-                                  }}
-                                />
-                              ) : null}
-                            </>
-                          ) : (
-                            <>
-                              sk-...{key.secret.slice(-5)}
-                              {key.status == "active" ? (
-                                <EyeIcon
-                                  className="ml-2 inline h-4 w-4 cursor-pointer text-gray-400"
-                                  onClick={() => {
-                                    setIsRevealed({
-                                      ...isRevealed,
-                                      [key.secret]: true,
-                                    });
-                                  }}
-                                />
-                              ) : null}
-                            </>
-                          )}
-                        </p>
-                        <div className="ml-2 mt-0.5 flex flex-shrink-0">
+                        <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
                           <p
                             className={classNames(
                               "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                               key.status === "active"
                                 ? "bg-green-100 text-green-800"
-                                : "ml-6 bg-gray-100 text-gray-800"
+                                : "bg-gray-100 text-gray-800"
                             )}
                           >
                             {key.status === "active" ? "active" : "revoked"}
                           </p>
                         </div>
+                        <div>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          </p>
+                          <pre className="text-sm">{key.secret}</pre>
+                          <p className="front-normal text-xs text-element-700">
+                            Created {key.creator ? `by ${key.creator} ` : ""}
+                            {timeAgoFrom(key.createdAt, {
+                              useLongFormat: true,
+                            })}{" "}
+                            ago.
+                          </p>
+                          <p className="front-normal text-xs text-element-700">
+                            {key.lastUsedAt ? (
+                              <>
+                                Last used&nbsp;
+                                {timeAgoFrom(key.lastUsedAt, {
+                                  useLongFormat: true,
+                                })}{" "}
+                                ago.
+                              </>
+                            ) : (
+                              <>Never used</>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <p className="front-normal text-xs text-element-700">
-                        Created {key.creator ? `by ${key.creator} ` : ""}
-                        {timeAgoFrom(key.createdAt, {
-                          useLongFormat: true,
-                        })}{" "}
-                        ago.
-                      </p>
                     </div>
                   </div>
                   {key.status === "active" ? (

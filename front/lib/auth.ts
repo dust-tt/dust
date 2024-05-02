@@ -472,13 +472,11 @@ export async function getAPIKey(
     });
   }
 
-  const [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        secret: parse[1],
-      },
-    }),
-  ]);
+  const key = await Key.findOne({
+    where: {
+      secret: parse[1],
+    },
+  });
 
   if (!key || key.status !== "active") {
     return new Err({
@@ -489,6 +487,9 @@ export async function getAPIKey(
       },
     });
   }
+
+  key.lastUsedAt = new Date();
+  await key.save();
 
   return new Ok(key);
 }

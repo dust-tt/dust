@@ -66,6 +66,6 @@ export function redactString(str: string, n: number) {
     return str;
   }
 
-  const redacted = "*".repeat(str.length - n) + str.slice(-n);
+  const redacted = "•".repeat(str.length - n) + str.slice(-n);
   return redacted;
 }
