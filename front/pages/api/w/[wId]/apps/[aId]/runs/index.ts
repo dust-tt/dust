@@ -116,9 +116,7 @@ async function handler(
       const inputConfigEntry: any = Object.values(config).find(
         (configValue: any) => configValue.type == "input"
       );
-      const inputDataset = inputConfigEntry
-        ? inputConfigEntry.dataset
-        : null;
+      const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
 
       const dustRun = await coreAPI.createRun({
         projectId: app.dustAPIProjectId,
