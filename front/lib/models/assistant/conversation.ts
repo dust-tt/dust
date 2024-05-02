@@ -343,13 +343,7 @@ AgentMessage.belongsTo(AgentTablesQueryAction, {
 
 // END LEGACY
 
-AgentRetrievalAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentRetrievalAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
+// TO BE MOVED TO RESPECTIVE MODELS POST INVERSION
 
 AgentDustAppRunAction.belongsTo(AgentMessage, {
   // allow null for now until we proceed to the backfill.
@@ -371,12 +365,7 @@ AgentMessage.hasMany(AgentTablesQueryAction, {
   foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
-AgentProcessAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-AgentMessage.hasMany(AgentProcessAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
+// END TO BE MOVED
 
 export class Message extends Model<
   InferAttributes<Message>,
