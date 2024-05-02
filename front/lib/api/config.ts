@@ -19,7 +19,7 @@ const config = {
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
-  getDustDeveloperSecretsSecret: (): string => {
+  getDeveloperSecretsSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DEVELOPER_SECRETS_SECRET");
   },
   getSendgridApiKey: (): string => {
