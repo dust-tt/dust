@@ -121,34 +121,38 @@ export async function generateProcessSpecification(
  * Action rendering.
  */
 
-// Internal interface for the retrieval and rendering of a Process action. This should not be used
-// outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
-// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderProcessActionByModelId(
-  id: ModelId
-): Promise<ProcessActionType> {
-  const action = await AgentProcessAction.findByPk(id);
-  if (!action) {
-    throw new Error(`No Process action found with id ${id}`);
-  }
-
-  let relativeTimeFrame: TimeFrame | null = null;
-  if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
-    relativeTimeFrame = {
-      duration: action.relativeTimeFrameDuration,
-      unit: action.relativeTimeFrameUnit,
-    };
-  }
-
-  return {
-    id: action.id,
-    type: "process_action",
-    params: {
-      relativeTimeFrame,
+// Internal interface for the retrieval and rendering of a actions from AgentMessage ModelIds. This
+// should not be used outside of api/assistant. We allow a ModelId interface here because for
+// optimization purposes to avoid duplicating DB requests while having clear action specific code.
+export async function processActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<ProcessActionType[]> {
+  const models = await AgentProcessAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
     },
-    schema: action.schema,
-    outputs: action.outputs,
-  };
+  });
+
+  return models.map((action) => {
+    let relativeTimeFrame: TimeFrame | null = null;
+    if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
+      relativeTimeFrame = {
+        duration: action.relativeTimeFrameDuration,
+        unit: action.relativeTimeFrameUnit,
+      };
+    }
+
+    return {
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      type: "process_action",
+      params: {
+        relativeTimeFrame,
+      },
+      schema: action.schema,
+      outputs: action.outputs,
+    };
+  });
 }
 
 /**
@@ -231,6 +235,7 @@ export async function* runProcess(
     dataSources: actionConfiguration.dataSources,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "process_action",
       params: {
         relativeTimeFrame,
@@ -420,6 +425,7 @@ export async function* runProcess(
     messageId: agentMessage.sId,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "process_action",
       params: {
         relativeTimeFrame,

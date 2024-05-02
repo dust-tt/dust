@@ -232,9 +232,9 @@ export async function generateRetrievalSpecification(
  * Action rendering.
  */
 
-// Internal interface for the retrieval and rendering of a Retrieval action. This should not be used
-// outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
-// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+// Internal interface for the retrieval and rendering of a actions from AgentMessage ModelIds. This
+// should not be used outside of api/assistant. We allow a ModelId interface here because for
+// optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function retrievalActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
 ): Promise<RetrievalActionType[]> {
@@ -251,18 +251,12 @@ export async function retrievalActionTypesFromAgentMessageIds(
     return acc;
   }, {});
 
-  const ids = models.map((a) => a.id);
-
-  if (Object.keys(actionById).length !== models.length) {
-    throw new Error(
-      "Unexpected duplicate model ids in `renderRetrievalActionTypes`"
-    );
-  }
+  const actionIds = models.map((a) => a.id);
 
   const documentRowsByActionId = (
     await RetrievalDocument.findAll({
       where: {
-        retrievalActionId: ids,
+        retrievalActionId: actionIds,
       },
     })
   ).reduce<{
@@ -295,7 +289,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   const actions: RetrievalActionType[] = [];
 
-  for (const id of ids) {
+  for (const id of actionIds) {
     const action = actionById[id];
     const documentRows = documentRowsByActionId[id] ?? [];
     const chunkRows = documentRows.flatMap(
