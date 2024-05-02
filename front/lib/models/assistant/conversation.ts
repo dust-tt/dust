@@ -244,14 +244,12 @@ export class AgentMessage extends Model<
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  declare agentRetrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
   declare agentDustAppRunActionId: ForeignKey<
     AgentDustAppRunAction["id"]
   > | null;
   declare agentTablesQueryActionId: ForeignKey<
     AgentTablesQueryAction["id"]
   > | null;
-  declare agentProcessActionId: ForeignKey<AgentProcessAction["id"]> | null;
 
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
@@ -305,20 +303,12 @@ AgentMessage.init(
   },
   {
     modelName: "agent_message",
-    indexes: [
-      {
-        unique: true,
-        fields: ["agentRetrievalActionId"],
-      },
-    ],
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (agentMessage: AgentMessage) => {
         const actionsTypes: (keyof AgentMessage)[] = [
-          "agentRetrievalActionId",
           "agentDustAppRunActionId",
           "agentTablesQueryActionId",
-          "agentProcessActionId",
         ];
         const nonNullActionTypes = actionsTypes.filter(
           (field) => agentMessage[field] != null
@@ -333,13 +323,7 @@ AgentMessage.init(
   }
 );
 
-AgentRetrievalAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
-  onDelete: "CASCADE",
-});
-AgentMessage.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "agentRetrievalActionId", allowNull: true }, // null = no Retrieval action set for this Agent
-});
+// LEGACY (to be removed)
 
 AgentDustAppRunAction.hasOne(AgentMessage, {
   foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
@@ -357,12 +341,41 @@ AgentMessage.belongsTo(AgentTablesQueryAction, {
   foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no TablesQuery action set for this Agent
 });
 
-AgentProcessAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentProcessActionId", allowNull: true }, // null = no Process action set for this Agent
-  onDelete: "CASCADE",
+// END LEGACY
+
+AgentRetrievalAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
-AgentMessage.belongsTo(AgentProcessAction, {
-  foreignKey: { name: "agentProcessActionId", allowNull: true }, // null = no Process action set for this Agent
+
+AgentMessage.hasMany(AgentRetrievalAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentDustAppRunAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentMessage.hasMany(AgentDustAppRunAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentTablesQueryAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentMessage.hasMany(AgentTablesQueryAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentProcessAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+AgentMessage.hasMany(AgentProcessAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
 });
 
 export class Message extends Model<
@@ -495,45 +508,6 @@ ContentFragmentModel.hasOne(Message, {
 Message.belongsTo(ContentFragmentModel, {
   as: "contentFragment",
   foreignKey: { name: "contentFragmentId", allowNull: true },
-});
-
-AgentRetrievalAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentMessage.hasMany(AgentRetrievalAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentDustAppRunAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentMessage.hasMany(AgentDustAppRunAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentTablesQueryAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentMessage.hasMany(AgentTablesQueryAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-
-AgentProcessAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
-});
-AgentMessage.hasMany(AgentProcessAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: true },
 });
 
 export class MessageReaction extends Model<
