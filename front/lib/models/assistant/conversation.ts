@@ -14,8 +14,6 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";

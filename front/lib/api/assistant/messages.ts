@@ -33,8 +33,8 @@ import { User } from "@app/lib/models/user";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 
-import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
+import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
 export async function batchRenderUserMessages(
   messages: Message[]
