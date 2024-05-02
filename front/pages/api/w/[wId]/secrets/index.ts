@@ -26,7 +26,7 @@ async function handler(
 
   const owner = auth.workspace();
   const user = auth.user();
-  if (!owner) {
+  if (!owner || !user) {
     res.status(404).end();
     return;
   }
@@ -41,6 +41,7 @@ async function handler(
       const secrets = await Secret.findAll({
         where: {
           workspaceId: owner.id,
+          status: "active",
         },
         order: [["name", "DESC"]],
       });
@@ -63,6 +64,7 @@ async function handler(
         where: {
           name: deleteSecretName,
           workspaceId: owner.id,
+          status: "active",
         },
       });
 
@@ -71,7 +73,9 @@ async function handler(
         return;
       }
 
-      await secret.destroy();
+      await secret.update({
+        status: "disabled",
+      });
 
       res.status(204).end();
       return;
@@ -83,16 +87,17 @@ async function handler(
       const hashValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
       await Secret.create({
-        userId: user?.id,
+        userId: user.id,
         workspaceId: owner.id,
         name: postSecretName,
         hash: hashValue,
+        status: "active"
       });
 
       res.status(201).json({
         secret: {
           name: postSecretName,
-          value: secretValue,
+          value: secretValue
         },
       });
       return;

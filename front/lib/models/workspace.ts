@@ -288,10 +288,10 @@ export class Secret extends Model<
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
   declare hash: string;
+  declare status: "active" | "disabled";
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -310,11 +310,6 @@ Secret.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -323,11 +318,16 @@ Secret.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "active",
+    },
   },
   {
     modelName: "secrets",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["userId"] }, { fields: ["workspaceId"] }],
+    indexes: [{ fields: ["status", "workspaceId"] }],
   }
 );
 Workspace.hasMany(Secret, {
