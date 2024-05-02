@@ -36,7 +36,7 @@ RUN cd types && npm run build
 
 RUN cd connectors && npm run build
 
-RUN cd front  && pwd && ls -al && git log 
+RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 
 
