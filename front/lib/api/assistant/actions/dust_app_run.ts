@@ -179,24 +179,28 @@ export async function generateDustAppRunSpecification(
 // Internal interface for the retrieval and rendering of a DustAppRun action. This should not be
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-export async function renderDustAppRunActionByModelId(
-  id: ModelId
-): Promise<DustAppRunActionType> {
-  const action = await AgentDustAppRunAction.findByPk(id);
-  if (!action) {
-    throw new Error(`No DustAppRun action found with id ${id}`);
-  }
+export async function dustAppRunTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<DustAppRunActionType[]> {
+  const actions = await AgentDustAppRunAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
 
-  return {
-    id: action.id,
-    type: "dust_app_run_action",
-    appWorkspaceId: action.appWorkspaceId,
-    appId: action.appId,
-    appName: action.appName,
-    params: action.params,
-    runningBlock: null,
-    output: action.output,
-  };
+  return actions.map((action) => {
+    return {
+      id: action.id,
+      type: "dust_app_run_action",
+      appWorkspaceId: action.appWorkspaceId,
+      appId: action.appId,
+      appName: action.appName,
+      params: action.params,
+      runningBlock: null,
+      output: action.output,
+      agentMessageId: action.agentMessageId,
+    } satisfies DustAppRunActionType;
+  });
 }
 
 /**
@@ -307,6 +311,7 @@ export async function* runDustApp(
       params,
       runningBlock: null,
       output: null,
+      agentMessageId: agentMessage.agentMessageId,
     },
   };
 
@@ -384,6 +389,7 @@ export async function* runDustApp(
             status: event.content.status,
           },
           output: null,
+          agentMessageId: agentMessage.agentMessageId,
         },
       };
     }
@@ -436,6 +442,7 @@ export async function* runDustApp(
       params,
       runningBlock: null,
       output: lastBlockOutput,
+      agentMessageId: agentMessage.agentMessageId,
     },
   };
 }

@@ -20,6 +20,7 @@ export type DustAppParameters = {
 
 export type DustAppRunActionType = {
   id: ModelId; // AgentDustAppRun.
+  agentMessageId: ModelId;
   type: "dust_app_run_action";
   appWorkspaceId: string;
   appId: string;

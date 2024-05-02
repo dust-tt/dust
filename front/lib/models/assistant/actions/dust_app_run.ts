@@ -111,7 +111,7 @@ export class AgentDustAppRunAction extends Model<
 
   declare params: DustAppParameters;
   declare output: unknown | null;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentDustAppRunAction.init(
   {
