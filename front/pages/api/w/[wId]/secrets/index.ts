@@ -41,20 +41,11 @@ async function handler(
   switch (req.method) {
     case "GET":
       const secrets = await Secret.findAll({
-        attributes: ["createdAt", "name", "hash", "userId"],
+        attributes: ["createdAt", "name", "hash"],
         where: {
           workspaceId: owner.id,
         },
-        order: [["createdAt", "DESC"]],
-        // Remove the day we have the users on the client side.
-        include: [
-          {
-            as: "user",
-            attributes: ["firstName", "lastName"],
-            model: User,
-            required: false,
-          },
-        ],
+        order: [["name", "DESC"]],
       });
 
       res.status(200).json({
