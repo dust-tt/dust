@@ -18,8 +18,6 @@ export const ACTION_MODES = [
   "PROCESS",
 ] as const;
 
-// export type ActionMode = (typeof ACTION_MODES)[number];
-
 // Retrieval configuration
 
 export type AssistantBuilderDataSourceConfiguration = {
@@ -128,24 +126,6 @@ export type AssistantBuilderInitialState = {
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState(): AssistantBuilderState {
   return {
-    // actionMode: "GENERIC",
-    // retrievalConfiguration: {
-    //   dataSourceConfigurations: {},
-    //   timeFrame: {
-    //     value: 1,
-    //     unit: "month",
-    //   },
-    // },
-    // dustAppConfiguration: { app: null },
-    // tablesQueryConfiguration: {},
-    // processConfiguration: {
-    //   dataSourceConfigurations: {},
-    //   timeFrame: {
-    //     value: 1,
-    //     unit: "day",
-    //   },
-    //   schema: [],
-    // },
     actions: [],
     handle: null,
     scope: "private",
