@@ -10,6 +10,8 @@ import { makeScript } from "@app/scripts/helpers";
 const backfillDustAppRunActions = async (execute: boolean) => {
   let actions: AgentDustAppRunAction[] = [];
   actions = await AgentDustAppRunAction.findAll({
+    // @ts-expect-error agentMessageId became null during this PR. But the migration still has to run to
+    // effectively update the agentMessageId.
     where: {
       agentMessageId: null,
     },
