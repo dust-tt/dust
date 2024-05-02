@@ -1,4 +1,4 @@
-import { Button, Modal,PencilSquareIcon, Spinner2 } from "@dust-tt/sparkle";
+import { Button, Modal, PencilSquareIcon, Spinner2 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -6,8 +6,7 @@ import type {
   SpecificationType,
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
-import type { DatasetSchema, DatasetType } from "@dust-tt/types";
-import _ from "lodash";
+import type { DatasetType } from "@dust-tt/types";
 import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
@@ -50,38 +49,47 @@ export default function Input({
   const { dataset, isDatasetLoading, isDatasetError, mutateDataset } =
     useDataset(owner, app, block.config.dataset, true);
 
+  const [datasetModalData, setDatasetModalData] = useState<DatasetType | null>(
+    null
+  );
+
   const handleSetDataset = async (datasetName: string) => {
     const b = shallowBlockClone(block);
     b.config.dataset = datasetName;
     onBlockUpdate(b);
   };
 
-  const onUpdate = _.debounce(
-    async (
-      initializing: boolean,
-      valid: boolean,
-      currentDatasetInEditor: DatasetType,
-      schema: DatasetSchema
-    ) => {
-      if (!initializing && valid) {
-        await fetch(
-          `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              dataset: currentDatasetInEditor,
-              schema: schema,
-            }),
-          }
-        );
-        await mutateDataset();
+  const onUpdate = (
+    initializing: boolean,
+    valid: boolean,
+    currentDatasetInEditor: DatasetType
+  ) => {
+    if (!initializing && valid) {
+      setDatasetModalData(currentDatasetInEditor);
+    }
+  };
+
+  const onDatasetDataModalSave = async () => {
+    setIsDatasetModalOpen(false);
+    if (!dataset) {
+      return;
+    }
+    await fetch(
+      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset: datasetModalData,
+          schema: dataset.schema,
+        }),
       }
-    },
-    800
-  );
+    );
+    await mutateDataset();
+    setDatasetModalData(null);
+  };
 
   return (
     <Block
@@ -115,13 +123,13 @@ export default function Input({
                 />
                 {block.config && block.config.dataset ? (
                   <>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setIsDatasetModalOpen(true)}
-                    icon={PencilSquareIcon}
-                    label="Edit"
-                    size="xs"
-                  />
+                    <Button
+                      variant="secondary"
+                      onClick={() => setIsDatasetModalOpen(true)}
+                      icon={PencilSquareIcon}
+                      label="Edit"
+                      size="xs"
+                    />
                   </>
                 ) : null}
               </div>
@@ -129,23 +137,30 @@ export default function Input({
           </div>
 
           {dataset && dataset.schema ? (
-            <Modal isOpen={isDatasetModalOpen} onClose={() => setIsDatasetModalOpen(false)} hasChanged={false} variant="side-md" title={block.config.dataset}>
+            <Modal
+              isOpen={isDatasetModalOpen}
+              onClose={() => setIsDatasetModalOpen(false)}
+              onSave={() => onDatasetDataModalSave()}
+              hasChanged={datasetModalData != null}
+              variant="side-md"
+              title={block.config.dataset}
+            >
               <Button
-                    className="ml-auto mt-2"
-                    variant="secondary"
-                    onClick={() => {
-                      window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
-                    }}
-                    icon={PencilSquareIcon}
-                    label="Edit schema"
-                  />
+                className="ml-auto mt-2"
+                variant="secondary"
+                onClick={() => {
+                  window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                }}
+                icon={PencilSquareIcon}
+                label="Edit schema"
+              />
               <DatasetView
                 readOnly={false}
                 datasets={[dataset]}
                 dataset={dataset}
                 schema={dataset.schema}
                 onUpdate={onUpdate}
-                nameDisabled={false}
+                nameDisabled={true}
                 viewType="block"
               />
             </Modal>
