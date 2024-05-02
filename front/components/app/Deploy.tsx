@@ -5,6 +5,7 @@ import {
   ClipboardIcon,
   CubeIcon,
   DocumentTextIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
@@ -85,8 +86,9 @@ export default function Deploy({
 
   return (
     <div>
+      <Tooltip label={disabled ? "You need to run this app at least once successfully to view the endpoint" : "View how to run this app programmatically"}>
       <Button
-        label="deploy"
+        label="View API endpoint"
         variant="primary"
         onClick={() => {
           setOpen(!open);
@@ -94,6 +96,7 @@ export default function Deploy({
         disabled={disabled}
         icon={CubeIcon}
       />
+      </Tooltip>
 
       <Transition.Root show={open} as={Fragment}>
         <Dialog
@@ -164,7 +167,7 @@ export default function Deploy({
                           ) : (
                             <p className="text-sm text-gray-500">
                               <Link
-                                href={`/w/${owner.sId}/a`}
+                                href={`/w/${owner.sId}/a?t=apikeys`}
                                 className={classNames(
                                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                                   "text-action-600"
