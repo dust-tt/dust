@@ -20,14 +20,23 @@ import React, { useEffect, useState } from "react";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { classNames } from "@app/lib/utils";
 
-export function isActionProcessValid(builderState: AssistantBuilderState) {
-  if (builderState.processConfiguration.schema.length === 0) {
+export function isActionProcessValid(
+  action: AssistantBuilderActionConfiguration
+) {
+  if (action.type !== "PROCESS") {
     return false;
   }
-  for (const prop of builderState.processConfiguration.schema) {
+  if (action.configuration.schema.length === 0) {
+    return false;
+  }
+  for (const prop of action.configuration.schema) {
     if (!prop.name) {
       return false;
     }
@@ -35,16 +44,15 @@ export function isActionProcessValid(builderState: AssistantBuilderState) {
       return false;
     }
     if (
-      builderState.processConfiguration.schema.filter(
-        (p) => p.name === prop.name
-      ).length > 1
+      action.configuration.schema.filter((p) => p.name === prop.name).length > 1
     ) {
       return false;
     }
   }
   return (
-    Object.keys(builderState.processConfiguration.dataSourceConfigurations)
-      .length > 0 && !!builderState.processConfiguration.timeFrame.value
+    action.type === "PROCESS" &&
+    Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
+    !!action.configuration.timeFrame.value
   );
 }
 
@@ -228,32 +236,43 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
+  const action = useDeprecatedDefaultSingleAction(builderState);
+  if (!action || action.type !== "PROCESS") {
+    return null;
+  }
+
   useEffect(() => {
-    if (!builderState.processConfiguration.timeFrame.value) {
+    if (!action.configuration.timeFrame.value) {
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
-  }, [
-    builderState.processConfiguration.dataSourceConfigurations,
-    builderState.processConfiguration.timeFrame.value,
-  ]);
+  }, [action.configuration.timeFrame.value]);
 
   const deleteDataSource = (name: string) => {
-    if (builderState.processConfiguration.dataSourceConfigurations[name]) {
+    if (action.configuration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
 
-    setBuilderState(({ processConfiguration, ...rest }) => {
+    setBuilderState(({ actions, ...rest }) => {
+      const action = actions[0];
+      if (!action || action.type !== "PROCESS") {
+        return { actions, ...rest };
+      }
       const dataSourceConfigurations = {
-        ...processConfiguration.dataSourceConfigurations,
+        ...action.configuration.dataSourceConfigurations,
       };
       delete dataSourceConfigurations[name];
       return {
-        processConfiguration: {
-          ...processConfiguration,
-          dataSourceConfigurations,
-        },
+        actions: [
+          {
+            ...action,
+            configuration: {
+              ...action.configuration,
+              dataSourceConfigurations,
+            },
+          },
+        ],
         ...rest,
       };
     });
@@ -270,25 +289,35 @@ export function ActionProcess({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            processConfiguration: {
-              ...state.processConfiguration,
-              dataSourceConfigurations: {
-                ...state.processConfiguration.dataSourceConfigurations,
-                [dataSource.name]: {
-                  dataSource,
-                  selectedResources,
-                  isSelectAll,
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "PROCESS") {
+              return state;
+            }
+            const dataSourceConfigurations = {
+              ...action.configuration.dataSourceConfigurations,
+            };
+            dataSourceConfigurations[dataSource.name] = {
+              dataSource,
+              selectedResources,
+              isSelectAll,
+            };
+            return {
+              ...state,
+              actions: [
+                {
+                  ...action,
+                  configuration: {
+                    ...action.configuration,
+                    dataSourceConfigurations,
+                  },
                 },
-              },
-            },
-          }));
+              ],
+            };
+          });
         }}
         onDelete={deleteDataSource}
-        dataSourceConfigurations={
-          builderState.processConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
       />
 
       <div className="text-sm text-element-700">
@@ -309,9 +338,7 @@ export function ActionProcess({
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={
-          builderState.processConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
@@ -332,21 +359,22 @@ export function ActionProcess({
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
             "bg-structure-50 stroke-structure-50"
           )}
-          value={builderState.processConfiguration.timeFrame.value || ""}
+          value={action.configuration.timeFrame.value || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                processConfiguration: {
-                  ...state.processConfiguration,
-                  timeFrame: {
-                    value,
-                    unit: builderState.processConfiguration.timeFrame.unit,
-                  },
-                },
-              }));
+              setBuilderState((state) => {
+                const action = state.actions[0];
+                if (!action || action.type !== "PROCESS") {
+                  return state;
+                }
+                action.configuration.timeFrame.value = value;
+                return {
+                  ...state,
+                  actions: [action],
+                };
+              });
             }
           }}
         />
@@ -356,9 +384,7 @@ export function ActionProcess({
               type="select"
               labelVisible={true}
               label={
-                TIME_FRAME_UNIT_TO_LABEL[
-                  builderState.processConfiguration.timeFrame.unit
-                ]
+                TIME_FRAME_UNIT_TO_LABEL[action.configuration.timeFrame.unit]
               }
               variant="secondary"
               size="sm"
@@ -371,17 +397,17 @@ export function ActionProcess({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    processConfiguration: {
-                      ...state.processConfiguration,
-                      timeFrame: {
-                        value:
-                          builderState.processConfiguration.timeFrame.value,
-                        unit: key as TimeframeUnit,
-                      },
-                    },
-                  }));
+                  setBuilderState((state) => {
+                    const action = state.actions[0];
+                    if (!action || action.type !== "PROCESS") {
+                      return state;
+                    }
+                    action.configuration.timeFrame.unit = key as TimeframeUnit;
+                    return {
+                      ...state,
+                      actions: [action],
+                    };
+                  });
                 }}
               />
             ))}
@@ -410,28 +436,36 @@ export function ActionProcess({
                     description: "Required data to follow instructions",
                   },
                 ];
-                setBuilderState((state) => ({
-                  ...state,
-                  processConfiguration: {
-                    ...state.processConfiguration,
-                    schema,
-                  },
-                }));
+                setBuilderState((state) => {
+                  const action = state.actions[0];
+                  if (!action || action.type !== "PROCESS") {
+                    return state;
+                  }
+                  action.configuration.schema = schema;
+                  return {
+                    ...state,
+                    actions: [action],
+                  };
+                });
               }}
             />
           </Tooltip>
         </div>
       </div>
       <PropertiesFields
-        properties={builderState.processConfiguration.schema}
+        properties={action.configuration.schema}
         onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-          setBuilderState((state) => ({
-            ...state,
-            processConfiguration: {
-              ...state.processConfiguration,
-              schema,
-            },
-          }));
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "PROCESS") {
+              return state;
+            }
+            action.configuration.schema = schema;
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
           setEdited(true);
         }}
         readOnly={false}

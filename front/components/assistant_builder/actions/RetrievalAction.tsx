@@ -6,42 +6,51 @@ import { useEffect, useState } from "react";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { classNames } from "@app/lib/utils";
 
-const deleteDataSource = (
-  name: string,
-  builderState: AssistantBuilderState,
+const deleteDataSource = ({
+  name,
+  setBuilderState,
+  setEdited,
+}: {
+  name: string;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void,
-  setEdited: (edited: boolean) => void
-) => {
-  if (builderState.retrievalConfiguration.dataSourceConfigurations[name]) {
-    setEdited(true);
-  }
+  ) => void;
+  setEdited: (edited: boolean) => void;
+}) => {
+  setBuilderState((state) => {
+    const action = state.actions[0];
+    if (!action || action.type !== "PROCESS") {
+      return state;
+    }
 
-  setBuilderState(({ retrievalConfiguration, ...rest }) => {
-    const dataSourceConfigurations = {
-      ...retrievalConfiguration.dataSourceConfigurations,
-    };
-    delete dataSourceConfigurations[name];
+    if (action.configuration.dataSourceConfigurations[name]) {
+      setEdited(true);
+    }
+
+    delete action.configuration.dataSourceConfigurations[name];
+
     return {
-      retrievalConfiguration: {
-        ...retrievalConfiguration,
-        dataSourceConfigurations,
-      },
-      ...rest,
+      ...state,
+      actions: [action],
     };
   });
 };
 
 export function isActionRetrievalSearchValid(
-  builderState: AssistantBuilderState
+  action: AssistantBuilderActionConfiguration
 ) {
   return (
-    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
-      .length > 0
+    Object.keys(
+      action.type === "RETRIEVAL_SEARCH" &&
+        action.configuration.dataSourceConfigurations
+    ).length > 0
   );
 }
 
@@ -61,6 +70,10 @@ export function ActionRetrievalSearch({
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const action = useDeprecatedDefaultSingleAction(builderState);
+  if (!action || action.type !== "RETRIEVAL_SEARCH") {
+    return null;
+  }
 
   return (
     <>
@@ -73,40 +86,37 @@ export function ActionRetrievalSearch({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            retrievalConfiguration: {
-              ...state.retrievalConfiguration,
-              dataSourceConfigurations: {
-                ...state.retrievalConfiguration.dataSourceConfigurations,
-                [dataSource.name]: {
-                  dataSource,
-                  selectedResources,
-                  isSelectAll,
-                },
-              },
-            },
-          }));
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "RETRIEVAL_SEARCH") {
+              return state;
+            }
+            action.configuration.dataSourceConfigurations[dataSource.name] = {
+              dataSource,
+              selectedResources,
+              isSelectAll,
+            };
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
         }}
         onDelete={(name) => {
-          deleteDataSource(name, builderState, setBuilderState, setEdited);
+          deleteDataSource({ name, setBuilderState, setEdited });
         }}
-        dataSourceConfigurations={
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
       />
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
         canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
-          deleteDataSource(name, builderState, setBuilderState, setEdited);
+          deleteDataSource({ name, setBuilderState, setEdited });
         }}
       />
     </>
@@ -114,11 +124,12 @@ export function ActionRetrievalSearch({
 }
 
 export function isActionRetrievalExhaustiveValid(
-  builderState: AssistantBuilderState
+  action: AssistantBuilderActionConfiguration
 ) {
   return (
-    Object.keys(builderState.retrievalConfiguration.dataSourceConfigurations)
-      .length > 0 && !!builderState.retrievalConfiguration.timeFrame.value
+    action.type === "RETRIEVAL_EXHAUSTIVE" &&
+    Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
+    !!action.configuration.timeFrame.value
   );
 }
 
@@ -140,15 +151,20 @@ export function ActionRetrievalExhaustive({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
+  const action = useDeprecatedDefaultSingleAction(builderState);
+  if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
+    return null;
+  }
+
   useEffect(() => {
-    if (!builderState.retrievalConfiguration.timeFrame.value) {
+    if (!action.configuration.timeFrame.value) {
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
   }, [
-    builderState.retrievalConfiguration.dataSourceConfigurations,
-    builderState.retrievalConfiguration.timeFrame.value,
+    action.configuration.dataSourceConfigurations,
+    action.configuration.timeFrame.value,
   ]);
 
   return (
@@ -162,40 +178,37 @@ export function ActionRetrievalExhaustive({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            retrievalConfiguration: {
-              ...state.retrievalConfiguration,
-              dataSourceConfigurations: {
-                ...state.retrievalConfiguration.dataSourceConfigurations,
-                [dataSource.name]: {
-                  dataSource,
-                  selectedResources,
-                  isSelectAll,
-                },
-              },
-            },
-          }));
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
+              return state;
+            }
+            action.configuration.dataSourceConfigurations[dataSource.name] = {
+              dataSource,
+              selectedResources,
+              isSelectAll,
+            };
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
         }}
         onDelete={(name) => {
-          deleteDataSource(name, builderState, setBuilderState, setEdited);
+          deleteDataSource({ name, setBuilderState, setEdited });
         }}
-        dataSourceConfigurations={
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
       />
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        }
+        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
         canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
-          deleteDataSource(name, builderState, setBuilderState, setEdited);
+          deleteDataSource({ name, setBuilderState, setEdited });
         }}
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
@@ -211,21 +224,34 @@ export function ActionRetrievalExhaustive({
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
             "bg-structure-50 stroke-structure-50"
           )}
-          value={builderState.retrievalConfiguration.timeFrame.value || ""}
+          value={action.configuration.timeFrame.value || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                retrievalConfiguration: {
-                  ...state.retrievalConfiguration,
-                  timeFrame: {
-                    value,
-                    unit: builderState.retrievalConfiguration.timeFrame.unit,
-                  },
-                },
-              }));
+              setBuilderState((state) => {
+                const action = state.actions[0];
+                if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
+                  return state;
+                }
+                const newState: AssistantBuilderState = {
+                  ...state,
+                  actions: [
+                    {
+                      ...action,
+                      configuration: {
+                        ...action.configuration,
+                        timeFrame: {
+                          value,
+                          unit: action.configuration.timeFrame.unit,
+                        },
+                      },
+                    },
+                  ],
+                };
+
+                return newState;
+              });
             }
           }}
         />
@@ -235,9 +261,7 @@ export function ActionRetrievalExhaustive({
               type="select"
               labelVisible={true}
               label={
-                TIME_FRAME_UNIT_TO_LABEL[
-                  builderState.retrievalConfiguration.timeFrame.unit
-                ]
+                TIME_FRAME_UNIT_TO_LABEL[action.configuration.timeFrame.unit]
               }
               variant="secondary"
               size="sm"
@@ -250,17 +274,17 @@ export function ActionRetrievalExhaustive({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    retrievalConfiguration: {
-                      ...state.retrievalConfiguration,
-                      timeFrame: {
-                        value:
-                          builderState.retrievalConfiguration.timeFrame.value,
-                        unit: key as TimeframeUnit,
-                      },
-                    },
-                  }));
+                  setBuilderState((state) => {
+                    const action = state.actions[0];
+                    if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
+                      return state;
+                    }
+                    action.configuration.timeFrame.unit = key as TimeframeUnit;
+                    return {
+                      ...state,
+                      actions: [action],
+                    };
+                  });
                 }}
               />
             ))}

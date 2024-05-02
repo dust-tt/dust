@@ -1,4 +1,5 @@
 import { Modal } from "@dust-tt/sparkle";
+import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AgentMention,
   ConversationType,
@@ -6,7 +7,7 @@ import type {
   MentionType,
   UserType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -23,6 +24,7 @@ import {
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/AssistantBuilder";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
@@ -193,6 +195,8 @@ export function usePreviewAssistant({
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
 
+  const action = useDeprecatedDefaultSingleAction(builderState);
+
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
       clearTimeout(drawerAnimationTimeoutRef.current);
@@ -210,17 +214,13 @@ export function usePreviewAssistant({
     const a = await submitAssistantBuilderForm({
       owner,
       builderState: {
-        actionMode: builderState.actionMode,
         handle: builderState.handle,
         description: "Draft Assistant",
         instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl,
-        retrievalConfiguration: builderState.retrievalConfiguration,
-        dustAppConfiguration: builderState.dustAppConfiguration,
-        tablesQueryConfiguration: builderState.tablesQueryConfiguration,
-        processConfiguration: builderState.processConfiguration,
         scope: "private",
         generationSettings: builderState.generationSettings,
+        actions: removeNulls([action]),
       },
 
       agentConfigurationId: null,
@@ -239,16 +239,11 @@ export function usePreviewAssistant({
     }, animationLength / 2);
   }, [
     owner,
-    builderState.actionMode,
+    action,
     builderState.handle,
     builderState.instructions,
     builderState.avatarUrl,
     builderState.generationSettings,
-    // Actions
-    builderState.tablesQueryConfiguration,
-    builderState.dustAppConfiguration,
-    builderState.retrievalConfiguration,
-    builderState.processConfiguration,
   ]);
 
   useEffect(() => {

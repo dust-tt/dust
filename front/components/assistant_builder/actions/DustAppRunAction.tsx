@@ -5,10 +5,17 @@ import { useState } from "react";
 
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
+import { getDefaultDustAppRunActionConfiguration } from "@app/components/assistant_builder/types";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 
-export function isActionDustAppRunValid(builderState: AssistantBuilderState) {
-  return !!builderState.dustAppConfiguration.app;
+export function isActionDustAppRunValid(
+  action: AssistantBuilderActionConfiguration
+) {
+  return action.type === "DUST_APP_RUN" && !!action.configuration.app;
 }
 
 export function ActionDustAppRun({
@@ -27,6 +34,7 @@ export function ActionDustAppRun({
   dustApps: AppType[];
 }) {
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
+  const action = useDeprecatedDefaultSingleAction(builderState);
 
   const deleteDustApp = () => {
     setEdited(true);
@@ -108,8 +116,13 @@ export function ActionDustAppRun({
             application's input block dataset schema.
           </div>
           <DustAppSelectionSection
-            show={builderState.actionMode === "DUST_APP_RUN"}
-            dustAppConfiguration={builderState.dustAppConfiguration}
+            show={!!action && action.type === "DUST_APP_RUN"}
+            dustAppConfiguration={
+              (!!action &&
+                action.type === "DUST_APP_RUN" &&
+                action.configuration) ||
+              getDefaultDustAppRunActionConfiguration().configuration
+            }
             openDustAppModal={() => {
               setShowDustAppsModal(true);
             }}

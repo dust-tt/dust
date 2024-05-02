@@ -58,7 +58,7 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type {
-  ActionMode,
+  AssistantBuilderActionType,
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
@@ -71,6 +71,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { getDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -217,12 +218,7 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
-          actionMode: initialBuilderState.actionMode,
-          retrievalConfiguration: initialBuilderState.retrievalConfiguration,
-          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-          tablesQueryConfiguration:
-            initialBuilderState.tablesQueryConfiguration,
-          processConfiguration: initialBuilderState.processConfiguration,
+          actions: initialBuilderState.actions,
         }
       : {
           ...getDefaultAssistantState(),
@@ -272,30 +268,29 @@ export default function AssistantBuilder({
       return;
     }
     const action = getAgentActionConfigurationType(template.presetAction);
-    let actionMode: ActionMode = "GENERIC";
+    let actionType: AssistantBuilderActionType | null = null;
 
     if (isRetrievalConfiguration(action)) {
-      actionMode = "RETRIEVAL_SEARCH";
+      actionType = "RETRIEVAL_SEARCH";
     } else if (isDustAppRunConfiguration(action)) {
-      actionMode = "DUST_APP_RUN";
+      actionType = "DUST_APP_RUN";
     } else if (isTablesQueryConfiguration(action)) {
-      actionMode = "TABLES_QUERY";
+      actionType = "TABLES_QUERY";
     } else if (isProcessConfiguration(action)) {
-      actionMode = "PROCESS";
+      actionType = "PROCESS";
     }
 
-    if (actionMode !== null) {
+    if (actionType !== null) {
       const defaultAssistantState = getDefaultAssistantState();
 
       setEdited(true);
-      setBuilderState((builderState) => ({
-        ...builderState,
-        actionMode,
-        retrievalConfiguration: defaultAssistantState.retrievalConfiguration,
-        dustAppConfiguration: defaultAssistantState.dustAppConfiguration,
-        tablesQueryConfiguration:
-          defaultAssistantState.tablesQueryConfiguration,
-      }));
+      setBuilderState((builderState) => {
+        const newState = {
+          ...builderState,
+          actions: defaultAssistantState.actions,
+        };
+        return newState;
+      });
     }
   }, [template]);
 
@@ -723,25 +718,26 @@ export async function submitAssistantBuilderForm({
     | NonNullable<BodyType["assistant"]["actions"]>[number]
     | null = null;
 
-  switch (builderState.actionMode) {
-    case "GENERIC":
+  const action = getDeprecatedDefaultSingleAction(builderState);
+
+  switch (action?.type) {
+    case undefined:
       break;
     case "RETRIEVAL_SEARCH":
     case "RETRIEVAL_EXHAUSTIVE":
       actionParam = {
         type: "retrieval_configuration",
-        query: builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
+        query: action.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
         relativeTimeFrame:
-          builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" &&
-          builderState.retrievalConfiguration
+          action.type === "RETRIEVAL_EXHAUSTIVE"
             ? {
-                duration: builderState.retrievalConfiguration.timeFrame.value,
-                unit: builderState.retrievalConfiguration.timeFrame.unit,
+                duration: action.configuration.timeFrame.value,
+                unit: action.configuration.timeFrame.unit,
               }
             : "auto",
         topK: "auto",
         dataSources: Object.values(
-          builderState.retrievalConfiguration.dataSourceConfigurations
+          action.configuration.dataSourceConfigurations
         ).map(({ dataSource, selectedResources, isSelectAll }) => ({
           dataSourceId: dataSource.name,
           workspaceId: owner.sId,
@@ -759,33 +755,32 @@ export async function submitAssistantBuilderForm({
       break;
 
     case "DUST_APP_RUN":
-      if (builderState.dustAppConfiguration.app) {
+      if (action.configuration.app) {
         actionParam = {
           type: "dust_app_run_configuration",
           appWorkspaceId: owner.sId,
-          appId: builderState.dustAppConfiguration.app.sId,
+          appId: action.configuration.app.sId,
         };
       }
       break;
 
     case "TABLES_QUERY":
-      if (builderState.tablesQueryConfiguration) {
-        actionParam = {
-          type: "tables_query_configuration",
-          tables: Object.values(builderState.tablesQueryConfiguration),
-        };
-      }
+      actionParam = {
+        type: "tables_query_configuration",
+        tables: Object.values(action.configuration),
+      };
+
       break;
 
     case "PROCESS":
       actionParam = {
         type: "process_configuration",
         relativeTimeFrame: {
-          duration: builderState.processConfiguration.timeFrame.value,
-          unit: builderState.processConfiguration.timeFrame.unit,
+          duration: action.configuration.timeFrame.value,
+          unit: action.configuration.timeFrame.unit,
         },
         dataSources: Object.values(
-          builderState.processConfiguration.dataSourceConfigurations
+          action.configuration.dataSourceConfigurations
         ).map(({ dataSource, selectedResources, isSelectAll }) => ({
           dataSourceId: dataSource.name,
           workspaceId: owner.sId,
@@ -799,12 +794,12 @@ export async function submitAssistantBuilderForm({
             tags: null,
           },
         })),
-        schema: builderState.processConfiguration.schema,
+        schema: action.configuration.schema,
       };
       break;
 
     default:
-      assertNever(builderState.actionMode);
+      assertNever(action);
   }
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =

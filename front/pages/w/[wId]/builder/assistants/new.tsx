@@ -8,10 +8,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
-  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
@@ -20,9 +18,8 @@ import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBui
 import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
-import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
+import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
-import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
@@ -49,10 +46,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
-  retrievalConfiguration: AssistantBuilderInitialState["retrievalConfiguration"];
-  dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
-  processConfiguration: AssistantBuilderInitialState["processConfiguration"];
+  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -113,25 +107,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const {
-    retrievalConfiguration,
-    dustAppConfiguration,
-    tablesQueryConfiguration,
-    processConfiguration,
-  } = configuration
-    ? await buildInitialState({
-        configuration,
+  const actions = configuration
+    ? await buildInitialActions({
         dataSourcesByName,
         dustApps: allDustApps,
+        configuration,
       })
-    : {
-        retrievalConfiguration:
-          getDefaultAssistantState().retrievalConfiguration,
-        dustAppConfiguration: getDefaultAssistantState().dustAppConfiguration,
-        tablesQueryConfiguration:
-          getDefaultAssistantState().tablesQueryConfiguration,
-        processConfiguration: getDefaultAssistantState().processConfiguration,
-      };
+    : [];
 
   return {
     props: {
@@ -141,10 +123,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: config.getGaTrackingId(),
       dataSources: allDataSources,
       dustApps: allDustApps,
-      retrievalConfiguration,
-      dustAppConfiguration,
-      tablesQueryConfiguration,
-      processConfiguration,
+      actions,
       agentConfiguration: configuration,
       flow,
       baseUrl: config.getAppUrl(),
@@ -160,10 +139,7 @@ export default function CreateAssistant({
   gaTrackingId,
   dataSources,
   dustApps,
-  retrievalConfiguration,
-  dustAppConfiguration,
-  tablesQueryConfiguration,
-  processConfiguration,
+  actions,
   agentConfiguration,
   flow,
   baseUrl,
@@ -173,7 +149,6 @@ export default function CreateAssistant({
     templateId,
     workspaceId: owner.sId,
   });
-  let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
 
   if (agentConfiguration) {
     const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
@@ -189,19 +164,7 @@ export default function CreateAssistant({
             "Invalid configuration: exhaustive retrieval must have a definite time frame"
           );
         }
-        actionMode = "RETRIEVAL_EXHAUSTIVE";
       }
-      if (action.query === "auto") {
-        actionMode = "RETRIEVAL_SEARCH";
-      }
-    }
-
-    if (isDustAppRunConfiguration(action)) {
-      actionMode = "DUST_APP_RUN";
-    }
-
-    if (isTablesQueryConfiguration(action)) {
-      actionMode = "TABLES_QUERY";
     }
 
     if (isProcessConfiguration(action)) {
@@ -214,7 +177,6 @@ export default function CreateAssistant({
           "Invalid configuration: process must have a definite time frame"
         );
       }
-      actionMode = "PROCESS";
     }
 
     if (agentConfiguration.scope === "global") {
@@ -238,11 +200,7 @@ export default function CreateAssistant({
       initialBuilderState={
         agentConfiguration
           ? {
-              actionMode,
-              retrievalConfiguration,
-              dustAppConfiguration,
-              tablesQueryConfiguration,
-              processConfiguration,
+              actions,
               scope:
                 agentConfiguration.scope !== "global"
                   ? agentConfiguration.scope
