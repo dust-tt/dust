@@ -7,10 +7,11 @@ import type {
 } from "@dust-tt/types";
 import type { BlockType, RunType } from "@dust-tt/types";
 import type { DatasetType } from "@dust-tt/types";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataset } from "@app/lib/swr";
 import { shallowBlockClone } from "@app/lib/utils";
 
@@ -46,12 +47,17 @@ export default function Input({
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
-  const { dataset, isDatasetLoading, isDatasetError, mutateDataset } =
-    useDataset(owner, app, block.config.dataset, true);
+  const { dataset, isDatasetLoading, isDatasetError } = useDataset(
+    owner,
+    app,
+    block.config.dataset,
+    true
+  );
 
   const [datasetModalData, setDatasetModalData] = useState<DatasetType | null>(
     null
   );
+  const sendNotification = useContext(SendNotificationsContext);
 
   const handleSetDataset = async (datasetName: string) => {
     const b = shallowBlockClone(block);
@@ -71,24 +77,29 @@ export default function Input({
 
   const onDatasetDataModalSave = async () => {
     setIsDatasetModalOpen(false);
-    if (!dataset) {
-      return;
-    }
-    await fetch(
-      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dataset: datasetModalData,
-          schema: dataset.schema,
-        }),
-      }
-    );
-    await mutateDataset();
     setDatasetModalData(null);
+    if (dataset) {
+      const res = await fetch(
+        `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dataset: datasetModalData,
+            schema: dataset.schema,
+          }),
+        }
+      );
+      if (res.ok) {
+        sendNotification({
+          title: `Dataset updated`,
+          description: `The data of ${block.config.dataset} was successfully updated.`,
+          type: "success",
+        });
+      }
+    }
   };
 
   return (
