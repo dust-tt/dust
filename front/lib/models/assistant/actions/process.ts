@@ -1,4 +1,8 @@
-import type { ProcessSchemaPropertyType, TimeframeUnit } from "@dust-tt/types";
+import type {
+  ProcessActionOutputsType,
+  ProcessSchemaPropertyType,
+  TimeframeUnit,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -127,7 +131,7 @@ export class AgentProcessAction extends Model<
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
   declare schema: ProcessSchemaPropertyType[];
-  declare outputs: unknown[] | null;
+  declare outputs: ProcessActionOutputsType | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }

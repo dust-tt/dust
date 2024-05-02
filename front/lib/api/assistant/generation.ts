@@ -30,6 +30,7 @@ import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
+import { renderProcessActionForModel } from "@app/lib/api/assistant/actions/process";
 import {
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
@@ -43,8 +44,6 @@ import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-
-import { renderProcessActionForModel } from "./actions/process";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 

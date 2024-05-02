@@ -24,6 +24,10 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
+  isDevelopment,
+  PRODUCTION_DUST_WORKSPACE_ID,
+} from "@app/lib/development";
+import {
   AgentRetrievalAction,
   RetrievalDocument,
   RetrievalDocumentChunk,
@@ -521,7 +525,9 @@ export async function* runRetrieval(
 
   // Handle data sources list and parents/tags filtering.
   config.DATASOURCE.data_sources = actionConfiguration.dataSources.map((d) => ({
-    workspace_id: d.workspaceId,
+    workspace_id: isDevelopment()
+      ? PRODUCTION_DUST_WORKSPACE_ID
+      : d.workspaceId,
     data_source_id: d.dataSourceId,
   }));
 
