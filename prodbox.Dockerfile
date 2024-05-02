@@ -40,10 +40,8 @@ COPY ./connectors ./connectors/
 RUN cd connectors && npm run build
 
 COPY /front ./front/
-RUN cd front 
-RUN pwd
-RUN ls -al
-RUN git log
+RUN cd front  && pwd && ls -al && git log
+
 
 
 # Core code and build
