@@ -77,7 +77,7 @@ export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
 
 export const BatchCommandSchema = t.type({
   majorCommand: t.literal("batch"),
-  command: t.literal("full-resync"),
+  command: t.union([t.literal("full-resync"), t.literal("restart-all")]),
   args: t.record(t.string, t.union([t.string, t.undefined])),
 });
 
@@ -87,6 +87,14 @@ export const WebcrawlerCommandSchema = t.type({
   majorCommand: t.literal("webcrawler"),
   command: t.literal("start-scheduler"),
 });
+
+export const BatchRestartAllResponseSchema = t.type({
+  succeeded: t.number,
+  failed: t.number,
+});
+export type BatchRestartAllResponseType = t.TypeOf<
+  typeof BatchRestartAllResponseSchema
+>;
 
 export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
 
@@ -124,7 +132,7 @@ export const IntercomCheckConversationResponseSchema = t.type({
   isConversationOnIntercom: t.boolean,
   isConversationOnDB: t.boolean,
   conversationTeamIdOnIntercom: t.union([t.string, t.undefined]),
-  conversationTeamIdOnDB: t.union([t.string, t.undefined]),
+  conversationTeamIdOnDB: t.union([t.string, t.undefined, t.null]),
 });
 export type IntercomCheckConversationResponseType = t.TypeOf<
   typeof IntercomCheckConversationResponseSchema
@@ -184,15 +192,6 @@ export const AdminSuccessResponseSchema = t.type({
 
 export type AdminSuccessResponseType = t.TypeOf<
   typeof AdminSuccessResponseSchema
->;
-
-export const NotionRestartAllResponseSchema = t.type({
-  restartSuccesses: t.number,
-  restartFailures: t.number,
-});
-
-export type NotionRestartAllResponseType = t.TypeOf<
-  typeof NotionRestartAllResponseSchema
 >;
 
 export const NotionUpsertResponseSchema = t.type({
@@ -285,7 +284,7 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 
 export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
-  NotionRestartAllResponseSchema,
+  BatchRestartAllResponseSchema,
   NotionUpsertResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionCheckUrlResponseSchema,

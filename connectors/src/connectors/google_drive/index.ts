@@ -374,6 +374,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
       if (isTablesView) {
         sheets = await GoogleDriveSheet.findAll({
           where: {
+            connectorId: connectorId,
             driveFileId: parentInternalId,
           },
         });
@@ -633,6 +634,7 @@ export async function retrieveGoogleDriveContentNodes(
   const sheets = sheetIds.length
     ? await GoogleDriveSheet.findAll({
         where: {
+          connectorId: connectorId,
           [Op.or]: sheetIds.map((s) => ({
             [Op.and]: [
               {

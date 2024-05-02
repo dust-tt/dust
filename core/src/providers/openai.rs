@@ -843,37 +843,50 @@ pub async fn streamed_chat_completion(
 
                         let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
-                            Err(err) => {
-                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
-                                match error {
-                                    Ok(error) => {
-                                        match error.retryable_streamed() && index == 0 {
-                                            true => Err(ModelError {
-                                                message: error.message(),
-                                                retryable: Some(ModelErrorRetryOptions {
-                                                    sleep: Duration::from_millis(500),
-                                                    factor: 2,
-                                                    retries: 3,
-                                                }),
-                                            })?,
-                                            false => Err(ModelError {
-                                                message: error.message(),
-                                                retryable: None,
-                                            })?,
+                            Err(err) => match serde_json::Error::is_data(&err) {
+                                true => {
+                                    Err(anyhow!(
+                                        "OpenAIError: failed parsing streamed \
+                                         completion from OpenAI err={} data={}",
+                                        err,
+                                        e.data.as_str(),
+                                    ))?;
+
+                                    break 'stream;
+                                }
+                                false => {
+                                    let error: Result<Error, _> =
+                                        serde_json::from_str(e.data.as_str());
+                                    match error {
+                                        Ok(error) => {
+                                            match error.retryable_streamed() && index == 0 {
+                                                true => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: Some(ModelErrorRetryOptions {
+                                                        sleep: Duration::from_millis(500),
+                                                        factor: 2,
+                                                        retries: 3,
+                                                    }),
+                                                })?,
+                                                false => Err(ModelError {
+                                                    message: error.message(),
+                                                    retryable: None,
+                                                })?,
+                                            }
+                                            break 'stream;
                                         }
-                                        break 'stream;
-                                    }
-                                    Err(_) => {
-                                        Err(anyhow!(
-                                            "OpenAIError: failed parsing streamed \
+                                        Err(_) => {
+                                            Err(anyhow!(
+                                                "OpenAIError: failed parsing streamed \
                                                  completion from OpenAI err={} data={}",
-                                            err,
-                                            e.data.as_str(),
-                                        ))?;
-                                        break 'stream;
+                                                err,
+                                                e.data.as_str(),
+                                            ))?;
+                                            break 'stream;
+                                        }
                                     }
                                 }
-                            }
+                            },
                         };
 
                         // Only stream if choices is length 1 but should always be the case.

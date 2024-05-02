@@ -180,6 +180,10 @@ export default function EditAssistant({
     throw new Error("Cannot edit global assistant");
   }
 
+  if (agentConfiguration.status === "archived") {
+    throw new Error("Cannot edit archived assistant");
+  }
+
   return (
     <AssistantBuilder
       owner={owner}

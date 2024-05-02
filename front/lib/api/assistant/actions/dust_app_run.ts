@@ -290,6 +290,7 @@ export async function* runDustApp(
     appId: actionConfiguration.appId,
     appName: app.name,
     params,
+    agentMessageId: agentMessage.agentMessageId,
   });
 
   yield {

@@ -540,6 +540,7 @@ export async function deleteSpreadsheet(
   const sheetsInSpreadsheet = await GoogleDriveSheet.findAll({
     where: {
       driveFileId: file.driveFileId,
+      connectorId: connector.id,
     },
   });
 

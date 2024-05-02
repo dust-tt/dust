@@ -21,8 +21,8 @@ import { useRouter } from "next/router";
 import { Fragment, useState } from "react";
 import { useSWRConfig } from "swr";
 
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getEventSchema } from "@app/lib/api/extract";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -131,8 +131,8 @@ export default function AppExtractEventsReadData({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
-      subNavigation={subNavigationBuild({ owner, current: "extract" })}
+      topNavigationCurrent="conversations"
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Page.Header
         title="Extract"

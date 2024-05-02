@@ -251,7 +251,7 @@ export class AgentMessage extends Model<
   declare agentTablesQueryActionId: ForeignKey<
     AgentTablesQueryAction["id"]
   > | null;
-  declare agentProcessActionId: ForeignKey<AgentTablesQueryAction["id"]> | null;
+  declare agentProcessActionId: ForeignKey<AgentProcessAction["id"]> | null;
 
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
@@ -503,6 +503,35 @@ AgentRetrievalAction.belongsTo(AgentMessage, {
 });
 
 AgentMessage.hasMany(AgentRetrievalAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentDustAppRunAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentMessage.hasMany(AgentDustAppRunAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentTablesQueryAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentMessage.hasMany(AgentTablesQueryAction, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+
+AgentProcessAction.belongsTo(AgentMessage, {
+  // allow null for now until we proceed to the backfill.
+  foreignKey: { name: "agentMessageId", allowNull: true },
+});
+AgentMessage.hasMany(AgentProcessAction, {
   // allow null for now until we proceed to the backfill.
   foreignKey: { name: "agentMessageId", allowNull: true },
 });

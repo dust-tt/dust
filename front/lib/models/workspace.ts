@@ -210,6 +210,7 @@ export class Key extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUsedAt: CreationOptional<Date>;
 
   declare secret: string;
   declare status: "active" | "disabled";
@@ -218,6 +219,7 @@ export class Key extends Model<
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
+  declare name: string | null;
   declare user: NonAttribute<User>;
 }
 Key.init(
@@ -237,6 +239,10 @@ Key.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    lastUsedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     secret: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -244,6 +250,10 @@ Key.init(
     status: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     isSystem: {
       type: DataTypes.BOOLEAN,

@@ -471,35 +471,7 @@ pub const SQL_INDEXES: [&'static str; 22] = [
         idx_sqlite_workers_url ON sqlite_workers (url);",
 ];
 
-pub const SQL_FUNCTIONS: [&'static str; 3] = [
-    // SQL function to delete the project runs / runs_joins / block_executions
-    // TODO(2024-04-29 flav): Remove this stored function.
-    r#"
-        CREATE OR REPLACE FUNCTION delete_project_runs(v_project_id BIGINT)
-        RETURNS void AS $$
-        DECLARE
-            run_ids BIGINT[];
-            block_exec_ids BIGINT[];
-        BEGIN
-            -- Store run IDs in an array for the specified project
-            SELECT array_agg(id) INTO run_ids FROM runs WHERE project = v_project_id;
-
-            -- Store block_execution IDs in an array
-            SELECT array_agg(block_execution) INTO block_exec_ids
-            FROM runs_joins
-            WHERE run = ANY(run_ids);
-
-            -- Delete from runs_joins where run IDs match those in the project
-            DELETE FROM runs_joins WHERE block_execution = ANY(block_exec_ids);
-
-            -- Now delete from block_executions using the stored IDs
-            DELETE FROM block_executions WHERE id = ANY(block_exec_ids);
-
-            -- Finally, delete from runs where run IDs match those in the project
-            DELETE FROM runs WHERE id = ANY(run_ids);
-        END;
-        $$ LANGUAGE plpgsql;
-    "#,
+pub const SQL_FUNCTIONS: [&'static str; 2] = [
     // SQL function to delete the project datasets / datasets_joins / datasets_points
     r#"
         CREATE OR REPLACE FUNCTION delete_project_datasets(v_project_id BIGINT)

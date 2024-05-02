@@ -344,6 +344,7 @@ function Suggestions({
     !instructions ? "suggestions_available" : "no_suggestions"
   );
 
+  const horinzontallyScrollableDiv = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<APIError | null>(null);
 
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -387,7 +388,15 @@ function Suggestions({
         setSuggestionsStatus("instructions_are_good");
         return;
       }
-      setSuggestions(mergeSuggestions(suggestions, updatedSuggestions.value));
+      const newSuggestions = mergeSuggestions(
+        suggestions,
+        updatedSuggestions.value
+      );
+      if (newSuggestions.length > suggestions.length) {
+        // only update suggestions if they have changed, & reset scroll
+        setSuggestions(newSuggestions);
+        horinzontallyScrollableDiv.current?.scrollTo(0, 0);
+      }
       setError(null);
       setSuggestionsStatus("suggestions_available");
     };
@@ -404,8 +413,11 @@ function Suggestions({
   const [showLeftGradients, setshowLeftGradients] = useState(false);
   const [showRightGradients, setshowRightGradients] = useState(false);
 
-  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const scrollableDiv = event.target as HTMLDivElement;
+  const showCorrectGradients = () => {
+    const scrollableDiv = horinzontallyScrollableDiv.current;
+    if (!scrollableDiv) {
+      return;
+    }
     const scrollLeft = scrollableDiv.scrollLeft;
     const isScrollable = scrollableDiv.scrollWidth > scrollableDiv.clientWidth;
 
@@ -433,7 +445,8 @@ function Suggestions({
         </div>
         <div
           className="overflow-y-auto pt-2 scrollbar-hide"
-          onScroll={handleScroll}
+          ref={horinzontallyScrollableDiv}
+          onScroll={showCorrectGradients}
         >
           <div
             className={classNames(
@@ -470,6 +483,7 @@ function Suggestions({
                   <AnimatedSuggestion
                     suggestion={suggestion}
                     key={md5(suggestion)}
+                    afterEnter={showCorrectGradients}
                   />
                 ))}
               </div>
@@ -484,9 +498,11 @@ function Suggestions({
 function AnimatedSuggestion({
   suggestion,
   variant = "sky",
+  afterEnter,
 }: {
   suggestion: string;
   variant?: ContentMessageProps["variant"];
+  afterEnter?: () => void;
 }) {
   return (
     <Transition
@@ -497,6 +513,7 @@ function AnimatedSuggestion({
       leave="ease-in duration-300"
       leaveFrom="opacity-100 w-[320px]"
       leaveTo="opacity-0 w-0"
+      afterEnter={afterEnter}
     >
       <ContentMessage
         size="sm"

@@ -68,6 +68,7 @@ export type ModelConfigurationType = {
   displayName: string;
   contextSize: number;
   recommendedTopK: number;
+  recommendedExhaustiveTopK: number;
   largeModel: boolean;
   description: string;
   shortDescription: string;
@@ -80,6 +81,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4 Turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "OpenAI's most powerful and recent model (128k context).",
   shortDescription: "OpenAI's smartest model.",
@@ -91,6 +93,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 3.5 Turbo",
   contextSize: 16_384,
   recommendedTopK: 16,
+  recommendedExhaustiveTopK: 24, // 12_288
   largeModel: false,
   description:
     "OpenAI's cost-effective and high throughput model (16k context).",
@@ -104,6 +107,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3 Opus",
   contextSize: 180_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
@@ -116,6 +120,7 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3 Sonnet",
   contextSize: 180_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
     "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
@@ -128,6 +133,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3 Haiku",
   contextSize: 180_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
     "Anthropic Claude 3 Haiku model, fastest and most compact model for near-instant responsiveness.",
@@ -140,6 +146,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 2.1",
   contextSize: 180_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's smartest model.",
@@ -151,6 +158,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude Instant 1.2",
   contextSize: 90_000,
   recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: false,
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
@@ -164,6 +172,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Mistral Large",
   contextSize: 32_000,
   recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
   description: "Mistral's latest `large` model (32k context).",
   shortDescription: "Mistral's large model.",
@@ -175,6 +184,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Mistral Medium",
   contextSize: 32_000,
   recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
   largeModel: true,
   description: "Mistral's latest `medium` model (32k context).",
   shortDescription: "Mistral's smartest model.",
@@ -186,6 +196,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Mistral Small",
   contextSize: 32_000,
   recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
@@ -198,6 +209,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Pro 1.5",
   contextSize: 1_000_000,
   recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
     "Google's best model for scaling across a wide range of tasks (1M context).",
