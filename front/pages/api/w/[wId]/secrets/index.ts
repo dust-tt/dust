@@ -99,13 +99,13 @@ async function handler(
       const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
 
-      const hashValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
+      const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
       await DustAppSecret.create({
         userId: user.id,
         workspaceId: owner.id,
         name: postSecretName,
-        hash: hashValue,
+        hash: encryptedValue,
         status: "active"
       });
 
