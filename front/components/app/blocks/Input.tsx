@@ -1,4 +1,4 @@
-import { Button, Modal, PencilSquareIcon, Spinner2 } from "@dust-tt/sparkle";
+import { Button, Modal, PencilSquareIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -175,9 +175,7 @@ export default function Input({
             </Modal>
           ) : null}
         </div>
-      ) : (
-        <Spinner2 />
-      )}
+      ) : null}
     </Block>
   );
 }
