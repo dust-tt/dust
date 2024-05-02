@@ -216,7 +216,11 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // Validate the user's session to guarantee compliance with the workspace's SSO requirements when SSO is enforced.
-        if (auth && !statisfiesEnforceEntrepriseConnection(auth, session)) {
+        if (
+          auth &&
+          !statisfiesEnforceEntrepriseConnection(auth, session) &&
+          requireUserPrivilege !== "superuser"
+        ) {
           return {
             redirect: {
               permanent: false,
