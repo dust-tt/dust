@@ -1,6 +1,7 @@
+import {Button} from "@dust-tt/sparkle";
 import type {LightAgentConfigurationType, MentionType, UserMessageType, WorkspaceType,} from "@dust-tt/types";
 import {EditorContent} from "@tiptap/react";
-import React, {useContext} from "react";
+import React, {useContext, useMemo} from "react";
 
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type {
@@ -17,6 +18,7 @@ interface MessageEdit {
   owner: WorkspaceType;
   userMessage: UserMessageType;
   agentConfigurations: LightAgentConfigurationType[];
+  onClose: () => void;
 }
 
 export function MessageEdit({
@@ -24,6 +26,7 @@ export function MessageEdit({
   owner,
   userMessage,
   agentConfigurations,
+  onClose,
 }: MessageEdit) {
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -31,7 +34,6 @@ export function MessageEdit({
     submit: handleEditMessage,
     isSubmitting,
   } = useSubmitFunction(async (isEmpty: boolean, textAndMentions:{mentions:EditorMention[], text:string}) => {
-    console.log('generatedJson from editor (good one)', editor?.getJSON());
     const { mentions: rawMentions, text } = textAndMentions;
     const mentions: MentionType[] = rawMentions.map((m) => ({
       configurationId: m.id,
@@ -62,12 +64,14 @@ export function MessageEdit({
         description: `Error adding mention to message: ${data.error.message}`,
       });
     }
+    
+    onClose();
   });
   
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const content = getJSONFromText(userMessage.content, agentConfigurations)
+  const content = useMemo(() => getJSONFromText(userMessage.content, agentConfigurations), [userMessage.content, agentConfigurations]);
   
-  const { editor } = useCustomEditor({
+  const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown: handleEditMessage,
     resetEditorContainerSize: () => {
@@ -78,17 +82,34 @@ export function MessageEdit({
   });
   
   return (
-    <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
-      <EditorContent
-        disabled={isSubmitting}
-        editor={editor}
-        className={classNames(
-          //contentEditableClasses,
-          "scrollbar-hide",
-          "overflow-y-auto",
-          "max-h-64"
-        )}
-      />
+    <div>
+      <div className="whitespace-pre-wrap py-2 text-base font-normal leading-7 text-element-800 first:pt-0 last:pb-0">
+        <EditorContent
+          disabled={isSubmitting}
+          editor={editor}
+          className={classNames(
+            //contentEditableClasses,
+            "scrollbar-hide",
+            "overflow-y-auto",
+            "max-h-64"
+          )}
+        />
+      </div>
+      <div className="flex flex-1 justify-center items-center gap-3">
+        <Button variant="secondary"
+                label="Cancel"
+                size="sm"
+                disabled={isSubmitting}
+                onClick={onClose}
+        />
+        <Button variant="primary"
+                label="Save"
+                size="sm"
+                disabled={isSubmitting}
+                onClick={() => handleEditMessage(editorService.isEmpty(), editorService.getTextAndMentions())}
+        />
+      </div>
     </div>
+    
   );
 }

@@ -31,7 +31,6 @@ interface UserMessageProps {
 export function UserMessage({
   conversationId,
   hideReactions,
-  isLastMessage,
   isLastUserMessage,
   latestMentions,
   message,
@@ -87,7 +86,7 @@ export function UserMessage({
             />
           </div>
         )}
-        {!editing && message.mentions.length === 0 && isLastMessage && (
+        {!editing && message.mentions.length === 0 && isLastUserMessage && (
           <AgentSuggestion
             conversationId={conversationId}
             latestMentions={latestMentions}
@@ -101,6 +100,7 @@ export function UserMessage({
             owner={owner}
             userMessage={message}
             agentConfigurations={agentConfigurations}
+            onClose={() => setEditing(false)}
           />
         )}
       </div>

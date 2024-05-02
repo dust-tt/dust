@@ -76,9 +76,11 @@ export function getJSONFromText(text: string, agentConfigurations: LightAgentCon
       attrs:{ id,label}
     })
   }
-  content.push({
-    type: "text", text: trimmedText.substring(lastIndex)
-  });
+  if (lastIndex < trimmedText.length) {
+    content.push({
+      type: "text", text: trimmedText.substring(lastIndex)
+    });
+  }
   
   return {
     type: "doc",
