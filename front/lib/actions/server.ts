@@ -143,7 +143,7 @@ export async function runActionStreamed(
     );
   };
 
-  return new Ok({ eventStream: streamEvents(), dustRunId });
+  return new Ok({ eventStream: streamEvents() });
 }
 
 /**
