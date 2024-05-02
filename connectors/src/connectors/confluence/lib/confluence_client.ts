@@ -153,14 +153,45 @@ export class ConfluenceClient {
   }
 
   private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
-    const response = await fetch(`${this.apiUrl}${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      // Timeout after 30 seconds.
-      signal: AbortSignal.timeout(30000),
-    });
+    const response = await (async () => {
+      try {
+        return await fetch(`${this.apiUrl}${endpoint}`, {
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Content-Type": "application/json",
+          },
+          // Timeout after 30 seconds.
+          signal: AbortSignal.timeout(30000),
+        });
+      } catch (e) {
+        if (
+          e instanceof TypeError &&
+          e.message.includes("fetch failed: Headers Timeout Error")
+        ) {
+          throw new ConfluenceClientError("Request timed out", {
+            type: "http_response_error",
+            status: 504,
+            data: {
+              url: `${this.apiUrl}${endpoint}`,
+              message: e.message,
+              error: e,
+            },
+          });
+        }
+        if (e instanceof DOMException && e.name === "TimeoutError") {
+          throw new ConfluenceClientError("Request timed out", {
+            type: "http_response_error",
+            status: 504,
+            data: {
+              url: `${this.apiUrl}${endpoint}`,
+              message: e.message,
+              error: e,
+            },
+          });
+        }
+        throw e;
+      }
+    })();
 
     if (!response.ok) {
       throw new ConfluenceClientError(
