@@ -86,16 +86,22 @@ export default function Deploy({
 
   return (
     <div>
-      <Tooltip label={disabled ? "You need to run this app at least once successfully to view the endpoint" : "View how to run this app programmatically"}>
-      <Button
-        label="View API endpoint"
-        variant="primary"
-        onClick={() => {
-          setOpen(!open);
-        }}
-        disabled={disabled}
-        icon={CubeIcon}
-      />
+      <Tooltip
+        label={
+          disabled
+            ? "You need to run this app at least once successfully to view the endpoint"
+            : "View how to run this app programmatically"
+        }
+      >
+        <Button
+          label="View API endpoint"
+          variant="primary"
+          onClick={() => {
+            setOpen(!open);
+          }}
+          disabled={disabled}
+          icon={CubeIcon}
+        />
       </Tooltip>
 
       <Transition.Root show={open} as={Fragment}>
