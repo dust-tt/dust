@@ -38,8 +38,6 @@ RUN cd connectors && npm run build
 
 RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
-
-
 # Core code and build
 RUN cd core && cargo build --release
 
