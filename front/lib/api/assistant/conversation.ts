@@ -462,7 +462,11 @@ export async function generateConversationTitle(
       {
         conversation: modelConversationRes.value.modelConversation,
       },
-    ]
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+    }
   );
 
   if (res.isErr()) {

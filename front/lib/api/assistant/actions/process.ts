@@ -303,13 +303,23 @@ export async function* runProcess(
   // Set top_k to 512 which is already a large number. We might want to bump to 1024.
   config.DATASOURCE.top_k = 512;
 
-  const res = await runActionStreamed(auth, "assistant-v2-process", config, [
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-process",
+    config,
+    [
+      {
+        context_size: contextSize,
+        prompt,
+        schema: renderSchemaPropertiesAsJSONSchema(actionConfiguration.schema),
+      },
+    ],
     {
-      context_size: contextSize,
-      prompt,
-      schema: renderSchemaPropertiesAsJSONSchema(actionConfiguration.schema),
-    },
-  ]);
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      userMessageId: userMessage.sId,
+    }
+  );
 
   if (res.isErr()) {
     logger.error(

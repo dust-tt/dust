@@ -430,13 +430,23 @@ export async function getNextAction(
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;
 
-  const res = await runActionStreamed(auth, "assistant-v2-use-tools", config, [
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-use-tools",
+    config,
+    [
+      {
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
     {
-      conversation: modelConversationRes.value.modelConversation,
-      specifications,
-      prompt,
-    },
-  ]);
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
+    }
+  );
 
   if (res.isErr()) {
     return new Err(
