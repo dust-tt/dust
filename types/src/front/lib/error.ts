@@ -69,8 +69,6 @@ export type APIErrorType =
   | "template_not_found"
   // Invitations:
   | "invitation_already_sent_recently"
-  // Dust apps
-  | "dust_app_secret_not_found"
   // Labs:
   | "transcripts_configuration_not_found";
 

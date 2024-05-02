@@ -81,13 +81,9 @@ async function handler(
       });
 
       if (!secret) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "dust_app_secret_not_found",
-            message: "Dust app secret not found.",
-          },
-        });
+        // Silently fail to avoid bruteforce.
+        res.status(204).end();
+        return;
       }
 
       await secret.update({
