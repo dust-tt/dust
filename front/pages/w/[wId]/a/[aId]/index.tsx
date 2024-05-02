@@ -279,7 +279,6 @@ export default function AppView({
           body: JSON.stringify({
             specification: JSON.stringify(spec),
             config: JSON.stringify(config),
-            mode: "design",
           }),
         }),
       ]);

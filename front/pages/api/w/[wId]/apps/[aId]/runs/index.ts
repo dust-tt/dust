@@ -78,192 +78,93 @@ async function handler(
         }),
       ]);
 
-      switch (req.body.mode) {
-        // Run creation as part of the app execution process (Use pane).
-        case "execute":
-          if (
-            !req.body ||
-            !(typeof req.body.config == "string") ||
-            !(typeof req.body.specificationHash === "string")
-          ) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "The request body is invalid, expects { config: string, specificationHash: string, mode: string }.",
-              },
-            });
-          }
-
-          const streamRes = await coreAPI.createRunStream({
-            projectId: app.dustAPIProjectId,
-            runAsWorkspaceId: owner.sId,
-            runType: "execute",
-            specificationHash: req.body.specificationHash,
-            inputs: req.body.inputs,
-            config: { blocks: JSON.parse(req.body.config) },
-            credentials: credentialsFromProviders(providers),
-          });
-
-          if (streamRes.isErr()) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "run_error",
-                message: "The streamed run execution failed.",
-                run_error: streamRes.error,
-              },
-            });
-          }
-
-          res.writeHead(200, {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          });
-
-          try {
-            for await (const chunk of streamRes.value.chunkStream) {
-              res.write(chunk);
-              // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
-              res.flush();
-            }
-          } catch (e) {
-            logger.error(
-              {
-                error: e,
-              },
-              "Error streaming from Dust API"
-            );
-          }
-          res.end();
-
-          let dustRunId: string;
-          try {
-            dustRunId = await streamRes.value.dustRunId;
-          } catch (e) {
-            logger.error(
-              {
-                error:
-                  "No run ID received from Dust API after consuming stream",
-              },
-              "Error streaming from Dust API"
-            );
-            return;
-          }
-
-          await Run.create({
-            dustRunId,
-            appId: app.id,
-            runType: "execute",
-            workspaceId: owner.id,
-          });
-
-          return;
-
-        // Run creation as part of the app design process (Specification pane).
-        case "design":
-          if (
-            !req.body ||
-            !(typeof req.body.config == "string") ||
-            !(typeof req.body.specification === "string")
-          ) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message:
-                  "The request body is invalid, expects { config: string, specificationHash: string }.",
-              },
-            });
-          }
-
-          const datasets = await coreAPI.getDatasets({
-            projectId: app.dustAPIProjectId,
-          });
-          if (datasets.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Datasets retrieval failed.",
-                app_error: datasets.error,
-              },
-            });
-          }
-
-          const latestDatasets: { [key: string]: string } = {};
-          for (const d in datasets.value.datasets) {
-            latestDatasets[d] = datasets.value.datasets[d][0].hash;
-          }
-
-          const config = JSON.parse(req.body.config);
-          const inputConfigEntry: any = Object.values(config).find(
-            (configValue: any) => configValue.type == "input"
-          );
-          const inputDataset = inputConfigEntry
-            ? inputConfigEntry.dataset
-            : null;
-
-          const dustRun = await coreAPI.createRun({
-            projectId: app.dustAPIProjectId,
-            runAsWorkspaceId: owner.sId,
-            runType: "local",
-            specification: dumpSpecification(
-              JSON.parse(req.body.specification),
-              latestDatasets
-            ),
-            datasetId: inputDataset,
-            config: { blocks: config },
-            credentials: credentialsFromProviders(providers),
-          });
-
-          if (dustRun.isErr()) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "run_error",
-                message: "Run creation failed.",
-                run_error: dustRun.error,
-              },
-            });
-          }
-
-          await Promise.all([
-            Run.create({
-              dustRunId: dustRun.value.run.run_id,
-              appId: app.id,
-              runType: "local",
-              workspaceId: owner.id,
-            }),
-            App.update(
-              {
-                savedSpecification: req.body.specification,
-                savedConfig: req.body.config,
-                savedRun: dustRun.value.run.run_id,
-              },
-              {
-                where: {
-                  id: app.id,
-                },
-              }
-            ),
-          ]);
-
-          res.status(200).json({ run: dustRun.value.run });
-          return;
-
-        default:
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The request body is invalid, expects `mode` to be one of `design` or `execute` .",
-            },
-          });
+      if (
+        !req.body ||
+        !(typeof req.body.config == "string") ||
+        !(typeof req.body.specification === "string")
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The request body is invalid, expects { config: string, specificationHash: string }.",
+          },
+        });
       }
+
+      const datasets = await coreAPI.getDatasets({
+        projectId: app.dustAPIProjectId,
+      });
+      if (datasets.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Datasets retrieval failed.",
+            app_error: datasets.error,
+          },
+        });
+      }
+
+      const latestDatasets: { [key: string]: string } = {};
+      for (const d in datasets.value.datasets) {
+        latestDatasets[d] = datasets.value.datasets[d][0].hash;
+      }
+
+      const config = JSON.parse(req.body.config);
+      const inputConfigEntry: any = Object.values(config).find(
+        (configValue: any) => configValue.type == "input"
+      );
+      const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
+
+      const dustRun = await coreAPI.createRun({
+        projectId: app.dustAPIProjectId,
+        runAsWorkspaceId: owner.sId,
+        runType: "local",
+        specification: dumpSpecification(
+          JSON.parse(req.body.specification),
+          latestDatasets
+        ),
+        datasetId: inputDataset,
+        config: { blocks: config },
+        credentials: credentialsFromProviders(providers),
+      });
+
+      if (dustRun.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "run_error",
+            message: "Run creation failed.",
+            run_error: dustRun.error,
+          },
+        });
+      }
+
+      await Promise.all([
+        Run.create({
+          dustRunId: dustRun.value.run.run_id,
+          appId: app.id,
+          runType: "local",
+          workspaceId: owner.id,
+        }),
+        App.update(
+          {
+            savedSpecification: req.body.specification,
+            savedConfig: req.body.config,
+            savedRun: dustRun.value.run.run_id,
+          },
+          {
+            where: {
+              id: app.id,
+            },
+          }
+        ),
+      ]);
+
+      res.status(200).json({ run: dustRun.value.run });
+      return;
 
     case "GET":
       if (req.query.wIdTarget) {
