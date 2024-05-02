@@ -40,7 +40,9 @@ COPY ./connectors ./connectors/
 RUN cd connectors && npm run build
 
 COPY /front ./front/
-RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+RUN cd front 
+RUN git log
+
 
 # Core code and build
 COPY /core ./core/

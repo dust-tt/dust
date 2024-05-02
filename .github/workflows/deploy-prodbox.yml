@@ -20,38 +20,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
       - name: Setup kubectl
         run: |
-          ls -al
+          gcloud container clusters get-credentials dust-kube --region us-central1
 
-      - name: Setup kubectl
+      - name: Build the image on Cloud Build
         run: |
-          git log
-
-      # - name: Get short sha
-      #   id: short_sha
-      #   run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      # - name: "Authenticate with Google Cloud"
-      #   uses: "google-github-actions/auth@v1"
-      #   with:
-      #     credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
-
-      # - name: "Set up Cloud SDK"
-      #   uses: "google-github-actions/setup-gcloud@v1"
-
-      # - name: Install gke-gcloud-auth-plugin
-      #   run: |
-      #     gcloud components install gke-gcloud-auth-plugin
-
-      # - name: Setup kubectl
-      #   run: |
-      #     gcloud container clusters get-credentials dust-kube --region us-central1
-
-      # - name: Build the image on Cloud Build
-      #   run: |
-      #     chmod +x ./k8s/cloud-build.sh
-      #     ./k8s/cloud-build.sh prodbox ./prodbox.Dockerfile ./
+          chmod +x ./k8s/cloud-build.sh
+          ./k8s/cloud-build.sh prodbox ./prodbox.Dockerfile ./
 
       # - name: Deploy the image on Kubernetes
       #   run: |
