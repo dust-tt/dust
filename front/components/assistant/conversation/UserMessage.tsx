@@ -1,24 +1,24 @@
+import { PencilSquareIcon } from "@dust-tt/sparkle";
 import type {
   ContentFragmentType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
+import { useState } from "react";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import { MessageEdit } from "@app/components/assistant/conversation/MessageEdit";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
-import {PencilSquareIcon} from "@dust-tt/sparkle";
-import {useState} from "react";
-import {MessageEdit} from "@app/components/assistant/conversation/MessageEdit";
 
 interface UserMessageProps {
   conversationId: string;
   hideReactions?: boolean;
   isLastMessage: boolean;
-  isLastUserMessage: boolean,
+  isLastUserMessage: boolean;
   latestMentions: string[];
   message: UserMessageType;
   owner: WorkspaceType;
@@ -44,22 +44,21 @@ export function UserMessage({
     workspaceId: owner.sId,
     agentsGetView: { conversationId },
   });
-  
-  const [editing, setEditing] = useState(false)
-  
+
+  const [editing, setEditing] = useState(false);
+
   const buttons = !isLastUserMessage
     ? []
     : [
-      {
-        label: "Edit",
-        icon: PencilSquareIcon,
-        onClick: () => {
-          setEditing(editing => !editing)
+        {
+          label: "Edit",
+          icon: PencilSquareIcon,
+          onClick: () => {
+            setEditing((editing) => !editing);
+          },
         },
-      }
-    ];
-  
-  
+      ];
+
   return (
     <ConversationMessage
       owner={owner}

@@ -359,12 +359,12 @@ export default function ConversationViewer({
   if (!conversation) {
     return <div>No conversation here</div>;
   }
-  
+
   const lastUserMessage = messages
-    .flatMap(page => page.messages)
-    .filter(message => message.type === "user_message")
+    .flatMap((page) => page.messages)
+    .filter((message) => message.type === "user_message")
     .at(-1);
-  
+
   return (
     <div
       className={classNames(
