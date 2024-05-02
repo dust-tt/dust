@@ -1,4 +1,5 @@
 use crate::blocks::block::BlockType;
+use crate::cached_request::CachedRequest;
 use crate::data_sources::data_source::{
     DataSource, DataSourceConfig, Document, DocumentVersion, SearchFilter,
 };
@@ -218,52 +219,68 @@ pub trait Store {
         &self,
         project: &Project,
         request: &LLMRequest,
-    ) -> Result<Vec<LLMGeneration>>;
+    ) -> Result<Vec<LLMGeneration>>
+    where
+        LLMRequest: CachedRequest;
     async fn llm_cache_store(
         &self,
         project: &Project,
         request: &LLMRequest,
         generation: &LLMGeneration,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        LLMRequest: CachedRequest;
 
     // LLM Chat Cache
     async fn llm_chat_cache_get(
         &self,
         project: &Project,
         request: &LLMChatRequest,
-    ) -> Result<Vec<LLMChatGeneration>>;
+    ) -> Result<Vec<LLMChatGeneration>>
+    where
+        LLMChatRequest: CachedRequest;
     async fn llm_chat_cache_store(
         &self,
         project: &Project,
         request: &LLMChatRequest,
         generation: &LLMChatGeneration,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        LLMChatRequest: CachedRequest;
 
     // Embedder Cache
     async fn embedder_cache_get(
         &self,
         project: &Project,
         request: &EmbedderRequest,
-    ) -> Result<Vec<EmbedderVector>>;
+    ) -> Result<Vec<EmbedderVector>>
+    where
+        EmbedderRequest: CachedRequest;
     async fn embedder_cache_store(
         &self,
         project: &Project,
         request: &EmbedderRequest,
         embedding: &EmbedderVector,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        EmbedderRequest: CachedRequest;
 
     // HTTP Cache
     async fn http_cache_get(
         &self,
         project: &Project,
         request: &HttpRequest,
-    ) -> Result<Vec<HttpResponse>>;
+    ) -> Result<Vec<HttpResponse>>
+    where
+        HttpRequest: CachedRequest;
     async fn http_cache_store(
         &self,
         project: &Project,
         request: &HttpRequest,
         response: &HttpResponse,
-    ) -> Result<()>;
+    ) -> Result<()>
+    where
+        HttpRequest: CachedRequest;
 
     // SQLite Workers
     async fn sqlite_workers_list(&self) -> Result<Vec<SqliteWorker>>;
@@ -361,6 +378,8 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
        hash                 TEXT NOT NULL,
        request              TEXT NOT NULL,
        response             TEXT NOT NULL,
+       type                 TEXT,
+       version              INTEGER,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources
