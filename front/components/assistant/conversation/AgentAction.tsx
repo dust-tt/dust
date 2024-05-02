@@ -1,6 +1,8 @@
 import type { AgentActionType } from "@dust-tt/types";
 import {
+  assertNever,
   isDustAppRunActionType,
+  isProcessActionType,
   isRetrievalActionType,
   isTablesQueryActionType,
 } from "@dust-tt/types";
@@ -16,20 +18,21 @@ export function AgentAction({ action }: { action: AgentActionType }) {
         <RetrievalAction retrievalAction={action} />
       </div>
     );
-  }
-  if (isDustAppRunActionType(action)) {
+  } else if (isDustAppRunActionType(action)) {
     return (
       <div className="pb-4">
         <DustAppRunAction dustAppRunAction={action} />
       </div>
     );
-  }
-  if (isTablesQueryActionType(action)) {
+  } else if (isTablesQueryActionType(action)) {
     return (
       <div className="pb-4">
         <TablesQueryAction tablesQueryAction={action} />
       </div>
     );
+  } else if (isProcessActionType(action)) {
+    return <div className="pb-4">--ProcessAction PlaceHolder--</div>;
+  } else {
+    assertNever(action);
   }
-  throw new Error(`Unhandled action ${action}`);
 }
