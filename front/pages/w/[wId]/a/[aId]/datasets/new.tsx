@@ -158,6 +158,7 @@ export default function NewDatasetView({
                 schema={schema}
                 onUpdate={onUpdate}
                 nameDisabled={false}
+                viewType="full"
               />
 
               <div className="flex flex-row pt-6">

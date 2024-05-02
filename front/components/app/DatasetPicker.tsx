@@ -42,14 +42,7 @@ export default function DatasetPicker({
   }
 
   return (
-    <div className="flex items-center">
-      {dataset ? (
-        <Link href={`/w/${owner.sId}/a/${app.sId}/datasets/${dataset}`}>
-          <div className="text-sm font-bold text-action-500">{dataset}</div>
-        </Link>
-      ) : (
-        ""
-      )}
+    <div className="flex items-center rounded-md  px-2">
       <Menu as="div" className="relative inline-block text-left">
         <div>
           {datasets.length == 0 && !dataset && !readOnly ? (
@@ -69,16 +62,17 @@ export default function DatasetPicker({
           ) : readOnly ? null : (
             <Menu.Button
               className={classNames(
-                "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                dataset ? "px-0" : "border px-3",
-                readOnly
-                  ? "border-white text-gray-300"
-                  : "border-orange-400 text-gray-700",
+                "inline-flex items-center rounded-md px-3 py-1 text-sm font-normal",
+                dataset ? "border px-1" : "border border-orange-400",
+                readOnly ? "border-white text-gray-300" : "text-gray-700",
                 "focus:outline-none focus:ring-0"
               )}
             >
               {dataset ? (
                 <>
+                  <div className="text-sm font-bold text-action-500">
+                    {dataset}
+                  </div>
                   &nbsp;
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </>

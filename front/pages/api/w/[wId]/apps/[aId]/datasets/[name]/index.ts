@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import { getDatasetHash } from "@app/lib/api/datasets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
 import { Dataset } from "@app/lib/models/apps";
@@ -13,7 +14,7 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 import { PostDatasetRequestBodySchema } from "..";
 
-type GetDatasetResponseBody = { dataset: DatasetType };
+export type GetDatasetResponseBody = { dataset: DatasetType };
 
 async function handler(
   req: NextApiRequest,
@@ -62,24 +63,40 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "dataset_not_found",
-        message: "The dataset you're trying to modify or delete was not found.",
+        message:
+          "The dataset you're trying to view, modify or delete was not found.",
+      },
+    });
+  }
+
+  if (!auth.isBuilder()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can interact with datasets",
       },
     });
   }
 
   switch (req.method) {
-    case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can modify an app.",
-          },
-        });
-      }
+    case "GET":
+      const showData = req.query.data === "true";
+      const datasetHash = showData
+        ? await getDatasetHash(auth, app, dataset.name, "latest")
+        : null;
+      res.status(200).json({
+        dataset: {
+          name: dataset.name,
+          description: dataset.description,
+          schema: showData ? dataset.schema : null,
+          data: showData && datasetHash ? datasetHash.data : null,
+        },
+      });
+      return;
 
+    case "POST":
       const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -156,17 +173,6 @@ async function handler(
       return;
 
     case "DELETE":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "You can't delete an app in a workspace for which you're not a builder.",
-          },
-        });
-      }
-
       await Dataset.destroy({
         where: {
           workspaceId: owner.id,

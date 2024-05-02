@@ -1,3 +1,4 @@
+import { Button, PencilSquareIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -80,6 +81,17 @@ export default function Data({
               dataset={block.spec.dataset}
               onDatasetUpdate={handleSetDataset}
               readOnly={readOnly}
+            />
+          )}
+          {block.spec.dataset && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.spec.dataset}`;
+              }}
+              icon={PencilSquareIcon}
+              label="Edit"
+              size="xs"
             />
           )}
         </div>

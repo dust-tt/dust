@@ -196,6 +196,7 @@ export default function ViewDatasetView({
                   schema={schema}
                   onUpdate={onUpdate}
                   nameDisabled={true}
+                  viewType="full"
                 />
 
                 {readOnly ? null : (

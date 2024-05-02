@@ -4,6 +4,7 @@ import {
   ChevronUpIcon,
   Spinner2,
   Square3Stack3DStrokeIcon,
+  Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -129,23 +130,30 @@ export default function Block({
             )}
           >
             {block.config && block.config.use_cache ? (
-              <div
-                className="flex flex-initial cursor-pointer text-gray-400"
-                onClick={() => {
-                  handleUseCacheChange(false);
-                }}
-              >
-                <Square3Stack3DStrokeIcon className="h-4 w-4" />
-              </div>
+              <Tooltip label="Results are cached (faster)" position="above">
+                <div
+                  className="flex flex-initial cursor-pointer text-gray-400"
+                  onClick={() => {
+                    handleUseCacheChange(false);
+                  }}
+                >
+                  <Square3Stack3DStrokeIcon className="h-4 w-4" />
+                </div>
+              </Tooltip>
             ) : (
-              <div
-                className="flex flex-initial cursor-pointer text-gray-400"
-                onClick={() => {
-                  handleUseCacheChange(true);
-                }}
+              <Tooltip
+                label="Results are computed at each run"
+                position="above"
               >
-                <ArrowPathIcon className="h-4 w-4" />
-              </div>
+                <div
+                  className="flex flex-initial cursor-pointer text-gray-400"
+                  onClick={() => {
+                    handleUseCacheChange(true);
+                  }}
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                </div>
+              </Tooltip>
             )}
           </div>
 
