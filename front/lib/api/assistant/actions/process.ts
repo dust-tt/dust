@@ -235,6 +235,7 @@ export async function* runProcess(
     dataSources: actionConfiguration.dataSources,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "process_action",
       params: {
         relativeTimeFrame,
@@ -424,6 +425,7 @@ export async function* runProcess(
     messageId: agentMessage.sId,
     action: {
       id: action.id,
+      agentMessageId: agentMessage.agentMessageId,
       type: "process_action",
       params: {
         relativeTimeFrame,
