@@ -5,7 +5,6 @@ import {
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
-  PaperAirplaneIcon,
   PlanetIcon,
   PuzzleIcon,
   RobotSharedIcon,
