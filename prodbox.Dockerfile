@@ -41,6 +41,8 @@ RUN cd connectors && npm run build
 
 COPY /front ./front/
 RUN cd front 
+RUN pwd
+RUN ls -al
 RUN git log
 
 
