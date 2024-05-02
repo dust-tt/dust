@@ -1,9 +1,10 @@
 import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
-import { decrypt, encrypt } from "@dust-tt/types";
+import { decrypt, encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetSecretsResponseBody = {
@@ -44,6 +45,23 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message: "You do not have the required permissions.",
+      },
+    });
+  }
+
+  const remaining = await rateLimiter({
+    key: `workspace:${owner.id}:dust_app_secrets`,
+    maxPerTimeframe: 60,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining < 0) {
+    return apiError(req, res, {
+      status_code: 429,
+      api_error: {
+        type: "rate_limit_error",
+        message: "You have reached the rate limit for this workspace.",
       },
     });
   }
