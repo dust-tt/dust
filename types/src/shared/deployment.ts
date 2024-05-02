@@ -1,3 +1,5 @@
+import * as child_process from "child_process";
+
 import { LoggerInterface } from "./logger";
 
 export async function sendDeploymentMessage({
@@ -14,7 +16,16 @@ export async function sendDeploymentMessage({
     return;
   }
 
-  const message = `papertrail: Deployment has been initiated. Service: ${service}`;
+  // get the current commit id
+  let commitId = "unknown";
+
+  try {
+    commitId = child_process.execSync("agit rev-parse HEAD").toString().trim();
+  } catch (error) {
+    logger.error({}, "Failed to get commit id");
+  }
+
+  const message = `papertrail: Deployment has been initiated. Service: \`${service}\`. CommitId: \`${commitId}\``;
 
   try {
     const res = await fetch("https://slack.com/api/chat.postMessage", {
@@ -25,7 +36,17 @@ export async function sendDeploymentMessage({
       },
       body: JSON.stringify({
         channel: "deployments",
-        text: message,
+        text: "",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: message,
+            },
+          },
+        ],
+        mrkdown: true,
       }),
     });
 
@@ -36,8 +57,6 @@ export async function sendDeploymentMessage({
         "Failed to send slack message(1)."
       );
     }
-
-    // Log the result
   } catch (error) {
     logger.error({ error: error }, "Failed to send slack message(2).");
   }
