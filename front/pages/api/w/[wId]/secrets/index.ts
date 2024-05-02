@@ -1,10 +1,8 @@
 import type { SecretType } from "@dust-tt/types";
-import { formatUserFullName } from "@dust-tt/types";
 import { decrypt, encrypt } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
 import { Secret } from "@app/lib/models/workspace";
 import { withLogging } from "@app/logger/withlogging";
 
@@ -41,7 +39,6 @@ async function handler(
   switch (req.method) {
     case "GET":
       const secrets = await Secret.findAll({
-        attributes: ["createdAt", "name", "hash"],
         where: {
           workspaceId: owner.id,
         },
@@ -53,7 +50,6 @@ async function handler(
           const clearSecret = decrypt(s.hash, owner.sId);
           return {
             createdAt: s.createdAt.getTime(),
-            creator: formatUserFullName(s.user),
             name: s.name,
             value: clearSecret,
           };
@@ -62,10 +58,10 @@ async function handler(
       return;
 
     case "DELETE":
-      const secretId = req.body.id;
+      const { name: deleteSecretName } = req.body;
       const secret = await Secret.findOne({
         where: {
-          id: secretId,
+          name: deleteSecretName,
           workspaceId: owner.id,
         },
       });
@@ -81,23 +77,21 @@ async function handler(
       return;
 
     case "POST":
-      const secretName = req.body.name;
+      const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
-      // We feed the workspace sid as key that will be added to the salt.
-      const hashValue = encrypt(secretValue, owner.sId);
 
-      const key = await Secret.create({
+      const hashValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
+
+      await Secret.create({
         userId: user?.id,
         workspaceId: owner.id,
-        name: secretName,
+        name: postSecretName,
         hash: hashValue,
       });
 
       res.status(201).json({
         secret: {
-          createdAt: key.createdAt.getTime(),
-          creator: formatUserFullName(key.user),
-          name: secretName,
+          name: postSecretName,
           value: secretValue,
         },
       });
