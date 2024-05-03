@@ -378,18 +378,15 @@ export async function renderConversationForModelMultiActions({
         return new Err(new Error("Failed to retrieve content fragment text"));
       }
     } else {
-      ((x: never) => {
-        throw new Error(`Unexpected message type: ${x}`);
-      })(m);
+      assertNever(m);
     }
   }
 
   // Compute in parallel the token count for each message and the prompt.
   const [messagesCountRes, promptCountRes] = await Promise.all([
-    // This is a bit aggressive but fuck it.
     Promise.all(
       messages.map((m) => {
-        return tokenCountForText(JSON.stringify(m), model);
+        return tokenCountForText(JSON.stringify(m), model); // todo optimise this instead of stringify
       })
     ),
     tokenCountForText(prompt, model),
