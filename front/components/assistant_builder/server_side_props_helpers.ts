@@ -104,7 +104,6 @@ export async function buildInitialActions({
 
   const action = deprecatedGetFirstActionConfiguration(configuration);
 
-  // Retrieval configuration
   if (!action) {
     return [];
   } else if (isRetrievalConfiguration(action)) {
