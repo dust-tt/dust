@@ -1,5 +1,8 @@
+import * as t from "io-ts";
+import { NonEmptyString } from "io-ts-types";
+
 import { ModelId } from "../shared/model_id";
-import { ActiveRoleType } from "./user";
+import { ActiveRoleSchema, ActiveRoleType } from "./user";
 
 export type MembershipInvitationType = {
   sId: string;
@@ -8,3 +11,12 @@ export type MembershipInvitationType = {
   inviteEmail: string;
   initialRole: ActiveRoleType;
 };
+
+// Types for the invite form in Poke.
+
+export const InviteMemberFormSchema = t.type({
+  email: NonEmptyString,
+  role: ActiveRoleSchema,
+});
+
+export type InviteMemberFormType = t.TypeOf<typeof InviteMemberFormSchema>;

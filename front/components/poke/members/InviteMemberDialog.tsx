@@ -1,6 +1,14 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
+import type {
+  InviteMemberFormType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import {
+  InviteMemberFormSchema,
+  MEMBERSHIP_ROLE_TYPES,
+  removeNulls,
+} from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -21,31 +29,28 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { usePokePlans } from "@app/lib/swr";
-
-export default function EnterpriseUpgradeDialog({
-  disabled,
+export default function InviteMemberDialog({
   owner,
+  user,
 }: {
-  disabled: boolean;
   owner: WorkspaceType;
+  user: UserType;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
-  const { plans } = usePokePlans();
   const router = useRouter();
 
-  const form = useForm<EnterpriseUpgradeFormType>({
-    resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
+  const form = useForm<InviteMemberFormType>({
+    resolver: ioTsResolver(InviteMemberFormSchema),
     defaultValues: {
-      stripeSubscriptionId: "",
-      planCode: "",
+      email: "",
+      role: "user",
     },
   });
 
-  const onSubmit = (values: EnterpriseUpgradeFormType) => {
+  const onSubmit = (values: InviteMemberFormType) => {
     const cleanedValues = Object.fromEntries(
       removeNulls(
         Object.entries(values).map(([key, value]) => {
@@ -65,8 +70,8 @@ export default function EnterpriseUpgradeDialog({
       setIsSubmitting(true);
       setError(null);
       try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/upgrade_enterprise`,
+        const res = await fetch(
+          `/api/poke/workspaces/${owner.sId}/invitations`,
           {
             method: "POST",
             headers: {
@@ -76,9 +81,9 @@ export default function EnterpriseUpgradeDialog({
           }
         );
 
-        if (!r.ok) {
+        if (!res.ok) {
           throw new Error(
-            `Something went wrong: ${r.status} ${await r.text()}`
+            `Something went wrong: ${res.status} ${await res.text()}`
           );
         }
 
@@ -98,16 +103,22 @@ export default function EnterpriseUpgradeDialog({
   return (
     <PokeDialog open={open} onOpenChange={setOpen}>
       <PokeDialogTrigger asChild>
-        <PokeButton variant="outline" disabled={disabled}>
-          🏢 Upgrade to Enterprise
-        </PokeButton>
+        <PokeButton variant="outline">🙋‍♂️ Invite a user</PokeButton>
       </PokeDialogTrigger>
       <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
         <PokeDialogHeader>
-          <PokeDialogTitle>Upgrade {owner.name} to Enterprise.</PokeDialogTitle>
+          <PokeDialogTitle>
+            Invite a user to {owner.name}'s workspace.
+          </PokeDialogTitle>
           <PokeDialogDescription>
-            Select the enterprise plan and provide the Stripe subscription id of
-            the customer.
+            Enter the user's email to grant them direct access to {owner.name}'s
+            Workspace. Once invited, they'll receive an email notification.
+            Please ensure the email address is accurate and that the user is
+            aware they are being invited. They will get an email from{" "}
+            <span className="font-bold">{user.fullName}</span>.
+            <br />
+            Note: the role 'user' below is the same as a 'member' role in the
+            UI.
           </PokeDialogDescription>
         </PokeDialogHeader>
         {error && <div className="text-red-500">{error}</div>}
@@ -117,24 +128,21 @@ export default function EnterpriseUpgradeDialog({
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid gap-4 py-4">
                 <div className="grid-cols grid items-center gap-4">
-                  <SelectField
+                  <InputField
                     control={form.control}
-                    name="planCode"
-                    title="Enterprise Plan"
-                    options={plans
-                      .filter((plan) => plan.code.startsWith("ENT_"))
-                      .map((plan) => ({
-                        value: plan.code,
-                        display: `${plan.name} (${plan.code})`,
-                      }))}
+                    name="email"
+                    title="User email"
+                    placeholder="octave@abc.yz"
                   />
                 </div>
                 <div className="grid-cols grid items-center gap-4">
-                  <InputField
+                  <SelectField
                     control={form.control}
-                    name="stripeSubscriptionId"
-                    title="Stripe Subscription id"
-                    placeholder="sub_1234567890"
+                    name="role"
+                    title="Role"
+                    options={MEMBERSHIP_ROLE_TYPES.map((role) => ({
+                      value: role,
+                    }))}
                   />
                 </div>
               </div>
@@ -143,7 +151,7 @@ export default function EnterpriseUpgradeDialog({
                   type="submit"
                   className="border-warning-600 bg-warning-500 text-white"
                 >
-                  Upgrade
+                  Invite
                 </PokeButton>
               </PokeDialogFooter>
             </form>
