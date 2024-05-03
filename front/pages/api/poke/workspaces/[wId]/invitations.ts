@@ -81,12 +81,23 @@ async function handler(
         });
       }
 
-      const invitationRes = await handleMembershipInvitations(auth, {
-        owner,
-        user,
-        subscription,
-        invitationRequests: [bodyValidation.right],
-      });
+      // To send the invitations, we need to auth as admin of the workspace
+
+      // !! this is ok because we're in Poke as dust super user, do not copy paste
+      // this mindlessly !!
+      const workspaceAdminAuth = await Authenticator.internalAdminForWorkspace(
+        owner.sId
+      );
+
+      const invitationRes = await handleMembershipInvitations(
+        workspaceAdminAuth,
+        {
+          owner,
+          user,
+          subscription,
+          invitationRequests: [bodyValidation.right],
+        }
+      );
 
       if (invitationRes.isErr()) {
         return apiError(req, res, invitationRes.error);
