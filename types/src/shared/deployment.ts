@@ -2,7 +2,7 @@ import * as child_process from "child_process";
 
 import { LoggerInterface } from "./logger";
 
-export async function sendDeploymentMessage({
+export async function sendInitDbMessage({
   service,
   logger,
 }: {
@@ -20,7 +20,7 @@ export async function sendDeploymentMessage({
   let commitId = "unknown";
 
   try {
-    commitId = child_process.execSync("agit rev-parse HEAD").toString().trim();
+    commitId = child_process.execSync("git rev-parse HEAD").toString().trim();
   } catch (error) {
     logger.error({}, "Failed to get commit id");
   }

@@ -1,4 +1,4 @@
-import { sendDeploymentMessage } from "@dust-tt/types";
+import { sendInitDbMessage } from "@dust-tt/types";
 
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -63,7 +63,7 @@ import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import logger from "@app/logger/logger";
 
 async function main() {
-  sendDeploymentMessage({
+  sendInitDbMessage({
     service: "front",
     logger: logger,
   });
