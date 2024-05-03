@@ -58,7 +58,7 @@ import {
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
 import type {
-  ActionMode,
+  AssistantBuilderActionType,
   AssistantBuilderInitialState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
@@ -217,12 +217,7 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
-          actionMode: initialBuilderState.actionMode,
-          retrievalConfiguration: initialBuilderState.retrievalConfiguration,
-          dustAppConfiguration: initialBuilderState.dustAppConfiguration,
-          tablesQueryConfiguration:
-            initialBuilderState.tablesQueryConfiguration,
-          processConfiguration: initialBuilderState.processConfiguration,
+          actions: initialBuilderState.actions,
         }
       : {
           ...getDefaultAssistantState(),
@@ -272,30 +267,29 @@ export default function AssistantBuilder({
       return;
     }
     const action = getAgentActionConfigurationType(template.presetAction);
-    let actionMode: ActionMode = "GENERIC";
+    let actionType: AssistantBuilderActionType | null = null;
 
     if (isRetrievalConfiguration(action)) {
-      actionMode = "RETRIEVAL_SEARCH";
+      actionType = "RETRIEVAL_SEARCH";
     } else if (isDustAppRunConfiguration(action)) {
-      actionMode = "DUST_APP_RUN";
+      actionType = "DUST_APP_RUN";
     } else if (isTablesQueryConfiguration(action)) {
-      actionMode = "TABLES_QUERY";
+      actionType = "TABLES_QUERY";
     } else if (isProcessConfiguration(action)) {
-      actionMode = "PROCESS";
+      actionType = "PROCESS";
     }
 
-    if (actionMode !== null) {
+    if (actionType !== null) {
       const defaultAssistantState = getDefaultAssistantState();
 
       setEdited(true);
-      setBuilderState((builderState) => ({
-        ...builderState,
-        actionMode,
-        retrievalConfiguration: defaultAssistantState.retrievalConfiguration,
-        dustAppConfiguration: defaultAssistantState.dustAppConfiguration,
-        tablesQueryConfiguration:
-          defaultAssistantState.tablesQueryConfiguration,
-      }));
+      setBuilderState((builderState) => {
+        const newState = {
+          ...builderState,
+          actions: defaultAssistantState.actions,
+        };
+        return newState;
+      });
     }
   }, [template]);
 
@@ -719,93 +713,90 @@ export async function submitAssistantBuilderForm({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >;
 
-  let actionParam:
-    | NonNullable<BodyType["assistant"]["actions"]>[number]
-    | null = null;
+  const actionParams: NonNullable<BodyType["assistant"]["actions"]> =
+    removeNulls(
+      builderState.actions.map((a) => {
+        switch (a.type) {
+          case "RETRIEVAL_SEARCH":
+          case "RETRIEVAL_EXHAUSTIVE":
+            return {
+              type: "retrieval_configuration",
+              query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
+              relativeTimeFrame:
+                a.type === "RETRIEVAL_EXHAUSTIVE"
+                  ? {
+                      duration: a.configuration.timeFrame.value,
+                      unit: a.configuration.timeFrame.unit,
+                    }
+                  : "auto",
+              topK: "auto",
+              dataSources: Object.values(
+                a.configuration.dataSourceConfigurations
+              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+                dataSourceId: dataSource.name,
+                workspaceId: owner.sId,
+                filter: {
+                  parents: !isSelectAll
+                    ? {
+                        in: selectedResources.map(
+                          (resource) => resource.internalId
+                        ),
+                        not: [],
+                      }
+                    : null,
+                  tags: null,
+                },
+              })),
+            };
 
-  switch (builderState.actionMode) {
-    case "GENERIC":
-      break;
-    case "RETRIEVAL_SEARCH":
-    case "RETRIEVAL_EXHAUSTIVE":
-      actionParam = {
-        type: "retrieval_configuration",
-        query: builderState.actionMode === "RETRIEVAL_SEARCH" ? "auto" : "none",
-        relativeTimeFrame:
-          builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" &&
-          builderState.retrievalConfiguration
-            ? {
-                duration: builderState.retrievalConfiguration.timeFrame.value,
-                unit: builderState.retrievalConfiguration.timeFrame.unit,
-              }
-            : "auto",
-        topK: "auto",
-        dataSources: Object.values(
-          builderState.retrievalConfiguration.dataSourceConfigurations
-        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-          dataSourceId: dataSource.name,
-          workspaceId: owner.sId,
-          filter: {
-            parents: !isSelectAll
-              ? {
-                  in: selectedResources.map((resource) => resource.internalId),
-                  not: [],
-                }
-              : null,
-            tags: null,
-          },
-        })),
-      };
-      break;
+          case "DUST_APP_RUN":
+            if (!a.configuration.app) {
+              return null;
+            }
+            return {
+              type: "dust_app_run_configuration",
+              appWorkspaceId: owner.sId,
+              appId: a.configuration.app.sId,
+            };
 
-    case "DUST_APP_RUN":
-      if (builderState.dustAppConfiguration.app) {
-        actionParam = {
-          type: "dust_app_run_configuration",
-          appWorkspaceId: owner.sId,
-          appId: builderState.dustAppConfiguration.app.sId,
-        };
-      }
-      break;
+          case "TABLES_QUERY":
+            return {
+              type: "tables_query_configuration",
+              tables: Object.values(a.configuration),
+            };
 
-    case "TABLES_QUERY":
-      if (builderState.tablesQueryConfiguration) {
-        actionParam = {
-          type: "tables_query_configuration",
-          tables: Object.values(builderState.tablesQueryConfiguration),
-        };
-      }
-      break;
+          case "PROCESS":
+            return {
+              type: "process_configuration",
+              relativeTimeFrame: {
+                duration: a.configuration.timeFrame.value,
+                unit: a.configuration.timeFrame.unit,
+              },
+              dataSources: Object.values(
+                a.configuration.dataSourceConfigurations
+              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+                dataSourceId: dataSource.name,
+                workspaceId: owner.sId,
+                filter: {
+                  parents: !isSelectAll
+                    ? {
+                        in: selectedResources.map(
+                          (resource) => resource.internalId
+                        ),
+                        not: [],
+                      }
+                    : null,
+                  tags: null,
+                },
+              })),
+              schema: a.configuration.schema,
+            };
 
-    case "PROCESS":
-      actionParam = {
-        type: "process_configuration",
-        relativeTimeFrame: {
-          duration: builderState.processConfiguration.timeFrame.value,
-          unit: builderState.processConfiguration.timeFrame.unit,
-        },
-        dataSources: Object.values(
-          builderState.processConfiguration.dataSourceConfigurations
-        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-          dataSourceId: dataSource.name,
-          workspaceId: owner.sId,
-          filter: {
-            parents: !isSelectAll
-              ? {
-                  in: selectedResources.map((resource) => resource.internalId),
-                  not: [],
-                }
-              : null,
-            tags: null,
-          },
-        })),
-        schema: builderState.processConfiguration.schema,
-      };
-      break;
-
-    default:
-      assertNever(builderState.actionMode);
-  }
+          default:
+            assertNever(a);
+        }
+      })
+    );
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
@@ -816,7 +807,7 @@ export async function submitAssistantBuilderForm({
         instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
-        actions: removeNulls([actionParam]),
+        actions: actionParams,
         generation: {}, // Warning should not be empty otherwise no generation will be done
         model: {
           modelId: builderState.generationSettings.modelSettings.modelId,

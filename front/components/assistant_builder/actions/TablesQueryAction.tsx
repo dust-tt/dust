@@ -5,24 +5,31 @@ import { useState } from "react";
 import AssistantBuilderTablesModal from "@app/components/assistant_builder/AssistantBuilderTablesModal";
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
+  AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 
-export function isActionTablesQueryValid(builderState: AssistantBuilderState) {
-  return Object.keys(builderState.tablesQueryConfiguration).length > 0;
+export function isActionTablesQueryValid(
+  action: AssistantBuilderActionConfiguration
+) {
+  return (
+    action.type === "TABLES_QUERY" &&
+    Object.keys(action.configuration).length > 0
+  );
 }
 
 export function ActionTablesQuery({
   owner,
-  builderState,
+  actionConfiguration,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -30,6 +37,10 @@ export function ActionTablesQuery({
   dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
+
+  if (!actionConfiguration) {
+    return null;
+  }
 
   return (
     <>
@@ -45,15 +56,22 @@ export function ActionTablesQuery({
           for (const t of tables) {
             newTables[tableKey(t)] = t;
           }
-          setBuilderState((state) => ({
-            ...state,
-            tablesQueryConfiguration: {
-              ...state.tablesQueryConfiguration,
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "TABLES_QUERY") {
+              return state;
+            }
+            action.configuration = {
+              ...action.configuration,
               ...newTables,
-            },
-          }));
+            };
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
         }}
-        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
+        tablesQueryConfiguration={actionConfiguration}
       />
 
       <div className="text-sm text-element-700">
@@ -75,19 +93,28 @@ export function ActionTablesQuery({
       </div>
 
       <TablesSelectionSection
-        show={builderState.actionMode === "TABLES_QUERY"}
-        tablesQueryConfiguration={builderState.tablesQueryConfiguration}
+        show={true}
+        tablesQueryConfiguration={actionConfiguration}
         openTableModal={() => {
           setShowTableModal(true);
         }}
         onDelete={(key) => {
           setEdited(true);
           setBuilderState((state) => {
-            const tablesQueryConfiguration = state.tablesQueryConfiguration;
+            const action = state.actions[0];
+            if (!action || action.type !== "TABLES_QUERY") {
+              return state;
+            }
+            const tablesQueryConfiguration = action.configuration;
             delete tablesQueryConfiguration[key];
             return {
               ...state,
-              tablesQueryConfiguration,
+              actions: [
+                {
+                  ...action,
+                  configuration: tablesQueryConfiguration,
+                },
+              ],
             };
           });
         }}
