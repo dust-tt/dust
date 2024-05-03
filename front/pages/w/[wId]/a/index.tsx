@@ -148,78 +148,36 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
         }}
       />
       <div className="space-y-4 divide-y divide-gray-200">
-        <ul role="list" className="pt-4">
-          {secrets
-            .sort((a, b) => (b.status === "active" ? 1 : -1))
-            .map((key) => (
-              <li key={key.secret} className="px-2 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex flex-col">
-                      <div className="flex flex-row">
-                        <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
-                          <p
-                            className={classNames(
-                              "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                              key.status === "active"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
-                            )}
-                          >
-                            {key.status === "active" ? "active" : "revoked"}
-                          </p>
-                        </div>
-                        <div>
-                          <p
-                            className={classNames(
-                              "font-mono truncate text-sm text-slate-700"
-                            )}
-                          >
-                            <strong>{key.name ? key.name : "Unnamed"}</strong>
-                          </p>
-                          <pre className="text-sm">{key.secret}</pre>
-                          <p className="front-normal text-xs text-element-700">
-                            Created {key.creator ? `by ${key.creator} ` : ""}
-                            {timeAgoFrom(key.createdAt, {
-                              useLongFormat: true,
-                            })}{" "}
-                            ago.
-                          </p>
-                          <p className="front-normal text-xs text-element-700">
-                            {key.lastUsedAt ? (
-                              <>
-                                Last used&nbsp;
-                                {timeAgoFrom(key.lastUsedAt, {
-                                  useLongFormat: true,
-                                })}{" "}
-                                ago.
-                              </>
-                            ) : (
-                              <>Never used</>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {key.status === "active" ? (
-                    <div>
-                      <Button
-                        variant="secondaryWarning"
-                        disabled={
-                          key.status != "active" || isRevoking || isGenerating
-                        }
-                        onClick={async () => {
-                          await handleRevoke(key);
-                        }}
-                        label="Revoke"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-        </ul>
+<table className="pt-4">
+  <tbody>
+    {secrets
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((key) => (
+        <tr key={key.secret}>
+          <td className="px-2 py-4">
+            <p className={classNames("font-mono truncate text-sm text-slate-700")}>
+              <strong>{key.name ? key.name : "Unnamed"}</strong>
+            </p>
+          </td>
+          <td>
+          </td>
+          <td className="px-2 py-4 w-full">
+            <pre className="text-sm bg-zinc-100 p-2">{key.value}</pre>
+          </td>
+          <td className="px-2">
+            <Button variant="secondary" disabled={isRevoking || isGenerating} onClick={async () => {
+              await handleRevoke(key);
+            }} label="Update" />
+          </td>
+          <td>
+            <Button variant="secondaryWarning" disabled={isRevoking || isGenerating} onClick={async () => {
+              await handleRevoke(key);
+            }} label="Delete" />
+          </td>
+        </tr>
+      ))}
+  </tbody>
+</table>
       </div>
     </>
   );
