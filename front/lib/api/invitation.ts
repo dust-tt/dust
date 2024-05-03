@@ -1,18 +1,25 @@
 import type {
   ActiveRoleType,
+  APIErrorWithStatusCode,
   MembershipInvitationType,
+  Result,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, sanitizeString } from "@dust-tt/types";
+import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
+import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitation } from "@app/lib/models/workspace";
-import { generateModelSId } from "@app/lib/utils";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { generateModelSId, isEmailValid } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 sgMail.setApiKey(config.getSendgridApiKey());
 
@@ -268,4 +275,151 @@ export async function batchUnrevokeInvitations(
       },
     }
   );
+}
+
+interface MembershipInvitationBlob {
+  email: string;
+  role: ActiveRoleType;
+}
+
+interface HandleMembershipInvitationResult {
+  success: boolean;
+  email: string;
+  error_message?: string;
+}
+
+export async function handleMembershipInvitations(
+  auth: Authenticator,
+  {
+    invitationRequests,
+    owner,
+    subscription,
+    user,
+  }: {
+    owner: WorkspaceType;
+    subscription: SubscriptionType;
+    user: UserType;
+    invitationRequests: MembershipInvitationBlob[];
+  }
+): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
+  const { maxUsers } = subscription.plan.limits.users;
+  const availableSeats =
+    maxUsers -
+    (await MembershipResource.getMembersCountForWorkspace({
+      workspace: owner,
+      activeOnly: true,
+    }));
+  if (maxUsers !== -1 && availableSeats < invitationRequests.length) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "plan_limit_error",
+        message: `Not enough seats lefts (${availableSeats} seats remaining). Please upgrade or remove inactive members to add more.`,
+      },
+    });
+  }
+
+  const invalidEmails = invitationRequests.filter(
+    (b) => !isEmailValid(b.email)
+  );
+  if (invalidEmails.length > 0) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid email address(es): " + invalidEmails.join(", "),
+      },
+    });
+  }
+  const existingMembers = await getMembers(auth);
+  const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
+    auth
+  );
+  if (
+    unconsumedInvitations.pending.length >=
+    MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY
+  ) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
+      },
+    });
+  }
+
+  const emailsWithRecentUnconsumedInvitations = new Set([
+    ...unconsumedInvitations.pending.map((i) =>
+      i.inviteEmail.toLowerCase().trim()
+    ),
+    ...unconsumedInvitations.revoked.map((i) =>
+      i.inviteEmail.toLowerCase().trim()
+    ),
+  ]);
+  const requestedEmails = new Set(
+    invitationRequests.map((r) => r.email.toLowerCase().trim())
+  );
+  const emailsToSendInvitations = invitationRequests.filter(
+    (r) =>
+      !emailsWithRecentUnconsumedInvitations.has(r.email.toLowerCase().trim())
+  );
+  const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
+    requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+  );
+
+  if (
+    !emailsToSendInvitations.length &&
+    !invitationsToUnrevoke.length &&
+    invitationRequests.length > 0
+  ) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invitation_already_sent_recently",
+        message: `These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+      },
+    });
+  }
+  await batchUnrevokeInvitations(
+    auth,
+    invitationsToUnrevoke.map((i) => i.sId)
+  );
+  const invitationResults = await Promise.all(
+    emailsToSendInvitations.map(async ({ email, role }) => {
+      if (existingMembers.find((m) => m.email === email)) {
+        return {
+          success: false,
+          email,
+          error_message:
+            "Cannot send invitation to existing member (active or revoked)",
+        };
+      }
+
+      try {
+        const invitation = await updateOrCreateInvitation(owner, email, role);
+        await sendWorkspaceInvitationEmail(owner, user, invitation);
+      } catch (e) {
+        logger.error(
+          {
+            error: e,
+            message: "Failed to send invitation email",
+            email,
+          },
+          "Failed to send invitation email"
+        );
+
+        return {
+          success: false,
+          email,
+          error_message: e instanceof Error ? e.message : "Unknown error",
+        };
+      }
+      return {
+        success: true,
+        email,
+      };
+    })
+  );
+
+  return new Ok(invitationResults);
 }

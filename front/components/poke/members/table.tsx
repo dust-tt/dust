@@ -1,9 +1,11 @@
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
+import type { UserType } from "@dust-tt/types";
 import { MEMBERSHIP_ROLE_TYPES } from "@dust-tt/types";
 import { useRouter } from "next/router";
 
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
+import InviteMemberDialog from "@app/components/poke/members/InviteMemberDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 
 function prepareMembersForDisplay(
@@ -24,9 +26,14 @@ function prepareMembersForDisplay(
 interface MembersDataTableProps {
   members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
+  user: UserType;
 }
 
-export function MembersDataTable({ members, owner }: MembersDataTableProps) {
+export function MembersDataTable({
+  members,
+  owner,
+  user,
+}: MembersDataTableProps) {
   const router = useRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
@@ -55,22 +62,27 @@ export function MembersDataTable({ members, owner }: MembersDataTableProps) {
   };
 
   return (
-    <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
-      <h2 className="text-md mb-4 font-bold">Members:</h2>
-      <PokeDataTable
-        columns={makeColumnsForMembers({ onRevokeMember })}
-        data={prepareMembersForDisplay(members)}
-        facets={[
-          {
-            columnId: "role",
-            title: "Role",
-            options: [...MEMBERSHIP_ROLE_TYPES, "none"].map((r) => ({
-              label: r,
-              value: r,
-            })),
-          },
-        ]}
-      />
-    </div>
+    <>
+      <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
+        <div className="flex justify-between gap-3">
+          <h2 className="text-md mb-4 font-bold">Members:</h2>
+          <InviteMemberDialog owner={owner} user={user} />
+        </div>
+        <PokeDataTable
+          columns={makeColumnsForMembers({ onRevokeMember })}
+          data={prepareMembersForDisplay(members)}
+          facets={[
+            {
+              columnId: "role",
+              title: "Role",
+              options: [...MEMBERSHIP_ROLE_TYPES, "none"].map((r) => ({
+                label: r,
+                value: r,
+              })),
+            },
+          ]}
+        />
+      </div>
+    </>
   );
 }
