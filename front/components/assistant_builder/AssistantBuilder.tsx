@@ -71,7 +71,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -714,93 +713,90 @@ export async function submitAssistantBuilderForm({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >;
 
-  let actionParam:
-    | NonNullable<BodyType["assistant"]["actions"]>[number]
-    | null = null;
+  const actionParams: NonNullable<BodyType["assistant"]["actions"]> =
+    removeNulls(
+      builderState.actions.map((a) => {
+        switch (a.type) {
+          case "RETRIEVAL_SEARCH":
+          case "RETRIEVAL_EXHAUSTIVE":
+            return {
+              type: "retrieval_configuration",
+              query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
+              relativeTimeFrame:
+                a.type === "RETRIEVAL_EXHAUSTIVE"
+                  ? {
+                      duration: a.configuration.timeFrame.value,
+                      unit: a.configuration.timeFrame.unit,
+                    }
+                  : "auto",
+              topK: "auto",
+              dataSources: Object.values(
+                a.configuration.dataSourceConfigurations
+              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+                dataSourceId: dataSource.name,
+                workspaceId: owner.sId,
+                filter: {
+                  parents: !isSelectAll
+                    ? {
+                        in: selectedResources.map(
+                          (resource) => resource.internalId
+                        ),
+                        not: [],
+                      }
+                    : null,
+                  tags: null,
+                },
+              })),
+            };
 
-  const action = getDeprecatedDefaultSingleAction(builderState);
+          case "DUST_APP_RUN":
+            if (!a.configuration.app) {
+              return null;
+            }
+            return {
+              type: "dust_app_run_configuration",
+              appWorkspaceId: owner.sId,
+              appId: a.configuration.app.sId,
+            };
 
-  switch (action?.type) {
-    case undefined:
-      break;
-    case "RETRIEVAL_SEARCH":
-    case "RETRIEVAL_EXHAUSTIVE":
-      actionParam = {
-        type: "retrieval_configuration",
-        query: action.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-        relativeTimeFrame:
-          action.type === "RETRIEVAL_EXHAUSTIVE"
-            ? {
-                duration: action.configuration.timeFrame.value,
-                unit: action.configuration.timeFrame.unit,
-              }
-            : "auto",
-        topK: "auto",
-        dataSources: Object.values(
-          action.configuration.dataSourceConfigurations
-        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-          dataSourceId: dataSource.name,
-          workspaceId: owner.sId,
-          filter: {
-            parents: !isSelectAll
-              ? {
-                  in: selectedResources.map((resource) => resource.internalId),
-                  not: [],
-                }
-              : null,
-            tags: null,
-          },
-        })),
-      };
-      break;
+          case "TABLES_QUERY":
+            return {
+              type: "tables_query_configuration",
+              tables: Object.values(a.configuration),
+            };
 
-    case "DUST_APP_RUN":
-      if (action.configuration.app) {
-        actionParam = {
-          type: "dust_app_run_configuration",
-          appWorkspaceId: owner.sId,
-          appId: action.configuration.app.sId,
-        };
-      }
-      break;
+          case "PROCESS":
+            return {
+              type: "process_configuration",
+              relativeTimeFrame: {
+                duration: a.configuration.timeFrame.value,
+                unit: a.configuration.timeFrame.unit,
+              },
+              dataSources: Object.values(
+                a.configuration.dataSourceConfigurations
+              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+                dataSourceId: dataSource.name,
+                workspaceId: owner.sId,
+                filter: {
+                  parents: !isSelectAll
+                    ? {
+                        in: selectedResources.map(
+                          (resource) => resource.internalId
+                        ),
+                        not: [],
+                      }
+                    : null,
+                  tags: null,
+                },
+              })),
+              schema: a.configuration.schema,
+            };
 
-    case "TABLES_QUERY":
-      actionParam = {
-        type: "tables_query_configuration",
-        tables: Object.values(action.configuration),
-      };
-
-      break;
-
-    case "PROCESS":
-      actionParam = {
-        type: "process_configuration",
-        relativeTimeFrame: {
-          duration: action.configuration.timeFrame.value,
-          unit: action.configuration.timeFrame.unit,
-        },
-        dataSources: Object.values(
-          action.configuration.dataSourceConfigurations
-        ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-          dataSourceId: dataSource.name,
-          workspaceId: owner.sId,
-          filter: {
-            parents: !isSelectAll
-              ? {
-                  in: selectedResources.map((resource) => resource.internalId),
-                  not: [],
-                }
-              : null,
-            tags: null,
-          },
-        })),
-        schema: action.configuration.schema,
-      };
-      break;
-
-    default:
-      assertNever(action);
-  }
+          default:
+            assertNever(a);
+        }
+      })
+    );
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
@@ -811,7 +807,7 @@ export async function submitAssistantBuilderForm({
         instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
-        actions: removeNulls([actionParam]),
+        actions: actionParams,
         generation: {}, // Warning should not be empty otherwise no generation will be done
         model: {
           modelId: builderState.generationSettings.modelSettings.modelId,
