@@ -7,10 +7,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
-  isTablesQueryConfiguration,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
@@ -18,7 +16,7 @@ import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBui
 import AssistantBuilder, {
   BUILDER_FLOWS,
 } from "@app/components/assistant_builder/AssistantBuilder";
-import { buildInitialState } from "@app/components/assistant_builder/server_side_props_helpers";
+import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -35,10 +33,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   gaTrackingId: string;
   dataSources: DataSourceType[];
   dustApps: AppType[];
-  retrievalConfiguration: AssistantBuilderInitialState["retrievalConfiguration"];
-  dustAppConfiguration: AssistantBuilderInitialState["dustAppConfiguration"];
-  tablesQueryConfiguration: AssistantBuilderInitialState["tablesQueryConfiguration"];
-  processConfiguration: AssistantBuilderInitialState["processConfiguration"];
+  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
@@ -88,17 +83,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const allDustApps = await getApps(auth);
 
-  const {
-    retrievalConfiguration,
-    dustAppConfiguration,
-    tablesQueryConfiguration,
-    processConfiguration,
-  } = await buildInitialState({
-    configuration,
-    dataSourcesByName,
-    dustApps: allDustApps,
-  });
-
   return {
     props: {
       owner,
@@ -107,10 +91,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: GA_TRACKING_ID,
       dataSources: allDataSources,
       dustApps: allDustApps,
-      retrievalConfiguration,
-      dustAppConfiguration,
-      tablesQueryConfiguration,
-      processConfiguration,
+      actions: await buildInitialActions({
+        dataSourcesByName,
+        dustApps: allDustApps,
+        configuration,
+      }),
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
@@ -125,16 +110,11 @@ export default function EditAssistant({
   gaTrackingId,
   dataSources,
   dustApps,
-  retrievalConfiguration,
-  dustAppConfiguration,
-  tablesQueryConfiguration,
-  processConfiguration,
+  actions,
   agentConfiguration,
   flow,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  let actionMode: AssistantBuilderInitialState["actionMode"] = "GENERIC";
-
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
   if (isRetrievalConfiguration(action)) {
@@ -148,19 +128,7 @@ export default function EditAssistant({
           "Invalid configuration: exhaustive retrieval must have a definite time frame"
         );
       }
-      actionMode = "RETRIEVAL_EXHAUSTIVE";
     }
-    if (action.query === "auto") {
-      actionMode = "RETRIEVAL_SEARCH";
-    }
-  }
-
-  if (isDustAppRunConfiguration(action)) {
-    actionMode = "DUST_APP_RUN";
-  }
-
-  if (isTablesQueryConfiguration(action)) {
-    actionMode = "TABLES_QUERY";
   }
 
   if (isProcessConfiguration(action)) {
@@ -173,7 +141,6 @@ export default function EditAssistant({
         "Invalid configuration: process must have a definite time frame"
       );
     }
-    actionMode = "PROCESS";
   }
 
   if (agentConfiguration.scope === "global") {
@@ -194,11 +161,6 @@ export default function EditAssistant({
       dustApps={dustApps}
       flow={flow}
       initialBuilderState={{
-        actionMode,
-        retrievalConfiguration,
-        dustAppConfiguration,
-        tablesQueryConfiguration,
-        processConfiguration,
         scope: agentConfiguration.scope,
         handle: agentConfiguration.name,
         description: agentConfiguration.description,
@@ -211,6 +173,7 @@ export default function EditAssistant({
           },
           temperature: agentConfiguration.model.temperature,
         },
+        actions,
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}

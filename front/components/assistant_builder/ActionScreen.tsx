@@ -17,8 +17,9 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, removeNulls } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
+import React from "react";
 
 import {
   ActionProcess,
@@ -27,6 +28,7 @@ import {
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
+  isActionRetrievalExhaustiveValid,
   isActionRetrievalSearchValid,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
 import {
@@ -34,21 +36,26 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
-  ActionMode,
+  AssistantBuilderActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
+import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import {
+  getDeprecatedDefaultSingleAction,
+  useDeprecatedDefaultSingleAction,
+} from "@app/lib/client/assistant_builder/deprecated_single_action";
 
 import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "./actions/DustAppRunAction";
 
-const BASIC_ACTION_TYPES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
-const ADVANCED_ACTION_TYPES = ["RUN_DUST_APP"] as const;
+const BASIC_ACTION_CATEGORIES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
+const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
 
-type ActionType =
-  | (typeof BASIC_ACTION_TYPES)[number]
-  | (typeof ADVANCED_ACTION_TYPES)[number];
+type ActionCategory =
+  | (typeof BASIC_ACTION_CATEGORIES)[number]
+  | (typeof ADVANCED_ACTION_CATEGORIES)[number];
 
 const SEARCH_MODES = [
   "RETRIEVAL_SEARCH",
@@ -58,39 +65,39 @@ const SEARCH_MODES = [
 ] as const;
 type SearchMode = (typeof SEARCH_MODES)[number];
 
-const ACTION_TYPE_SPECIFICATIONS: Record<
-  ActionType,
+const ACTION_CATEGORY_SPECIFICATIONS: Record<
+  ActionCategory,
   {
     label: string;
     icon: ComponentType;
     description: string;
-    defaultActionMode: ActionMode;
+    defaultActionType: AssistantBuilderActionType | null;
   }
 > = {
   REPLY_ONLY: {
     label: "Reply only",
     icon: ChatBubbleBottomCenterTextIcon,
     description: "Direct answer from the model",
-    defaultActionMode: "GENERIC",
+    defaultActionType: null,
   },
   USE_DATA_SOURCES: {
     label: "Use Data sources",
     icon: Square3Stack3DIcon,
     description: "Use Data sources to reply",
-    defaultActionMode: "RETRIEVAL_SEARCH",
+    defaultActionType: "RETRIEVAL_SEARCH",
   },
   RUN_DUST_APP: {
     label: "Run a Dust app",
     icon: CommandLineIcon,
     description: "Run a Dust app, then reply",
-    defaultActionMode: "DUST_APP_RUN",
+    defaultActionType: "DUST_APP_RUN",
   },
 };
 
 const SEARCH_MODE_SPECIFICATIONS: Record<
   SearchMode,
   {
-    actionMode: ActionMode;
+    actionType: AssistantBuilderActionType;
     icon: ComponentType;
     label: string;
     description: string;
@@ -98,28 +105,28 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
   }
 > = {
   RETRIEVAL_SEARCH: {
-    actionMode: "RETRIEVAL_SEARCH",
+    actionType: "RETRIEVAL_SEARCH",
     icon: MagnifyingGlassIcon,
     label: "Search",
     description: "Search through selected Data sources",
     flag: null,
   },
   RETRIEVAL_EXHAUSTIVE: {
-    actionMode: "RETRIEVAL_EXHAUSTIVE",
+    actionType: "RETRIEVAL_EXHAUSTIVE",
     icon: TimeIcon,
     label: "Most recent data",
     description: "Include as much data as possible",
     flag: null,
   },
   TABLES_QUERY: {
-    actionMode: "TABLES_QUERY",
+    actionType: "TABLES_QUERY",
     icon: TableIcon,
     label: "Query Tables",
     description: "Tables, Spreadsheets, Notion DBs",
     flag: null,
   },
   PROCESS: {
-    actionMode: "PROCESS",
+    actionType: "PROCESS",
     icon: RobotIcon,
     label: "Process data",
     description: "Structured extraction",
@@ -138,21 +145,27 @@ function ActionModeSection({
 }
 
 export function isActionValid(builderState: AssistantBuilderState): boolean {
-  switch (builderState.actionMode) {
-    case "GENERIC":
-      return true;
+  // TODO(@fontanierh): handle multi-actions
+  const action = getDeprecatedDefaultSingleAction(builderState);
+
+  if (!action) {
+    // plain model
+    return true;
+  }
+
+  switch (action.type) {
     case "RETRIEVAL_SEARCH":
-      return isActionRetrievalSearchValid(builderState);
+      return isActionRetrievalSearchValid(action);
     case "RETRIEVAL_EXHAUSTIVE":
-      return isActionRetrievalSearchValid(builderState);
+      return isActionRetrievalExhaustiveValid(action);
     case "PROCESS":
-      return isActionProcessValid(builderState);
+      return isActionProcessValid(action);
     case "DUST_APP_RUN":
-      return isActionDustAppRunValid(builderState);
+      return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
-      return isActionTablesQueryValid(builderState);
+      return isActionTablesQueryValid(action);
     default:
-      assertNever(builderState.actionMode);
+      assertNever(action);
   }
 }
 
@@ -173,9 +186,9 @@ export default function ActionScreen({
   ) => void;
   setEdited: (edited: boolean) => void;
 }) {
-  const getActionType = (actionMode: ActionMode) => {
-    switch (actionMode) {
-      case "GENERIC":
+  const getActionCategory = (actionType: AssistantBuilderActionType | null) => {
+    switch (actionType) {
+      case null:
         return "REPLY_ONLY";
       case "RETRIEVAL_EXHAUSTIVE":
       case "RETRIEVAL_SEARCH":
@@ -185,12 +198,12 @@ export default function ActionScreen({
       case "DUST_APP_RUN":
         return "RUN_DUST_APP";
       default:
-        assertNever(actionMode);
+        assertNever(actionType);
     }
   };
 
-  const getSearchMode = (actionMode: ActionMode) => {
-    switch (actionMode) {
+  const getSearchMode = (actionType: AssistantBuilderActionType | null) => {
+    switch (actionType) {
       case "RETRIEVAL_EXHAUSTIVE":
         return "RETRIEVAL_EXHAUSTIVE";
       case "RETRIEVAL_SEARCH":
@@ -200,20 +213,28 @@ export default function ActionScreen({
       case "PROCESS":
         return "PROCESS";
 
-      case "GENERIC":
+      case null:
       case "DUST_APP_RUN":
         // Unused for non data sources related actions.
         return "RETRIEVAL_SEARCH";
       default:
-        assertNever(actionMode);
+        assertNever(actionType);
     }
   };
 
+  // TODO(@fontanierh): handle multi-actions
+  const action = useDeprecatedDefaultSingleAction(builderState) ?? null;
+
+  const dataSourceConfigs =
+    action && "dataSourceConfigurations" in action.configuration
+      ? action.configuration.dataSourceConfigurations
+      : {};
   const noDataSources =
-    dataSources.length === 0 &&
-    Object.keys(
-      builderState.retrievalConfiguration?.dataSourceConfigurations || {}
-    ).length === 0;
+    dataSources.length === 0 && Object.keys(dataSourceConfigs).length === 0;
+  const actionCategory = getActionCategory(action?.type ?? null);
+  const actionCategorySpec = ACTION_CATEGORY_SPECIFICATIONS[actionCategory];
+  const searchMode = getSearchMode(action?.type ?? null);
+  const searchModeSpec = SEARCH_MODE_SPECIFICATIONS[searchMode];
 
   return (
     <>
@@ -237,60 +258,68 @@ export default function ActionScreen({
               <Button
                 type="select"
                 labelVisible={true}
-                label={
-                  ACTION_TYPE_SPECIFICATIONS[
-                    getActionType(builderState.actionMode)
-                  ].label
-                }
-                icon={
-                  ACTION_TYPE_SPECIFICATIONS[
-                    getActionType(builderState.actionMode)
-                  ].icon
-                }
+                label={actionCategorySpec.label}
+                icon={actionCategorySpec.icon}
                 variant="primary"
                 hasMagnifying={false}
                 size="sm"
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topLeft" width={260}>
-              {BASIC_ACTION_TYPES.map((key) => (
-                <DropdownMenu.Item
-                  key={key}
-                  label={ACTION_TYPE_SPECIFICATIONS[key].label}
-                  icon={ACTION_TYPE_SPECIFICATIONS[key].icon}
-                  description={ACTION_TYPE_SPECIFICATIONS[key].description}
-                  onClick={() => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      actionMode:
-                        ACTION_TYPE_SPECIFICATIONS[key].defaultActionMode,
-                    }));
-                  }}
-                />
-              ))}
+              {BASIC_ACTION_CATEGORIES.map((key) => {
+                const spec = ACTION_CATEGORY_SPECIFICATIONS[key];
+                const defaultAction = getDefaultActionConfiguration(
+                  spec.defaultActionType
+                );
+                return (
+                  <DropdownMenu.Item
+                    key={key}
+                    label={spec.label}
+                    icon={spec.icon}
+                    description={spec.description}
+                    onClick={() => {
+                      setEdited(true);
+                      setBuilderState((state) => {
+                        const newState: AssistantBuilderState = {
+                          ...state,
+                          actions: removeNulls([defaultAction]),
+                        };
+                        return newState;
+                      });
+                    }}
+                  />
+                );
+              })}
               <DropdownMenu.SectionHeader label="Advanced actions" />
-              {ADVANCED_ACTION_TYPES.map((key) => (
-                <DropdownMenu.Item
-                  key={key}
-                  label={ACTION_TYPE_SPECIFICATIONS[key].label}
-                  icon={ACTION_TYPE_SPECIFICATIONS[key].icon}
-                  description={ACTION_TYPE_SPECIFICATIONS[key].description}
-                  onClick={() => {
-                    setEdited(true);
-                    setBuilderState((state) => ({
-                      ...state,
-                      actionMode:
-                        ACTION_TYPE_SPECIFICATIONS[key].defaultActionMode,
-                    }));
-                  }}
-                />
-              ))}
+              {ADVANCED_ACTION_CATEGORIES.map((key) => {
+                const spec = ACTION_CATEGORY_SPECIFICATIONS[key];
+                const defaultAction = getDefaultActionConfiguration(
+                  spec.defaultActionType
+                );
+                return (
+                  <DropdownMenu.Item
+                    key={key}
+                    label={spec.label}
+                    icon={spec.icon}
+                    description={spec.description}
+                    onClick={() => {
+                      setEdited(true);
+                      setBuilderState((state) => {
+                        const newState: AssistantBuilderState = {
+                          ...state,
+                          actions: removeNulls([defaultAction]),
+                        };
+                        return newState;
+                      });
+                    }}
+                  />
+                );
+              })}
             </DropdownMenu.Items>
           </DropdownMenu>
         </div>
 
-        {getActionType(builderState.actionMode) === "USE_DATA_SOURCES" && (
+        {getActionCategory(action?.type ?? null) === "USE_DATA_SOURCES" && (
           <>
             {noDataSources ? (
               <ContentMessage
@@ -345,16 +374,8 @@ export default function ActionScreen({
                     <Button
                       type="select"
                       labelVisible={true}
-                      label={
-                        SEARCH_MODE_SPECIFICATIONS[
-                          getSearchMode(builderState.actionMode)
-                        ].label
-                      }
-                      icon={
-                        SEARCH_MODE_SPECIFICATIONS[
-                          getSearchMode(builderState.actionMode)
-                        ].icon
-                      }
+                      label={searchModeSpec.label}
+                      icon={searchModeSpec.icon}
                       variant="tertiary"
                       hasMagnifying={false}
                       size="sm"
@@ -364,24 +385,30 @@ export default function ActionScreen({
                     {SEARCH_MODES.filter((key) => {
                       const flag = SEARCH_MODE_SPECIFICATIONS[key].flag;
                       return flag === null || owner.flags.includes(flag);
-                    }).map((key) => (
-                      <DropdownMenu.Item
-                        key={key}
-                        label={SEARCH_MODE_SPECIFICATIONS[key].label}
-                        icon={SEARCH_MODE_SPECIFICATIONS[key].icon}
-                        description={
-                          SEARCH_MODE_SPECIFICATIONS[key].description
-                        }
-                        onClick={() => {
-                          setEdited(true);
-                          setBuilderState((state) => ({
-                            ...state,
-                            actionMode:
-                              SEARCH_MODE_SPECIFICATIONS[key].actionMode,
-                          }));
-                        }}
-                      />
-                    ))}
+                    }).map((key) => {
+                      const spec = SEARCH_MODE_SPECIFICATIONS[key];
+                      const defaultAction = getDefaultActionConfiguration(
+                        spec.actionType
+                      );
+                      return (
+                        <DropdownMenu.Item
+                          key={key}
+                          label={spec.label}
+                          icon={spec.icon}
+                          description={spec.description}
+                          onClick={() => {
+                            setEdited(true);
+                            setBuilderState((state) => {
+                              const newBuilderState: AssistantBuilderState = {
+                                ...state,
+                                actions: removeNulls([defaultAction]),
+                              };
+                              return newBuilderState;
+                            });
+                          }}
+                        />
+                      );
+                    })}
                   </DropdownMenu.Items>
                 </DropdownMenu>
               </div>
@@ -389,18 +416,18 @@ export default function ActionScreen({
           </>
         )}
 
-        <ActionModeSection show={builderState.actionMode === "GENERIC"}>
+        <ActionModeSection show={!action}>
           <div className="pb-16"></div>
         </ActionModeSection>
 
         <ActionModeSection
-          show={
-            builderState.actionMode === "RETRIEVAL_SEARCH" && !noDataSources
-          }
+          show={action?.type === "RETRIEVAL_SEARCH" && !noDataSources}
         >
           <ActionRetrievalSearch
             owner={owner}
-            builderState={builderState}
+            actionConfiguration={
+              action?.type === "RETRIEVAL_SEARCH" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -408,25 +435,27 @@ export default function ActionScreen({
         </ActionModeSection>
 
         <ActionModeSection
-          show={
-            builderState.actionMode === "RETRIEVAL_EXHAUSTIVE" && !noDataSources
-          }
+          show={action?.type === "RETRIEVAL_EXHAUSTIVE" && !noDataSources}
         >
           <ActionRetrievalExhaustive
             owner={owner}
-            builderState={builderState}
+            actionConfiguration={
+              action?.type === "RETRIEVAL_EXHAUSTIVE"
+                ? action.configuration
+                : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
           />
         </ActionModeSection>
 
-        <ActionModeSection
-          show={builderState.actionMode === "PROCESS" && !noDataSources}
-        >
+        <ActionModeSection show={action?.type === "PROCESS" && !noDataSources}>
           <ActionProcess
             owner={owner}
-            builderState={builderState}
+            actionConfiguration={
+              action?.type === "PROCESS" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -434,21 +463,25 @@ export default function ActionScreen({
         </ActionModeSection>
 
         <ActionModeSection
-          show={builderState.actionMode === "TABLES_QUERY" && !noDataSources}
+          show={action?.type === "TABLES_QUERY" && !noDataSources}
         >
           <ActionTablesQuery
             owner={owner}
-            builderState={builderState}
+            actionConfiguration={
+              action?.type === "TABLES_QUERY" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
           />
         </ActionModeSection>
 
-        <ActionModeSection show={builderState.actionMode === "DUST_APP_RUN"}>
+        <ActionModeSection show={action?.type === "DUST_APP_RUN"}>
           <ActionDustAppRun
             owner={owner}
-            builderState={builderState}
+            actionConfigration={
+              action?.type === "DUST_APP_RUN" ? action.configuration : null
+            }
             dustApps={dustApps}
             setBuilderState={setBuilderState}
             setEdited={setEdited}

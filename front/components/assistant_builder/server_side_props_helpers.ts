@@ -8,6 +8,7 @@ import type {
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   ConnectorsAPI,
   CoreAPI,
   isDustAppRunConfiguration,
@@ -17,15 +18,22 @@ import {
 } from "@dust-tt/types";
 
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderDataSourceConfiguration,
-  AssistantBuilderInitialState,
+  AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
+import {
+  getDefaultDustAppRunActionConfiguration,
+  getDefaultProcessActionConfiguration,
+  getDefaultRetrievalExhaustiveActionConfiguration,
+  getDefaultRetrievalSearchActionConfiguration,
+  getDefaultTablesQueryActionConfiguration,
+} from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
-export async function buildInitialState({
+export async function buildInitialActions({
   dataSourcesByName,
   dustApps,
   configuration,
@@ -33,7 +41,7 @@ export async function buildInitialState({
   dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
-}) {
+}): Promise<AssistantBuilderActionConfiguration[]> {
   const coreAPI = new CoreAPI(logger);
 
   // Helper function to compute AssistantBuilderDataSourceConfigurations
@@ -96,45 +104,41 @@ export async function buildInitialState({
 
   const action = deprecatedGetFirstActionConfiguration(configuration);
 
-  // Retrieval configuration
+  if (!action) {
+    return [];
+  } else if (isRetrievalConfiguration(action)) {
+    const isSearch = action.query !== "none";
 
-  const retrievalConfiguration =
-    getDefaultAssistantState().retrievalConfiguration;
+    const retrievalConfiguration = isSearch
+      ? getDefaultRetrievalSearchActionConfiguration()
+      : getDefaultRetrievalExhaustiveActionConfiguration();
 
-  if (isRetrievalConfiguration(action)) {
     if (
       action.relativeTimeFrame !== "auto" &&
       action.relativeTimeFrame !== "none"
     ) {
-      retrievalConfiguration.timeFrame = {
+      retrievalConfiguration.configuration.timeFrame = {
         value: action.relativeTimeFrame.duration,
         unit: action.relativeTimeFrame.unit,
       };
     }
 
-    retrievalConfiguration.dataSourceConfigurations =
+    retrievalConfiguration.configuration.dataSourceConfigurations =
       await renderDataSourcesConfigurations(action);
-  }
 
-  // DustAppRun configuration
-
-  const dustAppConfiguration = getDefaultAssistantState().dustAppConfiguration;
-
-  if (isDustAppRunConfiguration(action)) {
+    return [retrievalConfiguration];
+  } else if (isDustAppRunConfiguration(action)) {
+    const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
     for (const app of dustApps) {
       if (app.sId === action.appId) {
-        dustAppConfiguration.app = app;
+        dustAppConfiguration.configuration.app = app;
         break;
       }
     }
-  }
+    return [dustAppConfiguration];
+  } else if (isTablesQueryConfiguration(action)) {
+    const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
 
-  // TablesQuery configuration
-
-  let tablesQueryConfiguration =
-    getDefaultAssistantState().tablesQueryConfiguration;
-
-  if (isTablesQueryConfiguration(action) && action.tables.length) {
     const coreAPITables: CoreAPITable[] = await Promise.all(
       action.tables.map(async (t) => {
         const dataSource = dataSourcesByName[t.dataSourceId];
@@ -152,46 +156,43 @@ export async function buildInitialState({
       })
     );
 
-    tablesQueryConfiguration = action.tables.reduce((acc, curr, i) => {
-      const table = coreAPITables[i];
-      const key = tableKey(curr);
-      return {
-        ...acc,
-        [key]: {
-          workspaceId: curr.workspaceId,
-          dataSourceId: curr.dataSourceId,
-          tableId: curr.tableId,
-          tableName: `${table.name}`,
-        },
-      };
-    }, {} as AssistantBuilderInitialState["tablesQueryConfiguration"]);
-  }
+    tablesQueryConfiguration.configuration = action.tables.reduce(
+      (acc, curr, i) => {
+        const table = coreAPITables[i];
+        const key = tableKey(curr);
+        return {
+          ...acc,
+          [key]: {
+            workspaceId: curr.workspaceId,
+            dataSourceId: curr.dataSourceId,
+            tableId: curr.tableId,
+            tableName: `${table.name}`,
+          },
+        };
+      },
+      {} as AssistantBuilderTablesQueryConfiguration
+    );
 
-  // Process configuration
-
-  const processConfiguration = getDefaultAssistantState().processConfiguration;
-
-  if (isProcessConfiguration(action)) {
+    return [tablesQueryConfiguration];
+  } else if (isProcessConfiguration(action)) {
+    const processConfiguration = getDefaultProcessActionConfiguration();
     if (
       action.relativeTimeFrame !== "auto" &&
       action.relativeTimeFrame !== "none"
     ) {
-      processConfiguration.timeFrame = {
+      processConfiguration.configuration.timeFrame = {
         value: action.relativeTimeFrame.duration,
         unit: action.relativeTimeFrame.unit,
       };
     }
 
-    processConfiguration.dataSourceConfigurations =
+    processConfiguration.configuration.dataSourceConfigurations =
       await renderDataSourcesConfigurations(action);
 
-    processConfiguration.schema = action.schema;
-  }
+    processConfiguration.configuration.schema = action.schema;
 
-  return {
-    retrievalConfiguration,
-    dustAppConfiguration,
-    tablesQueryConfiguration,
-    processConfiguration,
-  };
+    return [processConfiguration];
+  } else {
+    assertNever(action);
+  }
 }

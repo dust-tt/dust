@@ -5,21 +5,27 @@ import { useState } from "react";
 
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderDustAppConfiguration,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
 
-export function isActionDustAppRunValid(builderState: AssistantBuilderState) {
-  return !!builderState.dustAppConfiguration.app;
+export function isActionDustAppRunValid(
+  action: AssistantBuilderActionConfiguration
+) {
+  return action.type === "DUST_APP_RUN" && !!action.configuration.app;
 }
 
 export function ActionDustAppRun({
   owner,
-  builderState,
+  actionConfigration,
   setBuilderState,
   setEdited,
   dustApps,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  actionConfigration: AssistantBuilderDustAppConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -31,11 +37,23 @@ export function ActionDustAppRun({
   const deleteDustApp = () => {
     setEdited(true);
     setBuilderState((state) => {
-      return { ...state, dustAppConfiguration: { app: null } };
+      const action = state.actions[0];
+      if (!action || action.type !== "DUST_APP_RUN") {
+        return state;
+      }
+      action.configuration.app = null;
+      return {
+        ...state,
+        actions: [action],
+      };
     });
   };
 
   const noDustApp = dustApps.length === 0;
+
+  if (!actionConfigration) {
+    return null;
+  }
 
   return (
     <>
@@ -47,12 +65,17 @@ export function ActionDustAppRun({
         dustApps={dustApps}
         onSave={({ app }) => {
           setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dustAppConfiguration: {
-              app,
-            },
-          }));
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "DUST_APP_RUN") {
+              return state;
+            }
+            action.configuration.app = app;
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
         }}
       />
 
@@ -108,8 +131,8 @@ export function ActionDustAppRun({
             application's input block dataset schema.
           </div>
           <DustAppSelectionSection
-            show={builderState.actionMode === "DUST_APP_RUN"}
-            dustAppConfiguration={builderState.dustAppConfiguration}
+            show={true}
+            dustAppConfiguration={actionConfigration}
             openDustAppModal={() => {
               setShowDustAppsModal(true);
             }}
