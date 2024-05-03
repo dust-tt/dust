@@ -49,8 +49,6 @@ async function handler(
         status: "disabled",
       });
 
-      console.log("DISABLING SECRET");
-
       res.status(200).json({
         secret: {
           name: secret.name,
