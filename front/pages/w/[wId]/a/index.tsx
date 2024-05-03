@@ -112,6 +112,11 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
       });
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setSecretToRevoke(null);
+      sendNotification({
+        type: "success",
+        title: "Secret deleted",
+        description: `Successfully deleted ${secret.name}.`,
+      });
     }
   );
 
