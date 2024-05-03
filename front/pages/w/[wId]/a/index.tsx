@@ -181,7 +181,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           }
         />
         <p className="text-xs text-gray-500">
-          Secrets values are encrypted and stored securely in our database.
+          Secret values are encrypted and stored securely in our database.
         </p>
       </Dialog>
       <Page.SectionHeader
