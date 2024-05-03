@@ -116,6 +116,9 @@ export default function InviteMemberDialog({
             Please ensure the email address is accurate and that the user is
             aware they are being invited. They will get an email from{" "}
             <span className="font-bold">{user.fullName}</span>.
+            <br />
+            Note: the role 'user' below is the same as a 'member' role in the
+            UI.
           </PokeDialogDescription>
         </PokeDialogHeader>
         {error && <div className="text-red-500">{error}</div>}
