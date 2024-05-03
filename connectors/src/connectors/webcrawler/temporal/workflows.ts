@@ -19,7 +19,7 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     startToCloseTimeout: "120 minutes",
     // for each page crawl, there are heartbeats, but a page crawl can last at max
     // REQUEST_HANDLING_TIMEOUT seconds
-    heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT} seconds`,
+    heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT + 120} seconds`,
     cancellationType: ActivityCancellationType.TRY_CANCEL,
     retry: {
       initialInterval: `${REQUEST_HANDLING_TIMEOUT * 2} seconds`,
