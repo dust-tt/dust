@@ -7,9 +7,9 @@ import AssistantBuilderDustAppModal from "@app/components/assistant_builder/Assi
 import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderDustAppConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { getDefaultDustAppRunActionConfiguration } from "@app/components/assistant_builder/types";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -19,13 +19,13 @@ export function isActionDustAppRunValid(
 
 export function ActionDustAppRun({
   owner,
-  action,
+  actionConfigration,
   setBuilderState,
   setEdited,
   dustApps,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration | null;
+  actionConfigration: AssistantBuilderDustAppConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -42,6 +42,10 @@ export function ActionDustAppRun({
   };
 
   const noDustApp = dustApps.length === 0;
+
+  if (!actionConfigration) {
+    return null;
+  }
 
   return (
     <>
@@ -114,13 +118,8 @@ export function ActionDustAppRun({
             application's input block dataset schema.
           </div>
           <DustAppSelectionSection
-            show={!!action && action.type === "DUST_APP_RUN"}
-            dustAppConfiguration={
-              (!!action &&
-                action.type === "DUST_APP_RUN" &&
-                action.configuration) ||
-              getDefaultDustAppRunActionConfiguration().configuration
-            }
+            show={true}
+            dustAppConfiguration={actionConfigration}
             openDustAppModal={() => {
               setShowDustAppsModal(true);
             }}

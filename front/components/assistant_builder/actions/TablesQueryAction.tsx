@@ -8,8 +8,8 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderState,
   AssistantBuilderTableConfiguration,
+  AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getDefaultTablesQueryActionConfiguration } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 
 export function isActionTablesQueryValid(
@@ -23,13 +23,13 @@ export function isActionTablesQueryValid(
 
 export function ActionTablesQuery({
   owner,
-  action,
+  actionConfiguration,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration | null;
+  actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -37,6 +37,10 @@ export function ActionTablesQuery({
   dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
+
+  if (!actionConfiguration) {
+    return null;
+  }
 
   return (
     <>
@@ -67,11 +71,7 @@ export function ActionTablesQuery({
             };
           });
         }}
-        tablesQueryConfiguration={
-          action && action.type === "TABLES_QUERY"
-            ? action.configuration
-            : getDefaultTablesQueryActionConfiguration().configuration
-        }
+        tablesQueryConfiguration={actionConfiguration}
       />
 
       <div className="text-sm text-element-700">
@@ -93,12 +93,8 @@ export function ActionTablesQuery({
       </div>
 
       <TablesSelectionSection
-        show={action?.type === "TABLES_QUERY"}
-        tablesQueryConfiguration={
-          action?.type === "TABLES_QUERY"
-            ? action.configuration
-            : getDefaultTablesQueryActionConfiguration().configuration
-        }
+        show={true}
+        tablesQueryConfiguration={actionConfiguration}
         openTableModal={() => {
           setShowTableModal(true);
         }}

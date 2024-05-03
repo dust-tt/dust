@@ -425,7 +425,9 @@ export default function ActionScreen({
         >
           <ActionRetrievalSearch
             owner={owner}
-            action={action}
+            actionConfiguration={
+              action?.type === "RETRIEVAL_SEARCH" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -437,7 +439,11 @@ export default function ActionScreen({
         >
           <ActionRetrievalExhaustive
             owner={owner}
-            action={action}
+            actionConfiguration={
+              action?.type === "RETRIEVAL_EXHAUSTIVE"
+                ? action.configuration
+                : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -447,7 +453,9 @@ export default function ActionScreen({
         <ActionModeSection show={action?.type === "PROCESS" && !noDataSources}>
           <ActionProcess
             owner={owner}
-            action={action}
+            actionConfiguration={
+              action?.type === "PROCESS" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -459,7 +467,9 @@ export default function ActionScreen({
         >
           <ActionTablesQuery
             owner={owner}
-            action={action}
+            actionConfiguration={
+              action?.type === "TABLES_QUERY" ? action.configuration : null
+            }
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -469,7 +479,9 @@ export default function ActionScreen({
         <ActionModeSection show={action?.type === "DUST_APP_RUN"}>
           <ActionDustAppRun
             owner={owner}
-            action={action}
+            actionConfigration={
+              action?.type === "DUST_APP_RUN" ? action.configuration : null
+            }
             dustApps={dustApps}
             setBuilderState={setBuilderState}
             setEdited={setEdited}

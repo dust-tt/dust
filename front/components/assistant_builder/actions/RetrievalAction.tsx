@@ -8,6 +8,7 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/DataSo
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
@@ -55,13 +56,13 @@ export function isActionRetrievalSearchValid(
 
 export function ActionRetrievalSearch({
   owner,
-  action,
+  actionConfiguration,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration | null;
+  actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -70,7 +71,7 @@ export function ActionRetrievalSearch({
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
-  if (!action || action.type !== "RETRIEVAL_SEARCH") {
+  if (!actionConfiguration) {
     return null;
   }
 
@@ -104,12 +105,12 @@ export function ActionRetrievalSearch({
         onDelete={(name) => {
           deleteDataSource({ name, setBuilderState, setEdited });
         }}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
       />
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
@@ -134,13 +135,13 @@ export function isActionRetrievalExhaustiveValid(
 
 export function ActionRetrievalExhaustive({
   owner,
-  action,
+  actionConfiguration,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration | null;
+  actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -150,20 +151,17 @@ export function ActionRetrievalExhaustive({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
-  if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
+  if (!actionConfiguration) {
     return null;
   }
 
   useEffect(() => {
-    if (!action.configuration.timeFrame.value) {
+    if (!actionConfiguration.timeFrame.value) {
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
-  }, [
-    action.configuration.dataSourceConfigurations,
-    action.configuration.timeFrame.value,
-  ]);
+  }, [actionConfiguration.timeFrame.value, actionConfiguration.timeFrame.unit]);
 
   return (
     <>
@@ -195,12 +193,12 @@ export function ActionRetrievalExhaustive({
         onDelete={(name) => {
           deleteDataSource({ name, setBuilderState, setEdited });
         }}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
       />
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
@@ -222,7 +220,7 @@ export function ActionRetrievalExhaustive({
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
             "bg-structure-50 stroke-structure-50"
           )}
-          value={action.configuration.timeFrame.value || ""}
+          value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
@@ -259,7 +257,7 @@ export function ActionRetrievalExhaustive({
               type="select"
               labelVisible={true}
               label={
-                TIME_FRAME_UNIT_TO_LABEL[action.configuration.timeFrame.unit]
+                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
               }
               variant="secondary"
               size="sm"

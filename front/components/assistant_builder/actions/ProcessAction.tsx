@@ -22,6 +22,7 @@ import DataSourceSelectionSection from "@app/components/assistant_builder/DataSo
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderProcessConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
@@ -219,13 +220,13 @@ function PropertiesFields({
 
 export function ActionProcess({
   owner,
-  action,
+  actionConfiguration,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration | null;
+  actionConfiguration: AssistantBuilderProcessConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -235,20 +236,20 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
-  if (!action || action.type !== "PROCESS") {
+  if (!actionConfiguration) {
     return null;
   }
 
   useEffect(() => {
-    if (!action.configuration.timeFrame.value) {
+    if (!actionConfiguration.timeFrame.value) {
       setTimeFrameError("Timeframe must be a number");
     } else {
       setTimeFrameError(null);
     }
-  }, [action.configuration.timeFrame.value]);
+  }, [actionConfiguration.timeFrame.value]);
 
   const deleteDataSource = (name: string) => {
-    if (action.configuration.dataSourceConfigurations[name]) {
+    if (actionConfiguration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
 
@@ -258,7 +259,7 @@ export function ActionProcess({
         return { actions, ...rest };
       }
       const dataSourceConfigurations = {
-        ...action.configuration.dataSourceConfigurations,
+        ...actionConfiguration.dataSourceConfigurations,
       };
       delete dataSourceConfigurations[name];
       return {
@@ -266,7 +267,7 @@ export function ActionProcess({
           {
             ...action,
             configuration: {
-              ...action.configuration,
+              ...actionConfiguration,
               dataSourceConfigurations,
             },
           },
@@ -293,7 +294,7 @@ export function ActionProcess({
               return state;
             }
             const dataSourceConfigurations = {
-              ...action.configuration.dataSourceConfigurations,
+              ...actionConfiguration.dataSourceConfigurations,
             };
             dataSourceConfigurations[dataSource.name] = {
               dataSource,
@@ -306,7 +307,7 @@ export function ActionProcess({
                 {
                   ...action,
                   configuration: {
-                    ...action.configuration,
+                    ...actionConfiguration,
                     dataSourceConfigurations,
                   },
                 },
@@ -315,7 +316,7 @@ export function ActionProcess({
           });
         }}
         onDelete={deleteDataSource}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
       />
 
       <div className="text-sm text-element-700">
@@ -336,7 +337,7 @@ export function ActionProcess({
 
       <DataSourceSelectionSection
         owner={owner}
-        dataSourceConfigurations={action.configuration.dataSourceConfigurations}
+        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
@@ -357,7 +358,7 @@ export function ActionProcess({
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
             "bg-structure-50 stroke-structure-50"
           )}
-          value={action.configuration.timeFrame.value || ""}
+          value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
@@ -367,7 +368,7 @@ export function ActionProcess({
                 if (!action || action.type !== "PROCESS") {
                   return state;
                 }
-                action.configuration.timeFrame.value = value;
+                actionConfiguration.timeFrame.value = value;
                 return {
                   ...state,
                   actions: [action],
@@ -382,7 +383,7 @@ export function ActionProcess({
               type="select"
               labelVisible={true}
               label={
-                TIME_FRAME_UNIT_TO_LABEL[action.configuration.timeFrame.unit]
+                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
               }
               variant="secondary"
               size="sm"
@@ -400,7 +401,7 @@ export function ActionProcess({
                     if (!action || action.type !== "PROCESS") {
                       return state;
                     }
-                    action.configuration.timeFrame.unit = key as TimeframeUnit;
+                    actionConfiguration.timeFrame.unit = key as TimeframeUnit;
                     return {
                       ...state,
                       actions: [action],
@@ -439,7 +440,7 @@ export function ActionProcess({
                   if (!action || action.type !== "PROCESS") {
                     return state;
                   }
-                  action.configuration.schema = schema;
+                  actionConfiguration.schema = schema;
                   return {
                     ...state,
                     actions: [action],
@@ -451,14 +452,14 @@ export function ActionProcess({
         </div>
       </div>
       <PropertiesFields
-        properties={action.configuration.schema}
+        properties={actionConfiguration.schema}
         onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
           setBuilderState((state) => {
             const action = state.actions[0];
             if (!action || action.type !== "PROCESS") {
               return state;
             }
-            action.configuration.schema = schema;
+            actionConfiguration.schema = schema;
             return {
               ...state,
               actions: [action],
