@@ -105,7 +105,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
       await fetch(
-        `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/disable`,
+        `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/destroy`,
         {
           method: "DELETE",
           headers: {
@@ -128,7 +128,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   };
 
   const handleUpdate = (secret: DustAppSecretType) => {
-    setNewDustAppSecret({...secret, value: ""});
+    setNewDustAppSecret({ ...secret, value: "" });
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
   };

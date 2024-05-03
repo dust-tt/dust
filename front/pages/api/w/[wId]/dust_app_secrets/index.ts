@@ -111,7 +111,7 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           name: postSecretName,
-          hash: encryptedValue
+          hash: encryptedValue,
         });
       }
 

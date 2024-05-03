@@ -44,8 +44,8 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
-      await secret.destroy()
+    case "DELETE":
+      await secret.destroy();
 
       res.status(200).json({
         secret: {

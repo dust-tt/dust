@@ -316,7 +316,7 @@ DustAppSecret.init(
     hash: {
       type: DataTypes.STRING,
       allowNull: false,
-    }
+    },
   },
   {
     modelName: "dust_app_secrets",
