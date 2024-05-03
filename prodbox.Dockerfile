@@ -20,30 +20,25 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 # Set the working directory to /dust
 WORKDIR /dust
 
+COPY . .
+
 # Types dependencies
-COPY /types/package*.json ./types/
 RUN cd types && npm ci
 
 # Connectors dependencies
-COPY ./connectors/package*.json ./connectors/
 RUN cd connectors && npm ci
 
 # Front dependencies
-COPY /front/package*.json ./front/
 RUN cd front && npm ci
 
 # Now copy the rest of the code
-COPY /types ./types/
 RUN cd types && npm run build
 
-COPY ./connectors ./connectors/
 RUN cd connectors && npm run build
 
-COPY /front ./front/
 RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
 # Core code and build
-COPY /core ./core/
 RUN cd core && cargo build --release
 
 # Set the default start directory to /dust when SSH into the container

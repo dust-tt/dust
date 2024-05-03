@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Get short sha
         id: short_sha
@@ -41,7 +43,7 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh prodbox ./prodbox.Dockerfile ./
+          ./k8s/cloud-build.sh prodbox ./prodbox.Dockerfile ./ .gcloudignore-prodbox
 
       - name: Deploy the image on Kubernetes
         run: |
