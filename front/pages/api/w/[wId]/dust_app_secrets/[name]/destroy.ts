@@ -46,13 +46,7 @@ async function handler(
   switch (req.method) {
     case "DELETE":
       await secret.destroy();
-
-      res.status(200).json({
-        secret: {
-          name: "DELETED",
-          value: "DELETED",
-        },
-      });
+      res.status(204).end();
       return;
 
     default:
