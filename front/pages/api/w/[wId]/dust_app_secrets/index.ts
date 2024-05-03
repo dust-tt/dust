@@ -117,13 +117,27 @@ async function handler(
 
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      await DustAppSecret.create({
-        userId: user.id,
-        workspaceId: owner.id,
-        name: postSecretName,
-        hash: encryptedValue,
-        status: "active",
+      let postSecret = await DustAppSecret.findOne({
+        where: {
+          name: postSecretName,
+          workspaceId: owner.id,
+          status: "active",
+        },
       });
+
+      if(postSecret) {
+        await postSecret.update({
+          hash: encryptedValue,
+        });
+      } else {
+        postSecret = await DustAppSecret.create({
+          userId: user.id,
+          workspaceId: owner.id,
+          name: postSecretName,
+          hash: encryptedValue,
+          status: "active",
+        });
+      }
 
       res.status(201).json({
         secret: {

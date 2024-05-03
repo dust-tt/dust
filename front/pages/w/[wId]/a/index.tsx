@@ -11,13 +11,14 @@ import {
   Tab,
 } from "@dust-tt/sparkle";
 import type { DustAppSecretType,WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
+import type { AppType, ModelId } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type {KeyType} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { useContext } from "react";
 import { useSWRConfig } from "swr";
 
 import { A } from "@app/components/home/contentComponents";
@@ -33,6 +34,7 @@ import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -74,6 +76,8 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   const defaultSecret = {name: "", value: ""};
   const [newDustAppSecret, setNewDustAppSecret] = useState<DustAppSecretType>(defaultSecret);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
+  const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext)
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -90,17 +94,21 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setIsNewSecretPromptOpen(false);
       setNewDustAppSecret(defaultSecret);
+      sendNotification({
+        type: "success",
+        title: "Secret saved",
+        description: "Successfully saved the secret value securely.",
+      });
     });
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
-    async (key: KeyType) => {
-      await fetch(`/api/w/${owner.sId}/dust_app_secrets/${key.id}/disable`, {
+    async (secret: DustAppSecretType) => {
+      await fetch(`/api/w/${owner.sId}/dust_app_secrets/${secret.name}/disable`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
       });
-      // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
     }
   );
@@ -109,30 +117,44 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
     return name.replace(/[^a-zA-Z0-9_]/g, "").toUpperCase();
   }
 
+  const handleUpdate = (secret: DustAppSecretType) => {
+    setNewDustAppSecret(secret);
+    setIsNewSecretPromptOpen(true);
+    setIsInputNameDisabled(true);
+  }
+
   return (
     <>
       <Dialog
         isOpen={isNewSecretPromptOpen}
-        title="New API Key"
+        title={`${isInputNameDisabled ? 'Update' : 'New'} Developer Secret`}
         onValidate={() => handleGenerate(newDustAppSecret)}
         onCancel={() => setIsNewSecretPromptOpen(false)}
       >
-        <p>
-          Create a new secret to use in your Dust apps. Secrets are encrypted
-          and stored securely in our database.
-        </p>
+        
+
         <Input
           name="Secret Name"
           placeholder="SECRET_NAME"
           value={newDustAppSecret.name}
+          disabled={isInputNameDisabled}
           onChange={(e) => setNewDustAppSecret({...newDustAppSecret, name: cleanSecretName(e)})}
         />
+        <p className="text-xs text-gray-500">
+          Secret names must be alphanumeric and underscore characters only.
+        </p>
+        <br />
+            
         <Input
           name="Secret value"
           placeholder="Type the secret value"
           value={newDustAppSecret.value}
           onChange={(e) => setNewDustAppSecret({...newDustAppSecret, value: e})}
         />
+         <p className="text-xs text-gray-500">
+         Secrets values are encrypted
+          and stored securely in our database.
+        </p>   
       </Dialog>
       <Page.SectionHeader
         title="Developer Secrets"
@@ -141,6 +163,8 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           label: "Create Developer Secret",
           variant: "primary",
           onClick: async () => {
+            setNewDustAppSecret(defaultSecret);
+            setIsInputNameDisabled(false);
             setIsNewSecretPromptOpen(true);
           },
           icon: PlusIcon,
@@ -152,26 +176,26 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   <tbody>
     {secrets
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((key) => (
-        <tr key={key.secret}>
+      .map((secret) => (
+        <tr key={secret.name}>
           <td className="px-2 py-4">
             <p className={classNames("font-mono truncate text-sm text-slate-700")}>
-              <strong>{key.name ? key.name : "Unnamed"}</strong>
+              <strong>{secret.name}</strong>
             </p>
           </td>
           <td>
           </td>
           <td className="px-2 py-4 w-full">
-            <pre className="text-sm bg-zinc-100 p-2">{key.value}</pre>
+            <pre className="text-sm bg-zinc-100 p-2">{secret.value}</pre>
           </td>
           <td className="px-2">
             <Button variant="secondary" disabled={isRevoking || isGenerating} onClick={async () => {
-              await handleRevoke(key);
+              await handleUpdate(secret);
             }} label="Update" />
           </td>
           <td>
             <Button variant="secondaryWarning" disabled={isRevoking || isGenerating} onClick={async () => {
-              await handleRevoke(key);
+              await handleRevoke(secret);
             }} label="Delete" />
           </td>
         </tr>
@@ -731,14 +755,14 @@ export default function Developers({
               label: "Dev Secrets",
               id: "secrets",
               current: currentTab === "secrets",
-              icon: LockIcon,
+              icon: BracesIcon,
               sizing: "expand",
             },
             {
               label: "API Keys",
               id: "apikeys",
               current: currentTab === "apikeys",
-              icon: BracesIcon,
+              icon: LockIcon,
               sizing: "expand",
             },
           ]}
