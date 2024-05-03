@@ -64,7 +64,7 @@ import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import logger from "@app/logger/logger";
 
 async function main() {
-  sendInitDbMessage({
+  await sendInitDbMessage({
     service: "front",
     logger: logger,
   });

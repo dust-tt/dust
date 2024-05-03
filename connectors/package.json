@@ -10,7 +10,7 @@
     "start:web": "tsx ./src/start_server.ts -p 3002",
     "start:worker": "tsx ./src/start_worker.ts",
     "cli": "npx tsx src/admin/cli.ts",
-    "initdb": "npx tsx src/admin/db.ts"
+    "initdb": "./admin/init_db.sh"
   },
   "dependencies": {
     "@dust-tt/types": "file:../types",
