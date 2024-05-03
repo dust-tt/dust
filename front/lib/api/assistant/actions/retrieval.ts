@@ -1,9 +1,11 @@
 import type {
+  AssistantToolCallMessageTypeModel,
   ModelId,
   ModelMessageType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
+  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import type {
   RetrievalActionType,
@@ -145,6 +147,71 @@ export function renderRetrievalActionForModel(
   return {
     role: "action" as const,
     name: "search_data_sources",
+    content,
+  };
+}
+export function renderAssistantToolCallMessageForRetrievalAction(
+  action: RetrievalActionType
+): AssistantToolCallMessageTypeModel {
+  const timeFrame = action.params.relativeTimeFrame;
+  const params = {
+    query: action.params.query,
+    relativeTimeFrame: timeFrame
+      ? `${timeFrame.duration}${timeFrame.unit}`
+      : "all",
+    topK: action.params.topK,
+  };
+
+  return {
+    role: "assistant" as const,
+    content: null,
+    toolCalls: [
+      {
+        id: action.id.toString(), // @todo Daph replace with the actual tool id
+        type: "function",
+        function: {
+          name: "search_data_sources",
+          arguments: JSON.stringify(params),
+        },
+      },
+    ],
+  };
+}
+export function renderToolMessageForRetrievalAction(
+  action: RetrievalActionType
+): ToolMessageTypeModel {
+  let content = "";
+  if (!action.documents) {
+    throw new Error(
+      "Documents not set on retrieval action; this usually means the retrieval action is not finished."
+    );
+  }
+  for (const d of action.documents) {
+    let title = d.documentId;
+    for (const t of d.tags) {
+      if (t.startsWith("title:")) {
+        title = t.substring(6);
+        break;
+      }
+    }
+
+    let dataSourceName = d.dataSourceId;
+    if (d.dataSourceId.startsWith("managed-")) {
+      dataSourceName = d.dataSourceId.substring(8);
+    }
+
+    content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+    content += `REFERENCE: ${d.reference}\n`;
+    content += `EXTRACTS:\n`;
+    for (const c of d.chunks) {
+      content += `${c.text}\n`;
+    }
+    content += "\n";
+  }
+
+  return {
+    role: "tool" as const,
+    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

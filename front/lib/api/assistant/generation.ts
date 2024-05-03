@@ -1,13 +1,16 @@
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ContentFragmentMessageTypeModel,
   ConversationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
   ModelConversationType,
+  ModelConversationTypeMultiActions,
   ModelMessageType,
+  ModelMessageTypeMultiActions,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -29,13 +32,27 @@ import {
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
-import { renderProcessActionForModel } from "@app/lib/api/assistant/actions/process";
 import {
+  renderAssistantToolCallMessageForDustAppRunAction,
+  renderDustAppRunActionForModel,
+  renderToolMessageForForDustAppRunAction,
+} from "@app/lib/api/assistant/actions/dust_app_run";
+import {
+  renderAssistantToolCallMessageForProcessAction,
+  renderProcessActionForModel,
+  renderToolMessageForForProcessAction,
+} from "@app/lib/api/assistant/actions/process";
+import {
+  renderAssistantToolCallMessageForRetrievalAction,
   renderRetrievalActionForModel,
+  renderToolMessageForRetrievalAction,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+import {
+  renderAssistantToolCallMessageForTablesQueryAction,
+  renderTablesQueryActionForModel,
+  renderToolMessageForForTablesQueryAction,
+} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -239,6 +256,189 @@ export async function renderConversationForModel({
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
   while (selected.length > 0 && selected[0].role === "agent") {
+    const tokenCountRes = messagesCountRes[messages.length - selected.length];
+    if (tokenCountRes.isErr()) {
+      return new Err(tokenCountRes.error);
+    }
+    tokensUsed -= tokenCountRes.value;
+    selected.shift();
+  }
+
+  return new Ok({
+    modelConversation: {
+      messages: selected,
+    },
+    tokensUsed,
+  });
+}
+
+export async function renderConversationForModelMultiActions({
+  conversation,
+  model,
+  prompt,
+  allowedTokenCount,
+}: {
+  conversation: ConversationType;
+  model: { providerId: string; modelId: string };
+  prompt: string;
+  allowedTokenCount: number;
+}): Promise<
+  Result<
+    {
+      modelConversation: ModelConversationTypeMultiActions;
+      tokensUsed: number;
+    },
+    Error
+  >
+> {
+  const messages: ModelMessageTypeMultiActions[] = [];
+
+  // Render all messages and all actions.
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const versions = conversation.content[i];
+    const m = versions[versions.length - 1];
+
+    if (isAgentMessageType(m)) {
+      if (m.content) {
+        messages.unshift({
+          role: "assistant" as const,
+          name: m.configuration.name,
+          content: m.content,
+        });
+      }
+      if (m.action) {
+        if (isRetrievalActionType(m.action)) {
+          messages.unshift(renderToolMessageForRetrievalAction(m.action));
+          messages.unshift(
+            renderAssistantToolCallMessageForRetrievalAction(m.action)
+          );
+        } else if (isDustAppRunActionType(m.action)) {
+          messages.unshift(renderToolMessageForForDustAppRunAction(m.action));
+          messages.unshift(
+            renderAssistantToolCallMessageForDustAppRunAction(m.action)
+          );
+        } else if (isTablesQueryActionType(m.action)) {
+          messages.unshift(renderToolMessageForForTablesQueryAction(m.action));
+          messages.unshift(
+            renderAssistantToolCallMessageForTablesQueryAction(m.action)
+          );
+        } else if (isProcessActionType(m.action)) {
+          messages.unshift(renderToolMessageForForProcessAction(m.action));
+          messages.unshift(
+            renderAssistantToolCallMessageForProcessAction(m.action)
+          );
+        } else {
+          assertNever(m.action);
+        }
+      }
+    } else if (isUserMessageType(m)) {
+      // Replace all `:mention[{name}]{.*}` with `@name`.
+      const content = m.content.replaceAll(
+        /:mention\[([^\]]+)\]\{[^}]+\}/g,
+        (_, name) => {
+          return `@${name}`;
+        }
+      );
+      messages.unshift({
+        role: "user" as const,
+        name: m.context.fullName || m.context.username,
+        content,
+      });
+    } else if (isContentFragmentType(m)) {
+      try {
+        const content = await getContentFragmentText({
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: m.sId,
+        });
+        messages.unshift({
+          role: "content_fragment",
+          name: `inject_${m.contentType}`,
+          content:
+            `TITLE: ${m.title}\n` +
+            `TYPE: ${m.contentType}${
+              m.contentType === "file_attachment" ? " (user provided)" : ""
+            }\n` +
+            `CONTENT:\n${content}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          },
+          "Failed to retrieve content fragment text"
+        );
+        return new Err(new Error("Failed to retrieve content fragment text"));
+      }
+    } else {
+      ((x: never) => {
+        throw new Error(`Unexpected message type: ${x}`);
+      })(m);
+    }
+  }
+
+  // Compute in parallel the token count for each message and the prompt.
+  const [messagesCountRes, promptCountRes] = await Promise.all([
+    // This is a bit aggressive but fuck it.
+    Promise.all(
+      messages.map((m) => {
+        return tokenCountForText(JSON.stringify(m), model);
+      })
+    ),
+    tokenCountForText(prompt, model),
+  ]);
+
+  if (promptCountRes.isErr()) {
+    return new Err(promptCountRes.error);
+  }
+
+  // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
+  // approximations, 64 tokens seems small enough and ample enough.
+  const tokensMargin = 64;
+  let tokensUsed = promptCountRes.value + tokensMargin;
+
+  // Go backward and accumulate as much as we can within allowedTokenCount.
+  const selected: ModelMessageTypeMultiActions[] = [];
+  const truncationMessage = `... (content truncated)`;
+  const approxTruncMsgTokenCount = truncationMessage.length / 3;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const r = messagesCountRes[i];
+    if (r.isErr()) {
+      return new Err(r.error);
+    }
+    const c = r.value;
+    if (tokensUsed + c <= allowedTokenCount) {
+      tokensUsed += c;
+      selected.unshift(messages[i]);
+    } else if (
+      // When a content fragment has more than the remaining number of tokens, we split it.
+      messages[i].role === "content_fragment" &&
+      // Allow at least tokensMargin tokens in addition to the truncation message.
+      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
+    ) {
+      const msg = messages[i] as ContentFragmentMessageTypeModel;
+      const remainingTokens =
+        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
+      const contentRes = await tokenSplit(msg.content, model, remainingTokens);
+      if (contentRes.isErr()) {
+        return new Err(contentRes.error);
+      }
+      selected.unshift({
+        ...msg,
+        content: contentRes.value + truncationMessage,
+      });
+      tokensUsed += remainingTokens;
+      break;
+    } else {
+      break;
+    }
+  }
+
+  while (selected.length > 0 && selected[0].role === "assistant") {
     const tokenCountRes = messagesCountRes[messages.length - selected.length];
     if (tokenCountRes.isErr()) {
       return new Err(tokenCountRes.error);

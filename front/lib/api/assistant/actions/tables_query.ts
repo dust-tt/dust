@@ -2,6 +2,7 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
+  AssistantToolCallMessageTypeModel,
   ConversationType,
   DustAppParameters,
   ModelId,
@@ -13,6 +14,7 @@ import type {
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
+  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
 
@@ -40,6 +42,42 @@ export function renderTablesQueryActionForModel(
   return {
     role: "action" as const,
     name: "query_tables",
+    content,
+  };
+}
+export function renderAssistantToolCallMessageForTablesQueryAction(
+  action: TablesQueryActionType
+): AssistantToolCallMessageTypeModel {
+  return {
+    role: "assistant" as const,
+    content: null,
+    toolCalls: [
+      {
+        id: action.id.toString(), // @todo Daph replace with the actual tool id
+        type: "function",
+        function: {
+          name: "query_tables",
+          arguments: JSON.stringify(action.params),
+        },
+      },
+    ],
+  };
+}
+export function renderToolMessageForForTablesQueryAction(
+  action: TablesQueryActionType
+): ToolMessageTypeModel {
+  let content = "";
+  if (!action.output) {
+    throw new Error(
+      "Output not set on TablesQuery action; execution is likely not finished."
+    );
+  }
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "tool" as const,
+    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

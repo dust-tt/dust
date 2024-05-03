@@ -1,4 +1,5 @@
 import type {
+  AssistantToolCallMessageTypeModel,
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
   DustAppRunErrorEvent,
@@ -6,6 +7,7 @@ import type {
   DustAppRunSuccessEvent,
   ModelId,
   ModelMessageType,
+  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
 import type {
@@ -43,6 +45,42 @@ export function renderDustAppRunActionForModel(
   return {
     role: "action" as const,
     name: action.appName,
+    content,
+  };
+}
+export function renderAssistantToolCallMessageForDustAppRunAction(
+  action: DustAppRunActionType
+): AssistantToolCallMessageTypeModel {
+  return {
+    role: "assistant" as const,
+    content: null,
+    toolCalls: [
+      {
+        id: action.id.toString(), // @todo Daph replace with the actual tool id
+        type: "function",
+        function: {
+          name: action.appName,
+          arguments: JSON.stringify(action.params),
+        },
+      },
+    ],
+  };
+}
+export function renderToolMessageForForDustAppRunAction(
+  action: DustAppRunActionType
+): ToolMessageTypeModel {
+  let content = "";
+  if (!action.output) {
+    throw new Error(
+      "Output not set on DustAppRun action; execution is likely not finished."
+    );
+  }
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "tool" as const,
+    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

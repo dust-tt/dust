@@ -12,6 +12,53 @@ export type ModelConversationType = {
   messages: ModelMessageType[];
 };
 
+export type ContentFragmentMessageTypeModel = {
+  role: "content_fragment";
+  name: string;
+  content: string;
+};
+
+export type UserMessageTypeModel = {
+  role: "user";
+  name: string;
+  content: string;
+};
+
+export type AssistantToolCallMessageTypeModel = {
+  role: "assistant";
+  content: string | null;
+  toolCalls: {
+    id: string;
+    type: "function";
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }[];
+};
+export type AssistantContentMessageTypeModel = {
+  role: "assistant";
+  name: string;
+  content: string;
+};
+
+export type ToolMessageTypeModel = {
+  role: "tool";
+  toolCallId: string;
+  content: string;
+};
+
+export type ModelMessageTypeMultiActions =
+  | ContentFragmentMessageTypeModel
+  | UserMessageTypeModel
+  | AssistantToolCallMessageTypeModel
+  | AssistantContentMessageTypeModel
+  | ToolMessageTypeModel;
+
+export type ModelConversationTypeMultiActions = {
+  messages: ModelMessageTypeMultiActions[];
+};
+
 /**
  * Generation execution.
  */

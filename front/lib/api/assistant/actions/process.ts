@@ -2,6 +2,7 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
+  AssistantToolCallMessageTypeModel,
   ConversationType,
   ModelId,
   ModelMessageType,
@@ -13,6 +14,7 @@ import type {
   ProcessSuccessEvent,
   Result,
   TimeFrame,
+  ToolMessageTypeModel,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -65,6 +67,50 @@ export function renderProcessActionForModel(
   return {
     role: "action" as const,
     name: "process_data_sources",
+    content,
+  };
+}
+export function renderAssistantToolCallMessageForProcessAction(
+  action: ProcessActionType
+): AssistantToolCallMessageTypeModel {
+  return {
+    role: "assistant" as const,
+    content: null,
+    toolCalls: [
+      {
+        id: action.id.toString(), // @todo Daph replace with the actual tool id
+        type: "function",
+        function: {
+          name: "process_data_sources",
+          arguments: JSON.stringify(action.params),
+        },
+      },
+    ],
+  };
+}
+export function renderToolMessageForForProcessAction(
+  action: ProcessActionType
+): ToolMessageTypeModel {
+  let content = "";
+  if (action.outputs === null) {
+    throw new Error(
+      "Output not set on process action; this usually means the process action is not finished."
+    );
+  }
+
+  content += "PROCESSED OUTPUTS:\n";
+
+  // TODO(spolu): figure out if we want to add the schema here?
+
+  if (action.outputs) {
+    for (const o of action.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+  }
+
+  return {
+    role: "tool" as const,
+    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
