@@ -21,8 +21,7 @@ jobs:
           fetch-depth: 0
           ssh-key:
 
-
-- name: git remote -v
+      - name: git remote -v
         id: git_remote
         run: git -v origin
 
