@@ -25,7 +25,7 @@ export async function sendInitDbMessage({
     logger.error({}, "Failed to get commit id");
   }
 
-  const message = `papertrail: Deployment has been initiated. Service: \`${service}\`. CommitId: \`${commitId}\``;
+  const message = `papertrail: \`initdb\` has been initiated. Service: \`${service}\`. CommitId: \`${commitId}\``;
 
   try {
     const res = await fetch("https://slack.com/api/chat.postMessage", {
