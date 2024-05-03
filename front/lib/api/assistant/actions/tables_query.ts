@@ -2,9 +2,9 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
-  AssistantFunctionCallMessageTypeModel,
   ConversationType,
   DustAppParameters,
+  FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
@@ -45,22 +45,16 @@ export function renderTablesQueryActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallMessageForTablesQueryAction(
+export function renderAssistantFunctionCallForTablesQueryAction(
   action: TablesQueryActionType
-): AssistantFunctionCallMessageTypeModel {
+): FunctionCallType {
   return {
-    role: "assistant" as const,
-    content: null,
-    function_calls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: "query_tables",
-          arguments: JSON.stringify(action.params),
-        },
-      },
-    ],
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "query_tables",
+      arguments: JSON.stringify(action.params),
+    },
   };
 }
 export function renderFunctionMessageForForTablesQueryAction(

@@ -28,28 +28,29 @@ import {
   isTablesQueryActionType,
   isUserMessageType,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  renderAssistantFunctionCallMessageForDustAppRunAction,
+  renderAssistantFunctionCallForDustAppRunAction,
   renderDustAppRunActionForModel,
   renderFunctionMessageForForDustAppRunAction,
 } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
-  renderAssistantFunctionCallMessageForProcessAction,
+  renderAssistantFunctionCallForProcessAction,
   renderFunctionMessageForForProcessAction,
   renderProcessActionForModel,
 } from "@app/lib/api/assistant/actions/process";
 import {
-  renderAssistantFunctionCallMessageForRetrievalAction,
+  renderAssistantFunctionCallForRetrievalAction,
   renderFunctionMessageForRetrievalAction,
   renderRetrievalActionForModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
-  renderAssistantFunctionCallMessageForTablesQueryAction,
+  renderAssistantFunctionCallForTablesQueryAction,
   renderFunctionMessageForForTablesQueryAction,
   renderTablesQueryActionForModel,
 } from "@app/lib/api/assistant/actions/tables_query";
@@ -306,34 +307,51 @@ export async function renderConversationForModelMultiActions({
           content: m.content,
         });
       }
-      if (m.action) {
-        if (isRetrievalActionType(m.action)) {
-          messages.unshift(renderFunctionMessageForRetrievalAction(m.action));
-          messages.unshift(
-            renderAssistantFunctionCallMessageForRetrievalAction(m.action)
+
+      const actions = removeNulls([m.action]); // Should be replaced with `m.actions` once we it on AgentMessageType.
+      const function_calls = [];
+      const function_messages = [];
+
+      for (const action of actions) {
+        if (isRetrievalActionType(action)) {
+          function_messages.unshift(
+            renderFunctionMessageForRetrievalAction(action)
           );
-        } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(
-            renderFunctionMessageForForDustAppRunAction(m.action)
+          function_calls.unshift(
+            renderAssistantFunctionCallForRetrievalAction(action)
           );
-          messages.unshift(
-            renderAssistantFunctionCallMessageForDustAppRunAction(m.action)
+        } else if (isDustAppRunActionType(action)) {
+          function_messages.unshift(
+            renderFunctionMessageForForDustAppRunAction(action)
           );
-        } else if (isTablesQueryActionType(m.action)) {
-          messages.unshift(
-            renderFunctionMessageForForTablesQueryAction(m.action)
+          function_calls.unshift(
+            renderAssistantFunctionCallForDustAppRunAction(action)
           );
-          messages.unshift(
-            renderAssistantFunctionCallMessageForTablesQueryAction(m.action)
+        } else if (isTablesQueryActionType(action)) {
+          function_messages.unshift(
+            renderFunctionMessageForForTablesQueryAction(action)
           );
-        } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderFunctionMessageForForProcessAction(m.action));
-          messages.unshift(
-            renderAssistantFunctionCallMessageForProcessAction(m.action)
+          function_calls.unshift(
+            renderAssistantFunctionCallForTablesQueryAction(action)
+          );
+        } else if (isProcessActionType(action)) {
+          function_messages.unshift(
+            renderFunctionMessageForForProcessAction(action)
+          );
+          function_calls.unshift(
+            renderAssistantFunctionCallForProcessAction(action)
           );
         } else {
-          assertNever(m.action);
+          assertNever(action);
         }
+      }
+
+      if (function_calls.length > 0) {
+        messages.unshift({
+          role: "assistant",
+          content: null,
+          function_calls,
+        });
       }
     } else if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.

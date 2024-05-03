@@ -1,10 +1,10 @@
 import type {
-  AssistantFunctionCallMessageTypeModel,
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
   DustAppRunSuccessEvent,
+  FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
@@ -48,22 +48,16 @@ export function renderDustAppRunActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallMessageForDustAppRunAction(
+export function renderAssistantFunctionCallForDustAppRunAction(
   action: DustAppRunActionType
-): AssistantFunctionCallMessageTypeModel {
+): FunctionCallType {
   return {
-    role: "assistant" as const,
-    content: null,
-    function_calls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: action.appName,
-          arguments: JSON.stringify(action.params),
-        },
-      },
-    ],
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: action.appName,
+      arguments: JSON.stringify(action.params),
+    },
   };
 }
 export function renderFunctionMessageForForDustAppRunAction(

@@ -2,8 +2,8 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
-  AssistantFunctionCallMessageTypeModel,
   ConversationType,
+  FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
@@ -70,22 +70,16 @@ export function renderProcessActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallMessageForProcessAction(
+export function renderAssistantFunctionCallForProcessAction(
   action: ProcessActionType
-): AssistantFunctionCallMessageTypeModel {
+): FunctionCallType {
   return {
-    role: "assistant" as const,
-    content: null,
-    function_calls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: "process_data_sources",
-          arguments: JSON.stringify(action.params),
-        },
-      },
-    ],
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "process_data_sources",
+      arguments: JSON.stringify(action.params),
+    },
   };
 }
 export function renderFunctionMessageForForProcessAction(

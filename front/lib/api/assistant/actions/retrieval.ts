@@ -1,5 +1,5 @@
 import type {
-  AssistantFunctionCallMessageTypeModel,
+  FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
@@ -150,9 +150,9 @@ export function renderRetrievalActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallMessageForRetrievalAction(
+export function renderAssistantFunctionCallForRetrievalAction(
   action: RetrievalActionType
-): AssistantFunctionCallMessageTypeModel {
+): FunctionCallType {
   const timeFrame = action.params.relativeTimeFrame;
   const params = {
     query: action.params.query,
@@ -163,18 +163,12 @@ export function renderAssistantFunctionCallMessageForRetrievalAction(
   };
 
   return {
-    role: "assistant" as const,
-    content: null,
-    function_calls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: "search_data_sources",
-          arguments: JSON.stringify(params),
-        },
-      },
-    ],
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "search_data_sources",
+      arguments: JSON.stringify(params),
+    },
   };
 }
 export function renderFunctionMessageForRetrievalAction(
