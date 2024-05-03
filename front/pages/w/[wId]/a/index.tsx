@@ -206,20 +206,19 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
               .sort((a, b) => a.name.localeCompare(b.name))
               .map((secret) => (
                 <tr key={secret.name}>
-                  <td className="px-2 py-4">
+                  <td className="px-2 py-4"><pre className="bg-zinc-100 p-2 text-sm">
+                      secrets.{secret.name}
+                    </pre>
+                  </td>
+                  <td>→</td>
+                  <td className="w-full px-2 py-4">
                     <p
                       className={classNames(
                         "font-mono truncate text-sm text-slate-700"
                       )}
                     >
-                      <strong>{secret.name}</strong>
-                    </p>
-                  </td>
-                  <td></td>
-                  <td className="w-full px-2 py-4">
-                    <pre className="bg-zinc-100 p-2 text-sm">
                       {secret.value}
-                    </pre>
+                    </p>
                   </td>
                   <td className="px-2">
                     <Button
