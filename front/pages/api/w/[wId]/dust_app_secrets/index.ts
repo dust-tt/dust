@@ -1,5 +1,5 @@
 import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
-import { decrypt, encrypt, rateLimiter } from "@dust-tt/types";
+import { decrypt, encrypt, rateLimiter, redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -7,18 +7,20 @@ import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetSecretsResponseBody = {
+export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
 };
 
-export type PostSecretsResponseBody = {
+export type PostDustAppSecretsResponseBody = {
   secret: DustAppSecretType;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetSecretsResponseBody | PostSecretsResponseBody>
+    WithAPIErrorReponse<
+      GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -71,7 +73,6 @@ async function handler(
       const secrets = await DustAppSecret.findAll({
         where: {
           workspaceId: owner.id,
-          status: "active",
         },
         order: [["name", "DESC"]],
       });
@@ -82,33 +83,10 @@ async function handler(
           return {
             createdAt: s.createdAt.getTime(),
             name: s.name,
-            value: clearSecret,
+            value: redactString(clearSecret, 1),
           };
         }),
       });
-      return;
-
-    case "DELETE":
-      const { name: deleteSecretName } = req.body;
-      const secret = await DustAppSecret.findOne({
-        where: {
-          name: deleteSecretName,
-          workspaceId: owner.id,
-          status: "active",
-        },
-      });
-
-      if (!secret) {
-        // Silently fail to avoid bruteforce.
-        res.status(204).end();
-        return;
-      }
-
-      await secret.update({
-        status: "disabled",
-      });
-
-      res.status(204).end();
       return;
 
     case "POST":
@@ -117,13 +95,25 @@ async function handler(
 
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      await DustAppSecret.create({
-        userId: user.id,
-        workspaceId: owner.id,
-        name: postSecretName,
-        hash: encryptedValue,
-        status: "active",
+      let postSecret = await DustAppSecret.findOne({
+        where: {
+          name: postSecretName,
+          workspaceId: owner.id,
+        },
       });
+
+      if (postSecret) {
+        await postSecret.update({
+          hash: encryptedValue,
+        });
+      } else {
+        postSecret = await DustAppSecret.create({
+          userId: user.id,
+          workspaceId: owner.id,
+          name: postSecretName,
+          hash: encryptedValue,
+        });
+      }
 
       res.status(201).json({
         secret: {
