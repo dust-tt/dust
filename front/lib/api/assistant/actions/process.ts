@@ -2,8 +2,9 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
-  AssistantToolCallMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
   ConversationType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   ProcessActionOutputsType,
@@ -14,7 +15,6 @@ import type {
   ProcessSuccessEvent,
   Result,
   TimeFrame,
-  ToolMessageTypeModel,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -70,13 +70,13 @@ export function renderProcessActionForModel(
     content,
   };
 }
-export function renderAssistantToolCallMessageForProcessAction(
+export function renderAssistantFunctionCallMessageForProcessAction(
   action: ProcessActionType
-): AssistantToolCallMessageTypeModel {
+): AssistantFunctionCallMessageTypeModel {
   return {
     role: "assistant" as const,
     content: null,
-    toolCalls: [
+    functionCalls: [
       {
         id: action.id.toString(), // @todo Daph replace with the actual tool id
         type: "function",
@@ -88,9 +88,9 @@ export function renderAssistantToolCallMessageForProcessAction(
     ],
   };
 }
-export function renderToolMessageForForProcessAction(
+export function renderFunctionMessageForForProcessAction(
   action: ProcessActionType
-): ToolMessageTypeModel {
+): FunctionMessageTypeModel {
   let content = "";
   if (action.outputs === null) {
     throw new Error(
@@ -109,8 +109,8 @@ export function renderToolMessageForForProcessAction(
   }
 
   return {
-    role: "tool" as const,
-    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    role: "function" as const,
+    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

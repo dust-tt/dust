@@ -24,10 +24,10 @@ export type UserMessageTypeModel = {
   content: string;
 };
 
-export type AssistantToolCallMessageTypeModel = {
+export type AssistantFunctionCallMessageTypeModel = {
   role: "assistant";
   content: string | null;
-  toolCalls: {
+  functionCalls: {
     id: string;
     type: "function";
     function: {
@@ -42,18 +42,18 @@ export type AssistantContentMessageTypeModel = {
   content: string;
 };
 
-export type ToolMessageTypeModel = {
-  role: "tool";
-  toolCallId: string;
+export type FunctionMessageTypeModel = {
+  role: "function";
+  functionCallId: string;
   content: string;
 };
 
 export type ModelMessageTypeMultiActions =
   | ContentFragmentMessageTypeModel
   | UserMessageTypeModel
-  | AssistantToolCallMessageTypeModel
+  | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
-  | ToolMessageTypeModel;
+  | FunctionMessageTypeModel;
 
 export type ModelConversationTypeMultiActions = {
   messages: ModelMessageTypeMultiActions[];

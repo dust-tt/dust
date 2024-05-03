@@ -568,7 +568,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
           // For convenience we shorten the content when role = "tool"
           result.modelConversation.messages =
             result.modelConversation.messages.map((m) => {
-              if (m.role === "tool") {
+              if (m.role === "function") {
                 return {
                   ...m,
                   content: m.content.slice(0, 200) + "...",

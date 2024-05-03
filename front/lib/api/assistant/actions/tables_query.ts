@@ -2,9 +2,10 @@ import type {
   AgentActionSpecification,
   AgentConfigurationType,
   AgentMessageType,
-  AssistantToolCallMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
   ConversationType,
   DustAppParameters,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   Result,
@@ -14,7 +15,6 @@ import type {
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
-  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
 
@@ -45,13 +45,13 @@ export function renderTablesQueryActionForModel(
     content,
   };
 }
-export function renderAssistantToolCallMessageForTablesQueryAction(
+export function renderAssistantFunctionCallMessageForTablesQueryAction(
   action: TablesQueryActionType
-): AssistantToolCallMessageTypeModel {
+): AssistantFunctionCallMessageTypeModel {
   return {
     role: "assistant" as const,
     content: null,
-    toolCalls: [
+    functionCalls: [
       {
         id: action.id.toString(), // @todo Daph replace with the actual tool id
         type: "function",
@@ -63,9 +63,9 @@ export function renderAssistantToolCallMessageForTablesQueryAction(
     ],
   };
 }
-export function renderToolMessageForForTablesQueryAction(
+export function renderFunctionMessageForForTablesQueryAction(
   action: TablesQueryActionType
-): ToolMessageTypeModel {
+): FunctionMessageTypeModel {
   let content = "";
   if (!action.output) {
     throw new Error(
@@ -76,8 +76,8 @@ export function renderToolMessageForForTablesQueryAction(
   content += `${JSON.stringify(action.output, null, 2)}\n`;
 
   return {
-    role: "tool" as const,
-    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    role: "function" as const,
+    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

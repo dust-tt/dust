@@ -33,25 +33,25 @@ import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  renderAssistantToolCallMessageForDustAppRunAction,
+  renderAssistantFunctionCallMessageForDustAppRunAction,
   renderDustAppRunActionForModel,
-  renderToolMessageForForDustAppRunAction,
+  renderFunctionMessageForForDustAppRunAction,
 } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
-  renderAssistantToolCallMessageForProcessAction,
+  renderAssistantFunctionCallMessageForProcessAction,
+  renderFunctionMessageForForProcessAction,
   renderProcessActionForModel,
-  renderToolMessageForForProcessAction,
 } from "@app/lib/api/assistant/actions/process";
 import {
-  renderAssistantToolCallMessageForRetrievalAction,
+  renderAssistantFunctionCallMessageForRetrievalAction,
+  renderFunctionMessageForRetrievalAction,
   renderRetrievalActionForModel,
-  renderToolMessageForRetrievalAction,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
-  renderAssistantToolCallMessageForTablesQueryAction,
+  renderAssistantFunctionCallMessageForTablesQueryAction,
+  renderFunctionMessageForForTablesQueryAction,
   renderTablesQueryActionForModel,
-  renderToolMessageForForTablesQueryAction,
 } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
@@ -308,24 +308,28 @@ export async function renderConversationForModelMultiActions({
       }
       if (m.action) {
         if (isRetrievalActionType(m.action)) {
-          messages.unshift(renderToolMessageForRetrievalAction(m.action));
+          messages.unshift(renderFunctionMessageForRetrievalAction(m.action));
           messages.unshift(
-            renderAssistantToolCallMessageForRetrievalAction(m.action)
+            renderAssistantFunctionCallMessageForRetrievalAction(m.action)
           );
         } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(renderToolMessageForForDustAppRunAction(m.action));
           messages.unshift(
-            renderAssistantToolCallMessageForDustAppRunAction(m.action)
+            renderFunctionMessageForForDustAppRunAction(m.action)
+          );
+          messages.unshift(
+            renderAssistantFunctionCallMessageForDustAppRunAction(m.action)
           );
         } else if (isTablesQueryActionType(m.action)) {
-          messages.unshift(renderToolMessageForForTablesQueryAction(m.action));
           messages.unshift(
-            renderAssistantToolCallMessageForTablesQueryAction(m.action)
+            renderFunctionMessageForForTablesQueryAction(m.action)
+          );
+          messages.unshift(
+            renderAssistantFunctionCallMessageForTablesQueryAction(m.action)
           );
         } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderToolMessageForForProcessAction(m.action));
+          messages.unshift(renderFunctionMessageForForProcessAction(m.action));
           messages.unshift(
-            renderAssistantToolCallMessageForProcessAction(m.action)
+            renderAssistantFunctionCallMessageForProcessAction(m.action)
           );
         } else {
           assertNever(m.action);

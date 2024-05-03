@@ -1,11 +1,11 @@
 import type {
-  AssistantToolCallMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
-  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import type {
   RetrievalActionType,
@@ -150,9 +150,9 @@ export function renderRetrievalActionForModel(
     content,
   };
 }
-export function renderAssistantToolCallMessageForRetrievalAction(
+export function renderAssistantFunctionCallMessageForRetrievalAction(
   action: RetrievalActionType
-): AssistantToolCallMessageTypeModel {
+): AssistantFunctionCallMessageTypeModel {
   const timeFrame = action.params.relativeTimeFrame;
   const params = {
     query: action.params.query,
@@ -165,7 +165,7 @@ export function renderAssistantToolCallMessageForRetrievalAction(
   return {
     role: "assistant" as const,
     content: null,
-    toolCalls: [
+    functionCalls: [
       {
         id: action.id.toString(), // @todo Daph replace with the actual tool id
         type: "function",
@@ -177,9 +177,9 @@ export function renderAssistantToolCallMessageForRetrievalAction(
     ],
   };
 }
-export function renderToolMessageForRetrievalAction(
+export function renderFunctionMessageForRetrievalAction(
   action: RetrievalActionType
-): ToolMessageTypeModel {
+): FunctionMessageTypeModel {
   let content = "";
   if (!action.documents) {
     throw new Error(
@@ -210,8 +210,8 @@ export function renderToolMessageForRetrievalAction(
   }
 
   return {
-    role: "tool" as const,
-    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    role: "function" as const,
+    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

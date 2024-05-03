@@ -1,13 +1,13 @@
 import type {
-  AssistantToolCallMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
   DustAppRunSuccessEvent,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
-  ToolMessageTypeModel,
 } from "@dust-tt/types";
 import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
 import type {
@@ -48,13 +48,13 @@ export function renderDustAppRunActionForModel(
     content,
   };
 }
-export function renderAssistantToolCallMessageForDustAppRunAction(
+export function renderAssistantFunctionCallMessageForDustAppRunAction(
   action: DustAppRunActionType
-): AssistantToolCallMessageTypeModel {
+): AssistantFunctionCallMessageTypeModel {
   return {
     role: "assistant" as const,
     content: null,
-    toolCalls: [
+    functionCalls: [
       {
         id: action.id.toString(), // @todo Daph replace with the actual tool id
         type: "function",
@@ -66,9 +66,9 @@ export function renderAssistantToolCallMessageForDustAppRunAction(
     ],
   };
 }
-export function renderToolMessageForForDustAppRunAction(
+export function renderFunctionMessageForForDustAppRunAction(
   action: DustAppRunActionType
-): ToolMessageTypeModel {
+): FunctionMessageTypeModel {
   let content = "";
   if (!action.output) {
     throw new Error(
@@ -79,8 +79,8 @@ export function renderToolMessageForForDustAppRunAction(
   content += `${JSON.stringify(action.output, null, 2)}\n`;
 
   return {
-    role: "tool" as const,
-    toolCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    role: "function" as const,
+    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
