@@ -31,9 +31,9 @@ pub const USE_FUNCTION_CALLING: bool = false;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
-    prompt_token_count: usize,
+    prompt_token_count: Option<usize>,
     candidates_token_count: Option<usize>,
-    total_token_count: usize,
+    total_token_count: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -742,9 +742,9 @@ pub async fn streamed_chat_completion(
     let mut function_call_args = String::from("");
     let mut finish_reason = String::from("");
     let mut usage_metadata = UsageMetadata {
-        prompt_token_count: 0,
+        prompt_token_count: None,
         candidates_token_count: None,
-        total_token_count: 0,
+        total_token_count: None,
     };
     for c in completions_lock.iter() {
         match &c.usage_metadata {
