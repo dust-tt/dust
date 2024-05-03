@@ -76,6 +76,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
 
   const { secrets } = useDustAppSecrets(owner);
+
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
       await fetch(`/api/w/${owner.sId}/dust_app_secrets`, {
@@ -104,6 +105,10 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
     }
   );
 
+  const cleanSecretName = (name: string) => {
+    return name.replace(/[^a-zA-Z0-9_]/g, "").toUpperCase();
+  }
+
   return (
     <>
       <Dialog
@@ -120,7 +125,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           name="Secret Name"
           placeholder="SECRET_NAME"
           value={newDustAppSecret.name}
-          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, name: e})}
+          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, name: cleanSecretName(e)})}
         />
         <Input
           name="Secret value"

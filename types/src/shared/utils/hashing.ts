@@ -15,7 +15,7 @@ function saltedKey(key: string, size = 32): string {
 
 export function encrypt(text: string, key: string): string {
   const cipher = crypto.createCipheriv(
-    "aes-256-gcm",
+    "aes-256-cbc",
     saltedKey(key),
     key.substring(0, 16)
   );
@@ -26,7 +26,7 @@ export function encrypt(text: string, key: string): string {
 
 export function decrypt(encrypted: string, key: string): string {
   const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
+    "aes-256-cbc",
     saltedKey(key),
     key.substring(0, 16)
   );
