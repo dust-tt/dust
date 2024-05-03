@@ -9,7 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 WORKING_DIR="${3}"
 GCLOUD_IGNORE_FILE="${4}"
 
-[[ -n "$GCLOUD_IGNORE_FILE" ]] && GCLOUD_IGNORE_FILE_ARG="--ignore-file=$GCLOUD_IGNORE_FILE"
+if [ -n "$GCLOUD_IGNORE_FILE" ]; then
+    GCLOUD_IGNORE_FILE_ARG="--ignore-file=$GCLOUD_IGNORE_FILE"
+fi
+
 
 
 
