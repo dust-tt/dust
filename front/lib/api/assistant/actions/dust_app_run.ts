@@ -35,11 +35,8 @@ export function renderDustAppRunActionForModel(
   action: DustAppRunActionType
 ): ModelMessageType {
   let content = "";
-  if (!action.output) {
-    throw new Error(
-      "Output not set on DustAppRun action; execution is likely not finished."
-    );
-  }
+
+  // Note action.output can be any valid JSON including null.
   content += `OUTPUT:\n`;
   content += `${JSON.stringify(action.output, null, 2)}\n`;
 
