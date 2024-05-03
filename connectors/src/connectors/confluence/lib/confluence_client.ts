@@ -164,10 +164,7 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
-        if (
-          e instanceof TypeError &&
-          e.message.includes("fetch failed: Headers Timeout Error")
-        ) {
+        if (e instanceof DOMException && e.name === "TimeoutError") {
           throw new ConfluenceClientError("Request timed out", {
             type: "http_response_error",
             status: 504,
@@ -178,8 +175,8 @@ export class ConfluenceClient {
             },
           });
         }
-        if (e instanceof DOMException && e.name === "TimeoutError") {
-          throw new ConfluenceClientError("Request timed out", {
+        if (e instanceof TypeError && e.message.includes("fetch failed")) {
+          throw new ConfluenceClientError("Confluence client unreachable", {
             type: "http_response_error",
             status: 504,
             data: {
