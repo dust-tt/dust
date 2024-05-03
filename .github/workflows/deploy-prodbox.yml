@@ -21,10 +21,6 @@ jobs:
           fetch-depth: 0
           ssh-key: "${{ secrets.PRODBOX_PRIVATE_DEPLOY_KEY }}"
 
-      - name: git remote
-        id: short_remote
-        run: git remote -v
-
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
