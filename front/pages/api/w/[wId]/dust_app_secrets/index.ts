@@ -7,18 +7,18 @@ import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-export type GetSecretsResponseBody = {
+export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
 };
 
-export type PostSecretsResponseBody = {
+export type PostDustAppSecretsResponseBody = {
   secret: DustAppSecretType;
 };
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetSecretsResponseBody | PostSecretsResponseBody>
+    WithAPIErrorReponse<GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody>
   >
 ): Promise<void> {
   const session = await getSession(req, res);

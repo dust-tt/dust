@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   CommandLineIcon,
   Dialog,
@@ -9,10 +10,10 @@ import {
   ShapesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { KeyType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { DustAppSecretType,WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
+import type {KeyType} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -36,7 +37,7 @@ import { getApps } from "@app/lib/api/app";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { modelProviders, serviceProviders } from "@app/lib/providers";
-import { useKeys, useProviders } from "@app/lib/swr";
+import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -67,6 +68,157 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     },
   };
 });
+
+export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
+  const { mutate } = useSWRConfig();
+  const defaultSecret = {name: "", value: ""};
+  const [newDustAppSecret, setNewDustAppSecret] = useState<DustAppSecretType>(defaultSecret);
+  const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
+
+  const { secrets } = useDustAppSecrets(owner);
+  const { submit: handleGenerate, isSubmitting: isGenerating } =
+    useSubmitFunction(async (secret: DustAppSecretType) => {
+      await fetch(`/api/w/${owner.sId}/dust_app_secrets`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: secret.name, value: secret.value }),
+      });
+      // const data = await res.json();
+      await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
+      setIsNewSecretPromptOpen(false);
+      setNewDustAppSecret(defaultSecret);
+    });
+
+  const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
+    async (key: KeyType) => {
+      await fetch(`/api/w/${owner.sId}/dust_app_secrets/${key.id}/disable`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      // const data = await res.json();
+      await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
+    }
+  );
+
+  return (
+    <>
+      <Dialog
+        isOpen={isNewSecretPromptOpen}
+        title="New API Key"
+        onValidate={() => handleGenerate(newDustAppSecret)}
+        onCancel={() => setIsNewSecretPromptOpen(false)}
+      >
+        <p>
+          Create a new secret to use in your Dust apps. Secrets are encrypted
+          and stored securely in our database.
+        </p>
+        <Input
+          name="Secret Name"
+          placeholder="SECRET_NAME"
+          value={newDustAppSecret.name}
+          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, name: e})}
+        />
+        <Input
+          name="Secret value"
+          placeholder="Type the secret value"
+          value={newDustAppSecret.value}
+          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, value: e})}
+        />
+      </Dialog>
+      <Page.SectionHeader
+        title="Developer Secrets"
+        description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions. "
+        action={{
+          label: "Create Developer Secret",
+          variant: "primary",
+          onClick: async () => {
+            setIsNewSecretPromptOpen(true);
+          },
+          icon: PlusIcon,
+          disabled: isGenerating || isRevoking,
+        }}
+      />
+      <div className="space-y-4 divide-y divide-gray-200">
+        <ul role="list" className="pt-4">
+          {secrets
+            .sort((a, b) => (b.status === "active" ? 1 : -1))
+            .map((key) => (
+              <li key={key.secret} className="px-2 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex flex-col">
+                      <div className="flex flex-row">
+                        <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
+                          <p
+                            className={classNames(
+                              "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
+                              key.status === "active"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            )}
+                          >
+                            {key.status === "active" ? "active" : "revoked"}
+                          </p>
+                        </div>
+                        <div>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          </p>
+                          <pre className="text-sm">{key.secret}</pre>
+                          <p className="front-normal text-xs text-element-700">
+                            Created {key.creator ? `by ${key.creator} ` : ""}
+                            {timeAgoFrom(key.createdAt, {
+                              useLongFormat: true,
+                            })}{" "}
+                            ago.
+                          </p>
+                          <p className="front-normal text-xs text-element-700">
+                            {key.lastUsedAt ? (
+                              <>
+                                Last used&nbsp;
+                                {timeAgoFrom(key.lastUsedAt, {
+                                  useLongFormat: true,
+                                })}{" "}
+                                ago.
+                              </>
+                            ) : (
+                              <>Never used</>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {key.status === "active" ? (
+                    <div>
+                      <Button
+                        variant="secondaryWarning"
+                        disabled={
+                          key.status != "active" || isRevoking || isGenerating
+                        }
+                        onClick={async () => {
+                          await handleRevoke(key);
+                        }}
+                        label="Revoke"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+        </ul>
+      </div>
+    </>
+  );
+}
 
 export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
@@ -613,10 +765,17 @@ export default function Developers({
               sizing: "expand",
             },
             {
+              label: "Dev Secrets",
+              id: "secrets",
+              current: currentTab === "secrets",
+              icon: LockIcon,
+              sizing: "expand",
+            },
+            {
               label: "API Keys",
               id: "apikeys",
               current: currentTab === "apikeys",
-              icon: LockIcon,
+              icon: BracesIcon,
               sizing: "expand",
             },
           ]}
@@ -634,6 +793,8 @@ export default function Developers({
               return <Providers owner={owner} />;
             case "apikeys":
               return <APIKeys owner={owner} />;
+            case "secrets":
+              return <DustAppSecrets owner={owner} />;
             default:
               return null;
           }

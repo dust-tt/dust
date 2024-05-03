@@ -10,6 +10,14 @@ import { Key } from "@app/lib/models/workspace";
 import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
+export type GetResponseBody = {
+  keys: KeyType[];
+};
+
+export type PostKeysResponseBody = {
+  key: KeyType;
+};
+
 export type GetKeysResponseBody = {
   keys: KeyType[];
 };
