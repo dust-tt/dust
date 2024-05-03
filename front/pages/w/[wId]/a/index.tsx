@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   CommandLineIcon,
   Dialog,
@@ -10,10 +9,10 @@ import {
   ShapesIcon,
   Tab,
 } from "@dust-tt/sparkle";
-import type { DustAppSecretType,WorkspaceType } from "@dust-tt/types";
-import type { AppType, ModelId } from "@dust-tt/types";
+import type { DustAppSecretType, WorkspaceType } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
-import type {KeyType} from "@dust-tt/types";
+import type { KeyType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -73,12 +72,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
-  const defaultSecret = {name: "", value: ""};
-  const [newDustAppSecret, setNewDustAppSecret] = useState<DustAppSecretType>(defaultSecret);
-  const [secretToRevoke, setSecretToRevoke] = useState<DustAppSecretType | null>(null);
+  const defaultSecret = { name: "", value: "" };
+  const [newDustAppSecret, setNewDustAppSecret] =
+    useState<DustAppSecretType>(defaultSecret);
+  const [secretToRevoke, setSecretToRevoke] =
+    useState<DustAppSecretType | null>(null);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext)
+  const sendNotification = useContext(SendNotificationsContext);
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -104,12 +105,15 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
-      await fetch(`/api/w/${owner.sId}/dust_app_secrets/${secret.name}/disable`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      await fetch(
+        `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/disable`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setSecretToRevoke(null);
       sendNotification({
@@ -122,32 +126,32 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
 
   const cleanSecretName = (name: string) => {
     return name.replace(/[^a-zA-Z0-9_]/g, "").toUpperCase();
-  }
+  };
 
   const handleUpdate = (secret: DustAppSecretType) => {
     setNewDustAppSecret(secret);
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
-  }
+  };
 
   return (
     <>
-    {secretToRevoke ? (
-      <Dialog
-        isOpen={true}
-        title={`Delete ${secretToRevoke?.name}`}
-        onValidate={() => handleRevoke(secretToRevoke)}
-        onCancel={() => setSecretToRevoke(null)}
-      >
-        <p className="text-sm text-gray-700">
-          Are you sure you want to delete the secret <strong>{secretToRevoke?.name}</strong>?
-        </p>
-
-      </Dialog>
-    ) : null}
+      {secretToRevoke ? (
+        <Dialog
+          isOpen={true}
+          title={`Delete ${secretToRevoke?.name}`}
+          onValidate={() => handleRevoke(secretToRevoke)}
+          onCancel={() => setSecretToRevoke(null)}
+        >
+          <p className="text-sm text-gray-700">
+            Are you sure you want to delete the secret{" "}
+            <strong>{secretToRevoke?.name}</strong>?
+          </p>
+        </Dialog>
+      ) : null}
       <Dialog
         isOpen={isNewSecretPromptOpen}
-        title={`${isInputNameDisabled ? 'Update' : 'New'} Developer Secret`}
+        title={`${isInputNameDisabled ? "Update" : "New"} Developer Secret`}
         onValidate={() => handleGenerate(newDustAppSecret)}
         onCancel={() => setIsNewSecretPromptOpen(false)}
       >
@@ -156,23 +160,29 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           placeholder="SECRET_NAME"
           value={newDustAppSecret.name}
           disabled={isInputNameDisabled}
-          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, name: cleanSecretName(e)})}
+          onChange={(e) =>
+            setNewDustAppSecret({
+              ...newDustAppSecret,
+              name: cleanSecretName(e),
+            })
+          }
         />
         <p className="text-xs text-gray-500">
           Secret names must be alphanumeric and underscore characters only.
         </p>
         <br />
-            
+
         <Input
           name="Secret value"
           placeholder="Type the secret value"
           value={newDustAppSecret.value}
-          onChange={(e) => setNewDustAppSecret({...newDustAppSecret, value: e})}
+          onChange={(e) =>
+            setNewDustAppSecret({ ...newDustAppSecret, value: e })
+          }
         />
-         <p className="text-xs text-gray-500">
-         Secrets values are encrypted
-          and stored securely in our database.
-        </p>   
+        <p className="text-xs text-gray-500">
+          Secrets values are encrypted and stored securely in our database.
+        </p>
       </Dialog>
       <Page.SectionHeader
         title="Developer Secrets"
@@ -190,36 +200,51 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
         }}
       />
       <div className="space-y-4 divide-y divide-gray-200">
-<table className="pt-4">
-  <tbody>
-    {secrets
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((secret) => (
-        <tr key={secret.name}>
-          <td className="px-2 py-4">
-            <p className={classNames("font-mono truncate text-sm text-slate-700")}>
-              <strong>{secret.name}</strong>
-            </p>
-          </td>
-          <td>
-          </td>
-          <td className="px-2 py-4 w-full">
-            <pre className="text-sm bg-zinc-100 p-2">{secret.value}</pre>
-          </td>
-          <td className="px-2">
-            <Button variant="secondary" disabled={isRevoking || isGenerating} onClick={async () => {
-              handleUpdate(secret);
-            }} label="Update" />
-          </td>
-          <td>
-            <Button variant="secondaryWarning" disabled={isRevoking || isGenerating} onClick={async () => {
-              await setSecretToRevoke(secret);
-            }} label="Delete" />
-          </td>
-        </tr>
-      ))}
-  </tbody>
-</table>
+        <table className="pt-4">
+          <tbody>
+            {secrets
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((secret) => (
+                <tr key={secret.name}>
+                  <td className="px-2 py-4">
+                    <p
+                      className={classNames(
+                        "font-mono truncate text-sm text-slate-700"
+                      )}
+                    >
+                      <strong>{secret.name}</strong>
+                    </p>
+                  </td>
+                  <td></td>
+                  <td className="w-full px-2 py-4">
+                    <pre className="bg-zinc-100 p-2 text-sm">
+                      {secret.value}
+                    </pre>
+                  </td>
+                  <td className="px-2">
+                    <Button
+                      variant="secondary"
+                      disabled={isRevoking || isGenerating}
+                      onClick={async () => {
+                        handleUpdate(secret);
+                      }}
+                      label="Update"
+                    />
+                  </td>
+                  <td>
+                    <Button
+                      variant="secondaryWarning"
+                      disabled={isRevoking || isGenerating}
+                      onClick={async () => {
+                        await setSecretToRevoke(secret);
+                      }}
+                      label="Delete"
+                    />
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
     </>
   );

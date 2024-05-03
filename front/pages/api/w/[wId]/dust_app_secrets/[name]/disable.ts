@@ -31,12 +31,12 @@ async function handler(
   }
 
   const secret = await DustAppSecret.findOne({
-      where: {
-        name: req.query.name,
-        workspaceId: owner.id,
-        status: "active"
-      },
-    });
+    where: {
+      name: req.query.name,
+      workspaceId: owner.id,
+      status: "active",
+    },
+  });
 
   if (!secret) {
     res.status(404).end();
@@ -49,7 +49,7 @@ async function handler(
         status: "disabled",
       });
 
-      console.log('DISABLING SECRET')
+      console.log("DISABLING SECRET");
 
       res.status(200).json({
         secret: {

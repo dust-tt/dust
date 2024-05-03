@@ -40,7 +40,7 @@ import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
-import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets"; 
+import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
@@ -165,7 +165,10 @@ export function useRunBlock(
 
 export function useDustAppSecrets(owner: WorkspaceType) {
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
-  const { data, error } = useSWR(`/api/w/${owner.sId}/dust_app_secrets`, keysFetcher);
+  const { data, error } = useSWR(
+    `/api/w/${owner.sId}/dust_app_secrets`,
+    keysFetcher
+  );
 
   return {
     secrets: useMemo(() => (data ? data.secrets : []), [data]),

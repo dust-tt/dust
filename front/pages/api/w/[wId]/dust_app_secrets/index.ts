@@ -18,7 +18,9 @@ export type PostDustAppSecretsResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorReponse<GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody>
+    WithAPIErrorReponse<
+      GetDustAppSecretsResponseBody | PostDustAppSecretsResponseBody
+    >
   >
 ): Promise<void> {
   const session = await getSession(req, res);
@@ -125,7 +127,7 @@ async function handler(
         },
       });
 
-      if(postSecret) {
+      if (postSecret) {
         await postSecret.update({
           hash: encryptedValue,
         });
