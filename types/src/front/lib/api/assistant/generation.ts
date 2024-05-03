@@ -27,14 +27,14 @@ export type UserMessageTypeModel = {
 export type AssistantFunctionCallMessageTypeModel = {
   role: "assistant";
   content: string | null;
-  function_call: {
+  function_calls: {
     id: string;
     type: "function";
     function: {
       name: string;
       arguments: string;
     };
-  };
+  }[];
 };
 export type AssistantContentMessageTypeModel = {
   role: "assistant";

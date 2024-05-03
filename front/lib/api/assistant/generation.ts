@@ -386,7 +386,13 @@ export async function renderConversationForModelMultiActions({
   const [messagesCountRes, promptCountRes] = await Promise.all([
     Promise.all(
       messages.map((m) => {
-        return tokenCountForText(JSON.stringify(m), model); // todo optimise this instead of stringify
+        let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        if ("function_calls" in m) {
+          text += m.function_calls
+            .map((f) => `${f.function.name} ${f.function.arguments}`)
+            .join(" ");
+        }
+        return tokenCountForText(text, model);
       })
     ),
     tokenCountForText(prompt, model),

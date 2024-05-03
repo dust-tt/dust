@@ -51,14 +51,16 @@ export function renderAssistantFunctionCallMessageForTablesQueryAction(
   return {
     role: "assistant" as const,
     content: null,
-    function_call: {
-      id: action.id.toString(), // @todo Daph replace with the actual tool id
-      type: "function",
-      function: {
-        name: "query_tables",
-        arguments: JSON.stringify(action.params),
+    function_calls: [
+      {
+        id: action.id.toString(), // @todo Daph replace with the actual tool id
+        type: "function",
+        function: {
+          name: "query_tables",
+          arguments: JSON.stringify(action.params),
+        },
       },
-    },
+    ],
   };
 }
 export function renderFunctionMessageForForTablesQueryAction(
