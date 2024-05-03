@@ -1,9 +1,10 @@
 import type { DustAppSecretType } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
-import { withLogging } from "@app/logger/withlogging";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostDustAppSecretsResponseBody = {
   secret: DustAppSecretType;
@@ -11,7 +12,7 @@ export type PostDustAppSecretsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostDustAppSecretsResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<PostDustAppSecretsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -58,7 +59,13 @@ async function handler(
       return;
 
     default:
-      res.status(405).end();
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
       return;
   }
 }
