@@ -10,7 +10,6 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { classNames } from "@app/lib/utils";
 
 const deleteDataSource = ({
@@ -56,13 +55,13 @@ export function isActionRetrievalSearchValid(
 
 export function ActionRetrievalSearch({
   owner,
-  builderState,
+  action,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  action: AssistantBuilderActionConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -70,7 +69,7 @@ export function ActionRetrievalSearch({
   dataSources: DataSourceType[];
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const action = useDeprecatedDefaultSingleAction(builderState);
+
   if (!action || action.type !== "RETRIEVAL_SEARCH") {
     return null;
   }
@@ -135,13 +134,13 @@ export function isActionRetrievalExhaustiveValid(
 
 export function ActionRetrievalExhaustive({
   owner,
-  builderState,
+  action,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  action: AssistantBuilderActionConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -151,7 +150,6 @@ export function ActionRetrievalExhaustive({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
-  const action = useDeprecatedDefaultSingleAction(builderState);
   if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
     return null;
   }

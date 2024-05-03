@@ -223,7 +223,7 @@ export default function ActionScreen({
   };
 
   // TODO(@fontanierh): handle multi-actions
-  const action = useDeprecatedDefaultSingleAction(builderState);
+  const action = useDeprecatedDefaultSingleAction(builderState) ?? null;
 
   const dataSourceConfigs =
     action && "dataSourceConfigurations" in action.configuration
@@ -425,7 +425,7 @@ export default function ActionScreen({
         >
           <ActionRetrievalSearch
             owner={owner}
-            builderState={builderState}
+            action={action}
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -437,7 +437,7 @@ export default function ActionScreen({
         >
           <ActionRetrievalExhaustive
             owner={owner}
-            builderState={builderState}
+            action={action}
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -447,7 +447,7 @@ export default function ActionScreen({
         <ActionModeSection show={action?.type === "PROCESS" && !noDataSources}>
           <ActionProcess
             owner={owner}
-            builderState={builderState}
+            action={action}
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -459,7 +459,7 @@ export default function ActionScreen({
         >
           <ActionTablesQuery
             owner={owner}
-            builderState={builderState}
+            action={action}
             dataSources={dataSources}
             setBuilderState={setBuilderState}
             setEdited={setEdited}
@@ -469,7 +469,7 @@ export default function ActionScreen({
         <ActionModeSection show={action?.type === "DUST_APP_RUN"}>
           <ActionDustAppRun
             owner={owner}
-            builderState={builderState}
+            action={action}
             dustApps={dustApps}
             setBuilderState={setBuilderState}
             setEdited={setEdited}

@@ -10,7 +10,6 @@ import type {
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultTablesQueryActionConfiguration } from "@app/components/assistant_builder/types";
-import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { tableKey } from "@app/lib/client/tables_query";
 
 export function isActionTablesQueryValid(
@@ -24,13 +23,13 @@ export function isActionTablesQueryValid(
 
 export function ActionTablesQuery({
   owner,
-  builderState,
+  action,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  action: AssistantBuilderActionConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -38,7 +37,6 @@ export function ActionTablesQuery({
   dataSources: DataSourceType[];
 }) {
   const [showTableModal, setShowTableModal] = useState(false);
-  const action = useDeprecatedDefaultSingleAction(builderState);
 
   return (
     <>

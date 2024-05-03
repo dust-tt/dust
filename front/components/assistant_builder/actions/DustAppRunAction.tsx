@@ -10,7 +10,6 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultDustAppRunActionConfiguration } from "@app/components/assistant_builder/types";
-import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -20,13 +19,13 @@ export function isActionDustAppRunValid(
 
 export function ActionDustAppRun({
   owner,
-  builderState,
+  action,
   setBuilderState,
   setEdited,
   dustApps,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  action: AssistantBuilderActionConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -34,7 +33,6 @@ export function ActionDustAppRun({
   dustApps: AppType[];
 }) {
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
-  const action = useDeprecatedDefaultSingleAction(builderState);
 
   const deleteDustApp = () => {
     setEdited(true);

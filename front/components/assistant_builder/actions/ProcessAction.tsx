@@ -24,7 +24,6 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { classNames } from "@app/lib/utils";
 
 export function isActionProcessValid(
@@ -220,13 +219,13 @@ function PropertiesFields({
 
 export function ActionProcess({
   owner,
-  builderState,
+  action,
   setBuilderState,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
+  action: AssistantBuilderActionConfiguration | null;
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
@@ -236,7 +235,6 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
-  const action = useDeprecatedDefaultSingleAction(builderState);
   if (!action || action.type !== "PROCESS") {
     return null;
   }
