@@ -37,7 +37,15 @@ export function ActionDustAppRun({
   const deleteDustApp = () => {
     setEdited(true);
     setBuilderState((state) => {
-      return { ...state, dustAppConfiguration: { app: null } };
+      const action = state.actions[0];
+      if (!action || action.type !== "DUST_APP_RUN") {
+        return state;
+      }
+      action.configuration.app = null;
+      return {
+        ...state,
+        actions: [action],
+      };
     });
   };
 
@@ -57,12 +65,17 @@ export function ActionDustAppRun({
         dustApps={dustApps}
         onSave={({ app }) => {
           setEdited(true);
-          setBuilderState((state) => ({
-            ...state,
-            dustAppConfiguration: {
-              app,
-            },
-          }));
+          setBuilderState((state) => {
+            const action = state.actions[0];
+            if (!action || action.type !== "DUST_APP_RUN") {
+              return state;
+            }
+            action.configuration.app = app;
+            return {
+              ...state,
+              actions: [action],
+            };
+          });
         }}
       />
 
