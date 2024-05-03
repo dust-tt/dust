@@ -165,16 +165,14 @@ export function renderAssistantFunctionCallMessageForRetrievalAction(
   return {
     role: "assistant" as const,
     content: null,
-    functionCalls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: "search_data_sources",
-          arguments: JSON.stringify(params),
-        },
+    function_call: {
+      id: action.id.toString(), // @todo Daph replace with the actual tool id
+      type: "function",
+      function: {
+        name: "search_data_sources",
+        arguments: JSON.stringify(params),
       },
-    ],
+    },
   };
 }
 export function renderFunctionMessageForRetrievalAction(
@@ -211,7 +209,7 @@ export function renderFunctionMessageForRetrievalAction(
 
   return {
     role: "function" as const,
-    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

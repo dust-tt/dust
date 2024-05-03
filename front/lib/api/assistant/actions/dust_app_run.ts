@@ -54,16 +54,14 @@ export function renderAssistantFunctionCallMessageForDustAppRunAction(
   return {
     role: "assistant" as const,
     content: null,
-    functionCalls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: action.appName,
-          arguments: JSON.stringify(action.params),
-        },
+    function_call: {
+      id: action.id.toString(), // @todo Daph replace with the actual tool id
+      type: "function",
+      function: {
+        name: action.appName,
+        arguments: JSON.stringify(action.params),
       },
-    ],
+    },
   };
 }
 export function renderFunctionMessageForForDustAppRunAction(
@@ -80,7 +78,7 @@ export function renderFunctionMessageForForDustAppRunAction(
 
   return {
     role: "function" as const,
-    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

@@ -76,16 +76,14 @@ export function renderAssistantFunctionCallMessageForProcessAction(
   return {
     role: "assistant" as const,
     content: null,
-    functionCalls: [
-      {
-        id: action.id.toString(), // @todo Daph replace with the actual tool id
-        type: "function",
-        function: {
-          name: "process_data_sources",
-          arguments: JSON.stringify(action.params),
-        },
+    function_call: {
+      id: action.id.toString(), // @todo Daph replace with the actual tool id
+      type: "function",
+      function: {
+        name: "process_data_sources",
+        arguments: JSON.stringify(action.params),
       },
-    ],
+    },
   };
 }
 export function renderFunctionMessageForForProcessAction(
@@ -110,7 +108,7 @@ export function renderFunctionMessageForForProcessAction(
 
   return {
     role: "function" as const,
-    functionCallId: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
