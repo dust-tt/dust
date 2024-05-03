@@ -370,10 +370,17 @@ function Suggestions({
 
     const updateSuggestions = async () => {
       setSuggestionsStatus("loading");
+      // suggestions that are shown by default when no instructions are typed,
+      // are not considered as former suggestions. This way, the model will
+      // always generate tailored suggestions on the first input, which is preferable:
+      // - the user is more likely to be interested (since they likely saw the static suggestions before)
+      // - the model is not biased by static suggestions to generate new ones.
+      const formerSuggestions =
+        suggestions === STATIC_SUGGESTIONS ? [] : suggestions.slice(0, 2);
       const updatedSuggestions = await getRankedSuggestions({
         owner,
         currentInstructions: instructions,
-        formerSuggestions: suggestions.slice(0, 2),
+        formerSuggestions,
       });
       if (updatedSuggestions.isErr()) {
         setError(updatedSuggestions.error);
