@@ -1,10 +1,8 @@
 import type {
   AgentActionType,
-  DustAppParameters,
   MessageWithRankType,
   ModelId,
   Result,
-  TablesQueryActionType,
 } from "@dust-tt/types";
 import type {
   AgentMessageType,
@@ -17,10 +15,10 @@ import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
+import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentMessage,
   Conversation,
@@ -160,25 +158,7 @@ export async function batchRenderAgentMessages(
     })(),
     (async () => retrievalActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () => {
-      const actions = await AgentTablesQueryAction.findAll({
-        where: {
-          id: {
-            [Op.in]: agentMessages
-              .filter((m) => m.agentMessage?.agentTablesQueryActionId)
-              .map((m) => m.agentMessage?.agentTablesQueryActionId as number),
-          },
-        },
-      });
-      return actions.map((action) => {
-        return {
-          id: action.id,
-          type: "tables_query_action",
-          params: action.params as DustAppParameters,
-          output: action.output as Record<string, string | number | boolean>,
-        } satisfies TablesQueryActionType;
-      });
-    })(),
+    (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
@@ -211,10 +191,14 @@ export async function batchRenderAgentMessages(
           (a) => a.agentMessageId === agentMessage.id
         ) || null;
     }
-    if (agentMessage.agentTablesQueryActionId) {
+    if (
+      agentTablesQueryActions.filter(
+        (a) => a.agentMessageId === agentMessage.id
+      ).length > 0
+    ) {
       action =
         agentTablesQueryActions.find(
-          (a) => a.id === agentMessage.agentTablesQueryActionId
+          (a) => a.agentMessageId === agentMessage.id
         ) || null;
     }
     if (
