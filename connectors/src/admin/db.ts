@@ -56,7 +56,7 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main(): Promise<void> {
-  sendInitDbMessage({
+  await sendInitDbMessage({
     service: "connectors",
     logger: logger,
   });
