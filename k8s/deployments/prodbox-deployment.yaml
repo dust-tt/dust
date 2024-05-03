@@ -46,6 +46,8 @@ spec:
               mountPath: /etc/private-keys
             - name: service-account-volume
               mountPath: /etc/service-accounts
+            - name: github-deploykey-deploybox
+              mountPath: /etc/github-deploykey-deploybox
 
           resources:
             requests:
@@ -69,3 +71,7 @@ spec:
         - name: service-account-volume
           secret:
             secretName: gcp-service-account-secret
+
+        - name: github-deploykey-deploybox
+          secret:
+            secretName: github-deploykey-deploybox
