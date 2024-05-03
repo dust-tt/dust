@@ -21,6 +21,9 @@ done
 
 # If in safe mode, ensure the repository is on the main branch and up-to-date
 if [[ $SAFE_MODE -eq 1 ]]; then
+    # We need to stash any changes to ensure the working directory is clean.
+    # This is necessary because some files are being skipped by the .dockerignore file during the docker build process.
+    git stash
     # Check if on main branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [[ $CURRENT_BRANCH != "$BRANCH_NAME" ]]; then
@@ -45,13 +48,13 @@ if [[ $SAFE_MODE -eq 1 ]]; then
         echo "Error: Local branch is not up-to-date with remote "$BRANCH_NAME". Aborting."
         exit 1
     else
-        echo "Local branch is up-to-date with remote "$BRANCH_NAME"."
+        echo "Local branch is up-to-date with remote "$BRANCH_NAME". Will proceed. Dirty directory has been STASHED."
     fi
 fi
 
 
+echo "Running initdb"
 # Database initialization procedures go here
 
-echo "Running initdb..."
 npx tsx admin/db.ts
 
