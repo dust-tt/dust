@@ -1,5 +1,5 @@
 import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
-import { decrypt, encrypt, rateLimiter } from "@dust-tt/types";
+import { decrypt, encrypt, rateLimiter, redactString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -83,30 +83,10 @@ async function handler(
           return {
             createdAt: s.createdAt.getTime(),
             name: s.name,
-            value: clearSecret,
+            value: redactString(clearSecret, 1),
           };
         }),
       });
-      return;
-
-    case "DELETE":
-      const { name: deleteSecretName } = req.body;
-      const secret = await DustAppSecret.findOne({
-        where: {
-          name: deleteSecretName,
-          workspaceId: owner.id,
-        },
-      });
-
-      if (!secret) {
-        // Silently fail to avoid bruteforce.
-        res.status(204).end();
-        return;
-      }
-
-      await secret.destroy();
-
-      res.status(204).end();
       return;
 
     case "POST":

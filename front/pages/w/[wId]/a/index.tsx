@@ -128,7 +128,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   };
 
   const handleUpdate = (secret: DustAppSecretType) => {
-    setNewDustAppSecret(secret);
+    setNewDustAppSecret({...secret, value: ""});
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
   };

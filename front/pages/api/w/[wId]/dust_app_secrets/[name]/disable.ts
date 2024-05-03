@@ -35,7 +35,6 @@ async function handler(
     where: {
       name: req.query.name,
       workspaceId: owner.id,
-      status: "active",
     },
   });
 
@@ -46,14 +45,12 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      await secret.update({
-        status: "disabled",
-      });
+      await secret.destroy()
 
       res.status(200).json({
         secret: {
-          name: secret.name,
-          value: "REDACTED",
+          name: "DELETED",
+          value: "DELETED",
         },
       });
       return;
