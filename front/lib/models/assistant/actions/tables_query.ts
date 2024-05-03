@@ -168,7 +168,7 @@ export class AgentTablesQueryAction extends Model<
 
   declare params: unknown | null;
   declare output: unknown | null;
-  declare agentMessageId: ForeignKey<AgentMessage["id"]> | null;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 
 AgentTablesQueryAction.init(
