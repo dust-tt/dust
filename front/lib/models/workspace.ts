@@ -291,7 +291,6 @@ export class DustAppSecret extends Model<
 
   declare name: string;
   declare hash: string;
-  declare status: "active" | "disabled";
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -317,17 +316,12 @@ DustAppSecret.init(
     hash: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "active",
-    },
+    }
   },
   {
     modelName: "dust_app_secrets",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["status", "workspaceId"] }],
+    indexes: [{ fields: ["workspaceId"] }],
   }
 );
 Workspace.hasMany(DustAppSecret, {

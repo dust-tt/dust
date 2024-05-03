@@ -73,7 +73,6 @@ async function handler(
       const secrets = await DustAppSecret.findAll({
         where: {
           workspaceId: owner.id,
-          status: "active",
         },
         order: [["name", "DESC"]],
       });
@@ -96,7 +95,6 @@ async function handler(
         where: {
           name: deleteSecretName,
           workspaceId: owner.id,
-          status: "active",
         },
       });
 
@@ -106,9 +104,7 @@ async function handler(
         return;
       }
 
-      await secret.update({
-        status: "disabled",
-      });
+      await secret.destroy();
 
       res.status(204).end();
       return;
@@ -123,7 +119,6 @@ async function handler(
         where: {
           name: postSecretName,
           workspaceId: owner.id,
-          status: "active",
         },
       });
 
@@ -136,8 +131,7 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           name: postSecretName,
-          hash: encryptedValue,
-          status: "active",
+          hash: encryptedValue
         });
       }
 

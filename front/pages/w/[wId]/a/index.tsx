@@ -92,7 +92,6 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
         },
         body: JSON.stringify({ name: secret.name, value: secret.value }),
       });
-      // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
       setIsNewSecretPromptOpen(false);
       setNewDustAppSecret(defaultSecret);
@@ -108,7 +107,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
       await fetch(
         `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/disable`,
         {
-          method: "POST",
+          method: "DELETE",
           headers: {
             "Content-Type": "application/json",
           },
