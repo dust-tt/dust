@@ -75,6 +75,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
   const defaultSecret = {name: "", value: ""};
   const [newDustAppSecret, setNewDustAppSecret] = useState<DustAppSecretType>(defaultSecret);
+  const [secretToRevoke, setSecretToRevoke] = useState<DustAppSecretType | null>(null);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useContext(SendNotificationsContext)
@@ -110,6 +111,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
         },
       });
       await mutate(`/api/w/${owner.sId}/dust_app_secrets`);
+      setSecretToRevoke(null);
     }
   );
 
@@ -125,14 +127,25 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
 
   return (
     <>
+    {secretToRevoke ? (
+      <Dialog
+        isOpen={true}
+        title={`Delete ${secretToRevoke?.name}`}
+        onValidate={() => handleRevoke(secretToRevoke)}
+        onCancel={() => setSecretToRevoke(null)}
+      >
+        <p className="text-sm text-gray-700">
+          Are you sure you want to delete the secret <strong>{secretToRevoke?.name}</strong>?
+        </p>
+
+      </Dialog>
+    ) : null}
       <Dialog
         isOpen={isNewSecretPromptOpen}
         title={`${isInputNameDisabled ? 'Update' : 'New'} Developer Secret`}
         onValidate={() => handleGenerate(newDustAppSecret)}
         onCancel={() => setIsNewSecretPromptOpen(false)}
       >
-        
-
         <Input
           name="Secret Name"
           placeholder="SECRET_NAME"
@@ -190,12 +203,12 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           </td>
           <td className="px-2">
             <Button variant="secondary" disabled={isRevoking || isGenerating} onClick={async () => {
-              await handleUpdate(secret);
+              handleUpdate(secret);
             }} label="Update" />
           </td>
           <td>
             <Button variant="secondaryWarning" disabled={isRevoking || isGenerating} onClick={async () => {
-              await handleRevoke(secret);
+              await setSecretToRevoke(secret);
             }} label="Delete" />
           </td>
         </tr>
