@@ -4,6 +4,7 @@ import type {
   AgentMessageType,
   ConversationType,
   DustAppParameters,
+  ModelId,
   ModelMessageType,
   Result,
   TablesQueryActionType,
@@ -41,6 +42,28 @@ export function renderTablesQueryActionForModel(
     name: "query_tables",
     content,
   };
+}
+
+// Internal interface for the retrieval and rendering of a TableQuery action. This should not be
+// used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
+// actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+export async function tableQueryTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<TablesQueryActionType[]> {
+  const actions = await AgentTablesQueryAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+  return actions.map((action) => {
+    return {
+      id: action.id,
+      type: "tables_query_action",
+      params: action.params as DustAppParameters,
+      output: action.output as Record<string, string | number | boolean>,
+      agentMessageId: action.agentMessageId,
+    } satisfies TablesQueryActionType;
+  });
 }
 
 /**
@@ -153,6 +176,7 @@ export async function* runTablesQuery(
       type: "tables_query_action",
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
+      agentMessageId: action.agentMessageId,
     },
   };
 
@@ -287,6 +311,7 @@ export async function* runTablesQuery(
             type: "tables_query_action",
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
+            agentMessageId: agentMessage.id,
           },
         };
       }
@@ -315,6 +340,7 @@ export async function* runTablesQuery(
       type: "tables_query_action",
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
+      agentMessageId: action.agentMessageId,
     },
   };
   return;
