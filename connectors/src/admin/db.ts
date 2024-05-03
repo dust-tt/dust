@@ -1,3 +1,4 @@
+import { sendInitDbMessage } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 
 import {
@@ -55,6 +56,10 @@ import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main(): Promise<void> {
+  await sendInitDbMessage({
+    service: "connectors",
+    logger: logger,
+  });
   await ConnectorModel.sync({ alter: true });
   await ConfluenceConfiguration.sync({ alter: true });
   await ConfluencePage.sync({ alter: true });
