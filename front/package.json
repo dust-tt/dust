@@ -10,7 +10,7 @@
     "tsc": "tsc",
     "test": "jest",
     "coverage": "jest --coverage",
-    "initdb": "npx tsx admin/db.ts"
+    "initdb": "./admin/init_db.sh"
   },
   "dependencies": {
     "@amplitude/ampli": "^1.35.0",
@@ -168,6 +168,7 @@
     "net": false,
     "tls": false,
     "fs": false,
-    "dgram": false
+    "dgram": false,
+    "child_process": false
   }
 }

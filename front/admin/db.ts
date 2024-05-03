@@ -1,3 +1,5 @@
+import { sendInitDbMessage } from "@dust-tt/types";
+
 import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -59,8 +61,13 @@ import {
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import logger from "@app/logger/logger";
 
 async function main() {
+  sendInitDbMessage({
+    service: "front",
+    logger: logger,
+  });
   await User.sync({ alter: true });
   await UserMetadata.sync({ alter: true });
   await Workspace.sync({ alter: true });
