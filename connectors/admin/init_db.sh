@@ -21,6 +21,9 @@ done
 
 # If in safe mode, ensure the repository is on the main branch and up-to-date
 if [[ $SAFE_MODE -eq 1 ]]; then
+    # We need to stash any changes to ensure the working directory is clean.
+    # This is necessary because some files are being skipped by the .dockerignore file during the docker build process.
+    git stash
     # Check if on main branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [[ $CURRENT_BRANCH != "$BRANCH_NAME" ]]; then
@@ -28,8 +31,19 @@ if [[ $SAFE_MODE -eq 1 ]]; then
         exit 1
     fi
 
+    # only allow to pull via fast-forward
+    git config pull.ff only
+
+    # Setting up the ssh key to pull from Github
+    # we need to copy the key from the mounted volume because ssh only accept keys
+    # that are not readable by others and we can't chmod on the mounted volume.
+    mkdir -p ~/.ssh
+    cp /etc/github-deploykey-deploybox/github-deploykey-deploybox ~/.ssh/github-deploykey-deploybox
+    chmod 600 ~/.ssh/github-deploykey-deploybox
+     
+
     # Check if local is up-to-date with remote main
-    git fetch origin "$BRANCH_NAME" && git diff --exit-code "origin/$BRANCH_NAME" > /dev/null
+    GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox" git fetch origin "$BRANCH_NAME" && git diff --exit-code "origin/$BRANCH_NAME" > /dev/null
     if [ $? -ne 0 ]; then
         echo "Error: Local branch is not up-to-date with remote "$BRANCH_NAME". Aborting."
         exit 1
@@ -39,5 +53,7 @@ if [[ $SAFE_MODE -eq 1 ]]; then
 fi
 
 
+echo "Running initdb..."
 # Database initialization procedures go here
+
 npx tsx src/admin/db.ts
