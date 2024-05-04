@@ -649,7 +649,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
             `Failed to renew webhook: Oauth token revoked .`
           );
           // Do not delete the webhook object but push it down the line in 2h so that it does not get
-          // picked up by the loop calling rewnewOneWebhook.
+          // picked up by this loop again
           await wh.update({
             renewAt: literal("NOW() + INTERVAL '2 hour'"),
           });
@@ -672,7 +672,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
             tags
           );
           // Do not delete the webhook object but push it down the line in 2h so that it does not get
-          // picked up by the loop calling rewnewOneWebhook.
+          // picked up by this loop again
           await wh.update({
             renewAt: literal("NOW() + INTERVAL '2 hour'"),
           });
