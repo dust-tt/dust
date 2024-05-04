@@ -97,7 +97,7 @@ export async function ensureWebhookForDriveId(
 
     return new Ok(webhook.webhookId);
   }
-  return new Ok(undefined);
+  return new Ok(webhook.webhookId);
 }
 
 export async function registerWebhook(
