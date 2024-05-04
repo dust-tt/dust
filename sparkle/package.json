@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.158",
+  "version": "0.2.151",
   "scripts": {
     "build": "rm -rf dist && rollup -c",
     "build:with-tw-base": "rollup -c --environment INCLUDE_TW_BASE:true",
@@ -81,18 +81,11 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.17",
-    "@radix-ui/react-slot": "^1.0.2",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.1",
     "emoji-mart": "^5.5.2",
     "esbuild": "^0.20.0",
-    "framer-motion": "^11.1.7",
     "lottie-react": "^2.4.0",
-    "lucide-react": "^0.376.0",
     "react-confetti": "^6.1.0",
     "react-markdown": "^9.0.1",
-    "tailwind-merge": "^2.3.0",
-    "tailwind-scrollbar-hide": "^1.1.7",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwind-scrollbar-hide": "^1.1.7"
   }
 }
