@@ -17,7 +17,7 @@ interface BaseAssistantPreviewProps {
 
 type ItemVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "item";
-  actions?: React.ReactNode;
+  actions: React.ReactNode;
 };
 
 type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
