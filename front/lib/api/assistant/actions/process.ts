@@ -59,8 +59,12 @@ export function renderProcessActionForModel(
   // TODO(spolu): figure out if we want to add the schema here?
 
   if (action.outputs) {
-    for (const o of action.outputs.data) {
-      content += `${JSON.stringify(o)}\n`;
+    if (action.outputs.data.length === 0) {
+      content += "(none)\n";
+    } else {
+      for (const o of action.outputs.data) {
+        content += `${JSON.stringify(o)}\n`;
+      }
     }
   }
 
