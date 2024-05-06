@@ -99,6 +99,7 @@ export default function ActionsScreen({
 
   const upsertAction = useCallback(
     (newAction: AssistantBuilderActionConfiguration) => {
+      setEdited(true);
       setBuilderState((state) => {
         let found = false;
         const newActions = state.actions.map((action) => {
@@ -117,11 +118,12 @@ export default function ActionsScreen({
         };
       });
     },
-    [setBuilderState]
+    [setBuilderState, setEdited]
   );
 
   const updateAction = useCallback(
     (name: string, newAction: AssistantBuilderActionConfiguration) => {
+      setEdited(true);
       setBuilderState((state) => {
         return {
           ...state,
@@ -129,11 +131,12 @@ export default function ActionsScreen({
         };
       });
     },
-    [setBuilderState]
+    [setBuilderState, setEdited]
   );
 
   const deleteAction = useCallback(
     (name: string) => {
+      setEdited(true);
       setBuilderState((state) => {
         return {
           ...state,
@@ -141,7 +144,7 @@ export default function ActionsScreen({
         };
       });
     },
-    [setBuilderState]
+    [setBuilderState, setEdited]
   );
 
   const allActionsValid = builderState.actions.every(isActionValid);
@@ -362,7 +365,7 @@ function NewActionModal({
               newAction.name = newAction.name.trim();
               newAction.description = newAction.description.trim();
               onSave(newAction);
-              onClose();
+              onCloseLocal();
             }
           : undefined
       }
