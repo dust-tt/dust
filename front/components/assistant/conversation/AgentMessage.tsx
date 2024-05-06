@@ -408,7 +408,7 @@ export function AgentMessage({
     // Loading state (no action nor text yet)
     if (
       agentMessage.status === "created" &&
-      action === null &&
+      !action &&
       (!agentMessage.content || agentMessage.content === "")
     ) {
       return (
