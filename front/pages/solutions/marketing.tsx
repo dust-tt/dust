@@ -53,14 +53,8 @@ export default function Marketing() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Marketing Teams"
-        title={
-          <>
-            Ensure brand voice
-            <br />
-            and&nbsp;content consistency across all&nbsp;mediums and&nbsp;teams.
-          </>
-        }
+        uptitle="Dust for Marketing"
+        title={<>Enhance Content Production and&nbsp;Creativity</>}
         from="from-pink-200"
         to="to-pink-500"
         subtitle={
@@ -78,7 +72,7 @@ export default function Marketing() {
             <>
               Create better content,
               <br />
-              faster and on-brand.
+              faster and&nbsp;on-brand
             </>
           }
           blocks={[
@@ -86,46 +80,26 @@ export default function Marketing() {
               color: "pink",
               contentBlocks: [
                 {
-                  title: (
-                    <>
-                      Accelerate your&nbsp;content generation across&nbsp;blogs,
-                      websites, and&nbsp;social media.
-                    </>
-                  ),
+                  title: <>Consistent content at&nbsp;last</>,
                   content: (
                     <>
-                      Your assistants integrate with your&nbsp;brand's voice
-                      and&nbsp;past content, making&nbsp;creation quick
-                      and&nbsp;intuitive.
+                      Uses assistants to&nbsp;ensure consistency across teams
+                      and&nbsp;customer touchpoints. Leverage
+                      your&nbsp;carefully crafted brand voice guidelines
+                      and&nbsp;past content to&nbsp;support a&nbsp;quick
+                      and&nbsp;intuitive creative process.
                     </>
                   ),
                 },
                 {
-                  title: (
-                    <>
-                      Unified brand voice and&nbsp;content consistency across
-                      all&nbsp;mediums and&nbsp;teams.
-                    </>
-                  ),
+                  title: <>Cross-posting made easy</>,
                   content: (
                     <>
-                      Ensure your Product, Brand, Sales, and&nbsp;Success teams
-                      create consistent content on&nbsp;every touchpoint.
+                      Generate inspired and&nbsp;aligned versions of&nbsp;your
+                      content adapted to&nbsp;blogs, websites, product
+                      documentation, and&nbsp;social media faster.
                     </>
                   ),
-                },
-                {
-                  title: <>Repurpose with&nbsp;purpose.</>,
-                  content: [
-                    <>
-                      Repackage past materials into&nbsp;fresh content
-                      for&nbsp;your blogs, social media, and&nbsp;product
-                      documentation.
-                    </>,
-                    <>
-                      Maximize your&nbsp;past investments and&nbsp;learnings.
-                    </>,
-                  ],
                 },
               ],
               assistantBlocks: [assistantExamples[0], assistantExamples[1]],
@@ -134,67 +108,46 @@ export default function Marketing() {
         />
 
         <SolutionSection
-          title="Gain competitive insights."
-          blocks={[
-            {
-              color: "pink",
-              contentBlocks: {
-                title: <>Set up a&nbsp;live competitive intelligence feed.</>,
-                content: [
-                  <>
-                    Gain an edge by&nbsp;creating competitive analysis
-                    assistants and&nbsp;improve your market intelligence
-                    velocity and&nbsp;impact.
-                  </>,
-                  <>
-                    Dive into&nbsp;competitors' strategies, extract insights,
-                    and&nbsp;generate reports to&nbsp;inform
-                    your&nbsp;decisions.
-                  </>,
-                ],
-              },
-              assistantBlocks: assistantExamples[4],
-            },
-          ]}
-        />
-
-        <SolutionSection
-          title={
-            <>
-              Marketing, Sales, Product, Support&nbsp;teams, hands
-              in&nbsp;hands.
-            </>
-          }
+          title={<>AI Power-ups for&nbsp;each team and&nbsp;on&nbsp;demand</>}
           blocks={[
             {
               color: "pink",
               contentBlocks: [
                 {
-                  title: <>Simplify collaboration across&nbsp;teams.</>,
+                  title: <>Set up a&nbsp;live competitive intelligence feed.</>,
                   content: [
                     <>
-                      Create assistants to&nbsp;bridge the&nbsp;gap between
-                      Marketing, Sales, Product, and&nbsp;Support.
+                      Bridge the&nbsp;gap with Sales, Product, and&nbsp;Support
+                      teams by&nbsp;translating marketing decisions, objectives,
+                      and&nbsp;strategies into their&nbsp;language.
                     </>,
                     <>
-                      Translate marketing decisions, objectives,
-                      and&nbsp;strategies into the&nbsp;language of
-                      the&nbsp;recipient team.
+                      Easily generate content and&nbsp;insights leveraging
+                      competitive intelligence and&nbsp;the positioning you've
+                      decided on.
                     </>,
                   ],
                 },
                 {
-                  title: <>Level everyone’s data analysis playing field.</>,
-                  content: (
+                  title: <>Man the&nbsp;battle card stations.</>,
+                  content: [
                     <>
-                      Point this assistant to&nbsp;CSV data with answers
-                      to&nbsp;marketing and&nbsp;user surveys to&nbsp;categorize
-                      answers and get&nbsp;insights.
-                    </>
-                  ),
+                      Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
+                      market and&nbsp;its participants.
+                    </>,
+                    <>
+                      Generate reports on&nbsp;competitors' moves to&nbsp;never
+                      be&nbsp;caught off-guard and&nbsp;inform
+                      your&nbsp;decisions.
+                    </>,
+                  ],
                 },
               ],
-              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
+              assistantBlocks: [
+                assistantExamples[4],
+                assistantExamples[3],
+                assistantExamples[5],
+              ],
             },
           ]}
         />
@@ -214,19 +167,20 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Create content based&nbsp;on examples of&nbsp;previous similar
-        best-in-class&nbsp;content
+        Create content based on&nbsp;examples of&nbsp;previous similar
+        best-in-class content
       </>
     ),
   },
   {
-    emoji: "🔎",
-    name: "@copyMaster",
+    emoji: "🖇️",
+    name: "@crossPost",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Improve marketing copy and&nbsp;suggest new concepts to&nbsp;appeal
-        to&nbsp;your&nbsp;audience
+        Generates a&nbsp;version of&nbsp;a&nbsp;piece of&nbsp;content for
+        various social media outlets based on&nbsp;an original and&nbsp;company
+        guidelines on&nbsp;formatting
       </>
     ),
   },
@@ -236,31 +190,42 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Answer any&nbsp;question about your&nbsp;team's marketing knowledge
-        base. Resurface past ideas and&nbsp;create new&nbsp;ones.
+        Answer any question about your&nbsp;team's marketing knowledge base.
+        Resurface past ideas and&nbsp;create new ones
       </>
     ),
   },
   {
     emoji: "🔬",
-    name: "@dataAnalyzer",
+    name: "@dataInsights",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Turn your questions into&nbsp;SQL queries to&nbsp;analyze user
-        and&nbsp;customer&nbsp;surveys
+        Analyzes user and&nbsp;customer surveys quantitatively based
+        on&nbsp;your natural language questions
       </>
     ),
   },
   {
     emoji: "🧐",
-    name: "@competitiveIntelligence",
+    name: "@competitive",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Synchronize your competitor websites, blogs, and&nbsp;job boards
-        and&nbsp;get insights, ideas, and&nbsp;feedback to&nbsp;create
-        and&nbsp;improve your market&nbsp;positioning
+        Generates arguments for your&nbsp;product in&nbsp;comparison
+        to&nbsp;a&nbsp;specific competitor in&nbsp;line with internal product
+        guidelines and&nbsp;category positioning
+      </>
+    ),
+  },
+  {
+    emoji: "♠️",
+    name: "@battleCard",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Answer any question about your&nbsp;team's marketing knowledge base.
+        Resurface past ideas and&nbsp;create new ones
       </>
     ),
   },
