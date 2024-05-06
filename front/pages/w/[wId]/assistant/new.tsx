@@ -411,18 +411,18 @@ export default function AssistantNew({
 
       <div
         id="quick-start-guide-button"
-        className="fixed right-6 top-4 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
+        className="fixed right-6 top-2 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
       >
         <Button
           icon={HeartAltIcon}
           labelVisible={false}
           label="Quick Start Guide"
           onClick={() => setShowQuickGuide(true)}
-          size="sm"
-          tooltipPosition="below"
+          size="md"
           variant="primary"
           hasMagnifying={true}
-          disabledTooltip={false}
+          disabledTooltip={true}
+          className="!bg-brand !border-emerald-600"
         />
       </div>
 
