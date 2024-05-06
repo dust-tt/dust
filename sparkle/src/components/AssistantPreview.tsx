@@ -36,7 +36,6 @@ type MinimalGalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   href?: string;
   onClick?: () => void;
   onActionClick?: () => void;
-  renderActionButton?: (button: React.ReactNode) => React.ReactNode;
 };
 
 type AssistantPreviewProps =
