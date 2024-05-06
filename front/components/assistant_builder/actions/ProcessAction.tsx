@@ -312,8 +312,43 @@ export function ActionProcess({
         onDelete={deleteDataSource}
       />
 
-      <div className="text-element-400 text-sm mt-4">
-        Advanced
+      <div className="flex flex-col">
+        <div className="flex flex-row items-center gap-4 pb-4">
+          <div className="text-sm font-semibold text-element-900">
+            Tags Filtering
+          </div>
+          <div>
+            <Button
+              label={"Add tag filter"}
+              variant="tertiary"
+              size="xs"
+              onClick={() => {}}
+            />
+          </div>
+        </div>
+        {(actionConfiguration.tagsFilter.in || []).map((t) => {
+          return (
+            <div className="flex flex-row gap-4" key={t}>
+              <div className="flex">
+                <Input
+                  placeholder="Enter tag"
+                  size="sm"
+                  name="tags"
+                  value={t}
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <IconButton
+                  icon={XCircleIcon}
+                  tooltip="Remove Property"
+                  variant="tertiary"
+                  onClick={async () => {}}
+                  className="ml-1"
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
