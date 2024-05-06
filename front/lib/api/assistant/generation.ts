@@ -1,13 +1,16 @@
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ContentFragmentMessageTypeModel,
   ConversationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
   ModelConversationType,
+  ModelConversationTypeMultiActions,
   ModelMessageType,
+  ModelMessageTypeMultiActions,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -25,17 +28,32 @@ import {
   isTablesQueryActionType,
   isUserMessageType,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
-import { renderProcessActionForModel } from "@app/lib/api/assistant/actions/process";
 import {
+  renderDustAppRunActionForModel,
+  renderDustAppRunActionForMultiActionsModel,
+  renderDustAppRunActionFunctionCall,
+} from "@app/lib/api/assistant/actions/dust_app_run";
+import {
+  renderProcessActionForModel,
+  renderProcessActionForMultiActionsModel,
+  renderProcessActionFunctionCall,
+} from "@app/lib/api/assistant/actions/process";
+import {
+  rendeRetrievalActionFunctionCall,
   renderRetrievalActionForModel,
+  renderRetrievalActionForMultiActionsModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+import {
+  renderTablesQueryActionForModel,
+  renderTablesQueryActionForMultiActionsModel,
+  rendeTablesQueryActionFunctionCall,
+} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -239,6 +257,205 @@ export async function renderConversationForModel({
     "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
   );
   while (selected.length > 0 && selected[0].role === "agent") {
+    const tokenCountRes = messagesCountRes[messages.length - selected.length];
+    if (tokenCountRes.isErr()) {
+      return new Err(tokenCountRes.error);
+    }
+    tokensUsed -= tokenCountRes.value;
+    selected.shift();
+  }
+
+  return new Ok({
+    modelConversation: {
+      messages: selected,
+    },
+    tokensUsed,
+  });
+}
+
+export async function renderConversationForModelMultiActions({
+  conversation,
+  model,
+  prompt,
+  allowedTokenCount,
+}: {
+  conversation: ConversationType;
+  model: { providerId: string; modelId: string };
+  prompt: string;
+  allowedTokenCount: number;
+}): Promise<
+  Result<
+    {
+      modelConversation: ModelConversationTypeMultiActions;
+      tokensUsed: number;
+    },
+    Error
+  >
+> {
+  const messages: ModelMessageTypeMultiActions[] = [];
+
+  // Render all messages and all actions.
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const versions = conversation.content[i];
+    const m = versions[versions.length - 1];
+
+    if (isAgentMessageType(m)) {
+      if (m.content) {
+        messages.unshift({
+          role: "assistant" as const,
+          name: m.configuration.name,
+          content: m.content,
+        });
+      }
+
+      const actions = removeNulls([m.action]); // Should be replaced with `m.actions` once we it on AgentMessageType.
+      const function_calls = [];
+      const function_messages = [];
+
+      for (const action of actions) {
+        if (isRetrievalActionType(action)) {
+          function_messages.unshift(
+            renderRetrievalActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(rendeRetrievalActionFunctionCall(action));
+        } else if (isDustAppRunActionType(action)) {
+          function_messages.unshift(
+            renderDustAppRunActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(renderDustAppRunActionFunctionCall(action));
+        } else if (isTablesQueryActionType(action)) {
+          function_messages.unshift(
+            renderTablesQueryActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(rendeTablesQueryActionFunctionCall(action));
+        } else if (isProcessActionType(action)) {
+          function_messages.unshift(
+            renderProcessActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(renderProcessActionFunctionCall(action));
+        } else {
+          assertNever(action);
+        }
+      }
+
+      if (function_calls.length > 0) {
+        messages.unshift({
+          role: "assistant",
+          content: null,
+          function_calls,
+        });
+      }
+    } else if (isUserMessageType(m)) {
+      // Replace all `:mention[{name}]{.*}` with `@name`.
+      const content = m.content.replaceAll(
+        /:mention\[([^\]]+)\]\{[^}]+\}/g,
+        (_, name) => {
+          return `@${name}`;
+        }
+      );
+      messages.unshift({
+        role: "user" as const,
+        name: m.context.fullName || m.context.username,
+        content,
+      });
+    } else if (isContentFragmentType(m)) {
+      try {
+        const content = await getContentFragmentText({
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: m.sId,
+        });
+        messages.unshift({
+          role: "content_fragment",
+          name: `inject_${m.contentType}`,
+          content:
+            `TITLE: ${m.title}\n` +
+            `TYPE: ${m.contentType}${
+              m.contentType === "file_attachment" ? " (user provided)" : ""
+            }\n` +
+            `CONTENT:\n${content}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          },
+          "Failed to retrieve content fragment text"
+        );
+        return new Err(new Error("Failed to retrieve content fragment text"));
+      }
+    } else {
+      assertNever(m);
+    }
+  }
+
+  // Compute in parallel the token count for each message and the prompt.
+  const [messagesCountRes, promptCountRes] = await Promise.all([
+    Promise.all(
+      messages.map((m) => {
+        let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        if ("function_calls" in m) {
+          text += m.function_calls
+            .map((f) => `${f.function.name} ${f.function.arguments}`)
+            .join(" ");
+        }
+        return tokenCountForText(text, model);
+      })
+    ),
+    tokenCountForText(prompt, model),
+  ]);
+
+  if (promptCountRes.isErr()) {
+    return new Err(promptCountRes.error);
+  }
+
+  // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
+  // approximations, 64 tokens seems small enough and ample enough.
+  const tokensMargin = 64;
+  let tokensUsed = promptCountRes.value + tokensMargin;
+
+  // Go backward and accumulate as much as we can within allowedTokenCount.
+  const selected: ModelMessageTypeMultiActions[] = [];
+  const truncationMessage = `... (content truncated)`;
+  const approxTruncMsgTokenCount = truncationMessage.length / 3;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const r = messagesCountRes[i];
+    if (r.isErr()) {
+      return new Err(r.error);
+    }
+    const c = r.value;
+    if (tokensUsed + c <= allowedTokenCount) {
+      tokensUsed += c;
+      selected.unshift(messages[i]);
+    } else if (
+      // When a content fragment has more than the remaining number of tokens, we split it.
+      messages[i].role === "content_fragment" &&
+      // Allow at least tokensMargin tokens in addition to the truncation message.
+      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
+    ) {
+      const msg = messages[i] as ContentFragmentMessageTypeModel;
+      const remainingTokens =
+        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
+      const contentRes = await tokenSplit(msg.content, model, remainingTokens);
+      if (contentRes.isErr()) {
+        return new Err(contentRes.error);
+      }
+      selected.unshift({
+        ...msg,
+        content: contentRes.value + truncationMessage,
+      });
+      tokensUsed += remainingTokens;
+      break;
+    } else {
+      break;
+    }
+  }
+
+  while (selected.length > 0 && selected[0].role === "assistant") {
     const tokenCountRes = messagesCountRes[messages.length - selected.length];
     if (tokenCountRes.isErr()) {
       return new Err(tokenCountRes.error);
