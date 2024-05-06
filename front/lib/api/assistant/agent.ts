@@ -22,7 +22,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isAgentConfiguration,
+  isAgentActionConfigurationType,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -198,7 +198,7 @@ export async function* runMultiActionsAgent(
 
     const { action, inputs, specification } = actionToRun.value;
 
-    if (isAgentConfiguration(action)) {
+    if (isAgentActionConfigurationType(action)) {
       const eventStream = runAction(auth, {
         configuration: configuration,
         actionConfiguration: action,
