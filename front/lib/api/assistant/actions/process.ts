@@ -327,8 +327,8 @@ export async function* runProcess(
   }));
 
   if (actionConfiguration.tagsFilter && actionConfiguration.tagsFilter.in) {
-    // Note: empty array in tags.in means "no document match" since no documents has any tags that
-    // is in the tags.in array (same for parents)
+    // Note: empty array in tags/parents.in means "no document match" since no documents has any
+    // tags/parents that is in the empty array.
     if (!config.DATASOURCE.filter.tags) {
       config.DATASOURCE.filter.tags = {};
     }

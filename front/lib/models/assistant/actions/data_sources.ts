@@ -23,8 +23,6 @@ export class AgentDataSourceConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare tagsIn: string[] | null;
-  declare tagsNotIn: string[] | null;
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
@@ -58,14 +56,6 @@ AgentDataSourceConfiguration.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    tagsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    tagsNotIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
     parentsIn: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
@@ -85,12 +75,6 @@ AgentDataSourceConfiguration.init(
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
-        if (
-          (dataSourceConfig.tagsIn === null) !==
-          (dataSourceConfig.tagsNotIn === null)
-        ) {
-          throw new Error("Tags must be both set or both null");
-        }
         if (
           (dataSourceConfig.parentsIn === null) !==
           (dataSourceConfig.parentsNotIn === null)

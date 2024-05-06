@@ -509,10 +509,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
               dataSourceId: dsConfig.dataSource.name,
               workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
-                tags:
-                  dsConfig.tagsIn && dsConfig.tagsNotIn
-                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                    : null,
                 parents:
                   dsConfig.parentsIn && dsConfig.parentsNotIn
                     ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
@@ -572,10 +568,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
               dataSourceId: dsConfig.dataSource.name,
               workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
-                tags:
-                  dsConfig.tagsIn && dsConfig.tagsNotIn
-                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                    : null,
                 parents:
                   dsConfig.parentsIn && dsConfig.parentsNotIn
                     ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
@@ -1421,8 +1413,6 @@ async function _createAgentDataSourcesConfigData(
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSource.id,
-            tagsIn: dsConfig.filter.tags?.in,
-            tagsNotIn: dsConfig.filter.tags?.not,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,
