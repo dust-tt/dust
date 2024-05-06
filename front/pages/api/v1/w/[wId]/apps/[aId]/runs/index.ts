@@ -165,6 +165,7 @@ async function handler(
       }
 
       const secrets = await getDustAppSecrets(auth, true);
+      console.log('GOT SECRETS', secrets)
 
       logger.info(
         {

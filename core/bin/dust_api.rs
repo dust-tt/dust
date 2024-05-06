@@ -99,6 +99,7 @@ impl APIState {
 
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
+
         loop {
             let apps: Vec<(app::App, run::Credentials, run::Secrets)> = {
                 let mut manager = self.run_manager.lock();
@@ -119,12 +120,14 @@ impl APIState {
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     let now = std::time::Instant::now();
+
                     match app
                         .0
                         .run(app.1, app.2, store, databases_store, qdrant_clients, None)
                         .await
                     {
                         Ok(()) => {
+
                             info!(
                                 run = app.0.run_ref().unwrap().run_id(),
                                 app_version = app.0.hash(),
@@ -556,7 +559,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: run::Secrets,
+    secrets: run::Secrets<Vec<String, String>>,
 }
 
 async fn run_helper(
@@ -756,6 +759,11 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
     let secrets = payload.secrets.clone();
+
+    info!(
+        "Creating run with secrets: {:?}",
+        secrets
+    );
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

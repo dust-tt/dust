@@ -4,6 +4,9 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import {
+  getDustAppSecrets,
+} from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App, Provider, Run } from "@app/lib/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
@@ -117,6 +120,7 @@ async function handler(
         (configValue: any) => configValue.type == "input"
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
+      const secrets = await getDustAppSecrets(auth, true);
 
       const dustRun = await coreAPI.createRun({
         projectId: app.dustAPIProjectId,
@@ -129,6 +133,7 @@ async function handler(
         datasetId: inputDataset,
         config: { blocks: config },
         credentials: credentialsFromProviders(providers),
+        secrets
       });
 
       if (dustRun.isErr()) {

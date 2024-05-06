@@ -309,6 +309,7 @@ impl App {
         qdrant_clients: QdrantClients,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<()> {
+        info!("RUNNING APP");
         assert!(self.run.is_some());
         assert!(self.run_config.is_some());
         assert!(self.project.is_some());
@@ -353,6 +354,8 @@ impl App {
             credentials: credentials.clone(),
             secrets: secrets.clone(),
         }]];
+
+        println!("RECEIVED SECRETS: {:?}", secrets);
 
         let mut current_map: Option<String> = None;
         let mut current_map_blocks: Vec<String> = vec![];
