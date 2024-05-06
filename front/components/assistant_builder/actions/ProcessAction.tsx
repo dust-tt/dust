@@ -57,7 +57,7 @@ export function isActionProcessValid(
   }
   if (
     action.configuration.tagsFilter &&
-    action.configuration.tagsFilter.in.filter((tag) => tag === "").length > 0
+    action.configuration.tagsFilter.in.some((tag) => tag === "")
   ) {
     return false;
   }
