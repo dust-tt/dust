@@ -319,7 +319,6 @@ export async function getNextAction(
     Error
   >
 > {
-  // TODO(@fontanierh): Make a new one for multi actions.
   let prompt = await constructPrompt(
     auth,
     userMessage,

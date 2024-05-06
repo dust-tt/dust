@@ -57,7 +57,6 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
@@ -505,11 +504,14 @@ export async function constructPrompt(
     instructions += `\n${fallbackPrompt}`;
   }
 
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (isRetrievalConfiguration(actionConfig)) {
+  // If one of the action is a retrieval action, we add the retrieval meta prompt.
+  const hasRetrievalAction = configuration.actions.some((action) =>
+    isRetrievalConfiguration(action)
+  );
+  if (hasRetrievalAction) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
+
   if (instructions.length > 0) {
     instructions = "\nINSTRUCTIONS:" + instructions;
   }
