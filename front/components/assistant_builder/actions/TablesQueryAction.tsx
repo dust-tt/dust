@@ -6,7 +6,6 @@ import AssistantBuilderTablesModal from "@app/components/assistant_builder/Assis
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderState,
   AssistantBuilderTableConfiguration,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
@@ -24,15 +23,13 @@ export function isActionTablesQueryValid(
 export function ActionTablesQuery({
   owner,
   actionConfiguration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
+  updateAction: (action: AssistantBuilderTablesQueryConfiguration) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -56,19 +53,9 @@ export function ActionTablesQuery({
           for (const t of tables) {
             newTables[tableKey(t)] = t;
           }
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "TABLES_QUERY") {
-              return state;
-            }
-            action.configuration = {
-              ...action.configuration,
-              ...newTables,
-            };
-            return {
-              ...state,
-              actions: [action],
-            };
+          updateAction({
+            ...actionConfiguration,
+            ...newTables,
           });
         }}
         tablesQueryConfiguration={actionConfiguration}
@@ -100,23 +87,9 @@ export function ActionTablesQuery({
         }}
         onDelete={(key) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "TABLES_QUERY") {
-              return state;
-            }
-            const tablesQueryConfiguration = action.configuration;
-            delete tablesQueryConfiguration[key];
-            return {
-              ...state,
-              actions: [
-                {
-                  ...action,
-                  configuration: tablesQueryConfiguration,
-                },
-              ],
-            };
-          });
+          const newTables = { ...actionConfiguration };
+          delete newTables[key];
+          updateAction(newTables);
         }}
         canSelectTable={dataSources.length !== 0}
       />
