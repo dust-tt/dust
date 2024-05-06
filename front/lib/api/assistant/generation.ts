@@ -308,7 +308,7 @@ export async function renderConversationForModelMultiActions({
         });
       }
 
-      const actions = removeNulls(m.actions); // Should be replaced with `m.actions` once we it on AgentMessageType.
+      const actions = removeNulls(m.actions);
       const function_calls = [];
       const function_messages = [];
 
