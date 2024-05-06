@@ -24,7 +24,7 @@ use dust::{
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
-    utils::{error_response, APIError, APIResponse},
+    utils::{error_response, APIError, APIResponse },
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
@@ -559,7 +559,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: run::Secrets<Vec<String, String>>,
+    secrets: run::Secrets,
 }
 
 async fn run_helper(

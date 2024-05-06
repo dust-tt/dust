@@ -254,8 +254,6 @@ export class CoreAPI {
     credentials,
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    console.log("SENDING SECRETS")
-    console.log(JSON.stringify(secrets))
     const response = await fetch(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
       {
