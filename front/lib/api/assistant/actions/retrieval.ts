@@ -426,6 +426,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
         topK: action.topK,
       },
       documents,
+      step: action.step,
     });
   }
 
@@ -481,12 +482,14 @@ export async function* runRetrieval(
     conversation,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: RetrievalConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
@@ -558,6 +561,7 @@ export async function* runRetrieval(
     topK,
     retrievalConfigurationId: actionConfiguration.sId,
     agentMessageId: agentMessage.agentMessageId,
+    step: step,
   });
 
   yield {
@@ -576,6 +580,7 @@ export async function* runRetrieval(
         topK,
       },
       documents: null,
+      step: action.step,
     },
   };
 
@@ -841,6 +846,7 @@ export async function* runRetrieval(
         topK,
       },
       documents,
+      step: action.step,
     },
   };
 }

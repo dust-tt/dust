@@ -32,4 +32,5 @@ export type DustAppRunActionType = {
     status: "running" | "succeeded" | "errored";
   } | null;
   output: unknown | null;
+  step: number;
 };

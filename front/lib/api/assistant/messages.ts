@@ -170,45 +170,15 @@ export async function batchRenderAgentMessages(
     }
     const agentMessage = message.agentMessage;
 
-    let action: AgentActionType | null = null;
-
-    // TODO: Allow multiple actions per agent messages.
-    if (
-      agentRetrievalActions.filter((a) => a.agentMessageId === agentMessage.id)
-        .length > 0
-    ) {
-      action =
-        agentRetrievalActions.find(
-          (a) => a.agentMessageId === agentMessage.id
-        ) || null;
-    }
-    if (
-      agentDustAppRunActions.filter((a) => a.agentMessageId === agentMessage.id)
-        .length > 0
-    ) {
-      action =
-        agentDustAppRunActions.find(
-          (a) => a.agentMessageId === agentMessage.id
-        ) || null;
-    }
-    if (
-      agentTablesQueryActions.filter(
-        (a) => a.agentMessageId === agentMessage.id
-      ).length > 0
-    ) {
-      action =
-        agentTablesQueryActions.find(
-          (a) => a.agentMessageId === agentMessage.id
-        ) || null;
-    }
-    if (
-      agentProcessActions.filter((a) => a.agentMessageId === agentMessage.id)
-        .length > 0
-    ) {
-      action =
-        agentProcessActions.find((a) => a.agentMessageId === agentMessage.id) ||
-        null;
-    }
+    const actions: AgentActionType[] = [
+      agentRetrievalActions,
+      agentDustAppRunActions,
+      agentTablesQueryActions,
+      agentProcessActions,
+    ]
+      .flat()
+      .filter((a) => a.agentMessageId === agentMessage.id)
+      .sort((a, b) => a.step - b.step);
 
     const agentConfiguration = agentConfigurations.find(
       (a) => a.sId === agentMessage.agentConfigurationId
@@ -242,7 +212,7 @@ export async function batchRenderAgentMessages(
       parentMessageId:
         messages.find((m) => m.id === message.parentId)?.sId ?? null,
       status: agentMessage.status,
-      action,
+      actions: actions,
       content: agentMessage.content,
       error,
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.

@@ -242,7 +242,7 @@ export function AgentMessage({
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
-    agentMessageToRender.action,
+    agentMessageToRender.actions,
     activeReferences.length,
     isInModal,
   ]);
@@ -312,18 +312,18 @@ export function AgentMessage({
   >(null);
   useEffect(() => {
     if (
-      agentMessageToRender.action &&
-      isRetrievalActionType(agentMessageToRender.action) &&
-      agentMessageToRender.action.documents
+      agentMessageToRender.actions.length > 0 &&
+      isRetrievalActionType(agentMessageToRender.actions[0]) &&
+      agentMessageToRender.actions[0].documents
     ) {
       setReferences(
-        agentMessageToRender.action.documents.reduce((acc, d) => {
+        agentMessageToRender.actions[0].documents.reduce((acc, d) => {
           acc[d.reference] = d;
           return acc;
         }, {} as { [key: string]: RetrievalDocumentType })
       );
     }
-  }, [agentMessageToRender.action]);
+  }, [agentMessageToRender.actions]);
 
   function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
     const router = useRouter();
@@ -402,7 +402,7 @@ export function AgentMessage({
     // Loading state (no action nor text yet)
     if (
       agentMessage.status === "created" &&
-      !agentMessage.action &&
+      agentMessage.actions.length === 0 &&
       (!agentMessage.content || agentMessage.content === "")
     ) {
       return (
@@ -417,7 +417,9 @@ export function AgentMessage({
 
     return (
       <>
-        {agentMessage.action && <AgentAction action={agentMessage.action} />}
+        {agentMessage.actions.length > 0 && (
+          <AgentAction action={agentMessage.actions[0]} />
+        )}
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (

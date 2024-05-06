@@ -112,20 +112,20 @@ export async function renderConversationForModel({
       }
       // There are contexts where we want to exclude the actions from the rendering.
       // Eg: During the conversation title generation step.
-      if (m.action && !excludeActions) {
-        if (isRetrievalActionType(m.action)) {
+      if (m.actions.length > 0 && !excludeActions) {
+        if (isRetrievalActionType(m.actions[0])) {
           if (includeRetrieval) {
             foundRetrieval = true;
-            messages.unshift(renderRetrievalActionForModel(m.action));
+            messages.unshift(renderRetrievalActionForModel(m.actions[0]));
           }
-        } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(renderDustAppRunActionForModel(m.action));
-        } else if (isTablesQueryActionType(m.action)) {
-          messages.unshift(renderTablesQueryActionForModel(m.action));
-        } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderProcessActionForModel(m.action));
+        } else if (isDustAppRunActionType(m.actions[0])) {
+          messages.unshift(renderDustAppRunActionForModel(m.actions[0]));
+        } else if (isTablesQueryActionType(m.actions[0])) {
+          messages.unshift(renderTablesQueryActionForModel(m.actions[0]));
+        } else if (isProcessActionType(m.actions[0])) {
+          messages.unshift(renderProcessActionForModel(m.actions[0]));
         } else {
-          assertNever(m.action);
+          assertNever(m.actions[0]);
         }
       }
     } else if (isUserMessageType(m)) {
@@ -308,7 +308,7 @@ export async function renderConversationForModelMultiActions({
         });
       }
 
-      const actions = removeNulls([m.action]); // Should be replaced with `m.actions` once we it on AgentMessageType.
+      const actions = removeNulls(m.actions); // Should be replaced with `m.actions` once we it on AgentMessageType.
       const function_calls = [];
       const function_messages = [];
 

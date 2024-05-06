@@ -133,6 +133,8 @@ export class AgentProcessAction extends Model<
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: ProcessActionOutputsType | null;
 
+  declare step: number;
+
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentProcessAction.init(
@@ -170,6 +172,10 @@ AgentProcessAction.init(
     },
     outputs: {
       type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    step: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

@@ -76,4 +76,5 @@ export type ProcessActionType = {
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
+  step: number;
 };

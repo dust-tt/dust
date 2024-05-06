@@ -749,7 +749,7 @@ export async function* postUserMessage(
                   version: 0,
                   parentMessageId: userMessage.sId,
                   status: "created",
-                  action: null,
+                  actions: [],
                   content: null,
                   error: null,
                   configuration,
@@ -1194,12 +1194,12 @@ export async function* editUserMessage(
                 version: 0,
                 parentMessageId: userMessage.sId,
                 status: "created",
-                action: null,
+                actions: [],
                 content: null,
                 error: null,
                 configuration,
                 rank: messageRow.rank,
-              },
+              } satisfies AgentMessageWithRankType,
             };
           })();
         })
@@ -1412,7 +1412,7 @@ export async function* retryAgentMessage(
         version: m.version,
         parentMessageId: message.parentMessageId,
         status: "created",
-        action: null,
+        actions: [],
         content: null,
         error: null,
         configuration: message.configuration,

@@ -100,4 +100,5 @@ export type RetrievalActionType = {
     topK: number;
   };
   documents: RetrievalDocumentType[] | null;
+  step: number;
 };

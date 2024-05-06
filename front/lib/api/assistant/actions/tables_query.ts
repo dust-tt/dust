@@ -95,6 +95,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     } satisfies TablesQueryActionType;
   });
 }
@@ -155,12 +156,14 @@ export async function* runTablesQuery(
     conversation,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: TablesQueryConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   | TablesQueryErrorEvent
@@ -197,6 +200,7 @@ export async function* runTablesQuery(
     params: rawInputs,
     output,
     agentMessageId: agentMessage.agentMessageId,
+    step: step,
   });
 
   yield {
@@ -210,6 +214,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     },
   };
 
@@ -345,6 +350,7 @@ export async function* runTablesQuery(
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
             agentMessageId: agentMessage.id,
+            step: action.step,
           },
         };
       }
@@ -374,6 +380,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     },
   };
   return;
