@@ -1646,27 +1646,6 @@ async function* streamRunAgentEvents(
         return;
 
       case "agent_action_success":
-        // Store action in database.
-        if (event.action.type === "retrieval_action") {
-          // Nothing to do.
-        } else if (event.action.type === "dust_app_run_action") {
-          await agentMessageRow.update({
-            agentDustAppRunActionId: event.action.id,
-          });
-        } else if (event.action.type === "tables_query_action") {
-          await agentMessageRow.update({
-            agentTablesQueryActionId: event.action.id,
-          });
-        } else if (event.action.type === "process_action") {
-          // Nothing to do.
-        } else {
-          ((action: never) => {
-            throw new Error(
-              "Unknown `type` for `agent_action_success` event",
-              action
-            );
-          })(event.action);
-        }
         yield event;
         break;
 
