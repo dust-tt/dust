@@ -57,6 +57,7 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
@@ -112,20 +113,21 @@ export async function renderConversationForModel({
       }
       // There are contexts where we want to exclude the actions from the rendering.
       // Eg: During the conversation title generation step.
-      if (m.actions.length > 0 && !excludeActions) {
-        if (isRetrievalActionType(m.actions[0])) {
+      const action = getDeprecatedSingleAction(m.actions);
+      if (action && !excludeActions) {
+        if (isRetrievalActionType(action)) {
           if (includeRetrieval) {
             foundRetrieval = true;
-            messages.unshift(renderRetrievalActionForModel(m.actions[0]));
+            messages.unshift(renderRetrievalActionForModel(action));
           }
-        } else if (isDustAppRunActionType(m.actions[0])) {
-          messages.unshift(renderDustAppRunActionForModel(m.actions[0]));
-        } else if (isTablesQueryActionType(m.actions[0])) {
-          messages.unshift(renderTablesQueryActionForModel(m.actions[0]));
-        } else if (isProcessActionType(m.actions[0])) {
-          messages.unshift(renderProcessActionForModel(m.actions[0]));
+        } else if (isDustAppRunActionType(action)) {
+          messages.unshift(renderDustAppRunActionForModel(action));
+        } else if (isTablesQueryActionType(action)) {
+          messages.unshift(renderTablesQueryActionForModel(action));
+        } else if (isProcessActionType(action)) {
+          messages.unshift(renderProcessActionForModel(action));
         } else {
-          assertNever(m.actions[0]);
+          assertNever(action);
         }
       }
     } else if (isUserMessageType(m)) {

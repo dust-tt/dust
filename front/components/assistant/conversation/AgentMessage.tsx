@@ -40,6 +40,7 @@ import {
 } from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {
@@ -209,6 +210,10 @@ export function AgentMessage({
     }
   })();
 
+  const actionToRender = getDeprecatedSingleAction(
+    agentMessageToRender.actions
+  );
+
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
   // start of the message, we do not want to scroll it back down.
@@ -242,7 +247,7 @@ export function AgentMessage({
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
-    agentMessageToRender.actions,
+    actionToRender,
     activeReferences.length,
     isInModal,
   ]);
@@ -312,18 +317,18 @@ export function AgentMessage({
   >(null);
   useEffect(() => {
     if (
-      agentMessageToRender.actions.length > 0 &&
-      isRetrievalActionType(agentMessageToRender.actions[0]) &&
-      agentMessageToRender.actions[0].documents
+      actionToRender &&
+      isRetrievalActionType(actionToRender) &&
+      actionToRender.documents
     ) {
       setReferences(
-        agentMessageToRender.actions[0].documents.reduce((acc, d) => {
+        actionToRender.documents.reduce((acc, d) => {
           acc[d.reference] = d;
           return acc;
         }, {} as { [key: string]: RetrievalDocumentType })
       );
     }
-  }, [agentMessageToRender.actions]);
+  }, [actionToRender]);
 
   function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
     const router = useRouter();
@@ -383,6 +388,7 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType },
     streaming: boolean
   ) {
+    const action = getDeprecatedSingleAction(agentMessage.actions);
     // Display the error to the user so they can report it to us (or some can be
     // understandable directly to them)
     if (agentMessage.status === "failed") {
@@ -402,7 +408,7 @@ export function AgentMessage({
     // Loading state (no action nor text yet)
     if (
       agentMessage.status === "created" &&
-      agentMessage.actions.length === 0 &&
+      action === null &&
       (!agentMessage.content || agentMessage.content === "")
     ) {
       return (
@@ -417,9 +423,7 @@ export function AgentMessage({
 
     return (
       <>
-        {agentMessage.actions.length > 0 && (
-          <AgentAction action={agentMessage.actions[0]} />
-        )}
+        {action && <AgentAction action={action} />}
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (
