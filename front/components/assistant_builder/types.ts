@@ -36,6 +36,10 @@ export type AssistantBuilderTimeFrame = {
   unit: TimeframeUnit;
 };
 
+export type AssistantBuilderTagsFilter = {
+  in: string[];
+};
+
 export type AssistantBuilderRetrievalConfiguration = {
   dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
@@ -67,6 +71,7 @@ export type AssistantBuilderTablesQueryConfiguration = Record<
 export type AssistantBuilderProcessConfiguration = {
   dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
   timeFrame: AssistantBuilderTimeFrame;
+  tagsFilter: AssistantBuilderTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 };
 
@@ -201,6 +206,7 @@ export function getDefaultProcessActionConfiguration() {
         value: 1,
         unit: "day",
       },
+      tagsFilter: null,
       schema: [],
     } as AssistantBuilderProcessConfiguration,
     name: "process_data",

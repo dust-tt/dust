@@ -31,6 +31,8 @@ export class AgentProcessConfiguration extends Model<
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
+  declare tagsIn: string[] | null;
+
   declare schema: ProcessSchemaPropertyType[];
 
   declare name: string | null;
@@ -70,6 +72,10 @@ AgentProcessConfiguration.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     schema: {

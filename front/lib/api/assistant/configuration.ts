@@ -12,6 +12,7 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   ProcessSchemaPropertyType,
+  ProcessTagsFilter,
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
@@ -564,7 +565,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: processConfig.id,
           sId: processConfig.sId,
           type: "process_configuration",
-          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
           dataSources: dataSourcesConfig.map((dsConfig) => {
             return {
               dataSourceId: dsConfig.dataSource.name,
@@ -581,6 +581,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
+          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
+          tagsFilter:
+            processConfig.tagsIn !== null
+              ? {
+                  in: processConfig.tagsIn,
+                }
+              : null,
           schema: processConfig.schema,
           name: processConfig.name,
           description: processConfig.description,
@@ -1119,6 +1126,7 @@ export async function createAgentActionConfiguration(
     | {
         type: "process_configuration";
         relativeTimeFrame: RetrievalTimeframe;
+        tagsFilter: ProcessTagsFilter | null;
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
       }
@@ -1250,6 +1258,7 @@ export async function createAgentActionConfiguration(
             relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
               ? action.relativeTimeFrame.unit
               : null,
+            tagsIn: action.tagsFilter?.in ?? null,
             agentConfigurationId: agentConfiguration.id,
             schema: action.schema,
             name: action.name,
@@ -1269,6 +1278,7 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
+          tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
           name: action.name,
