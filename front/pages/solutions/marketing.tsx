@@ -114,7 +114,21 @@ export default function Marketing() {
               color: "pink",
               contentBlocks: [
                 {
-                  title: <>Set up a&nbsp;live competitive intelligence feed.</>,
+                  title: <>Set up a&nbsp;live competitive intelligence feed</>,
+                  content: [
+                    <>
+                      Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
+                      market and&nbsp;its participants.
+                    </>,
+                    <>
+                      Generate reports on&nbsp;competitors' moves to&nbsp;never
+                      be&nbsp;caught off-guard and&nbsp;inform
+                      your&nbsp;decisions.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Man the&nbsp;battle card stations</>,
                   content: [
                     <>
                       Bridge the&nbsp;gap with Sales, Product, and&nbsp;Support
@@ -125,20 +139,6 @@ export default function Marketing() {
                       Easily generate content and&nbsp;insights leveraging
                       competitive intelligence and&nbsp;the positioning you've
                       decided on.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Man the&nbsp;battle card stations.</>,
-                  content: [
-                    <>
-                      Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
-                      market and&nbsp;its participants.
-                    </>,
-                    <>
-                      Generate reports on&nbsp;competitors' moves to&nbsp;never
-                      be&nbsp;caught off-guard and&nbsp;inform
-                      your&nbsp;decisions.
                     </>,
                   ],
                 },
@@ -167,8 +167,8 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Create content based on&nbsp;examples of&nbsp;previous similar
-        best-in-class content
+        Creates content based on best-in)class &nbsp;examples availble
+        internally
       </>
     ),
   },
@@ -178,9 +178,8 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Generates a&nbsp;version of&nbsp;a&nbsp;piece of&nbsp;content for
-        various social media outlets based on&nbsp;an original and&nbsp;company
-        guidelines on&nbsp;formatting
+        Generates versioned&nbsp;content for social media outlets taking into
+        account company guidelines
       </>
     ),
   },
@@ -212,9 +211,8 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Generates arguments for your&nbsp;product in&nbsp;comparison
-        to&nbsp;a&nbsp;specific competitor in&nbsp;line with internal product
-        guidelines and&nbsp;category positioning
+        Tracks competitors websites to highlight changes and pro-actively detect
+        market positioning opportunities
       </>
     ),
   },
@@ -224,8 +222,9 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Answer any question about your&nbsp;team's marketing knowledge base.
-        Resurface past ideas and&nbsp;create new ones
+        Generates arguments for your product in comparison to a specific
+        competitor, in line with internal product guidelines and category
+        positioning.
       </>
     ),
   },

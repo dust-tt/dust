@@ -87,9 +87,10 @@ export default function CustomerSupport() {
                     <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
                   ),
                   content: [
+                    <>Break down information silos.</>,
                     <>
                       Give your frontline team access to&nbsp;up-to-date
-                      information on&nbsp;ongoing product incidents
+                      information on&nbsp;projects, ongoing product incidents
                       or&nbsp;issues to&nbsp;help them&nbsp;take action
                       thoughtfully.
                     </>,
@@ -128,24 +129,7 @@ export default function CustomerSupport() {
                   ),
                 },
                 {
-                  title: "Break information silos",
-                  content: [
-                    <>
-                      Keep your&nbsp;Support team in&nbsp;sync with partner
-                      teams in&nbsp;the company with automated reports,
-                      assistants updated with latest project progress
-                      and&nbsp;status.
-                    </>,
-                    <>Understand technical errors faster.</>,
-                  ],
-                },
-                {
-                  title: (
-                    <>
-                      Provide support interactions insights
-                      to&nbsp;the&nbsp;company
-                    </>
-                  ),
+                  title: <>Maintain visibility on&nbsp;customer needs</>,
                   content: [
                     <>
                       Surface insights from&nbsp;interactions with customers
@@ -153,16 +137,12 @@ export default function CustomerSupport() {
                     </>,
                     <>
                       Maintain a&nbsp;continuous understanding of&nbsp;customer
-                      needs and&nbsp;align them with your&nbsp;priorities.
+                      needs to inform your&nbsp;product priorities.
                     </>,
                   ],
                 },
               ],
-              assistantBlocks: [
-                assistantExamples[3],
-                assistantExamples[1],
-                assistantExamples[2],
-              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
             },
           ]}
         />
@@ -185,9 +165,9 @@ export const assistantExamples = [
     name: "@supportExpert",
     description: (
       <>
-        Surface best information from&nbsp;your Help Center, FAQs, knowledge
-        base, online documentation, and&nbsp;tickets. Understand errors codes
-        without help from&nbsp;the tech&nbsp;team.
+        Surfaces relevant information from&nbsp;your Help Center, FAQs,
+        knowledge base, online documentation, and&nbsp;tickets. Understands
+        errors codes without help from&nbsp;the tech&nbsp;team.
       </>
     ),
   },
@@ -205,7 +185,7 @@ export const assistantExamples = [
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
-    name: "@CSAnalyst",
+    name: "@supportAnalyst",
     description: (
       <>
         Identifies patterns and&nbsp;sentiment in&nbsp;support interactions

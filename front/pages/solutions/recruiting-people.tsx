@@ -54,7 +54,7 @@ export default function RecruitingPeople() {
     <>
       <HeaderContentBlock
         uptitle="Dust for Recruiting and&nbsp;People"
-        title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers</>}
+        title={<>More&nbsp;time for&nbsp;people, teams, and&nbsp;managers</>}
         from="from-amber-300"
         to="to-amber-400"
         subtitle={
@@ -105,7 +105,7 @@ export default function RecruitingPeople() {
           ]}
         />
         <SolutionSection
-          title="Help your&nbsp;People Growth."
+          title="Help your&nbsp;People Grow."
           blocks={[
             {
               color: "amber",
@@ -114,11 +114,8 @@ export default function RecruitingPeople() {
                   title: "Create engaging learning experiences faster",
                   content: (
                     <>
-                      Use information from&nbsp;internal data sources, such
-                      as&nbsp;onboarding guides, process documents,
-                      and&nbsp;best practices, to&nbsp;create training scripts
-                      and&nbsp;materials tailored to&nbsp;each role
-                      or&nbsp;department.
+                      Use internal documentation to create training materials
+                      tailored to each role and team.
                     </>
                   ),
                 },
@@ -131,9 +128,9 @@ export default function RecruitingPeople() {
                       accurate evaluations.
                     </>,
                     <>
-                      Help them write more thoughtfully, with AI-powered
-                      feedback on&nbsp;tone, references to&nbsp;company
-                      principles, priorities and&nbsp;business objectives.
+                      Get more thoughtful peer reviews, with AI-powered feedback
+                      on&nbsp;tone, references to&nbsp;company principles,
+                      priorities and&nbsp;business objectives.
                     </>,
                   ],
                 },
@@ -149,12 +146,7 @@ export default function RecruitingPeople() {
               color: "amber",
               contentBlocks: [
                 {
-                  title: (
-                    <>
-                      Get from&nbsp;a need to&nbsp;a qualified pipeline
-                      in&nbsp;a flash
-                    </>
-                  ),
+                  title: <>Get a&nbsp;qualified pipeline in&nbsp;a flash</>,
                   content: [
                     <>
                       Easily draft consistent job descriptions. Analyze
@@ -188,40 +180,11 @@ export default function RecruitingPeople() {
                   ],
                 },
               ],
-              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
-            },
-          ]}
-        />
-
-        <SolutionSection
-          title="Automate recurrent hiring tasks."
-          blocks={[
-            {
-              color: "amber",
-              contentBlocks: [
-                {
-                  title: <>Analyze &&nbsp;extract</>,
-                  content: [
-                    <>
-                      Analyze a&nbsp;candidate's CV in&nbsp;a&nbsp;second.
-                      Extract information from&nbsp;texts, normalize lists
-                      of&nbsp;emails and&nbsp;names, and&nbsp;batch-write
-                      content.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>The page is&nbsp;never white</>,
-                  content: [
-                    <>
-                      Draft job description, social media posts, outbound
-                      emails, interview questions in&nbsp;minutes,
-                      with&nbsp;company tones and&nbsp;structure.
-                    </>,
-                  ],
-                },
+              assistantBlocks: [
+                assistantExamples[2],
+                assistantExamples[3],
+                assistantExamples[4],
               ],
-              assistantBlocks: [assistantExamples[5], assistantExamples[4]],
             },
           ]}
         />
