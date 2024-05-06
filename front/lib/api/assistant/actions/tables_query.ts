@@ -4,6 +4,8 @@ import type {
   AgentMessageType,
   ConversationType,
   DustAppParameters,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   Result,
@@ -40,6 +42,37 @@ export function renderTablesQueryActionForModel(
   return {
     role: "action" as const,
     name: "query_tables",
+    content,
+  };
+}
+
+export function rendeTablesQueryActionFunctionCall(
+  action: TablesQueryActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "query_tables",
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderTablesQueryActionForMultiActionsModel(
+  action: TablesQueryActionType
+): FunctionMessageTypeModel {
+  let content = "";
+  if (!action.output) {
+    throw new Error(
+      "Output not set on TablesQuery action; execution is likely not finished."
+    );
+  }
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

@@ -3,6 +3,8 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   ProcessActionOutputsType,
@@ -65,6 +67,45 @@ export function renderProcessActionForModel(
   return {
     role: "action" as const,
     name: "process_data_sources",
+    content,
+  };
+}
+
+export function renderProcessActionFunctionCall(
+  action: ProcessActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "process_data_sources",
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderProcessActionForMultiActionsModel(
+  action: ProcessActionType
+): FunctionMessageTypeModel {
+  let content = "";
+  if (action.outputs === null) {
+    throw new Error(
+      "Output not set on process action; this usually means the process action is not finished."
+    );
+  }
+
+  content += "PROCESSED OUTPUTS:\n";
+
+  // TODO(spolu): figure out if we want to add the schema here?
+
+  if (action.outputs) {
+    for (const o of action.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+  }
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }

@@ -1,9 +1,16 @@
-import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
+import {
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
 import readline from "readline";
 
+import { getConversation } from "@app/lib/api/assistant/conversation";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
@@ -507,6 +514,77 @@ const eventSchema = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "render-for-model": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+      const verbose = args.verbose === "true";
+
+      const modelId =
+        args.modelId ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId;
+      const model = SUPPORTED_MODEL_CONFIGS.find(
+        (m) => m.modelId === modelId && m.supportsMultiActions
+      );
+      if (!model) {
+        throw new Error(`Model not found: modelId='${modelId}'`);
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const conversation = await getConversation(auth, args.cId as string);
+
+      if (!conversation) {
+        throw new Error(`Conversation not found: cId='${args.cId}'`);
+      }
+
+      const MIN_GENERATION_TOKENS = 2048;
+      const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
+      const prompt = "";
+
+      const response = await renderConversationForModelMultiActions({
+        conversation,
+        model,
+        prompt,
+        allowedTokenCount,
+      });
+
+      if (response.isErr()) {
+        logger.error(response.error.message);
+      } else {
+        logger.info(
+          {
+            model,
+            prompt,
+          },
+          "Called renderConversationForModel with params:"
+        );
+        const result = response.value;
+
+        if (!verbose) {
+          // For convenience we shorten the content when role = "tool"
+          result.modelConversation.messages =
+            result.modelConversation.messages.map((m) => {
+              if (m.role === "function") {
+                return {
+                  ...m,
+                  content: m.content.slice(0, 200) + "...",
+                };
+              }
+              return m;
+            });
+        }
+
+        logger.info(result, "Result from renderConversationForModel:");
+      }
+      return;
+    }
+  }
+};
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -514,7 +592,9 @@ const main = async () => {
     console.log(
       "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
     );
-    console.log("Possible object types: `workspace`, `user`, `data-source`");
+    console.log(
+      "Possible object types: `workspace`, `user`, `data-source`, `conversation`"
+    );
     return;
   }
 
@@ -533,9 +613,11 @@ const main = async () => {
     case "event-schema":
       await eventSchema(command, argv);
       return;
+    case "conversation":
+      return conversation(command, argv);
     default:
       console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`"
+        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`"
       );
       return;
   }

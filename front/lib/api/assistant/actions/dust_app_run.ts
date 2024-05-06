@@ -4,6 +4,8 @@ import type {
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
   DustAppRunSuccessEvent,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
 } from "@dust-tt/types";
@@ -43,6 +45,34 @@ export function renderDustAppRunActionForModel(
   return {
     role: "action" as const,
     name: action.appName,
+    content,
+  };
+}
+
+export function renderDustAppRunActionFunctionCall(
+  action: DustAppRunActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: action.appName,
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderDustAppRunActionForMultiActionsModel(
+  action: DustAppRunActionType
+): FunctionMessageTypeModel {
+  let content = "";
+
+  // Note action.output can be any valid JSON including null.
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
