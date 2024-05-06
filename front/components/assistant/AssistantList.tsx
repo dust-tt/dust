@@ -51,7 +51,6 @@ const AssistantList: React.FC<AssistantListProps> = ({
                   onClick={() => handleAssistantClick(agent)}
                   onActionClick={async () => {
                     await router.replace(href);
-                    console.log("Button clicked");
                   }}
                 />
               </div>
