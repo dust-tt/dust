@@ -203,6 +203,7 @@ export async function* runLegacyAgent(
       userMessage,
       agentMessage,
       action,
+      step: 0,
     })) {
       yield event;
     }
@@ -285,12 +286,14 @@ async function* runAction(
     userMessage,
     agentMessage,
     action,
+    step,
   }: {
     configuration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     action: AgentActionConfigurationType;
+    step: number;
   }
 ): AsyncGenerator<
   | AgentActionEvent
@@ -398,6 +401,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -428,7 +432,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -443,6 +447,7 @@ async function* runAction(
       agentMessage,
       spec: specRes.value,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -476,7 +481,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -490,6 +495,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -521,7 +527,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
         default:
           assertNever(event);
@@ -535,6 +541,7 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -565,7 +572,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:

@@ -23,4 +23,5 @@ export type TablesQueryActionType = {
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
   agentMessageId: ModelId;
+  step: number;
 };

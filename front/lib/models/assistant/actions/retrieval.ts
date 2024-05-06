@@ -157,6 +157,7 @@ export class AgentRetrievalAction extends Model<
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare step: number;
 }
 AgentRetrievalAction.init(
   {
@@ -194,6 +195,10 @@ AgentRetrievalAction.init(
     topK: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    step: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

@@ -85,7 +85,7 @@ export function isProcessActionType(
   return arg.type === "process_action";
 }
 
-export function isAgentConfiguration(
+export function isAgentActionConfigurationType(
   arg: unknown
 ): arg is AgentActionConfigurationType {
   return (
