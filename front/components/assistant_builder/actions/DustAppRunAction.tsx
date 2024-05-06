@@ -8,7 +8,6 @@ import DustAppSelectionSection from "@app/components/assistant_builder/DustAppSe
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderDustAppConfiguration,
-  AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 
 export function isActionDustAppRunValid(
@@ -20,15 +19,13 @@ export function isActionDustAppRunValid(
 export function ActionDustAppRun({
   owner,
   actionConfigration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dustApps,
 }: {
   owner: WorkspaceType;
   actionConfigration: AssistantBuilderDustAppConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
+  updateAction: (action: AssistantBuilderDustAppConfiguration) => void;
   setEdited: (edited: boolean) => void;
   dustApps: AppType[];
 }) {
@@ -36,16 +33,9 @@ export function ActionDustAppRun({
 
   const deleteDustApp = () => {
     setEdited(true);
-    setBuilderState((state) => {
-      const action = state.actions[0];
-      if (!action || action.type !== "DUST_APP_RUN") {
-        return state;
-      }
-      action.configuration.app = null;
-      return {
-        ...state,
-        actions: [action],
-      };
+    updateAction({
+      ...actionConfigration,
+      app: null,
     });
   };
 
@@ -65,16 +55,9 @@ export function ActionDustAppRun({
         dustApps={dustApps}
         onSave={({ app }) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "DUST_APP_RUN") {
-              return state;
-            }
-            action.configuration.app = app;
-            return {
-              ...state,
-              actions: [action],
-            };
+          updateAction({
+            ...actionConfigration,
+            app,
           });
         }}
       />
