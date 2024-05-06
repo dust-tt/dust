@@ -15,6 +15,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  removeNulls,
 } from "@dust-tt/types";
 
 import type {
@@ -37,10 +38,12 @@ export async function buildInitialActions({
   dataSourcesByName,
   dustApps,
   configuration,
+  multiActionsMode,
 }: {
   dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
+  multiActionsMode: boolean;
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const coreAPI = new CoreAPI(logger);
 
@@ -102,99 +105,107 @@ export async function buildInitialActions({
     return dataSourceConfigurations;
   };
 
-  const action = deprecatedGetFirstActionConfiguration(configuration);
+  const actions = !multiActionsMode
+    ? removeNulls([deprecatedGetFirstActionConfiguration(configuration)])
+    : configuration.actions;
 
-  if (!action) {
-    return [];
-  } else if (isRetrievalConfiguration(action)) {
-    const isSearch = action.query !== "none";
+  const builderActions: AssistantBuilderActionConfiguration[] = [];
 
-    const retrievalConfiguration = isSearch
-      ? getDefaultRetrievalSearchActionConfiguration()
-      : getDefaultRetrievalExhaustiveActionConfiguration();
+  for (const action of actions) {
+    if (isRetrievalConfiguration(action)) {
+      const isSearch = action.query !== "none";
 
-    if (
-      action.relativeTimeFrame !== "auto" &&
-      action.relativeTimeFrame !== "none"
-    ) {
-      retrievalConfiguration.configuration.timeFrame = {
-        value: action.relativeTimeFrame.duration,
-        unit: action.relativeTimeFrame.unit,
-      };
-    }
+      const retrievalConfiguration = isSearch
+        ? getDefaultRetrievalSearchActionConfiguration()
+        : getDefaultRetrievalExhaustiveActionConfiguration();
 
-    retrievalConfiguration.configuration.dataSourceConfigurations =
-      await renderDataSourcesConfigurations(action);
-
-    return [retrievalConfiguration];
-  } else if (isDustAppRunConfiguration(action)) {
-    const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
-    for (const app of dustApps) {
-      if (app.sId === action.appId) {
-        dustAppConfiguration.configuration.app = app;
-        break;
-      }
-    }
-    return [dustAppConfiguration];
-  } else if (isTablesQueryConfiguration(action)) {
-    const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
-
-    const coreAPITables: CoreAPITable[] = await Promise.all(
-      action.tables.map(async (t) => {
-        const dataSource = dataSourcesByName[t.dataSourceId];
-        const coreAPITable = await coreAPI.getTable({
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceName: dataSource.name,
-          tableId: t.tableId,
-        });
-
-        if (coreAPITable.isErr()) {
-          throw coreAPITable.error;
-        }
-
-        return coreAPITable.value.table;
-      })
-    );
-
-    tablesQueryConfiguration.configuration = action.tables.reduce(
-      (acc, curr, i) => {
-        const table = coreAPITables[i];
-        const key = tableKey(curr);
-        return {
-          ...acc,
-          [key]: {
-            workspaceId: curr.workspaceId,
-            dataSourceId: curr.dataSourceId,
-            tableId: curr.tableId,
-            tableName: `${table.name}`,
-          },
+      if (
+        action.relativeTimeFrame !== "auto" &&
+        action.relativeTimeFrame !== "none"
+      ) {
+        retrievalConfiguration.configuration.timeFrame = {
+          value: action.relativeTimeFrame.duration,
+          unit: action.relativeTimeFrame.unit,
         };
-      },
-      {} as AssistantBuilderTablesQueryConfiguration
-    );
+      }
 
-    return [tablesQueryConfiguration];
-  } else if (isProcessConfiguration(action)) {
-    const processConfiguration = getDefaultProcessActionConfiguration();
-    if (
-      action.relativeTimeFrame !== "auto" &&
-      action.relativeTimeFrame !== "none"
-    ) {
-      processConfiguration.configuration.timeFrame = {
-        value: action.relativeTimeFrame.duration,
-        unit: action.relativeTimeFrame.unit,
-      };
+      retrievalConfiguration.configuration.dataSourceConfigurations =
+        await renderDataSourcesConfigurations(action);
+
+      builderActions.push(retrievalConfiguration);
+    } else if (isDustAppRunConfiguration(action)) {
+      const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
+      for (const app of dustApps) {
+        if (app.sId === action.appId) {
+          dustAppConfiguration.configuration.app = app;
+          break;
+        }
+      }
+
+      builderActions.push(dustAppConfiguration);
+    } else if (isTablesQueryConfiguration(action)) {
+      const tablesQueryConfiguration =
+        getDefaultTablesQueryActionConfiguration();
+
+      const coreAPITables: CoreAPITable[] = await Promise.all(
+        action.tables.map(async (t) => {
+          const dataSource = dataSourcesByName[t.dataSourceId];
+          const coreAPITable = await coreAPI.getTable({
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceName: dataSource.name,
+            tableId: t.tableId,
+          });
+
+          if (coreAPITable.isErr()) {
+            throw coreAPITable.error;
+          }
+
+          return coreAPITable.value.table;
+        })
+      );
+
+      tablesQueryConfiguration.configuration = action.tables.reduce(
+        (acc, curr, i) => {
+          const table = coreAPITables[i];
+          const key = tableKey(curr);
+          return {
+            ...acc,
+            [key]: {
+              workspaceId: curr.workspaceId,
+              dataSourceId: curr.dataSourceId,
+              tableId: curr.tableId,
+              tableName: `${table.name}`,
+            },
+          };
+        },
+        {} as AssistantBuilderTablesQueryConfiguration
+      );
+
+      builderActions.push(tablesQueryConfiguration);
+    } else if (isProcessConfiguration(action)) {
+      const processConfiguration = getDefaultProcessActionConfiguration();
+      if (
+        action.relativeTimeFrame !== "auto" &&
+        action.relativeTimeFrame !== "none"
+      ) {
+        processConfiguration.configuration.timeFrame = {
+          value: action.relativeTimeFrame.duration,
+          unit: action.relativeTimeFrame.unit,
+        };
+      }
+
+      processConfiguration.configuration.tagsFilter = action.tagsFilter;
+
+      processConfiguration.configuration.dataSourceConfigurations =
+        await renderDataSourcesConfigurations(action);
+
+      processConfiguration.configuration.schema = action.schema;
+
+      builderActions.push(processConfiguration);
+    } else {
+      assertNever(action);
     }
-
-    processConfiguration.configuration.tagsFilter = action.tagsFilter;
-
-    processConfiguration.configuration.dataSourceConfigurations =
-      await renderDataSourcesConfigurations(action);
-
-    processConfiguration.configuration.schema = action.schema;
-
-    return [processConfiguration];
-  } else {
-    assertNever(action);
   }
+
+  return builderActions;
 }

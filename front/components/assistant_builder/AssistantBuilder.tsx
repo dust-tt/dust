@@ -44,9 +44,10 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import ActionScreen, {
+import ActionScreen from "@app/components/assistant_builder/ActionScreen";
+import ActionsScreen, {
   isActionValid,
-} from "@app/components/assistant_builder/ActionScreen";
+} from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
@@ -99,6 +100,7 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
+  multiActionsMode: boolean;
 };
 
 const useNavigationLock = (
@@ -196,6 +198,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
+  multiActionsMode,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -411,7 +414,7 @@ export default function AssistantBuilder({
       valid = false;
     }
 
-    if (!isActionValid(builderState)) {
+    if (!builderState.actions.every((a) => isActionValid(a))) {
       valid = false;
     }
 
@@ -434,6 +437,7 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
+        useMultiActions: multiActionsMode,
       });
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
@@ -557,16 +561,30 @@ export default function AssistantBuilder({
                       />
                     );
                   case "actions":
-                    return (
-                      <ActionScreen
-                        owner={owner}
-                        builderState={builderState}
-                        dataSources={dataSources}
-                        dustApps={dustApps}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                      />
-                    );
+                    // TODO(@fontanierh): Remove single actions.
+                    if (!multiActionsMode) {
+                      return (
+                        <ActionScreen
+                          owner={owner}
+                          builderState={builderState}
+                          dataSources={dataSources}
+                          dustApps={dustApps}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                        />
+                      );
+                    } else {
+                      return (
+                        <ActionsScreen
+                          owner={owner}
+                          builderState={builderState}
+                          dataSources={dataSources}
+                          dustApps={dustApps}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                        />
+                      );
+                    }
                   case "naming":
                     return (
                       <NamingScreen
@@ -684,6 +702,7 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
+  useMultiActions,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -693,6 +712,7 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
+  useMultiActions: boolean;
 }): Promise<LightAgentConfigurationType | AgentConfigurationType> {
   const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
   let { handle, description, instructions, avatarUrl } = builderState;
@@ -721,6 +741,8 @@ export async function submitAssistantBuilderForm({
           case "RETRIEVAL_EXHAUSTIVE":
             return {
               type: "retrieval_configuration",
+              name: a.name,
+              description: a.description,
               query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
               relativeTimeFrame:
                 a.type === "RETRIEVAL_EXHAUSTIVE"
@@ -755,6 +777,8 @@ export async function submitAssistantBuilderForm({
             }
             return {
               type: "dust_app_run_configuration",
+              name: a.name,
+              description: a.description,
               appWorkspaceId: owner.sId,
               appId: a.configuration.app.sId,
             };
@@ -762,12 +786,16 @@ export async function submitAssistantBuilderForm({
           case "TABLES_QUERY":
             return {
               type: "tables_query_configuration",
+              name: a.name,
+              description: a.description,
               tables: Object.values(a.configuration),
             };
 
           case "PROCESS":
             return {
               type: "process_configuration",
+              name: a.name,
+              description: a.description,
               dataSources: Object.values(
                 a.configuration.dataSourceConfigurations
               ).map(({ dataSource, selectedResources, isSelectAll }) => ({
@@ -816,6 +844,7 @@ export async function submitAssistantBuilderForm({
           temperature: builderState.generationSettings.temperature,
         },
       },
+      useMultiActions,
     };
 
   const res = await fetch(
