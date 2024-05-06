@@ -14,25 +14,29 @@ import { classNames } from "@app/lib/utils";
 
 const deleteDataSource = ({
   name,
-  actionConfiguration,
   updateAction,
   setEdited,
 }: {
   name: string;
-  actionConfiguration: AssistantBuilderRetrievalConfiguration;
-  updateAction: (action: AssistantBuilderRetrievalConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
 }) => {
-  if (actionConfiguration.dataSourceConfigurations[name]) {
-    setEdited(true);
-  }
-  const newDataSourceConfigurations = {
-    ...actionConfiguration.dataSourceConfigurations,
-  };
-  delete newDataSourceConfigurations[name];
-  updateAction({
-    ...actionConfiguration,
-    dataSourceConfigurations: newDataSourceConfigurations,
+  updateAction((previousAction) => {
+    if (previousAction.dataSourceConfigurations[name]) {
+      setEdited(true);
+    }
+    const newDataSourceConfigurations = {
+      ...previousAction.dataSourceConfigurations,
+    };
+    delete newDataSourceConfigurations[name];
+    return {
+      ...previousAction,
+      dataSourceConfigurations: newDataSourceConfigurations,
+    };
   });
 };
 
@@ -56,7 +60,11 @@ export function ActionRetrievalSearch({
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  updateAction: (action: AssistantBuilderRetrievalConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -77,22 +85,21 @@ export function ActionRetrievalSearch({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          updateAction({
-            ...actionConfiguration,
+          updateAction((previousAction) => ({
+            ...previousAction,
             dataSourceConfigurations: {
-              ...actionConfiguration.dataSourceConfigurations,
+              ...previousAction.dataSourceConfigurations,
               [dataSource.name]: {
                 dataSource,
                 selectedResources,
                 isSelectAll,
               },
             },
-          });
+          }));
         }}
         onDelete={(name) => {
           deleteDataSource({
             name,
-            actionConfiguration,
             updateAction,
             setEdited,
           });
@@ -110,7 +117,6 @@ export function ActionRetrievalSearch({
         onDelete={(name) => {
           deleteDataSource({
             name,
-            actionConfiguration,
             updateAction,
             setEdited,
           });
@@ -139,7 +145,11 @@ export function ActionRetrievalExhaustive({
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  updateAction: (action: AssistantBuilderRetrievalConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -169,22 +179,21 @@ export function ActionRetrievalExhaustive({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          updateAction({
-            ...actionConfiguration,
+          updateAction((previousAction) => ({
+            ...previousAction,
             dataSourceConfigurations: {
-              ...actionConfiguration.dataSourceConfigurations,
+              ...previousAction.dataSourceConfigurations,
               [dataSource.name]: {
                 dataSource,
                 selectedResources,
                 isSelectAll,
               },
             },
-          });
+          }));
         }}
         onDelete={(name) => {
           deleteDataSource({
             name,
-            actionConfiguration,
             updateAction,
             setEdited,
           });
@@ -202,7 +211,6 @@ export function ActionRetrievalExhaustive({
         onDelete={(name) => {
           deleteDataSource({
             name,
-            actionConfiguration,
             updateAction,
             setEdited,
           });
@@ -226,13 +234,13 @@ export function ActionRetrievalExhaustive({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              updateAction({
-                ...actionConfiguration,
+              updateAction((previousAction) => ({
+                ...previousAction,
                 timeFrame: {
                   value,
-                  unit: actionConfiguration.timeFrame.unit,
+                  unit: previousAction.timeFrame.unit,
                 },
-              });
+              }));
             }
           }}
         />
@@ -255,13 +263,13 @@ export function ActionRetrievalExhaustive({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  updateAction({
-                    ...actionConfiguration,
+                  updateAction((previousAction) => ({
+                    ...previousAction,
                     timeFrame: {
-                      value: actionConfiguration.timeFrame.value,
+                      value: previousAction.timeFrame.value,
                       unit: key as TimeframeUnit,
                     },
-                  });
+                  }));
                 }}
               />
             ))}
