@@ -76,12 +76,6 @@ AgentDataSourceConfiguration.init(
     hooks: {
       beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
         if (
-          (dataSourceConfig.tagsIn === null) !==
-          (dataSourceConfig.tagsNotIn === null)
-        ) {
-          throw new Error("Tags must be both set or both null");
-        }
-        if (
           (dataSourceConfig.parentsIn === null) !==
           (dataSourceConfig.parentsNotIn === null)
         ) {
