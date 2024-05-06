@@ -8,6 +8,9 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import {
+  getDustAppSecrets,
+} from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { Provider, Run } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
@@ -161,6 +164,8 @@ async function handler(
         credentials = credentialsFromProviders(providers);
       }
 
+      const secrets = await getDustAppSecrets(auth, true);
+
       logger.info(
         {
           workspace: {
@@ -182,6 +187,7 @@ async function handler(
           config: { blocks: config },
           inputs,
           credentials,
+          secrets
         });
 
         if (runRes.isErr()) {
@@ -247,6 +253,7 @@ async function handler(
         config: { blocks: config },
         inputs,
         credentials,
+        secrets
       });
 
       if (runRes.isErr()) {
