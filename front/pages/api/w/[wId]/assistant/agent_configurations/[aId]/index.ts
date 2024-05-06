@@ -112,7 +112,7 @@ async function handler(
         auth,
         assistant: bodyValidation.right.assistant,
         agentConfigurationId: req.query.aId as string,
-        legacySingleActionMode: true,
+        legacySingleActionMode: !bodyValidation.right.useMultiActions,
       });
       if (agentConfiguration.isErr()) {
         return apiError(req, res, {

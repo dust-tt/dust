@@ -229,6 +229,7 @@ export function usePreviewAssistant({
         slackChannelsLinkedWithAgent: [],
       },
       isDraft: true,
+      useMultiActions: false,
     });
 
     animate();

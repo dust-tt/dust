@@ -28,7 +28,6 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   Ok,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -56,6 +55,7 @@ import {
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
+import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
@@ -106,25 +106,6 @@ export async function* runAgent(
   for await (const event of stream) {
     yield event;
   }
-}
-
-// This function returns true if the agent is a "legacy" agent with a forced schedule,
-// i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
-// and every tool is forced at a certain iteration.
-export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
-  // TODO(@fontanierh): change once generation is part of actions.
-  const actions = removeNulls([
-    ...configuration.actions,
-    configuration.generation,
-  ]);
-
-  return (
-    configuration.maxToolsUsePerRun <= 2 &&
-    Array.from(Array(configuration.maxToolsUsePerRun).keys()).every((i) =>
-      actions.some((a) => a.forceUseAtIteration === i)
-    ) &&
-    actions.every((a) => a.forceUseAtIteration !== undefined)
-  );
 }
 
 export async function* runMultiActionsAgent(

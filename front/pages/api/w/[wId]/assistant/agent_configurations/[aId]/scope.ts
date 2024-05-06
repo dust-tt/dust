@@ -4,9 +4,9 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { isLegacyAgent } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { isLegacyAgent } from "@app/lib/assistant";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";

@@ -21,6 +21,7 @@ import type { AssistantBuilderInitialState } from "@app/components/assistant_bui
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { isLegacyAgent } from "@app/lib/assistant";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -37,6 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
+  multiActionsMode: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -63,6 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     auth,
     context.params?.aId as string
   );
+
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
       notFound: true,
@@ -74,6 +77,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
+
+  const isMultiActions = !isLegacyAgent(configuration);
+  const multiActionsMode =
+    owner.flags.includes("multi_actions") &&
+    (isMultiActions || context.query.multi_actions === "true");
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -95,10 +103,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         dataSourcesByName,
         dustApps: allDustApps,
         configuration,
+        multiActionsMode,
       }),
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
+      multiActionsMode,
     },
   };
 });
@@ -114,6 +124,7 @@ export default function EditAssistant({
   agentConfiguration,
   flow,
   baseUrl,
+  multiActionsMode,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
@@ -178,6 +189,7 @@ export default function EditAssistant({
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
       defaultTemplate={null}
+      multiActionsMode={multiActionsMode}
     />
   );
 }
