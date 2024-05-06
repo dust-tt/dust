@@ -91,6 +91,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
+const ALL_AGENTS_TABS: {
+  // Moved outside of the component to prevent unnecessary re-renderings
+  label: string;
+  id: AgentsGetViewType;
+  icon?: ComponentType<{ className?: string }>;
+}[] = [
+  { label: "All", id: "all" },
+  { label: "Shared", icon: UserGroupIcon, id: "published" },
+  { label: "Company", icon: PlanetIcon, id: "workspace" },
+];
+
 export default function AssistantNew({
   helper,
   owner,
@@ -145,35 +156,14 @@ export default function AssistantNew({
     }
   }, [selectedTab, agentConfigurations]);
 
-  const allAgentsTabs: {
-    label: string;
-    current: boolean;
-    id: AgentsGetViewType;
-    icon?: ComponentType<{ className?: string }>;
-  }[] = useMemo(
-    () => [
-      {
-        label: "All",
-        current: selectedTab === "all",
-        id: "all",
-      },
-      {
-        label: "Shared",
-        current: selectedTab === "published",
-        icon: UserGroupIcon,
-        id: "published",
-      },
-      {
-        label: "Company",
-        current: selectedTab === "workspace",
-        icon: PlanetIcon,
-        id: "workspace",
-      },
-    ],
-    [selectedTab]
-  );
+  const allAgentsTabs = useMemo(() => {
+    return ALL_AGENTS_TABS.map((tab) => ({
+      ...tab,
+      current: tab.id === selectedTab,
+    }));
+  }, [selectedTab]);
 
-  const { submit: handleSubmit } = useSubmitFunction(
+  const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -243,7 +233,7 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
-  const { submit: handleQuickGuideClose } = useSubmitFunction(async () => {
+  const { submit: handleCloseQuickGuide } = useSubmitFunction(async () => {
     setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" })
       .then(() => {
         return mutateQuickGuideSeen();
@@ -263,20 +253,20 @@ export default function AssistantNew({
     }, 50); // Allows browser to complete the layout update before scrolling.
   }, []);
 
-  const handleAssistantClick = (
-    agent: LightAgentConfigurationType,
-    conversation?: ConversationType
-  ) => {
-    scrollToInputBar();
-    setSelectedAssistant({
-      configurationId: agent.sId,
-    });
-    
-    setConversationHelperModal(conversation || null);
-    setTimeout(() => {
-      setAnimate(true);
-    }, 500);
-  };
+  const handleAssistantClick = useCallback(
+    (agent: LightAgentConfigurationType, conversation?: ConversationType) => {
+      scrollToInputBar();
+      setSelectedAssistant({
+        configurationId: agent.sId,
+      });
+
+      setConversationHelperModal(conversation || null);
+      setTimeout(() => {
+        setAnimate(true);
+      }, 500);
+    },
+    [scrollToInputBar, setSelectedAssistant, setAnimate]
+  );
 
   useEffect(() => {
     if (contentRef.current) {
@@ -291,7 +281,7 @@ export default function AssistantNew({
         user={user}
         show={showQuickGuide}
         onClose={() => {
-          void handleQuickGuideClose();
+          void handleCloseQuickGuide();
         }}
       />
       {conversationHelperModal && helper && (
@@ -312,7 +302,7 @@ export default function AssistantNew({
         {/* Assistant input */}
         <div
           id="assistant-input-container"
-          className="flex min-h-[50vh] grow w-full flex-col items-center justify-center"
+          className="flex min-h-[50vh] w-full grow flex-col items-center justify-center"
         >
           <div
             id="assistant-input-header"
@@ -327,7 +317,7 @@ export default function AssistantNew({
           >
             <AssistantInputBar
               owner={owner}
-              onSubmit={handleSubmit}
+              onSubmit={handleMessageSubmit}
               conversationId={null}
               hideQuickActions={false}
               disableAutoFocus={false}
@@ -422,7 +412,7 @@ export default function AssistantNew({
           variant="primary"
           hasMagnifying={true}
           disabledTooltip={true}
-          className="!bg-brand !border-emerald-600"
+          className="!border-emerald-600 !bg-brand"
         />
       </div>
 
