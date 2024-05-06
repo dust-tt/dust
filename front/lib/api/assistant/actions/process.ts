@@ -70,7 +70,8 @@ export function renderProcessActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallForProcessAction(
+
+export function renderProcessActionFunctionCall(
   action: ProcessActionType
 ): FunctionCallType {
   return {
@@ -82,7 +83,7 @@ export function renderAssistantFunctionCallForProcessAction(
     },
   };
 }
-export function renderFunctionMessageForForProcessAction(
+export function renderProcessActionForMultiActionsModel(
   action: ProcessActionType
 ): FunctionMessageTypeModel {
   let content = "";

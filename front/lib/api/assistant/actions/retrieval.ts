@@ -150,7 +150,8 @@ export function renderRetrievalActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallForRetrievalAction(
+
+export function rendeRetrievalActionFunctionCall(
   action: RetrievalActionType
 ): FunctionCallType {
   const timeFrame = action.params.relativeTimeFrame;
@@ -171,7 +172,7 @@ export function renderAssistantFunctionCallForRetrievalAction(
     },
   };
 }
-export function renderFunctionMessageForRetrievalAction(
+export function renderRetrievalActionForMultiActionsModel(
   action: RetrievalActionType
 ): FunctionMessageTypeModel {
   let content = "";

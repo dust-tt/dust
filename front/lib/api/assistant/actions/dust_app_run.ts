@@ -48,7 +48,8 @@ export function renderDustAppRunActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallForDustAppRunAction(
+
+export function renderDustAppRunActionFunctionCall(
   action: DustAppRunActionType
 ): FunctionCallType {
   return {
@@ -60,7 +61,7 @@ export function renderAssistantFunctionCallForDustAppRunAction(
     },
   };
 }
-export function renderFunctionMessageForForDustAppRunAction(
+export function renderDustAppRunActionForMultiActionsModel(
   action: DustAppRunActionType
 ): FunctionMessageTypeModel {
   let content = "";

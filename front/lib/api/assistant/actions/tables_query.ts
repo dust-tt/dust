@@ -45,7 +45,8 @@ export function renderTablesQueryActionForModel(
     content,
   };
 }
-export function renderAssistantFunctionCallForTablesQueryAction(
+
+export function rendeTablesQueryActionFunctionCall(
   action: TablesQueryActionType
 ): FunctionCallType {
   return {
@@ -57,7 +58,7 @@ export function renderAssistantFunctionCallForTablesQueryAction(
     },
   };
 }
-export function renderFunctionMessageForForTablesQueryAction(
+export function renderTablesQueryActionForMultiActionsModel(
   action: TablesQueryActionType
 ): FunctionMessageTypeModel {
   let content = "";

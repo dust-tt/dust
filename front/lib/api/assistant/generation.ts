@@ -34,25 +34,25 @@ import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  renderAssistantFunctionCallForDustAppRunAction,
   renderDustAppRunActionForModel,
-  renderFunctionMessageForForDustAppRunAction,
+  renderDustAppRunActionForMultiActionsModel,
+  renderDustAppRunActionFunctionCall,
 } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
-  renderAssistantFunctionCallForProcessAction,
-  renderFunctionMessageForForProcessAction,
   renderProcessActionForModel,
+  renderProcessActionForMultiActionsModel,
+  renderProcessActionFunctionCall,
 } from "@app/lib/api/assistant/actions/process";
 import {
-  renderAssistantFunctionCallForRetrievalAction,
-  renderFunctionMessageForRetrievalAction,
+  rendeRetrievalActionFunctionCall,
   renderRetrievalActionForModel,
+  renderRetrievalActionForMultiActionsModel,
   retrievalMetaPrompt,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
-  renderAssistantFunctionCallForTablesQueryAction,
-  renderFunctionMessageForForTablesQueryAction,
   renderTablesQueryActionForModel,
+  renderTablesQueryActionForMultiActionsModel,
+  rendeTablesQueryActionFunctionCall,
 } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
@@ -315,32 +315,24 @@ export async function renderConversationForModelMultiActions({
       for (const action of actions) {
         if (isRetrievalActionType(action)) {
           function_messages.unshift(
-            renderFunctionMessageForRetrievalAction(action)
+            renderRetrievalActionForMultiActionsModel(action)
           );
-          function_calls.unshift(
-            renderAssistantFunctionCallForRetrievalAction(action)
-          );
+          function_calls.unshift(rendeRetrievalActionFunctionCall(action));
         } else if (isDustAppRunActionType(action)) {
           function_messages.unshift(
-            renderFunctionMessageForForDustAppRunAction(action)
+            renderDustAppRunActionForMultiActionsModel(action)
           );
-          function_calls.unshift(
-            renderAssistantFunctionCallForDustAppRunAction(action)
-          );
+          function_calls.unshift(renderDustAppRunActionFunctionCall(action));
         } else if (isTablesQueryActionType(action)) {
           function_messages.unshift(
-            renderFunctionMessageForForTablesQueryAction(action)
+            renderTablesQueryActionForMultiActionsModel(action)
           );
-          function_calls.unshift(
-            renderAssistantFunctionCallForTablesQueryAction(action)
-          );
+          function_calls.unshift(rendeTablesQueryActionFunctionCall(action));
         } else if (isProcessActionType(action)) {
           function_messages.unshift(
-            renderFunctionMessageForForProcessAction(action)
+            renderProcessActionForMultiActionsModel(action)
           );
-          function_calls.unshift(
-            renderAssistantFunctionCallForProcessAction(action)
-          );
+          function_calls.unshift(renderProcessActionFunctionCall(action));
         } else {
           assertNever(action);
         }
