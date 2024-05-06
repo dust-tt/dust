@@ -230,10 +230,7 @@ const CookieBanner = ({
 const Header = () => {
   return (
     <Head>
-      <title>
-        Dust - Amplify your team's potential with customizable and secure AI
-        assistants
-      </title>
+      <title>Dust - Cracking team productivity with AI</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
 
       <meta name="apple-mobile-web-app-title" content="Dust" />
@@ -282,12 +279,12 @@ const Header = () => {
       <meta
         id="meta-description"
         name="description"
-        content="Dust is an AI assistant that safely brings the best large language models, continuously updated company knowledge, powerful collaboration applications, and an extensible platform to your team's fingertips."
+        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI assistants."
       />
       <meta
         id="og-title"
         property="og:title"
-        content="Dust - Secure AI assistant with your company's knowledge"
+        content="Dust - Cracking team productivity with AI"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
 
