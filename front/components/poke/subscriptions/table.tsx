@@ -29,7 +29,7 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isDevelopment } from "@app/lib/development";
-import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE, isProPlanCode } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr";
 
 interface SubscriptionsDataTableProps {
@@ -407,6 +407,31 @@ function UpgradeDowngradeModal({
             owner={owner}
           />
         </div>
+        {isProPlanCode(subscription.plan.code) && (
+          <>
+            <Page.SectionHeader
+              title="Change the Pro Plan of this workspace"
+              description="This action changes the Plan limitations for an active Pro subscription. Subscription on Stripe stays the same, we just change the plan in our database."
+            />
+            <div>
+              {plans
+                .filter((p) => isProPlanCode(p.code))
+                .map((p) => {
+                  return (
+                    <div key={p.code} className="pt-2">
+                      <PokeButton
+                        variant="outline"
+                        disabled={subscription.plan.code === p.code}
+                        onClick={() => onUpgradeToPlan(p)}
+                      >
+                        Upgrade to {p.code}
+                      </PokeButton>
+                    </div>
+                  );
+                })}
+            </div>
+          </>
+        )}
       </Page>
     </Modal>
   );

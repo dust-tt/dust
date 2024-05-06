@@ -31,8 +31,8 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
+  isProPlanCode,
   isUpgraded,
-  PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -365,7 +365,7 @@ export default function Subscription({
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
-              {plan.code === PRO_PLAN_SEAT_29_CODE && (
+              {isProPlanCode(plan.code) && (
                 <>
                   <Page.P>
                     Estimated monthly billing:{" "}

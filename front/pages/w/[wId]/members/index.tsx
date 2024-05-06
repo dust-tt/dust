@@ -57,7 +57,7 @@ import {
 } from "@app/lib/client/subscription";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
-import { isUpgraded, PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import { isProPlanCode, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { classNames, isEmailValid } from "@app/lib/utils";
 import type {
@@ -649,7 +649,7 @@ function InviteEmailModal({
               {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
-          {plan.code === PRO_PLAN_SEAT_29_CODE && (
+          {isProPlanCode(plan.code) && (
             <div className="justify-self-end">
               <ProPlanBillingNotice />
             </div>
