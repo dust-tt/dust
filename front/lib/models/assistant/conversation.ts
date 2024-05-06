@@ -13,8 +13,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -297,30 +295,6 @@ AgentMessage.init(
     sequelize: frontSequelize,
   }
 );
-
-// TO BE MOVED TO RESPECTIVE MODELS POST INVERSION
-
-AgentDustAppRunAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentDustAppRunAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentTablesQueryAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentTablesQueryAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-// END TO BE MOVED
 
 export class Message extends Model<
   InferAttributes<Message>,

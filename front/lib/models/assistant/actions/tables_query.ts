@@ -7,7 +7,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -220,3 +220,11 @@ AgentTablesQueryAction.init(
     ],
   }
 );
+
+AgentTablesQueryAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMessage.hasMany(AgentTablesQueryAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
