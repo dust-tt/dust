@@ -301,8 +301,6 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
   const isUgradeToEnterprise = newPlan.code.startsWith("ENT_");
   const isUpgradeToPro = isProPlanCode(newPlan.code);
-  const isCurrentlyPro =
-    activeSubscription && isProPlanCode(activeSubscription.plan.code);
 
   // Ugrade to Enterprise is not allowed through this function.
   if (isUgradeToEnterprise) {
@@ -314,19 +312,24 @@ export const pokeUpgradeWorkspaceToPlan = async (
   // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
   // This is a way to change the plan limitations but stay on Pro.
   if (isUpgradeToPro) {
-    if (!isCurrentlyPro) {
+    if (
+      activeSubscription &&
+      activeSubscription.sId &&
+      isProPlanCode(activeSubscription.plan.code)
+    ) {
+      await Subscription.update(
+        { planId: newPlan.id },
+        {
+          where: {
+            sId: activeSubscription.sId,
+          },
+        }
+      );
+    } else {
       throw new Error(
         `Cannot subscribe to ${planCode}: Pro Plans requires a stripe checkout session done by the user on the product.`
       );
     }
-    await Subscription.update(
-      { planId: newPlan.id },
-      {
-        where: {
-          stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
-        },
-      }
-    );
     return;
   }
 
