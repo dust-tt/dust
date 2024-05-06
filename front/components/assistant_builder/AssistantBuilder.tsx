@@ -47,6 +47,7 @@ import { SharingButton } from "@app/components/assistant/Sharing";
 import ActionScreen, {
   isActionValid,
 } from "@app/components/assistant_builder/ActionScreen";
+import ActionsScreen from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
@@ -99,6 +100,7 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
+  multiActionsMode: boolean;
 };
 
 const useNavigationLock = (
@@ -196,6 +198,7 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
+  multiActionsMode,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -557,16 +560,30 @@ export default function AssistantBuilder({
                       />
                     );
                   case "actions":
-                    return (
-                      <ActionScreen
-                        owner={owner}
-                        builderState={builderState}
-                        dataSources={dataSources}
-                        dustApps={dustApps}
-                        setBuilderState={setBuilderState}
-                        setEdited={setEdited}
-                      />
-                    );
+                    // TODO(@fontanierh): Remove single actions.
+                    if (!multiActionsMode) {
+                      return (
+                        <ActionScreen
+                          owner={owner}
+                          builderState={builderState}
+                          dataSources={dataSources}
+                          dustApps={dustApps}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                        />
+                      );
+                    } else {
+                      return (
+                        <ActionsScreen
+                          owner={owner}
+                          builderState={builderState}
+                          dataSources={dataSources}
+                          dustApps={dustApps}
+                          setBuilderState={setBuilderState}
+                          setEdited={setEdited}
+                        />
+                      );
+                    }
                   case "naming":
                     return (
                       <NamingScreen

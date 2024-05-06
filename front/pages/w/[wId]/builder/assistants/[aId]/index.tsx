@@ -37,6 +37,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
+  multiActionsMode: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -51,6 +52,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     return {
       notFound: true,
     };
+  }
+
+  let multiActionsMode = context.query.multi_actions === "true";
+  if (multiActionsMode && !owner.flags.includes("multi_actions")) {
+    multiActionsMode = false;
   }
 
   const allDataSources = await getDataSources(auth);
@@ -99,6 +105,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
+      multiActionsMode,
     },
   };
 });
@@ -114,6 +121,7 @@ export default function EditAssistant({
   agentConfiguration,
   flow,
   baseUrl,
+  multiActionsMode,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
@@ -178,6 +186,7 @@ export default function EditAssistant({
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
       defaultTemplate={null}
+      multiActionsMode={multiActionsMode}
     />
   );
 }
