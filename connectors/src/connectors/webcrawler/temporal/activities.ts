@@ -284,6 +284,15 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     url = `http://${url}`;
   }
+
+  childLogger.info(
+    {
+      url,
+      configId: webCrawlerConfig.id,
+    },
+    "Webcrawler activity started"
+  );
+
   await crawler.run([url]);
 
   await crawler.teardown();
@@ -302,11 +311,22 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     );
   }
 
+  childLogger.info(
+    {
+      url,
+      pageCount,
+      crawlingError,
+      configId: webCrawlerConfig.id,
+    },
+    "Webcrawler activity finished"
+  );
+
   return {
     pageCount,
     crawlingError,
   };
 }
+
 function formatDocumentContent({
   title,
   content,
