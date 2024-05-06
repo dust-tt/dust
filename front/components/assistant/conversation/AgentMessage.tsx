@@ -139,7 +139,7 @@ export function AgentMessage({
     switch (event.type) {
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
-          return { ...m, action: event.action, content: "" };
+          return { ...m, actions: [event.action], content: "" };
         });
         break;
       case "retrieval_params":
@@ -149,7 +149,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "process_params":
         setStreamedAgentMessage((m) => {
-          return { ...m, action: event.action };
+          return { ...m, actions: [event.action] };
         });
         break;
       case "agent_error":
