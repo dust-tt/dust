@@ -8,12 +8,10 @@ export const TRIAL_PLAN_CODE = "TRIAL_PLAN_CODE";
 
 // Current pro plans:
 export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
-export const PRO_PLAN_OUTLEAP_CODE = "PRO_PLAN_OUTLEAP";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 
 export const PRO_PLANS_CODES = [
   PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_OUTLEAP_CODE,
   PRO_PLAN_LARGE_FILES_CODE,
 ];
 export const isProPlanCode = (code: string): boolean => {
