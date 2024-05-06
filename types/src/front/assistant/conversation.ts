@@ -110,7 +110,7 @@ export type AgentMessageType = {
   parentMessageId: string | null;
   configuration: LightAgentConfigurationType;
   status: AgentMessageStatus;
-  action: AgentActionType | null;
+  actions: AgentActionType[];
   content: string | null;
   error: {
     code: string;

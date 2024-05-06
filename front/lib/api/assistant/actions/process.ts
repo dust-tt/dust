@@ -199,7 +199,8 @@ export async function processActionTypesFromAgentMessageIds(
       },
       schema: action.schema,
       outputs: action.outputs,
-    };
+      step: action.step,
+    } satisfies ProcessActionType;
   });
 }
 
@@ -221,6 +222,7 @@ export async function* runProcess(
     userMessage,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ProcessConfigurationType;
@@ -228,6 +230,7 @@ export async function* runProcess(
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   ProcessParamsEvent | ProcessSuccessEvent | ProcessErrorEvent,
@@ -271,6 +274,7 @@ export async function* runProcess(
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
     agentMessageId: agentMessage.agentMessageId,
+    step,
   });
 
   const now = Date.now();
@@ -290,6 +294,7 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs: null,
+      step: action.step,
     },
   };
 
@@ -487,6 +492,7 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs,
+      step: action.step,
     },
   };
 }

@@ -58,6 +58,7 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
@@ -113,20 +114,21 @@ export async function renderConversationForModel({
       }
       // There are contexts where we want to exclude the actions from the rendering.
       // Eg: During the conversation title generation step.
-      if (m.action && !excludeActions) {
-        if (isRetrievalActionType(m.action)) {
+      const action = getDeprecatedSingleAction(m.actions);
+      if (action && !excludeActions) {
+        if (isRetrievalActionType(action)) {
           if (includeRetrieval) {
             foundRetrieval = true;
-            messages.unshift(renderRetrievalActionForModel(m.action));
+            messages.unshift(renderRetrievalActionForModel(action));
           }
-        } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(renderDustAppRunActionForModel(m.action));
-        } else if (isTablesQueryActionType(m.action)) {
-          messages.unshift(renderTablesQueryActionForModel(m.action));
-        } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderProcessActionForModel(m.action));
+        } else if (isDustAppRunActionType(action)) {
+          messages.unshift(renderDustAppRunActionForModel(action));
+        } else if (isTablesQueryActionType(action)) {
+          messages.unshift(renderTablesQueryActionForModel(action));
+        } else if (isProcessActionType(action)) {
+          messages.unshift(renderProcessActionForModel(action));
         } else {
-          assertNever(m.action);
+          assertNever(action);
         }
       }
     } else if (isUserMessageType(m)) {
@@ -309,7 +311,7 @@ export async function renderConversationForModelMultiActions({
         });
       }
 
-      const actions = removeNulls([m.action]); // Should be replaced with `m.actions` once we it on AgentMessageType.
+      const actions = removeNulls(m.actions);
       const function_calls = [];
       const function_messages = [];
 

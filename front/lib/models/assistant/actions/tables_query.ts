@@ -169,6 +169,8 @@ export class AgentTablesQueryAction extends Model<
   declare params: unknown | null;
   declare output: unknown | null;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+
+  declare step: number;
 }
 
 AgentTablesQueryAction.init(
@@ -200,6 +202,10 @@ AgentTablesQueryAction.init(
     },
     output: {
       type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    step: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

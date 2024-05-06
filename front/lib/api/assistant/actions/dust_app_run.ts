@@ -226,6 +226,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       runningBlock: null,
       output: action.output,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     } satisfies DustAppRunActionType;
   });
 }
@@ -249,6 +250,7 @@ export async function* runDustApp(
     agentMessage,
     spec,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: DustAppRunConfigurationType;
@@ -256,6 +258,7 @@ export async function* runDustApp(
     agentMessage: AgentMessageType;
     spec: AgentActionSpecification;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   | DustAppRunParamsEvent
@@ -322,6 +325,7 @@ export async function* runDustApp(
     appName: app.name,
     params,
     agentMessageId: agentMessage.agentMessageId,
+    step,
   });
 
   yield {
@@ -339,6 +343,7 @@ export async function* runDustApp(
       runningBlock: null,
       output: null,
       agentMessageId: agentMessage.agentMessageId,
+      step,
     },
   };
 
@@ -417,6 +422,7 @@ export async function* runDustApp(
           },
           output: null,
           agentMessageId: agentMessage.agentMessageId,
+          step: action.step,
         },
       };
     }
@@ -470,6 +476,7 @@ export async function* runDustApp(
       runningBlock: null,
       output: lastBlockOutput,
       agentMessageId: agentMessage.agentMessageId,
+      step: action.step,
     },
   };
 }
