@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentsGetViewType,
-  ConversationType,
   LightAgentConfigurationType,
   MentionType,
   PlanType,
@@ -38,7 +37,6 @@ import ConversationLayout from "@app/components/assistant/conversation/Conversat
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -103,7 +101,6 @@ const ALL_AGENTS_TABS: {
 ];
 
 export default function AssistantNew({
-  helper,
   owner,
   subscription,
   user,
@@ -119,8 +116,6 @@ export default function AssistantNew({
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
   const { setSelectedAssistant } = useContext(InputBarContext);
-  const [conversationHelperModal, setConversationHelperModal] =
-    useState<ConversationType | null>(null);
 
   const agentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -254,13 +249,12 @@ export default function AssistantNew({
   }, []);
 
   const handleAssistantClick = useCallback(
-    (agent: LightAgentConfigurationType, conversation?: ConversationType) => {
+    (agent: LightAgentConfigurationType) => {
       scrollToInputBar();
       setSelectedAssistant({
         configurationId: agent.sId,
       });
 
-      setConversationHelperModal(conversation || null);
       setTimeout(() => {
         setAnimate(true);
       }, 500);
@@ -284,17 +278,6 @@ export default function AssistantNew({
           void handleCloseQuickGuide();
         }}
       />
-      {conversationHelperModal && helper && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          title="Getting @help"
-          assistant={helper}
-          openWithConversation={conversationHelperModal}
-          onClose={() => setConversationHelperModal(null)}
-        />
-      )}
-
       <div
         id="assistant-new-page"
         className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
