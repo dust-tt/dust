@@ -51,7 +51,7 @@ import {
 } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
-  constructPrompt,
+  constructPromptMultiActions,
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
@@ -319,8 +319,7 @@ export async function getNextAction(
     Error
   >
 > {
-  // TODO(@fontanierh): Make a new one for multi actions.
-  let prompt = await constructPrompt(
+  let prompt = await constructPromptMultiActions(
     auth,
     userMessage,
     agentConfiguration,
