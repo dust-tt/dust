@@ -36,7 +36,7 @@ export type AssistantBuilderTimeFrame = {
   unit: TimeframeUnit;
 };
 
-export type AsisstantBuilderTagsFilter = {
+export type AssistantBuilderTagsFilter = {
   in: string[] | null;
   not: string[] | null;
 };
@@ -71,7 +71,7 @@ export type AssistantBuilderTablesQueryConfiguration = Record<
 
 export type AssistantBuilderProcessConfiguration = {
   dataSourceConfigurations: AssistantBuilderDataSourceConfigurations;
-  tagsFilter: AsisstantBuilderTagsFilter;
+  tagsFilter: AssistantBuilderTagsFilter;
   timeFrame: AssistantBuilderTimeFrame;
   schema: ProcessSchemaPropertyType[];
 };
