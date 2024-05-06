@@ -37,6 +37,8 @@ pub enum ChatMessageRole {
     User,
     Assistant,
     Function,
+    #[serde(rename = "content_fragment")]
+    ContentFragment,
 }
 
 impl ToString for ChatMessageRole {
@@ -46,6 +48,7 @@ impl ToString for ChatMessageRole {
             ChatMessageRole::User => String::from("user"),
             ChatMessageRole::Assistant => String::from("assistant"),
             ChatMessageRole::Function => String::from("function"),
+            ChatMessageRole::ContentFragment => String::from("content_fragment"),
         }
     }
 }
@@ -58,6 +61,7 @@ impl FromStr for ChatMessageRole {
             "user" => Ok(ChatMessageRole::User),
             "assistant" => Ok(ChatMessageRole::Assistant),
             "function" => Ok(ChatMessageRole::Function),
+            "content_fragment" => Ok(ChatMessageRole::ContentFragment),
             _ => Err(ParseError::with_message("Unknown ChatMessageRole"))?,
         }
     }
