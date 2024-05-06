@@ -12,7 +12,10 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+import {
+  isProPlanCode,
+  PRO_PLAN_SEAT_29_CODE,
+} from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
@@ -296,16 +299,45 @@ export const pokeUpgradeWorkspaceToPlan = async (
     );
   }
 
-  if (newPlan.code === PRO_PLAN_SEAT_29_CODE) {
+  const isUgradeToEnterprise = newPlan.code.startsWith("ENT_");
+  const isUpgradeToPro = isProPlanCode(newPlan.code);
+
+  // Ugrade to Enterprise is not allowed through this function.
+  if (isUgradeToEnterprise) {
     throw new Error(
-      `Cannot subscribe to plan ${planCode}: it is the pro plan which requires a stripe subscription.`
+      `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
     );
+  }
+
+  // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
+  // This is a way to change the plan limitations but stay on Pro.
+  if (isUpgradeToPro) {
+    if (
+      activeSubscription &&
+      activeSubscription.sId &&
+      isProPlanCode(activeSubscription.plan.code)
+    ) {
+      await Subscription.update(
+        { planId: newPlan.id },
+        {
+          where: {
+            sId: activeSubscription.sId,
+          },
+        }
+      );
+    } else {
+      throw new Error(
+        `Cannot subscribe to ${planCode}: Pro Plans requires a stripe checkout session done by the user on the product.`
+      );
+    }
+    return;
   }
 
   await internalSubscribeWorkspaceToFreePlan({
     workspaceId: owner.sId,
     planCode: newPlan.code,
   });
+
   return;
 };
 
@@ -331,12 +363,9 @@ export const getCheckoutUrlForUpgrade = async (
   }
 
   const existingSubscription = auth.subscription();
-  if (
-    existingSubscription &&
-    existingSubscription.plan.code === PRO_PLAN_SEAT_29_CODE
-  ) {
+  if (existingSubscription && isProPlanCode(existingSubscription.plan.code)) {
     throw new Error(
-      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed.`
+      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed to a Pro plan.`
     );
   }
 
