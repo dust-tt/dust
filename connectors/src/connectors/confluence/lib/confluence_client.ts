@@ -164,7 +164,10 @@ export class ConfluenceClient {
           signal: AbortSignal.timeout(30000),
         });
       } catch (e) {
-        if (e instanceof DOMException && e.name === "TimeoutError") {
+        if (
+          e instanceof DOMException &&
+          (e.name === "TimeoutError" || e.name === "AbortError")
+        ) {
           throw new ConfluenceClientError("Request timed out", {
             type: "http_response_error",
             status: 504,
