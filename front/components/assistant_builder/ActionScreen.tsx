@@ -30,6 +30,7 @@ import { ActionTablesQuery } from "@app/components/assistant_builder/actions/Tab
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
+  AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
@@ -409,16 +410,29 @@ export default function ActionScreen({
               action?.type === "RETRIEVAL_SEARCH" ? action.configuration : null
             }
             dataSources={dataSources}
-            updateAction={(newAction) => {
-              if (!action) {
-                // Unreachable
-                return;
-              }
-              deprecatedReplaceSingleActionConfig({
-                type: "RETRIEVAL_SEARCH",
-                configuration: newAction,
-                name: action.name,
-                description: action.description,
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (
+                  !previousAction ||
+                  previousAction.type !== "RETRIEVAL_SEARCH"
+                ) {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration as AssistantBuilderRetrievalConfiguration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "RETRIEVAL_SEARCH",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
               });
             }}
             setEdited={setEdited}
@@ -436,16 +450,29 @@ export default function ActionScreen({
                 : null
             }
             dataSources={dataSources}
-            updateAction={(newAction) => {
-              if (!action) {
-                // Unreachable
-                return;
-              }
-              deprecatedReplaceSingleActionConfig({
-                type: "RETRIEVAL_EXHAUSTIVE",
-                configuration: newAction,
-                name: action.name,
-                description: action.description,
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (
+                  !previousAction ||
+                  previousAction.type !== "RETRIEVAL_EXHAUSTIVE"
+                ) {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration as AssistantBuilderRetrievalConfiguration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "RETRIEVAL_EXHAUSTIVE",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
               });
             }}
             setEdited={setEdited}
