@@ -317,24 +317,16 @@ export async function* runProcess(
     data_source_id: d.dataSourceId,
   }));
 
-  for (const ds of actionConfiguration.dataSources) {
-    /** Caveat: empty array in tags.in means "no document match" since no
-     * documents has any tags that is in the tags.in array (same for parents)*/
+  if (actionConfiguration.tagsFilter && actionConfiguration.tagsFilter.in) {
+    // Note: empty array in tags.in means "no document match" since no documents has any tags that
+    // is in the tags.in array (same for parents)
     if (!config.DATASOURCE.filter.tags) {
       config.DATASOURCE.filter.tags = {};
     }
-    if (ds.filter.tags?.in) {
-      if (!config.DATASOURCE.filter.tags.in) {
-        config.DATASOURCE.filter.tags.in = [];
-      }
-      config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
-    }
-    if (ds.filter.tags?.not) {
-      if (!config.DATASOURCE.filter.tags.not) {
-        config.DATASOURCE.filter.tags.not = [];
-      }
-      config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
-    }
+    config.DATASOURCE.filter.tags.in = actionConfiguration.tagsFilter.in;
+  }
+
+  for (const ds of actionConfiguration.dataSources) {
     if (!config.DATASOURCE.filter.parents) {
       config.DATASOURCE.filter.parents = {};
     }

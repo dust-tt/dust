@@ -768,10 +768,6 @@ export async function submitAssistantBuilderForm({
           case "PROCESS":
             return {
               type: "process_configuration",
-              relativeTimeFrame: {
-                duration: a.configuration.timeFrame.value,
-                unit: a.configuration.timeFrame.unit,
-              },
               dataSources: Object.values(
                 a.configuration.dataSourceConfigurations
               ).map(({ dataSource, selectedResources, isSelectAll }) => ({
@@ -789,6 +785,11 @@ export async function submitAssistantBuilderForm({
                   tags: null,
                 },
               })),
+              tagsFilter: a.configuration.tagsFilter,
+              relativeTimeFrame: {
+                duration: a.configuration.timeFrame.value,
+                unit: a.configuration.timeFrame.unit,
+              },
               schema: a.configuration.schema,
             };
 

@@ -270,11 +270,10 @@ async function handler(
 export default withLogging(handler);
 
 /**
- * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided,
- * it will create a new version of the agent configuration with the same
- * agentConfigurationId. If no agentConfigurationId is provided, it will create
- * a new agent configuration. In both cases, it will return the new agent
- * configuration.
+ * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided, it will create a
+ * new version of the agent configuration with the same agentConfigurationId. If no
+ * agentConfigurationId is provided, it will create a new agent configuration. In both cases, it
+ * will return the new agent configuration.
  **/
 export async function createOrUpgradeAgentConfiguration({
   auth,
@@ -445,8 +444,9 @@ export async function createOrUpgradeAgentConfiguration({
             auth,
             {
               type: "process_configuration",
-              relativeTimeFrame: action.relativeTimeFrame,
               dataSources: action.dataSources,
+              relativeTimeFrame: action.relativeTimeFrame,
+              tagsFilter: action.tagsFilter,
               schema: action.schema,
               name: action.name ?? null,
               description: action.description ?? null,
