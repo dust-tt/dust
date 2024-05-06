@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
 import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { A, Grid } from "@app/components/home/new/ContentComponents";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
