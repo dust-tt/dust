@@ -2,8 +2,8 @@ import type { DustAppSecretType } from "@dust-tt/types";
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getDustAppSecret } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { DustAppSecret } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostDustAppSecretsResponseBody = {
@@ -22,24 +22,38 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
+    apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Workspace not found.",
+      },
+    });
     return;
   }
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
+    apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `builders` for the current workspace can manage secrets.",
+      },
+    });
     return;
   }
 
-  const secret = await DustAppSecret.findOne({
-    where: {
-      name: req.query.name,
-      workspaceId: owner.id,
-    },
-  });
+  const secret = await getDustAppSecret(auth, <string>req.query.name);
 
-  if (!secret) {
-    res.status(404).end();
+  if (secret == null) {
+    apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "dust_app_secret_not_found",
+        message: "Workspace not found.",
+      },
+    });
     return;
   }
 
