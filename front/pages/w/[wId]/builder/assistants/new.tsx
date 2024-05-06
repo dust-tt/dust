@@ -65,8 +65,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  console.log("\n\n\n\n", context.query, "\n\n\n\n");
-
   let multiActionsMode = context.query.multi_actions === "true";
   if (multiActionsMode && !owner.flags.includes("multi_actions")) {
     multiActionsMode = false;
@@ -120,6 +118,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         dataSourcesByName,
         dustApps: allDustApps,
         configuration,
+        multiActionsMode,
       })
     : [];
 

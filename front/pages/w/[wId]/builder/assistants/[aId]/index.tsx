@@ -19,6 +19,7 @@ import AssistantBuilder, {
 import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
+import { isLegacyAgent } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
@@ -54,13 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  console.log("\n\n\n\n", context.query, "\n\n\n\n");
-
-  let multiActionsMode = context.query.multi_actions === "true";
-  if (multiActionsMode && !owner.flags.includes("multi_actions")) {
-    multiActionsMode = false;
-  }
-
   const allDataSources = await getDataSources(auth);
 
   const dataSourcesByName = allDataSources.reduce(
@@ -71,6 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     auth,
     context.params?.aId as string
   );
+
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
       notFound: true,
@@ -82,6 +77,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
+
+  const isMultiActions = !isLegacyAgent(configuration);
+  const multiActionsMode =
+    owner.flags.includes("multi_actions") &&
+    (isMultiActions || context.query.multi_actions === "true");
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -103,6 +103,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         dataSourcesByName,
         dustApps: allDustApps,
         configuration,
+        multiActionsMode,
       }),
       agentConfiguration: configuration,
       flow,

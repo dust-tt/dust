@@ -21,35 +21,21 @@ import { assertNever, removeNulls } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
 import React, { useCallback } from "react";
 
-import {
-  ActionProcess,
-  isActionProcessValid,
-} from "@app/components/assistant_builder/actions/ProcessAction";
+import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
-  isActionRetrievalExhaustiveValid,
-  isActionRetrievalSearchValid,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
-import {
-  ActionTablesQuery,
-  isActionTablesQueryValid,
-} from "@app/components/assistant_builder/actions/TablesQueryAction";
+import { ActionTablesQuery } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
-import {
-  getDeprecatedDefaultSingleAction,
-  useDeprecatedDefaultSingleAction,
-} from "@app/lib/client/assistant_builder/deprecated_single_action";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 
-import {
-  ActionDustAppRun,
-  isActionDustAppRunValid,
-} from "./actions/DustAppRunAction";
+import { ActionDustAppRun } from "./actions/DustAppRunAction";
 
 const BASIC_ACTION_CATEGORIES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
 const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
@@ -143,31 +129,6 @@ function ActionModeSection({
   show: boolean;
 }) {
   return show && <div className="flex flex-col gap-6">{children}</div>;
-}
-
-export function isActionValid(builderState: AssistantBuilderState): boolean {
-  // TODO(@fontanierh): handle multi-actions
-  const action = getDeprecatedDefaultSingleAction(builderState);
-
-  if (!action) {
-    // plain model
-    return true;
-  }
-
-  switch (action.type) {
-    case "RETRIEVAL_SEARCH":
-      return isActionRetrievalSearchValid(action);
-    case "RETRIEVAL_EXHAUSTIVE":
-      return isActionRetrievalExhaustiveValid(action);
-    case "PROCESS":
-      return isActionProcessValid(action);
-    case "DUST_APP_RUN":
-      return isActionDustAppRunValid(action);
-    case "TABLES_QUERY":
-      return isActionTablesQueryValid(action);
-    default:
-      assertNever(action);
-  }
 }
 
 export default function ActionScreen({

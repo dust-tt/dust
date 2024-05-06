@@ -55,6 +55,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 
+const MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN = 3;
+
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
 interface SortStrategy {
@@ -841,7 +843,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxToolsUsePerRun: number;
+    maxToolsUsePerRun?: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -946,7 +948,8 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
-            maxToolsUsePerRun: maxToolsUsePerRun,
+            maxToolsUsePerRun:
+              maxToolsUsePerRun ?? MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,

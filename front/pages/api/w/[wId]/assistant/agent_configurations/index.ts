@@ -352,9 +352,6 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
-  if (maxToolsUsePerRun === undefined) {
-    throw new Error("maxToolsUsePerRun is required.");
-  }
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,

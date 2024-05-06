@@ -9,7 +9,7 @@ import {
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ReactNode } from "react";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import {
   ActionProcess,
@@ -94,6 +94,8 @@ export default function ActionsScreen({
   setEdited: (edited: boolean) => void;
 }) {
   const [newActionModalOpen, setNewActionModalOpen] = React.useState(false);
+  const [actionToEdit, setActionToEdit] =
+    React.useState<AssistantBuilderActionConfiguration | null>(null);
 
   const upsertAction = useCallback(
     (newAction: AssistantBuilderActionConfiguration) => {
@@ -118,6 +120,30 @@ export default function ActionsScreen({
     [setBuilderState]
   );
 
+  const updateAction = useCallback(
+    (name: string, newAction: AssistantBuilderActionConfiguration) => {
+      setBuilderState((state) => {
+        return {
+          ...state,
+          actions: state.actions.map((a) => (a.name === name ? newAction : a)),
+        };
+      });
+    },
+    [setBuilderState]
+  );
+
+  const deleteAction = useCallback(
+    (name: string) => {
+      setBuilderState((state) => {
+        return {
+          ...state,
+          actions: state.actions.filter((a) => a.name !== name),
+        };
+      });
+    },
+    [setBuilderState]
+  );
+
   const allActionsValid = builderState.actions.every(isActionValid);
 
   return (
@@ -126,9 +152,17 @@ export default function ActionsScreen({
         isOpen={newActionModalOpen}
         setOpen={setNewActionModalOpen}
         builderState={builderState}
+        initialAction={actionToEdit}
         onSave={(newAction) => {
-          upsertAction(newAction);
+          setEdited(true);
+          actionToEdit
+            ? updateAction(actionToEdit.name, newAction)
+            : upsertAction(newAction);
           setNewActionModalOpen(false);
+          setActionToEdit(null);
+        }}
+        onClose={() => {
+          setActionToEdit(null);
         }}
       />
       <div className="flex flex-col gap-8 text-sm text-element-700">
@@ -147,8 +181,28 @@ export default function ActionsScreen({
         <div className="flex flex-col gap-8">
           {builderState.actions.map((a) => (
             <div key={a.name}>
-              <Page.SectionHeader title={a.name} />
-              <Page.P>{a.description}</Page.P>
+              <div className="flex flex-row justify-between">
+                <div>
+                  <Page.SectionHeader title={a.name} />
+                  <Page.P>{a.description}</Page.P>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondaryWarning"
+                    label="Delete"
+                    onClick={() => deleteAction(a.name)}
+                  />
+                  <Button
+                    variant="secondary"
+                    label="Edit"
+                    onClick={() => {
+                      setActionToEdit(a);
+                      setNewActionModalOpen(true);
+                    }}
+                  />
+                </div>
+              </div>
+
               <div className="py-8">
                 <ActionModeSection show={true}>
                   {(() => {
@@ -259,23 +313,37 @@ function NewActionModal({
   isOpen,
   setOpen,
   builderState,
+  initialAction,
   onSave,
+  onClose,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   builderState: AssistantBuilderState;
+  initialAction: AssistantBuilderActionConfiguration | null;
   onSave: (newAction: AssistantBuilderActionConfiguration) => void;
+  onClose: () => void;
 }) {
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
 
+  useEffect(() => {
+    if (initialAction && !newAction) {
+      setNewAction(initialAction);
+    }
+  }, [initialAction, newAction]);
+
+  // Name has to be only lowercase letters, numbers and underscores
   const titleValid =
-    (newAction?.name?.trim() ?? "").length > 0 &&
-    !builderState.actions.some((a) => a.name === newAction?.name);
+    (initialAction && initialAction?.name === newAction?.name) ||
+    ((newAction?.name?.trim() ?? "").length > 0 &&
+      !builderState.actions.some((a) => a.name === newAction?.name) &&
+      /^[a-z0-9_]+$/.test(newAction?.name ?? ""));
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
-  const onClose = () => {
+  const onCloseLocal = () => {
+    onClose();
     setOpen(false);
     setTimeout(() => {
       setNewAction(null);
@@ -285,7 +353,7 @@ function NewActionModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={onCloseLocal}
       hasChanged={true}
       variant="side-md"
       title="Add Action"
@@ -332,7 +400,7 @@ function NewActionModal({
                     let index = 1;
                     const suffixedName = () =>
                       index > 1
-                        ? `${defaultConfiguration.name} (${index})`
+                        ? `${defaultConfiguration.name}_${index}`
                         : defaultConfiguration.name;
                     while (
                       builderState.actions.some(
@@ -357,7 +425,7 @@ function NewActionModal({
                 onChange={(v) => {
                   setNewAction({
                     ...newAction,
-                    name: v,
+                    name: v.trim(),
                   });
                 }}
                 error={!titleValid ? "Name already exists" : null}
