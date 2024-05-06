@@ -245,9 +245,9 @@ export const assistantExamples = [
     name: "@whatWouldUserDo",
     description: (
       <>
-        Craft training that resonates, in-house and&nbsp;beyond. Experiences
-        product documentation and&nbsp;training materials through the&nbsp;eyes
-        of&nbsp;your users to&nbsp;help improve content ahead of&nbsp;issues.
+        Crafts training, product documentation and&nbsp;training materials
+        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
+        ahead of&nbsp;issues.
       </>
     ),
   },
