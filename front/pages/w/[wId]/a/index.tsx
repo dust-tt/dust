@@ -529,11 +529,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                   {configs[provider.providerId] && (
                     <p className="font-mono text-xs text-element-700">
                       API Key:{" "}
-                      <pre>
-                        {configs[
-                          provider.providerId
-                        ].redactedApiKey}
-                      </pre>
+                      <pre>{configs[provider.providerId].redactedApiKey}</pre>
                     </p>
                   )}
                 </div>
