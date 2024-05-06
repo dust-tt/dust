@@ -56,8 +56,15 @@ export function isActionProcessValid(
     return false;
   }
   if (
-    action.configuration.tagsFilter.in &&
+    action.configuration.tagsFilter &&
     action.configuration.tagsFilter.in.filter((tag) => tag === "").length > 0
+  ) {
+    return false;
+  }
+  if (
+    action.configuration.tagsFilter &&
+    action.configuration.tagsFilter.in.length !==
+      new Set(action.configuration.tagsFilter.in).size
   ) {
     return false;
   }
@@ -336,20 +343,19 @@ export function ActionProcess({
                 updateAction({
                   ...actionConfiguration,
                   tagsFilter: {
-                    in: [...(actionConfiguration.tagsFilter.in || []), ""],
-                    not: actionConfiguration.tagsFilter.not,
+                    in: [...(actionConfiguration.tagsFilter?.in || []), ""],
                   },
                 });
               }}
               disabled={
-                (actionConfiguration.tagsFilter.in || []).filter(
-                  (tag) => tag === ""
-                ).length > 0
+                !!actionConfiguration.tagsFilter &&
+                actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
+                  .length > 0
               }
             />
           </div>
         </div>
-        {(actionConfiguration.tagsFilter.in || []).map((t, i) => {
+        {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
           return (
             <div className="flex flex-row gap-4" key={`tag-${i}`}>
               <div className="flex">
@@ -360,20 +366,22 @@ export function ActionProcess({
                   value={t}
                   onChange={(v) => {
                     setEdited(true);
+                    const tags = [
+                      ...(actionConfiguration.tagsFilter?.in || []),
+                    ];
+                    tags[i] = v;
+
                     updateAction({
                       ...actionConfiguration,
                       tagsFilter: {
-                        in: (actionConfiguration.tagsFilter.in || []).map(
-                          (tag) => (tag === t ? v : tag)
-                        ),
-                        not: actionConfiguration.tagsFilter.not,
+                        in: tags,
                       },
                     });
                   }}
                   error={
                     t.length === 0
                       ? "Tag is required"
-                      : (actionConfiguration.tagsFilter.in || []).filter(
+                      : (actionConfiguration.tagsFilter?.in || []).filter(
                           (tag) => tag === t
                         ).length > 1
                       ? "Tag must be unique"
@@ -387,23 +395,21 @@ export function ActionProcess({
                   tooltip="Remove Property"
                   variant="tertiary"
                   onClick={async () => {
-                    let tagsFilter: AssistantBuilderTagsFilter = {
-                      in: (actionConfiguration.tagsFilter.in || []).filter(
-                        (tag) => tag !== t
-                      ),
-                      not: actionConfiguration.tagsFilter.not,
-                    };
-                    if ((tagsFilter.in || []).length === 0) {
-                      tagsFilter = {
-                        in: null,
-                        not: actionConfiguration.tagsFilter.not,
-                      };
-                    }
-                    setEdited(true);
+                    const tags = (
+                      actionConfiguration.tagsFilter?.in || []
+                    ).filter((tag) => tag !== t);
+
+                    const tagsFilter: AssistantBuilderTagsFilter | null =
+                      tags.length > 0
+                        ? {
+                            in: tags,
+                          }
+                        : null;
                     updateAction({
                       ...actionConfiguration,
                       tagsFilter,
                     });
+                    setEdited(true);
                   }}
                   className="ml-1"
                 />
