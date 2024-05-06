@@ -1,10 +1,11 @@
 import type {
+  AgentConfigurationType,
   AgentModelConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
 import type { SupportedModel } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { removeNulls, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
@@ -166,4 +167,23 @@ export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
 
     return indexA - indexB;
   });
+}
+
+// This function returns true if the agent is a "legacy" agent with a forced schedule,
+// i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
+// and every tool is forced at a certain iteration.
+export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
+  // TODO(@fontanierh): change once generation is part of actions.
+  const actions = removeNulls([
+    ...configuration.actions,
+    configuration.generation,
+  ]);
+
+  return (
+    configuration.maxToolsUsePerRun <= 2 &&
+    Array.from(Array(configuration.maxToolsUsePerRun).keys()).every((i) =>
+      actions.some((a) => a.forceUseAtIteration === i)
+    ) &&
+    actions.every((a) => a.forceUseAtIteration !== undefined)
+  );
 }

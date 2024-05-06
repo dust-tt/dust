@@ -19,9 +19,9 @@ import AssistantBuilder, {
 import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
-import { isLegacyAgent } from "@app/lib/api/assistant/agent";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { isLegacyAgent } from "@app/lib/assistant";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
