@@ -53,20 +53,20 @@ export default function RecruitingPeople() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Recruiting and&nbsp;People teams"
-        title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers.</>}
+        uptitle="Dust for Recruiting and&nbsp;People"
+        title={<>More&nbsp;time for&nbsp;people, teams and&nbsp;managers</>}
         from="from-amber-300"
         to="to-amber-400"
         subtitle={
           <>
-            Onboard&nbsp;better, support managers&nbsp;and teams effectively,
-            scale performance analysis and&nbsp;recruiting.
+            Support the&nbsp;business and&nbsp;the team effectively across
+            recruiting, onboarding, and&nbsp;career development initiatives.
           </>
         }
       />
       <Grid>
         <SolutionSection
-          title="Eliminate repetitive tasks."
+          title="Focus on&nbsp;being a&nbsp;business partner, not&nbsp;a&nbsp;help desk."
           blocks={[
             {
               color: "amber",
@@ -74,25 +74,28 @@ export default function RecruitingPeople() {
                 {
                   title: (
                     <>
-                      Onboard new&nbsp;people with readily available information
-                      at&nbsp;their own&nbsp;pace.
+                      Give new hires the&nbsp;buddy they can always tap
+                      on&nbsp;the shoulder
                     </>
                   ),
                   content: (
                     <>
-                      Transform your onboarding process using an&nbsp;AI
-                      assistant designed to&nbsp;guide newcomers through your
-                      methods, processes, people, and&nbsp;culture.
+                      Transform your&nbsp;onboard process with tailored
+                      assistance for newcomers to&nbsp;discover
+                      your&nbsp;methods, people, and&nbsp;culture.
                     </>
                   ),
                 },
                 {
-                  title: <>Put your internal documentation to&nbsp;work.</>,
+                  title: (
+                    <>Let your&nbsp;internal documentation do&nbsp;the work</>
+                  ),
                   content: (
                     <>
-                      Create an&nbsp;assistant capable of&nbsp;answering any
-                      questions, point to&nbsp;the right internal resources,
-                      and&nbsp;spread your company culture and&nbsp;methods.
+                      Extract yourself from&nbsp;admin ping pong. Allow team
+                      members to&nbsp;interact with an&nbsp;assistant that
+                      answers common people-related questions in&nbsp;Slack
+                      and&nbsp;points to&nbsp;the right internal resources.
                     </>
                   ),
                 },
@@ -102,16 +105,16 @@ export default function RecruitingPeople() {
           ]}
         />
         <SolutionSection
-          title="Nurture Employee Growth."
+          title="Help your&nbsp;People Growth."
           blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
-                  title: "Create engaging learning experiences.",
+                  title: "Create engaging learning experiences faster",
                   content: (
                     <>
-                      Use information from internal data sources, such
+                      Use information from&nbsp;internal data sources, such
                       as&nbsp;onboarding guides, process documents,
                       and&nbsp;best practices, to&nbsp;create training scripts
                       and&nbsp;materials tailored to&nbsp;each role
@@ -120,18 +123,17 @@ export default function RecruitingPeople() {
                   ),
                 },
                 {
-                  title: <>Improve feedback and&nbsp;reviews.</>,
+                  title: "Streamline performance reviews",
                   content: [
                     <>
-                      Collect data from various channels to&nbsp;get
-                      a&nbsp;holistic view of&nbsp;each employee's work
-                      and&nbsp;make more accurate evaluations.
+                      Help reviewers collect data to&nbsp;get a&nbsp;holistic
+                      view of&nbsp;their teammates' impact and&nbsp;make more
+                      accurate evaluations.
                     </>,
                     <>
-                      Help your team write more thoughtfully,
-                      with&nbsp;AI-powered feedback on&nbsp;tone, references
-                      to&nbsp;company principles, priorities, and&nbsp;business
-                      objectives.
+                      Help them write more thoughtfully, with AI-powered
+                      feedback on&nbsp;tone, references to&nbsp;company
+                      principles, priorities and&nbsp;business objectives.
                     </>,
                   ],
                 },
@@ -141,32 +143,47 @@ export default function RecruitingPeople() {
           ]}
         />
         <SolutionSection
-          title="Scale your hiring."
+          title="Give your&nbsp;hiring efforts a&nbsp;boost."
           blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
-                  title: <>Next level training & guidance.</>,
+                  title: (
+                    <>
+                      Get from&nbsp;a need to&nbsp;a qualified pipeline
+                      in&nbsp;a flash
+                    </>
+                  ),
                   content: [
                     <>
-                      Make your&nbsp;company hiring practices, guidelines,
-                      and&nbsp;knowledge easy to&nbsp;find and&nbsp;leverage for
-                      everyone.
+                      Easily draft consistent job descriptions. Analyze
+                      and&nbsp;filter candidates' CVs by&nbsp;finding elements
+                      that are a&nbsp;match for expectations.
                     </>,
                     <>
-                      Train your team at&nbsp;writing exercises
+                      Train your&nbsp;team at&nbsp;writing exercises
                       and&nbsp;questions, reviewing exercises' responses,
                       and&nbsp;reading through candidates' subtexts.
                     </>,
                   ],
                 },
                 {
-                  title: <>Customized written analysis assistance.</>,
+                  title: <>Raise the&nbsp;bar on&nbsp;interviews</>,
                   content: [
                     <>
-                      Score a&nbsp;candidate's take-home answers with
-                      your&nbsp;rubric in&nbsp;mind.
+                      Easily prepare the&nbsp;interview process including
+                      questions that match the&nbsp;role expectations
+                      and&nbsp;company guidelines.
+                    </>,
+                    <>
+                      Give the&nbsp;team context on&nbsp;the status of&nbsp;a
+                      hire.
+                    </>,
+                    <>
+                      Help interviewers write consistent
+                      and&nbsp;well-articulated feedback that directly connects
+                      to&nbsp;your company's evaluation rubric.
                     </>,
                   ],
                 },
@@ -183,7 +200,7 @@ export default function RecruitingPeople() {
               color: "amber",
               contentBlocks: [
                 {
-                  title: <>Analyze &&nbsp;extract.</>,
+                  title: <>Analyze &&nbsp;extract</>,
                   content: [
                     <>
                       Analyze a&nbsp;candidate's CV in&nbsp;a&nbsp;second.
@@ -194,7 +211,7 @@ export default function RecruitingPeople() {
                   ],
                 },
                 {
-                  title: <>The page is&nbsp;never white.</>,
+                  title: <>The page is&nbsp;never white</>,
                   content: [
                     <>
                       Draft job description, social media posts, outbound
@@ -227,19 +244,22 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Your friendly guide to&nbsp;help new team members feel welcomed,
-        informed, and&nbsp;integrated from day one.
+        Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome
+        and&nbsp;properly informed from&nbsp;day one and&nbsp;as they learn
+        about the&nbsp;company
       </>
     ),
   },
   {
     emoji: "👋",
-    name: "@people",
+    name: "@peopleGeneral",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer all questions about processes, methods, people and&nbsp;roles
-        based&nbsp;on company documentation directly on&nbsp;Slack.
+        Answers questions the&nbsp;People team gets most regularly about company
+        processes and&nbsp;policies based on&nbsp;internal documentation
+        directly on&nbsp;Slack. Yes, it&nbsp;even knows how one should file
+        an&nbsp;expense report
       </>
     ),
   },
@@ -249,19 +269,20 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Draft job descriptions, emails, social media coms based&nbsp;on company
-        standards.
+        Drafts job descriptions and&nbsp;matching social media communications
+        based on&nbsp;company templates
       </>
     ),
   },
   {
     emoji: "🔬",
-    name: "@interviewReading",
+    name: "@screeningPrep",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Help read and&nbsp;analyze candidate expert according to&nbsp;company
-        principles.
+        Provides a&nbsp;suggested analysis of&nbsp;a candidate CV given
+        a&nbsp;role description to&nbsp;highlight questions for a&nbsp;screening
+        interview
       </>
     ),
   },
@@ -271,42 +292,39 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Draft questions depending on&nbsp;the role, type of&nbsp;interview
-        and&nbsp;stage in&nbsp;the process.
+        Suggests interviews questions based on&nbsp;roles, stage of&nbsp;the
+        interview and&nbsp;the company's culture
       </>
     ),
   },
   {
     emoji: "🧐",
-    name: "@candidate",
+    name: "@candidateInfo",
     backgroundColor: "bg-amber-300",
     description: (
       <>
         Summarize available information about a&nbsp;candidate based
-        on&nbsp;your&nbsp;company database.
+        on&nbsp;your&nbsp;company database
       </>
     ),
   },
   {
     emoji: "🏅",
-    name: "@feedbackReview",
+    name: "@reviewPrep",
     backgroundColor: "bg-amber-300",
     description: (
       <>
         Collects achievements, drafts actionable reviews, helps formulate
-        feedback.
+        feedback
       </>
     ),
   },
   {
     emoji: "🧑‍🏫",
-    name: "@trainingCurator",
+    name: "@trainingDraft",
     backgroundColor: "bg-amber-300",
     description: (
-      <>
-        Curates learning paths, designs training modules, and&nbsp;crafts
-        employee development&nbsp;plans.
-      </>
+      <>Designs training modules and&nbsp;crafts employee development plans</>
     ),
   },
 ];

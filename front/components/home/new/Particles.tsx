@@ -265,7 +265,7 @@ function calculateTargetPositions(currentShape = 0) {
         targetPosition = calculateSpherePosition(i, geometricObjectSize * 4);
         break;
       case "cube":
-        targetPosition = calculateCubePosition(i, geometricObjectSize * 2.5);
+        targetPosition = calculateCubePosition(i, geometricObjectSize * 3.3);
         break;
       case "bigCube":
         targetPosition = calculateBigCubePosition(i, geometricObjectSize * 12);

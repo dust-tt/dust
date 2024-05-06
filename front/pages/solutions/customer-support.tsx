@@ -53,8 +53,8 @@ export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Success and&nbsp;Support&nbsp;Teams"
-        title="Help your Success and&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
+        uptitle="Dust for Success and&nbsp;Support"
+        title="Help your&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
         from="from-sky-200"
         to="to-sky-500"
         subtitle="Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate
@@ -62,88 +62,107 @@ export default function CustomerSupport() {
       />
       <Grid>
         <SolutionSection
-          title={
-            <>
-              Elevate Support,
-              <br />
-              exceed Customer&nbsp;expectations.
-            </>
-          }
+          title={<>Exceed customer&nbsp;expectations.</>}
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: "Keep your team spot-on.",
+                  title: (
+                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
+                  ),
                   content: [
                     <>
-                      Help them parse customer inquiries faster,
-                      leveraging&nbsp;past tickets and&nbsp;the&nbsp;latest
-                      information on&nbsp;product updates
-                      or&nbsp;downtime&nbsp;alerts.
+                      Allow agents to&nbsp;understand customer messages
+                      and&nbsp;technical errors faster and&nbsp;in
+                      50+&nbsp;languages. Build AI assistants based
+                      on&nbsp;company knowledge and&nbsp;past support
+                      interactions to&nbsp;bring the&nbsp;company's collective
+                      intelligence to&nbsp;the support team's fingertips.
                     </>,
-                    <>All in&nbsp;50+&nbsp;languages.</>,
                   ],
                 },
                 {
-                  title: <>Analyze and&nbsp;categorize your&nbsp;tickets.</>,
+                  title: (
+                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
+                  ),
                   content: [
-                    <>Classify tickets along your&nbsp;internal priorities.</>,
                     <>
-                      Help your Support, Success and&nbsp;Product teams better
-                      understand your users'&nbsp;needs.
+                      Give your frontline team access to&nbsp;up-to-date
+                      information on&nbsp;ongoing product incidents
+                      or&nbsp;issues to&nbsp;help them&nbsp;take action
+                      thoughtfully.
                     </>,
                   ],
                 },
               ],
-              assistantBlocks: assistantExamples[0],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[4],
+                assistantExamples[5],
+              ],
             },
           ]}
         />
         <SolutionSection
-          title="Better team collaboration."
+          title="Elevated team collaboration."
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: "Onboard faster.",
-                  content:
-                    "Reduce your onboarding and&nbsp;training time drastically. Put your documentation on&nbsp;processes and&nbsp;methods to&nbsp;work.",
-                },
-                {
-                  title: "Keep your team updated.",
+                  title: (
+                    <>
+                      Bring new team members
+                      <br />
+                      up-to-speed&nbsp;fast
+                    </>
+                  ),
                   content: (
                     <>
-                      Understand customer messages faster, and&nbsp;technical
-                      errors in&nbsp;any language. Explore past tickets
-                      to&nbsp;resolve issues or create
-                      documentation&nbsp;quickly.
+                      Reduce your&nbsp;onboarding and&nbsp;training time
+                      drastically. Put your&nbsp;documentation on&nbsp;processes
+                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
+                      learn autonomously.
                     </>
                   ),
                 },
+                {
+                  title: "Break information silos",
+                  content: [
+                    <>
+                      Keep your&nbsp;Support team in&nbsp;sync with partner
+                      teams in&nbsp;the company with automated reports,
+                      assistants updated with latest project progress
+                      and&nbsp;status.
+                    </>,
+                    <>Understand technical errors faster.</>,
+                  ],
+                },
+                {
+                  title: (
+                    <>
+                      Provide support interactions insights
+                      to&nbsp;the&nbsp;company
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Surface insights from&nbsp;interactions with customers
+                      to&nbsp;your Support, Success and&nbsp;Product teams.
+                    </>,
+                    <>
+                      Maintain a&nbsp;continuous understanding of&nbsp;customer
+                      needs and&nbsp;align them with your&nbsp;priorities.
+                    </>,
+                  ],
+                },
               ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[1]],
-            },
-          ]}
-        />
-        <SolutionSection
-          title="Better insights."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: {
-                title: "Analyze and&nbsp;categorize your ticket",
-                content: [
-                  <>Classify your tickets using Dust Apps.</>,
-                  <>
-                    Help your Customer Support and&nbsp;Product team better
-                    understand your&nbsp;users' needs.
-                  </>,
-                ],
-              },
-
-              assistantBlocks: assistantExamples[2],
+              assistantBlocks: [
+                assistantExamples[3],
+                assistantExamples[1],
+                assistantExamples[2],
+              ],
             },
           ]}
         />
@@ -168,7 +187,7 @@ export const assistantExamples = [
       <>
         Surface best information from&nbsp;your Help Center, FAQs, knowledge
         base, online documentation, and&nbsp;tickets. Understand errors codes
-        without help from&nbsp;the Tech&nbsp;team.
+        without help from&nbsp;the tech&nbsp;team.
       </>
     ),
   },
@@ -186,20 +205,50 @@ export const assistantExamples = [
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
-    name: "@ticketAnalyst",
+    name: "@CSAnalyst",
     description: (
       <>
-        Classify tickets; identify patterns, sentiment,
-        and&nbsp;recurring&nbsp;needs.
+        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
+        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
+        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure.
       </>
     ),
   },
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
-    name: "@onboardingBuddy",
+    name: "@supportOnboarding",
     description: (
-      <>All you need to&nbsp;know about people, tooling and&nbsp;resources.</>
+      <>
+        Helps new members of&nbsp;the support team navigate the&nbsp;tools
+        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
+        success.
+      </>
+    ),
+  },
+  {
+    emoji: "🚨",
+    backgroundColor: "bg-sky-300",
+    name: "@supportAlerts",
+    description: (
+      <>
+        Connects to&nbsp;product and&nbsp;engineering communication channels
+        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
+        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
+        and&nbsp;customers
+      </>
+    ),
+  },
+  {
+    emoji: "😳",
+    backgroundColor: "bg-sky-300",
+    name: "@whatWouldUserDo",
+    description: (
+      <>
+        Crafts training, product documentation and&nbsp;training materials
+        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
+        ahead of&nbsp;issues.
+      </>
     ),
   },
 ];

@@ -54,20 +54,15 @@ export default function Knowledge() {
     <>
       <HeaderContentBlock
         uptitle="Dust for Knowledge Management"
-        title={
-          <>
-            Give life
-            <br />
-            to your knowledge
-          </>
-        }
+        title={<>Bring your&nbsp;internal knowledge to&nbsp;life</>}
         from="from-sky-200"
         to="to-sky-500"
         subtitle={
           <>
-            Make your content discoverable, accessible, truly actionable.
+            Keep internal content fresh, discoverable and&nbsp;truly useful.
             <br />
-            Speed up content creation, identify uncovered documentation needs.
+            Make it&nbsp;easy for teams to&nbsp;work smarter by&nbsp;tapping
+            into the&nbsp;company's collective intelligence and&nbsp;expertise.
           </>
         }
       />
@@ -76,7 +71,7 @@ export default function Knowledge() {
         <SolutionSection
           title={
             <>
-              Keep your documentation
+              Keep internal documentation
               <br />
               up-to-date.
             </>
@@ -85,87 +80,63 @@ export default function Knowledge() {
             {
               color: "sky",
               contentBlocks: {
-                title: <>Documentation efficiency</>,
+                title: <>Keep company knowledge fresh with minimal effort</>,
                 content: (
                   <>
-                    Leverage your product and&nbsp;tech team's knowledge
-                    alongside proven documentation and&nbsp;reduce the&nbsp;time
-                    and&nbsp;effort to&nbsp;update and&nbsp;create new material.
+                    Leverage your&nbsp;team's discussions and&nbsp;knowledge
+                    to&nbsp;reduce the&nbsp;time and&nbsp;lift required
+                    to&nbsp;update and&nbsp;create new content. Compare
+                    and&nbsp;contrast existing documentation to&nbsp;highlight
+                    areas in&nbsp;need of&nbsp;a revision.
                   </>
                 ),
               },
-              assistantBlocks: assistantExamples[0],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[1],
+                assistantExamples[2],
+              ],
             },
           ]}
         />
         <SolutionSection
-          title={<>Turn tickets into&nbsp;an opportunity for&nbsp;growth</>}
+          title={<>Upgrade internal communication and&nbsp;collaboration.</>}
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: (
-                    <>Tailor your documentation to&nbsp;answer unmet needs</>
-                  ),
+                  title: <>Onboard at&nbsp;breakneck speed</>,
                   content: (
                     <>
-                      Turn user tickets into&nbsp;actionable insights
-                      to&nbsp;tailor documentation and&nbsp;training materials
-                      more closely to&nbsp;user demands.
+                      Generate tailored onboarding experiences for newcomers
+                      based on&nbsp;their skills and&nbsp;set them up for
+                      success with personalized onboarding coaching. Create
+                      the&nbsp;infrastructure for the&nbsp;future
+                      of&nbsp;continuous learning.
                     </>
                   ),
                 },
                 {
-                  title: (
-                    <>
-                      Create a&nbsp;better training experience for&nbsp;your
-                      users
-                    </>
-                  ),
+                  title: <>Tear down knowledge walls</>,
                   content: (
                     <>
-                      Test your documentation and&nbsp;training scripts thanks
-                      to&nbsp;feedback assistants that behave like
-                      your&nbsp;users to&nbsp;refine your materials. Improve
-                      knowledge transfer.
+                      Keep the&nbsp;company hive mind ahead of&nbsp;the curve
+                      with answers to&nbsp;general questions about any function
+                      or&nbsp;team. Foster collaboration across teams
+                      by&nbsp;freeing content from&nbsp;the software silos
+                      it&nbsp;lives in. Give teams the&nbsp;tools
+                      to&nbsp;translate internal news into the&nbsp;language
+                      they understand.
                     </>
                   ),
                 },
               ],
-              assistantBlocks: [assistantExamples[1], assistantExamples[2]],
-            },
-          ]}
-        />
-        <SolutionSection
-          title={<>Improve collaboration between&nbsp;teams.</>}
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: [
-                {
-                  title: <>Keep your team ahead of&nbsp;the curve</>,
-                  content: (
-                    <>
-                      Dust facilitates rapid onboarding onto&nbsp;new subjects,
-                      enabling your team to&nbsp;quickly comprehend
-                      and&nbsp;create content on&nbsp;emerging topics. Fostering
-                      an&nbsp;environment of&nbsp;continuous learning.
-                    </>
-                  ),
-                },
-                {
-                  title: <>Prepare for Babel's imminent end</>,
-                  content: (
-                    <>
-                      Foster seamless collaboration across tech, support,
-                      product and&nbsp;education teams by&nbsp;synchronizing
-                      everyone's knowledge.
-                    </>
-                  ),
-                },
+              assistantBlocks: [
+                assistantExamples[3],
+                assistantExamples[4],
+                assistantExamples[5],
               ],
-              assistantBlocks: [assistantExamples[3]],
             },
           ]}
         />
@@ -181,46 +152,69 @@ Knowledge.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 export const assistantExamples = [
   {
     emoji: "🖋️",
-    name: "@docWriter",
+    name: "@docsNew",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Create documentation based&nbsp;on product and&nbsp;tech team's
-        knowledge.
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@ticketExplorer",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Explore tickets and&nbsp;conversations between our support team
-        and&nbsp;users to&nbsp;extract operational knowledge worth formalizing
-        into&nbsp;SQL.
-      </>
-    ),
-  },
-  {
-    emoji: "💁",
-    name: "@dearUser",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        A replica of our users based&nbsp;on detailed personas to&nbsp;test
-        documentation and&nbsp;training scripts.
+        Create documentation based on&nbsp;product and&nbsp;tech team's
+        knowledge
       </>
     ),
   },
   {
     emoji: "🔬",
-    name: "@CXquisite",
+    name: "@docsUpdate",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Answer questions about our product, our tech, domain expertise,
-        and&nbsp;training best practices.
+        Analyze existing documentation in&nbsp;the context of&nbsp;internal
+        discussions on&nbsp;product launches to&nbsp;highlight update
+        requirements
+      </>
+    ),
+  },
+  {
+    emoji: "🔎",
+    name: "@docsFromTickets",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Explore support tickets and&nbsp;support team conversations to&nbsp;spot
+        operational knowledge that should be&nbsp;formalized into
+        a&nbsp;document
+      </>
+    ),
+  },
+  {
+    emoji: "🚀",
+    name: "@First90Days",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Quizzes new team members on&nbsp;company knowledge as&nbsp;they onboard
+        on&nbsp;their specific team
+      </>
+    ),
+  },
+  {
+    emoji: "🧑‍🍳",
+    name: "@LikeImAnEngineer",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Translates internal memos focusing on&nbsp;the technical implications
+        and&nbsp;providing reminders on&nbsp;certain business priorities
+      </>
+    ),
+  },
+  {
+    emoji: "👨‍🎤",
+    name: "@LikeImOnSales",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Explains technical concepts in&nbsp;the context of&nbsp;the company's
+        infrastructure and&nbsp;data model
       </>
     ),
   },

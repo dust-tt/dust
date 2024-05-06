@@ -124,7 +124,7 @@ export const HeaderContentBlock = ({
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",
-        "xl:col-span-9 xl:col-start-2",
+        "xl:col-span-8 xl:col-start-2",
         "2xl:col-start-3"
       )}
     >
