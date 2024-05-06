@@ -23,6 +23,7 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
+  AssistantBuilderTagsFilter,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
@@ -48,11 +49,26 @@ export function isActionProcessValid(
       return false;
     }
   }
-  return (
-    action.type === "PROCESS" &&
-    Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
-    !!action.configuration.timeFrame.value
-  );
+  if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
+    return false;
+  }
+  if (!action.configuration.timeFrame.value) {
+    return false;
+  }
+  if (
+    action.configuration.tagsFilter &&
+    action.configuration.tagsFilter.in.some((tag) => tag === "")
+  ) {
+    return false;
+  }
+  if (
+    action.configuration.tagsFilter &&
+    action.configuration.tagsFilter.in.length !==
+      new Set(action.configuration.tagsFilter.in).size
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function PropertiesFields({
@@ -311,6 +327,97 @@ export function ActionProcess({
         canAddDataSource={dataSources.length > 0}
         onDelete={deleteDataSource}
       />
+
+      <div className="flex flex-col">
+        <div className="flex flex-row items-center gap-4 pb-4">
+          <div className="text-sm font-semibold text-element-900">
+            Tags Filtering
+          </div>
+          <div>
+            <Button
+              label={"Add tag filter"}
+              variant="tertiary"
+              size="xs"
+              onClick={() => {
+                setEdited(true);
+                updateAction({
+                  ...actionConfiguration,
+                  tagsFilter: {
+                    in: [...(actionConfiguration.tagsFilter?.in || []), ""],
+                  },
+                });
+              }}
+              disabled={
+                !!actionConfiguration.tagsFilter &&
+                actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
+                  .length > 0
+              }
+            />
+          </div>
+        </div>
+        {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
+          return (
+            <div className="flex flex-row gap-4" key={`tag-${i}`}>
+              <div className="flex">
+                <Input
+                  placeholder="Enter tag"
+                  size="sm"
+                  name="tags"
+                  value={t}
+                  onChange={(v) => {
+                    setEdited(true);
+                    const tags = [
+                      ...(actionConfiguration.tagsFilter?.in || []),
+                    ];
+                    tags[i] = v;
+
+                    updateAction({
+                      ...actionConfiguration,
+                      tagsFilter: {
+                        in: tags,
+                      },
+                    });
+                  }}
+                  error={
+                    t.length === 0
+                      ? "Tag is required"
+                      : (actionConfiguration.tagsFilter?.in || []).filter(
+                          (tag) => tag === t
+                        ).length > 1
+                      ? "Tag must be unique"
+                      : undefined
+                  }
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <IconButton
+                  icon={XCircleIcon}
+                  tooltip="Remove Property"
+                  variant="tertiary"
+                  onClick={async () => {
+                    const tags = (
+                      actionConfiguration.tagsFilter?.in || []
+                    ).filter((tag) => tag !== t);
+
+                    const tagsFilter: AssistantBuilderTagsFilter | null =
+                      tags.length > 0
+                        ? {
+                            in: tags,
+                          }
+                        : null;
+                    updateAction({
+                      ...actionConfiguration,
+                      tagsFilter,
+                    });
+                    setEdited(true);
+                  }}
+                  className="ml-1"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-element-900">

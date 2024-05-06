@@ -186,6 +186,7 @@ export function getAgentActionConfigurationType(
       return {
         dataSources: [],
         id: -1,
+        tagsFilter: null,
         relativeTimeFrame: "auto",
         sId: "template",
         schema: [],

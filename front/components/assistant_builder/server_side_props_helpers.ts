@@ -186,6 +186,8 @@ export async function buildInitialActions({
       };
     }
 
+    processConfiguration.configuration.tagsFilter = action.tagsFilter;
+
     processConfiguration.configuration.dataSourceConfigurations =
       await renderDataSourcesConfigurations(action);
 

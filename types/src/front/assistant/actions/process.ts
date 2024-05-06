@@ -39,6 +39,10 @@ export function renderSchemaPropertiesAsJSONSchema(
   return jsonSchema;
 }
 
+export type ProcessTagsFilter = {
+  in: string[];
+};
+
 export type ProcessConfigurationType = {
   id: ModelId;
   sId: string;
@@ -47,6 +51,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
+  tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
   name: string | null;
