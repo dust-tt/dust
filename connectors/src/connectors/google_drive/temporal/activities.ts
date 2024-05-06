@@ -604,87 +604,136 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
 
   for (const wh of webhooks) {
     const connector = await ConnectorResource.fetchById(wh.connectorId);
-    if (connector) {
-      try {
-        const auth = await getAuthObject(connector.connectionId);
-        const remoteDrive = await getGoogleDriveObject(auth, wh.driveId);
-        // Check if we still have access to this drive.
-        if (!remoteDrive) {
-          logger.info(
-            { driveId: wh.driveId, connectorId: connector.id },
-            `We lost access to the drive. Deleting the associated webhook.`
-          );
-          await wh.destroy();
-          continue;
-        }
-        const res = await ensureWebhookForDriveId(
-          connector,
-          wh.driveId,
-          GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: wh.connectorId,
+          // We want to panic because this code branch is unexpected.
+          panic: true,
+        },
+        `Connector not found for webhook`
+      );
+      continue;
+    }
+    if (wh.expiresAt < new Date()) {
+      logger.error(
+        {
+          webhook: {
+            id: wh.id,
+            expiresAt: wh.expiresAt,
+            renewAt: wh.renewAt,
+            renewedByWebhookId: wh.renewedByWebhookId,
+          },
+          connectorId: wh.connectorId,
+          workspaceId: connector.workspaceId,
+          // we want to panic because this code branch is unexpected.
+          panic: true,
+        },
+        `We are processing a webhook which have already expired, this should never happen. Investigation needed.`
+      );
+    }
+    try {
+      const auth = await getAuthObject(connector.connectionId);
+      const remoteDrive = await getGoogleDriveObject(auth, wh.driveId);
+      // Check if we still have access to this drive.
+      if (!remoteDrive) {
+        logger.info(
+          { driveId: wh.driveId, connectorId: connector.id },
+          `We lost access to the drive. Deleting the associated webhook.`
         );
-        if (res.isErr()) {
-          // Throwing here to centralize error handling in the catch block
-          // below.
-          throw res.error;
-        }
-        if (res.value) {
-          // marking the previous webhook as renewed by the new one.
-          await wh.update({
-            renewedByWebhookId: res.value,
-          });
-        }
-      } catch (e) {
-        if (
-          e instanceof ExternalOauthTokenError ||
-          (e instanceof HTTPError &&
-            e.message === "The caller does not have permission")
-        ) {
-          await syncFailed(connector.id, "oauth_token_revoked");
-          logger.error(
-            {
-              error: e,
+        await wh.destroy();
+        continue;
+      }
+      const res = await ensureWebhookForDriveId(
+        connector,
+        wh.driveId,
+        GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+      );
+      if (res.isErr()) {
+        // Throwing here to centralize error handling in the catch block
+        // below.
+        throw res.error;
+      }
+      if (res.value) {
+        // marking the previous webhook as renewed by the new one.
+        await wh.update({
+          renewedByWebhookId: res.value,
+        });
+      } else {
+        logger.error(
+          {
+            webhook: {
+              id: wh.id,
               connectorId: wh.connectorId,
               workspaceId: connector.workspaceId,
+              expiresAt: wh.expiresAt,
+              renewAt: wh.renewAt,
+              renewedByWebhookId: wh.renewedByWebhookId,
             },
-            `Failed to renew webhook: Oauth token revoked .`
-          );
-          // Do not delete the webhook object but push it down the line in 2h so that it does not get
-          // picked up by the loop calling rewnewOneWebhook.
-          await wh.update({
-            renewAt: literal("NOW() + INTERVAL '2 hour'"),
-          });
-        } else {
-          logger.error(
-            {
-              error: e,
-              connectorId: wh.connectorId,
-              workspaceId: connector.workspaceId,
-            },
-            `Failed to renew webhook`
-          );
-          const tags = [
-            `connector_id:${wh.connectorId}`,
-            `workspaceId:${connector.workspaceId}`,
-          ];
-          statsDClient.increment(
-            "google_drive_renew_webhook_errors.count",
-            1,
-            tags
-          );
-          // Do not delete the webhook object but push it down the line in 2h so that it does not get
-          // picked up by the loop calling rewnewOneWebhook.
-          await wh.update({
-            renewAt: literal("NOW() + INTERVAL '2 hour'"),
-          });
-        }
+            connectorId: wh.connectorId,
+            workspaceId: connector.workspaceId,
+            // We want to panic because this code branch is unexpected.
+            panic: true,
+          },
+          `Found a webhook to renew but did not proceed to the renewal process. Need to investigate.`
+        );
+      }
+    } catch (e) {
+      if (
+        e instanceof ExternalOauthTokenError ||
+        (e instanceof HTTPError &&
+          e.message === "The caller does not have permission")
+      ) {
+        await syncFailed(connector.id, "oauth_token_revoked");
+        logger.error(
+          {
+            error: e,
+            connectorId: wh.connectorId,
+            workspaceId: connector.workspaceId,
+          },
+          `Failed to renew webhook: Oauth token revoked .`
+        );
+        // Do not delete the webhook object but push it down the line in 2h so that it does not get
+        // picked up by the loop calling rewnewOneWebhook.
+        await wh.update({
+          renewAt: literal("NOW() + INTERVAL '2 hour'"),
+        });
+      } else {
+        logger.error(
+          {
+            error: e,
+            connectorId: wh.connectorId,
+            workspaceId: connector.workspaceId,
+          },
+          `Failed to renew webhook`
+        );
+        const tags = [
+          `connector_id:${wh.connectorId}`,
+          `workspaceId:${connector.workspaceId}`,
+        ];
+        statsDClient.increment(
+          "google_drive_renew_webhook_errors.count",
+          1,
+          tags
+        );
+        // Do not delete the webhook object but push it down the line in 2h so that it does not get
+        // picked up by the loop calling rewnewOneWebhook.
+        await wh.update({
+          renewAt: literal("NOW() + INTERVAL '2 hour'"),
+        });
       }
     }
   }
   // Clean up webhooks pointers that expired more than 1 day ago.
+  // We only clean up webhooks that have been renewed, otherwise they should be taken care of
+  // by the renewWebhooks function.
   await GoogleDriveWebhook.destroy({
     where: {
       expiresAt: {
-        [Op.lt]: literal("now() - INTERVAL '1 day'"),
+        [Op.lt]: literal("now() - INTERVAL '3 day'"),
+      },
+      renewedByWebhookId: {
+        [Op.not]: null,
       },
     },
     limit: pageSize,
