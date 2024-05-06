@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
 import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { A, Grid } from "@app/components/home/new/ContentComponents";
+import { Grid } from "@app/components/home/new/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
 import LandingLayout from "@app/components/home/new/LandingLayout";
 import {
@@ -87,25 +87,30 @@ export default function Sales() {
               contentBlocks: [
                 {
                   title: <>Personalized outreach at&nbsp;scale</>,
-                  content: (
+                  content: [
                     <>
                       Craft optimized cold emails or&nbsp;follow-ups
-                      effortlessly. Ensure your&nbsp;sales reps connect more
-                      effectively with prospects with personalized drafts ready
-                      for their&nbsp;email outbox.
-                    </>
-                  ),
+                      effortlessly.
+                    </>,
+                    <>
+                      Ensure your&nbsp;sales reps connect more effectively with
+                      prospects, with personalized drafts ready for
+                      their&nbsp;email outbox.
+                    </>,
+                  ],
                 },
                 {
                   title: <>Account snapshots and&nbsp;reports</>,
-                  content: (
+                  content: [
                     <>
                       Generate account summaries and&nbsp;reports
-                      from&nbsp;across your&nbsp;CRM, Slack, and&nbsp;Notion
-                      reports. Keep every pipeline review focused on&nbsp;the
-                      strategic outlook rather than administrative housekeeping.
-                    </>
-                  ),
+                      from&nbsp;across your&nbsp;CRM, Slack, and&nbsp;Notion.
+                    </>,
+                    <>
+                      Keep every pipeline review focused on&nbsp;the strategic
+                      outlook rather than administrative housekeeping.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [
@@ -118,7 +123,11 @@ export default function Sales() {
         />
         <SolutionSection
           title={
-            <>Scale your&nbsp;Sales Operations team for fun and&nbsp;profit.</>
+            <>
+              Scale Sales Operations team
+              <br />
+              for fun and&nbsp;profit.
+            </>
           }
           blocks={[
             {
@@ -126,24 +135,30 @@ export default function Sales() {
               contentBlocks: [
                 {
                   title: <>Keep everyone on&nbsp;the same page</>,
-                  content: (
+                  content: [
                     <>
                       Ramping up and&nbsp;aligning fast-growing
-                      or&nbsp;distributed teams gets harder. Enshrine templates
-                      and&nbsp;playbooks into assistants to&nbsp;roll out
-                      a&nbsp;consistent and&nbsp;efficient sales motion.
-                    </>
-                  ),
+                      or&nbsp;distributed teams gets harder.
+                    </>,
+                    <>
+                      Enshrine templates and&nbsp;playbooks into assistants
+                      to&nbsp;roll out a&nbsp;consistent and&nbsp;efficient
+                      sales motion.
+                    </>,
+                  ],
                 },
                 {
                   title: <>Improve decision-making for sales leadership</>,
-                  content: (
+                  content: [
                     <>
                       Generate real-time insights on&nbsp;sales metrics
-                      and&nbsp;team trends. Have your&nbsp;weekly reports
-                      and&nbsp;summaries ready in&nbsp;a few seconds.
-                    </>
-                  ),
+                      and&nbsp;team trends.
+                    </>,
+                    <>
+                      Have your&nbsp;weekly reports and&nbsp;summaries ready
+                      in&nbsp;a few seconds.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [
@@ -151,34 +166,6 @@ export default function Sales() {
                 assistantExamples[4],
                 assistantExamples[5],
               ],
-            },
-          ]}
-        />
-        <SolutionSection
-          title={<>Embedded in&nbsp;your Workflow</>}
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: {
-                title: <>Leverage Dust modular and&nbsp;extensible platform.</>,
-                content: [
-                  <>
-                    Assistants are not limited to&nbsp;information retrieval.
-                    Dust apps empower engineers to&nbsp;create custom actions
-                    by&nbsp;Rev ops and&nbsp;Sales assistants, possibly chaining
-                    multiple models or&nbsp;calling into&nbsp;your CRM. Build
-                    custom assistant actions and&nbsp;application orchestration
-                    to&nbsp;fit your&nbsp;team's needs.
-                  </>,
-                  <>
-                    More info Dust Platform's{" "}
-                    <A href="https://docs.dust.tt" target="_blank">
-                      Documentation
-                    </A>
-                    .
-                  </>,
-                ],
-              },
             },
           ]}
         />
@@ -236,7 +223,7 @@ export const assistantExamples = [
   },
   {
     emoji: "🔮",
-    name: "@CallWisdom",
+    name: "@salesWisdom",
     backgroundColor: "bg-emerald-300",
     description: (
       <>

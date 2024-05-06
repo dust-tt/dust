@@ -107,29 +107,28 @@ export default function Knowledge() {
               contentBlocks: [
                 {
                   title: <>Onboard at&nbsp;breakneck speed</>,
-                  content: (
+                  content: [
                     <>
                       Generate tailored onboarding experiences for newcomers
                       based on&nbsp;their skills and&nbsp;set them up for
-                      success with personalized onboarding coaching. Create
-                      the&nbsp;infrastructure for the&nbsp;future
-                      of&nbsp;continuous learning.
-                    </>
-                  ),
+                      success with personalized coaching.
+                    </>,
+                  ],
                 },
                 {
                   title: <>Tear down knowledge walls</>,
-                  content: (
+                  content: [
                     <>
                       Keep the&nbsp;company hive mind ahead of&nbsp;the curve
-                      with answers to&nbsp;general questions about any function
-                      or&nbsp;team. Foster collaboration across teams
-                      by&nbsp;freeing content from&nbsp;the software silos
-                      it&nbsp;lives in. Give teams the&nbsp;tools
-                      to&nbsp;translate internal news into the&nbsp;language
-                      they understand.
-                    </>
-                  ),
+                      with answers to&nbsp;general questions.
+                    </>,
+                    <>
+                      Foster collaboration across teams by&nbsp;freeing content
+                      from&nbsp;the software silos it&nbsp;lives in. Translate
+                      internal updates into a&nbsp;language each team can
+                      understand.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [
@@ -156,7 +155,7 @@ export const assistantExamples = [
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Create documentation based on&nbsp;product and&nbsp;tech team's
+        Creates documentation based on&nbsp;product and&nbsp;tech team's
         knowledge
       </>
     ),
@@ -167,7 +166,7 @@ export const assistantExamples = [
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Analyze existing documentation in&nbsp;the context of&nbsp;internal
+        Analyzes existing documentation in&nbsp;the context of&nbsp;internal
         discussions on&nbsp;product launches to&nbsp;highlight update
         requirements
       </>
@@ -179,9 +178,9 @@ export const assistantExamples = [
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Explore support tickets and&nbsp;support team conversations to&nbsp;spot
-        operational knowledge that should be&nbsp;formalized into
-        a&nbsp;document
+        Explores support tickets and&nbsp;support team conversations
+        to&nbsp;spot tribal operational knowledge that should be&nbsp;formalized
+        once and for&nbsp;all
       </>
     ),
   },
