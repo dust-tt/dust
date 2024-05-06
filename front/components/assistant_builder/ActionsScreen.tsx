@@ -333,7 +333,6 @@ function NewActionModal({
     }
   }, [initialAction, newAction]);
 
-  // Name has to be only lowercase letters, numbers and underscores
   const titleValid =
     (initialAction && initialAction?.name === newAction?.name) ||
     ((newAction?.name?.trim() ?? "").length > 0 &&
