@@ -126,19 +126,22 @@ export default function Engineering() {
                 {
                   title: (
                     <>
-                      Give your&nbsp;eng team a&nbsp;help desk for each
-                      situation
+                      Protect your&nbsp;eng team with a&nbsp;help desk for most
+                      situations
                     </>
                   ),
-                  content: (
+                  content: [
                     <>
                       Provide answers to&nbsp;questions from&nbsp;the rest
-                      of&nbsp;the company automatically to&nbsp;avoid avoidable
-                      interruptions. Give developers context from&nbsp;previous
-                      incidents in&nbsp;seconds without the&nbsp;need
-                      to&nbsp;ping last time's hero.
-                    </>
-                  ),
+                      of&nbsp;the company automatically to&nbsp;avoid
+                      interruptions.
+                    </>,
+                    <>
+                      Give developers context on&nbsp;previous incidents
+                      in&nbsp;seconds, without the&nbsp;need to&nbsp;ping last
+                      time's hero.
+                    </>,
+                  ],
                 },
                 {
                   title: (
@@ -147,15 +150,17 @@ export default function Engineering() {
                       in&nbsp;the know
                     </>
                   ),
-                  content: (
+                  content: [
                     <>
-                      Generate weekly summaries on&nbsp;what broke, what
-                      shipped, and&nbsp;what's in&nbsp;flight. Make these
-                      available to&nbsp;the team's stakeholders with
+                      Generate weekly summaries on&nbsp;what shipped, what
+                      broke, and&nbsp;what's in&nbsp;flight.
+                    </>,
+                    <>
+                      Make these available to&nbsp;the team's stakeholders with
                       explanations on&nbsp;the technical terms they might not
                       understand.
-                    </>
-                  ),
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [
@@ -199,8 +204,8 @@ export const assistantExamples = [
     ),
   },
   {
-    emoji: "🏴‍☠️",
-    name: "@MAN",
+    emoji: "📚",
+    name: "@codebase",
     backgroundColor: "bg-emerald-300",
     description: <>Answers questions about the&nbsp;company codebase</>,
   },
@@ -212,7 +217,7 @@ export const assistantExamples = [
       <>
         Answers questions from&nbsp;the rest of&nbsp;the company
         on&nbsp;engineering definitions, ongoing projects, and&nbsp;who's
-        on&nbsp;run from&nbsp;internal data
+        on&nbsp;run
       </>
     ),
   },
