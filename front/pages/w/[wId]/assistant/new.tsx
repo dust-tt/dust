@@ -253,23 +253,26 @@ export default function AssistantNew({
   });
 
   const scrollToInputBar = useCallback(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-    if (scrollContainerElement) {
-      scrollContainerElement.scrollIntoView({ behavior: "smooth" });
-    }
+    setTimeout(() => {
+      const scrollContainerElement = document.getElementById(
+        "assistant-input-header"
+      );
+      if (scrollContainerElement) {
+        scrollContainerElement.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 50); // Allows browser to complete the layout update before scrolling.
   }, []);
 
   const handleAssistantClick = (
     agent: LightAgentConfigurationType,
     conversation?: ConversationType
   ) => {
+    scrollToInputBar();
     setSelectedAssistant({
       configurationId: agent.sId,
     });
+    
     setConversationHelperModal(conversation || null);
-    scrollToInputBar();
     setTimeout(() => {
       setAnimate(true);
     }, 500);
@@ -309,7 +312,7 @@ export default function AssistantNew({
         {/* Assistant input */}
         <div
           id="assistant-input-container"
-          className="flex h-[50vh] w-full flex-col items-center justify-center"
+          className="flex min-h-[50vh] grow w-full flex-col items-center justify-center"
         >
           <div
             id="assistant-input-header"
