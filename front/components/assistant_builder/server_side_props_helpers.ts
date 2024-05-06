@@ -194,24 +194,17 @@ export async function buildInitialActions({
         };
       }
 
+      processConfiguration.configuration.tagsFilter = action.tagsFilter;
+
       processConfiguration.configuration.dataSourceConfigurations =
         await renderDataSourcesConfigurations(action);
 
       processConfiguration.configuration.schema = action.schema;
 
-
-    
-
-    processConfiguration.configuration.tagsFilter = action.tagsFilter;
-
-    processConfiguration.configuration.dataSourceConfigurations =
-      await renderDataSourcesConfigurations(action);
-
-    processConfiguration.configuration.schema = action.schema;
-
-    builderActions.push(processConfiguration);
-  } else {
-    assertNever(action);
+      builderActions.push(processConfiguration);
+    } else {
+      assertNever(action);
+    }
   }
 
   return builderActions;
