@@ -23,7 +23,6 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
-  AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
@@ -221,15 +220,13 @@ function PropertiesFields({
 export function ActionProcess({
   owner,
   actionConfiguration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
+  updateAction: (action: AssistantBuilderProcessConfiguration) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -252,28 +249,13 @@ export function ActionProcess({
     if (actionConfiguration.dataSourceConfigurations[name]) {
       setEdited(true);
     }
-
-    setBuilderState(({ actions, ...rest }) => {
-      const action = actions[0];
-      if (!action || action.type !== "PROCESS") {
-        return { actions, ...rest };
-      }
-      const dataSourceConfigurations = {
-        ...actionConfiguration.dataSourceConfigurations,
-      };
-      delete dataSourceConfigurations[name];
-      return {
-        actions: [
-          {
-            ...action,
-            configuration: {
-              ...actionConfiguration,
-              dataSourceConfigurations,
-            },
-          },
-        ],
-        ...rest,
-      };
+    const dataSourceConfigurations = {
+      ...actionConfiguration.dataSourceConfigurations,
+    };
+    delete dataSourceConfigurations[name];
+    updateAction({
+      ...actionConfiguration,
+      dataSourceConfigurations,
     });
   };
 
@@ -288,31 +270,16 @@ export function ActionProcess({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "PROCESS") {
-              return state;
-            }
-            const dataSourceConfigurations = {
+          updateAction({
+            ...actionConfiguration,
+            dataSourceConfigurations: {
               ...actionConfiguration.dataSourceConfigurations,
-            };
-            dataSourceConfigurations[dataSource.name] = {
-              dataSource,
-              selectedResources,
-              isSelectAll,
-            };
-            return {
-              ...state,
-              actions: [
-                {
-                  ...action,
-                  configuration: {
-                    ...actionConfiguration,
-                    dataSourceConfigurations,
-                  },
-                },
-              ],
-            };
+              [dataSource.name]: {
+                dataSource,
+                selectedResources,
+                isSelectAll,
+              },
+            },
           });
         }}
         onDelete={deleteDataSource}
@@ -363,16 +330,12 @@ export function ActionProcess({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              setBuilderState((state) => {
-                const action = state.actions[0];
-                if (!action || action.type !== "PROCESS") {
-                  return state;
-                }
-                actionConfiguration.timeFrame.value = value;
-                return {
-                  ...state,
-                  actions: [action],
-                };
+              updateAction({
+                ...actionConfiguration,
+                timeFrame: {
+                  value,
+                  unit: actionConfiguration.timeFrame.unit,
+                },
               });
             }
           }}
@@ -396,16 +359,12 @@ export function ActionProcess({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  setBuilderState((state) => {
-                    const action = state.actions[0];
-                    if (!action || action.type !== "PROCESS") {
-                      return state;
-                    }
-                    actionConfiguration.timeFrame.unit = key as TimeframeUnit;
-                    return {
-                      ...state,
-                      actions: [action],
-                    };
+                  updateAction({
+                    ...actionConfiguration,
+                    timeFrame: {
+                      value: actionConfiguration.timeFrame.value,
+                      unit: key as TimeframeUnit,
+                    },
                   });
                 }}
               />
@@ -435,16 +394,9 @@ export function ActionProcess({
                     description: "Required data to follow instructions",
                   },
                 ];
-                setBuilderState((state) => {
-                  const action = state.actions[0];
-                  if (!action || action.type !== "PROCESS") {
-                    return state;
-                  }
-                  actionConfiguration.schema = schema;
-                  return {
-                    ...state,
-                    actions: [action],
-                  };
+                updateAction({
+                  ...actionConfiguration,
+                  schema,
                 });
               }}
             />
@@ -454,16 +406,9 @@ export function ActionProcess({
       <PropertiesFields
         properties={actionConfiguration.schema}
         onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "PROCESS") {
-              return state;
-            }
-            actionConfiguration.schema = schema;
-            return {
-              ...state,
-              actions: [action],
-            };
+          updateAction({
+            ...actionConfiguration,
+            schema,
           });
           setEdited(true);
         }}

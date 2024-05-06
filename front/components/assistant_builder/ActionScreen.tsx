@@ -19,7 +19,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, removeNulls } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
-import React from "react";
+import React, { useCallback } from "react";
 
 import {
   ActionProcess,
@@ -36,6 +36,7 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
@@ -236,6 +237,24 @@ export default function ActionScreen({
   const searchMode = getSearchMode(action?.type ?? null);
   const searchModeSpec = SEARCH_MODE_SPECIFICATIONS[searchMode];
 
+  const deprecatedReplaceSingleActionConfig = useCallback(
+    (newAction: AssistantBuilderActionConfiguration) => {
+      setBuilderState((state) => {
+        const previousAction = state.actions[0];
+        if (!previousAction) {
+          // Unreachable
+          return state;
+        }
+
+        return {
+          ...state,
+          actions: [newAction],
+        };
+      });
+    },
+    [setBuilderState]
+  );
+
   return (
     <>
       <div className="flex flex-col gap-4 text-sm text-element-700">
@@ -429,7 +448,18 @@ export default function ActionScreen({
               action?.type === "RETRIEVAL_SEARCH" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(newAction) => {
+              if (!action) {
+                // Unreachable
+                return;
+              }
+              deprecatedReplaceSingleActionConfig({
+                type: "RETRIEVAL_SEARCH",
+                configuration: newAction,
+                name: action.name,
+                description: action.description,
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -445,7 +475,18 @@ export default function ActionScreen({
                 : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(newAction) => {
+              if (!action) {
+                // Unreachable
+                return;
+              }
+              deprecatedReplaceSingleActionConfig({
+                type: "RETRIEVAL_EXHAUSTIVE",
+                configuration: newAction,
+                name: action.name,
+                description: action.description,
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -457,7 +498,18 @@ export default function ActionScreen({
               action?.type === "PROCESS" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(newAction) => {
+              if (!action) {
+                // Unreachable
+                return;
+              }
+              deprecatedReplaceSingleActionConfig({
+                type: "PROCESS",
+                configuration: newAction,
+                name: action.name,
+                description: action.description,
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -471,7 +523,18 @@ export default function ActionScreen({
               action?.type === "TABLES_QUERY" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(newAction) => {
+              if (!action) {
+                // Unreachable
+                return;
+              }
+              deprecatedReplaceSingleActionConfig({
+                type: "TABLES_QUERY",
+                configuration: newAction,
+                name: action.name,
+                description: action.description,
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -483,7 +546,18 @@ export default function ActionScreen({
               action?.type === "DUST_APP_RUN" ? action.configuration : null
             }
             dustApps={dustApps}
-            setBuilderState={setBuilderState}
+            updateAction={(newAction) => {
+              if (!action) {
+                // Unreachable
+                return;
+              }
+              deprecatedReplaceSingleActionConfig({
+                type: "DUST_APP_RUN",
+                configuration: newAction,
+                name: action.name,
+                description: action.description,
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
