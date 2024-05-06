@@ -202,7 +202,7 @@ export const AssistantPreviewExample = () => (
         }}
       />
     </div>
-    <h2>Minimal Gallery</h2>
+    <h2>Minimal</h2>
     <div className="s-grid s-w-full s-grid-cols-2 s-gap-2 md:s-grid-cols-3">
       <div className="s-rounded-xl s-border s-border-structure-100">
         <AssistantPreview
@@ -212,7 +212,7 @@ export const AssistantPreviewExample = () => (
           }
           subtitle={"Dust"}
           description=""
-          variant="minimalGallery"
+          variant="minimal"
           onClick={() => console.log("AssistantPreview clicked")}
           onActionClick={() => console.log("Action clicked")}
         />
@@ -223,7 +223,7 @@ export const AssistantPreviewExample = () => (
           pictureUrl={"https://dust.tt/static/droidavatar/Droid_Green_2.jpg"}
           subtitle={"Dust"}
           description=""
-          variant="minimalGallery"
+          variant="minimal"
           onClick={() => console.log("AssistantPreview clicked")}
           onActionClick={() => console.log("Action clicked")}
         />
@@ -234,7 +234,7 @@ export const AssistantPreviewExample = () => (
           pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg"}
           subtitle={"Dust"}
           description=""
-          variant="minimalGallery"
+          variant="minimal"
           onClick={() => console.log("AssistantPreview clicked")}
           onActionClick={() => console.log("Action clicked")}
         />

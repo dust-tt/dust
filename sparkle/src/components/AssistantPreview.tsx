@@ -4,7 +4,7 @@ import { Button, CardButton, MoreIcon, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
-type AssistantPreviewVariant = "item" | "list" | "gallery" | "minimalGallery";
+type AssistantPreviewVariant = "item" | "list" | "gallery" | "minimal";
 
 interface BaseAssistantPreviewProps {
   variant: AssistantPreviewVariant;
@@ -30,8 +30,8 @@ type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   onPlayClick?: (e: SyntheticEvent) => void;
 };
 
-type MinimalGalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
-  variant: "minimalGallery";
+type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "minimal";
   hasAction?: boolean;
   href?: string;
   onClick?: () => void;
@@ -42,7 +42,7 @@ type AssistantPreviewProps =
   | ItemVariantAssistantPreviewProps
   | ListVariantAssistantPreviewProps
   | GalleryVariantAssistantPreviewProps
-  | MinimalGalleryVariantAssistantPreviewProps;
+  | MinimalVariantAssistantPreviewProps;
 
 const isBrowser = typeof window !== "undefined";
 
@@ -61,7 +61,7 @@ const titleClassNames = {
   item: "s-text-sm",
   list: "s-text-base",
   gallery: "s-text-lg",
-  minimalGallery: `s-overflow-hidden s-whitespace-nowrap ${
+  minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
       ? "s-text-sm"
       : getWindowWidth() <= breakpoints.md
@@ -75,7 +75,7 @@ const subtitleClassNames = {
   item: "s-text-xs",
   list: "s-text-sm",
   gallery: "s-text-sm",
-  minimalGallery: `s-overflow-hidden s-whitespace-nowrap ${
+  minimal: `s-overflow-hidden s-whitespace-nowrap ${
     getWindowWidth() <= breakpoints.sm
       ? "s-text-xs"
       : getWindowWidth() <= breakpoints.md
@@ -101,8 +101,8 @@ function renderVariantContent(
       return <ListVariantContent {...props} />;
     case "gallery":
       return <GalleryVariantContent {...props} />;
-    case "minimalGallery":
-      return <MinimalGalleryVariantContent {...props} />;
+    case "minimal":
+      return <MinimalVariantContent {...props} />;
     default:
       return <></>;
   }
@@ -258,14 +258,14 @@ const GalleryVariantContent = ({
   );
 };
 
-const MinimalGalleryVariantContent = ({
+const MinimalVariantContent = ({
   title,
   pictureUrl,
   subtitle,
   hasAction = true,
   onClick,
   onActionClick,
-}: MinimalGalleryVariantAssistantPreviewProps) => {
+}: MinimalVariantAssistantPreviewProps) => {
   const actionButton = (
     <Button
       label=""
@@ -303,7 +303,7 @@ const MinimalGalleryVariantContent = ({
             <div
               className={classNames(
                 titleClassNames["base"],
-                titleClassNames.minimalGallery
+                titleClassNames.minimal
               )}
             >
               @{title}
@@ -311,7 +311,7 @@ const MinimalGalleryVariantContent = ({
             <div
               className={classNames(
                 subtitleClassNames["base"],
-                subtitleClassNames.minimalGallery
+                subtitleClassNames.minimal
               )}
             >
               By: {subtitle}
@@ -335,7 +335,7 @@ export function AssistantPreview(props: AssistantPreviewProps) {
     <CardButton
       variant="tertiary"
       className={classNames("s-flex s-flex-col s-gap-2 s-border")}
-      size={variant === "item" || variant === "minimalGallery" ? "sm" : "lg"}
+      size={variant === "item" || variant === "minimal" ? "sm" : "lg"}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
