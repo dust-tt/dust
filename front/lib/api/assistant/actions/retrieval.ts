@@ -445,6 +445,15 @@ export function retrievalMetaPrompt() {
   );
 }
 
+export function retrievalMetaPromptMutiActions() {
+  return (
+    "Focus on being factual and accurate. When data is retrieved from sources, " +
+    "use the markdown directive :cite[REFERENCE] to cite documents (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
+    "Ensure citations are placed as close as possible to the related information. " +
+    "If data retrieval isn't applicable, maintain clarity and precision in your statements."
+  );
+}
+
 /**
  * Action execution.
  */

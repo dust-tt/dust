@@ -48,6 +48,7 @@ import {
   renderRetrievalActionForModel,
   renderRetrievalActionForMultiActionsModel,
   retrievalMetaPrompt,
+  retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
 import {
   renderTablesQueryActionForModel,
@@ -57,6 +58,7 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
@@ -504,12 +506,78 @@ export async function constructPrompt(
     instructions += `\n${fallbackPrompt}`;
   }
 
+  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
+
+  if (isRetrievalConfiguration(actionConfig)) {
+    instructions += `\n${retrievalMetaPrompt()}`;
+  }
+  if (instructions.length > 0) {
+    instructions = "\nINSTRUCTIONS:" + instructions;
+  }
+
+  // Replacement if instructions include "{USER_FULL_NAME}".
+  instructions = instructions.replaceAll(
+    "{USER_FULL_NAME}",
+    userMessage.context.fullName || "Unknown user"
+  );
+
+  // Replacement if instructions includes "{ASSISTANTS_LIST}"
+  if (instructions.includes("{ASSISTANTS_LIST}")) {
+    if (!auth.isUser()) {
+      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
+    }
+    const agents = await getAgentConfigurations({
+      auth,
+      agentsGetView: auth.user() ? "list" : "all",
+      variant: "light",
+    });
+    instructions = instructions.replaceAll(
+      "{ASSISTANTS_LIST}",
+      agents
+        .map((agent) => {
+          let agentDescription = "";
+          agentDescription += `@${agent.name}: `;
+          agentDescription += `${agent.description}`;
+          return agentDescription;
+        })
+        .join("\n")
+    );
+  }
+
+  return `${context}${instructions}`;
+}
+
+export async function constructPromptMultiActions(
+  auth: Authenticator,
+  userMessage: UserMessageType,
+  configuration: AgentConfigurationType,
+  fallbackPrompt?: string
+) {
+  const d = moment(new Date()).tz(userMessage.context.timezone);
+  const owner = auth.workspace();
+
+  let context = "CONTEXT:\n";
+  context += `{\n`;
+  context += `  "assistant": "@${configuration.name}",\n`;
+  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
+  if (owner) {
+    context += `  "workspace": "${owner.name}",\n`;
+  }
+  context += "}\n";
+
+  let instructions = "";
+  if (configuration.instructions) {
+    instructions += `\n${configuration.instructions}`;
+  } else if (fallbackPrompt) {
+    instructions += `\n${fallbackPrompt}`;
+  }
+
   // If one of the action is a retrieval action, we add the retrieval meta prompt.
   const hasRetrievalAction = configuration.actions.some((action) =>
     isRetrievalConfiguration(action)
   );
   if (hasRetrievalAction) {
-    instructions += `\n${retrievalMetaPrompt()}`;
+    instructions += `\n${retrievalMetaPromptMutiActions()}`;
   }
 
   if (instructions.length > 0) {
