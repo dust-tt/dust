@@ -231,10 +231,10 @@ export default function ActionsScreen({
                             owner={owner}
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
-                            updateAction={(newAction) => {
+                            updateAction={(setNewAction) => {
                               upsertAction({
                                 ...a,
-                                configuration: newAction,
+                                configuration: setNewAction(a.configuration),
                               });
                             }}
                             setEdited={setEdited}
@@ -246,10 +246,10 @@ export default function ActionsScreen({
                             owner={owner}
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
-                            updateAction={(newAction) => {
+                            updateAction={(setNewAction) => {
                               upsertAction({
                                 ...a,
-                                configuration: newAction,
+                                configuration: setNewAction(a.configuration),
                               });
                             }}
                             setEdited={setEdited}
