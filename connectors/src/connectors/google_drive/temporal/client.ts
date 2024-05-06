@@ -159,7 +159,7 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
       args: [],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "0 * * * *", // every hour, on the hour
+      cronSchedule: "*/30 * * * *", // every hour, on the hour
     });
     logger.info(
       {
