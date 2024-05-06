@@ -27,6 +27,8 @@ pub struct ExecutionWithTimestamp {
 
 pub type Credentials = HashMap<String, String>;
 
+pub type Secrets = HashMap<String, String>;
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {
     pub blocks: HashMap<String, Value>,

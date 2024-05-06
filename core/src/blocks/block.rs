@@ -6,7 +6,7 @@ use crate::blocks::{
 use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
-use crate::run::{Credentials, RunConfig};
+use crate::run::{Secrets, Credentials, RunConfig};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -53,6 +53,8 @@ pub struct Env {
     pub project: Project,
     #[serde(skip_serializing)]
     pub credentials: Credentials,
+    #[serde(skip_serializing)]
+    pub secrets: Secrets,
 }
 
 // pub enum Expectations {
