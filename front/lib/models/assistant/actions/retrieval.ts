@@ -198,7 +198,7 @@ AgentRetrievalAction.init(
     },
     step: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
