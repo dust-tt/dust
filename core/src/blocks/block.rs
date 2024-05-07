@@ -6,7 +6,7 @@ use crate::blocks::{
 use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
-use crate::run::{Secret, Secrets, Credentials, RunConfig};
+use crate::run::{Secrets, Credentials, RunConfig};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -43,6 +43,7 @@ pub struct Env {
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
+    pub secrets: Secrets,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]
@@ -53,8 +54,6 @@ pub struct Env {
     pub project: Project,
     #[serde(skip_serializing)]
     pub credentials: Credentials,
-    #[serde(skip_serializing)]
-    pub secrets: Secrets,
 }
 
 // pub enum Expectations {
@@ -244,23 +243,19 @@ pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<S
   };
 
   secrets_found
-        .iter()
-        .map(|key| {
-            let secret: Option<&Secret> = env.secrets.iter().find(|s| s.name == *key);
-            let secret = secret.ok_or_else(|| anyhow!("`secrets.{}` not found", key))?;
-
-            if secret.value.is_empty() {
-                Err(anyhow!("`secrets.{}` is not a string", key))?;
-            }
-            
-            result = result.replace(
-                &format!("${{secrets.{}}}", key),
-                &secret.value.as_str(),
-            );
-
-            Ok(())
-        })
-        .collect::<Result<Vec<_>>>()?;
+    .iter()
+    .map(|key| {
+      if let Some(secret) = env.secrets.get(key) {
+        result = result.replace(
+          &format!("${{secrets.{}}}", key),
+          secret,
+        );
+        Ok(())
+      } else {
+        Err(anyhow!("`secrets.{}` is not a string", key))
+      }
+    })
+    .collect::<Result<Vec<_>>>()?;
 
   Ok(result)
 }

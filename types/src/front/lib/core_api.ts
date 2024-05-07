@@ -35,6 +35,8 @@ export type CoreAPIError = {
   code: string;
 };
 
+type SecretsObject = { [key: string]: string };
+
 export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
     typeof obj === "object" &&
@@ -254,6 +256,13 @@ export class CoreAPI {
     credentials,
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
+
+    // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
+    const secretsObject: SecretsObject = secrets.reduce((obj: SecretsObject, secret: DustAppSecretType) => {
+        obj[secret.name] = secret.value;
+        return obj;
+    }, {});
+
     const response = await fetch(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
       {
@@ -270,7 +279,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
-          secrets: secrets,
+          secrets: secretsObject
         }),
       }
     );
@@ -295,6 +304,12 @@ export class CoreAPI {
       dustRunId: Promise<string>;
     }>
   > {
+    // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
+    const secretsObject: SecretsObject = secrets.reduce((obj: SecretsObject, secret: DustAppSecretType) => {
+      obj[secret.name] = secret.value;
+      return obj;
+    }, {});
+
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/stream`,
       {
@@ -311,7 +326,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
-          secrets: secrets,
+          secrets: secretsObject,
         }),
       }
     );
