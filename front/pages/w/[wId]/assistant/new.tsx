@@ -318,10 +318,10 @@ export default function AssistantNew({
         id="assistant-new-page"
         className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
       >
-        {/* Assistant input */}
+        {/* Assistant input bar */}
         <div
           id="assistant-input-container"
-          className="flex min-h-[50vh] w-full grow flex-col items-center justify-center"
+          className="z-10 flex min-h-[50vh] w-full grow flex-col items-center justify-center"
         >
           <div
             id="assistant-input-header"
@@ -343,9 +343,9 @@ export default function AssistantNew({
             />
           </div>
         </div>
-        {/* Assistant list */}
+        {/* Assistant lists */}
         <div
-          id="assistants-list-container"
+          id="assistants-lists-container"
           ref={contentRef}
           style={{ minHeight: `${contentMinHeight}px` }}
           className="flex h-full w-full flex-col gap-3 pt-9"
@@ -354,7 +354,7 @@ export default function AssistantNew({
             <Page.SectionHeader title="Chat with..." />
           </div>
 
-          {/* Search */}
+          {/* Search bar */}
           <div
             id="search-container"
             className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
@@ -427,8 +427,7 @@ export default function AssistantNew({
         </div>
       </div>
 
-      {/* Quick start guide */}
-
+      {/* Quick start guide CTA */}
       <div
         id="quick-start-guide-button"
         className="fixed right-6 top-2 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
