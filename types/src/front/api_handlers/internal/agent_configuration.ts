@@ -153,12 +153,6 @@ const ActionConfigurationSchema = t.intersection([
   t.partial(multiActionsCommonFields),
 ]);
 
-// TODO(@fontanierh): change once generation is an action.
-const GenerationConfigurationSchema = t.union([
-  t.null,
-  t.partial(multiActionsCommonFields),
-]);
-
 const ModelConfigurationSchema = t.intersection([
   t.type({
     modelId: ModelIdCodec,
@@ -197,7 +191,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
           IsSupportedModelSchema,
         ]),
         actions: t.array(ActionConfigurationSchema),
-        generation: GenerationConfigurationSchema,
       }),
       t.partial({
         maxToolsUsePerRun: t.number,

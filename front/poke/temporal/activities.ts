@@ -18,7 +18,6 @@ import {
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
@@ -255,13 +254,6 @@ export async function deleteAgentsActivity({
       transaction: t,
     });
     for (const agent of agents) {
-      await AgentGenerationConfiguration.destroy({
-        where: {
-          agentConfigurationId: agent.id,
-        },
-        transaction: t,
-      });
-
       const retrievalConfigurations = await AgentRetrievalConfiguration.findAll(
         {
           where: {

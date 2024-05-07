@@ -6,7 +6,6 @@ import type {
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationConfigurationType,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
@@ -22,7 +21,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isAgentActionConfigurationType,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -145,7 +143,6 @@ export async function* runMultiActionsAgent(
       conversation,
       userMessage,
       availableActions: actions,
-      isGenerationAllowed: !forcedAction,
       forcedActionName: forcedAction?.name ?? undefined,
     });
 
@@ -179,30 +176,21 @@ export async function* runMultiActionsAgent(
 
     const { action, inputs, specification } = actionToRun.value;
 
-    if (isAgentActionConfigurationType(action)) {
-      const eventStream = runAction(auth, {
-        configuration: configuration,
-        actionConfiguration: action,
-        conversation,
-        userMessage,
-        agentMessage,
-        inputs,
-        specification,
-        step: i,
-      });
-      for await (const event of eventStream) {
-        yield event;
-      }
-    } else {
-      // TODO(@fontanierh): remove this once generation is part of actions.
-      // This is just to assert that we cover all action types.
-      ((g: AgentGenerationConfigurationType) => {
-        void g;
-      })(action);
-      // If the next action is the generation, we simply break out of the loop,
-      // as we always run the generation after the actions loop.
-      break;
+    const eventStream = runAction(auth, {
+      configuration: configuration,
+      actionConfiguration: action,
+      conversation,
+      userMessage,
+      agentMessage,
+      inputs,
+      specification,
+      step: i,
+    });
+    for await (const event of eventStream) {
+      yield event;
     }
+    // If the next action is the generation, we simply break out of the loop,
+    // as we always run the generation after the actions loop.
   }
 
   const eventStream = runGeneration(
@@ -280,28 +268,25 @@ export async function getNextAction(
     conversation,
     userMessage,
     availableActions,
-    isGenerationAllowed = true,
     forcedActionName,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     availableActions: AgentActionConfigurationType[];
-    // TODO(@fontanierh): remove this once generation is part of actions.
-    isGenerationAllowed: boolean;
     forcedActionName?: string;
   }
 ): Promise<
   Result<
     {
-      action: AgentActionConfigurationType | AgentGenerationConfigurationType;
+      action: AgentActionConfigurationType;
       inputs: Record<string, string | boolean | number>;
       specification: AgentActionSpecification | null;
     },
     Error
   >
 > {
-  let prompt = await constructPromptMultiActions(
+  const prompt = await constructPromptMultiActions(
     auth,
     userMessage,
     agentConfiguration,
@@ -384,24 +369,7 @@ export async function getNextAction(
       assertNever(a);
     }
   }
-
-  // TODO(@fontanierh): remove this once generation is part of actions.
-  if (agentConfiguration.generation && isGenerationAllowed) {
-    specifications.push({
-      name: "reply_to_user",
-      description:
-        "Reply to the user with a message. It is mandatory to call this function before replying to the user, otherwise they won't be able to see the message.",
-      inputs: [
-        {
-          name: "language",
-          type: "string",
-          description:
-            "The language of the message to send. Should always be 'en' (for english) or 'fr' (for french).",
-        },
-      ],
-    });
-    prompt = `${prompt}\nNever attempt to directly send a message to the user without using the 'reply_to_user' function. When there is no other action to perform, use this function to send a message to the user.`;
-  }
+  // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-use-tools"].config
@@ -477,10 +445,7 @@ export async function getNextAction(
   }
   output.arguments = output.arguments ?? {};
 
-  const action =
-    output.name === "reply_to_user"
-      ? agentConfiguration.generation
-      : agentConfiguration.actions.find((a) => a.name === output.name);
+  const action = agentConfiguration.actions.find((a) => a.name === output.name);
 
   const spec = specifications.find((s) => s.name === output.name) ?? null;
 

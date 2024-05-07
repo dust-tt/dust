@@ -170,20 +170,15 @@ export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
 }
 
 // This function returns true if the agent is a "legacy" agent with a forced schedule,
-// i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
+// i.e it has a maxToolsUsePerRun <= 1, every possible iteration has a forced action,
 // and every tool is forced at a certain iteration.
 export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
   // TODO(@fontanierh): change once generation is part of actions.
-  const actions = removeNulls([
-    ...configuration.actions,
-    configuration.generation,
-  ]);
+  const actions = removeNulls([...configuration.actions]);
 
   return (
-    configuration.maxToolsUsePerRun <= 2 &&
-    Array.from(Array(configuration.maxToolsUsePerRun).keys()).every((i) =>
-      actions.some((a) => a.forceUseAtIteration === i)
-    ) &&
-    actions.every((a) => a.forceUseAtIteration !== undefined)
+    configuration.maxToolsUsePerRun <= 1 &&
+    actions.length <= 1 &&
+    actions.every((a) => a.forceUseAtIteration === 0)
   );
 }

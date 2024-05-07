@@ -210,61 +210,59 @@ export async function* runLegacyAgent(
   }
 
   // Then run the generation if a configuration is present.
-  if (configuration.generation !== null) {
-    const eventStream = runGeneration(
-      auth,
-      configuration,
-      conversation,
-      userMessage,
-      agentMessage
-    );
+  const eventStream = runGeneration(
+    auth,
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage
+  );
 
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "generation_tokens":
-          yield event;
-          break;
+  for await (const event of eventStream) {
+    switch (event.type) {
+      case "generation_tokens":
+        yield event;
+        break;
 
-        case "generation_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
+      case "generation_error":
+        yield {
+          type: "agent_error",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: event.error.code,
+            message: event.error.message,
+          },
+        };
+        return;
 
-        case "generation_cancel":
-          yield {
-            type: "agent_generation_cancelled",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-          };
-          return;
+      case "generation_cancel":
+        yield {
+          type: "agent_generation_cancelled",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+        };
+        return;
 
-        case "generation_success":
-          yield {
-            type: "agent_generation_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: event.text,
-          };
+      case "generation_success":
+        yield {
+          type: "agent_generation_success",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          text: event.text,
+        };
 
-          agentMessage.content = event.text;
-          break;
+        agentMessage.content = event.text;
+        break;
 
-        default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
-      }
+      default:
+        ((event: never) => {
+          logger.error("Unknown `runAgent` event type", event);
+        })(event);
+        return;
     }
   }
 
