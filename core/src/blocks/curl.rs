@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
@@ -133,7 +133,8 @@ impl Block for Curl {
         .await?
         .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 
-        let url = replace_variables_in_string(&self.url, "url", env)?;
+        let mut url = replace_variables_in_string(&self.url, "url", env)?;
+        url = replace_secrets_in_string(&url, "url", env)?;
 
         if url.contains("https://dust.tt") || url.contains("https://www.dust.tt") {
             Err(anyhow!(

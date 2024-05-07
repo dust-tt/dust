@@ -150,7 +150,7 @@ impl APIState {
             loop_count += 1;
             tokio::time::sleep(std::time::Duration::from_millis(4)).await;
             if loop_count % 1024 == 0 {
-                let manager = self.run_manager.lock();
+                let _manager = self.run_manager.lock();
                 // info!(pending_runs = manager.pending_runs.len(), "Pending runs");
             }
             // Roughly every 4 minutes, cleanup dead SQLite workers if any.
@@ -759,11 +759,6 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
     let secrets = payload.secrets.clone();
-
-    info!(
-        "Creating run with secrets: {:?}",
-        secrets
-    );
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

@@ -6,7 +6,7 @@ use crate::blocks::{
 use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
-use crate::run::{Secrets, Credentials, RunConfig};
+use crate::run::{Secret, Secrets, Credentials, RunConfig};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -210,6 +210,65 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
     }
 }
 
+pub fn find_secrets(text: &str) -> Vec<String> {
+  lazy_static! {
+      static ref RE: Regex =
+          Regex::new(r"\$\{secrets\.(?P<key>[a-zA-Z0-9_\.]+)\}").unwrap();
+  }
+
+  RE.captures_iter(text)
+      .map(|c| {
+          let key = c.name("key").unwrap().as_str();
+          String::from(key)
+      })
+      .collect::<Vec<_>>()
+}
+pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
+  let secrets_found = find_secrets(text);
+
+  // Run Tera templating engine one_off on the result (before replacing variables but after
+  // looking for them).
+  let context = Context::from_value(json!(env.state))?;
+
+  let mut result = match Tera::one_off(text, &context, false) {
+      Ok(r) => r,
+      Err(e) => {
+          let err_msg = e
+              .source()
+              .unwrap()
+              .to_string()
+              .replace("__tera_one_off", field);
+
+          Err(anyhow!("Templating error: {}", err_msg))?
+      }
+  };
+
+  secrets_found
+        .iter()
+        .map(|key| {
+            // Check that the secret exists and is a string.
+            let secret: Option<&Secret> = env.secrets.iter().find(|s| s.name == *key);
+            let secret = secret.ok_or_else(|| anyhow!("`secrets.{}` not found", key))?;
+            
+            println!("secret IS: {:?}", secret);
+            println!("secret value IS: {:?}", secret.value.as_str());
+
+            if secret.value.is_empty() {
+                Err(anyhow!("`secrets.{}` is not a string", key))?;
+            }
+            
+            result = result.replace(
+                &format!("${{secrets.{}}}", key),
+                &secret.value.as_str(),
+            );
+
+            Ok(())
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+  Ok(result)
+}
+  
 pub fn find_variables(text: &str) -> Vec<(String, String)> {
     lazy_static! {
         static ref RE: Regex =
