@@ -151,7 +151,7 @@ impl APIState {
             tokio::time::sleep(std::time::Duration::from_millis(4)).await;
             if loop_count % 1024 == 0 {
                 let manager = self.run_manager.lock();
-                info!(pending_runs = manager.pending_runs.len(), "Pending runs");
+                // info!(pending_runs = manager.pending_runs.len(), "Pending runs");
             }
             // Roughly every 4 minutes, cleanup dead SQLite workers if any.
             if loop_count % 65536 == 0 {
