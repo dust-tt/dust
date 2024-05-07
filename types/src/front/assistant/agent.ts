@@ -2,11 +2,7 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { ProcessConfigurationType } from "../../front/assistant/actions/process";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
-import {
-  ModelIdType,
-  ModelProviderIdType,
-  SupportedModel,
-} from "../../front/lib/assistant";
+import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 
 /**
@@ -52,17 +48,6 @@ export type AgentActionSpecification = {
     description: string;
     type: "string" | "number" | "boolean";
   }[];
-};
-
-/**
- * Agent Message configuration
- */
-
-export type AgentGenerationConfigurationType = {
-  id: ModelId;
-  name: string | null;
-  description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 /**
@@ -194,18 +179,9 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are
   // performed.
   actions: AgentActionConfigurationType[];
-  // If undefined, no text generation.
-  generation: AgentGenerationConfigurationType | null;
 };
 
 export interface TemplateAgentConfigurationType {
-  // If undefined, no text generation.
-  generation: {
-    model: SupportedModel;
-    temperature: number;
-    forceUseAtIteration: number | null;
-  } | null;
-
   name: string;
   pictureUrl: string;
 

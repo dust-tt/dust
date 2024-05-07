@@ -2,7 +2,6 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  AgentGenerationConfigurationType,
   AgentMention,
   AgentModelConfigurationType,
   AgentsGetViewType,
@@ -42,7 +41,6 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import {
@@ -350,16 +348,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   }
 
   const [
-    generationConfigs,
     retrievalConfigs,
     dustAppRunConfigs,
     tablesQueryConfigs,
     processConfigs,
     agentUserRelations,
   ] = await Promise.all([
-    AgentGenerationConfiguration.findAll({
-      where: { agentConfigurationId: { [Op.in]: configurationIds } },
-    }).then(groupByAgentConfigurationId),
     variant === "full"
       ? AgentRetrievalConfiguration.findAll({
           where: { agentConfigurationId: { [Op.in]: configurationIds } },
@@ -590,31 +584,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
     }
 
-    let generation: AgentGenerationConfigurationType | null = null;
-
-    const generationConfig = (() => {
-      switch (generationConfigs[agent.id]?.length) {
-        case 0:
-        case undefined:
-          return null;
-        case 1:
-          return generationConfigs[agent.id][0];
-        default:
-          throw new Error(
-            "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
-          );
-      }
-    })();
-
-    if (generationConfig !== null) {
-      generation = {
-        id: generationConfig.id,
-        name: generationConfig.name,
-        description: generationConfig.description,
-        forceUseAtIteration: generationConfig.forceUseAtIteration,
-      };
-    }
-
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -633,7 +602,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       },
       status: agent.status,
       actions,
-      generation,
       versionAuthorId: agent.authorId,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
     };
@@ -1052,44 +1020,6 @@ export async function restoreAgentConfiguration(
 
   const affectedCount = updated[0];
   return affectedCount > 0;
-}
-
-export async function createAgentGenerationConfiguration(
-  auth: Authenticator,
-  {
-    agentConfiguration,
-    name,
-    description,
-    forceUseAtIteration,
-  }: {
-    agentConfiguration: LightAgentConfigurationType;
-    name: string | null;
-    description: string | null;
-    forceUseAtIteration: number | null;
-  }
-): Promise<AgentGenerationConfigurationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  const plan = auth.plan();
-  if (!plan) {
-    throw new Error("Unexpected `auth` without `plan`.");
-  }
-
-  const genConfig = await AgentGenerationConfiguration.create({
-    agentConfigurationId: agentConfiguration.id,
-    name,
-    description,
-    forceUseAtIteration,
-  });
-
-  return {
-    id: genConfig.id,
-    name: genConfig.name,
-    description: genConfig.description,
-    forceUseAtIteration,
-  };
 }
 
 /**

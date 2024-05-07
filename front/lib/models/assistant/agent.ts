@@ -20,65 +20,6 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 /**
- * Configuration of Agent generation.
- */
-export class AgentGenerationConfiguration extends Model<
-  InferAttributes<AgentGenerationConfiguration>,
-  InferCreationAttributes<AgentGenerationConfiguration>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
-
-  declare name: string | null;
-  declare description: string | null;
-  declare forceUseAtIteration: number | null;
-}
-AgentGenerationConfiguration.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "agent_generation_configuration",
-    sequelize: frontSequelize,
-    indexes: [
-      {
-        fields: ["agentConfigurationId"],
-        concurrently: true,
-      },
-    ],
-  }
-);
-
-/**
  * Agent configuration
  */
 export class AgentConfiguration extends Model<
@@ -177,7 +118,6 @@ AgentConfiguration.init(
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 1,
     },
     pictureUrl: {
       type: DataTypes.TEXT,
@@ -205,14 +145,6 @@ AgentConfiguration.init(
     ],
   }
 );
-
-// AgentGenerationConfiguration <> AgentConfiguration
-AgentConfiguration.hasMany(AgentGenerationConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
-AgentGenerationConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
 
 //  Agent config <> Workspace
 Workspace.hasMany(AgentConfiguration, {
