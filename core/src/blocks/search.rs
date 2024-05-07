@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::http::request::HttpRequest;
 use crate::utils::ParseError;
@@ -180,7 +180,8 @@ impl Block for Search {
             None => true,
         };
 
-        let query = replace_variables_in_string(&self.query, "query", env)?;
+        let mut query = replace_variables_in_string(&self.query, "query", env)?;
+        query = replace_secrets_in_string(&query, "query", env)?;
 
         let credential_key = match provider_id {
             SearchProviderID::SerpAPI => "SERP_API_KEY",

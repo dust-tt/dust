@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::block::replace_variables_in_string;
+use super::block::replace_secrets_in_string;
 use super::database_schema::load_tables_from_identifiers;
 
 #[derive(Clone)]
@@ -100,7 +101,8 @@ impl Block for Database {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let query = replace_variables_in_string(&self.query, "query", env)?;
+        let mut query = replace_variables_in_string(&self.query, "query", env)?;
+        query = replace_secrets_in_string(&query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         let (results, schema) = query_database(&tables, env.store.clone(), &query)
