@@ -46,6 +46,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -128,35 +129,70 @@ export default function AssistantNew({
       .filter(
         (a) => a.status === "active" && a.usage && a.usage.messageCount > 0
       )
+      .filter((agent) =>
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
+      ) // Apply search filter
       .sort(
         (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
       )
       .slice(0, 6);
-  }, [agentConfigurations]);
+  }, [agentConfigurations, assistantSearch]);
 
   const agentsToDisplay = useMemo(() => {
+    let filteredAgents: LightAgentConfigurationType[] = [];
     switch (selectedTab) {
       case "all":
-        return agentConfigurations.filter((a) => a.status === "active");
+        filteredAgents = agentConfigurations.filter(
+          (a) => a.status === "active"
+        );
+        break;
       case "published":
-        return agentConfigurations.filter(
+        filteredAgents = agentConfigurations.filter(
           (a) => a.status === "active" && a.scope === "published"
         );
+        break;
       case "workspace":
-        return agentConfigurations.filter(
+        filteredAgents = agentConfigurations.filter(
           (a) => a.status === "active" && a.scope === "workspace"
         );
+        break;
       default:
-        return [];
+        filteredAgents = [];
     }
-  }, [selectedTab, agentConfigurations]);
+    if (assistantSearch.trim() !== "") {
+      filteredAgents = filteredAgents.filter((agent) =>
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
+      );
+    }
+    return filteredAgents;
+  }, [selectedTab, agentConfigurations, assistantSearch]);
 
-  const allAgentsTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.map((tab) => ({
-      ...tab,
-      current: tab.id === selectedTab,
-    }));
-  }, [selectedTab]);
+  const visibleTabs = useMemo(() => {
+    const counts = {
+      all: 0,
+      published: 0,
+      workspace: 0,
+    };
+
+    agentConfigurations.forEach((agent) => {
+      if (
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase()) &&
+        agent.status === "active"
+      ) {
+        counts.all++;
+        if (agent.scope === "published") {
+          counts.published++;
+        }
+        if (agent.scope === "workspace") {
+          counts.workspace++;
+        }
+      }
+    });
+
+    return ALL_AGENTS_TABS.filter(
+      (tab) => counts[tab.id as keyof typeof counts] > 0
+    );
+  }, [agentConfigurations, assistantSearch]);
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
@@ -328,9 +364,7 @@ export default function AssistantNew({
               size="sm"
               placeholder="Search (Name)"
               value={assistantSearch}
-              onChange={(s) => {
-                setAssistantSearch(s);
-              }}
+              onChange={setAssistantSearch}
             />
             <Button.List>
               <Tooltip label="Create your own assistant">
@@ -371,10 +405,18 @@ export default function AssistantNew({
           <div className="flex flex-row space-x-4 px-4">
             <Tab
               className="grow"
-              tabs={allAgentsTabs}
+              tabs={visibleTabs.map((tab) => ({
+                ...tab,
+                current: tab.id === selectedTab,
+              }))}
               setCurrentTab={setSelectedTab}
             />
           </div>
+          {visibleTabs.length === 0 && (
+            <div className="text-center">
+              No assistants found. Try adjusting your search criteria.
+            </div>
+          )}
           <AssistantList
             agents={agentsToDisplay}
             handleAssistantClick={handleAssistantClick}
