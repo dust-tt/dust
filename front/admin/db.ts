@@ -23,7 +23,6 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
@@ -93,8 +92,6 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
-
-  await AgentGenerationConfiguration.sync({ alter: true });
 
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });

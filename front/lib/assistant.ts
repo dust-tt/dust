@@ -174,10 +174,7 @@ export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
 // and every tool is forced at a certain iteration.
 export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
   // TODO(@fontanierh): change once generation is part of actions.
-  const actions = removeNulls([
-    ...configuration.actions,
-    configuration.generation,
-  ]);
+  const actions = removeNulls([...configuration.actions]);
 
   return (
     configuration.maxToolsUsePerRun <= 2 &&

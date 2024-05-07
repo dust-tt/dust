@@ -837,7 +837,6 @@ export async function submitAssistantBuilderForm({
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
         actions: actionParams,
-        generation: {}, // Warning should not be empty otherwise no generation will be done
         model: {
           modelId: builderState.generationSettings.modelSettings.modelId,
           providerId: builderState.generationSettings.modelSettings.providerId,

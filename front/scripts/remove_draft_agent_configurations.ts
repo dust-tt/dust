@@ -10,7 +10,6 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
@@ -126,13 +125,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   if (!execute) {
     return true;
   }
-
-  // First, delete the generation configuration.
-  await AgentGenerationConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
 
   // Delete the retrieval configurations.
   await deleteRetrievalConfigurationForAgent(agent);

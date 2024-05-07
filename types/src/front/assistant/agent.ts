@@ -55,17 +55,6 @@ export type AgentActionSpecification = {
 };
 
 /**
- * Agent Message configuration
- */
-
-export type AgentGenerationConfigurationType = {
-  id: ModelId;
-  name: string | null;
-  description: string | null;
-  forceUseAtIteration: number | null;
-};
-
-/**
  * Agent configuration
  */
 
@@ -194,18 +183,9 @@ export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are
   // performed.
   actions: AgentActionConfigurationType[];
-  // If undefined, no text generation.
-  generation: AgentGenerationConfigurationType | null;
 };
 
 export interface TemplateAgentConfigurationType {
-  // If undefined, no text generation.
-  generation: {
-    model: SupportedModel;
-    temperature: number;
-    forceUseAtIteration: number | null;
-  } | null;
-
   name: string;
   pictureUrl: string;
 
