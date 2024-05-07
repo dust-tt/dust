@@ -86,29 +86,39 @@ export default function DataAnalytics() {
       />
       <Grid>
         <SolutionSection
-          title={<>Give everyone access to&nbsp;data analysis.</>}
+          title={
+            <>
+              Give everyone access
+              <br />
+              to&nbsp;data analysis.
+            </>
+          }
           blocks={[
             {
               color: "amber",
-              contentBlocks: {
-                title: (
-                  <>
-                    Share the&nbsp;gift of&nbsp;data analysis.
-                    <br />
-                    Reduce time to&nbsp;data insights.
-                  </>
-                ),
-                content: [
-                  <>Enable anyone at&nbsp;the company to&nbsp;analyze data.</>,
-                  <>
-                    Ask questions using natural language instead of&nbsp;SQL
-                    and&nbsp;process data sources such as&nbsp;.csv files,
-                    Notion, and&nbsp;Google Spreadsheets using an&nbsp;assistant
-                    that understands your&nbsp;company's business terminology,
-                    custom functions and&nbsp;database schemas.
-                  </>,
-                ],
-              },
+              contentBlocks: [
+                {
+                  title: <>Democratize data analysis</>,
+                  content: [
+                    <>
+                      Enable anyone at the company to generate recurring
+                      analyses using natural language to create SQL queries that
+                      understand your database schemas.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Reduce time to data insights</>,
+                  content: [
+                    <>
+                      Turn .csv files, Notion databases, and Google Sheets into
+                      data sources for quantitative analyses with assistants
+                      that have a built-in understanding of your company’s
+                      business terminology.
+                    </>,
+                  ],
+                },
+              ],
 
               assistantBlocks: [assistantExamples[0], assistantExamples[1]],
             },
@@ -116,29 +126,48 @@ export default function DataAnalytics() {
         />
         <SolutionSection
           title={
-            <>Free the&nbsp;team from&nbsp;being a&nbsp;perpetual help desk.</>
+            <>
+              Free the&nbsp;team
+              <br />
+              from&nbsp;being a&nbsp;perpetual help&nbsp;desk.
+            </>
           }
           blocks={[
             {
               color: "amber",
-              contentBlocks: {
-                title: <>Streamline data team onboarding</>,
-                content: [
-                  <>
-                    Share up-to-date runbooks and&nbsp;internal documentation
-                    with&nbsp;conversational assistants, for&nbsp;new data team
-                    members to&nbsp;ramp up efficiently and&nbsp;autonomously.
-                  </>,
-                  <>
-                    Help Explain fields, tables, and&nbsp;the&nbsp;relationships
-                    between them&nbsp;all.
-                  </>,
-                  <>
-                    Clean up or&nbsp;draft great documentation about
-                    your&nbsp;infrastructure.
-                  </>,
-                ],
-              },
+              contentBlocks: [
+                {
+                  title: (
+                    <>
+                      Streamline onboarding
+                      <br />
+                      for the&nbsp;data&nbsp;team
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Share up-to-date runbooks and internal documentation for
+                      new data team members to ramp up efficiently and
+                      autonomously with conversational assistants.
+                    </>,
+                  ],
+                },
+                {
+                  title: (
+                    <>
+                      Improve internal documentation on&nbsp;internal
+                      data&nbsp;sources
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Clean up or draft great documentation about your
+                      infrastructure or fields, tables and relationships to be
+                      clear to all.
+                    </>,
+                  ],
+                },
+              ],
               assistantBlocks: [assistantExamples[2], assistantExamples[3]],
             },
           ]}

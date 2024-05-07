@@ -10,6 +10,7 @@ import {
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import { CustomerCaroussel } from "@app/pages/solutions/customer-support";
+import { DataCaroussel } from "@app/pages/solutions/data-analytics";
 import { EngineeringCaroussel } from "@app/pages/solutions/engineering";
 import { KnowledgeCaroussel } from "@app/pages/solutions/knowledge";
 import { MarketingCaroussel } from "@app/pages/solutions/marketing";
@@ -28,7 +29,7 @@ export function VerticalSection() {
           "2xl:col-start-3"
         )}
       >
-        <H2 className="text-white">What can Dust do for…</H2>
+        <H2 className="text-white">Dust for Marketing, Sales, Data,…</H2>
       </div>
       <div
         className={classNames(
@@ -57,6 +58,9 @@ export function VerticalSection() {
             </CarouselItem>
             <CarouselItem className="basis-full">
               <KnowledgeCaroussel />
+            </CarouselItem>
+            <CarouselItem className="basis-full">
+              <DataCaroussel />
             </CarouselItem>
             <CarouselItem className="basis-full">
               <SalesCaroussel />

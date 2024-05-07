@@ -98,18 +98,30 @@ export default function Knowledge() {
           blocks={[
             {
               color: "sky",
-              contentBlocks: {
-                title: <>Keep company knowledge fresh with minimal effort</>,
-                content: (
-                  <>
-                    Leverage your&nbsp;team's discussions and&nbsp;knowledge
-                    to&nbsp;reduce the&nbsp;time and&nbsp;lift required
-                    to&nbsp;update and&nbsp;create new content. Compare
-                    and&nbsp;contrast existing documentation to&nbsp;highlight
-                    areas in&nbsp;need of&nbsp;a revision.
-                  </>
-                ),
-              },
+              contentBlocks: [
+                {
+                  title: (
+                    <>Create company knowledge with&nbsp;minimal&nbsp;effort</>
+                  ),
+                  content: (
+                    <>
+                      Leverage existing discussions to reduce the time
+                      and&nbsp;lift required to&nbsp;update and&nbsp;create
+                      new&nbsp;internal content.
+                    </>
+                  ),
+                },
+                {
+                  title: <>Keep internal documentation forever&nbsp;fresh</>,
+                  content: (
+                    <>
+                      Compare and contrast existing documentation with internal
+                      conversations to&nbsp;highlight areas in&nbsp;need of
+                      a&nbsp;revision.
+                    </>
+                  ),
+                },
+              ],
               assistantBlocks: [
                 assistantExamples[0],
                 assistantExamples[1],

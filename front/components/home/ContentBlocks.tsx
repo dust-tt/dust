@@ -224,7 +224,7 @@ export const CarousselContentBlock = ({
         {assistants.map((block, index) => (
           <CarouselItem
             key={index}
-            className="basis-full sm:basis-1/3 lg:basis-1/4"
+            className="basis-1/2 md:basis-1/3 lg:basis-1/4"
           >
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
