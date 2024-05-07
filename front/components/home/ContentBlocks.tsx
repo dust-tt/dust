@@ -3,13 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
-import {
-  Grid,
-  H1,
-  H3,
-  H5,
-  P,
-} from "@app/components/home/new/ContentComponents";
+import { Grid, H1, H3, H5, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
