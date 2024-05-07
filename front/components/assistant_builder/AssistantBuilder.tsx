@@ -177,7 +177,7 @@ const screens = {
     helpContainer: "instructions-help-container",
   },
   actions: {
-    label: "Data sources & Actions",
+    label: "Actions & Data sources",
     icon: SquareIcon,
     helpContainer: "actions-help-container",
   },
