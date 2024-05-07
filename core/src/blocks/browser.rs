@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::http::request::HttpRequest;
 use crate::Rule;
@@ -137,7 +137,8 @@ impl Block for Browser {
             None => false,
         };
 
-        let url = replace_variables_in_string(&self.url, "url", env)?;
+        let mut url = replace_variables_in_string(&self.url, "url", env)?;
+        url = replace_secrets_in_string(&url, "url", env)?;
 
         let browserless_api_key = match env.credentials.get("BROWSERLESS_API_KEY") {
             Some(api_key) => Ok(api_key.clone()),
