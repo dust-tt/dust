@@ -12,6 +12,7 @@ import {
 import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
+  AgentActionType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -135,11 +136,23 @@ export function AgentMessage({
         | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
+    const updateMessageWithAction = (
+      m: AgentMessageType,
+      action: AgentActionType
+    ): AgentMessageType => {
+      return {
+        ...m,
+        actions: m.actions
+          ? [...m.actions.filter((a) => a.id !== action.id), action]
+          : [action],
+      };
+    };
+
     const event = eventPayload.data;
     switch (event.type) {
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
-          return { ...m, actions: [event.action], content: "" };
+          return { ...updateMessageWithAction(m, event.action), content: "" };
         });
         break;
       case "retrieval_params":
@@ -149,7 +162,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "process_params":
         setStreamedAgentMessage((m) => {
-          return { ...m, actions: [event.action] };
+          return updateMessageWithAction(m, event.action);
         });
         break;
       case "agent_error":
