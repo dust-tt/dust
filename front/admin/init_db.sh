@@ -21,9 +21,6 @@ done
 
 # If in safe mode, ensure the repository is on the main branch and up-to-date
 if [[ $SAFE_MODE -eq 1 ]]; then
-    # We need to stash any changes to ensure the working directory is clean.
-    # This is necessary because some files are being skipped by the .dockerignore file during the docker build process.
-    git stash
     # Check if on main branch
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [[ $CURRENT_BRANCH != "$BRANCH_NAME" ]]; then
@@ -43,12 +40,12 @@ if [[ $SAFE_MODE -eq 1 ]]; then
      
 
     # Check if local is up-to-date with remote main
-    GIT_SSH_COMMAND="ssh -i ~/.ssh/github-deploykey-deploybox" git fetch origin "$BRANCH_NAME" && git diff --exit-code "origin/$BRANCH_NAME" > /dev/null
+    git fetch origin "$BRANCH_NAME" && git diff --exit-code "origin/$BRANCH_NAME" > /dev/null
     if [ $? -ne 0 ]; then
-        echo "Error: Local branch is not up-to-date with remote "$BRANCH_NAME". Aborting."
+        echo "Error: Local branch is not up-to-date with remote "$BRANCH_NAME". Aborting. You need to either align with origin/$BRANCH_NAME or stash your local changes (git stash)."
         exit 1
     else
-        echo "Local branch is up-to-date with remote "$BRANCH_NAME". Will proceed. Dirty directory has been STASHED."
+        echo "Local branch is up-to-date with remote "$BRANCH_NAME". Will proceed."
     fi
 fi
 
