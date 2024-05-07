@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 // @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
 import * as PDFJS from "pdfjs-dist/build/pdf";
-PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
+PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
 
 const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
 
