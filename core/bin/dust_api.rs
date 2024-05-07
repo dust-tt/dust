@@ -24,7 +24,7 @@ use dust::{
     run,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
-    utils::{error_response, APIError, APIResponse },
+    utils::{error_response, APIError, APIResponse},
 };
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
@@ -150,8 +150,8 @@ impl APIState {
             loop_count += 1;
             tokio::time::sleep(std::time::Duration::from_millis(4)).await;
             if loop_count % 1024 == 0 {
-                let _manager = self.run_manager.lock();
-                // info!(pending_runs = manager.pending_runs.len(), "Pending runs");
+                let manager = self.run_manager.lock();
+                info!(pending_runs = manager.pending_runs.len(), "Pending runs");
             }
             // Roughly every 4 minutes, cleanup dead SQLite workers if any.
             if loop_count % 65536 == 0 {
