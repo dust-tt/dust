@@ -1211,9 +1211,6 @@ export class CoreAPI {
         message: `Unexpected response format from CoreAPI: ${e}`,
       };
 
-      console.error("ERROR IS HERE");
-      console.error(text);
-
       this._logger.error(
         {
           connectorsError: err,
@@ -1235,9 +1232,6 @@ export class CoreAPI {
         );
         return new Err(err);
       } else {
-
-      console.error("ERROR IS HERE2");
-      console.error(response.text());
         const err: CoreAPIError = {
           code: "unexpected_error_format",
           message: "Unexpected error format from CoreAPI",
