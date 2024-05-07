@@ -24,6 +24,7 @@ import type {
 } from "@dust-tt/types";
 import {
   isDustAppRunConfiguration,
+  isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
 } from "@dust-tt/types";
@@ -237,7 +238,7 @@ export function AssistantDetails({
           ) : isRetrievalConfiguration(action) ? (
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">
-                Data source(s)
+                Data sources
               </div>
               <DataSourcesSection
                 owner={owner}
@@ -249,6 +250,17 @@ export function AssistantDetails({
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">Tables</div>
               <TablesQuerySection tablesQueryConfig={action} />
+            </div>
+          ) : isProcessConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">
+                Processed data sources
+              </div>
+              <DataSourcesSection
+                owner={owner}
+                dataSources={dataSources}
+                dataSourceConfigurations={action.dataSources}
+              />
             </div>
           ) : null
         )}
