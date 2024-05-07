@@ -221,7 +221,7 @@ export default function ActionScreen({
     <>
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
-          <Page.Header title="Action & Data sources" />
+          <Page.Header title="Actions & Data sources" />
           <Page.P>
             <span className="text-sm text-element-700">
               Before replying, the assistant can perform actions like{" "}
