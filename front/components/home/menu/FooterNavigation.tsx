@@ -3,8 +3,8 @@ import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
 
-import { A, Grid } from "@app/components/home/new/ContentComponents";
-import { menuConfig } from "@app/components/home/new/menu/config";
+import { A, Grid } from "@app/components/home/ContentComponents";
+import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
 
 export function FooterNavigation() {
