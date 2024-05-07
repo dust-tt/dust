@@ -117,7 +117,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
 interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle?: ReactNode;
-  uptitle?: ReactNode;
+  uptitle?: string;
   from: string;
   to: string;
   hasCTA?: boolean;
