@@ -626,8 +626,6 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
           },
           connectorId: wh.connectorId,
           workspaceId: connector.workspaceId,
-          // we want to panic because this code branch is unexpected.
-          panic: true,
         },
         `We are processing a webhook which have already expired, this should never happen. Investigation needed.`
       );
