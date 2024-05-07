@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -8,6 +11,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
@@ -49,23 +53,38 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Marketing",
+  title: <>Enhance Content Production and&nbsp;Creativity</>,
+  from: "from-pink-200",
+  to: "to-pink-500",
+  description: (
+    <>
+      Leverage AI assistants to&nbsp;generate innovative ideas
+      and&nbsp;high-quality content. Streamline your&nbsp;creative process
+      and&nbsp;adapt content for international&nbsp;markets.
+    </>
+  ),
+};
+
 export default function Marketing() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Marketing"
-        title={<>Enhance Content Production and&nbsp;Creativity</>}
-        from="from-pink-200"
-        to="to-pink-500"
-        subtitle={
-          <>
-            Leverage AI assistants to&nbsp;generate innovative ideas
-            and&nbsp;high-quality content. Streamline your&nbsp;creative process
-            and&nbsp;adapt content for international&nbsp;markets.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={
@@ -166,7 +185,7 @@ Marketing.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@contentWriter",
@@ -235,3 +254,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function MarketingCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/marketing"
+    />
+  );
+}

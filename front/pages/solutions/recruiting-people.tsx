@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -8,6 +11,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
@@ -49,20 +53,36 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: React.ReactNode;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Recruiting and People",
+  title: <>More&nbsp;time for&nbsp;people, teams, and&nbsp;managers</>,
+  from: "from-amber-200",
+  to: "to-amber-500",
+  description: (
+    <>
+      Support the&nbsp;business and&nbsp;the team effectively across recruiting,
+      onboarding, and&nbsp;career development initiatives.
+    </>
+  ),
+};
+
 export default function RecruitingPeople() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Recruiting and&nbsp;People"
-        title={<>More&nbsp;time for&nbsp;people, teams, and&nbsp;managers</>}
-        from="from-amber-300"
-        to="to-amber-400"
-        subtitle={
-          <>
-            Support the&nbsp;business and&nbsp;the team effectively across
-            recruiting, onboarding, and&nbsp;career development initiatives.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
       <Grid>
         <SolutionSection
@@ -200,7 +220,7 @@ RecruitingPeople.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🌱",
     name: "@onboardingBuddy",
@@ -290,3 +310,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function RecruitingCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/recruiting-people"
+    />
+  );
+}

@@ -118,10 +118,10 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Engineering",
       href: "/solutions/engineering",
     },
-    // {
-    //   title: "Data & Analytics",
-    //   href: "/solutions/data-analytics",
-    // },
+    {
+      title: "Data & Analytics",
+      href: "/solutions/data-analytics",
+    },
     {
       title: "Sales",
       href: "/solutions/sales",
