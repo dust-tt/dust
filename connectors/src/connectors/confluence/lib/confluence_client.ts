@@ -221,14 +221,47 @@ export class ConfluenceClient {
     data: unknown,
     codec: t.Type<T>
   ): Promise<T | undefined> {
-    const response = await fetch(`${this.apiUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
+    const response = await (async () => {
+      try {
+        return await fetch(`${this.apiUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+          // Timeout after 30 seconds.
+          signal: AbortSignal.timeout(30000),
+        });
+      } catch (e) {
+        if (
+          e instanceof DOMException &&
+          (e.name === "TimeoutError" || e.name === "AbortError")
+        ) {
+          throw new ConfluenceClientError("Request timed out", {
+            type: "http_response_error",
+            status: 504,
+            data: {
+              url: `${this.apiUrl}${endpoint}`,
+              message: e.message,
+              error: e,
+            },
+          });
+        }
+        if (e instanceof TypeError && e.message.includes("fetch failed")) {
+          throw new ConfluenceClientError("Confluence client unreachable", {
+            type: "http_response_error",
+            status: 504,
+            data: {
+              url: `${this.apiUrl}${endpoint}`,
+              message: e.message,
+              error: e,
+            },
+          });
+        }
+        throw e;
+      }
+    })();
 
     if (!response.ok) {
       throw new ConfluenceClientError(
