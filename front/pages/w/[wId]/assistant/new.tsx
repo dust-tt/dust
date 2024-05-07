@@ -131,7 +131,7 @@ export default function AssistantNew({
       )
       .filter((agent) =>
         subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
-      ) // Apply search filter
+      )
       .sort(
         (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
       )
@@ -382,23 +382,25 @@ export default function AssistantNew({
             </Button.List>
           </div>
 
-          {/* Frequently used by your team */}
-          {frequentlyUsedByTeamAgents.length >= 0 && (
-            <>
-              <div
-                id="frequently-used-by-your-team-header"
-                className="flex h-fit px-4"
-              >
-                <Page.SectionHeader title="Frequently used" />
-              </div>
-              <AssistantList
-                agents={frequentlyUsedByTeamAgents}
-                handleAssistantClick={handleAssistantClick}
-              />
-            </>
+          {/* Section: Frequently used by your team */}
+          <div
+            id="frequently-used-by-your-team-header"
+            className="flex h-fit px-4"
+          >
+            <Page.SectionHeader title="Frequently used" />
+          </div>
+          {frequentlyUsedByTeamAgents.length > 0 ? (
+            <AssistantList
+              agents={frequentlyUsedByTeamAgents}
+              handleAssistantClick={handleAssistantClick}
+            />
+          ) : (
+            <div className="text-center">
+              No assistants found. Try adjusting your search criteria.
+            </div>
           )}
 
-          {/* All assistants */}
+          {/* Section: All assistants */}
           <div id="all-assistants-header" className="flex h-fit px-4">
             <Page.SectionHeader title="All assistants" />
           </div>
@@ -412,17 +414,20 @@ export default function AssistantNew({
               setCurrentTab={setSelectedTab}
             />
           </div>
-          {visibleTabs.length === 0 && (
+          {visibleTabs.length === 0 ? (
             <div className="text-center">
               No assistants found. Try adjusting your search criteria.
             </div>
+          ) : (
+            <AssistantList
+              agents={agentsToDisplay}
+              handleAssistantClick={handleAssistantClick}
+            />
           )}
-          <AssistantList
-            agents={agentsToDisplay}
-            handleAssistantClick={handleAssistantClick}
-          />
         </div>
       </div>
+
+      {/* Quick start guide */}
 
       <div
         id="quick-start-guide-button"

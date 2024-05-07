@@ -47,7 +47,7 @@ const AssistantList: React.FC<AssistantListProps> = ({
                   pictureUrl={agent.pictureUrl}
                   subtitle={agent.lastAuthors?.join(", ") ?? ""}
                   description=""
-                  variant="minimalGallery"
+                  variant="minimal"
                   onClick={() => handleAssistantClick(agent)}
                   onActionClick={async () => {
                     await router.replace(href);
