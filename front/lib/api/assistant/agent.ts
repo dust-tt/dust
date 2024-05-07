@@ -21,7 +21,6 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isAgentActionConfigurationType,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -144,7 +143,6 @@ export async function* runMultiActionsAgent(
       conversation,
       userMessage,
       availableActions: actions,
-      isGenerationAllowed: !forcedAction,
       forcedActionName: forcedAction?.name ?? undefined,
     });
 
@@ -276,8 +274,6 @@ export async function getNextAction(
     conversation: ConversationType;
     userMessage: UserMessageType;
     availableActions: AgentActionConfigurationType[];
-    // TODO(@fontanierh): remove this once generation is part of actions.
-    isGenerationAllowed: boolean;
     forcedActionName?: string;
   }
 ): Promise<

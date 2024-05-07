@@ -179,6 +179,6 @@ export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
   return (
     configuration.maxToolsUsePerRun <= 1 &&
     actions.length <= 1 &&
-    actions[0]?.forceUseAtIteration === 0
+    actions.every((a) => a.forceUseAtIteration === 0)
   );
 }
