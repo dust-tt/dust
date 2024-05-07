@@ -116,7 +116,7 @@ async function _getHelperGlobalAgent(
       temperature: 0.2,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -145,7 +145,7 @@ async function _getGPT35TurboGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -174,7 +174,7 @@ async function _getGPT4GlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -203,7 +203,7 @@ async function _getClaudeInstantGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -239,7 +239,7 @@ async function _getClaude2GlobalAgent({
     },
 
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -276,7 +276,7 @@ async function _getClaude3HaikuGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -312,7 +312,7 @@ async function _getClaude3SonnetGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -348,7 +348,7 @@ async function _getClaude3OpusGlobalAgent({
     },
 
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -383,7 +383,7 @@ async function _getMistralLargeGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -418,7 +418,7 @@ async function _getMistralMediumGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -447,7 +447,7 @@ async function _getMistralSmallGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -481,7 +481,7 @@ async function _getGeminiProGlobalAgent({
       temperature: 0.7,
     },
     actions: [],
-    maxToolsUsePerRun: 1,
+    maxToolsUsePerRun: 0,
   };
 }
 
@@ -547,7 +547,7 @@ async function _getManagedDataSourceAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 1,
+      maxToolsUsePerRun: 0,
     };
   }
 
@@ -571,7 +571,7 @@ async function _getManagedDataSourceAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 1,
+      maxToolsUsePerRun: 0,
     };
   }
 
@@ -609,7 +609,7 @@ async function _getManagedDataSourceAgent(
         forceUseAtIteration: 0,
       },
     ],
-    maxToolsUsePerRun: 2,
+    maxToolsUsePerRun: 1,
   };
 }
 
@@ -779,7 +779,7 @@ async function _getDustGlobalAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 1,
+      maxToolsUsePerRun: 0,
     };
   }
 
@@ -811,7 +811,7 @@ async function _getDustGlobalAgent(
       userListStatus: "not-in-list",
       model,
       actions: [],
-      maxToolsUsePerRun: 1,
+      maxToolsUsePerRun: 0,
     };
   }
 
@@ -849,7 +849,7 @@ async function _getDustGlobalAgent(
         forceUseAtIteration: 0,
       },
     ],
-    maxToolsUsePerRun: 2,
+    maxToolsUsePerRun: 1,
   };
 }
 

@@ -118,6 +118,7 @@ AgentConfiguration.init(
     maxToolsUsePerRun: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      // do we want to decrease this one to 0?
       defaultValue: 1,
     },
     pictureUrl: {

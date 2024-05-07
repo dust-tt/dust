@@ -2,11 +2,7 @@ import { DustAppRunConfigurationType } from "../../front/assistant/actions/dust_
 import { ProcessConfigurationType } from "../../front/assistant/actions/process";
 import { RetrievalConfigurationType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
-import {
-  ModelIdType,
-  ModelProviderIdType,
-  SupportedModel,
-} from "../../front/lib/assistant";
+import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 
 /**
