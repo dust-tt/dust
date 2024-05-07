@@ -72,7 +72,7 @@ export default function Marketing() {
             <>
               Create better content,
               <br />
-              faster and&nbsp;on-brand
+              faster and&nbsp;on-brand.
             </>
           }
           blocks={[
@@ -108,13 +108,19 @@ export default function Marketing() {
         />
 
         <SolutionSection
-          title={<>AI Power-ups for&nbsp;each team and&nbsp;on&nbsp;demand</>}
+          title={<>AI Power-ups for&nbsp;each team and&nbsp;on&nbsp;demand.</>}
           blocks={[
             {
               color: "pink",
               contentBlocks: [
                 {
-                  title: <>Set up a&nbsp;live competitive intelligence feed</>,
+                  title: (
+                    <>
+                      Set up a&nbsp;live competitive
+                      <br />
+                      intelligence feed
+                    </>
+                  ),
                   content: [
                     <>
                       Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
@@ -224,7 +230,7 @@ export const assistantExamples = [
       <>
         Generates arguments for your product in comparison to a specific
         competitor, in line with internal product guidelines and category
-        positioning.
+        positioning
       </>
     ),
   },

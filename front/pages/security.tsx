@@ -60,6 +60,7 @@ export default function Security() {
         from="from-green-200"
         to="to-emerald-400"
         uptitle="Designed for enterprises"
+        hasCTA={false}
         subtitle={
           <>
             We've made security our core focus from day&nbsp;one to safeguard

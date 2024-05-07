@@ -66,6 +66,7 @@ export default function Pricing() {
         title={<>Meet our pricing plans.</>}
         from="from-emerald-200"
         to="to-emerald-500"
+        hasCTA={false}
         subtitle={
           <>
             Pro: For small teams and startups, from 1 member. <br />
