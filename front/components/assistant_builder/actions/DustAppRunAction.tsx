@@ -25,7 +25,11 @@ export function ActionDustAppRun({
 }: {
   owner: WorkspaceType;
   actionConfigration: AssistantBuilderDustAppConfiguration | null;
-  updateAction: (action: AssistantBuilderDustAppConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderDustAppConfiguration
+    ) => AssistantBuilderDustAppConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
   dustApps: AppType[];
 }) {
@@ -33,10 +37,10 @@ export function ActionDustAppRun({
 
   const deleteDustApp = () => {
     setEdited(true);
-    updateAction({
-      ...actionConfigration,
+    updateAction((previousAction) => ({
+      ...previousAction,
       app: null,
-    });
+    }));
   };
 
   const noDustApp = dustApps.length === 0;
@@ -55,10 +59,10 @@ export function ActionDustAppRun({
         dustApps={dustApps}
         onSave={({ app }) => {
           setEdited(true);
-          updateAction({
-            ...actionConfigration,
+          updateAction((previousAction) => ({
+            ...previousAction,
             app,
-          });
+          }));
         }}
       />
 

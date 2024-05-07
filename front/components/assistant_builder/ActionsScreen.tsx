@@ -27,7 +27,11 @@ import {
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderDustAppConfiguration,
+  AssistantBuilderProcessConfiguration,
+  AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
+  AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 
@@ -97,37 +101,47 @@ export default function ActionsScreen({
   const [actionToEdit, setActionToEdit] =
     React.useState<AssistantBuilderActionConfiguration | null>(null);
 
-  const upsertAction = useCallback(
-    (newAction: AssistantBuilderActionConfiguration) => {
+  const updateAction = useCallback(
+    function _updateAction({
+      actionName,
+      newActionName,
+      getNewActionConfig,
+    }: {
+      actionName: string;
+      newActionName?: string;
+      getNewActionConfig: (
+        old: AssistantBuilderActionConfiguration["configuration"]
+      ) => AssistantBuilderActionConfiguration["configuration"];
+    }) {
       setEdited(true);
-      setBuilderState((state) => {
-        let found = false;
-        const newActions = state.actions.map((action) => {
-          if (action.name === newAction.name) {
-            found = true;
-            return newAction;
-          }
-          return action;
-        });
-        if (!found) {
-          newActions.push(newAction);
-        }
-        return {
-          ...state,
-          actions: newActions,
-        };
-      });
+      setBuilderState((state) => ({
+        ...state,
+        actions: state.actions.map((action) =>
+          action.name === actionName
+            ? {
+                name: newActionName ?? action.name,
+                description: action.description,
+                type: action.type,
+                // This is quite unsatisfying, but using `as any` here and repeating every
+                // other key in the object instead of spreading is actually the safest we can do.
+                // There is no way (that I could find) to make typescript understand that
+                // type and configuration are compatible.
+                configuration: getNewActionConfig(action.configuration) as any,
+              }
+            : action
+        ),
+      }));
     },
     [setBuilderState, setEdited]
   );
 
-  const updateAction = useCallback(
-    (name: string, newAction: AssistantBuilderActionConfiguration) => {
+  const insertAction = useCallback(
+    (action: AssistantBuilderActionConfiguration) => {
       setEdited(true);
       setBuilderState((state) => {
         return {
           ...state,
-          actions: state.actions.map((a) => (a.name === name ? newAction : a)),
+          actions: [...state.actions, action],
         };
       });
     },
@@ -158,9 +172,15 @@ export default function ActionsScreen({
         initialAction={actionToEdit}
         onSave={(newAction) => {
           setEdited(true);
-          actionToEdit
-            ? updateAction(actionToEdit.name, newAction)
-            : upsertAction(newAction);
+          if (actionToEdit) {
+            updateAction({
+              actionName: actionToEdit.name,
+              newActionName: newAction.name,
+              getNewActionConfig: () => newAction.configuration,
+            });
+          } else {
+            insertAction(newAction);
+          }
           setNewActionModalOpen(false);
           setActionToEdit(null);
         }}
@@ -216,10 +236,13 @@ export default function ActionsScreen({
                             owner={owner}
                             actionConfigration={a.configuration}
                             dustApps={dustApps}
-                            updateAction={(newAction) => {
-                              upsertAction({
-                                ...a,
-                                configuration: newAction,
+                            updateAction={(setNewAction) => {
+                              updateAction({
+                                actionName: a.name,
+                                getNewActionConfig: (old) =>
+                                  setNewAction(
+                                    old as AssistantBuilderDustAppConfiguration
+                                  ),
                               });
                             }}
                             setEdited={setEdited}
@@ -232,9 +255,12 @@ export default function ActionsScreen({
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
                             updateAction={(setNewAction) => {
-                              upsertAction({
-                                ...a,
-                                configuration: setNewAction(a.configuration),
+                              updateAction({
+                                actionName: a.name,
+                                getNewActionConfig: (old) =>
+                                  setNewAction(
+                                    old as AssistantBuilderRetrievalConfiguration
+                                  ),
                               });
                             }}
                             setEdited={setEdited}
@@ -247,9 +273,12 @@ export default function ActionsScreen({
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
                             updateAction={(setNewAction) => {
-                              upsertAction({
-                                ...a,
-                                configuration: setNewAction(a.configuration),
+                              updateAction({
+                                actionName: a.name,
+                                getNewActionConfig: (old) =>
+                                  setNewAction(
+                                    old as AssistantBuilderRetrievalConfiguration
+                                  ),
                               });
                             }}
                             setEdited={setEdited}
@@ -261,10 +290,13 @@ export default function ActionsScreen({
                             owner={owner}
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
-                            updateAction={(newAction) => {
-                              upsertAction({
-                                ...a,
-                                configuration: newAction,
+                            updateAction={(setNewAction) => {
+                              updateAction({
+                                actionName: a.name,
+                                getNewActionConfig: (old) =>
+                                  setNewAction(
+                                    old as AssistantBuilderProcessConfiguration
+                                  ),
                               });
                             }}
                             setEdited={setEdited}
@@ -276,10 +308,13 @@ export default function ActionsScreen({
                             owner={owner}
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
-                            updateAction={(newAction) => {
-                              upsertAction({
-                                ...a,
-                                configuration: newAction,
+                            updateAction={(setNewAction) => {
+                              updateAction({
+                                actionName: a.name,
+                                getNewActionConfig: (old) =>
+                                  setNewAction(
+                                    old as AssistantBuilderTablesQueryConfiguration
+                                  ),
                               });
                             }}
                             setEdited={setEdited}

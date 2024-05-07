@@ -23,7 +23,6 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
-  AssistantBuilderTagsFilter,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
@@ -242,7 +241,11 @@ export function ActionProcess({
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  updateAction: (action: AssistantBuilderProcessConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderProcessConfiguration
+    ) => AssistantBuilderProcessConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -262,16 +265,18 @@ export function ActionProcess({
   }, [actionConfiguration.timeFrame.value]);
 
   const deleteDataSource = (name: string) => {
-    if (actionConfiguration.dataSourceConfigurations[name]) {
-      setEdited(true);
-    }
-    const dataSourceConfigurations = {
-      ...actionConfiguration.dataSourceConfigurations,
-    };
-    delete dataSourceConfigurations[name];
-    updateAction({
-      ...actionConfiguration,
-      dataSourceConfigurations,
+    updateAction((previousAction) => {
+      if (previousAction.dataSourceConfigurations[name]) {
+        setEdited(true);
+      }
+      const dataSourceConfigurations = {
+        ...previousAction.dataSourceConfigurations,
+      };
+      delete dataSourceConfigurations[name];
+      return {
+        ...previousAction,
+        dataSourceConfigurations,
+      };
     });
   };
 
@@ -286,17 +291,17 @@ export function ActionProcess({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          updateAction({
-            ...actionConfiguration,
+          updateAction((previousAction) => ({
+            ...previousAction,
             dataSourceConfigurations: {
-              ...actionConfiguration.dataSourceConfigurations,
+              ...previousAction.dataSourceConfigurations,
               [dataSource.name]: {
                 dataSource,
                 selectedResources,
                 isSelectAll,
               },
             },
-          });
+          }));
         }}
         onDelete={deleteDataSource}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
@@ -340,11 +345,14 @@ export function ActionProcess({
               size="xs"
               onClick={() => {
                 setEdited(true);
-                updateAction({
-                  ...actionConfiguration,
-                  tagsFilter: {
-                    in: [...(actionConfiguration.tagsFilter?.in || []), ""],
-                  },
+                updateAction((previousAction) => {
+                  const tagsFilter = {
+                    in: [...(previousAction.tagsFilter?.in || []), ""],
+                  };
+                  return {
+                    ...previousAction,
+                    tagsFilter,
+                  };
                 });
               }}
               disabled={
@@ -366,16 +374,16 @@ export function ActionProcess({
                   value={t}
                   onChange={(v) => {
                     setEdited(true);
-                    const tags = [
-                      ...(actionConfiguration.tagsFilter?.in || []),
-                    ];
-                    tags[i] = v;
+                    updateAction((previousAction) => {
+                      const tags = [...(previousAction.tagsFilter?.in || [])];
+                      tags[i] = v;
 
-                    updateAction({
-                      ...actionConfiguration,
-                      tagsFilter: {
-                        in: tags,
-                      },
+                      return {
+                        ...previousAction,
+                        tagsFilter: {
+                          in: tags,
+                        },
+                      };
                     });
                   }}
                   error={
@@ -395,21 +403,19 @@ export function ActionProcess({
                   tooltip="Remove Property"
                   variant="tertiary"
                   onClick={async () => {
-                    const tags = (
-                      actionConfiguration.tagsFilter?.in || []
-                    ).filter((tag) => tag !== t);
-
-                    const tagsFilter: AssistantBuilderTagsFilter | null =
-                      tags.length > 0
-                        ? {
-                            in: tags,
-                          }
-                        : null;
-                    updateAction({
-                      ...actionConfiguration,
-                      tagsFilter,
-                    });
                     setEdited(true);
+                    updateAction((previousAction) => {
+                      const tags = (previousAction.tagsFilter?.in || []).filter(
+                        (tag) => tag !== t
+                      );
+
+                      return {
+                        ...previousAction,
+                        tagsFilter: {
+                          in: tags,
+                        },
+                      };
+                    });
                   }}
                   className="ml-1"
                 />
@@ -437,13 +443,13 @@ export function ActionProcess({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              updateAction({
-                ...actionConfiguration,
+              updateAction((previousAction) => ({
+                ...previousAction,
                 timeFrame: {
                   value,
-                  unit: actionConfiguration.timeFrame.unit,
+                  unit: previousAction.timeFrame.unit,
                 },
-              });
+              }));
             }
           }}
         />
@@ -466,13 +472,13 @@ export function ActionProcess({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  updateAction({
-                    ...actionConfiguration,
+                  updateAction((previousAction) => ({
+                    ...previousAction,
                     timeFrame: {
-                      value: actionConfiguration.timeFrame.value,
+                      value: previousAction.timeFrame.value,
                       unit: key as TimeframeUnit,
                     },
-                  });
+                  }));
                 }}
               />
             ))}
@@ -494,17 +500,17 @@ export function ActionProcess({
               icon={SparklesIcon}
               size="sm"
               onClick={() => {
-                const schema = [
-                  {
-                    name: "data",
-                    type: "string" as const,
-                    description: "Required data to follow instructions",
-                  },
-                ];
-                updateAction({
-                  ...actionConfiguration,
-                  schema,
-                });
+                setEdited(true);
+                updateAction((previousAction) => ({
+                  ...previousAction,
+                  schema: [
+                    {
+                      name: "data",
+                      type: "string" as const,
+                      description: "Required data to follow instructions",
+                    },
+                  ],
+                }));
               }}
             />
           </Tooltip>
@@ -513,11 +519,11 @@ export function ActionProcess({
       <PropertiesFields
         properties={actionConfiguration.schema}
         onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-          updateAction({
-            ...actionConfiguration,
-            schema,
-          });
           setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            schema,
+          }));
         }}
         readOnly={false}
       />

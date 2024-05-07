@@ -19,7 +19,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, removeNulls } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
-import React, { useCallback } from "react";
+import React from "react";
 
 import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
@@ -30,7 +30,6 @@ import { ActionTablesQuery } from "@app/components/assistant_builder/actions/Tab
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
-  AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
@@ -198,24 +197,6 @@ export default function ActionScreen({
   const actionCategorySpec = ACTION_CATEGORY_SPECIFICATIONS[actionCategory];
   const searchMode = getSearchMode(action?.type ?? null);
   const searchModeSpec = SEARCH_MODE_SPECIFICATIONS[searchMode];
-
-  const deprecatedReplaceSingleActionConfig = useCallback(
-    (newAction: AssistantBuilderActionConfiguration) => {
-      setBuilderState((state) => {
-        const previousAction = state.actions[0];
-        if (!previousAction) {
-          // Unreachable
-          return state;
-        }
-
-        return {
-          ...state,
-          actions: [newAction],
-        };
-      });
-    },
-    [setBuilderState]
-  );
 
   return (
     <>
@@ -421,7 +402,7 @@ export default function ActionScreen({
                   return state;
                 }
                 const newActionConfig = setNewAction(
-                  previousAction.configuration as AssistantBuilderRetrievalConfiguration
+                  previousAction.configuration
                 );
                 const newAction: AssistantBuilderActionConfiguration = {
                   type: "RETRIEVAL_SEARCH",
@@ -461,7 +442,7 @@ export default function ActionScreen({
                   return state;
                 }
                 const newActionConfig = setNewAction(
-                  previousAction.configuration as AssistantBuilderRetrievalConfiguration
+                  previousAction.configuration
                 );
                 const newAction: AssistantBuilderActionConfiguration = {
                   type: "RETRIEVAL_EXHAUSTIVE",
@@ -486,16 +467,26 @@ export default function ActionScreen({
               action?.type === "PROCESS" ? action.configuration : null
             }
             dataSources={dataSources}
-            updateAction={(newAction) => {
-              if (!action) {
-                // Unreachable
-                return;
-              }
-              deprecatedReplaceSingleActionConfig({
-                type: "PROCESS",
-                configuration: newAction,
-                name: action.name,
-                description: action.description,
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "PROCESS") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "PROCESS",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
               });
             }}
             setEdited={setEdited}
@@ -511,16 +502,26 @@ export default function ActionScreen({
               action?.type === "TABLES_QUERY" ? action.configuration : null
             }
             dataSources={dataSources}
-            updateAction={(newAction) => {
-              if (!action) {
-                // Unreachable
-                return;
-              }
-              deprecatedReplaceSingleActionConfig({
-                type: "TABLES_QUERY",
-                configuration: newAction,
-                name: action.name,
-                description: action.description,
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "TABLES_QUERY") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "TABLES_QUERY",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
               });
             }}
             setEdited={setEdited}
@@ -534,16 +535,26 @@ export default function ActionScreen({
               action?.type === "DUST_APP_RUN" ? action.configuration : null
             }
             dustApps={dustApps}
-            updateAction={(newAction) => {
-              if (!action) {
-                // Unreachable
-                return;
-              }
-              deprecatedReplaceSingleActionConfig({
-                type: "DUST_APP_RUN",
-                configuration: newAction,
-                name: action.name,
-                description: action.description,
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "DUST_APP_RUN") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "DUST_APP_RUN",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
               });
             }}
             setEdited={setEdited}
