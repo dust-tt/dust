@@ -167,7 +167,7 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Creates content based on best-in)class &nbsp;examples availble
+        Creates content based on best-in class &nbsp;examples availble
         internally
       </>
     ),
