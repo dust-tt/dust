@@ -16,7 +16,7 @@ import { Transition } from "@headlessui/react";
 import { useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { classNames } from "@app/lib/utils";
+import { classNames, trimText } from "@app/lib/utils";
 
 export default function RetrievalAction({
   retrievalAction,
@@ -26,11 +26,6 @@ export default function RetrievalAction({
   const { query, relativeTimeFrame, topK } = retrievalAction.params;
   const [docListVisible, setDocListVisible] = useState(false);
 
-  function shortText(text: string, maxLength = 20) {
-    return text.length > maxLength
-      ? text.substring(0, maxLength) + "..."
-      : text;
-  }
   // exhaustive retrieval, checks whether max chunks was reached
   const tooManyChunks =
     retrievalAction.documents &&
@@ -75,7 +70,7 @@ export default function RetrievalAction({
             <Tooltip label={`Query used for semantic search: ${query}`}>
               <Chip
                 color="slate"
-                label={query ? shortText(query) : "No query"}
+                label={query ? trimText(query) : "No query"}
               />
             </Tooltip>
           )}
