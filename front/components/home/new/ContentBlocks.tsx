@@ -1,3 +1,5 @@
+import { Button, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
@@ -108,6 +110,7 @@ interface HeaderContentBlockProps {
   uptitle?: string;
   from: string;
   to: string;
+  hasCTA?: boolean;
 }
 
 export const HeaderContentBlock = ({
@@ -116,6 +119,7 @@ export const HeaderContentBlock = ({
   uptitle,
   from,
   to,
+  hasCTA = true,
 }: HeaderContentBlockProps) => (
   <Grid>
     <div
@@ -140,6 +144,18 @@ export const HeaderContentBlock = ({
         <P size="lg" className="text-white">
           {subtitle}
         </P>
+      )}
+      {hasCTA && (
+        <div>
+          <Link href="/pricing" shallow={true}>
+            <Button
+              variant="primary"
+              size="md"
+              label="Start now, check our pricing"
+              icon={RocketIcon}
+            />
+          </Link>
+        </div>
       )}
     </div>
   </Grid>

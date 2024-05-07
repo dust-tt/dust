@@ -75,10 +75,13 @@ export default function CustomerSupport() {
                     <>
                       Allow agents to&nbsp;understand customer messages
                       and&nbsp;technical errors faster and&nbsp;in
-                      50+&nbsp;languages. Build AI assistants based
-                      on&nbsp;company knowledge and&nbsp;past support
-                      interactions to&nbsp;bring the&nbsp;company's collective
-                      intelligence to&nbsp;the support team's fingertips.
+                      50+&nbsp;languages.
+                    </>,
+                    <>
+                      Build AI assistants based on&nbsp;company knowledge
+                      and&nbsp;past support interactions to&nbsp;bring
+                      the&nbsp;company's collective intelligence to&nbsp;the
+                      support team's fingertips.
                     </>,
                   ],
                 },
@@ -119,17 +122,26 @@ export default function CustomerSupport() {
                       up-to-speed&nbsp;fast
                     </>
                   ),
-                  content: (
+                  content: [
                     <>
                       Reduce your&nbsp;onboarding and&nbsp;training time
-                      drastically. Put your&nbsp;documentation on&nbsp;processes
+                      drastically.
+                    </>,
+                    <>
+                      Put your&nbsp;documentation on&nbsp;processes
                       and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
                       learn autonomously.
-                    </>
-                  ),
+                    </>,
+                  ],
                 },
                 {
-                  title: <>Maintain visibility on&nbsp;customer needs</>,
+                  title: (
+                    <>
+                      Maintain visibility
+                      <br />
+                      on&nbsp;customer needs
+                    </>
+                  ),
                   content: [
                     <>
                       Surface insights from&nbsp;interactions with customers
@@ -167,7 +179,7 @@ export const assistantExamples = [
       <>
         Surfaces relevant information from&nbsp;your Help Center, FAQs,
         knowledge base, online documentation, and&nbsp;tickets. Understands
-        errors codes without help from&nbsp;the tech&nbsp;team.
+        errors codes without help from&nbsp;the tech&nbsp;team
       </>
     ),
   },
@@ -178,7 +190,7 @@ export const assistantExamples = [
     description: (
       <>
         Answer questions on&nbsp;product evolutions, engineering activity,
-        alerts, and&nbsp;downtime.
+        alerts, and&nbsp;downtime
       </>
     ),
   },
@@ -190,7 +202,7 @@ export const assistantExamples = [
       <>
         Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
         to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
-        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure.
+        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
       </>
     ),
   },
@@ -202,7 +214,7 @@ export const assistantExamples = [
       <>
         Helps new members of&nbsp;the support team navigate the&nbsp;tools
         and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
-        success.
+        success
       </>
     ),
   },
@@ -227,7 +239,7 @@ export const assistantExamples = [
       <>
         Crafts training, product documentation and&nbsp;training materials
         through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
-        ahead of&nbsp;issues.
+        ahead of&nbsp;issues
       </>
     ),
   },
