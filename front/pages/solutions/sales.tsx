@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -8,6 +11,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
@@ -49,29 +53,44 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Sales",
+  title: (
+    <>
+      Less busywork,
+      <br />
+      more deals.
+    </>
+  ),
+  from: "from-emerald-200",
+  to: "to-emerald-500",
+  description: (
+    <>
+      Boost qualification, prospecting, and&nbsp;closing.
+      <br />
+      Practice techniques from&nbsp;demos to&nbsp;objection handling.
+    </>
+  ),
+};
+
 export default function Sales() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust&nbsp;for Sales"
-        title={
-          <>
-            Less busywork,
-            <br />
-            more deals.
-          </>
-        }
-        from="from-emerald-200"
-        to="to-emerald-500"
-        subtitle={
-          <>
-            Boost qualification, prospecting, and&nbsp;closing.
-            <br />
-            Practice techniques from&nbsp;demos to&nbsp;objection handling.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={
@@ -178,7 +197,7 @@ Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@outboundDraft",
@@ -244,3 +263,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function SalesCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/sales"
+    />
+  );
+}

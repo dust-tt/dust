@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -8,6 +11,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
@@ -49,24 +53,39 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: React.ReactNode;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Knowledge Management",
+  title: <>Bring your&nbsp;internal knowledge to&nbsp;life</>,
+  from: "from-sky-200",
+  to: "to-sky-500",
+  description: (
+    <>
+      Keep internal content fresh, discoverable and&nbsp;truly useful.
+      <br />
+      Make it&nbsp;easy for teams to&nbsp;work smarter by&nbsp;tapping into
+      the&nbsp;company's collective intelligence and&nbsp;expertise.
+    </>
+  ),
+};
+
 export default function Knowledge() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Knowledge Management"
-        title={<>Bring your&nbsp;internal knowledge to&nbsp;life</>}
-        from="from-sky-200"
-        to="to-sky-500"
-        subtitle={
-          <>
-            Keep internal content fresh, discoverable and&nbsp;truly useful.
-            <br />
-            Make it&nbsp;easy for teams to&nbsp;work smarter by&nbsp;tapping
-            into the&nbsp;company's collective intelligence and&nbsp;expertise.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={
@@ -148,7 +167,7 @@ Knowledge.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@docsNew",
@@ -218,3 +237,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function KnowledgeCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/knowledge"
+    />
+  );
+}

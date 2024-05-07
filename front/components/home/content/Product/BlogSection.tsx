@@ -33,10 +33,12 @@ export function BlogSection() {
           with&nbsp;Dust.
         </P>
       </div>
-      <div className="col-span-12 mt-12 flex flex-col items-center gap-4">
-        <Carousel className="w-full">
-          <CarouselPrevious label="previous" />
-          <CarouselNext label="next" />
+      <div className="col-span-12 flex flex-col items-center gap-4">
+        <Carousel className="w-full" isLooping={true}>
+          <div className="flex w-full flex-row justify-center gap-4">
+            <CarouselPrevious label="previous" />
+            <CarouselNext label="next" />
+          </div>
           <CarouselContent>
             <CarouselItem className="basis-full md:basis-1/2 lg:basis-1/3">
               <BlogBlock

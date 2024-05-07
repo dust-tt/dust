@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -8,6 +11,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
@@ -49,22 +53,37 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Data and Analytics",
+  title: <>From Data to&nbsp;Action</>,
+  from: "from-amber-200",
+  to: "to-amber-500",
+  description: (
+    <>
+      Focus on&nbsp;generating first-of-a-kind insights while AI helps with
+      routine queries and&nbsp;standard reports across teams.
+    </>
+  ),
+};
+
 export default function DataAnalytics() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust&nbsp;for Data and&nbsp;Analytics"
-        title={<>From Data to&nbsp;Action</>}
-        from="from-amber-200"
-        to="to-amber-500"
-        subtitle={
-          <>
-            Focus on&nbsp;generating first-of-a-kind insights while AI helps
-            with routine queries and&nbsp;standard reports across teams.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={<>Give everyone access to&nbsp;data analysis.</>}
@@ -136,7 +155,7 @@ DataAnalytics.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💬",
     name: "@SQLbuddy",
@@ -182,3 +201,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function DataCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/data-analytics"
+    />
+  );
+}
