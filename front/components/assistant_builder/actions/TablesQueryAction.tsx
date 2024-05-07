@@ -6,7 +6,6 @@ import AssistantBuilderTablesModal from "@app/components/assistant_builder/Assis
 import TablesSelectionSection from "@app/components/assistant_builder/TablesSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderTableConfiguration,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
@@ -29,7 +28,11 @@ export function ActionTablesQuery({
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTablesQueryConfiguration | null;
-  updateAction: (action: AssistantBuilderTablesQueryConfiguration) => void;
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderTablesQueryConfiguration
+    ) => AssistantBuilderTablesQueryConfiguration
+  ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
 }) {
@@ -48,14 +51,12 @@ export function ActionTablesQuery({
         dataSources={dataSources}
         onSave={(tables) => {
           setEdited(true);
-          const newTables: Record<string, AssistantBuilderTableConfiguration> =
-            {};
-          for (const t of tables) {
-            newTables[tableKey(t)] = t;
-          }
-          updateAction({
-            ...actionConfiguration,
-            ...newTables,
+          updateAction((previousAction) => {
+            const newTables = { ...previousAction };
+            for (const t of tables) {
+              newTables[tableKey(t)] = t;
+            }
+            return newTables;
           });
         }}
         tablesQueryConfiguration={actionConfiguration}
@@ -87,9 +88,11 @@ export function ActionTablesQuery({
         }}
         onDelete={(key) => {
           setEdited(true);
-          const newTables = { ...actionConfiguration };
-          delete newTables[key];
-          updateAction(newTables);
+          updateAction((previousAction) => {
+            const newTables = { ...previousAction };
+            delete newTables[key];
+            return newTables;
+          });
         }}
         canSelectTable={dataSources.length !== 0}
       />
