@@ -57,9 +57,10 @@ export default function Security() {
     <>
       <HeaderContentBlock
         title={<>Security is&nbsp;non-negotiable</>}
-        from="from-green-200"
-        to="to-emerald-400"
+        from="from-yellow-200"
+        to="to-amber-400"
         uptitle="Designed for enterprises"
+        hasCTA={false}
         subtitle={
           <>
             We've made security our core focus from day&nbsp;one to safeguard

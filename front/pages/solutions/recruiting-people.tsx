@@ -221,8 +221,7 @@ export const assistantExamples = [
       <>
         Answers questions the&nbsp;People team gets most regularly about company
         processes and&nbsp;policies based on&nbsp;internal documentation
-        directly on&nbsp;Slack. Yes, it&nbsp;even knows how one should file
-        an&nbsp;expense report
+        directly on&nbsp;Slack
       </>
     ),
   },
