@@ -241,3 +241,8 @@ export function filterAndSortAgents(
 
   return filtered;
 }
+
+export function trimText(text: string, maxLength = 20, removeNewLines = true) {
+  const t = removeNewLines ? text.replaceAll("\n", " ") : text;
+  return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
+}

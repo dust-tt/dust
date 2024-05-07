@@ -61,14 +61,17 @@ export type ProcessConfigurationType = {
 
 export type ProcessActionOutputsType = {
   data: unknown[];
-  minTimestamp: number;
-  totalDocuments: number;
-  totalChinks: number;
-  totalTokens: number;
-  skipDocuments: number;
-  skipChunks: number;
-  skipTokens: number;
+  min_timestamp: number;
+  total_documents: number;
+  total_chunks: number;
+  total_tokens: number;
+  skip_documents: number;
+  skip_chunks: number;
+  skip_tokens: number;
 };
+
+// Use top_k of 512 which is already a large number. We might want to bump to 1024.
+export const PROCESS_ACTION_TOP_K = 512;
 
 export type ProcessActionType = {
   id: ModelId; // AgentProcessAction

@@ -21,6 +21,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
+  PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 
@@ -361,8 +362,7 @@ export async function* runProcess(
     };
   }
 
-  // Set top_k to 512 which is already a large number. We might want to bump to 1024.
-  config.DATASOURCE.top_k = 512;
+  config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
 
   const res = await runActionStreamed(
     auth,
