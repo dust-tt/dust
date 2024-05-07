@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -49,28 +52,43 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Engineers and Developers",
+  title: (
+    <>
+      Code smarter,
+      <br />
+      Resolve faster
+    </>
+  ),
+  from: "from-emerald-200",
+  to: "to-emerald-500",
+  description: (
+    <>
+      Reduce interruptions, write better code, speed up incident response,
+      and&nbsp;accelerate new engineers' onboarding.
+    </>
+  ),
+};
+
 export default function Engineering() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Engineers and&nbsp;Developers"
-        title={
-          <>
-            Code smarter,
-            <br />
-            Resolve faster
-          </>
-        }
-        from="from-emerald-200"
-        to="to-emerald-500"
-        subtitle={
-          <>
-            Reduce interruptions, write better code, speed up incident response,
-            and&nbsp;accelerate new engineers' onboarding.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={"Improve Code Quality."}
@@ -245,3 +263,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function EngineeringCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/engineering"
+    />
+  );
+}

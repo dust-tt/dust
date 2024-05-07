@@ -5,6 +5,7 @@ import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import { TeamSection } from "@app/components/home/content/Product/TeamSection";
+import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import config from "@app/lib/api/config";
@@ -60,6 +61,7 @@ export default function Home() {
       <TeamSection />
       <FutureSection />
       <BlogSection />
+      <VerticalSection />
     </>
   );
 }

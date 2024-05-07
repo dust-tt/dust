@@ -1,6 +1,9 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -49,16 +52,36 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Success and Support",
+  title: <>Help your&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers.</>,
+  from: "from-sky-200",
+  to: "to-sky-500",
+  description: (
+    <>
+      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
+      resolution and&nbsp;increase customer&nbsp;satisfaction.
+    </>
+  ),
+};
+
 export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Success and&nbsp;Support"
-        title="Help your&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
-        from="from-sky-200"
-        to="to-sky-500"
-        subtitle="Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate
-            issue resolution and&nbsp;increase customer&nbsp;satisfaction."
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
       <Grid>
         <SolutionSection
@@ -244,3 +267,18 @@ export const assistantExamples = [
     ),
   },
 ];
+
+export function CustomerCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/customer-support"
+    />
+  );
+}

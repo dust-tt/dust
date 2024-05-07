@@ -15,6 +15,7 @@ type CarouselProps = {
   plugins?: CarouselPlugin;
   orientation?: "horizontal" | "vertical";
   setApi?: (api: CarouselApi) => void;
+  isLooping?: boolean;
 };
 
 type CarouselContextProps = {
@@ -24,6 +25,7 @@ type CarouselContextProps = {
   scrollNext: () => void;
   canScrollPrev: boolean;
   canScrollNext: boolean;
+  isLooping?: boolean;
 } & CarouselProps;
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null);
@@ -50,6 +52,7 @@ const Carousel = React.forwardRef<
       plugins,
       className = "",
       children,
+      isLooping = false,
       ...props
     },
     ref
@@ -58,6 +61,7 @@ const Carousel = React.forwardRef<
       {
         ...opts,
         axis: orientation === "horizontal" ? "x" : "y",
+        loop: isLooping,
       },
       plugins
     );
@@ -128,12 +132,13 @@ const Carousel = React.forwardRef<
           scrollNext,
           canScrollPrev,
           canScrollNext,
+          isLooping,
         }}
       >
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
-          className={classNames("relative", className)}
+          className={classNames("flex flex-col gap-4", className)}
           role="region"
           aria-roledescription="carousel"
           {...props}
@@ -195,7 +200,7 @@ const CarouselPrevious = React.forwardRef<
   React.ComponentProps<typeof Button>
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 >(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
-  const { orientation, scrollPrev, canScrollPrev } = useCarousel();
+  const { scrollPrev, canScrollPrev, isLooping } = useCarousel();
 
   return (
     <Button
@@ -206,14 +211,8 @@ const CarouselPrevious = React.forwardRef<
       labelVisible={false}
       icon={ChevronLeftIcon}
       disabledTooltip={true}
-      className={classNames(
-        "absolute rounded-full",
-        orientation === "horizontal"
-          ? "-top-6 right-1/2 -translate-x-1/4 -translate-y-1/2"
-          : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
-        className
-      )}
-      disabled={!canScrollPrev}
+      className={className}
+      disabled={!isLooping && !canScrollPrev}
       onClick={scrollPrev}
       {...props}
     />
@@ -226,7 +225,7 @@ const CarouselNext = React.forwardRef<
   React.ComponentProps<typeof Button>
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
 >(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
-  const { orientation, scrollNext, canScrollNext } = useCarousel();
+  const { scrollNext, canScrollNext, isLooping } = useCarousel();
 
   return (
     <Button
@@ -237,14 +236,8 @@ const CarouselNext = React.forwardRef<
       labelVisible={false}
       icon={ChevronRightIcon}
       disabledTooltip={true}
-      className={classNames(
-        "absolute rounded-full",
-        orientation === "horizontal"
-          ? "-top-6 left-1/2 -translate-y-1/2 translate-x-1/4"
-          : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
-        className
-      )}
-      disabled={!canScrollNext}
+      className={className}
+      disabled={!isLooping && !canScrollNext}
       onClick={scrollNext}
       {...props}
     />

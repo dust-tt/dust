@@ -98,7 +98,7 @@ const pClasses = {
   xxs: "font-objektiv text-xs text-slate-500 md:text-sm leading-relaxed",
   xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
   sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
-  md: "font-objektiv text-lg md:text-lg text-slate-300 lg:text-xl drop-shadow leading-relaxed",
+  md: "font-objektiv text-lg md:text-lg text-slate-300 lg:text-xl leading-relaxed",
   lg: "font-objektiv text-lg md:text-xl text-slate-300 lg:text-2xl drop-shadow leading-relaxed",
 };
 
