@@ -174,6 +174,18 @@ export async function* runMultiActionsAgent(
       "[ASSISTANT_TRACE] Action inputs generation"
     );
 
+    if ("generation" in actionToRun.value) {
+      // TODO: actually stream the generation.
+      yield {
+        type: "generation_tokens",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        text: actionToRun.value.generation,
+      };
+      break;
+    }
+
     const { action, inputs, specification } = actionToRun.value;
 
     const eventStream = runAction(auth, {
@@ -278,11 +290,14 @@ export async function getNextAction(
   }
 ): Promise<
   Result<
-    {
-      action: AgentActionConfigurationType;
-      inputs: Record<string, string | boolean | number>;
-      specification: AgentActionSpecification | null;
-    },
+    | {
+        action: AgentActionConfigurationType;
+        inputs: Record<string, string | boolean | number>;
+        specification: AgentActionSpecification | null;
+      }
+    | {
+        generation: string;
+      },
     Error
   >
 > {
@@ -408,9 +423,14 @@ export async function getNextAction(
   const { eventStream } = res.value;
 
   const output: {
-    name?: string;
-    arguments?: Record<string, string | boolean | number>;
-  } = {};
+    name: string | null;
+    arguments: Record<string, string | boolean | number> | null;
+    generation: string | null;
+  } = {
+    name: null,
+    arguments: null,
+    generation: null,
+  };
 
   for await (const event of eventStream) {
     if (event.type === "error") {
@@ -427,22 +447,28 @@ export async function getNextAction(
 
       if (event.content.block_name === "OUTPUT" && e.value) {
         const v = e.value as any;
-        if (Array.isArray(v)) {
-          const first = v[0];
-          if ("name" in first) {
-            output.name = first.name;
-          }
-          if ("arguments" in first) {
-            output.arguments = first.arguments;
-          }
+        if ("name" in v) {
+          output.name = v.name;
+        }
+        if ("arguments" in v) {
+          output.arguments = v.arguments;
+        }
+        if ("generation" in v) {
+          output.generation = v.generation;
         }
       }
     }
   }
 
   if (!output.name) {
-    return new Err(new Error("No action found"));
+    if (!output.generation) {
+      return new Err(new Error("No action or generation found"));
+    }
+    return new Ok({
+      generation: output.generation,
+    });
   }
+
   output.arguments = output.arguments ?? {};
 
   const action = agentConfiguration.actions.find((a) => a.name === output.name);
