@@ -9,12 +9,13 @@ import {
   Tooltip,
   XCircleIcon,
 } from "@dust-tt/sparkle";
+import type { APIError, Result, TimeframeUnit } from "@dust-tt/types";
 import type {
   DataSourceType,
   ProcessSchemaPropertyType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { TimeframeUnit } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -234,12 +235,14 @@ function PropertiesFields({
 
 export function ActionProcess({
   owner,
+  instructions,
   actionConfiguration,
   updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
+  instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
   updateAction: (
     setNewAction: (
@@ -499,8 +502,14 @@ export function ActionProcess({
               variant="primary"
               icon={SparklesIcon}
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 setEdited(true);
+
+                if (instructions !== null) {
+                  const res = await generateSchema({ owner, instructions });
+                  console.log(res);
+                }
+
                 updateAction((previousAction) => ({
                   ...previousAction,
                   schema: [
@@ -529,4 +538,32 @@ export function ActionProcess({
       />
     </>
   );
+}
+
+async function generateSchema({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<ProcessSchemaPropertyType[], APIError>> {
+  const res = await fetch(
+    `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instructions,
+      }),
+    }
+  );
+  if (!res.ok) {
+    return new Err({
+      type: "internal_server_error",
+      message: "Failed to get suggestions",
+    });
+  }
+  return new Ok(await res.json());
 }
