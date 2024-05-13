@@ -278,6 +278,29 @@ export class CustomerioServerSideTracking {
     }
   }
 
+  static async _deleteUser({ user }: { user: UserType }) {
+    if (!config.getCustomerIoEnabled()) {
+      return;
+    }
+
+    const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
+      method: "POST",
+      headers: CustomerioServerSideTracking._headers(),
+      body: JSON.stringify({
+        identifiers: {
+          email: user.email,
+        },
+        type: "person",
+        action: "delete",
+      }),
+    });
+
+    if (!r.ok) {
+      const json = await r.json();
+      throw new Error(`Failed to delete user ${user.email}: ${json}`);
+    }
+  }
+
   static async _trackEvent({
     user,
     workspace,
