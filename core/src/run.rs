@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
+use serde::ser::{Serializer, SerializeStruct};
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
@@ -28,6 +29,30 @@ pub struct ExecutionWithTimestamp {
 pub type Credentials = HashMap<String, String>;
 
 pub type Secrets = HashMap<String, String>;
+
+#[derive(Deserialize, Clone)]
+pub struct RedactableSecrets {
+  pub redacted: bool,
+  pub secrets: Secrets,
+}
+
+impl Serialize for RedactableSecrets {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+      S: Serializer,
+  {
+      let mut state = serializer.serialize_struct("Secrets", 1)?;
+      if self.redacted {
+          let redacted_secrets: HashMap<String, String> = self.secrets.keys()
+              .map(|key| (key.clone(), String::from("***")))
+              .collect();
+          state.serialize_field("secrets", &redacted_secrets)?;
+      } else {
+          state.serialize_field("secrets", &self.secrets)?;
+      }
+      state.end()
+  }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {

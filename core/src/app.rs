@@ -3,7 +3,7 @@ use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::dataset::Dataset;
 use crate::project::Project;
-use crate::run::{BlockExecution, BlockStatus, Credentials, Secrets, Run, RunConfig, RunType, Status};
+use crate::run::{BlockExecution, BlockStatus, Credentials, Secrets, RedactableSecrets, Run, RunConfig, RunType, Status};
 use crate::stores::store::Store;
 use crate::utils;
 use crate::{DustParser, Rule};
@@ -351,7 +351,10 @@ impl App {
             databases_store: databases_store.clone(),
             qdrant_clients: qdrant_clients,
             credentials: credentials.clone(),
-            secrets: secrets.clone(),
+            secrets: RedactableSecrets {
+                redacted: true,
+                secrets: secrets.clone(),
+            },
         }]];
 
         let mut current_map: Option<String> = None;
