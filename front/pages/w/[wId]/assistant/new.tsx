@@ -8,7 +8,6 @@ import {
   Page,
   QuestionMarkCircleIcon,
   RobotSharedIcon,
-  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   ConversationType,
@@ -91,9 +90,6 @@ export default function AssistantNew({
   const [conversationHelperModal, setConversationHelperModal] =
     useState<ConversationType | null>(null);
 
-  const [isCreatingConversation, setIsCreatingConversation] =
-    useState<boolean>(true);
-
   // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -148,7 +144,6 @@ export default function AssistantNew({
           contentType: string;
         }[]
       ) => {
-        setIsCreatingConversation(true);
         const conversationRes = await createConversationWithMessage({
           owner,
           user,
@@ -158,7 +153,6 @@ export default function AssistantNew({
             contentFragments,
           },
         });
-        setIsCreatingConversation(false);
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);
@@ -253,7 +247,6 @@ export default function AssistantNew({
         />
       )}
       <div className="flex h-full items-center pb-20">
-        {isCreatingConversation && <Spinner2 size="xxl" />}
         <div className="flex text-sm font-normal text-element-800">
           <Page.Vertical gap="md" align="left">
             {/* FEATURED AGENTS */}

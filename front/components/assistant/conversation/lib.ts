@@ -234,16 +234,15 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragments:
-      contentFragments?.map((cf) => ({
-        content: cf.content,
-        title: cf.title,
-        url: null, // sourceUrl will be set on raw content upload success
-        contentType: "file_attachment",
-        context: {
-          profilePictureUrl: user.image,
-        },
-      })) || [],
+    contentFragments: contentFragments.map((cf) => ({
+      content: cf.content,
+      title: cf.title,
+      url: null, // sourceUrl will be set on raw content upload success
+      contentType: "file_attachment",
+      context: {
+        profilePictureUrl: user.image,
+      },
+    })),
   };
 
   // Create new conversation and post the initial message at the same time.
@@ -270,15 +269,13 @@ export async function createConversationWithMessage({
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
   if (conversationData.contentFragments.length > 0) {
-    let i = 0;
-    for (const cf of conversationData.contentFragments) {
+    for (const [i, cf] of conversationData.contentFragments.entries()) {
       uploadRawContentFragment({
         workspaceId: owner.sId,
         conversationId: conversationData.conversation.sId,
         contentFragmentId: cf.sId,
         file: contentFragments[i].file,
       });
-      i++;
     }
   }
 

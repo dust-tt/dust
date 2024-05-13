@@ -18,7 +18,6 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getSession } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetConversationsResponseBody = {
@@ -122,8 +121,6 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragments.length > 0) {
-        const start = new Date();
-        // for (const contentFragment of contentFragments) {
         newContentFragments = await Promise.all(
           contentFragments.map((contentFragment) => {
             return postNewContentFragment(auth, {
@@ -141,11 +138,6 @@ async function handler(
             });
           })
         );
-        logger.info(
-          { durationMs: new Date().getTime() - start.getTime() },
-          "Time to post content fragments:"
-        );
-        // }
 
         const updatedConversation = await getConversation(
           auth,
