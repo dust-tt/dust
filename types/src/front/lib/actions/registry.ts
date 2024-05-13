@@ -223,7 +223,7 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "assistant-v2-use-tools": {
+  "assistant-v2-multi-actions-agent": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0e9889c787",

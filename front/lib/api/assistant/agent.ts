@@ -347,7 +347,7 @@ export async function getNextAction(
   // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-use-tools"].config
+    DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
   config.MODEL.function_call = forcedActionName ?? "auto";
   config.MODEL.provider_id = model.providerId;
@@ -356,7 +356,7 @@ export async function getNextAction(
 
   const res = await runActionStreamed(
     auth,
-    "assistant-v2-use-tools",
+    "assistant-v2-multi-actions-agent",
     config,
     [
       {
