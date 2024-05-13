@@ -8,6 +8,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -15,6 +16,7 @@ const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await User.findAll();
   const users = allUserModels.map((u) => renderUserType(u));
   const chunks = _.chunk(users, 16);
+  const deletedWorkspaceSids = new Set<string>();
   for (const [i, c] of chunks.entries()) {
     logger.info(
       `[execute=${execute}] Processing chunk of ${c.length} users... (${
@@ -48,29 +50,49 @@ const backfillCustomerIo = async (execute: boolean) => {
       : {};
 
     if (execute) {
-      await Promise.all(
-        c.map((u) => {
-          const memberships = membershipsByUserId[u.id.toString()] ?? [];
-          const workspaces =
-            memberships.map((m) => workspaceById[m.workspaceId.toString()]) ??
-            [];
-          const subscriptions =
-            removeNulls(
-              workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
-            ) ?? [];
-          if (subscriptions.some((s) => s.plan.code !== FREE_TEST_PLAN_CODE)) {
-            return;
-          }
-          return CustomerioServerSideTracking._deleteUser({
-            user: u,
-          }).catch((err) => {
-            logger.error(
-              { userId: u.sId, err },
-              "Failed to delete user on Customer.io"
+      const promises: Promise<unknown>[] = [];
+      for (const u of c) {
+        const memberships = membershipsByUserId[u.id.toString()] ?? [];
+        const workspaces =
+          memberships.map((m) => workspaceById[m.workspaceId.toString()]) ?? [];
+        const subscriptions =
+          removeNulls(
+            workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
+          ) ?? [];
+        if (!subscriptions.some((s) => s.plan.code !== FREE_TEST_PLAN_CODE)) {
+          promises.push(
+            CustomerioServerSideTracking._deleteUser({
+              user: u,
+            }).catch((err) => {
+              logger.error(
+                { userId: u.sId, err },
+                "Failed to delete user on Customer.io"
+              );
+            })
+          );
+        }
+        const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
+          const subscription = subscriptionByWorkspaceSid[ws.sId];
+          return (
+            !subscription || subscription.plan.code === FREE_TEST_PLAN_CODE
+          );
+        });
+        for (const ws of workspacesWithoutRealSubscriptions) {
+          if (!deletedWorkspaceSids.has(ws.sId)) {
+            promises.push(
+              CustomerioServerSideTracking._deleteWorkspace({
+                workspace: renderLightWorkspaceType({ workspace: ws }),
+              }).catch((err) => {
+                logger.error(
+                  { workspaceId: ws.sId, err },
+                  "Failed to delete workspace on Customer.io"
+                );
+              })
             );
-          });
-        })
-      );
+            deletedWorkspaceSids.add(ws.sId);
+          }
+        }
+      }
     }
   }
 };

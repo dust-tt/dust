@@ -301,6 +301,34 @@ export class CustomerioServerSideTracking {
     }
   }
 
+  static async _deleteWorkspace({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }) {
+    if (!config.getCustomerIoEnabled()) {
+      return;
+    }
+
+    const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
+      method: "POST",
+      headers: CustomerioServerSideTracking._headers(),
+      body: JSON.stringify({
+        identifiers: {
+          object_type_id: "1",
+          object_id: workspace.sId,
+        },
+        type: "object",
+        action: "delete",
+      }),
+    });
+
+    if (!r.ok) {
+      const json = await r.json();
+      throw new Error(`Failed to delete workspace ${workspace.sId}: ${json}`);
+    }
+  }
+
   static async _trackEvent({
     user,
     workspace,
