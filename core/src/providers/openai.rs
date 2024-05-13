@@ -207,16 +207,17 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
 #[serde(rename_all = "lowercase")]
 pub enum OpenAIChatMessageRole {
     Assistant,
+    Function,
     System,
-    User,
     Tool,
+    User,
 }
 
 impl From<&ChatMessageRole> for OpenAIChatMessageRole {
     fn from(role: &ChatMessageRole) -> Self {
         match role {
             ChatMessageRole::Assistant => OpenAIChatMessageRole::Assistant,
-            ChatMessageRole::Function => OpenAIChatMessageRole::Tool,
+            ChatMessageRole::Function => OpenAIChatMessageRole::Function,
             ChatMessageRole::System => OpenAIChatMessageRole::System,
             ChatMessageRole::User => OpenAIChatMessageRole::User,
         }
@@ -240,9 +241,10 @@ impl From<OpenAIChatMessageRole> for ChatMessageRole {
     fn from(value: OpenAIChatMessageRole) -> Self {
         match value {
             OpenAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
+            OpenAIChatMessageRole::Function => ChatMessageRole::Function,
             OpenAIChatMessageRole::System => ChatMessageRole::System,
-            OpenAIChatMessageRole::User => ChatMessageRole::User,
             OpenAIChatMessageRole::Tool => ChatMessageRole::Function,
+            OpenAIChatMessageRole::User => ChatMessageRole::User,
         }
     }
 }
@@ -330,13 +332,15 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
+        // This is to maintain backward compatibility with the original `function` role used for content fragments.
         let (role, tool_call_id) = match cm.function_call_id.as_ref() {
             Some(fcid) => match OpenAIChatMessageRole::from(&cm.role) {
-                OpenAIChatMessageRole::Tool => {
+                OpenAIChatMessageRole::Function => {
                     Ok((OpenAIChatMessageRole::Tool, Some(fcid.clone())))
                 }
                 _ => Err(anyhow!(
-                    "`function_call_id` must be provided when `role` is set to `function`"
+                    "`function_call_id` is provided but `role` is not set to `function`"
                 )),
             },
             _ => Ok((OpenAIChatMessageRole::from(&cm.role), None)),

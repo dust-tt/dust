@@ -316,15 +316,11 @@ impl Block for Chat {
             expecting an array of objects with  fields `role`, possibly `name`, \
             and `content` or `function_call(s)`.";
 
-        println!("MESSAGES_VALUE: {:?}", messages_value);
-
         let mut messages = match messages_value {
             Value::Array(a) => a
                 .into_iter()
                 .map(|v| match v {
                     Value::Object(o) => {
-                        println!("COUCOU (1)!");
-
                         match (
                             o.get("role"),
                             o.get("content"),
@@ -332,8 +328,6 @@ impl Block for Chat {
                             o.get("function_calls"),
                         ) {
                             (Some(Value::String(r)), Some(Value::String(c)), None, None) => {
-                                println!("O: {:?}", o);
-
                                 Ok(ChatMessage {
                                     role: ChatMessageRole::from_str(r)?,
                                     name: match o.get("name") {
@@ -392,10 +386,7 @@ impl Block for Chat {
 
                                                 Ok(t)
                                             }
-                                            err => {
-                                                println!("Got error: {:?}:", err);
-                                                Err(anyhow!(MESSAGES_CODE_OUTPUT))
-                                            }
+                                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                                         }
                                     })
                                     .collect::<Result<Vec<_>, _>>()?;
@@ -409,16 +400,10 @@ impl Block for Chat {
                                     function_call_id: None,
                                 })
                             }
-                            err => {
-                                println!("COUCOU (3): {:?}", err);
-                                Err(anyhow!(MESSAGES_CODE_OUTPUT))
-                            }
+                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                         }
                     }
-                    err => {
-                        println!("COUCOU (4): {:?}", err);
-                        Err(anyhow!(MESSAGES_CODE_OUTPUT))
-                    }
+                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                 })
                 .collect::<Result<Vec<ChatMessage>>>()?,
             _ => Err(anyhow!(MESSAGES_CODE_OUTPUT))?,
