@@ -42,7 +42,6 @@ use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_subscriber::prelude::*;
-use run::Secrets;
 
 /// API State
 
@@ -759,7 +758,7 @@ async fn runs_create(
     Json(payload): Json<RunsCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
-    let secrets = Secrets { redacted: true, secrets: payload.secrets.clone() };
+    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.clone() };
 
     match headers.get("X-Dust-Workspace-Id") {
       Some(v) => match v.to_str() {
@@ -797,7 +796,7 @@ async fn runs_create_stream(
     Json(payload): Json<RunsCreatePayload>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
-    let secrets = Secrets { redacted: true, secrets: payload.secrets.clone() };
+    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.clone() };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

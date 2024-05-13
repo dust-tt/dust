@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::blocks::helpers::get_data_source_project;
 use crate::data_sources::data_source::{Document, SearchFilter};
@@ -62,7 +62,6 @@ impl DataSource {
 
     fn query(&self, env: &Env) -> Result<String> {
         let mut query = replace_variables_in_string(&self.query, "query", env)?;
-        query = replace_secrets_in_string(&query, "query", env)?;
 
         // replace <DUST_TRIPLE_BACKTICKS> with ```
         query = query.replace("<DUST_TRIPLE_BACKTICKS>", "```");

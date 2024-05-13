@@ -71,12 +71,13 @@ async function handler(
         });
       }
 
-      const [providers] = await Promise.all([
+      const [providers, secrets] = await Promise.all([
         Provider.findAll({
           where: {
             workspaceId: owner.id,
           },
         }),
+        getDustAppSecrets(auth, true)
       ]);
 
       if (
@@ -118,7 +119,6 @@ async function handler(
         (configValue: any) => configValue.type == "input"
       );
       const inputDataset = inputConfigEntry ? inputConfigEntry.dataset : null;
-      const secrets = await getDustAppSecrets(auth, true);
 
       const dustRun = await coreAPI.createRun({
         projectId: app.dustAPIProjectId,

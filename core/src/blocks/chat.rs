@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::deno::script::Script;
 use crate::providers::llm::{
@@ -112,18 +112,12 @@ impl Chat {
         replace_variables_in_string(text, "instructions", env)
     }
 
-    fn replace_instructions_secrets(text: &str, env: &Env) -> Result<String> {
-        replace_secrets_in_string(text, "instructions", env)
-    }
-
     fn instructions(&self, env: &Env) -> Result<String> {
         let mut instructions = String::new();
 
         // If `instructions` is defined, replace variables in it and add it.
         if let Some(i) = &self.instructions {
-          let replaced_variables = Self::replace_instructions_variables(i, env)?;
-          let replaced_secrets = Self::replace_instructions_secrets(replaced_variables.as_str(), env)?;
-          instructions.push_str(replaced_secrets.as_str());
+          instructions.push_str(Self::replace_instructions_variables(i, env)?.as_str());
         }
 
         // replace <DUST_TRIPLE_BACKTICKS> with ```

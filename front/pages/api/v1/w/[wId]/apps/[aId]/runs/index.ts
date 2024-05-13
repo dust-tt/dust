@@ -101,13 +101,14 @@ async function handler(
     });
   }
 
-  const [app, providers] = await Promise.all([
+  const [app, providers, secrets] = await Promise.all([
     getApp(auth, req.query.aId as string),
     Provider.findAll({
       where: {
         workspaceId: keyRes.value.workspaceId,
       },
     }),
+    getDustAppSecrets(auth, true)
   ]);
 
   if (!app) {
@@ -161,8 +162,6 @@ async function handler(
       } else {
         credentials = credentialsFromProviders(providers);
       }
-
-      const secrets = await getDustAppSecrets(auth, true);
 
       logger.info(
         {

@@ -1,5 +1,5 @@
 use crate::blocks::block::{
-    find_variables, parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
+    find_variables, parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
 };
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatRequest, LLMRequest, Tokens};
 use crate::providers::provider::ProviderID;
@@ -211,18 +211,12 @@ impl LLM {
         replace_variables_in_string(text, "prompt", env)
     }
 
-    fn replace_prompt_secrets(text: &str, env: &Env) -> Result<String> {
-        replace_secrets_in_string(text, "prompt", env)
-    }
-
     fn prompt(&self, env: &Env) -> Result<String> {
         let mut prompt = String::new();
 
         // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.
         if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
-            let replaced_variables = Self::replace_prompt_variables(few_shot_preprompt, env)?;
-            let replaced_secrets = Self::replace_prompt_secrets(replaced_variables.as_str(), env)?;
-            prompt.push_str(replaced_secrets.as_str());
+          prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
         }
 
         // If `few_shot_prompt` is defined check that `few_shot_count` and add few shots to the

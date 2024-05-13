@@ -58,21 +58,9 @@ pub struct Env {
 
 impl Env {
   pub fn clone_with_unredacted_secrets(&self) -> Self {
-    let mut new_secrets = self.secrets.clone();
-    new_secrets.redacted = false;
-
-    Self {
-      config: self.config.clone(),
-      state: self.state.clone(),
-      input: self.input.clone(),
-      map: self.map.clone(),
-      secrets: new_secrets,
-      store: self.store.clone(),
-      databases_store: self.databases_store.clone(),
-      qdrant_clients: self.qdrant_clients.clone(),
-      project: self.project.clone(),
-      credentials: self.credentials.clone(),
-    }
+    let mut e = self.clone();
+    e.secrets.redacted = false;
+    e
   }
 }
 

@@ -35,7 +35,7 @@ export type CoreAPIError = {
   code: string;
 };
 
-type SecretsObject = { [key: string]: string };
+type SecretsType = { [key: string]: string };
 
 export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
@@ -258,7 +258,7 @@ export class CoreAPI {
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
 
     // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
-    const secretsObject: SecretsObject = secrets.reduce((obj: SecretsObject, secret: DustAppSecretType) => {
+    const secretsObject: SecretsType = secrets.reduce((obj: SecretsType, secret: DustAppSecretType) => {
         obj[secret.name] = secret.value;
         return obj;
     }, {});
@@ -305,7 +305,7 @@ export class CoreAPI {
     }>
   > {
     // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
-    const secretsObject: SecretsObject = secrets.reduce((obj: SecretsObject, secret: DustAppSecretType) => {
+    const secretsObject: SecretsType = secrets.reduce((obj: SecretsType, secret: DustAppSecretType) => {
       obj[secret.name] = secret.value;
       return obj;
     }, {});
