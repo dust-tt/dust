@@ -12,7 +12,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("set-error"),
     t.literal("restart"),
   ]),
-  args: t.record(t.string, t.union([t.string, t.undefined])),
+  args: t.record(t.string, t.union([t.string, t.number, t.undefined])),
 });
 
 export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
