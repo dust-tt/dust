@@ -1,5 +1,9 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  MessageWithRankType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AgentMention } from "@dust-tt/types";
 import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
 import type {
@@ -346,6 +350,24 @@ export default function ConversationViewer({
     return <div>No conversation here</div>;
   }
 
+  // Building an array of arrays of messages grouped by message.type.
+  // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+  // This allows us to change the layout per consecutive messages of the same type.
+  const groupedMessages: MessageWithRankType[][] = [];
+  for (const message of messages.flatMap((page) => page.messages)) {
+    if (groupedMessages.length === 0) {
+      groupedMessages.push([message]);
+    } else {
+      const lastGroup = groupedMessages[groupedMessages.length - 1];
+      const lastMessage = lastGroup[lastGroup.length - 1];
+      if (lastMessage.type === message.type) {
+        lastGroup.push(message);
+      } else {
+        groupedMessages.push([message]);
+      }
+    }
+  }
+
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
@@ -357,28 +379,52 @@ export default function ConversationViewer({
           <Spinner variant="color" size="xs" />
         </div>
       )}
-      {messages.map((page) => {
-        return page.messages.map((message) => {
-          return (
-            <MessageItem
-              key={message.sId}
-              conversationId={conversation.sId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
+
+      {groupedMessages.map((group) => {
+        return (
+          // First div is used to apply a background color to the content fragment group.
+          <div
+            className={
+              group[0].type === "content_fragment" ? "bg-structure-50" : ""
+            }
+            message-type={group[0].type}
+            key={group[0].sId}
+          >
+            {/* Second div is used to apply a max-width and change the flex direction of the content fragment group. */}
+            <div
+              key={group[0].sId}
+              className={
+                group[0].type === "content_fragment"
+                  ? "mx-auto flex max-w-4xl flex-row"
+                  : ""
               }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-              latestMentions={latestMentions}
-            />
-          );
-        });
+            >
+              {group.map((message) => {
+                return (
+                  <MessageItem
+                    key={message.sId}
+                    conversationId={conversation.sId}
+                    hideReactions={hideReactions}
+                    isInModal={isInModal}
+                    message={message}
+                    owner={owner}
+                    reactions={reactions}
+                    ref={
+                      message.sId === prevFirstMessageId
+                        ? prevFirstMessageRef
+                        : undefined
+                    }
+                    user={user}
+                    isLastMessage={
+                      latestPage?.messages.at(-1)?.sId === message.sId
+                    }
+                    latestMentions={latestMentions}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
       })}
     </div>
   );

@@ -88,7 +88,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return (
           <div
             key={`message-id-${sId}`}
-            className="items-center bg-structure-50 px-2 pt-8"
+            className="items-center pt-8"
             ref={ref}
           >
             <div className="mx-auto flex max-w-4xl flex-col gap-4">
