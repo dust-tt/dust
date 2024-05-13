@@ -65,7 +65,6 @@ export function AssistantInputBar({
       title: string;
       content: string;
       file: File;
-      contentType: string;
     }[]
   ) => void;
   conversationId: string | null;
@@ -157,7 +156,6 @@ export function AssistantInputBar({
           title: cf.title,
           content: cf.content,
           file: cf.file,
-          contentType: "file_attachment",
         };
       })
     );
@@ -168,6 +166,7 @@ export function AssistantInputBar({
   const onInputFileChange: InputBarContainerProps["onInputFileChange"] =
     useCallback(
       async (event) => {
+        let totalSize = 0;
         for (const file of (event?.target as HTMLInputElement)?.files || []) {
           if (!file) {
             return;
@@ -199,11 +198,12 @@ export function AssistantInputBar({
               type: "error",
               title: "File too large.",
               description:
-                "The extracted text from your PDF has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+                "The extracted text from your file has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
             });
             return;
           }
           setContentFragmentData((prev) => {
+            totalSize += res.value.content.length;
             return prev.concat([
               {
                 title: res.value.title,
@@ -211,6 +211,15 @@ export function AssistantInputBar({
                 file,
               },
             ]);
+          });
+        }
+        // now we check for the total size of the content fragments
+        if (totalSize > 500_000) {
+          sendNotification({
+            type: "error",
+            title: "Files too large.",
+            description:
+              "The combined extracted text from the files you selected results in more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
           });
         }
       },
@@ -349,7 +358,6 @@ export function FixedAssistantInputBar({
       title: string;
       content: string;
       file: File;
-      contentType: string;
     }[]
   ) => void;
   stickyMentions?: AgentMention[];

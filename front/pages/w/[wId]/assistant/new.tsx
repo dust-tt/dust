@@ -141,7 +141,6 @@ export default function AssistantNew({
           title: string;
           content: string;
           file: File;
-          contentType: string;
         }[]
       ) => {
         const conversationRes = await createConversationWithMessage({

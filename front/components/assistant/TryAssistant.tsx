@@ -284,7 +284,6 @@ export function useTryAssistantCore({
       title: string;
       content: string;
       file: File;
-      contentType: string;
     }[]
   ) => {
     if (!user) {

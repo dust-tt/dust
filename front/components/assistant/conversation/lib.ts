@@ -215,7 +215,6 @@ export async function createConversationWithMessage({
       title: string;
       content: string;
       file: File;
-      contentType: string;
     }[];
   };
   visibility?: ConversationVisibility;
