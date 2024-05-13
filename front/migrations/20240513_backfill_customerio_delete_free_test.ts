@@ -49,17 +49,24 @@ const backfillCustomerIo = async (execute: boolean) => {
       ? await subscriptionForWorkspaces(workspaceSids)
       : {};
 
-    if (execute) {
-      const promises: Promise<unknown>[] = [];
-      for (const u of c) {
-        const memberships = membershipsByUserId[u.id.toString()] ?? [];
-        const workspaces =
-          memberships.map((m) => workspaceById[m.workspaceId.toString()]) ?? [];
-        const subscriptions =
-          removeNulls(
-            workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
-          ) ?? [];
-        if (!subscriptions.some((s) => s.plan.code !== FREE_TEST_PLAN_CODE)) {
+    // if (execute) {
+    const promises: Promise<unknown>[] = [];
+    for (const u of c) {
+      const memberships = membershipsByUserId[u.id.toString()] ?? [];
+      const workspaces =
+        memberships.map((m) => workspaceById[m.workspaceId.toString()]) ?? [];
+      const subscriptions =
+        removeNulls(
+          workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
+        ) ?? [];
+
+      if (!subscriptions.some((s) => s.plan.code !== FREE_TEST_PLAN_CODE)) {
+        logger.info(
+          { userId: u.sId },
+          "User does not have any real subscriptions, deleting from Customer.io"
+        );
+
+        if (execute) {
           promises.push(
             CustomerioServerSideTracking._deleteUser({
               user: u,
@@ -71,14 +78,19 @@ const backfillCustomerIo = async (execute: boolean) => {
             })
           );
         }
-        const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
-          const subscription = subscriptionByWorkspaceSid[ws.sId];
-          return (
-            !subscription || subscription.plan.code === FREE_TEST_PLAN_CODE
+      }
+
+      const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
+        const subscription = subscriptionByWorkspaceSid[ws.sId];
+        return !subscription || subscription.plan.code === FREE_TEST_PLAN_CODE;
+      });
+      for (const ws of workspacesWithoutRealSubscriptions) {
+        if (!deletedWorkspaceSids.has(ws.sId)) {
+          logger.info(
+            { workspaceId: ws.sId },
+            "Workspace does not have a real subscription, deleting from Customer.io"
           );
-        });
-        for (const ws of workspacesWithoutRealSubscriptions) {
-          if (!deletedWorkspaceSids.has(ws.sId)) {
+          if (execute) {
             promises.push(
               CustomerioServerSideTracking._deleteWorkspace({
                 workspace: renderLightWorkspaceType({ workspace: ws }),
@@ -89,8 +101,8 @@ const backfillCustomerIo = async (execute: boolean) => {
                 );
               })
             );
-            deletedWorkspaceSids.add(ws.sId);
           }
+          deletedWorkspaceSids.add(ws.sId);
         }
       }
     }
