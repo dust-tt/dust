@@ -80,55 +80,62 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragment?: {
+    contentFragments: {
       title: string;
       content: string;
       file: File;
-    };
+    }[];
   };
 }): Promise<
   Result<{ message: UserMessageWithRankType }, ConversationErrorType>
 > {
-  const { input, mentions, contentFragment } = messageData;
+  const { input, mentions, contentFragments } = messageData;
   // Create a new content fragment.
-  if (contentFragment) {
-    const mcfRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: contentFragment.title,
-          content: contentFragment.content,
-          url: null,
-          contentType: "file_attachment",
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-            profilePictureUrl: user.image,
-          },
-        }),
-      }
+  if (contentFragments.length > 0) {
+    const contentFragmentsRes = await Promise.all(
+      contentFragments.map((contentFragment) => {
+        return fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: contentFragment.title,
+              content: contentFragment.content,
+              url: null,
+              contentType: "file_attachment",
+              context: {
+                timezone:
+                  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                profilePictureUrl: user.image,
+              },
+            }),
+          }
+        );
+      })
     );
 
-    if (!mcfRes.ok) {
-      const data = await mcfRes.json();
-      console.error("Error creating content fragment", data);
-      return new Err({
-        type: "attachment_upload_error",
-        title: "Error uploading file.",
-        message: data.error.message || "Please try again or contact us.",
+    for (const [i, mcfRes] of contentFragmentsRes.entries()) {
+      if (!mcfRes.ok) {
+        const data = await mcfRes.json();
+        console.error("Error creating content fragment", data);
+        return new Err({
+          type: "attachment_upload_error",
+          title: "Error uploading file.",
+          message: data.error.message || "Please try again or contact us.",
+        });
+      }
+      const cfData = (await mcfRes.json())
+        .contentFragment as ContentFragmentType;
+      uploadRawContentFragment({
+        workspaceId: owner.sId,
+        conversationId,
+        contentFragmentId: cfData.sId,
+        file: contentFragments[i].file,
       });
     }
-
-    const cfData = (await mcfRes.json()).contentFragment as ContentFragmentType;
-    uploadRawContentFragment({
-      workspaceId: owner.sId,
-      conversationId,
-      contentFragmentId: cfData.sId,
-      file: contentFragment.file,
-    });
   }
 
   // Create a new user message.
