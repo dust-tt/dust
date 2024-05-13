@@ -1118,6 +1118,8 @@ export async function createAgentActionConfiguration(
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
         forceUseAtIteration: action.forceUseAtIteration,
       });
 

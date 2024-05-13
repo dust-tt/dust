@@ -105,10 +105,12 @@ export default function ActionsScreen({
     function _updateAction({
       actionName,
       newActionName,
+      newActionDescription,
       getNewActionConfig,
     }: {
       actionName: string;
       newActionName?: string;
+      newActionDescription?: string;
       getNewActionConfig: (
         old: AssistantBuilderActionConfiguration["configuration"]
       ) => AssistantBuilderActionConfiguration["configuration"];
@@ -120,7 +122,7 @@ export default function ActionsScreen({
           action.name === actionName
             ? {
                 name: newActionName ?? action.name,
-                description: action.description,
+                description: newActionDescription ?? action.description,
                 type: action.type,
                 // This is quite unsatisfying, but using `as any` here and repeating every
                 // other key in the object instead of spreading is actually the safest we can do.
@@ -176,6 +178,7 @@ export default function ActionsScreen({
             updateAction({
               actionName: actionToEdit.name,
               newActionName: newAction.name,
+              newActionDescription: newAction.description,
               getNewActionConfig: () => newAction.configuration,
             });
           } else {

@@ -50,7 +50,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
   renderConversationForModel,
-  runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
 import { isLegacyAgent } from "@app/lib/assistant";
@@ -124,7 +123,7 @@ export async function* runMultiActionsAgent(
 > {
   const now = Date.now();
 
-  for (let i = 0; i < configuration.maxToolsUsePerRun; i++) {
+  for (let i = 0; i < configuration.maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
@@ -136,7 +135,16 @@ export async function* runMultiActionsAgent(
     const forcedAction = configuration.actions.find(
       (a) => a.forceUseAtIteration === i
     );
-    const actions = forcedAction ? [forcedAction] : configuration.actions;
+    const actions =
+      // If we already executed the maximum number of actions, we don't run any more.
+      // This will force the agent to run the generation.
+      i === configuration.maxToolsUsePerRun
+        ? []
+        : // If we have a forced action, we only run this action.
+        forcedAction
+        ? [forcedAction]
+        : // Otherwise, we let the agent decide which action to run (if any).
+          configuration.actions;
 
     const actionToRun = await getNextAction(auth, {
       agentConfiguration: configuration,
@@ -175,9 +183,17 @@ export async function* runMultiActionsAgent(
     );
 
     if ("generation" in actionToRun.value) {
+      agentMessage.content = actionToRun.value.generation;
       // TODO: actually stream the generation.
       yield {
         type: "generation_tokens",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        text: actionToRun.value.generation,
+      };
+      yield {
+        type: "agent_generation_success",
         created: now,
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
@@ -203,62 +219,6 @@ export async function* runMultiActionsAgent(
     }
     // If the next action is the generation, we simply break out of the loop,
     // as we always run the generation after the actions loop.
-  }
-
-  const eventStream = runGeneration(
-    auth,
-    configuration,
-    conversation,
-    userMessage,
-    agentMessage
-  );
-
-  for await (const event of eventStream) {
-    switch (event.type) {
-      case "generation_tokens":
-        yield event;
-        break;
-
-      case "generation_error":
-        yield {
-          type: "agent_error",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: event.error.code,
-            message: event.error.message,
-          },
-        };
-        return;
-
-      case "generation_cancel":
-        yield {
-          type: "agent_generation_cancelled",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-        };
-        return;
-
-      case "generation_success":
-        yield {
-          type: "agent_generation_success",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          text: event.text,
-        };
-
-        agentMessage.content = event.text;
-        break;
-
-      default:
-        ((event: never) => {
-          logger.error("Unknown `runAgent` event type", event);
-        })(event);
-        return;
-    }
   }
 
   agentMessage.status = "succeeded";

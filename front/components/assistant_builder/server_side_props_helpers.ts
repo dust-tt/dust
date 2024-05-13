@@ -112,6 +112,7 @@ export async function buildInitialActions({
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
   for (const action of actions) {
+    let builderAction: AssistantBuilderActionConfiguration | null = null;
     if (isRetrievalConfiguration(action)) {
       const isSearch = action.query !== "none";
 
@@ -132,7 +133,7 @@ export async function buildInitialActions({
       retrievalConfiguration.configuration.dataSourceConfigurations =
         await renderDataSourcesConfigurations(action);
 
-      builderActions.push(retrievalConfiguration);
+      builderAction = retrievalConfiguration;
     } else if (isDustAppRunConfiguration(action)) {
       const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
       for (const app of dustApps) {
@@ -142,7 +143,7 @@ export async function buildInitialActions({
         }
       }
 
-      builderActions.push(dustAppConfiguration);
+      builderAction = dustAppConfiguration;
     } else if (isTablesQueryConfiguration(action)) {
       const tablesQueryConfiguration =
         getDefaultTablesQueryActionConfiguration();
@@ -181,7 +182,7 @@ export async function buildInitialActions({
         {} as AssistantBuilderTablesQueryConfiguration
       );
 
-      builderActions.push(tablesQueryConfiguration);
+      builderAction = tablesQueryConfiguration;
     } else if (isProcessConfiguration(action)) {
       const processConfiguration = getDefaultProcessActionConfiguration();
       if (
@@ -201,10 +202,19 @@ export async function buildInitialActions({
 
       processConfiguration.configuration.schema = action.schema;
 
-      builderActions.push(processConfiguration);
+      builderAction = processConfiguration;
     } else {
       assertNever(action);
     }
+
+    if (action.name) {
+      builderAction.name = action.name;
+    }
+    if (action.description) {
+      builderAction.description = action.description;
+    }
+
+    builderActions.push(builderAction);
   }
 
   return builderActions;

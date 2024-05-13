@@ -236,6 +236,7 @@ export const DustProdActionRegistry = createActionRegistry({
         model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
+        use_stream: true,
       },
     },
   },
