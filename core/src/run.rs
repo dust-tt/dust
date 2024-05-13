@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use serde::ser::{Serializer, SerializeStruct};
+use serde::ser::Serializer;
 
 /// BlockExecution represents the execution of a block:
 /// - `env` used
@@ -37,19 +37,16 @@ pub struct Secrets {
 impl Serialize for Secrets {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
-      S: Serializer,
+    S: Serializer,
   {
-      let mut state = serializer.serialize_struct("Secrets", 1)?;
-      if self.redacted != false {
-          let redacted_secrets: HashMap<String, String> = self.secrets.keys()
-              .map(|key| (key.clone(), String::from("••••••")))
-              .collect();
-          state.serialize_field("secrets", &redacted_secrets)?;
-      } else {
-          state.serialize_field("secrets", &self.secrets)?;
-      }
-      state.serialize_field("redacted", &self.redacted)?;
-      state.end()
+    if self.redacted {
+      let redacted_secrets: HashMap<String, String> = self.secrets.keys()
+        .map(|key| (key.clone(), String::from("••••••")))
+        .collect();
+      redacted_secrets.serialize(serializer)
+    } else {
+      self.secrets.serialize(serializer)
+    }
   }
 }
 
