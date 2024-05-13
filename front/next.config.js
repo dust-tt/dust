@@ -49,4 +49,14 @@ module.exports = removeImports({
       },
     ];
   },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      fs: false,
+      net: false,
+      child_process: false,
+      tls: false,
+      dgram: false,
+    };
+    return config;
+  },
 });
