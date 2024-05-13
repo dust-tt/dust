@@ -12,6 +12,7 @@ import type {
 import * as _ from "lodash";
 
 import { subscriptionForWorkspaces } from "@app/lib/auth";
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
@@ -20,7 +21,6 @@ import logger from "@app/logger/logger";
 export class ServerSideTracking {
   static trackSignup({ user }: { user: UserType }) {
     AmplitudeServerSideTracking.trackSignup({ user });
-    void CustomerioServerSideTracking.trackSignup({ user });
   }
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
@@ -66,20 +66,25 @@ export class ServerSideTracking {
       // We identify all of the user's workspaces on Customer.io everytime someone logs in,
       // so we keep subscription info up to date.
       // The actual customer.io call is rate limited to 1 call per day with the same data.
-      promises.push(
-        CustomerioServerSideTracking.identifyWorkspaces({
-          workspaces: user.workspaces.map((ws) => ({
-            ...ws,
-            planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
-            seats: seatsByWorkspaceId[ws.sId].seats,
-          })),
-        }).catch((err) => {
-          logger.error(
-            { userId: user.sId, err },
-            "Failed to identify workspaces on Customer.io"
-          );
-        })
-      );
+      const workspacesToTrackOnCustomerIo = user.workspaces
+        .map((ws) => ({
+          ...ws,
+          planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
+          seats: seatsByWorkspaceId[ws.sId].seats,
+        }))
+        .filter((ws) => ws.planCode !== FREE_TEST_PLAN_CODE);
+      if (workspacesToTrackOnCustomerIo.length > 0) {
+        promises.push(
+          CustomerioServerSideTracking.identifyWorkspaces({
+            workspaces: workspacesToTrackOnCustomerIo,
+          }).catch((err) => {
+            logger.error(
+              { userId: user.sId, err },
+              "Failed to identify workspaces on Customer.io"
+            );
+          })
+        );
+      }
 
       await Promise.all(promises);
     } catch (err) {
