@@ -42,7 +42,7 @@ impl Serialize for RedactableSecrets {
       S: Serializer,
   {
       let mut state = serializer.serialize_struct("Secrets", 1)?;
-      if self.redacted {
+      if self.redacted != false {
           let redacted_secrets: HashMap<String, String> = self.secrets.keys()
               .map(|key| (key.clone(), String::from("••••••")))
               .collect();

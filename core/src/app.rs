@@ -368,17 +368,17 @@ impl App {
             let time_block_start = utils::now();
             let (_, name, block) = &self.blocks[block_idx];
 
-            let current_env = envs[0][0].clone();
-
             // Don't redact the secrets only for Curl block
             let redacted = block.block_type() != BlockType::Curl;
 
+            println!("REDACTED ? {:?}", redacted);
+
             let redacted_secrets = RedactableSecrets {
               redacted,
-              secrets: current_env.secrets.clone(),
+              secrets: secrets.clone(),
             };
 
-            // Serialize redacted_secrets
+            // Serialize redacted_secrets to redact if necessary.
             let serialized_redacted_secrets = to_string(&redacted_secrets)?;
 
             println!("current_env serialized SECRETS: {:?}", serialized_redacted_secrets);
@@ -386,12 +386,10 @@ impl App {
             // Deserialize to get the actual secrets. 
             let deserialized_redacted_secrets: RedactableSecrets = serde_json::from_str(&serialized_redacted_secrets)?;
 
-            println!("current_env SECRET: {:?}", deserialized_redacted_secrets.secrets);
+            println!("current_env deserialized_redacted_secrets: {:?}", deserialized_redacted_secrets.secrets);
 
-            // replace current_env.secrets by serialized_redacted_secrets
+            // Replace current_env.secrets by serialized_redacted_secrets.
             envs[0][0].secrets = deserialized_redacted_secrets.secrets.clone();
-
-            println!("current_env SECRETS: {:?}", current_env.secrets);
 
             // Special pre-processing of the input block, injects data as input and build
             // input_envs.
