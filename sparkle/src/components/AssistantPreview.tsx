@@ -1,10 +1,10 @@
 import React, { SyntheticEvent, useState } from "react";
 
-import { Button, CardButton, PlayIcon } from "@sparkle/_index";
+import { Button, CardButton, MoreIcon, PlayIcon } from "@sparkle/_index";
 import { Avatar } from "@sparkle/components/Avatar";
 import { classNames } from "@sparkle/lib/utils";
 
-type AssistantPreviewVariant = "item" | "list" | "gallery";
+type AssistantPreviewVariant = "item" | "list" | "gallery" | "minimal";
 
 interface BaseAssistantPreviewProps {
   variant: AssistantPreviewVariant;
@@ -30,23 +30,60 @@ type GalleryVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   onPlayClick?: (e: SyntheticEvent) => void;
 };
 
+type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
+  variant: "minimal";
+  hasAction?: boolean;
+  href?: string;
+  onClick?: () => void;
+  onActionClick?: () => void;
+};
+
 type AssistantPreviewProps =
   | ItemVariantAssistantPreviewProps
   | ListVariantAssistantPreviewProps
-  | GalleryVariantAssistantPreviewProps;
+  | GalleryVariantAssistantPreviewProps
+  | MinimalVariantAssistantPreviewProps;
+
+const isBrowser = typeof window !== "undefined";
+
+const breakpoints = {
+  sm: 640, // Tailwind's default for `sm`
+  md: 768, // Tailwind's default for `md`
+  lg: 1024, // Tailwind's default for `lg`
+  xl: 1280, // Tailwind's default for `xl`
+  xxl: 1536, // Tailwind's default for `2xl`
+};
+
+const getWindowWidth = () => (isBrowser ? window.innerWidth : 0);
 
 const titleClassNames = {
   base: "s-truncate s-font-medium s-text-element-900 s-w-full",
   item: "s-text-sm",
   list: "s-text-base",
   gallery: "s-text-lg",
+  minimal: `s-overflow-hidden s-whitespace-nowrap ${
+    getWindowWidth() <= breakpoints.sm
+      ? "s-text-sm"
+      : getWindowWidth() <= breakpoints.md
+      ? "s-text-base"
+      : ""
+  }`,
 };
+
 const subtitleClassNames = {
   base: "s-font-normal s-text-element-700 s-truncate s-w-full",
   item: "s-text-xs",
   list: "s-text-sm",
   gallery: "s-text-sm",
+  minimal: `s-overflow-hidden s-whitespace-nowrap ${
+    getWindowWidth() <= breakpoints.sm
+      ? "s-text-xs"
+      : getWindowWidth() <= breakpoints.md
+      ? "s-text-sm"
+      : ""
+  }`,
 };
+
 const descriptionClassNames = {
   base: "s-font-normal s-mb-1",
   item: "s-text-xs s-text-element-700 s-pl-1 s-line-clamp-3",
@@ -64,6 +101,8 @@ function renderVariantContent(
       return <ListVariantContent {...props} />;
     case "gallery":
       return <GalleryVariantContent {...props} />;
+    case "minimal":
+      return <MinimalVariantContent {...props} />;
     default:
       return <></>;
   }
@@ -219,6 +258,74 @@ const GalleryVariantContent = ({
   );
 };
 
+const MinimalVariantContent = ({
+  title,
+  pictureUrl,
+  subtitle,
+  hasAction = true,
+  onClick,
+  onActionClick,
+}: MinimalVariantAssistantPreviewProps) => {
+  const actionButton = (
+    <Button
+      label=""
+      icon={MoreIcon}
+      variant="tertiary"
+      size="sm"
+      labelVisible={false}
+      hasMagnifying={false}
+      disabledTooltip={true}
+      onClick={(e) => {
+        e.stopPropagation();
+        onActionClick?.();
+      }}
+    />
+  );
+
+  return (
+    <>
+      <div
+        id="assistant-container"
+        className="s-flex s-grow s-flex-row s-justify-between s-gap-2 s-overflow-hidden s-py-1"
+        onClick={onClick}
+      >
+        <div
+          id="preview"
+          className="s-flex s-w-full s-min-w-0 s-flex-row s-items-center s-gap-2"
+        >
+          <div id="avatar-column" className="s-w-fit">
+            <Avatar name={`Avatar of ${title}`} visual={pictureUrl} size="md" />
+          </div>
+          <div
+            id="details-column"
+            className="s-flex s-w-full s-min-w-0 s-flex-col s-items-start s-gap-0 s-overflow-hidden"
+          >
+            <div
+              className={classNames(
+                titleClassNames["base"],
+                titleClassNames.minimal
+              )}
+            >
+              @{title}
+            </div>
+            <div
+              className={classNames(
+                subtitleClassNames["base"],
+                subtitleClassNames.minimal
+              )}
+            >
+              By: {subtitle}
+            </div>
+          </div>
+        </div>
+        <div id="actions-column" className="s-flex s-w-fit s-shrink-0">
+          {hasAction && actionButton}
+        </div>
+      </div>
+    </>
+  );
+};
+
 export function AssistantPreview(props: AssistantPreviewProps) {
   const { onClick, variant } = props;
   // State to manage the visibility of the play button
@@ -228,7 +335,7 @@ export function AssistantPreview(props: AssistantPreviewProps) {
     <CardButton
       variant="tertiary"
       className={classNames("s-flex s-flex-col s-gap-2 s-border")}
-      size={variant === "item" ? "sm" : "lg"}
+      size={variant === "item" || variant === "minimal" ? "sm" : "lg"}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
