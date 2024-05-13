@@ -1,9 +1,4 @@
-import {
-  Button,
-  ChatBubbleBottomCenterPlusIcon,
-  Item,
-  ListIcon,
-} from "@dust-tt/sparkle";
+import { Button, ChatBubbleBottomCenterPlusIcon, Item } from "@dust-tt/sparkle";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isOnlyUser } from "@dust-tt/types";
@@ -84,15 +79,6 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
       <div className="flex h-0 min-h-full w-full overflow-y-auto">
         <div className="flex w-full flex-col px-2">
           <div className={classNames("flex pt-2")}>
-            <Link href={`/w/${owner.sId}/assistant/assistants`}>
-              <Button
-                labelVisible={true}
-                label="My Assistants"
-                icon={ListIcon}
-                variant="tertiary"
-                className="flex-none shrink"
-              />
-            </Link>
             <div className="flex-grow" />
             <Link
               href={`/w/${owner.sId}/assistant/new`}
@@ -108,7 +94,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
             >
               <Button
                 labelVisible={true}
-                label="New"
+                label="New conversation"
                 icon={ChatBubbleBottomCenterPlusIcon}
                 className="flex-none shrink"
               />
