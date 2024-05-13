@@ -39,6 +39,10 @@ export function renderSchemaPropertiesAsJSONSchema(
   return jsonSchema;
 }
 
+export type ProcessTagsFilter = {
+  in: string[];
+};
+
 export type ProcessConfigurationType = {
   id: ModelId;
   sId: string;
@@ -47,6 +51,7 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
+  tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
   name: string | null;
@@ -56,14 +61,17 @@ export type ProcessConfigurationType = {
 
 export type ProcessActionOutputsType = {
   data: unknown[];
-  minTimestamp: number;
-  totalDocuments: number;
-  totalChinks: number;
-  totalTokens: number;
-  skipDocuments: number;
-  skipChunks: number;
-  skipTokens: number;
+  min_timestamp: number;
+  total_documents: number;
+  total_chunks: number;
+  total_tokens: number;
+  skip_documents: number;
+  skip_chunks: number;
+  skip_tokens: number;
 };
+
+// Use top_k of 512 which is already a large number. We might want to bump to 1024.
+export const PROCESS_ACTION_TOP_K = 512;
 
 export type ProcessActionType = {
   id: ModelId; // AgentProcessAction
@@ -76,4 +84,5 @@ export type ProcessActionType = {
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
+  step: number;
 };

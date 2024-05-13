@@ -1,7 +1,6 @@
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
-  AgentGenerationConfigurationType,
   LightAgentConfigurationType,
   Result,
   WithAPIErrorReponse,
@@ -21,7 +20,6 @@ import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
-  createAgentGenerationConfiguration,
   getAgentConfigurations,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
@@ -270,17 +268,15 @@ async function handler(
 export default withLogging(handler);
 
 /**
- * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided,
- * it will create a new version of the agent configuration with the same
- * agentConfigurationId. If no agentConfigurationId is provided, it will create
- * a new agent configuration. In both cases, it will return the new agent
- * configuration.
+ * Create Or Upgrade Agent Configuration If an agentConfigurationId is provided, it will create a
+ * new version of the agent configuration with the same agentConfigurationId. If no
+ * agentConfigurationId is provided, it will create a new agent configuration. In both cases, it
+ * will return the new agent configuration.
  **/
 export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant: {
     actions,
-    generation,
     model,
     name,
     description,
@@ -306,19 +302,14 @@ export async function createOrUpgradeAgentConfiguration({
     throw new Error("Only one action is supported in legacy mode.");
   }
 
-  let legacyForceGenerationAtIteration: number | null = null;
   let legacyForceSingleActionAtIteration: number | null = null;
 
   if (legacySingleActionMode) {
     if (actions.length) {
       legacyForceSingleActionAtIteration = 0;
-      legacyForceGenerationAtIteration = 1;
-    } else {
-      legacyForceGenerationAtIteration = 0;
     }
 
-    // TODO(@fontanierh): fix once generation is an action.
-    maxToolsUsePerRun = actions.length + (generation ? 1 : 0);
+    maxToolsUsePerRun = actions.length;
   } else {
     // Multi actions mode:
     // Enforce that every action has a name and a description and that every name is unique.
@@ -353,9 +344,6 @@ export async function createOrUpgradeAgentConfiguration({
     }
   }
 
-  if (maxToolsUsePerRun === undefined) {
-    throw new Error("maxToolsUsePerRun is required.");
-  }
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name,
     description,
@@ -370,17 +358,6 @@ export async function createOrUpgradeAgentConfiguration({
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;
-  }
-
-  let generationConfig: AgentGenerationConfigurationType | null = null;
-  if (generation) {
-    generationConfig = await createAgentGenerationConfiguration(auth, {
-      agentConfiguration: agentConfigurationRes.value,
-      name: generation.name ?? null,
-      description: generation.description ?? null,
-      forceUseAtIteration:
-        generation.forceUseAtIteration ?? legacyForceGenerationAtIteration,
-    });
   }
 
   const actionConfigs: AgentActionConfigurationType[] = [];
@@ -445,8 +422,9 @@ export async function createOrUpgradeAgentConfiguration({
             auth,
             {
               type: "process_configuration",
-              relativeTimeFrame: action.relativeTimeFrame,
               dataSources: action.dataSources,
+              relativeTimeFrame: action.relativeTimeFrame,
+              tagsFilter: action.tagsFilter,
               schema: action.schema,
               name: action.name ?? null,
               description: action.description ?? null,
@@ -471,7 +449,6 @@ export async function createOrUpgradeAgentConfiguration({
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,
     actions: actionConfigs,
-    generation: generationConfig,
   };
 
   // We are not tracking draft agents

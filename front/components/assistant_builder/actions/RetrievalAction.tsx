@@ -9,36 +9,33 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,
-  AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
 const deleteDataSource = ({
   name,
-  setBuilderState,
+  updateAction,
   setEdited,
 }: {
   name: string;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
 }) => {
-  setBuilderState((state) => {
-    const action = state.actions[0];
-    if (!action || action.type !== "PROCESS") {
-      return state;
-    }
-
-    if (action.configuration.dataSourceConfigurations[name]) {
+  updateAction((previousAction) => {
+    if (previousAction.dataSourceConfigurations[name]) {
       setEdited(true);
     }
-
-    delete action.configuration.dataSourceConfigurations[name];
-
+    const newDataSourceConfigurations = {
+      ...previousAction.dataSourceConfigurations,
+    };
+    delete newDataSourceConfigurations[name];
     return {
-      ...state,
-      actions: [action],
+      ...previousAction,
+      dataSourceConfigurations: newDataSourceConfigurations,
     };
   });
 };
@@ -57,14 +54,16 @@ export function isActionRetrievalSearchValid(
 export function ActionRetrievalSearch({
   owner,
   actionConfiguration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
@@ -86,24 +85,24 @@ export function ActionRetrievalSearch({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "RETRIEVAL_SEARCH") {
-              return state;
-            }
-            action.configuration.dataSourceConfigurations[dataSource.name] = {
-              dataSource,
-              selectedResources,
-              isSelectAll,
-            };
-            return {
-              ...state,
-              actions: [action],
-            };
-          });
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: {
+              ...previousAction.dataSourceConfigurations,
+              [dataSource.name]: {
+                dataSource,
+                selectedResources,
+                isSelectAll,
+              },
+            },
+          }));
         }}
         onDelete={(name) => {
-          deleteDataSource({ name, setBuilderState, setEdited });
+          deleteDataSource({
+            name,
+            updateAction,
+            setEdited,
+          });
         }}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
       />
@@ -116,7 +115,11 @@ export function ActionRetrievalSearch({
         }}
         canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
-          deleteDataSource({ name, setBuilderState, setEdited });
+          deleteDataSource({
+            name,
+            updateAction,
+            setEdited,
+          });
         }}
       />
     </>
@@ -136,14 +139,16 @@ export function isActionRetrievalExhaustiveValid(
 export function ActionRetrievalExhaustive({
   owner,
   actionConfiguration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderRetrievalConfiguration
+    ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
@@ -174,24 +179,24 @@ export function ActionRetrievalExhaustive({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
-              return state;
-            }
-            action.configuration.dataSourceConfigurations[dataSource.name] = {
-              dataSource,
-              selectedResources,
-              isSelectAll,
-            };
-            return {
-              ...state,
-              actions: [action],
-            };
-          });
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: {
+              ...previousAction.dataSourceConfigurations,
+              [dataSource.name]: {
+                dataSource,
+                selectedResources,
+                isSelectAll,
+              },
+            },
+          }));
         }}
         onDelete={(name) => {
-          deleteDataSource({ name, setBuilderState, setEdited });
+          deleteDataSource({
+            name,
+            updateAction,
+            setEdited,
+          });
         }}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
       />
@@ -204,7 +209,11 @@ export function ActionRetrievalExhaustive({
         }}
         canAddDataSource={dataSources.length > 0}
         onDelete={(name) => {
-          deleteDataSource({ name, setBuilderState, setEdited });
+          deleteDataSource({
+            name,
+            updateAction,
+            setEdited,
+          });
         }}
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
@@ -225,29 +234,13 @@ export function ActionRetrievalExhaustive({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              setBuilderState((state) => {
-                const action = state.actions[0];
-                if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
-                  return state;
-                }
-                const newState: AssistantBuilderState = {
-                  ...state,
-                  actions: [
-                    {
-                      ...action,
-                      configuration: {
-                        ...action.configuration,
-                        timeFrame: {
-                          value,
-                          unit: action.configuration.timeFrame.unit,
-                        },
-                      },
-                    },
-                  ],
-                };
-
-                return newState;
-              });
+              updateAction((previousAction) => ({
+                ...previousAction,
+                timeFrame: {
+                  value,
+                  unit: previousAction.timeFrame.unit,
+                },
+              }));
             }
           }}
         />
@@ -270,17 +263,13 @@ export function ActionRetrievalExhaustive({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  setBuilderState((state) => {
-                    const action = state.actions[0];
-                    if (!action || action.type !== "RETRIEVAL_EXHAUSTIVE") {
-                      return state;
-                    }
-                    action.configuration.timeFrame.unit = key as TimeframeUnit;
-                    return {
-                      ...state,
-                      actions: [action],
-                    };
-                  });
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    timeFrame: {
+                      value: previousAction.timeFrame.value,
+                      unit: key as TimeframeUnit,
+                    },
+                  }));
                 }}
               />
             ))}

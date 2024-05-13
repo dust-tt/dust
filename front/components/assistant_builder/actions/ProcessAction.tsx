@@ -23,7 +23,6 @@ import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shar
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
-  AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
@@ -49,11 +48,26 @@ export function isActionProcessValid(
       return false;
     }
   }
-  return (
-    action.type === "PROCESS" &&
-    Object.keys(action.configuration.dataSourceConfigurations).length > 0 &&
-    !!action.configuration.timeFrame.value
-  );
+  if (Object.keys(action.configuration.dataSourceConfigurations).length === 0) {
+    return false;
+  }
+  if (!action.configuration.timeFrame.value) {
+    return false;
+  }
+  if (
+    action.configuration.tagsFilter &&
+    action.configuration.tagsFilter.in.some((tag) => tag === "")
+  ) {
+    return false;
+  }
+  if (
+    action.configuration.tagsFilter &&
+    action.configuration.tagsFilter.in.length !==
+      new Set(action.configuration.tagsFilter.in).size
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function PropertiesFields({
@@ -221,14 +235,16 @@ function PropertiesFields({
 export function ActionProcess({
   owner,
   actionConfiguration,
-  setBuilderState,
+  updateAction,
   setEdited,
   dataSources,
 }: {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
+  updateAction: (
+    setNewAction: (
+      previousAction: AssistantBuilderProcessConfiguration
+    ) => AssistantBuilderProcessConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
@@ -249,30 +265,17 @@ export function ActionProcess({
   }, [actionConfiguration.timeFrame.value]);
 
   const deleteDataSource = (name: string) => {
-    if (actionConfiguration.dataSourceConfigurations[name]) {
-      setEdited(true);
-    }
-
-    setBuilderState(({ actions, ...rest }) => {
-      const action = actions[0];
-      if (!action || action.type !== "PROCESS") {
-        return { actions, ...rest };
+    updateAction((previousAction) => {
+      if (previousAction.dataSourceConfigurations[name]) {
+        setEdited(true);
       }
       const dataSourceConfigurations = {
-        ...actionConfiguration.dataSourceConfigurations,
+        ...previousAction.dataSourceConfigurations,
       };
       delete dataSourceConfigurations[name];
       return {
-        actions: [
-          {
-            ...action,
-            configuration: {
-              ...actionConfiguration,
-              dataSourceConfigurations,
-            },
-          },
-        ],
-        ...rest,
+        ...previousAction,
+        dataSourceConfigurations,
       };
     });
   };
@@ -288,32 +291,17 @@ export function ActionProcess({
         dataSources={dataSources}
         onSave={({ dataSource, selectedResources, isSelectAll }) => {
           setEdited(true);
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "PROCESS") {
-              return state;
-            }
-            const dataSourceConfigurations = {
-              ...actionConfiguration.dataSourceConfigurations,
-            };
-            dataSourceConfigurations[dataSource.name] = {
-              dataSource,
-              selectedResources,
-              isSelectAll,
-            };
-            return {
-              ...state,
-              actions: [
-                {
-                  ...action,
-                  configuration: {
-                    ...actionConfiguration,
-                    dataSourceConfigurations,
-                  },
-                },
-              ],
-            };
-          });
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: {
+              ...previousAction.dataSourceConfigurations,
+              [dataSource.name]: {
+                dataSource,
+                selectedResources,
+                isSelectAll,
+              },
+            },
+          }));
         }}
         onDelete={deleteDataSource}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
@@ -345,6 +333,98 @@ export function ActionProcess({
         onDelete={deleteDataSource}
       />
 
+      <div className="flex flex-col">
+        <div className="flex flex-row items-center gap-4 pb-4">
+          <div className="text-sm font-semibold text-element-900">
+            Tags Filtering
+          </div>
+          <div>
+            <Button
+              label={"Add tag filter"}
+              variant="tertiary"
+              size="xs"
+              onClick={() => {
+                setEdited(true);
+                updateAction((previousAction) => {
+                  const tagsFilter = {
+                    in: [...(previousAction.tagsFilter?.in || []), ""],
+                  };
+                  return {
+                    ...previousAction,
+                    tagsFilter,
+                  };
+                });
+              }}
+              disabled={
+                !!actionConfiguration.tagsFilter &&
+                actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
+                  .length > 0
+              }
+            />
+          </div>
+        </div>
+        {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
+          return (
+            <div className="flex flex-row gap-4" key={`tag-${i}`}>
+              <div className="flex">
+                <Input
+                  placeholder="Enter tag"
+                  size="sm"
+                  name="tags"
+                  value={t}
+                  onChange={(v) => {
+                    setEdited(true);
+                    updateAction((previousAction) => {
+                      const tags = [...(previousAction.tagsFilter?.in || [])];
+                      tags[i] = v;
+
+                      return {
+                        ...previousAction,
+                        tagsFilter: {
+                          in: tags,
+                        },
+                      };
+                    });
+                  }}
+                  error={
+                    t.length === 0
+                      ? "Tag is required"
+                      : (actionConfiguration.tagsFilter?.in || []).filter(
+                          (tag) => tag === t
+                        ).length > 1
+                      ? "Tag must be unique"
+                      : undefined
+                  }
+                />
+              </div>
+              <div className="flex items-end pb-2">
+                <IconButton
+                  icon={XCircleIcon}
+                  tooltip="Remove Property"
+                  variant="tertiary"
+                  onClick={async () => {
+                    setEdited(true);
+                    updateAction((previousAction) => {
+                      const tags = (previousAction.tagsFilter?.in || []).filter(
+                        (tag) => tag !== t
+                      );
+
+                      return {
+                        ...previousAction,
+                        tagsFilter: {
+                          in: tags,
+                        },
+                      };
+                    });
+                  }}
+                  className="ml-1"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-element-900">
           Process data from the last
@@ -363,17 +443,13 @@ export function ActionProcess({
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {
               setEdited(true);
-              setBuilderState((state) => {
-                const action = state.actions[0];
-                if (!action || action.type !== "PROCESS") {
-                  return state;
-                }
-                actionConfiguration.timeFrame.value = value;
-                return {
-                  ...state,
-                  actions: [action],
-                };
-              });
+              updateAction((previousAction) => ({
+                ...previousAction,
+                timeFrame: {
+                  value,
+                  unit: previousAction.timeFrame.unit,
+                },
+              }));
             }
           }}
         />
@@ -396,17 +472,13 @@ export function ActionProcess({
                 label={value}
                 onClick={() => {
                   setEdited(true);
-                  setBuilderState((state) => {
-                    const action = state.actions[0];
-                    if (!action || action.type !== "PROCESS") {
-                      return state;
-                    }
-                    actionConfiguration.timeFrame.unit = key as TimeframeUnit;
-                    return {
-                      ...state,
-                      actions: [action],
-                    };
-                  });
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    timeFrame: {
+                      value: previousAction.timeFrame.value,
+                      unit: key as TimeframeUnit,
+                    },
+                  }));
                 }}
               />
             ))}
@@ -428,24 +500,17 @@ export function ActionProcess({
               icon={SparklesIcon}
               size="sm"
               onClick={() => {
-                const schema = [
-                  {
-                    name: "data",
-                    type: "string" as const,
-                    description: "Required data to follow instructions",
-                  },
-                ];
-                setBuilderState((state) => {
-                  const action = state.actions[0];
-                  if (!action || action.type !== "PROCESS") {
-                    return state;
-                  }
-                  actionConfiguration.schema = schema;
-                  return {
-                    ...state,
-                    actions: [action],
-                  };
-                });
+                setEdited(true);
+                updateAction((previousAction) => ({
+                  ...previousAction,
+                  schema: [
+                    {
+                      name: "data",
+                      type: "string" as const,
+                      description: "Required data to follow instructions",
+                    },
+                  ],
+                }));
               }}
             />
           </Tooltip>
@@ -454,18 +519,11 @@ export function ActionProcess({
       <PropertiesFields
         properties={actionConfiguration.schema}
         onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-          setBuilderState((state) => {
-            const action = state.actions[0];
-            if (!action || action.type !== "PROCESS") {
-              return state;
-            }
-            actionConfiguration.schema = schema;
-            return {
-              ...state,
-              actions: [action],
-            };
-          });
           setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            schema,
+          }));
         }}
         readOnly={false}
       />

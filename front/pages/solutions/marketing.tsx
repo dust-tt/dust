@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
-import { SolutionSection } from "@app/components/home/new/SolutionSection";
+} from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -49,36 +53,45 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Marketing",
+  title: <>Enhance Content Production and&nbsp;Creativity</>,
+  from: "from-pink-200",
+  to: "to-pink-500",
+  description: (
+    <>
+      Leverage AI assistants to&nbsp;generate innovative ideas
+      and&nbsp;high-quality content. Streamline your&nbsp;creative process
+      and&nbsp;adapt content for international&nbsp;markets.
+    </>
+  ),
+};
+
 export default function Marketing() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Marketing Teams"
-        title={
-          <>
-            Ensure brand voice
-            <br />
-            and&nbsp;content consistency across all&nbsp;mediums and&nbsp;teams.
-          </>
-        }
-        from="from-pink-200"
-        to="to-pink-500"
-        subtitle={
-          <>
-            Leverage AI assistants to&nbsp;generate innovative ideas
-            and&nbsp;high-quality content. Streamline your&nbsp;creative process
-            and&nbsp;adapt content for international&nbsp;markets.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
           title={
             <>
               Create better content,
               <br />
-              faster and on-brand.
+              faster and&nbsp;on-brand.
             </>
           }
           blocks={[
@@ -86,46 +99,26 @@ export default function Marketing() {
               color: "pink",
               contentBlocks: [
                 {
-                  title: (
-                    <>
-                      Accelerate your&nbsp;content generation across&nbsp;blogs,
-                      websites, and&nbsp;social media.
-                    </>
-                  ),
+                  title: <>Consistent content at&nbsp;last</>,
                   content: (
                     <>
-                      Your assistants integrate with your&nbsp;brand's voice
-                      and&nbsp;past content, making&nbsp;creation quick
-                      and&nbsp;intuitive.
+                      Uses assistants to&nbsp;ensure consistency across teams
+                      and&nbsp;customer touchpoints. Leverage
+                      your&nbsp;carefully crafted brand voice guidelines
+                      and&nbsp;past content to&nbsp;support a&nbsp;quick
+                      and&nbsp;intuitive creative process.
                     </>
                   ),
                 },
                 {
-                  title: (
-                    <>
-                      Unified brand voice and&nbsp;content consistency across
-                      all&nbsp;mediums and&nbsp;teams.
-                    </>
-                  ),
+                  title: <>Cross-posting made easy</>,
                   content: (
                     <>
-                      Ensure your Product, Brand, Sales, and&nbsp;Success teams
-                      create consistent content on&nbsp;every touchpoint.
+                      Generate inspired and&nbsp;aligned versions of&nbsp;your
+                      content adapted to&nbsp;blogs, websites, product
+                      documentation, and&nbsp;social media faster.
                     </>
                   ),
-                },
-                {
-                  title: <>Repurpose with&nbsp;purpose.</>,
-                  content: [
-                    <>
-                      Repackage past materials into&nbsp;fresh content
-                      for&nbsp;your blogs, social media, and&nbsp;product
-                      documentation.
-                    </>,
-                    <>
-                      Maximize your&nbsp;past investments and&nbsp;learnings.
-                    </>,
-                  ],
                 },
               ],
               assistantBlocks: [assistantExamples[0], assistantExamples[1]],
@@ -134,67 +127,52 @@ export default function Marketing() {
         />
 
         <SolutionSection
-          title="Gain competitive insights."
-          blocks={[
-            {
-              color: "pink",
-              contentBlocks: {
-                title: <>Set up a&nbsp;live competitive intelligence feed.</>,
-                content: [
-                  <>
-                    Gain an edge by&nbsp;creating competitive analysis
-                    assistants and&nbsp;improve your market intelligence
-                    velocity and&nbsp;impact.
-                  </>,
-                  <>
-                    Dive into&nbsp;competitors' strategies, extract insights,
-                    and&nbsp;generate reports to&nbsp;inform
-                    your&nbsp;decisions.
-                  </>,
-                ],
-              },
-              assistantBlocks: assistantExamples[4],
-            },
-          ]}
-        />
-
-        <SolutionSection
-          title={
-            <>
-              Marketing, Sales, Product, Support&nbsp;teams, hands
-              in&nbsp;hands.
-            </>
-          }
+          title={<>AI Power-ups for&nbsp;each team and&nbsp;on&nbsp;demand.</>}
           blocks={[
             {
               color: "pink",
               contentBlocks: [
                 {
-                  title: <>Simplify collaboration across&nbsp;teams.</>,
+                  title: (
+                    <>
+                      Set up a&nbsp;live competitive
+                      <br />
+                      intelligence feed
+                    </>
+                  ),
                   content: [
                     <>
-                      Create assistants to&nbsp;bridge the&nbsp;gap between
-                      Marketing, Sales, Product, and&nbsp;Support.
+                      Leverage AI assistants to&nbsp;keep tabs on&nbsp;your
+                      market and&nbsp;its participants.
                     </>,
                     <>
-                      Translate marketing decisions, objectives,
-                      and&nbsp;strategies into the&nbsp;language of
-                      the&nbsp;recipient team.
+                      Generate reports on&nbsp;competitors' moves to&nbsp;never
+                      be&nbsp;caught off-guard and&nbsp;inform
+                      your&nbsp;decisions.
                     </>,
                   ],
                 },
                 {
-                  title: <>Level everyone’s data analysis playing field.</>,
-                  content: (
+                  title: <>Man the&nbsp;battle card stations</>,
+                  content: [
                     <>
-                      Point this assistant to&nbsp;CSV data with answers
-                      to&nbsp;marketing and&nbsp;user surveys to&nbsp;categorize
-                      answers and get&nbsp;insights.
-                    </>
-                  ),
+                      Bridge the&nbsp;gap with Sales, Product, and&nbsp;Support
+                      teams by&nbsp;translating marketing decisions, objectives,
+                      and&nbsp;strategies into their&nbsp;language.
+                    </>,
+                    <>
+                      Easily generate content and&nbsp;insights leveraging
+                      competitive intelligence and&nbsp;the positioning you've
+                      decided on.
+                    </>,
+                  ],
                 },
               ],
-              assistantBlocks: [assistantExamples[2], assistantExamples[3]],
+              assistantBlocks: [
+                assistantExamples[4],
+                assistantExamples[3],
+                assistantExamples[5],
+              ],
             },
           ]}
         />
@@ -207,26 +185,26 @@ Marketing.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@contentWriter",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Create content based&nbsp;on examples of&nbsp;previous similar
-        best-in-class&nbsp;content
+        Creates content based on best-in class &nbsp;examples availble
+        internally
       </>
     ),
   },
   {
-    emoji: "🔎",
-    name: "@copyMaster",
+    emoji: "🖇️",
+    name: "@crossPost",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Improve marketing copy and&nbsp;suggest new concepts to&nbsp;appeal
-        to&nbsp;your&nbsp;audience
+        Generates versioned&nbsp;content for social media outlets taking into
+        account company guidelines
       </>
     ),
   },
@@ -236,32 +214,58 @@ export const assistantExamples = [
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Answer any&nbsp;question about your&nbsp;team's marketing knowledge
-        base. Resurface past ideas and&nbsp;create new&nbsp;ones.
+        Answer any question about your&nbsp;team's marketing knowledge base.
+        Resurface past ideas and&nbsp;create new ones
       </>
     ),
   },
   {
     emoji: "🔬",
-    name: "@dataAnalyzer",
+    name: "@dataInsights",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Turn your questions into&nbsp;SQL queries to&nbsp;analyze user
-        and&nbsp;customer&nbsp;surveys
+        Analyzes user and&nbsp;customer surveys quantitatively based
+        on&nbsp;your natural language questions
       </>
     ),
   },
   {
     emoji: "🧐",
-    name: "@competitiveIntelligence",
+    name: "@competitive",
     backgroundColor: "bg-pink-300",
     description: (
       <>
-        Synchronize your competitor websites, blogs, and&nbsp;job boards
-        and&nbsp;get insights, ideas, and&nbsp;feedback to&nbsp;create
-        and&nbsp;improve your market&nbsp;positioning
+        Tracks competitors websites to highlight changes and pro-actively detect
+        market positioning opportunities
+      </>
+    ),
+  },
+  {
+    emoji: "♠️",
+    name: "@battleCard",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Generates arguments for your product in comparison to a specific
+        competitor, in line with internal product guidelines and category
+        positioning
       </>
     ),
   },
 ];
+
+export function MarketingCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/marketing"
+    />
+  );
+}

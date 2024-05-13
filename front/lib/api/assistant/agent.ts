@@ -6,7 +6,6 @@ import type {
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentGenerationConfigurationType,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
@@ -22,13 +21,11 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  isAgentConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   Ok,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -51,11 +48,12 @@ import {
 } from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
-  constructPrompt,
+  constructPromptMultiActions,
   renderConversationForModel,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
+import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
@@ -108,25 +106,6 @@ export async function* runAgent(
   }
 }
 
-// This function returns true if the agent is a "legacy" agent with a forced schedule,
-// i.e it has a maxToolsUsePerRun <= 2, every possible iteration has a forced action,
-// and every tool is forced at a certain iteration.
-export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
-  // TODO(@fontanierh): change once generation is part of actions.
-  const actions = removeNulls([
-    ...configuration.actions,
-    configuration.generation,
-  ]);
-
-  return (
-    configuration.maxToolsUsePerRun <= 2 &&
-    Array.from(Array(configuration.maxToolsUsePerRun).keys()).every((i) =>
-      actions.some((a) => a.forceUseAtIteration === i)
-    ) &&
-    actions.every((a) => a.forceUseAtIteration !== undefined)
-  );
-}
-
 export async function* runMultiActionsAgent(
   auth: Authenticator,
   configuration: AgentConfigurationType,
@@ -164,7 +143,6 @@ export async function* runMultiActionsAgent(
       conversation,
       userMessage,
       availableActions: actions,
-      isGenerationAllowed: !forcedAction,
       forcedActionName: forcedAction?.name ?? undefined,
     });
 
@@ -198,29 +176,21 @@ export async function* runMultiActionsAgent(
 
     const { action, inputs, specification } = actionToRun.value;
 
-    if (isAgentConfiguration(action)) {
-      const eventStream = runAction(auth, {
-        configuration: configuration,
-        actionConfiguration: action,
-        conversation,
-        userMessage,
-        agentMessage,
-        inputs,
-        specification,
-      });
-      for await (const event of eventStream) {
-        yield event;
-      }
-    } else {
-      // TODO(@fontanierh): remove this once generation is part of actions.
-      // This is just to assert that we cover all action types.
-      ((g: AgentGenerationConfigurationType) => {
-        void g;
-      })(action);
-      // If the next action is the generation, we simply break out of the loop,
-      // as we always run the generation after the actions loop.
-      break;
+    const eventStream = runAction(auth, {
+      configuration: configuration,
+      actionConfiguration: action,
+      conversation,
+      userMessage,
+      agentMessage,
+      inputs,
+      specification,
+      step: i,
+    });
+    for await (const event of eventStream) {
+      yield event;
     }
+    // If the next action is the generation, we simply break out of the loop,
+    // as we always run the generation after the actions loop.
   }
 
   const eventStream = runGeneration(
@@ -298,29 +268,25 @@ export async function getNextAction(
     conversation,
     userMessage,
     availableActions,
-    isGenerationAllowed = true,
     forcedActionName,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     availableActions: AgentActionConfigurationType[];
-    // TODO(@fontanierh): remove this once generation is part of actions.
-    isGenerationAllowed: boolean;
     forcedActionName?: string;
   }
 ): Promise<
   Result<
     {
-      action: AgentActionConfigurationType | AgentGenerationConfigurationType;
+      action: AgentActionConfigurationType;
       inputs: Record<string, string | boolean | number>;
       specification: AgentActionSpecification | null;
     },
     Error
   >
 > {
-  // TODO(@fontanierh): Make a new one for multi actions.
-  let prompt = await constructPrompt(
+  const prompt = await constructPromptMultiActions(
     auth,
     userMessage,
     agentConfiguration,
@@ -403,24 +369,7 @@ export async function getNextAction(
       assertNever(a);
     }
   }
-
-  // TODO(@fontanierh): remove this once generation is part of actions.
-  if (agentConfiguration.generation && isGenerationAllowed) {
-    specifications.push({
-      name: "reply_to_user",
-      description:
-        "Reply to the user with a message. It is mandatory to call this function before replying to the user, otherwise they won't be able to see the message.",
-      inputs: [
-        {
-          name: "language",
-          type: "string",
-          description:
-            "The language of the message to send. Should always be 'en' (for english) or 'fr' (for french).",
-        },
-      ],
-    });
-    prompt = `${prompt}\nNever attempt to directly send a message to the user without using the 'reply_to_user' function. When there is no other action to perform, use this function to send a message to the user.`;
-  }
+  // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-use-tools"].config
@@ -496,10 +445,7 @@ export async function getNextAction(
   }
   output.arguments = output.arguments ?? {};
 
-  const action =
-    output.name === "reply_to_user"
-      ? agentConfiguration.generation
-      : agentConfiguration.actions.find((a) => a.name === output.name);
+  const action = agentConfiguration.actions.find((a) => a.name === output.name);
 
   const spec = specifications.find((s) => s.name === output.name) ?? null;
 
@@ -524,6 +470,7 @@ async function* runAction(
     agentMessage,
     inputs,
     specification,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: AgentActionConfigurationType;
@@ -532,6 +479,7 @@ async function* runAction(
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
+    step: number;
   }
 ): AsyncGenerator<
   | AgentActionEvent
@@ -549,6 +497,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -579,7 +528,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -615,6 +564,7 @@ async function* runAction(
       agentMessage,
       spec: specification,
       rawInputs: inputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -648,7 +598,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -662,6 +612,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -693,7 +644,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
         default:
           assertNever(event);
@@ -707,6 +658,7 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs: inputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -737,7 +689,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:

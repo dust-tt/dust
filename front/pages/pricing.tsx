@@ -2,14 +2,14 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
+} from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
@@ -66,6 +66,7 @@ export default function Pricing() {
         title={<>Meet our pricing plans.</>}
         from="from-emerald-200"
         to="to-emerald-500"
+        hasCTA={false}
         subtitle={
           <>
             Pro: For small teams and startups, from 1 member. <br />

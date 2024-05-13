@@ -21,34 +21,21 @@ import { assertNever, removeNulls } from "@dust-tt/types";
 import type { ComponentType, ReactNode } from "react";
 import React from "react";
 
-import {
-  ActionProcess,
-  isActionProcessValid,
-} from "@app/components/assistant_builder/actions/ProcessAction";
+import { ActionProcess } from "@app/components/assistant_builder/actions/ProcessAction";
 import {
   ActionRetrievalExhaustive,
   ActionRetrievalSearch,
-  isActionRetrievalExhaustiveValid,
-  isActionRetrievalSearchValid,
 } from "@app/components/assistant_builder/actions/RetrievalAction";
-import {
-  ActionTablesQuery,
-  isActionTablesQueryValid,
-} from "@app/components/assistant_builder/actions/TablesQueryAction";
+import { ActionTablesQuery } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
-import {
-  getDeprecatedDefaultSingleAction,
-  useDeprecatedDefaultSingleAction,
-} from "@app/lib/client/assistant_builder/deprecated_single_action";
+import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 
-import {
-  ActionDustAppRun,
-  isActionDustAppRunValid,
-} from "./actions/DustAppRunAction";
+import { ActionDustAppRun } from "./actions/DustAppRunAction";
 
 const BASIC_ACTION_CATEGORIES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
 const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
@@ -144,31 +131,6 @@ function ActionModeSection({
   return show && <div className="flex flex-col gap-6">{children}</div>;
 }
 
-export function isActionValid(builderState: AssistantBuilderState): boolean {
-  // TODO(@fontanierh): handle multi-actions
-  const action = getDeprecatedDefaultSingleAction(builderState);
-
-  if (!action) {
-    // plain model
-    return true;
-  }
-
-  switch (action.type) {
-    case "RETRIEVAL_SEARCH":
-      return isActionRetrievalSearchValid(action);
-    case "RETRIEVAL_EXHAUSTIVE":
-      return isActionRetrievalExhaustiveValid(action);
-    case "PROCESS":
-      return isActionProcessValid(action);
-    case "DUST_APP_RUN":
-      return isActionDustAppRunValid(action);
-    case "TABLES_QUERY":
-      return isActionTablesQueryValid(action);
-    default:
-      assertNever(action);
-  }
-}
-
 export default function ActionScreen({
   owner,
   builderState,
@@ -240,7 +202,7 @@ export default function ActionScreen({
     <>
       <div className="flex flex-col gap-4 text-sm text-element-700">
         <div className="flex flex-col gap-2">
-          <Page.Header title="Action & Data sources" />
+          <Page.Header title="Actions & Data sources" />
           <Page.P>
             <span className="text-sm text-element-700">
               Before replying, the assistant can perform actions like{" "}
@@ -429,7 +391,31 @@ export default function ActionScreen({
               action?.type === "RETRIEVAL_SEARCH" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (
+                  !previousAction ||
+                  previousAction.type !== "RETRIEVAL_SEARCH"
+                ) {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "RETRIEVAL_SEARCH",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -445,7 +431,31 @@ export default function ActionScreen({
                 : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (
+                  !previousAction ||
+                  previousAction.type !== "RETRIEVAL_EXHAUSTIVE"
+                ) {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "RETRIEVAL_EXHAUSTIVE",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -457,7 +467,28 @@ export default function ActionScreen({
               action?.type === "PROCESS" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "PROCESS") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "PROCESS",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -471,7 +502,28 @@ export default function ActionScreen({
               action?.type === "TABLES_QUERY" ? action.configuration : null
             }
             dataSources={dataSources}
-            setBuilderState={setBuilderState}
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "TABLES_QUERY") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "TABLES_QUERY",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>
@@ -483,7 +535,28 @@ export default function ActionScreen({
               action?.type === "DUST_APP_RUN" ? action.configuration : null
             }
             dustApps={dustApps}
-            setBuilderState={setBuilderState}
+            updateAction={(setNewAction) => {
+              setBuilderState((state) => {
+                const previousAction = state.actions[0];
+                if (!previousAction || previousAction.type !== "DUST_APP_RUN") {
+                  // Unreachable
+                  return state;
+                }
+                const newActionConfig = setNewAction(
+                  previousAction.configuration
+                );
+                const newAction: AssistantBuilderActionConfiguration = {
+                  type: "DUST_APP_RUN",
+                  configuration: newActionConfig,
+                  name: previousAction.name,
+                  description: previousAction.description,
+                };
+                return {
+                  ...state,
+                  actions: removeNulls([newAction]),
+                };
+              });
+            }}
             setEdited={setEdited}
           />
         </ActionModeSection>

@@ -15,6 +15,7 @@ import { useContext, useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { trimText } from "@app/lib/utils";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -42,11 +43,6 @@ export default function TablesQueryAction({
 
   const isQueryStepCompleted = noQuery || query;
   const isOutputStepCompleted = noQuery || (query && results);
-
-  const trimText = (text: string, maxLength = 20) => {
-    const t = text.replaceAll("\n", " ");
-    return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
-  };
 
   const handleDownload = () => {
     const results =

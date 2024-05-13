@@ -8,6 +8,7 @@ import {
 } from "@dust-tt/types";
 
 import DustAppRunAction from "@app/components/assistant/conversation/DustAppRunAction";
+import ProcessAction from "@app/components/assistant/conversation/ProcessAction";
 import RetrievalAction from "@app/components/assistant/conversation/RetrievalAction";
 import TablesQueryAction from "@app/components/assistant/conversation/TablesQueryAction";
 
@@ -31,7 +32,11 @@ export function AgentAction({ action }: { action: AgentActionType }) {
       </div>
     );
   } else if (isProcessActionType(action)) {
-    return <div className="pb-4">--ProcessAction PlaceHolder--</div>;
+    return (
+      <div className="pb-4">
+        <ProcessAction processAction={action} />
+      </div>
+    );
   } else {
     assertNever(action);
   }

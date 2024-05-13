@@ -11,6 +11,8 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
 
+import { trimText } from "@app/lib/utils";
+
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
@@ -22,11 +24,6 @@ export default function DustAppRunAction({
   dustAppRunAction: DustAppRunActionType;
 }) {
   const [outputVisible, setOutputVisible] = useState(false);
-
-  function shortText(text: string, maxLength = 20) {
-    const t = text.replaceAll("\n", " ");
-    return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
-  }
 
   function formatOutput(output: unknown): string {
     let nbRecords = 1;
@@ -58,7 +55,7 @@ export default function DustAppRunAction({
                   >
                     <Chip
                       color="slate"
-                      label={shortText(`${k}: ${dustAppRunAction.params[k]}`)}
+                      label={trimText(`${k}: ${dustAppRunAction.params[k]}`)}
                     />
                   </Tooltip>
                 );

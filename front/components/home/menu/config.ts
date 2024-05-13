@@ -167,7 +167,7 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/hidden-copy",
+      href: "/",
     },
     {
       title: SolutionsMenuConfig.title,
@@ -199,7 +199,7 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/hidden-copy",
+      href: "/",
     },
     {
       title: "Pricing",
@@ -236,7 +236,7 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/hidden-copy",
+          href: "/",
         },
         {
           title: "Pricing",

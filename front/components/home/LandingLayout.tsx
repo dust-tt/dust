@@ -15,12 +15,12 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
-import { A } from "@app/components/home/new/ContentComponents";
-import { FooterNavigation } from "@app/components/home/new/menu/FooterNavigation";
-import { MainNavigation } from "@app/components/home/new/menu/MainNavigation";
-import { MobileNavigation } from "@app/components/home/new/menu/MobileNavigation";
-import Particles, { shapeNamesArray } from "@app/components/home/new/Particles";
-import ScrollingHeader from "@app/components/home/new/ScrollingHeader";
+import { A } from "@app/components/home/ContentComponents";
+import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
+import { MainNavigation } from "@app/components/home/menu/MainNavigation";
+import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
+import Particles, { shapeNamesArray } from "@app/components/home/Particles";
+import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
@@ -230,10 +230,7 @@ const CookieBanner = ({
 const Header = () => {
   return (
     <Head>
-      <title>
-        Dust - Amplify your team's potential with customizable and secure AI
-        assistants
-      </title>
+      <title>Dust - Cracking team productivity with AI</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
 
       <meta name="apple-mobile-web-app-title" content="Dust" />
@@ -282,12 +279,12 @@ const Header = () => {
       <meta
         id="meta-description"
         name="description"
-        content="Dust is an AI assistant that safely brings the best large language models, continuously updated company knowledge, powerful collaboration applications, and an extensible platform to your team's fingertips."
+        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI assistants."
       />
       <meta
         id="og-title"
         property="og:title"
-        content="Dust - Secure AI assistant with your company's knowledge"
+        content="Dust - Cracking team productivity with AI"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
 

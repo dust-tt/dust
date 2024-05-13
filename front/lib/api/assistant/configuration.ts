@@ -2,7 +2,6 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  AgentGenerationConfigurationType,
   AgentMention,
   AgentModelConfigurationType,
   AgentsGetViewType,
@@ -12,6 +11,7 @@ import type {
   LightAgentConfigurationType,
   ModelId,
   ProcessSchemaPropertyType,
+  ProcessTagsFilter,
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
@@ -41,7 +41,6 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import {
@@ -53,6 +52,8 @@ import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
+
+const MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN = 3;
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -347,16 +348,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   }
 
   const [
-    generationConfigs,
     retrievalConfigs,
     dustAppRunConfigs,
     tablesQueryConfigs,
     processConfigs,
     agentUserRelations,
   ] = await Promise.all([
-    AgentGenerationConfiguration.findAll({
-      where: { agentConfigurationId: { [Op.in]: configurationIds } },
-    }).then(groupByAgentConfigurationId),
     variant === "full"
       ? AgentRetrievalConfiguration.findAll({
           where: { agentConfigurationId: { [Op.in]: configurationIds } },
@@ -506,10 +503,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
               dataSourceId: dsConfig.dataSource.name,
               workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
-                tags:
-                  dsConfig.tagsIn && dsConfig.tagsNotIn
-                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                    : null,
                 parents:
                   dsConfig.parentsIn && dsConfig.parentsNotIn
                     ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
@@ -564,16 +557,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: processConfig.id,
           sId: processConfig.sId,
           type: "process_configuration",
-          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
           dataSources: dataSourcesConfig.map((dsConfig) => {
             return {
               dataSourceId: dsConfig.dataSource.name,
               workspaceId: dsConfig.dataSource.workspace.sId,
               filter: {
-                tags:
-                  dsConfig.tagsIn && dsConfig.tagsNotIn
-                    ? { in: dsConfig.tagsIn, not: dsConfig.tagsNotIn }
-                    : null,
                 parents:
                   dsConfig.parentsIn && dsConfig.parentsNotIn
                     ? { in: dsConfig.parentsIn, not: dsConfig.parentsNotIn }
@@ -581,37 +569,19 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
+          relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
+          tagsFilter:
+            processConfig.tagsIn !== null
+              ? {
+                  in: processConfig.tagsIn,
+                }
+              : null,
           schema: processConfig.schema,
           name: processConfig.name,
           description: processConfig.description,
           forceUseAtIteration: processConfig.forceUseAtIteration,
         });
       }
-    }
-
-    let generation: AgentGenerationConfigurationType | null = null;
-
-    const generationConfig = (() => {
-      switch (generationConfigs[agent.id]?.length) {
-        case 0:
-        case undefined:
-          return null;
-        case 1:
-          return generationConfigs[agent.id][0];
-        default:
-          throw new Error(
-            "Unexpected: agent configuration with more than 1 generation configuration is not yet supported."
-          );
-      }
-    })();
-
-    if (generationConfig !== null) {
-      generation = {
-        id: generationConfig.id,
-        name: generationConfig.name,
-        description: generationConfig.description,
-        forceUseAtIteration: generationConfig.forceUseAtIteration,
-      };
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -632,7 +602,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       },
       status: agent.status,
       actions,
-      generation,
       versionAuthorId: agent.authorId,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
     };
@@ -834,7 +803,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxToolsUsePerRun: number;
+    maxToolsUsePerRun?: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -939,7 +908,8 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
-            maxToolsUsePerRun: maxToolsUsePerRun,
+            maxToolsUsePerRun:
+              maxToolsUsePerRun ?? MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
@@ -1052,44 +1022,6 @@ export async function restoreAgentConfiguration(
   return affectedCount > 0;
 }
 
-export async function createAgentGenerationConfiguration(
-  auth: Authenticator,
-  {
-    agentConfiguration,
-    name,
-    description,
-    forceUseAtIteration,
-  }: {
-    agentConfiguration: LightAgentConfigurationType;
-    name: string | null;
-    description: string | null;
-    forceUseAtIteration: number | null;
-  }
-): Promise<AgentGenerationConfigurationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  const plan = auth.plan();
-  if (!plan) {
-    throw new Error("Unexpected `auth` without `plan`.");
-  }
-
-  const genConfig = await AgentGenerationConfiguration.create({
-    agentConfigurationId: agentConfiguration.id,
-    name,
-    description,
-    forceUseAtIteration,
-  });
-
-  return {
-    id: genConfig.id,
-    name: genConfig.name,
-    description: genConfig.description,
-    forceUseAtIteration,
-  };
-}
-
 /**
  * Create Agent RetrievalConfiguration
  */
@@ -1119,6 +1051,7 @@ export async function createAgentActionConfiguration(
     | {
         type: "process_configuration";
         relativeTimeFrame: RetrievalTimeframe;
+        tagsFilter: ProcessTagsFilter | null;
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
       }
@@ -1250,6 +1183,7 @@ export async function createAgentActionConfiguration(
             relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
               ? action.relativeTimeFrame.unit
               : null,
+            tagsIn: action.tagsFilter?.in ?? null,
             agentConfigurationId: agentConfiguration.id,
             schema: action.schema,
             name: action.name,
@@ -1269,6 +1203,7 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
+          tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
           name: action.name,
@@ -1408,8 +1343,6 @@ async function _createAgentDataSourcesConfigData(
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSource.id,
-            tagsIn: dsConfig.filter.tags?.in,
-            tagsNotIn: dsConfig.filter.tags?.not,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,

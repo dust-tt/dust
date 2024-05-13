@@ -1,4 +1,6 @@
 import type {
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   RetrievalErrorEvent,
@@ -145,6 +147,66 @@ export function renderRetrievalActionForModel(
   return {
     role: "action" as const,
     name: "search_data_sources",
+    content,
+  };
+}
+
+export function rendeRetrievalActionFunctionCall(
+  action: RetrievalActionType
+): FunctionCallType {
+  const timeFrame = action.params.relativeTimeFrame;
+  const params = {
+    query: action.params.query,
+    relativeTimeFrame: timeFrame
+      ? `${timeFrame.duration}${timeFrame.unit}`
+      : "all",
+    topK: action.params.topK,
+  };
+
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "search_data_sources",
+      arguments: JSON.stringify(params),
+    },
+  };
+}
+export function renderRetrievalActionForMultiActionsModel(
+  action: RetrievalActionType
+): FunctionMessageTypeModel {
+  let content = "";
+  if (!action.documents) {
+    throw new Error(
+      "Documents not set on retrieval action; this usually means the retrieval action is not finished."
+    );
+  }
+  for (const d of action.documents) {
+    let title = d.documentId;
+    for (const t of d.tags) {
+      if (t.startsWith("title:")) {
+        title = t.substring(6);
+        break;
+      }
+    }
+
+    let dataSourceName = d.dataSourceId;
+    if (d.dataSourceId.startsWith("managed-")) {
+      dataSourceName = d.dataSourceId.substring(8);
+    }
+
+    content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+    content += `REFERENCE: ${d.reference}\n`;
+    content += `EXTRACTS:\n`;
+    for (const c of d.chunks) {
+      content += `${c.text}\n`;
+    }
+    content += "\n";
+  }
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
@@ -364,6 +426,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
         topK: action.topK,
       },
       documents,
+      step: action.step,
     });
   }
 
@@ -380,6 +443,15 @@ export function retrievalMetaPrompt() {
     " To cite retrieved documents from data sources use the markdown directive :cite[REFERENCE]" +
     " (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX])." +
     " Use citations as close as possible to the information you are citing."
+  );
+}
+
+export function retrievalMetaPromptMutiActions() {
+  return (
+    "Focus on being factual and accurate. When data is retrieved from sources, " +
+    "use the markdown directive :cite[REFERENCE] to cite documents (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
+    "Ensure citations are placed as close as possible to the related information. " +
+    "If data retrieval isn't applicable, maintain clarity and precision in your statements."
   );
 }
 
@@ -419,12 +491,14 @@ export async function* runRetrieval(
     conversation,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: RetrievalConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
@@ -496,6 +570,7 @@ export async function* runRetrieval(
     topK,
     retrievalConfigurationId: actionConfiguration.sId,
     agentMessageId: agentMessage.agentMessageId,
+    step: step,
   });
 
   yield {
@@ -514,6 +589,7 @@ export async function* runRetrieval(
         topK,
       },
       documents: null,
+      step: action.step,
     },
   };
 
@@ -532,23 +608,8 @@ export async function* runRetrieval(
   }));
 
   for (const ds of actionConfiguration.dataSources) {
-    /** Caveat: empty array in tags.in means "no document match" since no
-     * documents has any tags that is in the tags.in array (same for parents)*/
-    if (!config.DATASOURCE.filter.tags) {
-      config.DATASOURCE.filter.tags = {};
-    }
-    if (ds.filter.tags?.in) {
-      if (!config.DATASOURCE.filter.tags.in) {
-        config.DATASOURCE.filter.tags.in = [];
-      }
-      config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
-    }
-    if (ds.filter.tags?.not) {
-      if (!config.DATASOURCE.filter.tags.not) {
-        config.DATASOURCE.filter.tags.not = [];
-      }
-      config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
-    }
+    // Not: empty array in parents/tags.in means "no document match" since no documents has any
+    // tags/parents that is in the empty array.
     if (!config.DATASOURCE.filter.parents) {
       config.DATASOURCE.filter.parents = {};
     }
@@ -779,6 +840,7 @@ export async function* runRetrieval(
         topK,
       },
       documents,
+      step: action.step,
     },
   };
 }

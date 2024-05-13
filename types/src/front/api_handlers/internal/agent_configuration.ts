@@ -64,13 +64,6 @@ const RetrievalActionConfigurationSchema = t.type({
       dataSourceId: t.string,
       workspaceId: t.string,
       filter: t.type({
-        tags: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
         parents: t.union([
           t.type({
             in: t.array(t.string),
@@ -102,26 +95,11 @@ const TablesQueryActionConfigurationSchema = t.type({
 
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
-  relativeTimeFrame: t.union([
-    t.literal("auto"),
-    t.literal("none"),
-    t.type({
-      duration: t.number,
-      unit: TimeframeUnitCodec,
-    }),
-  ]),
   dataSources: t.array(
     t.type({
       dataSourceId: t.string,
       workspaceId: t.string,
       filter: t.type({
-        tags: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
         parents: t.union([
           t.type({
             in: t.array(t.string),
@@ -132,6 +110,20 @@ const ProcessActionConfigurationSchema = t.type({
       }),
     })
   ),
+  relativeTimeFrame: t.union([
+    t.literal("auto"),
+    t.literal("none"),
+    t.type({
+      duration: t.number,
+      unit: TimeframeUnitCodec,
+    }),
+  ]),
+  tagsFilter: t.union([
+    t.type({
+      in: t.array(t.string),
+    }),
+    t.null,
+  ]),
   schema: t.array(
     t.type({
       name: t.string,
@@ -158,12 +150,6 @@ const ActionConfigurationSchema = t.intersection([
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
   ]),
-  t.partial(multiActionsCommonFields),
-]);
-
-// TODO(@fontanierh): change once generation is an action.
-const GenerationConfigurationSchema = t.union([
-  t.null,
   t.partial(multiActionsCommonFields),
 ]);
 
@@ -205,7 +191,6 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
           IsSupportedModelSchema,
         ]),
         actions: t.array(ActionConfigurationSchema),
-        generation: GenerationConfigurationSchema,
       }),
       t.partial({
         maxToolsUsePerRun: t.number,

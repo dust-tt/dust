@@ -203,67 +203,66 @@ export async function* runLegacyAgent(
       userMessage,
       agentMessage,
       action,
+      step: 0,
     })) {
       yield event;
     }
   }
 
   // Then run the generation if a configuration is present.
-  if (configuration.generation !== null) {
-    const eventStream = runGeneration(
-      auth,
-      configuration,
-      conversation,
-      userMessage,
-      agentMessage
-    );
+  const eventStream = runGeneration(
+    auth,
+    configuration,
+    conversation,
+    userMessage,
+    agentMessage
+  );
 
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "generation_tokens":
-          yield event;
-          break;
+  for await (const event of eventStream) {
+    switch (event.type) {
+      case "generation_tokens":
+        yield event;
+        break;
 
-        case "generation_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
+      case "generation_error":
+        yield {
+          type: "agent_error",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: event.error.code,
+            message: event.error.message,
+          },
+        };
+        return;
 
-        case "generation_cancel":
-          yield {
-            type: "agent_generation_cancelled",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-          };
-          return;
+      case "generation_cancel":
+        yield {
+          type: "agent_generation_cancelled",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+        };
+        return;
 
-        case "generation_success":
-          yield {
-            type: "agent_generation_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: event.text,
-          };
+      case "generation_success":
+        yield {
+          type: "agent_generation_success",
+          created: event.created,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          text: event.text,
+        };
 
-          agentMessage.content = event.text;
-          break;
+        agentMessage.content = event.text;
+        break;
 
-        default:
-          ((event: never) => {
-            logger.error("Unknown `runAgent` event type", event);
-          })(event);
-          return;
-      }
+      default:
+        ((event: never) => {
+          logger.error("Unknown `runAgent` event type", event);
+        })(event);
+        return;
     }
   }
 
@@ -285,12 +284,14 @@ async function* runAction(
     userMessage,
     agentMessage,
     action,
+    step,
   }: {
     configuration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     action: AgentActionConfigurationType;
+    step: number;
   }
 ): AsyncGenerator<
   | AgentActionEvent
@@ -398,6 +399,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -428,7 +430,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -443,6 +445,7 @@ async function* runAction(
       agentMessage,
       spec: specRes.value,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -476,7 +479,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:
@@ -490,6 +493,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -521,7 +525,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
         default:
           assertNever(event);
@@ -535,6 +539,7 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs,
+      step,
     });
 
     for await (const event of eventStream) {
@@ -565,7 +570,7 @@ async function* runAction(
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.action = event.action;
+          agentMessage.actions.push(event.action);
           break;
 
         default:

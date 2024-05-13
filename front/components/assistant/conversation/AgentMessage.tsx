@@ -12,6 +12,7 @@ import {
 import type {
   AgentActionEvent,
   AgentActionSuccessEvent,
+  AgentActionType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -40,6 +41,7 @@ import {
 } from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
+import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {
@@ -134,11 +136,23 @@ export function AgentMessage({
         | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
+    const updateMessageWithAction = (
+      m: AgentMessageType,
+      action: AgentActionType
+    ): AgentMessageType => {
+      return {
+        ...m,
+        actions: m.actions
+          ? [...m.actions.filter((a) => a.id !== action.id), action]
+          : [action],
+      };
+    };
+
     const event = eventPayload.data;
     switch (event.type) {
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
-          return { ...m, action: event.action, content: "" };
+          return { ...updateMessageWithAction(m, event.action), content: "" };
         });
         break;
       case "retrieval_params":
@@ -148,7 +162,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "process_params":
         setStreamedAgentMessage((m) => {
-          return { ...m, action: event.action };
+          return updateMessageWithAction(m, event.action);
         });
         break;
       case "agent_error":
@@ -209,6 +223,10 @@ export function AgentMessage({
     }
   })();
 
+  const actionToRender = getDeprecatedSingleAction(
+    agentMessageToRender.actions
+  );
+
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
   // start of the message, we do not want to scroll it back down.
@@ -242,7 +260,7 @@ export function AgentMessage({
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
-    agentMessageToRender.action,
+    actionToRender,
     activeReferences.length,
     isInModal,
   ]);
@@ -312,18 +330,18 @@ export function AgentMessage({
   >(null);
   useEffect(() => {
     if (
-      agentMessageToRender.action &&
-      isRetrievalActionType(agentMessageToRender.action) &&
-      agentMessageToRender.action.documents
+      actionToRender &&
+      isRetrievalActionType(actionToRender) &&
+      actionToRender.documents
     ) {
       setReferences(
-        agentMessageToRender.action.documents.reduce((acc, d) => {
+        actionToRender.documents.reduce((acc, d) => {
           acc[d.reference] = d;
           return acc;
         }, {} as { [key: string]: RetrievalDocumentType })
       );
     }
-  }, [agentMessageToRender.action]);
+  }, [actionToRender]);
 
   function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
     const router = useRouter();
@@ -383,6 +401,7 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType },
     streaming: boolean
   ) {
+    const action = getDeprecatedSingleAction(agentMessage.actions);
     // Display the error to the user so they can report it to us (or some can be
     // understandable directly to them)
     if (agentMessage.status === "failed") {
@@ -402,7 +421,7 @@ export function AgentMessage({
     // Loading state (no action nor text yet)
     if (
       agentMessage.status === "created" &&
-      !agentMessage.action &&
+      !action &&
       (!agentMessage.content || agentMessage.content === "")
     ) {
       return (
@@ -417,7 +436,7 @@ export function AgentMessage({
 
     return (
       <>
-        {agentMessage.action && <AgentAction action={agentMessage.action} />}
+        {action && <AgentAction action={action} />}
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (

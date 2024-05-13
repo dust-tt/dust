@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { A, Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
-import { SolutionSection } from "@app/components/home/new/SolutionSection";
+} from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -49,128 +53,138 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Sales",
+  title: (
+    <>
+      Less busywork,
+      <br />
+      more deals.
+    </>
+  ),
+  from: "from-emerald-200",
+  to: "to-emerald-500",
+  description: (
+    <>
+      Boost qualification, prospecting, and&nbsp;closing.
+      <br />
+      Practice techniques from&nbsp;demos to&nbsp;objection handling.
+    </>
+  ),
+};
+
 export default function Sales() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust&nbsp;for Sales Teams"
-        title={
-          <>
-            Accelerate your funnel,
-            <br />
-            hone your craft
-          </>
-        }
-        from="from-emerald-200"
-        to="to-emerald-500"
-        subtitle={
-          <>
-            Boost qualification, prospecting, and&nbsp;closing.
-            <br />
-            Practice demos, objection handling, and&nbsp;closing techniques.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
-          title={<>Better communication, Reduced fatigue</>}
+          title={
+            <>
+              Drop the&nbsp;cut-and-paste,
+              <br />
+              Hone your&nbsp;personal touch.
+            </>
+          }
           blocks={[
             {
               color: "emerald",
               contentBlocks: [
                 {
-                  title: <>Improved personalization</>,
-                  content: (
+                  title: <>Personalized outreach at&nbsp;scale</>,
+                  content: [
                     <>
-                      Craft personalized cold emails or follow-ups effortlessly.
-                      Ensure your sales reps connect more effectively with
-                      prospects, reducing the&nbsp;fatigue associated with
-                      manual email personalization.
-                    </>
-                  ),
+                      Craft optimized cold emails or&nbsp;follow-ups
+                      effortlessly.
+                    </>,
+                    <>
+                      Ensure your&nbsp;sales reps connect more effectively with
+                      prospects, with personalized drafts ready for
+                      their&nbsp;email outbox.
+                    </>,
+                  ],
                 },
                 {
-                  title: <>Account snapshots, reports or emails</>,
-                  content: (
+                  title: <>Account snapshots and&nbsp;reports</>,
+                  content: [
                     <>
-                      Integrate Dust with your CRM, Slack, Notion,
-                      and&nbsp;other platforms to&nbsp;generate account
-                      snapshots, reports or emails. Help your sales team
-                      to&nbsp;focus more on&nbsp;strategic tasks rather than
-                      administrative duties.
-                    </>
-                  ),
-                },
-              ],
-              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
-            },
-          ]}
-        />
-        <SolutionSection
-          title={<>Scale your Sales Operations</>}
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: [
-                {
-                  title: <>Onboard faster and&nbsp;keep your team updated</>,
-                  content: (
+                      Generate account summaries and&nbsp;reports
+                      from&nbsp;across your&nbsp;CRM, Slack, and&nbsp;Notion.
+                    </>,
                     <>
-                      As your sales organization grows, ramping up
-                      and&nbsp;aligning distributed teams gets harder. With
-                      Dust, your templates and&nbsp;playbooks are encoded into
-                      assistants, ensuring consistency across regions.
-                    </>
-                  ),
-                },
-                {
-                  title: (
-                    <>Create reports faster and&nbsp;improve decision-making</>
-                  ),
-                  content: (
-                    <>
-                      Transforms sales reporting by&nbsp;offering real-time
-                      insights into&nbsp;sales metrics and&nbsp;trends.
-                      Interface your assistants with your sales dashboard,
-                      to&nbsp;generate instant reports and&nbsp;summaries.
-                    </>
-                  ),
+                      Keep every pipeline review focused on&nbsp;the strategic
+                      outlook rather than administrative housekeeping.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[1],
                 assistantExamples[2],
-                assistantExamples[3],
-                assistantExamples[4],
               ],
             },
           ]}
         />
         <SolutionSection
-          title={<>Embedded in&nbsp;your Workflow</>}
+          title={
+            <>
+              Scale Sales Operations team
+              <br />
+              for fun and&nbsp;profit.
+            </>
+          }
           blocks={[
             {
               color: "emerald",
-              contentBlocks: {
-                title: <>Leverage Dust modular and&nbsp;extensible platform</>,
-                content: [
-                  <>
-                    Assistants are not limited to&nbsp;information retrieval.
-                    Dust apps empower engineers to&nbsp;create custom actions
-                    by&nbsp;Rev ops and&nbsp;Sales assistants, possibly chaining
-                    multiple models or calling into&nbsp;your CRM. Build custom
-                    assistant actions and&nbsp;application orchestration
-                    to&nbsp;fit your team's needs.
-                  </>,
-                  <>
-                    More info Dust Platform's{" "}
-                    <A href="https://docs.dust.tt" target="_blank">
-                      Documentation
-                    </A>
-                    .
-                  </>,
-                ],
-              },
+              contentBlocks: [
+                {
+                  title: <>Keep everyone on&nbsp;the same page</>,
+                  content: [
+                    <>
+                      Ramping up and&nbsp;aligning fast-growing
+                      or&nbsp;distributed teams gets harder.
+                    </>,
+                    <>
+                      Enshrine templates and&nbsp;playbooks into assistants
+                      to&nbsp;roll out a&nbsp;consistent and&nbsp;efficient
+                      sales motion.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Improve decision-making for sales leadership</>,
+                  content: [
+                    <>
+                      Generate real-time insights on&nbsp;sales metrics
+                      and&nbsp;team trends.
+                    </>,
+                    <>
+                      Have your&nbsp;weekly reports and&nbsp;summaries ready
+                      in&nbsp;a few seconds.
+                    </>,
+                  ],
+                },
+              ],
+              assistantBlocks: [
+                assistantExamples[3],
+                assistantExamples[4],
+                assistantExamples[5],
+              ],
             },
           ]}
         />
@@ -183,16 +197,15 @@ Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
-    name: "@emailWriter",
+    name: "@outboundDraft",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Prompt GPT-4 or Claude to&nbsp;generate personalized and&nbsp;effective
-        cold emails or follow-up emails with the&nbsp;context of&nbsp;the
-        relationship.
+        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
+        emails with the&nbsp;context of&nbsp;the relationship
       </>
     ),
   },
@@ -202,44 +215,66 @@ export const assistantExamples = [
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Create snapshots of&nbsp;an account by&nbsp;retrieving data from our
-        CRM, Slack, Notion.
+        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
+        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
+        where to&nbsp;focus attention
       </>
     ),
   },
   {
     emoji: "📞",
-    name: "@prepCall",
+    name: "@callCoach",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Point this assistant to&nbsp;battle cards, competitive intelligence
-        data, and&nbsp;objection handling documentation. Help you prepare an
-        important call.
+        Points to&nbsp;battle cards, competitive intelligence,
+        and&nbsp;objection handling documentation to&nbsp;increase conversion
       </>
     ),
   },
   {
     emoji: "📊",
-    name: "@metricsGuru",
+    name: "@salesMetrics",
     backgroundColor: "bg-emerald-300",
     description: (
-      <>
-        Answer any question on&nbsp;our metrics. Available in&nbsp;the sales
-        Slack channel.
-      </>
+      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
     ),
   },
   {
     emoji: "🔮",
-    name: "@callInsight",
+    name: "@salesWisdom",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Chronologically process call transcripts to&nbsp;extract recurring
-        themes or insights. Refactor this information in&nbsp;tables or
-        summaries.
+        Processes all call transcripts to&nbsp;extract recurring themes
+        or&nbsp;insights
+      </>
+    ),
+  },
+  {
+    emoji: "🚀",
+    name: "@salesShoutout",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Highlights performance outliers across the&nbsp;team based on&nbsp;CRM
+        data and&nbsp;growth priorities
       </>
     ),
   },
 ];
+
+export function SalesCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/sales"
+    />
+  );
+}

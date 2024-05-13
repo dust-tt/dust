@@ -3,6 +3,8 @@ import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   ProcessActionOutputsType,
@@ -19,6 +21,7 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
+  PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 
@@ -57,14 +60,57 @@ export function renderProcessActionForModel(
   // TODO(spolu): figure out if we want to add the schema here?
 
   if (action.outputs) {
-    for (const o of action.outputs.data) {
-      content += `${JSON.stringify(o)}\n`;
+    if (action.outputs.data.length === 0) {
+      content += "(none)\n";
+    } else {
+      for (const o of action.outputs.data) {
+        content += `${JSON.stringify(o)}\n`;
+      }
     }
   }
 
   return {
     role: "action" as const,
     name: "process_data_sources",
+    content,
+  };
+}
+
+export function renderProcessActionFunctionCall(
+  action: ProcessActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "process_data_sources",
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderProcessActionForMultiActionsModel(
+  action: ProcessActionType
+): FunctionMessageTypeModel {
+  let content = "";
+  if (action.outputs === null) {
+    throw new Error(
+      "Output not set on process action; this usually means the process action is not finished."
+    );
+  }
+
+  content += "PROCESSED OUTPUTS:\n";
+
+  // TODO(spolu): figure out if we want to add the schema here?
+
+  if (action.outputs) {
+    for (const o of action.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+  }
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
@@ -158,7 +204,8 @@ export async function processActionTypesFromAgentMessageIds(
       },
       schema: action.schema,
       outputs: action.outputs,
-    };
+      step: action.step,
+    } satisfies ProcessActionType;
   });
 }
 
@@ -180,6 +227,7 @@ export async function* runProcess(
     userMessage,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ProcessConfigurationType;
@@ -187,6 +235,7 @@ export async function* runProcess(
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   ProcessParamsEvent | ProcessSuccessEvent | ProcessErrorEvent,
@@ -230,6 +279,7 @@ export async function* runProcess(
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
     agentMessageId: agentMessage.agentMessageId,
+    step,
   });
 
   const now = Date.now();
@@ -249,6 +299,7 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs: null,
+      step: action.step,
     },
   };
 
@@ -276,24 +327,16 @@ export async function* runProcess(
     data_source_id: d.dataSourceId,
   }));
 
-  for (const ds of actionConfiguration.dataSources) {
-    /** Caveat: empty array in tags.in means "no document match" since no
-     * documents has any tags that is in the tags.in array (same for parents)*/
+  if (actionConfiguration.tagsFilter && actionConfiguration.tagsFilter.in) {
+    // Note: empty array in tags/parents.in means "no document match" since no documents has any
+    // tags/parents that is in the empty array.
     if (!config.DATASOURCE.filter.tags) {
       config.DATASOURCE.filter.tags = {};
     }
-    if (ds.filter.tags?.in) {
-      if (!config.DATASOURCE.filter.tags.in) {
-        config.DATASOURCE.filter.tags.in = [];
-      }
-      config.DATASOURCE.filter.tags.in.push(...ds.filter.tags.in);
-    }
-    if (ds.filter.tags?.not) {
-      if (!config.DATASOURCE.filter.tags.not) {
-        config.DATASOURCE.filter.tags.not = [];
-      }
-      config.DATASOURCE.filter.tags.not.push(...ds.filter.tags.not);
-    }
+    config.DATASOURCE.filter.tags.in = actionConfiguration.tagsFilter.in;
+  }
+
+  for (const ds of actionConfiguration.dataSources) {
     if (!config.DATASOURCE.filter.parents) {
       config.DATASOURCE.filter.parents = {};
     }
@@ -319,8 +362,7 @@ export async function* runProcess(
     };
   }
 
-  // Set top_k to 512 which is already a large number. We might want to bump to 1024.
-  config.DATASOURCE.top_k = 512;
+  config.DATASOURCE.top_k = PROCESS_ACTION_TOP_K;
 
   const res = await runActionStreamed(
     auth,
@@ -446,6 +488,7 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs,
+      step: action.step,
     },
   };
 }

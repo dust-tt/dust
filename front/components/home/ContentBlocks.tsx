@@ -1,13 +1,25 @@
+import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
 import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@app/components/home/Carousel";
+import {
   Grid,
   H1,
+  H2,
   H3,
   H5,
   P,
-} from "@app/components/home/new/ContentComponents";
+} from "@app/components/home/ContentComponents";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
@@ -108,6 +120,7 @@ interface HeaderContentBlockProps {
   uptitle?: string;
   from: string;
   to: string;
+  hasCTA?: boolean;
 }
 
 export const HeaderContentBlock = ({
@@ -116,6 +129,7 @@ export const HeaderContentBlock = ({
   uptitle,
   from,
   to,
+  hasCTA = true,
 }: HeaderContentBlockProps) => (
   <Grid>
     <div
@@ -124,7 +138,7 @@ export const HeaderContentBlock = ({
         "col-span-12",
         "sm:col-span-12",
         "lg:col-span-8 lg:col-start-2",
-        "xl:col-span-9 xl:col-start-2",
+        "xl:col-span-8 xl:col-start-2",
         "2xl:col-start-3"
       )}
     >
@@ -141,6 +155,85 @@ export const HeaderContentBlock = ({
           {subtitle}
         </P>
       )}
+      {hasCTA && (
+        <div>
+          <Link href="/pricing" shallow={true}>
+            <Button
+              variant="primary"
+              size="md"
+              label="Start now, check our pricing"
+              icon={RocketIcon}
+            />
+          </Link>
+        </div>
+      )}
     </div>
   </Grid>
+);
+
+interface CarousselContentBlockProps {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  description?: ReactNode;
+  assistants: SolutionSectionAssistantBlockProps[];
+  from: string;
+  to: string;
+  border: string;
+  href: string;
+}
+
+export const CarousselContentBlock = ({
+  title,
+  subtitle,
+  description,
+  assistants,
+  from,
+  to,
+  border,
+  href,
+}: CarousselContentBlockProps) => (
+  <div
+    className={classNames(
+      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8",
+      from,
+      to,
+      border
+    )}
+  >
+    <div className="flex flex-col gap-6 px-8">
+      <H3 className="text-slate-800">{"Dust for " + title}</H3>
+      <div className="flex flex-col gap-2">
+        <H2 className="max-w-[600px] text-white">{subtitle}</H2>
+        <P size="md" className="max-w-[720px] text-slate-600">
+          {description}
+        </P>
+      </div>
+      <div className="w-full text-center">
+        <Link href={href} shallow={true}>
+          <Button
+            label={"Discover Dust for " + title}
+            variant="tertiary"
+            size="md"
+            icon={ArrowRightIcon}
+          />
+        </Link>
+      </div>
+    </div>
+    <Carousel className="w-full" isLooping={true}>
+      <CarouselContent>
+        {assistants.map((block, index) => (
+          <CarouselItem
+            key={index}
+            className="basis-1/2 md:basis-1/3 lg:basis-1/4"
+          >
+            <SolutionSectionAssistantBlock {...block} />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
+        <CarouselPrevious label="previous" />
+        <CarouselNext label="next" />
+      </div>
+    </Carousel>
+  </div>
 );

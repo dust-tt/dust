@@ -1,13 +1,16 @@
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ContentFragmentMessageTypeModel,
   ConversationType,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
   ModelConversationType,
+  ModelConversationTypeMultiActions,
   ModelMessageType,
+  ModelMessageTypeMultiActions,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -25,20 +28,37 @@ import {
   isTablesQueryActionType,
   isUserMessageType,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { renderDustAppRunActionForModel } from "@app/lib/api/assistant/actions/dust_app_run";
-import { renderProcessActionForModel } from "@app/lib/api/assistant/actions/process";
 import {
+  renderDustAppRunActionForModel,
+  renderDustAppRunActionForMultiActionsModel,
+  renderDustAppRunActionFunctionCall,
+} from "@app/lib/api/assistant/actions/dust_app_run";
+import {
+  renderProcessActionForModel,
+  renderProcessActionForMultiActionsModel,
+  renderProcessActionFunctionCall,
+} from "@app/lib/api/assistant/actions/process";
+import {
+  rendeRetrievalActionFunctionCall,
   renderRetrievalActionForModel,
+  renderRetrievalActionForMultiActionsModel,
   retrievalMetaPrompt,
+  retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { renderTablesQueryActionForModel } from "@app/lib/api/assistant/actions/tables_query";
+import {
+  renderTablesQueryActionForModel,
+  renderTablesQueryActionForMultiActionsModel,
+  rendeTablesQueryActionFunctionCall,
+} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
@@ -94,20 +114,21 @@ export async function renderConversationForModel({
       }
       // There are contexts where we want to exclude the actions from the rendering.
       // Eg: During the conversation title generation step.
-      if (m.action && !excludeActions) {
-        if (isRetrievalActionType(m.action)) {
+      const action = getDeprecatedSingleAction(m.actions);
+      if (action && !excludeActions) {
+        if (isRetrievalActionType(action)) {
           if (includeRetrieval) {
             foundRetrieval = true;
-            messages.unshift(renderRetrievalActionForModel(m.action));
+            messages.unshift(renderRetrievalActionForModel(action));
           }
-        } else if (isDustAppRunActionType(m.action)) {
-          messages.unshift(renderDustAppRunActionForModel(m.action));
-        } else if (isTablesQueryActionType(m.action)) {
-          messages.unshift(renderTablesQueryActionForModel(m.action));
-        } else if (isProcessActionType(m.action)) {
-          messages.unshift(renderProcessActionForModel(m.action));
+        } else if (isDustAppRunActionType(action)) {
+          messages.unshift(renderDustAppRunActionForModel(action));
+        } else if (isTablesQueryActionType(action)) {
+          messages.unshift(renderTablesQueryActionForModel(action));
+        } else if (isProcessActionType(action)) {
+          messages.unshift(renderProcessActionForModel(action));
         } else {
-          assertNever(m.action);
+          assertNever(action);
         }
       }
     } else if (isUserMessageType(m)) {
@@ -255,6 +276,205 @@ export async function renderConversationForModel({
   });
 }
 
+export async function renderConversationForModelMultiActions({
+  conversation,
+  model,
+  prompt,
+  allowedTokenCount,
+}: {
+  conversation: ConversationType;
+  model: { providerId: string; modelId: string };
+  prompt: string;
+  allowedTokenCount: number;
+}): Promise<
+  Result<
+    {
+      modelConversation: ModelConversationTypeMultiActions;
+      tokensUsed: number;
+    },
+    Error
+  >
+> {
+  const messages: ModelMessageTypeMultiActions[] = [];
+
+  // Render all messages and all actions.
+  for (let i = conversation.content.length - 1; i >= 0; i--) {
+    const versions = conversation.content[i];
+    const m = versions[versions.length - 1];
+
+    if (isAgentMessageType(m)) {
+      if (m.content) {
+        messages.unshift({
+          role: "assistant" as const,
+          name: m.configuration.name,
+          content: m.content,
+        });
+      }
+
+      const actions = removeNulls(m.actions);
+      const function_calls = [];
+      const function_messages = [];
+
+      for (const action of actions) {
+        if (isRetrievalActionType(action)) {
+          function_messages.unshift(
+            renderRetrievalActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(rendeRetrievalActionFunctionCall(action));
+        } else if (isDustAppRunActionType(action)) {
+          function_messages.unshift(
+            renderDustAppRunActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(renderDustAppRunActionFunctionCall(action));
+        } else if (isTablesQueryActionType(action)) {
+          function_messages.unshift(
+            renderTablesQueryActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(rendeTablesQueryActionFunctionCall(action));
+        } else if (isProcessActionType(action)) {
+          function_messages.unshift(
+            renderProcessActionForMultiActionsModel(action)
+          );
+          function_calls.unshift(renderProcessActionFunctionCall(action));
+        } else {
+          assertNever(action);
+        }
+      }
+
+      if (function_calls.length > 0) {
+        messages.unshift({
+          role: "assistant",
+          content: null,
+          function_calls,
+        });
+      }
+    } else if (isUserMessageType(m)) {
+      // Replace all `:mention[{name}]{.*}` with `@name`.
+      const content = m.content.replaceAll(
+        /:mention\[([^\]]+)\]\{[^}]+\}/g,
+        (_, name) => {
+          return `@${name}`;
+        }
+      );
+      messages.unshift({
+        role: "user" as const,
+        name: m.context.fullName || m.context.username,
+        content,
+      });
+    } else if (isContentFragmentType(m)) {
+      try {
+        const content = await getContentFragmentText({
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: m.sId,
+        });
+        messages.unshift({
+          role: "content_fragment",
+          name: `inject_${m.contentType}`,
+          content:
+            `TITLE: ${m.title}\n` +
+            `TYPE: ${m.contentType}${
+              m.contentType === "file_attachment" ? " (user provided)" : ""
+            }\n` +
+            `CONTENT:\n${content}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          },
+          "Failed to retrieve content fragment text"
+        );
+        return new Err(new Error("Failed to retrieve content fragment text"));
+      }
+    } else {
+      assertNever(m);
+    }
+  }
+
+  // Compute in parallel the token count for each message and the prompt.
+  const [messagesCountRes, promptCountRes] = await Promise.all([
+    Promise.all(
+      messages.map((m) => {
+        let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        if ("function_calls" in m) {
+          text += m.function_calls
+            .map((f) => `${f.function.name} ${f.function.arguments}`)
+            .join(" ");
+        }
+        return tokenCountForText(text, model);
+      })
+    ),
+    tokenCountForText(prompt, model),
+  ]);
+
+  if (promptCountRes.isErr()) {
+    return new Err(promptCountRes.error);
+  }
+
+  // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
+  // approximations, 64 tokens seems small enough and ample enough.
+  const tokensMargin = 64;
+  let tokensUsed = promptCountRes.value + tokensMargin;
+
+  // Go backward and accumulate as much as we can within allowedTokenCount.
+  const selected: ModelMessageTypeMultiActions[] = [];
+  const truncationMessage = `... (content truncated)`;
+  const approxTruncMsgTokenCount = truncationMessage.length / 3;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const r = messagesCountRes[i];
+    if (r.isErr()) {
+      return new Err(r.error);
+    }
+    const c = r.value;
+    if (tokensUsed + c <= allowedTokenCount) {
+      tokensUsed += c;
+      selected.unshift(messages[i]);
+    } else if (
+      // When a content fragment has more than the remaining number of tokens, we split it.
+      messages[i].role === "content_fragment" &&
+      // Allow at least tokensMargin tokens in addition to the truncation message.
+      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
+    ) {
+      const msg = messages[i] as ContentFragmentMessageTypeModel;
+      const remainingTokens =
+        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
+      const contentRes = await tokenSplit(msg.content, model, remainingTokens);
+      if (contentRes.isErr()) {
+        return new Err(contentRes.error);
+      }
+      selected.unshift({
+        ...msg,
+        content: contentRes.value + truncationMessage,
+      });
+      tokensUsed += remainingTokens;
+      break;
+    } else {
+      break;
+    }
+  }
+
+  while (selected.length > 0 && selected[0].role === "assistant") {
+    const tokenCountRes = messagesCountRes[messages.length - selected.length];
+    if (tokenCountRes.isErr()) {
+      return new Err(tokenCountRes.error);
+    }
+    tokensUsed -= tokenCountRes.value;
+    selected.shift();
+  }
+
+  return new Ok({
+    modelConversation: {
+      messages: selected,
+    },
+    tokensUsed,
+  });
+}
+
 /**
  * Generation execution.
  */
@@ -293,6 +513,75 @@ export async function constructPrompt(
   if (isRetrievalConfiguration(actionConfig)) {
     instructions += `\n${retrievalMetaPrompt()}`;
   }
+  if (instructions.length > 0) {
+    instructions = "\nINSTRUCTIONS:" + instructions;
+  }
+
+  // Replacement if instructions include "{USER_FULL_NAME}".
+  instructions = instructions.replaceAll(
+    "{USER_FULL_NAME}",
+    userMessage.context.fullName || "Unknown user"
+  );
+
+  // Replacement if instructions includes "{ASSISTANTS_LIST}"
+  if (instructions.includes("{ASSISTANTS_LIST}")) {
+    if (!auth.isUser()) {
+      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
+    }
+    const agents = await getAgentConfigurations({
+      auth,
+      agentsGetView: auth.user() ? "list" : "all",
+      variant: "light",
+    });
+    instructions = instructions.replaceAll(
+      "{ASSISTANTS_LIST}",
+      agents
+        .map((agent) => {
+          let agentDescription = "";
+          agentDescription += `@${agent.name}: `;
+          agentDescription += `${agent.description}`;
+          return agentDescription;
+        })
+        .join("\n")
+    );
+  }
+
+  return `${context}${instructions}`;
+}
+
+export async function constructPromptMultiActions(
+  auth: Authenticator,
+  userMessage: UserMessageType,
+  configuration: AgentConfigurationType,
+  fallbackPrompt?: string
+) {
+  const d = moment(new Date()).tz(userMessage.context.timezone);
+  const owner = auth.workspace();
+
+  let context = "CONTEXT:\n";
+  context += `{\n`;
+  context += `  "assistant": "@${configuration.name}",\n`;
+  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
+  if (owner) {
+    context += `  "workspace": "${owner.name}",\n`;
+  }
+  context += "}\n";
+
+  let instructions = "";
+  if (configuration.instructions) {
+    instructions += `\n${configuration.instructions}`;
+  } else if (fallbackPrompt) {
+    instructions += `\n${fallbackPrompt}`;
+  }
+
+  // If one of the action is a retrieval action, we add the retrieval meta prompt.
+  const hasRetrievalAction = configuration.actions.some((action) =>
+    isRetrievalConfiguration(action)
+  );
+  if (hasRetrievalAction) {
+    instructions += `\n${retrievalMetaPromptMutiActions()}`;
+  }
+
   if (instructions.length > 0) {
     instructions = "\nINSTRUCTIONS:" + instructions;
   }

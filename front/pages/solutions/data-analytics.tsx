@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
-import { SolutionSection } from "@app/components/home/new/SolutionSection";
+} from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -49,93 +53,119 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Data and Analytics",
+  title: <>From Data to&nbsp;Action</>,
+  from: "from-amber-200",
+  to: "to-amber-500",
+  description: (
+    <>
+      Focus on&nbsp;generating first-of-a-kind insights while AI helps with
+      routine queries and&nbsp;standard reports across teams.
+    </>
+  ),
+};
+
 export default function DataAnalytics() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust&nbsp;for Data and&nbsp;Analytics Teams"
-        title={<>From Data to&nbsp;Action</>}
-        from="from-amber-200"
-        to="to-amber-500"
-        subtitle={
-          <>
-            Dedicate yourself&nbsp;to first-of-a-kind analyses for
-            the&nbsp;product and&nbsp;business, while your assistants help your
-            team with more standard queries and&nbsp;charts.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
-          title={<>Make all your team SQL fluent and&nbsp;Data literate</>}
+          title={
+            <>
+              Give everyone access
+              <br />
+              to&nbsp;data analysis.
+            </>
+          }
           blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
-                  title: (
+                  title: <>Democratize data analysis</>,
+                  content: [
                     <>
-                      Package expert knowledge in&nbsp;easy-to-use assistants
-                      in&nbsp;seconds
-                    </>
-                  ),
-                  content: (
-                    <>
-                      Give your databases' schemas, your functions,
-                      and&nbsp;your company's business definition to&nbsp;your
-                      assistant. Let your SQL assistant answer your team's level
-                      one SQL questions.
-                    </>
-                  ),
+                      Enable anyone at the company to generate recurring
+                      analyses using natural language to create SQL queries that
+                      understand your database schemas.
+                    </>,
+                  ],
                 },
                 {
-                  title: <>Reduce data analysis time</>,
-                  content: (
+                  title: <>Reduce time to data insights</>,
+                  content: [
                     <>
-                      Create data assistants to&nbsp;turn natural language
-                      questions into&nbsp;SQL queries. Ask questions
-                      to&nbsp;your CSVs, Notion Database, and&nbsp;Google
-                      Spreadsheets.
-                    </>
-                  ),
+                      Turn .csv files, Notion databases, and Google Sheets into
+                      data sources for quantitative analyses with assistants
+                      that have a built-in understanding of your company’s
+                      business terminology.
+                    </>,
+                  ],
                 },
               ],
+
               assistantBlocks: [assistantExamples[0], assistantExamples[1]],
             },
           ]}
         />
         <SolutionSection
-          title={<>Stop being the&nbsp;perpetual help desk</>}
+          title={
+            <>
+              Free the&nbsp;team
+              <br />
+              from&nbsp;being a&nbsp;perpetual help&nbsp;desk.
+            </>
+          }
           blocks={[
             {
               color: "amber",
               contentBlocks: [
                 {
                   title: (
-                    <>Allow new team members to&nbsp;onboard autonomously</>
-                  ),
-                  content: (
                     <>
-                      Give new members of&nbsp;the data team access
-                      to&nbsp;continuously updated runbooks and&nbsp;internal
-                      documentation with flexible and&nbsp;pedagogical
-                      conversational assistants.
+                      Streamline onboarding
+                      <br />
+                      for the&nbsp;data&nbsp;team
                     </>
                   ),
+                  content: [
+                    <>
+                      Share up-to-date runbooks and internal documentation for
+                      new data team members to ramp up efficiently and
+                      autonomously with conversational assistants.
+                    </>,
+                  ],
                 },
                 {
                   title: (
-                    <>Talk to&nbsp;the data but also to&nbsp;the metadata</>
-                  ),
-                  content: (
                     <>
-                      Help everyone in&nbsp;the team and&nbsp;beyond know what
-                      fields or tables exist, what they mean, and&nbsp;how they
-                      relate to&nbsp;each other. Clean up or draft great
-                      documentation.
+                      Improve internal documentation on&nbsp;internal
+                      data&nbsp;sources
                     </>
                   ),
+                  content: [
+                    <>
+                      Clean up or draft great documentation about your
+                      infrastructure or fields, tables and relationships to be
+                      clear to all.
+                    </>,
+                  ],
                 },
               ],
               assistantBlocks: [assistantExamples[2], assistantExamples[3]],
@@ -154,15 +184,15 @@ DataAnalytics.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💬",
     name: "@SQLbuddy",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Your SQL copilot to&nbsp;generate simple queries, improve queries,
-        and&nbsp;fix errors.
+        Generates simple SQL queries that understand business logic
+        and&nbsp;fixes or&nbsp;improves existing ones
       </>
     ),
   },
@@ -172,31 +202,46 @@ export const assistantExamples = [
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer advanced questions about our users by&nbsp;querying our usage
-        data.
+        Answers advanced questions about existing users by&nbsp;querying
+        internal data.
       </>
     ),
   },
   {
     emoji: "📈",
-    name: "@data",
+    name: "@dataRun",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Answer questions about the&nbsp;process, runbooks,
-        and&nbsp;documentation of the&nbsp;data team.
+        Answers questions about internal processes and&nbsp;runbooks on&nbsp;the
+        data team
       </>
     ),
   },
   {
     emoji: "📚",
-    name: "@rolodex",
+    name: "@dataModel",
     backgroundColor: "bg-amber-300",
     description: (
       <>
-        Your data Rolodex to&nbsp;know everything about data and&nbsp;metadata
-        at the&nbsp;company.
+        Knows everything about data schemas and&nbsp;data model relationships
+        at&nbsp;the company
       </>
     ),
   },
 ];
+
+export function DataCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/data-analytics"
+    />
+  );
+}

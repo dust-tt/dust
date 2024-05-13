@@ -2,7 +2,7 @@ import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React from "react";
 
-import { H2, H5, P } from "@app/components/home/new/ContentComponents";
+import { H2, H5, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 interface SolutionSectionProps {
@@ -134,22 +134,27 @@ const SolutionSectionContentBlock = ({
   );
 };
 
-interface SolutionSectionAssistantBlockProps {
+export interface SolutionSectionAssistantBlockProps {
   name: string;
   description: ReactNode;
   emoji: string;
   backgroundColor: string;
+  className?: string;
 }
 
-const SolutionSectionAssistantBlock = ({
+export const SolutionSectionAssistantBlock = ({
   name,
   description,
   emoji,
   backgroundColor,
+  className = "",
 }: SolutionSectionAssistantBlockProps) => {
   return (
     <div
-      className={classNames("flex max-w-[500px] grow basis-0 flex-col gap-2")}
+      className={classNames(
+        className,
+        "flex max-w-[500px] grow basis-0 flex-col gap-2"
+      )}
     >
       <Avatar size="xl" emoji={emoji} backgroundColor={backgroundColor} />
       <H5 className="truncate text-slate-900">{name}</H5>

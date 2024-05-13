@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
-import { SolutionSection } from "@app/components/home/new/SolutionSection";
+} from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -49,32 +53,91 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Engineers and Developers",
+  title: (
+    <>
+      Code smarter,
+      <br />
+      Resolve faster
+    </>
+  ),
+  from: "from-emerald-200",
+  to: "to-emerald-500",
+  description: (
+    <>
+      Reduce interruptions, write better code, speed up incident response,
+      and&nbsp;accelerate new engineers' onboarding.
+    </>
+  ),
+};
+
 export default function Engineering() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Engineers and&nbsp;Developers"
-        title={
-          <>
-            Work Smarter,
-            <br />
-            Resolve Faster.
-          </>
-        }
-        from="from-emerald-200"
-        to="to-emerald-500"
-        subtitle={
-          <>
-            Speed-up incident response, reduce interruptions, help your
-            engineers produce better code, and&nbsp;accelerate
-            new&nbsp;engineers on-boarding.
-          </>
-        }
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
-
       <Grid>
         <SolutionSection
-          title={<>Respond Faster to&nbsp;Incidents and&nbsp;Report Better.</>}
+          title={"Improve Code Quality."}
+          blocks={[
+            {
+              color: "emerald",
+              contentBlocks: [
+                {
+                  title: <>Talk to&nbsp;your&nbsp;codebase</>,
+                  content: [
+                    <>
+                      Get conversational access to&nbsp;your entire code base.
+                    </>,
+                    <>
+                      Accelerate onboarding for new engineers on&nbsp;the team
+                      and&nbsp;reduce interruptions from&nbsp;other teams.
+                    </>,
+                  ],
+                },
+                {
+                  title: <>Create your&nbsp;architecture copilot.</>,
+                  content: (
+                    <>
+                      Specialize the&nbsp;best models (Gemini, GPT4, Mistral)
+                      to&nbsp;answer general code questions with concise,
+                      straight-to-the-point answers that have context
+                      on&nbsp;the team's stack, runbooks, and&nbsp;architecture
+                      preferences.
+                    </>
+                  ),
+                },
+              ],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[1],
+                assistantExamples[2],
+              ],
+            },
+          ]}
+        />
+        <SolutionSection
+          title={
+            <>
+              Fight fires,
+              <br />
+              get&nbsp;back to&nbsp;Coding.
+            </>
+          }
           blocks={[
             {
               color: "emerald",
@@ -82,92 +145,48 @@ export default function Engineering() {
                 {
                   title: (
                     <>
-                      Retrieve useful context and&nbsp;previous relevant
-                      resolution in&nbsp;seconds.
+                      Protect your&nbsp;eng team with a&nbsp;help desk for most
+                      situations
                     </>
                   ),
-                  content: (
+                  content: [
                     <>
-                      Your incident assistant will perform a&nbsp;semantic
-                      search on&nbsp;your Notion, Confluence internal
-                      documentation, incident Slack channels, or&nbsp;GitHub
-                      issues to&nbsp;surface useful context and&nbsp;propose
-                      actionable next steps to&nbsp;resolve the&nbsp;problem
-                      at&nbsp;hand.
-                    </>
-                  ),
+                      Provide answers to&nbsp;questions from&nbsp;the rest
+                      of&nbsp;the company automatically to&nbsp;avoid
+                      interruptions.
+                    </>,
+                    <>
+                      Give developers context on&nbsp;previous incidents
+                      in&nbsp;seconds, without the&nbsp;need to&nbsp;ping last
+                      time's hero.
+                    </>,
+                  ],
                 },
                 {
-                  title: "Create reports effortlessly.",
-                  content: (
+                  title: (
                     <>
-                      Generate weekly summaries of&nbsp;shipped features and
-                      incidents. Run them before your team meetings
-                      to&nbsp;create structured, easy-to-parse tables
-                      automatically or periodically post their output
-                      to&nbsp;the&nbsp;rest of&nbsp;the&nbsp;company.
+                      Get the&nbsp;report done for the&nbsp;company to&nbsp;stay
+                      in&nbsp;the know
                     </>
                   ),
+                  content: [
+                    <>
+                      Generate weekly summaries on&nbsp;what shipped, what
+                      broke, and&nbsp;what's in&nbsp;flight.
+                    </>,
+                    <>
+                      Make these available to&nbsp;the team's stakeholders with
+                      explanations on&nbsp;the technical terms they might not
+                      understand.
+                    </>,
+                  ],
                 },
               ],
-              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
-            },
-          ]}
-        />
-        <SolutionSection
-          title={<>Reduce Interruptions.</>}
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: {
-                title: "Have your team assistant answer first.",
-                content: (
-                  <>
-                    Give it the&nbsp;right context and&nbsp;documentation
-                    and&nbsp;add it to&nbsp;Slack to&nbsp;answer questions from
-                    the&nbsp;rest of&nbsp;the&nbsp;company without creating
-                    an&nbsp;interruption for your team.
-                  </>
-                ),
-              },
-              assistantBlocks: assistantExamples[2],
-            },
-          ]}
-        />
-        <SolutionSection
-          title="Improve Code Quality."
-          blocks={[
-            {
-              color: "emerald",
-              contentBlocks: [
-                {
-                  title: "Create your own copilot.",
-                  content: (
-                    <>
-                      Specialize the&nbsp;best models (GPT4, Mistral)
-                      to&nbsp;answer code general questions with context
-                      on&nbsp;your stack and&nbsp;preferences
-                      as&nbsp;an&nbsp;engineering team. Reduce
-                      the&nbsp;verbosity of&nbsp;the&nbsp;model to&nbsp;get
-                      concise and&nbsp;straight-to-the-point answers.
-                    </>
-                  ),
-                },
-                {
-                  title: "With your codebase.",
-                  content: (
-                    <>
-                      Give your assistant access to&nbsp;your team
-                      or&nbsp;the&nbsp;entire company's code base. Let it answer
-                      any question about your code. Accelerate
-                      the&nbsp;onboarding of&nbsp;new engineers
-                      and&nbsp;diminish interruptions from other engineering
-                      teams.
-                    </>
-                  ),
-                },
+              assistantBlocks: [
+                assistantExamples[3],
+                assistantExamples[4],
+                assistantExamples[5],
               ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[4]],
             },
           ]}
         />
@@ -180,49 +199,83 @@ Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
-  {
-    emoji: "🚨",
-    name: "@incident",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Search runbooks, past incidents discussions and&nbsp;resolution notes
-        to&nbsp;provide actionable next-steps to&nbsp;resolve a&nbsp;new
-        problem.
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    name: "@weekly",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Chronologically process Notion pages or&nbsp;Slack channels
-        to&nbsp;extract recent incidents or&nbsp;shipped features
-        and&nbsp;generate a&nbsp;report.
-      </>
-    ),
-  },
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "⭐️",
-    name: "@engineering",
+    name: "@engGeneral",
     backgroundColor: "bg-emerald-300",
-    description: <>Answer any question about engineering at&nbsp;company.</>,
+    description: (
+      <>
+        Answers general questions about code architecture and&nbsp;engineering
+        team processes
+      </>
+    ),
   },
   {
     emoji: "🏴‍☠️",
     name: "@codeGenius",
     backgroundColor: "bg-emerald-300",
-    description: <>Answer general code questions.</>,
+    description: (
+      <>
+        Answers general questions about code to&nbsp;avoid a&nbsp;trip
+        to&nbsp;StackOverflow
+      </>
+    ),
   },
   {
-    emoji: "🤝",
-    name: "@codeCopilot",
+    emoji: "📚",
+    name: "@codebase",
+    backgroundColor: "bg-emerald-300",
+    description: <>Answers questions about the&nbsp;company codebase</>,
+  },
+  {
+    emoji: "👨‍💻",
+    name: "@engHelp",
     backgroundColor: "bg-emerald-300",
     description: (
-      <>Draft code based&nbsp;on your codebase and&nbsp;infrastructure.</>
+      <>
+        Answers questions from&nbsp;the rest of&nbsp;the company
+        on&nbsp;engineering definitions, ongoing projects, and&nbsp;who's
+        on&nbsp;run
+      </>
+    ),
+  },
+  {
+    emoji: "🚨",
+    name: "@engIncidents",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Assists in&nbsp;the event of&nbsp;an incident with data on&nbsp;previous
+        similar situation and&nbsp;their remediation
+      </>
+    ),
+  },
+  {
+    emoji: "📡",
+    name: "@engWeekly",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Writes a&nbsp;table of&nbsp;shipped and&nbsp;unshipped
+        features—Summarizes incidents with impact, current status,
+        and&nbsp;remediation plans
+      </>
     ),
   },
 ];
+
+export function EngineeringCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/engineering"
+    />
+  );
+}

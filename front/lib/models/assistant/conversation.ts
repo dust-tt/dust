@@ -13,8 +13,6 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -242,13 +240,6 @@ export class AgentMessage extends Model<
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
-  declare agentDustAppRunActionId: ForeignKey<
-    AgentDustAppRunAction["id"]
-  > | null;
-  declare agentTablesQueryActionId: ForeignKey<
-    AgentTablesQueryAction["id"]
-  > | null;
-
   // Not a relation as global agents are not in the DB
   // needs both sId and version to uniquely identify the agent configuration
   declare agentConfigurationId: string;
@@ -302,68 +293,8 @@ AgentMessage.init(
   {
     modelName: "agent_message",
     sequelize: frontSequelize,
-    hooks: {
-      beforeValidate: (agentMessage: AgentMessage) => {
-        const actionsTypes: (keyof AgentMessage)[] = [
-          "agentDustAppRunActionId",
-          "agentTablesQueryActionId",
-        ];
-        const nonNullActionTypes = actionsTypes.filter(
-          (field) => agentMessage[field] != null
-        );
-        if (nonNullActionTypes.length > 1) {
-          throw new Error(
-            "Only one of agentRetrievalActionId, agentDustAppRunActionId or agentTablesQueryActionId can be set"
-          );
-        }
-      },
-    },
   }
 );
-
-// LEGACY (to be removed)
-
-AgentDustAppRunAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
-  onDelete: "CASCADE",
-});
-AgentMessage.belongsTo(AgentDustAppRunAction, {
-  foreignKey: { name: "agentDustAppRunActionId", allowNull: true }, // null = no DustAppRun action set for this Agent
-});
-
-AgentTablesQueryAction.hasOne(AgentMessage, {
-  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no TablesQuery action set for this Agent
-  onDelete: "CASCADE",
-});
-AgentMessage.belongsTo(AgentTablesQueryAction, {
-  foreignKey: { name: "agentTablesQueryActionId", allowNull: true }, // null = no TablesQuery action set for this Agent
-});
-
-// END LEGACY
-
-// TO BE MOVED TO RESPECTIVE MODELS POST INVERSION
-
-AgentDustAppRunAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentDustAppRunAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentTablesQueryAction.belongsTo(AgentMessage, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentTablesQueryAction, {
-  // allow null for now until we proceed to the backfill.
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-// END TO BE MOVED
 
 export class Message extends Model<
   InferAttributes<Message>,

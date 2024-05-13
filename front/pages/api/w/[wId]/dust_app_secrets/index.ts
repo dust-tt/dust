@@ -1,7 +1,11 @@
 import type { DustAppSecretType, WithAPIErrorReponse } from "@dust-tt/types";
-import { decrypt, encrypt, rateLimiter, redactString } from "@dust-tt/types";
+import { encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import {
+  getDustAppSecret,
+  getDustAppSecrets,
+} from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
@@ -70,22 +74,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const secrets = await DustAppSecret.findAll({
-        where: {
-          workspaceId: owner.id,
-        },
-        order: [["name", "DESC"]],
-      });
+      const secrets = await getDustAppSecrets(auth);
 
       res.status(200).json({
-        secrets: secrets.map((s) => {
-          const clearSecret = decrypt(s.hash, owner.sId);
-          return {
-            createdAt: s.createdAt.getTime(),
-            name: s.name,
-            value: redactString(clearSecret, 1),
-          };
-        }),
+        secrets,
       });
       return;
 
@@ -95,12 +87,7 @@ async function handler(
 
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      let postSecret = await DustAppSecret.findOne({
-        where: {
-          name: postSecretName,
-          workspaceId: owner.id,
-        },
-      });
+      let postSecret = await getDustAppSecret(auth, postSecretName);
 
       if (postSecret) {
         await postSecret.update({

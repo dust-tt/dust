@@ -4,6 +4,8 @@ import type {
   AgentMessageType,
   ConversationType,
   DustAppParameters,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
   Result,
@@ -44,6 +46,37 @@ export function renderTablesQueryActionForModel(
   };
 }
 
+export function rendeTablesQueryActionFunctionCall(
+  action: TablesQueryActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: "query_tables",
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderTablesQueryActionForMultiActionsModel(
+  action: TablesQueryActionType
+): FunctionMessageTypeModel {
+  let content = "";
+  if (!action.output) {
+    throw new Error(
+      "Output not set on TablesQuery action; execution is likely not finished."
+    );
+  }
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
+    content,
+  };
+}
+
 // Internal interface for the retrieval and rendering of a TableQuery action. This should not be
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
@@ -62,6 +95,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     } satisfies TablesQueryActionType;
   });
 }
@@ -122,12 +156,14 @@ export async function* runTablesQuery(
     conversation,
     agentMessage,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: TablesQueryConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   | TablesQueryErrorEvent
@@ -164,6 +200,7 @@ export async function* runTablesQuery(
     params: rawInputs,
     output,
     agentMessageId: agentMessage.agentMessageId,
+    step: step,
   });
 
   yield {
@@ -177,6 +214,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     },
   };
 
@@ -312,6 +350,7 @@ export async function* runTablesQuery(
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
             agentMessageId: agentMessage.id,
+            step: action.step,
           },
         };
       }
@@ -341,6 +380,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     },
   };
   return;

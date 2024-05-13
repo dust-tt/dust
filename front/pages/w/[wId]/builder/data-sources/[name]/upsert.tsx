@@ -1,9 +1,3 @@
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-// @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
-import * as PDFJS from "pdfjs-dist/build/pdf";
-import { useContext, useEffect, useRef, useState } from "react";
-PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.min.js`;
 import {
   Button,
   DocumentPlusIcon,
@@ -21,6 +15,9 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";

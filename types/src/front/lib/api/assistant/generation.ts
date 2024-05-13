@@ -12,6 +12,55 @@ export type ModelConversationType = {
   messages: ModelMessageType[];
 };
 
+export type ContentFragmentMessageTypeModel = {
+  role: "content_fragment";
+  name: string;
+  content: string;
+};
+
+export type UserMessageTypeModel = {
+  role: "user";
+  name: string;
+  content: string;
+};
+
+export type FunctionCallType = {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+};
+
+export type AssistantFunctionCallMessageTypeModel = {
+  role: "assistant";
+  content: string | null;
+  function_calls: FunctionCallType[];
+};
+export type AssistantContentMessageTypeModel = {
+  role: "assistant";
+  name: string;
+  content: string;
+};
+
+export type FunctionMessageTypeModel = {
+  role: "function";
+  function_call_id: string;
+  content: string;
+};
+
+export type ModelMessageTypeMultiActions =
+  | ContentFragmentMessageTypeModel
+  | UserMessageTypeModel
+  | AssistantFunctionCallMessageTypeModel
+  | AssistantContentMessageTypeModel
+  | FunctionMessageTypeModel;
+
+export type ModelConversationTypeMultiActions = {
+  messages: ModelMessageTypeMultiActions[];
+};
+
 /**
  * Generation execution.
  */

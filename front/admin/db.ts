@@ -23,7 +23,6 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
-  AgentGenerationConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
@@ -94,22 +93,13 @@ async function main() {
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
 
-  await AgentGenerationConfiguration.sync({ alter: true });
-
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
-  await AgentDustAppRunAction.sync({ alter: true });
   await AgentTablesQueryConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
-  await AgentTablesQueryAction.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
-  await AgentProcessAction.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
-
-  await AgentRetrievalAction.sync({ alter: true });
-  await RetrievalDocument.sync({ alter: true });
-  await RetrievalDocumentChunk.sync({ alter: true });
 
   await Conversation.sync({ alter: true });
   await ConversationParticipant.sync({ alter: true });
@@ -119,6 +109,14 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
+
+  await AgentRetrievalAction.sync({ alter: true });
+  await AgentTablesQueryAction.sync({ alter: true });
+  await AgentDustAppRunAction.sync({ alter: true });
+  await AgentProcessAction.sync({ alter: true });
+
+  await RetrievalDocument.sync({ alter: true });
+  await RetrievalDocumentChunk.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
 

@@ -8,7 +8,7 @@ import type {
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export class AgentDustAppRunConfiguration extends Model<
@@ -111,6 +111,7 @@ export class AgentDustAppRunAction extends Model<
 
   declare params: DustAppParameters;
   declare output: unknown | null;
+  declare step: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 }
 AgentDustAppRunAction.init(
@@ -157,6 +158,10 @@ AgentDustAppRunAction.init(
       type: DataTypes.JSONB,
       allowNull: true,
     },
+    step: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     modelName: "agent_dust_app_run_action",
@@ -169,3 +174,11 @@ AgentDustAppRunAction.init(
     ],
   }
 );
+
+AgentDustAppRunAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMessage.hasMany(AgentDustAppRunAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});

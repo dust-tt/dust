@@ -162,7 +162,7 @@ export default function Curl({
               )}
             </Menu>
           </div>
-          <div className="flex flex-1 flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
+          <div className="flex w-full flex-1 flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
             <div className="flex flex-1 font-normal">
               <div className="flex flex-1 rounded-md">
                 <span

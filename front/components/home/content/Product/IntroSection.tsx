@@ -8,7 +8,7 @@ import {
   H4,
   P,
   Strong,
-} from "@app/components/home/new/ContentComponents";
+} from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function IntroSection() {

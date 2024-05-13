@@ -4,6 +4,8 @@ import type {
   DustAppRunErrorEvent,
   DustAppRunParamsEvent,
   DustAppRunSuccessEvent,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   ModelId,
   ModelMessageType,
 } from "@dust-tt/types";
@@ -43,6 +45,34 @@ export function renderDustAppRunActionForModel(
   return {
     role: "action" as const,
     name: action.appName,
+    content,
+  };
+}
+
+export function renderDustAppRunActionFunctionCall(
+  action: DustAppRunActionType
+): FunctionCallType {
+  return {
+    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    type: "function",
+    function: {
+      name: action.appName,
+      arguments: JSON.stringify(action.params),
+    },
+  };
+}
+export function renderDustAppRunActionForMultiActionsModel(
+  action: DustAppRunActionType
+): FunctionMessageTypeModel {
+  let content = "";
+
+  // Note action.output can be any valid JSON including null.
+  content += `OUTPUT:\n`;
+  content += `${JSON.stringify(action.output, null, 2)}\n`;
+
+  return {
+    role: "function" as const,
+    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
     content,
   };
 }
@@ -196,6 +226,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       runningBlock: null,
       output: action.output,
       agentMessageId: action.agentMessageId,
+      step: action.step,
     } satisfies DustAppRunActionType;
   });
 }
@@ -219,6 +250,7 @@ export async function* runDustApp(
     agentMessage,
     spec,
     rawInputs,
+    step,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: DustAppRunConfigurationType;
@@ -226,6 +258,7 @@ export async function* runDustApp(
     agentMessage: AgentMessageType;
     spec: AgentActionSpecification;
     rawInputs: Record<string, string | boolean | number>;
+    step: number;
   }
 ): AsyncGenerator<
   | DustAppRunParamsEvent
@@ -292,6 +325,7 @@ export async function* runDustApp(
     appName: app.name,
     params,
     agentMessageId: agentMessage.agentMessageId,
+    step,
   });
 
   yield {
@@ -309,6 +343,7 @@ export async function* runDustApp(
       runningBlock: null,
       output: null,
       agentMessageId: agentMessage.agentMessageId,
+      step,
     },
   };
 
@@ -387,6 +422,7 @@ export async function* runDustApp(
           },
           output: null,
           agentMessageId: agentMessage.agentMessageId,
+          step: action.step,
         },
       };
     }
@@ -440,6 +476,7 @@ export async function* runDustApp(
       runningBlock: null,
       output: lastBlockOutput,
       agentMessageId: agentMessage.agentMessageId,
+      step: action.step,
     },
   };
 }

@@ -1,14 +1,18 @@
 import type { ReactElement } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+import {
+  CarousselContentBlock,
+  HeaderContentBlock,
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
-import { SolutionSection } from "@app/components/home/new/SolutionSection";
+} from "@app/components/home/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {
@@ -49,101 +53,132 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+interface pageSettingsProps {
+  uptitle: string;
+  title: React.ReactNode;
+  description: React.ReactNode;
+  from: string;
+  to: string;
+}
+
+const pageSettings: pageSettingsProps = {
+  uptitle: "Success and Support",
+  title: <>Help your&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers.</>,
+  from: "from-sky-200",
+  to: "to-sky-500",
+  description: (
+    <>
+      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
+      resolution and&nbsp;increase customer&nbsp;satisfaction.
+    </>
+  ),
+};
+
 export default function CustomerSupport() {
   return (
     <>
       <HeaderContentBlock
-        uptitle="Dust for Success and&nbsp;Support&nbsp;Teams"
-        title="Help your Success and&nbsp;Support&nbsp;Teams, help&nbsp;your&nbsp;customers."
-        from="from-sky-200"
-        to="to-sky-500"
-        subtitle="Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate
-            issue resolution and&nbsp;increase customer&nbsp;satisfaction."
+        uptitle={"Dust for " + pageSettings.uptitle}
+        title={pageSettings.title}
+        from={pageSettings.from}
+        to={pageSettings.to}
+        subtitle={pageSettings.description}
       />
       <Grid>
         <SolutionSection
-          title={
-            <>
-              Elevate Support,
-              <br />
-              exceed Customer&nbsp;expectations.
-            </>
-          }
+          title={<>Exceed customer&nbsp;expectations.</>}
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: "Keep your team spot-on.",
+                  title: (
+                    <>Parse tickets and&nbsp;get to&nbsp;resolution faster</>
+                  ),
                   content: [
                     <>
-                      Help them parse customer inquiries faster,
-                      leveraging&nbsp;past tickets and&nbsp;the&nbsp;latest
-                      information on&nbsp;product updates
-                      or&nbsp;downtime&nbsp;alerts.
+                      Allow agents to&nbsp;understand customer messages
+                      and&nbsp;technical errors faster and&nbsp;in
+                      50+&nbsp;languages.
                     </>,
-                    <>All in&nbsp;50+&nbsp;languages.</>,
+                    <>
+                      Build AI assistants based on&nbsp;company knowledge
+                      and&nbsp;past support interactions to&nbsp;bring
+                      the&nbsp;company's collective intelligence to&nbsp;the
+                      support team's fingertips.
+                    </>,
                   ],
                 },
                 {
-                  title: <>Analyze and&nbsp;categorize your&nbsp;tickets.</>,
+                  title: (
+                    <>Keep your&nbsp;team up-to-date at&nbsp;all&nbsp;times</>
+                  ),
                   content: [
-                    <>Classify tickets along your&nbsp;internal priorities.</>,
+                    <>Break down information silos.</>,
                     <>
-                      Help your Support, Success and&nbsp;Product teams better
-                      understand your users'&nbsp;needs.
+                      Give your frontline team access to&nbsp;up-to-date
+                      information on&nbsp;projects, ongoing product incidents
+                      or&nbsp;issues to&nbsp;help them&nbsp;take action
+                      thoughtfully.
                     </>,
                   ],
                 },
               ],
-              assistantBlocks: assistantExamples[0],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[4],
+                assistantExamples[5],
+              ],
             },
           ]}
         />
         <SolutionSection
-          title="Better team collaboration."
+          title="Elevated team collaboration."
           blocks={[
             {
               color: "sky",
               contentBlocks: [
                 {
-                  title: "Onboard faster.",
-                  content:
-                    "Reduce your onboarding and&nbsp;training time drastically. Put your documentation on&nbsp;processes and&nbsp;methods to&nbsp;work.",
-                },
-                {
-                  title: "Keep your team updated.",
-                  content: (
+                  title: (
                     <>
-                      Understand customer messages faster, and&nbsp;technical
-                      errors in&nbsp;any language. Explore past tickets
-                      to&nbsp;resolve issues or create
-                      documentation&nbsp;quickly.
+                      Bring new team members
+                      <br />
+                      up-to-speed&nbsp;fast
                     </>
                   ),
+                  content: [
+                    <>
+                      Reduce your&nbsp;onboarding and&nbsp;training time
+                      drastically.
+                    </>,
+                    <>
+                      Put your&nbsp;documentation on&nbsp;processes
+                      and&nbsp;methods to&nbsp;work to&nbsp;help the&nbsp;team
+                      learn autonomously.
+                    </>,
+                  ],
+                },
+                {
+                  title: (
+                    <>
+                      Maintain visibility
+                      <br />
+                      on&nbsp;customer needs
+                    </>
+                  ),
+                  content: [
+                    <>
+                      Surface insights from&nbsp;interactions with customers
+                      to&nbsp;your Support, Success and&nbsp;Product teams.
+                    </>,
+                    <>
+                      Maintain a&nbsp;continuous understanding of&nbsp;customer
+                      needs to inform your&nbsp;product priorities.
+                    </>,
+                  ],
                 },
               ],
-              assistantBlocks: [assistantExamples[3], assistantExamples[1]],
-            },
-          ]}
-        />
-        <SolutionSection
-          title="Better insights."
-          blocks={[
-            {
-              color: "sky",
-              contentBlocks: {
-                title: "Analyze and&nbsp;categorize your ticket",
-                content: [
-                  <>Classify your tickets using Dust Apps.</>,
-                  <>
-                    Help your Customer Support and&nbsp;Product team better
-                    understand your&nbsp;users' needs.
-                  </>,
-                ],
-              },
-
-              assistantBlocks: assistantExamples[2],
+              assistantBlocks: [assistantExamples[3], assistantExamples[2]],
             },
           ]}
         />
@@ -159,16 +194,16 @@ CustomerSupport.getLayout = (
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-export const assistantExamples = [
+const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🤝",
     backgroundColor: "bg-sky-300",
     name: "@supportExpert",
     description: (
       <>
-        Surface best information from&nbsp;your Help Center, FAQs, knowledge
-        base, online documentation, and&nbsp;tickets. Understand errors codes
-        without help from&nbsp;the Tech&nbsp;team.
+        Surfaces relevant information from&nbsp;your Help Center, FAQs,
+        knowledge base, online documentation, and&nbsp;tickets. Understands
+        errors codes without help from&nbsp;the tech&nbsp;team
       </>
     ),
   },
@@ -179,27 +214,72 @@ export const assistantExamples = [
     description: (
       <>
         Answer questions on&nbsp;product evolutions, engineering activity,
-        alerts, and&nbsp;downtime.
+        alerts, and&nbsp;downtime
       </>
     ),
   },
   {
     emoji: "🔮",
     backgroundColor: "bg-sky-300",
-    name: "@ticketAnalyst",
+    name: "@supportAnalyst",
     description: (
       <>
-        Classify tickets; identify patterns, sentiment,
-        and&nbsp;recurring&nbsp;needs.
+        Identifies patterns and&nbsp;sentiment in&nbsp;support interactions
+        to&nbsp;highlight recurring needs and&nbsp;actionable initiatives based
+        on&nbsp;the internal product team nomenclature and&nbsp;infrastructure
       </>
     ),
   },
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
-    name: "@onboardingBuddy",
+    name: "@supportOnboarding",
     description: (
-      <>All you need to&nbsp;know about people, tooling and&nbsp;resources.</>
+      <>
+        Helps new members of&nbsp;the support team navigate the&nbsp;tools
+        and&nbsp;processes in&nbsp;their first weeks to&nbsp;set them up for
+        success
+      </>
+    ),
+  },
+  {
+    emoji: "🚨",
+    backgroundColor: "bg-sky-300",
+    name: "@supportAlerts",
+    description: (
+      <>
+        Connects to&nbsp;product and&nbsp;engineering communication channels
+        to&nbsp;surface ongoing engineering activity, incidents or&nbsp;issues
+        and&nbsp;highlight the&nbsp;possible impact on&nbsp;users
+        and&nbsp;customers
+      </>
+    ),
+  },
+  {
+    emoji: "😳",
+    backgroundColor: "bg-sky-300",
+    name: "@whatWouldUserDo",
+    description: (
+      <>
+        Crafts training, product documentation and&nbsp;training materials
+        through the&nbsp;eyes of&nbsp;your users to&nbsp;help improve content
+        ahead of&nbsp;issues
+      </>
     ),
   },
 ];
+
+export function CustomerCaroussel() {
+  return (
+    <CarousselContentBlock
+      title={pageSettings.uptitle}
+      subtitle={pageSettings.title}
+      description={pageSettings.description}
+      assistants={assistantExamples}
+      from={pageSettings.from}
+      to={pageSettings.to}
+      border="border-pink-100/60"
+      href="/solutions/customer-support"
+    />
+  );
+}

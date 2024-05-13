@@ -4,14 +4,14 @@ import type { ReactElement } from "react";
 import {
   HeaderContentBlock,
   ImgBlock,
-} from "@app/components/home/new/ContentBlocks";
-import { Grid } from "@app/components/home/new/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/new/LandingLayout";
-import LandingLayout from "@app/components/home/new/LandingLayout";
+} from "@app/components/home/ContentBlocks";
+import { Grid } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/new/Particles";
+} from "@app/components/home/Particles";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";
 import {

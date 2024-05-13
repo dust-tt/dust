@@ -2,8 +2,8 @@ import { ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";
 
-import { H4, Strong } from "@app/components/home/new/ContentComponents";
-import { menuConfig } from "@app/components/home/new/menu/config";
+import { H4, Strong } from "@app/components/home/ContentComponents";
+import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
 
 import {

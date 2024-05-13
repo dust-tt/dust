@@ -749,7 +749,7 @@ export async function* postUserMessage(
                   version: 0,
                   parentMessageId: userMessage.sId,
                   status: "created",
-                  action: null,
+                  actions: [],
                   content: null,
                   error: null,
                   configuration,
@@ -1194,12 +1194,12 @@ export async function* editUserMessage(
                 version: 0,
                 parentMessageId: userMessage.sId,
                 status: "created",
-                action: null,
+                actions: [],
                 content: null,
                 error: null,
                 configuration,
                 rank: messageRow.rank,
-              },
+              } satisfies AgentMessageWithRankType,
             };
           })();
         })
@@ -1412,7 +1412,7 @@ export async function* retryAgentMessage(
         version: m.version,
         parentMessageId: message.parentMessageId,
         status: "created",
-        action: null,
+        actions: [],
         content: null,
         error: null,
         configuration: message.configuration,
@@ -1646,27 +1646,6 @@ async function* streamRunAgentEvents(
         return;
 
       case "agent_action_success":
-        // Store action in database.
-        if (event.action.type === "retrieval_action") {
-          // Nothing to do.
-        } else if (event.action.type === "dust_app_run_action") {
-          await agentMessageRow.update({
-            agentDustAppRunActionId: event.action.id,
-          });
-        } else if (event.action.type === "tables_query_action") {
-          await agentMessageRow.update({
-            agentTablesQueryActionId: event.action.id,
-          });
-        } else if (event.action.type === "process_action") {
-          // Nothing to do.
-        } else {
-          ((action: never) => {
-            throw new Error(
-              "Unknown `type` for `agent_action_success` event",
-              action
-            );
-          })(event.action);
-        }
         yield event;
         break;
 
