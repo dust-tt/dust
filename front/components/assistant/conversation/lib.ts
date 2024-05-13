@@ -204,24 +204,17 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragment?: {
+    contentFragments: {
       title: string;
       content: string;
       file: File;
-    };
+      contentType: string;
+    }[];
   };
   visibility?: ConversationVisibility;
   title?: string;
 }): Promise<Result<ConversationType, ConversationErrorType>> {
-  const {
-    input,
-    mentions,
-    contentFragment: contentFragmentWithFile,
-  } = messageData;
-  const { file } = contentFragmentWithFile ?? {};
-  const contentFragment = contentFragmentWithFile
-    ? { ...contentFragmentWithFile, file: undefined }
-    : undefined;
+  const { input, mentions, contentFragments } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
@@ -234,17 +227,16 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragment: contentFragment
-      ? {
-          content: contentFragment.content,
-          title: contentFragment.title,
-          url: null, // sourceUrl will be set on raw content upload success
-          contentType: "file_attachment",
-          context: {
-            profilePictureUrl: user.image,
-          },
-        }
-      : undefined,
+    contentFragments:
+      contentFragments?.map((cf) => ({
+        content: cf.content,
+        title: cf.title,
+        url: null, // sourceUrl will be set on raw content upload success
+        contentType: "file_attachment",
+        context: {
+          profilePictureUrl: user.image,
+        },
+      })) || [],
   };
 
   // Create new conversation and post the initial message at the same time.
@@ -270,13 +262,17 @@ export async function createConversationWithMessage({
 
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
-  if (file && conversationData.contentFragment) {
-    uploadRawContentFragment({
-      workspaceId: owner.sId,
-      conversationId: conversationData.conversation.sId,
-      contentFragmentId: conversationData.contentFragment?.sId,
-      file,
-    });
+  if (conversationData.contentFragments.length > 0) {
+    let i = 0;
+    for (const cf of conversationData.contentFragments) {
+      uploadRawContentFragment({
+        workspaceId: owner.sId,
+        conversationId: conversationData.conversation.sId,
+        contentFragmentId: cf.sId,
+        file: contentFragments[i].file,
+      });
+      i++;
+    }
   }
 
   return new Ok(conversationData.conversation);

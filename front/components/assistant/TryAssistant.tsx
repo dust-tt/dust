@@ -280,16 +280,17 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragment?: {
+    contentFragments: {
       title: string;
       content: string;
       file: File;
-    }
+      contentType: string;
+    }[]
   ) => {
     if (!user) {
       return;
     }
-    const messageData = { input, mentions, contentFragment };
+    const messageData = { input, mentions, contentFragments };
     if (!conversation) {
       const result = await createConversationWithMessage({
         owner,

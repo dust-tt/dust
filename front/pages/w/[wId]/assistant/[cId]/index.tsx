@@ -119,13 +119,13 @@ export default function AssistantConversation({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragment?: {
+    contentFragments: {
       title: string;
       content: string;
       file: File;
-    }
+    }[]
   ) => {
-    const messageData = { input, mentions, contentFragment };
+    const messageData = { input, mentions, contentFragments };
 
     try {
       // Update the local state immediately and fire the

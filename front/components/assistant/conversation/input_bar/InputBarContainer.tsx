@@ -5,6 +5,7 @@ import {
   FullscreenExitIcon,
   FullscreenIcon,
   IconButton,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -49,6 +50,7 @@ const InputBarContainer = ({
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
@@ -122,6 +124,7 @@ const InputBarContainer = ({
             ref={fileInputRef}
             style={{ display: "none" }}
             type="file"
+            multiple={true}
           />
           <IconButton
             variant={"tertiary"}
@@ -158,6 +161,7 @@ const InputBarContainer = ({
             </>
           )}
         </div>
+        {isSubmitting && <Spinner2 size="xxl" />}
         <Button
           size="sm"
           icon={ArrowUpIcon}
@@ -166,10 +170,12 @@ const InputBarContainer = ({
           labelVisible={false}
           disabledTooltip
           onClick={async () => {
+            setIsSubmitting(true);
             const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {
               editorService.clearEditor();
               resetEditorContainerSize();
+              setIsSubmitting(false);
             });
           }}
         />

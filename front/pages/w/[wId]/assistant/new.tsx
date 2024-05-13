@@ -8,6 +8,7 @@ import {
   Page,
   QuestionMarkCircleIcon,
   RobotSharedIcon,
+  Spinner2,
 } from "@dust-tt/sparkle";
 import type {
   ConversationType,
@@ -90,6 +91,9 @@ export default function AssistantNew({
   const [conversationHelperModal, setConversationHelperModal] =
     useState<ConversationType | null>(null);
 
+  const [isCreatingConversation, setIsCreatingConversation] =
+    useState<boolean>(true);
+
   // No limit on global assistants call as they include both active and inactive.
   const globalAgentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -137,21 +141,24 @@ export default function AssistantNew({
       async (
         input: string,
         mentions: MentionType[],
-        contentFragment?: {
+        contentFragments: {
           title: string;
           content: string;
           file: File;
-        }
+          contentType: string;
+        }[]
       ) => {
+        setIsCreatingConversation(true);
         const conversationRes = await createConversationWithMessage({
           owner,
           user,
           messageData: {
             input,
             mentions,
-            contentFragment,
+            contentFragments,
           },
         });
+        setIsCreatingConversation(false);
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);
@@ -182,6 +189,7 @@ export default function AssistantNew({
         messageData: {
           input: content.replace("@help", ":mention[help]{sId=helper}"),
           mentions: [{ configurationId: "helper" }],
+          contentFragments: [],
         },
         visibility: "test",
       });
@@ -245,6 +253,7 @@ export default function AssistantNew({
         />
       )}
       <div className="flex h-full items-center pb-20">
+        {isCreatingConversation && <Spinner2 size="xxl" />}
         <div className="flex text-sm font-normal text-element-800">
           <Page.Vertical gap="md" align="left">
             {/* FEATURED AGENTS */}
