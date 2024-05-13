@@ -1692,7 +1692,7 @@ async function* streamRunAgentEvents(
 
       default:
         ((event: never) => {
-          logger.error("Unknown `streamRunAgentEvents` event type", event);
+          logger.error({ event }, "Unknown `streamRunAgentEvents` event type");
         })(event);
         return;
     }

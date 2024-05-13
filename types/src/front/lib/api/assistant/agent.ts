@@ -15,6 +15,10 @@ import {
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
 } from "../../../../front/lib/api/assistant/actions/tables_query";
+import {
+  AgentActionConfigurationType,
+  AgentActionSpecification,
+} from "../../../assistant/agent";
 import { ProcessParamsEvent } from "./actions/process";
 
 // Event sent when an agent error occured before we have a agent message in the database.
@@ -82,4 +86,12 @@ export type AgentMessageSuccessEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+};
+
+export type AgentUseToolEvent = {
+  type: "agent_use_tool";
+  created: number;
+  action: AgentActionConfigurationType;
+  inputs: Record<string, string | boolean | number>;
+  specification: AgentActionSpecification | null;
 };
