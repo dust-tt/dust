@@ -71,9 +71,24 @@ impl ToString for AnthropicChatMessageRole {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct AnthropicContent {
-    pub r#type: String,
-    pub text: String,
+struct AnthropicContent {
+    // TODO:
+    r#type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+    // TODO: Move this to a ToolUse struct!
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    input: Option<Value>,
+
+    // TODO: Move this to a ToolResult struct!
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_use_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    content: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -151,22 +166,79 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                 Some(name) => format!("[user: {}] ", name), // Include space here.
                 None => String::from(""),
             },
-            ChatMessageRole::Function => match cm.name.as_ref() {
-                Some(name) => format!("[function_result: {}] ", name), // Include space here.
-                None => "[function_result]".to_string(),
-            },
+            // TODO: Only do this unless function_call_id is provided.
+            // ChatMessageRole::Function => match cm.name.as_ref() {
+            //     Some(name) => format!("[function_result: {}] ", name), // Include space here.
+            //     None => "[function_result]".to_string(),
+            // },
             _ => String::from(""),
         };
 
+        let tool_uses = match cm.function_calls.as_ref() {
+            Some(fc) => {
+                let a = fc
+                    .into_iter()
+                    .map(|function_call| {
+                        let value = serde_json::from_str(function_call.arguments.as_str())?;
+
+                        Ok(AnthropicContent {
+                            r#type: "tool_use".to_string(),
+                            text: None,
+                            name: Some(function_call.name.clone()),
+                            id: Some(function_call.id.clone()),
+                            input: Some(value),
+                            tool_use_id: None,
+                            content: None,
+                        })
+                    })
+                    .collect::<Result<Vec<AnthropicContent>>>()?;
+
+                Some(a)
+            }
+            None => None,
+        };
+
+        // Current limitation we can't pass more than one tool_result here /!\.
+        let tool_result = match cm.function_call_id.as_ref() {
+            Some(fcid) => Some(AnthropicContent {
+                r#type: "tool_result".to_string(),
+                tool_use_id: Some(fcid.clone()),
+                content: cm.content.clone(),
+                name: None,
+                id: None,
+                input: None,
+                text: None,
+            }),
+            None => None,
+        };
+
+        let text = match cm.function_call_id {
+            Some(_) => None,
+            None => match cm.content.as_ref() {
+                Some(text) => Some(AnthropicContent {
+                    r#type: "text".to_string(),
+                    text: Some(format!("{}{}", meta_prompt, text)),
+                    name: None,
+                    id: None,
+                    input: None,
+                    content: None,
+                    tool_use_id: None,
+                }),
+                // TODO: Yields an error!
+                None => None,
+            },
+        };
+
+        let content_vec = text
+            .into_iter()
+            .chain(tool_uses.into_iter().flatten())
+            .chain(tool_result.into_iter())
+            .collect();
+
+        println!("CONTENT_VEC: {:?}", content_vec);
+
         Ok(AnthropicChatMessage {
-            content: vec![AnthropicContent {
-                r#type: "text".to_string(),
-                text: format!(
-                    "{}{}",
-                    meta_prompt,
-                    cm.content.clone().unwrap_or(String::from(""))
-                ),
-            }],
+            content: content_vec,
             role,
         })
     }
@@ -410,6 +482,8 @@ impl AnthropicLLM {
         max_tokens: i32,
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
+
+        println!("MESSAGES: {:?}", messages);
 
         let mut body = json!({
             "model": self.id.clone(),
@@ -1185,22 +1259,25 @@ impl LLM for AnthropicLLM {
             },
         );
 
-        messages = messages
-            .iter()
-            .map(|cm| AnthropicChatMessage {
-                content: vec![AnthropicContent {
-                    // TODO: Support `tool_result` here.
-                    r#type: String::from("text"),
-                    text: cm
-                        .content
-                        .iter()
-                        .map(|c| c.text.clone())
-                        .collect::<Vec<String>>()
-                        .join("\n"),
-                }],
-                role: cm.role.clone(),
-            })
-            .collect();
+        // messages = messages
+        //     .iter()
+        //     .map(|cm| AnthropicChatMessage {
+        //         content: vec![AnthropicContent {
+        //             ??
+        //             // TODO: Support `tool_result` here.
+        //             r#type: String::from("text"),
+        //             text: Some(
+        //                 cm.content
+        //                     .iter()
+        //                     .filter_map(|c| c.text.clone())
+        //                     .collect::<Vec<String>>()
+        //                     .join("\n"),
+        //             ),
+        //             name: None,
+        //         }],
+        //         role: cm.role.clone(),
+        //     })
+        //     .collect();
 
         // merge messages of the same role
 
