@@ -428,6 +428,7 @@ impl Block for LLM {
                     content: Some(prompt.clone()),
                     function_call: None,
                     function_calls: None,
+                    function_call_id: None,
                 }];
 
                 let request = LLMChatRequest::new(

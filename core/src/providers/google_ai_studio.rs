@@ -455,6 +455,7 @@ impl LLM for GoogleAiStudioLLM {
                 name: None,
                 function_call: None,
                 function_calls: None,
+                function_call_id: None,
                 role: ChatMessageRole::Assistant,
                 content: match c.candidates {
                     None => None,
