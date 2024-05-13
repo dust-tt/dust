@@ -6,7 +6,6 @@ use crate::providers::llm::{
     ChatFunction, ChatFunctionCall, ChatMessage, ChatMessageRole, LLMChatRequest,
 };
 use crate::providers::provider::ProviderID;
-use crate::utils::new_id;
 use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -315,15 +314,20 @@ impl Block for Chat {
 
         const MESSAGES_CODE_OUTPUT: &str = "Invalid messages code output, \
             expecting an array of objects with  fields `role`, possibly `name`, \
-            and `content` or `function_call`.";
+            and `content` or `function_call(s)`.";
 
         let mut messages = match messages_value {
             Value::Array(a) => a
                 .into_iter()
                 .map(|v| match v {
                     Value::Object(o) => {
-                        match (o.get("role"), o.get("content"), o.get("function_call")) {
-                            (Some(Value::String(r)), Some(Value::String(c)), None) => {
+                        match (
+                            o.get("role"),
+                            o.get("content"),
+                            o.get("function_call"),
+                            o.get("function_calls"),
+                        ) {
+                            (Some(Value::String(r)), Some(Value::String(c)), None, None) => {
                                 Ok(ChatMessage {
                                     role: ChatMessageRole::from_str(r)?,
                                     name: match o.get("name") {
@@ -333,31 +337,64 @@ impl Block for Chat {
                                     content: Some(c.clone()),
                                     function_call: None,
                                     function_calls: None,
+                                    function_call_id: match o.get("function_call_id") {
+                                        Some(Value::String(fcid)) => Some(fcid.to_string()),
+                                        _ => None,
+                                    },
                                 })
                             }
-                            (Some(Value::String(r)), None, Some(Value::Object(fc))) => {
+                            (Some(Value::String(r)), None, Some(Value::Object(fc)), None) => {
                                 // parse function call into ChatFunctionCall
-                                match (fc.get("name"), fc.get("arguments")) {
-                                    (Some(Value::String(n)), Some(Value::String(a))) => {
-                                        Ok(ChatMessage {
-                                            role: ChatMessageRole::from_str(r)?,
-                                            name: match o.get("name") {
-                                                Some(Value::String(n)) => Some(n.clone()),
-                                                _ => None,
-                                            },
-                                            content: None,
-                                            function_call: Some(ChatFunctionCall {
-                                                // TODO: (2024-04-29 flav) Support id in input.
-                                                id: format!("fc_{}", new_id()),
+                                match (fc.get("name"), fc.get("arguments"), fc.get("id")) {
+                                    (
+                                        Some(Value::String(n)),
+                                        Some(Value::String(a)),
+                                        Some(Value::String(id)),
+                                    ) => Ok(ChatMessage {
+                                        role: ChatMessageRole::from_str(r)?,
+                                        name: match o.get("name") {
+                                            Some(Value::String(n)) => Some(n.clone()),
+                                            _ => None,
+                                        },
+                                        content: None,
+                                        function_call: Some(ChatFunctionCall {
+                                            id: id.clone(),
+                                            name: n.clone(),
+                                            arguments: a.clone(),
+                                        }),
+                                        function_calls: None,
+                                        function_call_id: None,
+                                    }),
+                                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
+                                }
+                            }
+                            (Some(Value::String(r)), None, None, Some(Value::Array(fcs))) => {
+                                let function_calls = fcs
+                                    .into_iter()
+                                    .map(|fc| {
+                                        match (fc.get("name"), fc.get("arguments"), fc.get("id")) {
+                                            (
+                                                Some(Value::String(n)),
+                                                Some(Value::String(a)),
+                                                Some(Value::String(id)),
+                                            ) => Ok(ChatFunctionCall {
+                                                id: id.clone(),
                                                 name: n.clone(),
                                                 arguments: a.clone(),
                                             }),
-                                            // TODO: (2024-04-29 flav) Support function_calls in input.
-                                            function_calls: Some(vec![]),
-                                        })
-                                    }
-                                    _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
-                                }
+                                            _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
+                                        }
+                                    })
+                                    .collect::<Result<Vec<_>, _>>()?;
+
+                                Ok(ChatMessage {
+                                    role: ChatMessageRole::from_str(r)?,
+                                    name: None,
+                                    content: None,
+                                    function_call: None,
+                                    function_calls: Some(function_calls),
+                                    function_call_id: None,
+                                })
                             }
                             _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                         }
@@ -450,6 +487,7 @@ impl Block for Chat {
                     content: Some(i),
                     function_call: None,
                     function_calls: None,
+                    function_call_id: None,
                 },
             );
         }

@@ -167,7 +167,7 @@ impl TryFrom<&ChatFunctionCall> for OpenAIToolCall {
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(OpenAIToolCall {
-            id: None,
+            id: Some(cf.id.clone()),
             r#type: OpenAIToolType::Function,
             function: OpenAIToolCallFunction {
                 name: cf.name.clone(),
@@ -195,13 +195,61 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum OpenAIChatMessageRole {
+    Assistant,
+    Function,
+    System,
+    Tool,
+    User,
+}
+
+impl From<&ChatMessageRole> for OpenAIChatMessageRole {
+    fn from(role: &ChatMessageRole) -> Self {
+        match role {
+            ChatMessageRole::Assistant => OpenAIChatMessageRole::Assistant,
+            ChatMessageRole::Function => OpenAIChatMessageRole::Function,
+            ChatMessageRole::System => OpenAIChatMessageRole::System,
+            ChatMessageRole::User => OpenAIChatMessageRole::User,
+        }
+    }
+}
+
+impl FromStr for OpenAIChatMessageRole {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(OpenAIChatMessageRole::System),
+            "user" => Ok(OpenAIChatMessageRole::User),
+            "assistant" => Ok(OpenAIChatMessageRole::Assistant),
+            "function" => Ok(OpenAIChatMessageRole::Tool),
+            _ => Err(ParseError::with_message("Unknown OpenAIChatMessageRole"))?,
+        }
+    }
+}
+
+impl From<OpenAIChatMessageRole> for ChatMessageRole {
+    fn from(value: OpenAIChatMessageRole) -> Self {
+        match value {
+            OpenAIChatMessageRole::Assistant => ChatMessageRole::Assistant,
+            OpenAIChatMessageRole::Function => ChatMessageRole::Function,
+            OpenAIChatMessageRole::System => ChatMessageRole::System,
+            OpenAIChatMessageRole::Tool => ChatMessageRole::Function,
+            OpenAIChatMessageRole::User => ChatMessageRole::User,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct OpenAIChatMessage {
-    pub role: ChatMessageRole,
+    pub role: OpenAIChatMessageRole,
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<OpenAIToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -266,6 +314,7 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             name,
             function_call,
             function_calls,
+            function_call_id: None,
         })
     }
 }
@@ -274,12 +323,31 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
+        // If `function_call_id` is present, `role` must be `function` and should be mapped to `Tool`.
+        // This is to maintain backward compatibility with the original `function` role used for content fragments.
+        let (role, tool_call_id) = match cm.function_call_id.as_ref() {
+            Some(fcid) => match OpenAIChatMessageRole::from(&cm.role) {
+                OpenAIChatMessageRole::Function => {
+                    Ok((OpenAIChatMessageRole::Tool, Some(fcid.clone())))
+                }
+                _ => Err(anyhow!(
+                    "`function_call_id` is provided but `role` is not set to `function`"
+                )),
+            },
+            _ => Ok((OpenAIChatMessageRole::from(&cm.role), None)),
+        }?;
+
         Ok(OpenAIChatMessage {
             content: cm.content.clone(),
             name: cm.name.clone(),
-            role: cm.role.clone(),
-            tool_calls: match cm.function_call.as_ref() {
-                Some(fc) => Some(vec![OpenAIToolCall::try_from(fc)?]),
+            role,
+            tool_call_id,
+            tool_calls: match cm.function_calls.as_ref() {
+                Some(fc) => Some(
+                    fc.into_iter()
+                        .map(|f| OpenAIToolCall::try_from(f))
+                        .collect::<Result<Vec<OpenAIToolCall>, _>>()?,
+                ),
                 None => None,
             },
         })
@@ -970,8 +1038,9 @@ pub async fn streamed_chat_completion(
                     message: OpenAIChatMessage {
                         content: Some("".to_string()),
                         name: None,
-                        role: ChatMessageRole::System,
+                        role: OpenAIChatMessageRole::System,
                         tool_calls: None,
+                        tool_call_id: None,
                     },
                     index: c.index,
                     finish_reason: None,
@@ -995,7 +1064,7 @@ pub async fn streamed_chat_completion(
                     Some(role) => match role.as_str() {
                         None => (),
                         Some(r) => {
-                            c.choices[j].message.role = ChatMessageRole::from_str(r)?;
+                            c.choices[j].message.role = OpenAIChatMessageRole::from_str(r)?;
                         }
                     },
                 };
