@@ -4,9 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
-import {
-  getDustAppSecrets,
-} from "@app/lib/api/dust_app_secrets";
+import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App, Provider, Run } from "@app/lib/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
@@ -133,7 +131,7 @@ async function handler(
         datasetId: inputDataset,
         config: { blocks: config },
         credentials: credentialsFromProviders(providers),
-        secrets
+        secrets,
       });
 
       if (dustRun.isErr()) {

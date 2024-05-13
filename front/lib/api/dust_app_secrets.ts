@@ -5,7 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/workspace";
 
 export async function getDustAppSecrets(
-  auth: Authenticator, 
+  auth: Authenticator,
   clear = false
 ): Promise<DustAppSecretType[]> {
   const owner = auth.workspace();
