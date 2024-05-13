@@ -56,6 +56,26 @@ pub struct Env {
     pub credentials: Credentials,
 }
 
+impl Env {
+  pub fn clone_with_unredacted_secrets(&self) -> Self {
+    let mut new_secrets = self.secrets.clone();
+    new_secrets.redacted = false;
+
+    Self {
+      config: self.config.clone(),
+      state: self.state.clone(),
+      input: self.input.clone(),
+      map: self.map.clone(),
+      secrets: new_secrets,
+      store: self.store.clone(),
+      databases_store: self.databases_store.clone(),
+      qdrant_clients: self.qdrant_clients.clone(),
+      project: self.project.clone(),
+      credentials: self.credentials.clone(),
+    }
+  }
+}
+
 // pub enum Expectations {
 //   Keys(Vec<String>),
 //   Array(Box<Expectations>),
@@ -245,7 +265,7 @@ pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<S
   secrets_found
     .iter()
     .map(|key| {
-      if let Some(secret) = env.secrets.get(key) {
+      if let Some(secret) = env.secrets.secrets.get(key) {
         result = result.replace(
           &format!("${{secrets.{}}}", key),
           secret,

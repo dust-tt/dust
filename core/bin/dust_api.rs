@@ -42,6 +42,7 @@ use tokio_stream::Stream;
 use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_subscriber::prelude::*;
+use run::Secrets;
 
 /// API State
 
@@ -559,7 +560,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: run::Secrets,
+    secrets: HashMap<String, String>
 }
 
 async fn run_helper(
@@ -758,16 +759,16 @@ async fn runs_create(
     Json(payload): Json<RunsCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
-    let secrets = payload.secrets.clone();
+    let secrets = Secrets { redacted: true, secrets: payload.secrets.clone() };
 
     match headers.get("X-Dust-Workspace-Id") {
-        Some(v) => match v.to_str() {
-            Ok(v) => {
-                credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
-            }
-            _ => (),
-        },
-        None => (),
+      Some(v) => match v.to_str() {
+        Ok(v) => {
+          credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
+        }
+        _ => (),
+      },
+      None => (),
     };
 
     match run_helper(project_id, payload.clone(), state.clone()).await {
@@ -796,7 +797,7 @@ async fn runs_create_stream(
     Json(payload): Json<RunsCreatePayload>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
-    let secrets = payload.secrets.clone();
+    let secrets = Secrets { redacted: true, secrets: payload.secrets.clone() };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

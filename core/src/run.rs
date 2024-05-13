@@ -28,15 +28,13 @@ pub struct ExecutionWithTimestamp {
 
 pub type Credentials = HashMap<String, String>;
 
-pub type Secrets = HashMap<String, String>;
-
-#[derive(Deserialize, Clone)]
-pub struct RedactableSecrets {
+#[derive(Clone)]
+pub struct Secrets {
   pub redacted: bool,
-  pub secrets: Secrets,
+  pub secrets: HashMap<String, String>
 }
 
-impl Serialize for RedactableSecrets {
+impl Serialize for Secrets {
   fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
   where
       S: Serializer,

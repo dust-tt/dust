@@ -112,7 +112,7 @@ impl Block for Curl {
             None => true,
         };
 
-        let e = env.clone();
+        let e = env.clone_with_unredacted_secrets();
         let headers_code = self.headers_code.clone();
         let (headers_value, headers_logs): (Value, Vec<Value>) =
             tokio::task::spawn_blocking(move || {
@@ -123,7 +123,7 @@ impl Block for Curl {
             .await?
             .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
 
-        let e = env.clone();
+        let e = env.clone_with_unredacted_secrets();
         let body_code = self.body_code.clone();
         let (body_value, body_logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(body_code.as_str())?
