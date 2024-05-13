@@ -223,6 +223,7 @@ impl TryFrom<&MistralChatMessage> for ChatMessage {
             name: None,
             function_call,
             function_calls,
+            function_call_id: None,
         })
     }
 }

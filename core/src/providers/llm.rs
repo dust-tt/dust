@@ -80,6 +80,8 @@ pub struct ChatMessage {
     pub function_call: Option<ChatFunctionCall>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_calls: Option<Vec<ChatFunctionCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_call_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

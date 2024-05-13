@@ -295,6 +295,7 @@ impl TryFrom<ChatResponse> for ChatMessage {
             content: text_content,
             function_call,
             function_calls,
+            function_call_id: None,
         })
     }
 }
