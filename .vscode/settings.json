@@ -3,8 +3,8 @@
   "rust-analyzer.linkedProjects": ["./core/Cargo.toml"],
 
   "editor.codeActionsOnSave": {
-    "source.organizeImports": false,
-    "source.fixAll.eslint": true
+    "source.organizeImports": "never",
+    "source.fixAll.eslint": "explicit"
   },
   "eslint.run": "onSave",
   "typescript.preferences.importModuleSpecifier": "non-relative"

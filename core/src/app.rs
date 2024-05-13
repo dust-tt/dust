@@ -354,7 +354,7 @@ impl App {
             secrets: RedactableSecrets {
                 redacted: true,
                 secrets: secrets.clone(),
-            },
+            }
         }]];
 
         let mut current_map: Option<String> = None;
