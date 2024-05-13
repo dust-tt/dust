@@ -341,15 +341,6 @@ export default function ConversationViewer({
   });
   const eventIds = useRef<string[]>([]);
 
-  if (isConversationLoading) {
-    return null;
-  } else if (isConversationError) {
-    return <div>Error loading conversation</div>;
-  }
-  if (!conversation) {
-    return <div>No conversation here</div>;
-  }
-
   // Building an array of arrays of messages grouped by message.type.
   // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
   // This allows us to change the layout per consecutive messages of the same type.
@@ -370,6 +361,15 @@ export default function ConversationViewer({
     }
     return groups;
   }, [messages]);
+
+  if (isConversationLoading) {
+    return null;
+  } else if (isConversationError) {
+    return <div>Error loading conversation</div>;
+  }
+  if (!conversation) {
+    return <div>No conversation here</div>;
+  }
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
@@ -395,10 +395,9 @@ export default function ConversationViewer({
           >
             {/* Second div is used to apply a max-width and change the flex direction of the content fragment group. */}
             <div
-              key={group[0].sId}
               className={
                 group[0].type === "content_fragment"
-                  ? "mx-auto flex max-w-4xl flex-row"
+                  ? "mx-auto flex max-w-4xl flex-row flex-wrap"
                   : ""
               }
             >

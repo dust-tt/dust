@@ -202,8 +202,8 @@ export function AssistantInputBar({
             });
             return;
           }
+          totalSize += res.value.content.length;
           setContentFragmentData((prev) => {
-            totalSize += res.value.content.length;
             return prev.concat([
               {
                 title: res.value.title,
@@ -304,9 +304,9 @@ export function AssistantInputBar({
               isAnimating ? "animate-shake" : ""
             )}
           >
-            <div className="relative flex w-full flex-1 flex-col">
+            <div className="relative flex w-full flex-1 flex-col ">
               {contentFragmentData.length > 0 && (
-                <div className="mr-4 flex gap-2 border-b border-structure-300/50 pb-3 pt-4">
+                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
                   {contentFragmentData.map((cf, i) => (
                     <Citation
                       key={`cf-${i}`}
@@ -314,7 +314,9 @@ export function AssistantInputBar({
                       size="xs"
                       description={cf.content?.substring(0, 100)}
                       onClose={() => {
-                        setContentFragmentData([]);
+                        setContentFragmentData((prev) => {
+                          return prev.filter((_, index) => index !== i);
+                        });
                       }}
                     />
                   ))}
@@ -331,7 +333,7 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
-                disableAttachment={contentFragmentData.length > 0}
+                disableAttachment={false}
               />
             </div>
           </div>
