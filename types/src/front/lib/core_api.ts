@@ -257,12 +257,6 @@ export class CoreAPI {
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
 
-    // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
-    const secretsObject: SecretsType = secrets.reduce((obj: SecretsType, secret: DustAppSecretType) => {
-        obj[secret.name] = secret.value;
-        return obj;
-    }, {});
-
     const response = await fetch(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
       {
@@ -279,7 +273,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
-          secrets: secretsObject
+          secrets: secrets
         }),
       }
     );
@@ -304,11 +298,6 @@ export class CoreAPI {
       dustRunId: Promise<string>;
     }>
   > {
-    // Convert the secrets array to an object for easy use by Core API with env.secrets.SECRET_NAME.
-    const secretsObject: SecretsType = secrets.reduce((obj: SecretsType, secret: DustAppSecretType) => {
-      obj[secret.name] = secret.value;
-      return obj;
-    }, {});
 
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/stream`,
@@ -326,7 +315,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
-          secrets: secretsObject,
+          secrets: secrets,
         }),
       }
     );

@@ -77,7 +77,7 @@ async function handler(
             workspaceId: owner.id,
           },
         }),
-        getDustAppSecrets(auth, true)
+        getDustAppSecrets(auth, true),
       ]);
 
       if (

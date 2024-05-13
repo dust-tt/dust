@@ -29,6 +29,7 @@ use dust::{
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -550,6 +551,12 @@ async fn datasets_retrieve(
     }
 }
 
+#[derive(Clone, Deserialize)]
+struct Secret {
+  name: String,
+  value: String,
+}
+
 #[derive(serde::Deserialize, Clone)]
 struct RunsCreatePayload {
     run_type: run::RunType,
@@ -559,7 +566,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: HashMap<String, String>
+    secrets: Vec<Secret>
 }
 
 async fn run_helper(
@@ -758,7 +765,14 @@ async fn runs_create(
     Json(payload): Json<RunsCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
-    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.clone() };
+
+    // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
+    let mut secrets_hashmap = HashMap::new();
+    for secret in payload.secrets.iter() {
+      secrets_hashmap.insert(secret.name.clone(), secret.value.clone());
+    }
+
+    let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
 
     match headers.get("X-Dust-Workspace-Id") {
       Some(v) => match v.to_str() {
@@ -796,7 +810,13 @@ async fn runs_create_stream(
     Json(payload): Json<RunsCreatePayload>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
-    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.clone() };
+
+    // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
+    let mut secrets_hashmap = HashMap::new();
+    for secret in payload.secrets.iter() {
+      secrets_hashmap.insert(secret.name.clone(), secret.value.clone());
+    }
+    let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

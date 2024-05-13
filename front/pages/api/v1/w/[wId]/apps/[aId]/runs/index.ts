@@ -108,7 +108,7 @@ async function handler(
         workspaceId: keyRes.value.workspaceId,
       },
     }),
-    getDustAppSecrets(auth, true)
+    getDustAppSecrets(auth, true),
   ]);
 
   if (!app) {
