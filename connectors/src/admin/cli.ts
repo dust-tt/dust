@@ -10,7 +10,9 @@ const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode
   process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";
 
-  const argv = parseArgs(process.argv.slice(2));
+  const argv = parseArgs(process.argv.slice(2), {
+    string: "wId",
+  });
 
   if (argv._.length < 2) {
     throw new Error(
