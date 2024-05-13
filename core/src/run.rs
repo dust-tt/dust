@@ -50,6 +50,7 @@ impl Serialize for RedactableSecrets {
       } else {
           state.serialize_field("secrets", &self.secrets)?;
       }
+      state.serialize_field("redacted", &self.redacted)?;
       state.end()
   }
 }

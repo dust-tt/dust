@@ -6,7 +6,7 @@ use crate::blocks::{
 use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
-use crate::run::{Credentials, RedactableSecrets, RunConfig };
+use crate::run::{Credentials, Secrets, RunConfig };
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -43,7 +43,7 @@ pub struct Env {
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
-    pub secrets: RedactableSecrets,
+    pub secrets: Secrets,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]
@@ -245,7 +245,7 @@ pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<S
   secrets_found
     .iter()
     .map(|key| {
-      if let Some(secret) = env.secrets.secrets.get(key) {
+      if let Some(secret) = env.secrets.get(key) {
         result = result.replace(
           &format!("${{secrets.{}}}", key),
           secret,
