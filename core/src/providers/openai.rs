@@ -194,15 +194,6 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
     }
 }
 
-// #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-// pub struct OpenAIToolResult {
-//     tool_call_id: Option<String>,
-//     // It needs to be narrowed down to "tool"
-//     role: String,
-//     name: String,
-//     content: String,
-// }
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum OpenAIChatMessageRole {
@@ -1234,10 +1225,6 @@ pub async fn chat_completion(
             &format!("{}", organization_id.clone()),
         );
     }
-    //
-    // println!("{}", serde_json::to_string_pretty(&obj).unwrap());
-
-    println!("BODY: {:?}", serde_json::to_string_pretty(&body));
 
     let req = req.json(&body);
 

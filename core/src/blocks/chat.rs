@@ -377,15 +377,11 @@ impl Block for Chat {
                                                 Some(Value::String(n)),
                                                 Some(Value::String(a)),
                                                 Some(Value::String(id)),
-                                            ) => {
-                                                let t = ChatFunctionCall {
-                                                    id: id.clone(),
-                                                    name: n.clone(),
-                                                    arguments: a.clone(),
-                                                };
-
-                                                Ok(t)
-                                            }
+                                            ) => Ok(ChatFunctionCall {
+                                                id: id.clone(),
+                                                name: n.clone(),
+                                                arguments: a.clone(),
+                                            }),
                                             _ => Err(anyhow!(MESSAGES_CODE_OUTPUT)),
                                         }
                                     })
