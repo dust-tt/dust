@@ -49,7 +49,6 @@ const backfillCustomerIo = async (execute: boolean) => {
       ? await subscriptionForWorkspaces(workspaceSids)
       : {};
 
-    // if (execute) {
     const promises: Promise<unknown>[] = [];
     for (const u of c) {
       const memberships = membershipsByUserId[u.id.toString()] ?? [];
@@ -105,6 +104,10 @@ const backfillCustomerIo = async (execute: boolean) => {
           deletedWorkspaceSids.add(ws.sId);
         }
       }
+    }
+
+    if (execute) {
+      await Promise.all(promises);
     }
   }
 };
