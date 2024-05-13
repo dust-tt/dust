@@ -353,20 +353,23 @@ export default function ConversationViewer({
   // Building an array of arrays of messages grouped by message.type.
   // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
   // This allows us to change the layout per consecutive messages of the same type.
-  const groupedMessages: MessageWithRankType[][] = [];
-  for (const message of messages.flatMap((page) => page.messages)) {
-    if (groupedMessages.length === 0) {
-      groupedMessages.push([message]);
-    } else {
-      const lastGroup = groupedMessages[groupedMessages.length - 1];
-      const lastMessage = lastGroup[lastGroup.length - 1];
-      if (lastMessage.type === message.type) {
-        lastGroup.push(message);
+  const groupedMessages: MessageWithRankType[][] = useMemo(() => {
+    const groups: MessageWithRankType[][] = [];
+    for (const message of messages.flatMap((page) => page.messages)) {
+      if (groups.length === 0) {
+        groups.push([message]);
       } else {
-        groupedMessages.push([message]);
+        const lastGroup = groups[groups.length - 1];
+        const lastMessage = lastGroup[lastGroup.length - 1];
+        if (lastMessage.type === message.type) {
+          lastGroup.push(message);
+        } else {
+          groups.push([message]);
+        }
       }
     }
-  }
+    return groups;
+  }, [messages]);
 
   return (
     <div className={classNames("pb-44", isFading ? "animate-fadeout" : "")}>
