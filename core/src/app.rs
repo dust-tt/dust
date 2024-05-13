@@ -371,8 +371,6 @@ impl App {
             // Don't redact the secrets only for Curl block
             let redacted = block.block_type() != BlockType::Curl;
 
-            println!("REDACTED ? {:?}", redacted);
-
             let redacted_secrets = RedactableSecrets {
               redacted,
               secrets: secrets.clone(),
