@@ -67,9 +67,8 @@ async function handler(
   switch (req.method) {
     case "POST": {
       try {
-        const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
-          auth
-        );
+        const { checkoutUrl, plan: newPlan } =
+          await getCheckoutUrlForUpgrade(auth);
         return res.status(200).json({ checkoutUrl, plan: newPlan });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");

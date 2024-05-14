@@ -106,9 +106,8 @@ async function isAutoJoinEnabledForDomain(
     return false;
   }
 
-  const verifiedDomains = await getVerifiedDomainsForWorkspaceMemoized(
-    connector
-  );
+  const verifiedDomains =
+    await getVerifiedDomainsForWorkspaceMemoized(connector);
 
   const isDomainAutoJoinEnabled = verifiedDomains.find(
     (vd) => vd.domain === userDomain
@@ -193,9 +192,8 @@ export async function isActiveMemberOfWorkspace(
     return false;
   }
 
-  const workspaceActiveMemberEmails = await getActiveMemberEmailsMemoized(
-    connector
-  );
+  const workspaceActiveMemberEmails =
+    await getActiveMemberEmailsMemoized(connector);
 
   return workspaceActiveMemberEmails.includes(slackUserEmail);
 }

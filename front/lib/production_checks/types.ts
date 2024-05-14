@@ -1,9 +1,8 @@
-import type { LoggerOptions } from "pino";
 import type pino from "pino";
 
 export type CheckFunction = (
   checkName: string,
-  logger: pino.Logger<LoggerOptions>,
+  logger: pino.Logger,
   reportSuccess: (reportPayload: unknown) => void,
   reportFailure: (reportPayload: unknown, message: string) => void,
   heartbeat: () => void

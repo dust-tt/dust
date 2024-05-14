@@ -1,5 +1,18 @@
 import { useEffect } from "react";
 
+import config from "@app/lib/api/config";
+import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+
+export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
+  requireUserPrivilege: "none",
+})<{ gaTrackingId: string }>(async () => {
+  return {
+    props: {
+      gaTrackingId: config.getGaTrackingId(),
+    },
+  };
+});
+
 export default function Complete() {
   useEffect(() => {
     // When the component mounts, send a message to the window that opened this one.

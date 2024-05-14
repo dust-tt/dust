@@ -11,12 +11,8 @@ async function cleanup(collections: { name: string }[]) {
   console.log(`Cleaning up ${collections.length} collections.`);
   for (const c of collections) {
     let done = 0;
-    let offset:
-      | number
-      | undefined
-      | null
-      | string
-      | Record<string, unknown> = 0;
+    let offset: number | undefined | null | string | Record<string, unknown> =
+      0;
     while (offset !== null && offset !== undefined) {
       const res = await client.scroll(c.name, {
         filter: {
@@ -58,12 +54,8 @@ async function run() {
   let i = 0;
   for (const c of collections) {
     let done = 0;
-    let offset:
-      | number
-      | undefined
-      | null
-      | string
-      | Record<string, unknown> = 0;
+    let offset: number | undefined | null | string | Record<string, unknown> =
+      0;
     while (offset !== null && offset !== undefined) {
       const res = await client.scroll(c.name, {
         filter: {

@@ -149,7 +149,7 @@ export function apiError<T>(
 
 export function withGetServerSidePropsLogging<
   T extends { [key: string]: any },
-  RequireUserPrivilege extends UserPrivilege = "user"
+  RequireUserPrivilege extends UserPrivilege = "user",
 >(
   getServerSideProps: CustomGetServerSideProps<
     T,

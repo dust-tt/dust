@@ -1,8 +1,8 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-// @ts-expect-error: type package doesn't load properly because of how we are loading pdfjs
-import * as PDFJS from "pdfjs-dist/build/pdf";
-PDFJS.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS.version}/pdf.worker.mjs`;
+import { pdfjs } from "react-pdf";
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
 
@@ -34,7 +34,7 @@ export async function handleFileUploadToText(
             )
           );
         }
-        const loadingTask = PDFJS.getDocument({ data: arrayBuffer });
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;
         let text = "";
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
