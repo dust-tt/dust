@@ -50,14 +50,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
-  static async findByUserWorkspaceAndProvider({
+  static async findByUserWorkspace({
     auth,
     userId,
-    provider,
   }: {
     auth: Authenticator;
     userId: ModelId;
-    provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
 
@@ -69,7 +67,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       where: {
         userId,
         workspaceId: owner.id,
-        provider,
       },
     });
 
@@ -81,7 +78,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  private async update(
+  async update(
     blob: Partial<Attributes<LabsTranscriptsConfigurationModel>>
   ): Promise<[affectedCount: number]> {
     return this.model.update(blob, {

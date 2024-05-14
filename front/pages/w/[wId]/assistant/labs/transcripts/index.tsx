@@ -5,7 +5,8 @@ import {
   Input,
   Page,
   SliderToggle,
-  Spinner} from "@dust-tt/sparkle";
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   LabsTranscriptsProviderType,
   UserType,
@@ -75,8 +76,6 @@ export default function LabsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [provider, setProvider] =
-    useState<LabsTranscriptsProviderType>("google_drive");
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -88,19 +87,18 @@ export default function LabsTranscriptsIndex({
     transcriptsConfiguration,
     isTranscriptsConfigurationLoading,
     mutateTranscriptsConfiguration,
-  } = useLabsTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    provider,
-  });
+  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
+      provider: string;
       isGDriveConnected: boolean;
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      gongApiKey: string,
+      gongApiKey: string;
     }>({
+      provider: "",
       isGDriveConnected: false,
       isGongConnected: false,
       assistantSelected: null as LightAgentConfigurationType | null,
@@ -109,24 +107,20 @@ export default function LabsTranscriptsIndex({
     });
 
   useEffect(() => {
-    setTranscriptsConfigurationState({
-      isGongConnected:
-        (transcriptsConfiguration &&
-          transcriptsConfiguration.id > 0 &&
-          transcriptsConfiguration.provider == "gong") ||
-        false,
-      isGDriveConnected:
-        (transcriptsConfiguration &&
-          transcriptsConfiguration.id > 0 &&
-          transcriptsConfiguration.provider == "google_drive") ||
-        false,
-      assistantSelected:
-        agentConfigurations.find(
-          (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
-        ) || null,
-      isActive: transcriptsConfiguration?.isActive || false,
-      gongApiKey: transcriptsConfiguration?.gongApiKey || "",
-    });
+    if (transcriptsConfiguration) {
+      setTranscriptsConfigurationState({
+        provider: transcriptsConfiguration.provider || "",
+        isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+        isGDriveConnected:
+          transcriptsConfiguration.provider == "google_drive" || false,
+        assistantSelected:
+          agentConfigurations.find(
+            (a) => a.sId === transcriptsConfiguration.agentConfigurationId
+          ) || null,
+        isActive: transcriptsConfiguration.isActive || false,
+        gongApiKey: transcriptsConfiguration.gongApiKey || "",
+      });
+    }
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {
@@ -135,8 +129,13 @@ export default function LabsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const handleProviderChange = async (provider: LabsTranscriptsProviderType) => {
-    setProvider(provider);
+  const handleProviderChange = async (
+    provider: LabsTranscriptsProviderType
+  ) => {
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
+      provider,
+    });
     await mutateTranscriptsConfiguration();
   };
 
@@ -145,7 +144,7 @@ export default function LabsTranscriptsIndex({
       ...transcriptsConfigurationState,
       gongApiKey,
     });
-  }
+  };
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -282,7 +281,7 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         gongApiKey: transcriptsConfigurationState.gongApiKey,
         connectionId: null,
-        provider,
+        provider: "gong"
       }),
     });
 
@@ -307,7 +306,7 @@ export default function LabsTranscriptsIndex({
     }
 
     return response;
-  }
+  };
 
   const handleConnectGoogleTranscriptsSource = async () => {
     try {
@@ -353,35 +352,39 @@ export default function LabsTranscriptsIndex({
         />
         <Page.Layout direction="vertical">
           <Page.SectionHeader title="1. Connect your transcripts provider" />
-          {/* logos of providers */}
-          <Page.Layout direction="horizontal" gap="xl">
-            <div
-              className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                provider == "google_drive"
-                  ? "border-gray-400"
-                  : "border-gray-200"
-              }`}
-              onClick={() => handleProviderChange("google_drive")}
-            >
-              <img
-                src="/static/labs/transcripts/google.png"
-                style={{ maxHeight: "35px" }}
-              />
-            </div>
-            <div
-              className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                provider == "gong" ? "border-gray-400" : "border-gray-200"
-              }`}
-              onClick={() => handleProviderChange("gong")}
-            >
-              <img
-                src="/static/labs/transcripts/gong.jpeg"
-                style={{ maxHeight: "35px" }}
-              />
-            </div>
-          </Page.Layout>
+          {!transcriptsConfigurationState.isGDriveConnected &&
+            !transcriptsConfigurationState.isGongConnected && (
+              <Page.Layout direction="horizontal" gap="xl">
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "google_drive"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("google_drive")}
+                >
+                  <img
+                    src="/static/labs/transcripts/google.png"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("gong")}
+                >
+                  <img
+                    src="/static/labs/transcripts/gong.jpeg"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              </Page.Layout>
+            )}
 
-          {provider === "google_drive" && (
+          {transcriptsConfigurationState.provider === "google_drive" && (
             <Page.Layout direction="vertical">
               <Page.P>
                 Connect to Google Drive so Dust can access 'My Drive' where your
@@ -404,18 +407,21 @@ export default function LabsTranscriptsIndex({
               </div>
             </Page.Layout>
           )}
-          {provider === "gong" && (
+          {transcriptsConfigurationState.provider === "gong" && (
             <Page.Layout direction="vertical">
               <Page.P>
                 Add your Gong API key so Dust can access your Gong account and
                 process your transcripts.
               </Page.P>
               <Page.Layout direction="horizontal">
-                <Input placeholder="Gong API key" name="gongApiKey" onChange={(e) => handleGongApiKeyChange(e)} value={transcriptsConfigurationState.gongApiKey} />
+                <Input
+                  placeholder="Gong API key"
+                  name="gongApiKey"
+                  onChange={(e) => handleGongApiKeyChange(e)}
+                  value={transcriptsConfigurationState.gongApiKey}
+                />
                 <Button
-                  label={
-                     "Save"
-                  }
+                  label={"Save"}
                   size="sm"
                   disabled={transcriptsConfigurationState?.isGDriveConnected}
                   onClick={async () => {
@@ -426,65 +432,63 @@ export default function LabsTranscriptsIndex({
             </Page.Layout>
           )}
         </Page.Layout>
-        {(provider == "google_drive" && transcriptsConfigurationState.isGDriveConnected || provider == "gong" && transcriptsConfigurationState.isGongConnected) &&
-          transcriptsConfiguration &&
-          transcriptsConfiguration.id && (
-            <>
+        {transcriptsConfiguration && (transcriptsConfigurationState.isGDriveConnected ||
+          transcriptsConfigurationState.isGongConnected) && (
+          <>
+            <Page.Layout direction="vertical">
+              <Page.SectionHeader title="2. Choose an assistant" />
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Choose an assistant" />
-                <Page.Layout direction="vertical">
-                  <Page.P>
-                    Choose the assistant that will summarize the transcripts in
-                    the way you want.
-                  </Page.P>
-                  <Page.Layout direction="horizontal">
-                    <AssistantPicker
-                      owner={owner}
-                      size="sm"
-                      onItemClick={(assistant) =>
-                        handleSelectAssistant(
-                          transcriptsConfiguration.id,
-                          assistant
-                        )
-                      }
-                      assistants={agents}
-                      showFooterButtons={false}
-                    />
-                    {transcriptsConfigurationState.assistantSelected && (
-                      <Page.P>
-                        <strong>
-                          @
-                          {transcriptsConfigurationState.assistantSelected.name}
-                        </strong>
-                      </Page.P>
-                    )}
-                  </Page.Layout>
-                </Page.Layout>
-              </Page.Layout>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Enable transcripts processing" />
-                <Page.Layout direction="horizontal" gap="xl">
-                  <SliderToggle
-                    selected={transcriptsConfigurationState.isActive}
-                    onClick={() =>
-                      handleSetIsActive(
+                <Page.P>
+                  Choose the assistant that will summarize the transcripts in
+                  the way you want.
+                </Page.P>
+                <Page.Layout direction="horizontal">
+                  <AssistantPicker
+                    owner={owner}
+                    size="sm"
+                    onItemClick={(assistant) =>
+                      handleSelectAssistant(
                         transcriptsConfiguration.id,
-                        !transcriptsConfigurationState.isActive
+                        assistant
                       )
                     }
-                    disabled={!transcriptsConfigurationState.assistantSelected}
+                    assistants={agents}
+                    showFooterButtons={false}
                   />
-                  <Page.P>
-                    When enabled, each new meeting transcript in 'My Drive' will
-                    be processed.
-                    <br />
-                    Summaries can take up to 30 minutes to be sent after
-                    meetings end.
-                  </Page.P>
+                  {transcriptsConfigurationState.assistantSelected && (
+                    <Page.P>
+                      <strong>
+                        @{transcriptsConfigurationState.assistantSelected.name}
+                      </strong>
+                    </Page.P>
+                  )}
                 </Page.Layout>
               </Page.Layout>
-            </>
-          )}
+            </Page.Layout>
+            <Page.Layout direction="vertical">
+              <Page.SectionHeader title="3. Enable transcripts processing" />
+              <Page.Layout direction="horizontal" gap="xl">
+                <SliderToggle
+                  selected={transcriptsConfigurationState.isActive}
+                  onClick={() =>
+                    handleSetIsActive(
+                      transcriptsConfiguration.id,
+                      !transcriptsConfigurationState.isActive
+                    )
+                  }
+                  disabled={!transcriptsConfigurationState.assistantSelected}
+                />
+                <Page.P>
+                  When enabled, each new meeting transcript in 'My Drive' will
+                  be processed.
+                  <br />
+                  Summaries can take up to 30 minutes to be sent after meetings
+                  end.
+                </Page.P>
+              </Page.Layout>
+            </Page.Layout>
+          </>
+        )}
       </Page>
     </AppLayout>
   );

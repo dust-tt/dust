@@ -13,7 +13,10 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const acceptableTranscriptProvidersCodec = t.union([t.literal("google_drive"), t.literal("gong")]);
+export const acceptableTranscriptProvidersCodec = t.union([
+  t.literal("google_drive"),
+  t.literal("gong"),
+]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
   connectionId: t.union([t.string, t.null]),
@@ -61,13 +64,10 @@ async function handler(
     // TODO: This should be a proper list operation.
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
-          {
-            auth,
-            userId,
-            provider: req.query.provider as LabsTranscriptsProviderType,
-          }
-        );
+        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+          auth,
+          userId,
+        });
 
       if (!transcriptsConfigurationGet) {
         return apiError(req, res, {
@@ -102,14 +102,25 @@ async function handler(
 
       const { connectionId, provider, gongApiKey } = bodyValidation.right;
 
-      const transcriptsConfigurationPostResource =
-        await LabsTranscriptsConfigurationResource.makeNew({
+      let transcriptsConfigurationPostResource =
+        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+          auth,
           userId,
-          workspaceId: owner.id,
-          connectionId,
-          gongApiKey,
-          provider,
         });
+
+      if(!transcriptsConfigurationPostResource) {
+        transcriptsConfigurationPostResource =
+          await LabsTranscriptsConfigurationResource.makeNew({
+            userId,
+            workspaceId: owner.id,
+            provider,
+          });
+      }
+
+      await transcriptsConfigurationPostResource.update({
+        connectionId,
+        gongApiKey,
+      });
 
       return res
         .status(200)
