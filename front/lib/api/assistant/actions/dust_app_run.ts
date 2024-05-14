@@ -53,12 +53,9 @@ export function renderDustAppRunActionFunctionCall(
   action: DustAppRunActionType
 ): FunctionCallType {
   return {
-    id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: action.appName,
-      arguments: JSON.stringify(action.params),
-    },
+    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
+    name: action.appName,
+    arguments: JSON.stringify(action.params),
   };
 }
 export function renderDustAppRunActionForMultiActionsModel(
@@ -72,7 +69,7 @@ export function renderDustAppRunActionForMultiActionsModel(
 
   return {
     role: "function" as const,
-    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     content,
   };
 }

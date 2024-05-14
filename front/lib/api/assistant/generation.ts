@@ -342,11 +342,13 @@ export async function renderConversationForModelMultiActions({
       }
 
       if (function_calls.length > 0) {
-        messages.unshift({
+        messages.push({
           role: "assistant",
-          content: null,
           function_calls,
         });
+      }
+      if (function_messages.length > 0) {
+        messages.push(...function_messages);
       }
     } else if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.
@@ -402,7 +404,7 @@ export async function renderConversationForModelMultiActions({
         let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
         if ("function_calls" in m) {
           text += m.function_calls
-            .map((f) => `${f.function.name} ${f.function.arguments}`)
+            .map((f) => `${f.name} ${f.arguments}`)
             .join(" ");
         }
         return tokenCountForText(text, model);
