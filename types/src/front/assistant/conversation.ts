@@ -5,7 +5,6 @@ import { TablesQueryActionType } from "../../front/assistant/actions/tables_quer
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
-import { BaseAction } from "../lib/api/assistant/actions";
 
 /**
  * Mentions
