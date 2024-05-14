@@ -8,6 +8,7 @@ export const SUPPORTED_ENTERPRISE_REPORT_USAGE = [
   "MAU_5",
   "MAU_10",
 ] as const;
+type SupportedEnterpriseReportUsage = (typeof SUPPORTED_ENTERPRISE_REPORT_USAGE)[number];
 
 export const SUPPORTED_REPORT_USAGE = [
   ...SUPPORTED_ENTERPRISE_REPORT_USAGE,
@@ -15,6 +16,12 @@ export const SUPPORTED_REPORT_USAGE = [
   "FIXED",
 ] as const;
 export type SupportedReportUsage = (typeof SUPPORTED_REPORT_USAGE)[number];
+
+export function isEnterpriseReportUsage(
+  usage: string | undefined
+): usage is SupportedEnterpriseReportUsage {
+  return SUPPORTED_ENTERPRISE_REPORT_USAGE.includes(usage as SupportedEnterpriseReportUsage);
+}
 
 export function isSupportedReportUsage(
   usage: string | undefined

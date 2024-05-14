@@ -9,9 +9,9 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
+  isEnterpriseReportUsage,
   isMauReportUsage,
   isSupportedReportUsage,
-  SUPPORTED_ENTERPRISE_REPORT_USAGE,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 
@@ -323,7 +323,7 @@ export function isEnterpriseSubscription(stripeSubscription: Stripe.Subscription
     const isRecurring = Boolean(item.price.recurring);
     const reportUsage = item.price.metadata?.REPORT_USAGE;
 
-    return isRecurring && SUPPORTED_ENTERPRISE_REPORT_USAGE.includes(reportUsage);
+    return isRecurring && isEnterpriseReportUsage(reportUsage);
   });
 }
 
