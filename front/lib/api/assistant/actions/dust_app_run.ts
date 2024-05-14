@@ -131,8 +131,6 @@ async function dustAppRunActionSpecification({
     });
   }
 
-  console.log(">> schema:", schema);
-
   const inputs: {
     name: string;
     description: string;
