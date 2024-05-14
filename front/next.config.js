@@ -57,6 +57,7 @@ module.exports = removeImports({
       tls: false,
       dgram: false,
     };
+    config.resolve.alias.canvas = false;
     return config;
   },
 });
