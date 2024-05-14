@@ -191,8 +191,8 @@ export default function BrowserlessAPISetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                            ? "Enabling..."
-                            : "Enable"
+                              ? "Enabling..."
+                              : "Enable"
                         }
                       />
                     ) : (

@@ -342,7 +342,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
   function groupByAgentConfigurationId<
-    T extends { agentConfigurationId: number }
+    T extends { agentConfigurationId: number },
   >(list: T[]): Record<number, T[]> {
     return _.groupBy(list, "agentConfigurationId");
   }
@@ -385,10 +385,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
             userId: user.id,
           },
         }).then((relations) =>
-          relations.reduce((acc, relation) => {
-            acc[relation.agentConfiguration] = relation;
-            return acc;
-          }, {} as Record<string, AgentUserRelation>)
+          relations.reduce(
+            (acc, relation) => {
+              acc[relation.agentConfiguration] = relation;
+              return acc;
+            },
+            {} as Record<string, AgentUserRelation>
+          )
         )
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
@@ -777,9 +780,8 @@ async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
     return false;
   }
 
-  const contentType = await getPublicUploadBucket().getFileContentType(
-    filename
-  );
+  const contentType =
+    await getPublicUploadBucket().getFileContentType(filename);
   if (!contentType) {
     return false;
   }
@@ -821,9 +823,8 @@ export async function createAgentConfiguration(
     throw new Error("Unexpected `auth` without `user`.");
   }
 
-  const isValidPictureUrl = await isSelfHostedImageWithValidContentType(
-    pictureUrl
-  );
+  const isValidPictureUrl =
+    await isSelfHostedImageWithValidContentType(pictureUrl);
   if (!isValidPictureUrl) {
     return new Err(new Error("Invalid picture url."));
   }
