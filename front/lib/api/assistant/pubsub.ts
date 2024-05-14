@@ -9,7 +9,7 @@ import type {
 } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type {
-  AgentActionParamsOrOutputEvent,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -110,7 +110,7 @@ async function handleUserMessageEvents(
     | UserMessageNewEvent
     | AgentMessageNewEvent
     | AgentErrorEvent
-    | AgentActionParamsOrOutputEvent
+    | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
@@ -447,7 +447,7 @@ export async function* getMessagesEvents(
     eventId: string;
     data:
       | AgentErrorEvent
-      | AgentActionParamsOrOutputEvent
+      | AgentActionSpecificEvent
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
       | GenerationTokensEvent

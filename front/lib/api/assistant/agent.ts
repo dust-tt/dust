@@ -1,8 +1,8 @@
 import type {
   AgentActionConfigurationType,
   AgentActionEvent,
-  AgentActionParamsOrOutputEvent,
   AgentActionSpecification,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
@@ -69,7 +69,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -116,7 +116,7 @@ export async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -591,7 +591,7 @@ async function* runAction(
     step: number;
   }
 ): AsyncGenerator<
-  AgentActionParamsOrOutputEvent | AgentErrorEvent | AgentActionSuccessEvent,
+  AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
   const now = Date.now();

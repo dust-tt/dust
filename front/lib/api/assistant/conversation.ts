@@ -1,5 +1,5 @@
 import type {
-  AgentActionParamsOrOutputEvent,
+  AgentActionSpecificEvent,
   AgentMessageNewEvent,
   AgentMessageWithRankType,
   ConversationTitleEvent,
@@ -563,7 +563,7 @@ export async function* postUserMessage(
   | UserMessageNewEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -947,7 +947,7 @@ export async function* editUserMessage(
   | UserMessageErrorEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -1333,7 +1333,7 @@ export async function* retryAgentMessage(
   | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentMessageErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -1602,7 +1602,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
-    | AgentActionParamsOrOutputEvent
+    | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
@@ -1614,7 +1614,7 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionParamsOrOutputEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
