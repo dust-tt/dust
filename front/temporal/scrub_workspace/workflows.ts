@@ -19,33 +19,7 @@ const { scrubWorkspaceData, pauseAllConnectors } = proxyActivities<
   startToCloseTimeout: "60 minutes",
 });
 
-// DEPRECATED
-// TODO(@fontanierh): remove this workflow once the new one is deployed and no instances are still running.
 export async function scheduleWorkspaceScrubWorkflow({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<boolean> {
-  await sendDataDeletionEmail({
-    remainingDays: 15,
-    workspaceId,
-    isLast: false,
-  });
-  await sleep("12 days");
-  if (!(await shouldStillScrubData({ workspaceId }))) {
-    return false;
-  }
-  await sendDataDeletionEmail({ remainingDays: 3, workspaceId, isLast: true });
-  await sleep("3 days");
-  if (!(await shouldStillScrubData({ workspaceId }))) {
-    return false;
-  }
-
-  await scrubWorkspaceData({ workspaceId });
-  return true;
-}
-
-export async function scheduleWorkspaceScrubWorkflowV2({
   workspaceId,
 }: {
   workspaceId: string;
