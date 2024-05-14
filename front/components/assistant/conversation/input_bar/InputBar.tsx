@@ -2,7 +2,6 @@ import { Button, Citation, StopIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
-import { set } from "lodash";
 import {
   useCallback,
   useContext,
