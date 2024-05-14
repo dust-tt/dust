@@ -333,15 +333,14 @@ export async function renderConversationForModelMultiActions({
           assertNever(action);
         }
       }
-
+      if (function_messages.length > 0) {
+        messages.unshift(...function_messages);
+      }
       if (function_calls.length > 0) {
-        messages.push({
+        messages.unshift({
           role: "assistant",
           function_calls,
         });
-      }
-      if (function_messages.length > 0) {
-        messages.push(...function_messages);
       }
     } else if (isUserMessageType(m)) {
       // Replace all `:mention[{name}]{.*}` with `@name`.
