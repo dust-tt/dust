@@ -62,27 +62,41 @@ async function queryIntercomAPI({
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const response = await rawResponse.json();
+  // We get the text and attempt to parse so that we can log the raw text in case of error (the
+  // body is already consumed by response.json() if used otherwise).
+  const text = await rawResponse.text();
 
-  if (!rawResponse.ok) {
-    if (
-      response.type === "error.list" &&
-      response.errors &&
-      response.errors.length > 0
-    ) {
-      const error = response.errors[0];
-      // This error is thrown when we are dealing with a revoked OAuth token.
-      if (error.code === "unauthorized") {
-        throw new ExternalOauthTokenError();
-      }
-      // We return null for 404 errors.
-      if (error.code === "not_found") {
-        return null;
+  let response = null;
+  try {
+    response = JSON.parse(text);
+
+    if (!rawResponse.ok) {
+      if (
+        response.type === "error.list" &&
+        response.errors &&
+        response.errors.length > 0
+      ) {
+        const error = response.errors[0];
+        // This error is thrown when we are dealing with a revoked OAuth token.
+        if (error.code === "unauthorized") {
+          throw new ExternalOauthTokenError();
+        }
+        // We return null for 404 errors.
+        if (error.code === "not_found") {
+          return null;
+        }
       }
     }
-  }
 
-  return response;
+    return response;
+  } catch (e) {
+    logger.info(
+      { path, response: rawResponse.text },
+      "Failed to parse Intercom JSON response."
+    );
+
+    throw e;
+  }
 }
 
 /**
