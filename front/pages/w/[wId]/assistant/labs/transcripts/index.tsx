@@ -97,6 +97,7 @@ export default function LabsTranscriptsIndex({
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
       gongApiKey: string;
+      gongApiSecret: string;
     }>({
       provider: "",
       isGDriveConnected: false,
@@ -104,11 +105,13 @@ export default function LabsTranscriptsIndex({
       assistantSelected: null as LightAgentConfigurationType | null,
       isActive: false,
       gongApiKey: "",
+      gongApiSecret: "",
     });
 
   useEffect(() => {
     if (transcriptsConfiguration) {
       setTranscriptsConfigurationState({
+        ...transcriptsConfigurationState,
         provider: transcriptsConfiguration.provider || "",
         isGongConnected: transcriptsConfiguration.provider == "gong" || false,
         isGDriveConnected:
@@ -118,7 +121,6 @@ export default function LabsTranscriptsIndex({
             (a) => a.sId === transcriptsConfiguration.agentConfigurationId
           ) || null,
         isActive: transcriptsConfiguration.isActive || false,
-        gongApiKey: transcriptsConfiguration.gongApiKey || "",
       });
     }
   }, [transcriptsConfiguration, agentConfigurations]);
@@ -145,6 +147,13 @@ export default function LabsTranscriptsIndex({
       gongApiKey,
     });
   };
+
+  const handleGongApiSecretChange = async (gongApiSecret: string) => {
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
+      gongApiSecret,
+    });
+  }
 
   const handleDisconnectProvider = async (
     transcriptConfigurationId: number
@@ -300,7 +309,7 @@ export default function LabsTranscriptsIndex({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        gongApiKey: transcriptsConfigurationState.gongApiKey,
+        gongApiKey: Buffer.from(`${transcriptsConfigurationState.gongApiKey}:${transcriptsConfigurationState.gongApiSecret}`).toString('base64'),
         connectionId: null,
         provider: "gong",
       }),
@@ -466,15 +475,24 @@ export default function LabsTranscriptsIndex({
               ) : (
                 <Page.Layout direction="horizontal">
                   <Input
-                    placeholder="Gong API key"
+                    placeholder="Gong Access key"
                     name="gongApiKey"
                     onChange={(e) => handleGongApiKeyChange(e)}
                     value={transcriptsConfigurationState.gongApiKey}
                   />
+                   <Input
+                    placeholder="Gong Access secret"
+                    name="gongApiKey"
+                    onChange={(e) => handleGongApiSecretChange(e)}
+                    value={transcriptsConfigurationState.gongApiSecret}
+                  />
                   <Button
                     label={"Save"}
                     size="sm"
-                    disabled={transcriptsConfigurationState?.isGDriveConnected}
+                    disabled={
+                      transcriptsConfigurationState.gongApiKey.length != 32 ||
+                      transcriptsConfigurationState.gongApiSecret.length < 30
+                    }
                     onClick={async () => {
                       await saveGongConnection();
                     }}
