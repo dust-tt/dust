@@ -92,7 +92,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4O_MODEL_ID,
-  displayName: "GPT-4o",
+  displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
