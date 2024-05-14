@@ -245,7 +245,7 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         connectionId,
         gongApiKey: null,
-        provider,
+        provider: transcriptsConfigurationState.provider,
       }),
     });
 
@@ -310,13 +310,13 @@ export default function LabsTranscriptsIndex({
 
   const handleConnectGoogleTranscriptsSource = async () => {
     try {
-      if (provider !== "google_drive") {
+      if (transcriptsConfigurationState.provider !== "google_drive") {
         return;
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        provider
+        transcriptsConfigurationState.provider
       );
       const {
         connectionId: nangoConnectionId,
