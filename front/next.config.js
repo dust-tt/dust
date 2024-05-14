@@ -5,6 +5,7 @@ module.exports = removeImports({
   experimental: { esmExternals: false },
   reactStrictMode: true,
   poweredByHeader: false,
+  swcMinify: false,
   async redirects() {
     return [
       {
