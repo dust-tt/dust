@@ -314,12 +314,14 @@ export function assertStripeSubscriptionIsValid(
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
 
 // "Cheap" way to verify if a Stripe subscription can be considered an enterprise subscription.
-export function isEnterpriseSubscription(stripeSubscription: Stripe.Subscription) {
+export function isEnterpriseSubscription(
+  stripeSubscription: Stripe.Subscription
+) {
   const activeItems = stripeSubscription.items.data.filter(
     (item) => !item.deleted
   );
 
-  return activeItems.every(item => {
+  return activeItems.every((item) => {
     const isRecurring = Boolean(item.price.recurring);
     const reportUsage = item.price.metadata?.REPORT_USAGE;
 
