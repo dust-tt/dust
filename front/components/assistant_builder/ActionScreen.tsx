@@ -184,7 +184,6 @@ export default function ActionScreen({
     }
   };
 
-  // TODO(@fontanierh): handle multi-actions
   const action = useDeprecatedDefaultSingleAction(builderState) ?? null;
 
   const dataSourceConfigs =
