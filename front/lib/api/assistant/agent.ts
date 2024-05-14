@@ -143,10 +143,10 @@ export async function* runMultiActionsAgentLoop(
       i === configuration.maxToolsUsePerRun
         ? []
         : // If we have a forced action, we only run this action.
-        forcedAction
-        ? [forcedAction]
-        : // Otherwise, we let the agent decide which action to run (if any).
-          configuration.actions;
+          forcedAction
+          ? [forcedAction]
+          : // Otherwise, we let the agent decide which action to run (if any).
+            configuration.actions;
 
     const loopIterationStream = runMultiActionsAgent(auth, {
       agentConfiguration: configuration,
