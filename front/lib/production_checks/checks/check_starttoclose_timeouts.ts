@@ -1,4 +1,5 @@
 import { temporal } from "@temporalio/proto/protos/root";
+
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 
