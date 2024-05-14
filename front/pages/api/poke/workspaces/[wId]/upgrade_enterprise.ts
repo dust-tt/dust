@@ -8,6 +8,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import {
   assertStripeSubscriptionIsValid,
   getStripeSubscription,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import {
   getSubscriptionForStripeId,
@@ -99,6 +100,17 @@ async function handler(
             type: "invalid_request_error",
             message:
               "The subscription is already attached to another workspace.",
+          },
+        });
+      }
+
+      if (!isEnterpriseSubscription(stripeSubscription)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The subscription provided is not an enterprise subscription.",
           },
         });
       }
