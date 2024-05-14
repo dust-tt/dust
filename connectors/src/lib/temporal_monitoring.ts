@@ -58,26 +58,37 @@ export class ActivityInboundLogInterceptor
     ];
 
     try {
-      return await tracer.trace(
-        `${this.context.info.workflowType}-${this.context.info.activityType}`,
-        {
-          resource: this.context.info.activityType,
-          type: "temporal-activity",
-        },
-        async (span) => {
-          span?.setTag("attempt", this.context.info.attempt);
-          span?.setTag(
-            "workflow_id",
-            this.context.info.workflowExecution.workflowId
-          );
-          span?.setTag(
-            "workflow_run_id",
-            this.context.info.workflowExecution.runId
-          );
-
-          return next(input);
-        }
-      );
+      return await Promise.race([
+        tracer.trace(
+          `${this.context.info.workflowType}-${this.context.info.activityType}`,
+          {
+            resource: this.context.info.activityType,
+            type: "temporal-activity",
+          },
+          async (span) => {
+            span?.setTag("attempt", this.context.info.attempt);
+            span?.setTag(
+              "workflow_id",
+              this.context.info.workflowExecution.workflowId
+            );
+            span?.setTag(
+              "workflow_run_id",
+              this.context.info.workflowExecution.runId
+            );
+            return next(input);
+          }
+        ),
+        // startToClose timeouts do not log an error by default; this code
+        // ensures that the error is logged and the activity is marked as
+        // failed.
+        setTimeout(() => {
+          error = {
+            __is_dust_error: true,
+            message: "Activity execution exceeded startToCloseTimeout",
+            type: "activity_timeout",
+          };
+        }, this.context.info.startToCloseTimeoutMs),
+      ]);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
