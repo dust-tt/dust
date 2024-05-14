@@ -125,7 +125,7 @@ function getLimitPromptForCode(
           children: (
             <p className="text-sm font-normal text-element-800">
               As part of our fair usage policy, we've put a brief pause on your
-              messaging since you've reached the 100 message limit within a 24h
+              messaging since you've reached the 100 messages limit within a 24h
               window. Check our{" "}
               <Hoverable
                 className="cursor-pointer font-bold text-action-500"
