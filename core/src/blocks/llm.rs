@@ -216,7 +216,7 @@ impl LLM {
 
         // If there is a `few_shot_preprompt`, reaplce variables and add it to the prompt.
         if let Some(few_shot_preprompt) = &self.few_shot_preprompt {
-          prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
+            prompt.push_str(Self::replace_prompt_variables(few_shot_preprompt, env)?.as_str());
         }
 
         // If `few_shot_prompt` is defined check that `few_shot_count` and add few shots to the

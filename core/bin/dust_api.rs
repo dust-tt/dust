@@ -127,7 +127,6 @@ impl APIState {
                         .await
                     {
                         Ok(()) => {
-
                             info!(
                                 run = app.0.run_ref().unwrap().run_id(),
                                 app_version = app.0.hash(),
@@ -552,8 +551,8 @@ async fn datasets_retrieve(
 
 #[derive(Clone, serde::Deserialize)]
 struct Secret {
-  name: String,
-  value: String,
+    name: String,
+    value: String,
 }
 
 #[derive(serde::Deserialize, Clone)]
@@ -565,7 +564,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
-    secrets: Vec<Secret>
+    secrets: Vec<Secret>,
 }
 
 async fn run_helper(
@@ -766,16 +765,23 @@ async fn runs_create(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect::<HashMap<_, _>>() };
+    let secrets = run::Secrets {
+        redacted: true,
+        secrets: payload
+            .secrets
+            .iter()
+            .map(|secret| (secret.name.clone(), secret.value.clone()))
+            .collect::<HashMap<_, _>>(),
+    };
 
     match headers.get("X-Dust-Workspace-Id") {
-      Some(v) => match v.to_str() {
-        Ok(v) => {
-          credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
-        }
-        _ => (),
-      },
-      None => (),
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_WORKSPACE_ID".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
     };
 
     match run_helper(project_id, payload.clone(), state.clone()).await {
@@ -806,7 +812,14 @@ async fn runs_create_stream(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect::<HashMap<_, _>>() };
+    let secrets = run::Secrets {
+        redacted: true,
+        secrets: payload
+            .secrets
+            .iter()
+            .map(|secret| (secret.name.clone(), secret.value.clone()))
+            .collect::<HashMap<_, _>>(),
+    };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {

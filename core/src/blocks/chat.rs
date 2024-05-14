@@ -117,7 +117,7 @@ impl Chat {
 
         // If `instructions` is defined, replace variables in it and add it.
         if let Some(i) = &self.instructions {
-          instructions.push_str(Self::replace_instructions_variables(i, env)?.as_str());
+            instructions.push_str(Self::replace_instructions_variables(i, env)?.as_str());
         }
 
         // replace <DUST_TRIPLE_BACKTICKS> with ```

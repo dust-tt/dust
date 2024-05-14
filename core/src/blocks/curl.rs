@@ -1,5 +1,6 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, replace_secrets_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_secrets_in_string, replace_variables_in_string, Block, BlockResult,
+    BlockType, Env,
 };
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
