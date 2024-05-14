@@ -32,16 +32,17 @@ export async function getGoogleAuthFromUserTranscriptsConfiguration(
   auth: Authenticator,
   userId: ModelId
 ) {
-  const providerId = "google_drive";
-
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
+    await LabsTranscriptsConfigurationResource.findByUserWorkspace({
       auth,
       userId,
-      provider: providerId,
     });
 
-  if (!transcriptsConfiguration) {
+  if (
+    !transcriptsConfiguration ||
+    transcriptsConfiguration.connectionId === null ||
+    transcriptsConfiguration.provider !== "google_drive"
+  ) {
     return;
   }
 

@@ -78,9 +78,9 @@ async function handler(
         });
       }
 
-      return res
-        .status(200)
-        .json({ configuration: transcriptsConfigurationGet });
+      return res.status(200).json({
+        configuration: transcriptsConfigurationGet,
+      });
 
     // Create.
     case "POST":
@@ -101,25 +101,14 @@ async function handler(
 
       const { connectionId, provider, gongApiKey } = bodyValidation.right;
 
-      let transcriptsConfigurationPostResource =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
-          auth,
+      const transcriptsConfigurationPostResource =
+        await LabsTranscriptsConfigurationResource.makeNew({
           userId,
+          workspaceId: owner.id,
+          provider,
+          connectionId,
+          gongApiKey,
         });
-
-      if(!transcriptsConfigurationPostResource) {
-        transcriptsConfigurationPostResource =
-          await LabsTranscriptsConfigurationResource.makeNew({
-            userId,
-            workspaceId: owner.id,
-            provider,
-          });
-      }
-
-      await transcriptsConfigurationPostResource.update({
-        connectionId,
-        gongApiKey,
-      });
 
       return res
         .status(200)

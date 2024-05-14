@@ -1,5 +1,4 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -78,7 +77,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  async update(
+  private async update(
     blob: Partial<Attributes<LabsTranscriptsConfigurationModel>>
   ): Promise<[affectedCount: number]> {
     return this.model.update(blob, {

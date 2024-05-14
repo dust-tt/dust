@@ -281,7 +281,7 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         gongApiKey: transcriptsConfigurationState.gongApiKey,
         connectionId: null,
-        provider: "gong"
+        provider: "gong",
       }),
     });
 
@@ -413,82 +413,95 @@ export default function LabsTranscriptsIndex({
                 Add your Gong API key so Dust can access your Gong account and
                 process your transcripts.
               </Page.P>
-              <Page.Layout direction="horizontal">
-                <Input
-                  placeholder="Gong API key"
-                  name="gongApiKey"
-                  onChange={(e) => handleGongApiKeyChange(e)}
-                  value={transcriptsConfigurationState.gongApiKey}
-                />
-                <Button
-                  label={"Save"}
-                  size="sm"
-                  disabled={transcriptsConfigurationState?.isGDriveConnected}
-                  onClick={async () => {
-                    await saveGongConnection();
-                  }}
-                />
-              </Page.Layout>
+              {transcriptsConfigurationState.isGongConnected ? (
+                <Page.P>
+                  <Button
+                    label={"Gong API is connected"}
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    disabled={true}
+                  />
+                </Page.P>
+              ) : (
+                <Page.Layout direction="horizontal">
+                  <Input
+                    placeholder="Gong API key"
+                    name="gongApiKey"
+                    onChange={(e) => handleGongApiKeyChange(e)}
+                    value={transcriptsConfigurationState.gongApiKey}
+                  />
+                  <Button
+                    label={"Save"}
+                    size="sm"
+                    disabled={transcriptsConfigurationState?.isGDriveConnected}
+                    onClick={async () => {
+                      await saveGongConnection();
+                    }}
+                  />
+                </Page.Layout>
+              )}
             </Page.Layout>
           )}
         </Page.Layout>
-        {transcriptsConfiguration && (transcriptsConfigurationState.isGDriveConnected ||
-          transcriptsConfigurationState.isGongConnected) && (
-          <>
-            <Page.Layout direction="vertical">
-              <Page.SectionHeader title="2. Choose an assistant" />
+        {transcriptsConfiguration &&
+          (transcriptsConfigurationState.isGDriveConnected ||
+            transcriptsConfigurationState.isGongConnected) && (
+            <>
               <Page.Layout direction="vertical">
-                <Page.P>
-                  Choose the assistant that will summarize the transcripts in
-                  the way you want.
-                </Page.P>
-                <Page.Layout direction="horizontal">
-                  <AssistantPicker
-                    owner={owner}
-                    size="sm"
-                    onItemClick={(assistant) =>
-                      handleSelectAssistant(
-                        transcriptsConfiguration.id,
-                        assistant
-                      )
-                    }
-                    assistants={agents}
-                    showFooterButtons={false}
-                  />
-                  {transcriptsConfigurationState.assistantSelected && (
-                    <Page.P>
-                      <strong>
-                        @{transcriptsConfigurationState.assistantSelected.name}
-                      </strong>
-                    </Page.P>
-                  )}
+                <Page.SectionHeader title="2. Choose an assistant" />
+                <Page.Layout direction="vertical">
+                  <Page.P>
+                    Choose the assistant that will summarize the transcripts in
+                    the way you want.
+                  </Page.P>
+                  <Page.Layout direction="horizontal">
+                    <AssistantPicker
+                      owner={owner}
+                      size="sm"
+                      onItemClick={(assistant) =>
+                        handleSelectAssistant(
+                          transcriptsConfiguration.id,
+                          assistant
+                        )
+                      }
+                      assistants={agents}
+                      showFooterButtons={false}
+                    />
+                    {transcriptsConfigurationState.assistantSelected && (
+                      <Page.P>
+                        <strong>
+                          @
+                          {transcriptsConfigurationState.assistantSelected.name}
+                        </strong>
+                      </Page.P>
+                    )}
+                  </Page.Layout>
                 </Page.Layout>
               </Page.Layout>
-            </Page.Layout>
-            <Page.Layout direction="vertical">
-              <Page.SectionHeader title="3. Enable transcripts processing" />
-              <Page.Layout direction="horizontal" gap="xl">
-                <SliderToggle
-                  selected={transcriptsConfigurationState.isActive}
-                  onClick={() =>
-                    handleSetIsActive(
-                      transcriptsConfiguration.id,
-                      !transcriptsConfigurationState.isActive
-                    )
-                  }
-                  disabled={!transcriptsConfigurationState.assistantSelected}
-                />
-                <Page.P>
-                  When enabled, each new meeting transcript in 'My Drive' will
-                  be processed.
-                  <br />
-                  Summaries can take up to 30 minutes to be sent after meetings
-                  end.
-                </Page.P>
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader title="3. Enable transcripts processing" />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <SliderToggle
+                    selected={transcriptsConfigurationState.isActive}
+                    onClick={() =>
+                      handleSetIsActive(
+                        transcriptsConfiguration.id,
+                        !transcriptsConfigurationState.isActive
+                      )
+                    }
+                    disabled={!transcriptsConfigurationState.assistantSelected}
+                  />
+                  <Page.P>
+                    When enabled, each new meeting transcript in 'My Drive' will
+                    be processed.
+                    <br />
+                    Summaries can take up to 30 minutes to be sent after
+                    meetings end.
+                  </Page.P>
+                </Page.Layout>
               </Page.Layout>
-            </Page.Layout>
-          </>
-        )}
+            </>
+          )}
       </Page>
     </AppLayout>
   );
