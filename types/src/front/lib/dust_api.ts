@@ -379,9 +379,8 @@ export class DustAPI {
       }),
     });
 
-    const r: DustAPIResponse<{ run: RunType }> = await this._resultFromResponse(
-      res
-    );
+    const r: DustAPIResponse<{ run: RunType }> =
+      await this._resultFromResponse(res);
     if (r.isErr()) {
       return r;
     }
