@@ -83,10 +83,17 @@ struct AnthropicContentToolUse {
     input: Value,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnthropicContentType {
+    Text,
+    ToolUse,
+    ToolResult,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 struct AnthropicContent {
-    // TODO:
-    r#type: String,
+    r#type: AnthropicContentType,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     text: Option<String>,
@@ -190,7 +197,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
                         let value = serde_json::from_str(function_call.arguments.as_str())?;
 
                         Ok(AnthropicContent {
-                            r#type: "tool_use".to_string(),
+                            r#type: AnthropicContentType::ToolUse,
                             text: None,
                             tool_use: Some(AnthropicContentToolUse {
                                 name: function_call.name.clone(),
@@ -208,7 +215,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
         // Handling tool_result.
         let tool_result = match cm.function_call_id.as_ref() {
             Some(fcid) => Some(AnthropicContent {
-                r#type: "tool_result".to_string(),
+                r#type: AnthropicContentType::ToolResult,
                 tool_use: None,
                 tool_result: Some(AnthropicContentToolResult {
                     tool_use_id: fcid.clone(),
@@ -225,7 +232,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
             .is_none()
             .then(|| {
                 cm.content.as_ref().map(|text| AnthropicContent {
-                    r#type: "text".to_string(),
+                    r#type: AnthropicContentType::ToolResult,
                     text: Some(format!("{}{}", meta_prompt, text)),
                     tool_result: None,
                     tool_use: None,
@@ -1249,6 +1256,8 @@ impl LLM for AnthropicLLM {
             .map(|cm| AnthropicChatMessage::try_from(cm))
             .collect::<Result<Vec<AnthropicChatMessage>>>()?;
 
+        // Group consecutive messages with the same role by appending their content.
+        // This is needed to group all the `tool_results` within one content vector.
         messages = messages.iter().fold(
             vec![],
             |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
@@ -1268,7 +1277,6 @@ impl LLM for AnthropicLLM {
         //     .iter()
         //     .map(|cm| AnthropicChatMessage {
         //         content: vec![AnthropicContent {
-        //             ??
         //             // TODO: Support `tool_result` here.
         //             r#type: String::from("text"),
         //             text: Some(
@@ -1283,8 +1291,6 @@ impl LLM for AnthropicLLM {
         //         role: cm.role.clone(),
         //     })
         //     .collect();
-
-        // merge messages of the same role
 
         let tools = functions
             .iter()
