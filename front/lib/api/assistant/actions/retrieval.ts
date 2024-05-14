@@ -164,7 +164,7 @@ export function rendeRetrievalActionFunctionCall(
   };
 
   return {
-    id: action.id.toString(), // @todo Daph replace with the actual tool id
+    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     name: "search_data_sources",
     arguments: JSON.stringify(params),
   };
@@ -203,7 +203,7 @@ export function renderRetrievalActionForMultiActionsModel(
 
   return {
     role: "function" as const,
-    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     content,
   };
 }
