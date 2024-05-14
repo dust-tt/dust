@@ -87,7 +87,7 @@ export async function getUserFromSession(
 export type UserPrivilege = "none" | "user" | "superuser";
 
 interface MakeGetServerSidePropsRequirementsWrapperOptions<
-  R extends UserPrivilege = "user",
+  R extends UserPrivilege = "user"
 > {
   enableLogging?: boolean;
   requireUserPrivilege: R;
@@ -98,7 +98,7 @@ export type CustomGetServerSideProps<
   Props extends { [key: string]: any } = { [key: string]: any },
   Params extends ParsedUrlQuery = ParsedUrlQuery,
   Preview extends PreviewData = PreviewData,
-  RequireUserPrivilege extends UserPrivilege = "user",
+  RequireUserPrivilege extends UserPrivilege = "user"
 > = (
   context: GetServerSidePropsContext<Params, Preview>,
   auth: RequireUserPrivilege extends "none" ? null : Authenticator,
@@ -148,7 +148,7 @@ async function getAuthenticator(
 }
 
 export function makeGetServerSidePropsRequirementsWrapper<
-  RequireUserPrivilege extends UserPrivilege = "user",
+  RequireUserPrivilege extends UserPrivilege = "user"
 >({
   enableLogging = true,
   requireUserPrivilege,

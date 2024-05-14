@@ -1,5 +1,6 @@
 import { Storage } from "@google-cloud/storage";
 import { createHash } from "blake3";
+import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { Sequelize } from "sequelize";
 
@@ -101,7 +102,7 @@ async function scrubDocument({
   deletedAt,
   hash,
 }: {
-  logger: pino.Logger;
+  logger: pino.Logger<LoggerOptions>;
   core_sequelize: Sequelize;
   storage: Storage;
   seen: Set<string>;

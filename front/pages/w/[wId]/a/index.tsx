@@ -569,8 +569,8 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                       configs[provider.providerId]
                         ? "Edit"
                         : provider.built
-                          ? "Set up"
-                          : "Coming Soon"
+                        ? "Set up"
+                        : "Coming Soon"
                     }
                   />
                 </div>
@@ -635,8 +635,8 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                       configs[provider.providerId]
                         ? "Edit"
                         : provider.built
-                          ? "Set up"
-                          : "Coming Soon"
+                        ? "Set up"
+                        : "Coming Soon"
                     }
                   />
                 </div>

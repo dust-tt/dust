@@ -200,8 +200,9 @@ async function handleRegularSignupFlow(
     });
   }
 
-  const workspaceWithVerifiedDomain =
-    await findWorkspaceWithVerifiedDomain(session);
+  const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
+    session
+  );
   const { workspace: existingWorkspace } = workspaceWithVerifiedDomain ?? {};
 
   // Verify that the user is allowed to join the specified workspace.
@@ -301,8 +302,9 @@ async function handler(
   let targetWorkspace: Workspace | null = null;
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an
   // `inviteToken`, meaning the user is going through the invite by email flow.
-  const membershipInviteRes =
-    await getPendingMembershipInvitationForToken(inviteToken);
+  const membershipInviteRes = await getPendingMembershipInvitationForToken(
+    inviteToken
+  );
   if (membershipInviteRes.isErr()) {
     const { error } = membershipInviteRes;
 

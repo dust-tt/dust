@@ -354,8 +354,8 @@ export default function DatasourceUpsert({
                   downloading
                     ? "Downloading..."
                     : uploading
-                      ? "Uploading..."
-                      : text
+                    ? "Uploading..."
+                    : text
                 }
                 onChange={(e) => setText(e.target.value)}
               />

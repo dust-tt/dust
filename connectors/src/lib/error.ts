@@ -45,10 +45,7 @@ export type NangoErrorType = (typeof NANGO_ERROR_TYPES)[number];
 export class NangoError extends Error {
   readonly type: NangoErrorType;
 
-  constructor(
-    type: NangoErrorType,
-    readonly innerError?: Error
-  ) {
+  constructor(type: NangoErrorType, readonly innerError?: Error) {
     super(innerError?.message);
     this.name = "NangoError";
     this.type = type;

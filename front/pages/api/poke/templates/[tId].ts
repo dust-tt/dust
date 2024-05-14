@@ -108,8 +108,9 @@ async function handler(
         });
       }
 
-      const existingTemplate =
-        await TemplateResource.fetchByExternalId(templateId);
+      const existingTemplate = await TemplateResource.fetchByExternalId(
+        templateId
+      );
       if (!existingTemplate) {
         return apiError(req, res, {
           status_code: 404,

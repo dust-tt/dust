@@ -47,7 +47,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
+      gaTrackingId: config.getAppUrl(),
       postLoginReturnToUrl: postLoginCallbackUrl,
       shape: 0,
     },

@@ -75,8 +75,9 @@ const _webhookGoogleDriveAPIHandler = async (
     return res.status(200).end();
   }
 
-  const workflowRes =
-    await launchGoogleDriveIncrementalSyncWorkflow(connectorId);
+  const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
 
   if (workflowRes.isErr()) {
     if (workflowRes.error instanceof RateLimitError) {

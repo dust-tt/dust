@@ -76,8 +76,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const enterpriseConnection =
-        await getEnterpriseConnectionForWorkspace(auth);
+      const enterpriseConnection = await getEnterpriseConnectionForWorkspace(
+        auth
+      );
       if (enterpriseConnection) {
         return res
           .status(200)
