@@ -105,48 +105,52 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  // We only support google_drive for now.
-  if (transcriptsConfiguration.provider !== "google_drive") {
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Provider not supported. Stopping."
-    );
-
-    return [];
-  }
-
-  const recentTranscriptFiles = await retrieveRecentTranscripts(
-    {
-      auth,
-      userId: transcriptsConfiguration.userId,
-    },
-    localLogger
-  );
-
   const fileIdsToProcess: string[] = [];
-  for (const recentTranscriptFile of recentTranscriptFiles) {
-    const { id: fileId } = recentTranscriptFile;
-    if (!fileId) {
-      localLogger.error(
-        {},
-        "[retrieveNewTranscripts] File does not have an id. Skipping."
-      );
-      continue;
-    }
 
-    const history = await transcriptsConfiguration.fetchHistoryForFileId(
-      fileId
+  if (transcriptsConfiguration.provider == "google_drive") {
+    const recentTranscriptFiles = await retrieveRecentGoogleTranscripts(
+      {
+        auth,
+        userId: transcriptsConfiguration.userId,
+      },
+      localLogger
     );
-    if (history) {
-      localLogger.info(
-        { fileId },
-        "[retrieveNewTranscripts] File already processed. Skipping."
-      );
-      continue;
-    }
 
-    fileIdsToProcess.push(fileId);
+    for (const recentTranscriptFile of recentTranscriptFiles) {
+      const { id: fileId } = recentTranscriptFile;
+      if (!fileId) {
+        localLogger.error(
+          {},
+          "[retrieveNewTranscripts] File does not have an id. Skipping."
+        );
+        continue;
+      }
+
+      const history = await transcriptsConfiguration.fetchHistoryForFileId(
+        fileId
+      );
+      if (history) {
+        localLogger.info(
+          { fileId },
+          "[retrieveNewTranscripts] File already processed. Skipping."
+        );
+        continue;
+      }
+
+      fileIdsToProcess.push(fileId);
+    }
   }
+
+  if (transcriptsConfiguration.provider == "gong") {
+    // Retrieve recent transcripts from Gong
+    const newTranscripts = await fetch(`https://api.gong.io/v2/calls/transcript`, {
+      headers: {
+        Authorization: `Bearer ${transcriptsConfiguration.gongApiKey}`,
+      },
+    });
+
+    
+
 
   return fileIdsToProcess;
 }
