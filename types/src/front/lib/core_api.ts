@@ -7,6 +7,7 @@ import {
   CoreAPIDocument,
   CoreAPILightDocument,
 } from "../../core/data_source";
+import { DustAppSecretType } from "../../front/dust_app_secret";
 import { dustManagedCredentials } from "../../front/lib/api/credentials";
 import { Project } from "../../front/project";
 import { CredentialsType } from "../../front/provider";
@@ -86,6 +87,7 @@ type CoreAPICreateRunParams = {
   inputs?: any[] | null;
   config: RunConfig;
   credentials: CredentialsType;
+  secrets: DustAppSecretType[];
 };
 
 type GetDatasetResponse = {
@@ -250,6 +252,7 @@ export class CoreAPI {
     inputs,
     config,
     credentials,
+    secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
     const response = await fetch(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
@@ -267,6 +270,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
+          secrets: secrets,
         }),
       }
     );
@@ -284,6 +288,7 @@ export class CoreAPI {
     inputs,
     config,
     credentials,
+    secrets,
   }: CoreAPICreateRunParams): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
@@ -306,6 +311,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
+          secrets: secrets,
         }),
       }
     );
@@ -1204,6 +1210,7 @@ export class CoreAPI {
         code: "unexpected_response_format",
         message: `Unexpected response format from CoreAPI: ${e}`,
       };
+
       this._logger.error(
         {
           connectorsError: err,

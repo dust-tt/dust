@@ -1,6 +1,7 @@
 use crate::blocks::block::BlockType;
 use crate::utils;
 use anyhow::Result;
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -26,6 +27,30 @@ pub struct ExecutionWithTimestamp {
 }
 
 pub type Credentials = HashMap<String, String>;
+
+#[derive(Clone)]
+pub struct Secrets {
+    pub redacted: bool,
+    pub secrets: HashMap<String, String>,
+}
+
+impl Serialize for Secrets {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.redacted {
+            let redacted_secrets: HashMap<String, String> = self
+                .secrets
+                .keys()
+                .map(|key| (key.clone(), String::from("••••••")))
+                .collect();
+            redacted_secrets.serialize(serializer)
+        } else {
+            self.secrets.serialize(serializer)
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RunConfig {

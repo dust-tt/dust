@@ -6,7 +6,7 @@ use crate::blocks::{
 use crate::data_sources::qdrant::QdrantClients;
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
-use crate::run::{Credentials, RunConfig};
+use crate::run::{Credentials, RunConfig, Secrets};
 use crate::stores::store::Store;
 use crate::utils::ParseError;
 use crate::Rule;
@@ -43,6 +43,7 @@ pub struct Env {
     pub state: HashMap<String, Value>,
     pub input: InputState,
     pub map: Option<MapState>,
+    pub secrets: Secrets,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]
@@ -53,6 +54,14 @@ pub struct Env {
     pub project: Project,
     #[serde(skip_serializing)]
     pub credentials: Credentials,
+}
+
+impl Env {
+    pub fn clone_with_unredacted_secrets(&self) -> Self {
+        let mut e = self.clone();
+        e.secrets.redacted = false;
+        e
+    }
 }
 
 // pub enum Expectations {
@@ -206,6 +215,53 @@ pub fn parse_block(t: BlockType, block_pair: Pair<Rule>) -> Result<Box<dyn Block
         BlockType::DatabaseSchema => Ok(Box::new(DatabaseSchema::parse(block_pair)?)),
         BlockType::Database => Ok(Box::new(Database::parse(block_pair)?)),
     }
+}
+
+pub fn find_secrets(text: &str) -> Vec<String> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"\$\{secrets\.(?P<name>[a-zA-Z0-9_\.]+)\}").unwrap();
+    }
+
+    RE.captures_iter(text)
+        .map(|c| {
+            let name = c.name("name").unwrap().as_str();
+            String::from(name)
+        })
+        .collect::<Vec<_>>()
+}
+pub fn replace_secrets_in_string(text: &str, field: &str, env: &Env) -> Result<String> {
+    let secrets_found = find_secrets(text);
+
+    // Run Tera templating engine one_off on the result (before replacing variables but after
+    // looking for them).
+    let context = Context::from_value(json!(env.state))?;
+
+    let mut result = match Tera::one_off(text, &context, false) {
+        Ok(r) => r,
+        Err(e) => {
+            let err_msg = e
+                .source()
+                .unwrap()
+                .to_string()
+                .replace("__tera_one_off", field);
+
+            Err(anyhow!("Templating error: {}", err_msg))?
+        }
+    };
+
+    secrets_found
+        .iter()
+        .map(|key| {
+            if let Some(secret) = env.secrets.secrets.get(key) {
+                result = result.replace(&format!("${{secrets.{}}}", key), secret);
+                Ok(())
+            } else {
+                Err(anyhow!("`secrets.{}` is not a string", key))
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(result)
 }
 
 pub fn find_variables(text: &str) -> Vec<(String, String)> {
