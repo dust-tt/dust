@@ -46,7 +46,7 @@ use tracing_subscriber::prelude::*;
 /// API State
 
 struct RunManager {
-    pending_apps: Vec<(app::App, run::Credentials)>,
+    pending_apps: Vec<(app::App, run::Credentials, run::Secrets)>,
     pending_runs: Vec<String>,
 }
 
@@ -75,9 +75,9 @@ impl APIState {
         }
     }
 
-    fn run_app(&self, app: app::App, credentials: run::Credentials) {
+    fn run_app(&self, app: app::App, credentials: run::Credentials, secrets: run::Secrets) {
         let mut run_manager = self.run_manager.lock();
-        run_manager.pending_apps.push((app, credentials));
+        run_manager.pending_apps.push((app, credentials, secrets));
     }
 
     async fn stop_loop(&self) {
@@ -99,8 +99,9 @@ impl APIState {
 
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
+
         loop {
-            let apps: Vec<(app::App, run::Credentials)> = {
+            let apps: Vec<(app::App, run::Credentials, run::Secrets)> = {
                 let mut manager = self.run_manager.lock();
                 let apps = manager.pending_apps.drain(..).collect::<Vec<_>>();
                 apps.iter().for_each(|app| {
@@ -119,9 +120,10 @@ impl APIState {
                 // Start a task that will run the app in the background.
                 tokio::task::spawn(async move {
                     let now = std::time::Instant::now();
+
                     match app
                         .0
-                        .run(app.1, store, databases_store, qdrant_clients, None)
+                        .run(app.1, app.2, store, databases_store, qdrant_clients, None)
                         .await
                     {
                         Ok(()) => {
@@ -547,6 +549,12 @@ async fn datasets_retrieve(
     }
 }
 
+#[derive(Clone, serde::Deserialize)]
+struct Secret {
+    name: String,
+    value: String,
+}
+
 #[derive(serde::Deserialize, Clone)]
 struct RunsCreatePayload {
     run_type: run::RunType,
@@ -556,6 +564,7 @@ struct RunsCreatePayload {
     inputs: Option<Vec<Value>>,
     config: run::RunConfig,
     credentials: run::Credentials,
+    secrets: Vec<Secret>,
 }
 
 async fn run_helper(
@@ -755,6 +764,16 @@ async fn runs_create(
 ) -> (StatusCode, Json<APIResponse>) {
     let mut credentials = payload.credentials.clone();
 
+    // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
+    let secrets = run::Secrets {
+        redacted: true,
+        secrets: payload
+            .secrets
+            .iter()
+            .map(|secret| (secret.name.clone(), secret.value.clone()))
+            .collect::<HashMap<_, _>>(),
+    };
+
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -769,7 +788,7 @@ async fn runs_create(
         Ok(app) => {
             // The run is empty for now, we can clone it for the response.
             let run = app.run_ref().unwrap().clone();
-            state.run_app(app, credentials);
+            state.run_app(app, credentials, secrets);
             (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -791,6 +810,16 @@ async fn runs_create_stream(
     Json(payload): Json<RunsCreatePayload>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let mut credentials = payload.credentials.clone();
+
+    // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
+    let secrets = run::Secrets {
+        redacted: true,
+        secrets: payload
+            .secrets
+            .iter()
+            .map(|secret| (secret.name.clone(), secret.value.clone()))
+            .collect::<HashMap<_, _>>(),
+    };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {
@@ -819,6 +848,7 @@ async fn runs_create_stream(
                 match app
                     .run(
                         credentials,
+                        secrets,
                         store,
                         databases_store,
                         qdrant_clients,

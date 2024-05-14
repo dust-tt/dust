@@ -1,5 +1,6 @@
 use crate::blocks::block::{
-    parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env,
+    parse_pair, replace_secrets_in_string, replace_variables_in_string, Block, BlockResult,
+    BlockType, Env,
 };
 use crate::deno::script::Script;
 use crate::http::request::HttpRequest;
@@ -112,7 +113,7 @@ impl Block for Curl {
             None => true,
         };
 
-        let e = env.clone();
+        let e = env.clone_with_unredacted_secrets();
         let headers_code = self.headers_code.clone();
         let (headers_value, headers_logs): (Value, Vec<Value>) =
             tokio::task::spawn_blocking(move || {
@@ -123,7 +124,7 @@ impl Block for Curl {
             .await?
             .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
 
-        let e = env.clone();
+        let e = env.clone_with_unredacted_secrets();
         let body_code = self.body_code.clone();
         let (body_value, body_logs): (Value, Vec<Value>) = tokio::task::spawn_blocking(move || {
             let mut script = Script::from_string(body_code.as_str())?
@@ -133,7 +134,8 @@ impl Block for Curl {
         .await?
         .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 
-        let url = replace_variables_in_string(&self.url, "url", env)?;
+        let mut url = replace_variables_in_string(&self.url, "url", env)?;
+        url = replace_secrets_in_string(&url, "url", env)?;
 
         if url.contains("https://dust.tt") || url.contains("https://www.dust.tt") {
             Err(anyhow!(
