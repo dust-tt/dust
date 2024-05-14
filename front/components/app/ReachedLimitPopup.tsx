@@ -1,6 +1,7 @@
 import { Dialog, Page } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
+import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
@@ -14,6 +15,8 @@ export type WorkspaceLimit =
   | "message_limit";
 
 function getLimitPromptForCode(
+  router: NextRouter,
+  owner: WorkspaceType,
   code: WorkspaceLimit,
   subscription: SubscriptionType
 ) {
@@ -23,6 +26,9 @@ function getLimitPromptForCode(
         return {
           title: "Fair usage limit reached",
           validateLabel: "Manage your subscription",
+          onValidate: () => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          },
           children: (
             <Page.Vertical gap="lg">
               <Page.P>
@@ -40,6 +46,9 @@ function getLimitPromptForCode(
         return {
           title: "Plan Limits",
           validateLabel: "Manage your subscription",
+          onValidate: () => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          },
           children: (
             <>
               <Page.P>
@@ -55,6 +64,9 @@ function getLimitPromptForCode(
       return {
         title: "Free plan",
         validateLabel: "Manage your subscription",
+        onValidate: () => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        },
         children: (
           <>
             <Page.P>
@@ -68,6 +80,9 @@ function getLimitPromptForCode(
       return {
         title: "Failed payment",
         validateLabel: "Manage your subscription",
+        onValidate: () => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        },
         children: (
           <>
             <Page.P>
@@ -83,6 +98,9 @@ function getLimitPromptForCode(
         return {
           title: "Fair usage limit reached",
           validateLabel: "Manage your subscription",
+          onValidate: () => {
+            void router.push(`/w/${owner.sId}/subscription`);
+          },
           children: (
             <>
               <Page.P>
@@ -100,12 +118,13 @@ function getLimitPromptForCode(
         };
       } else {
         return {
-          title: "You’ve reach the messages limit",
-          validateLabel: "Check Dust plans",
+          title: "Message quota exceeded",
+          validateLabel: "Ok",
           children: (
             <p className="text-sm font-normal text-element-800">
-              Looks like you've used up all your messages. Check out our paid
-              plans to get unlimited messages.
+              As part of our fair usage policy, we've put a brief pause on your
+              messaging since you've reached the 100 message limit within a 24h
+              window. Check our Fair Use policy to learn more.
             </p>
           ),
         };
@@ -132,7 +151,9 @@ export function ReachedLimitPopup({
 }) {
   const router = useRouter();
   const trialing = isTrial(subscription);
-  const { title, children, validateLabel } = getLimitPromptForCode(
+  const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
+    router,
+    owner,
     code,
     subscription
   );
@@ -149,11 +170,14 @@ export function ReachedLimitPopup({
 
   return (
     <Dialog
-      isOpen={isOpened}
       title={title}
-      onValidate={() => {
-        void router.push(`/w/${owner.sId}/subscription`);
-      }}
+      isOpen={isOpened}
+      onValidate={
+        onValidate ||
+        (() => {
+          onClose();
+        })
+      }
       onCancel={() => onClose()}
       cancelLabel="Close"
       validateLabel={validateLabel}
