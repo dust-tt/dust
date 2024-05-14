@@ -2,6 +2,7 @@ import type {
   AgentActionConfigurationType,
   AgentActionEvent,
   AgentActionSpecification,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
@@ -10,9 +11,10 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
+  GenerationCancelEvent,
+  GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  Result,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -20,12 +22,10 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   cloneBaseConfig,
   DustProdActionRegistry,
-  Err,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -50,12 +50,14 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
   renderConversationForModel,
-  runGeneration,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
 import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
+
+const CANCELLATION_CHECK_INTERVAL = 500;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
@@ -67,7 +69,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -93,7 +95,7 @@ export async function* runAgent(
         userMessage,
         agentMessage
       )
-    : runMultiActionsAgent(
+    : runMultiActionsAgentLoop(
         auth,
         fullConfiguration,
         conversation,
@@ -106,7 +108,7 @@ export async function* runAgent(
   }
 }
 
-export async function* runMultiActionsAgent(
+export async function* runMultiActionsAgentLoop(
   auth: Authenticator,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
@@ -114,17 +116,16 @@ export async function* runMultiActionsAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
+  | AgentMessageSuccessEvent
 > {
   const now = Date.now();
 
-  for (let i = 0; i < configuration.maxToolsUsePerRun; i++) {
+  for (let i = 0; i < configuration.maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
@@ -136,155 +137,125 @@ export async function* runMultiActionsAgent(
     const forcedAction = configuration.actions.find(
       (a) => a.forceUseAtIteration === i
     );
-    const actions = forcedAction ? [forcedAction] : configuration.actions;
+    const actions =
+      // If we already executed the maximum number of actions, we don't run any more.
+      // This will force the agent to run the generation.
+      i === configuration.maxToolsUsePerRun
+        ? []
+        : // If we have a forced action, we only run this action.
+        forcedAction
+        ? [forcedAction]
+        : // Otherwise, we let the agent decide which action to run (if any).
+          configuration.actions;
 
-    const actionToRun = await getNextAction(auth, {
+    const loopIterationStream = runMultiActionsAgent(auth, {
       agentConfiguration: configuration,
       conversation,
       userMessage,
+      agentMessage,
       availableActions: actions,
       forcedActionName: forcedAction?.name ?? undefined,
     });
 
-    if (actionToRun.isErr()) {
-      localLogger.error(
-        {
-          elapsedTime: Date.now() - now,
-          error: actionToRun.error,
-        },
-        "Error getting next action"
-      );
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "parameters_generation_error",
-          message: `Error getting next action: ${actionToRun.error.message}`,
-        },
-      };
-      return;
-    }
+    for await (const event of loopIterationStream) {
+      switch (event.type) {
+        case "agent_error":
+          localLogger.error(
+            {
+              elapsedTime: Date.now() - now,
+              error: event.error,
+            },
+            "Error running multi-actions agent."
+          );
+          yield event;
+          return;
+        case "agent_action":
+          localLogger.info(
+            {
+              elapsed: Date.now() - now,
+            },
+            "[ASSISTANT_TRACE] Action inputs generation"
+          );
+          const { action, inputs, specification } = event;
+          const actionEventStream = runAction(auth, {
+            configuration: configuration,
+            actionConfiguration: action,
+            conversation,
+            userMessage,
+            agentMessage,
+            inputs,
+            specification,
+            step: i,
+          });
+          for await (const actionEvent of actionEventStream) {
+            yield actionEvent;
+          }
+          break;
 
-    localLogger.info(
-      {
-        elapsed: Date.now() - now,
-      },
-      "[ASSISTANT_TRACE] Action inputs generation"
-    );
+        // Generation events
+        case "generation_tokens":
+          yield event;
+          break;
+        case "generation_cancel":
+          yield {
+            type: "agent_generation_cancelled",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+          } satisfies AgentGenerationCancelledEvent;
+          return;
+        case "generation_success":
+          yield {
+            type: "agent_generation_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            text: event.text,
+          } satisfies AgentGenerationSuccessEvent;
 
-    const { action, inputs, specification } = actionToRun.value;
+          agentMessage.content = event.text;
+          agentMessage.status = "succeeded";
+          yield {
+            type: "agent_message_success",
+            created: Date.now(),
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            message: agentMessage,
+          };
+          return;
 
-    const eventStream = runAction(auth, {
-      configuration: configuration,
-      actionConfiguration: action,
-      conversation,
-      userMessage,
-      agentMessage,
-      inputs,
-      specification,
-      step: i,
-    });
-    for await (const event of eventStream) {
-      yield event;
-    }
-    // If the next action is the generation, we simply break out of the loop,
-    // as we always run the generation after the actions loop.
-  }
-
-  const eventStream = runGeneration(
-    auth,
-    configuration,
-    conversation,
-    userMessage,
-    agentMessage
-  );
-
-  for await (const event of eventStream) {
-    switch (event.type) {
-      case "generation_tokens":
-        yield event;
-        break;
-
-      case "generation_error":
-        yield {
-          type: "agent_error",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: event.error.code,
-            message: event.error.message,
-          },
-        };
-        return;
-
-      case "generation_cancel":
-        yield {
-          type: "agent_generation_cancelled",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-        };
-        return;
-
-      case "generation_success":
-        yield {
-          type: "agent_generation_success",
-          created: event.created,
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          text: event.text,
-        };
-
-        agentMessage.content = event.text;
-        break;
-
-      default:
-        ((event: never) => {
-          logger.error("Unknown `runAgent` event type", event);
-        })(event);
-        return;
+        default:
+          assertNever(event);
+      }
     }
   }
-
-  agentMessage.status = "succeeded";
-  yield {
-    type: "agent_message_success",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
 }
 
 // This method is used by the multi-actions execution loop to pick the next action
 // to execute and generate its inputs.
-export async function getNextAction(
+export async function* runMultiActionsAgent(
   auth: Authenticator,
   {
     agentConfiguration,
     conversation,
     userMessage,
+    agentMessage,
     availableActions,
     forcedActionName,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
+    agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
     forcedActionName?: string;
   }
-): Promise<
-  Result<
-    {
-      action: AgentActionConfigurationType;
-      inputs: Record<string, string | boolean | number>;
-      specification: AgentActionSpecification | null;
-    },
-    Error
-  >
+): AsyncGenerator<
+  | AgentErrorEvent
+  | GenerationSuccessEvent
+  | GenerationCancelEvent
+  | GenerationTokensEvent
+  | AgentActionEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -372,7 +343,7 @@ export async function getNextAction(
   // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-use-tools"].config
+    DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
   config.MODEL.function_call = forcedActionName ?? "auto";
   config.MODEL.provider_id = model.providerId;
@@ -381,7 +352,7 @@ export async function getNextAction(
 
   const res = await runActionStreamed(
     auth,
-    "assistant-v2-use-tools",
+    "assistant-v2-multi-actions-agent",
     config,
     [
       {
@@ -398,51 +369,176 @@ export async function getNextAction(
   );
 
   if (res.isErr()) {
-    return new Err(
-      new Error(
-        `Error running use-tools action: [${res.error.type}] ${res.error.message}`
-      )
-    );
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "multi_actions_error",
+        message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
+      },
+    } satisfies AgentErrorEvent;
+    return;
   }
 
   const { eventStream } = res.value;
 
   const output: {
-    name?: string;
-    arguments?: Record<string, string | boolean | number>;
-  } = {};
+    name: string | null;
+    arguments: Record<string, string | boolean | number> | null;
+    generation: string | null;
+  } = {
+    name: null,
+    arguments: null,
+    generation: null,
+  };
 
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(`Error generating action inputs: ${event.content.message}`)
-      );
-    }
+  let shouldYieldCancel = false;
+  let lastCheckCancellation = Date.now();
+  const redis = await redisClient();
+  let isGeneration = true;
 
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(new Error(`Error generating action inputs: ${e.error}`));
+  try {
+    const _checkCancellation = async () => {
+      try {
+        const cancelled = await redis.get(
+          `assistant:generation:cancelled:${agentMessage.sId}`
+        );
+        if (cancelled === "1") {
+          shouldYieldCancel = true;
+          await redis.set(
+            `assistant:generation:cancelled:${agentMessage.sId}`,
+            0,
+            {
+              EX: 3600, // 1 hour
+            }
+          );
+        }
+      } catch (error) {
+        logger.error({ error }, "Error checking cancellation");
+        return false;
+      }
+    };
+
+    for await (const event of eventStream) {
+      if (event.type === "function_call") {
+        isGeneration = false;
       }
 
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (Array.isArray(v)) {
-          const first = v[0];
-          if ("name" in first) {
-            output.name = first.name;
+      if (event.type === "error") {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "multi_actions_error",
+            message: `Error running multi-actions agent action: ${JSON.stringify(
+              event,
+              null,
+              2
+            )}`,
+          },
+        } satisfies AgentErrorEvent;
+        return;
+      }
+
+      const currentTimestamp = Date.now();
+      if (
+        currentTimestamp - lastCheckCancellation >=
+        CANCELLATION_CHECK_INTERVAL
+      ) {
+        void _checkCancellation(); // Trigger the async function without awaiting
+        lastCheckCancellation = currentTimestamp;
+      }
+
+      if (shouldYieldCancel) {
+        yield {
+          type: "generation_cancel",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+        } satisfies GenerationCancelEvent;
+        return;
+      }
+
+      if (event.type === "tokens" && isGeneration) {
+        yield {
+          type: "generation_tokens",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          text: event.content.tokens.text,
+        } satisfies GenerationTokensEvent;
+      }
+
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+        if (e.error) {
+          yield {
+            type: "agent_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "multi_actions_error",
+              message: `Error running multi-actions agent action: ${e.error}`,
+            },
+          } satisfies AgentErrorEvent;
+          return;
+        }
+
+        if (event.content.block_name === "MODEL" && e.value && isGeneration) {
+          const m = e.value as {
+            message: {
+              content: string;
+            };
+          };
+          yield {
+            type: "generation_success",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            text: m.message.content,
+          } satisfies GenerationSuccessEvent;
+          return;
+        }
+
+        if (event.content.block_name === "OUTPUT" && e.value) {
+          const v = e.value as any;
+          if ("name" in v) {
+            output.name = v.name;
           }
-          if ("arguments" in first) {
-            output.arguments = first.arguments;
+          if ("arguments" in v) {
+            output.arguments = v.arguments;
           }
+          if ("generation" in v) {
+            output.generation = v.generation;
+          }
+
+          break;
         }
       }
     }
+  } finally {
+    await redis.quit();
   }
 
   if (!output.name) {
-    return new Err(new Error("No action found"));
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "no_action_or_generation_found",
+        message: "No action or generation found",
+      },
+    } satisfies AgentErrorEvent;
+    return;
   }
+
   output.arguments = output.arguments ?? {};
 
   const action = agentConfiguration.actions.find((a) => a.name === output.name);
@@ -450,14 +546,27 @@ export async function getNextAction(
   const spec = specifications.find((s) => s.name === output.name) ?? null;
 
   if (!action) {
-    return new Err(new Error(`Action ${output.name} not found`));
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "action_not_found",
+        message: `Action ${output.name} not found`,
+      },
+    } satisfies AgentErrorEvent;
+    return;
   }
 
-  return new Ok({
+  yield {
+    type: "agent_action",
+    created: Date.now(),
     action,
     inputs: output.arguments,
     specification: spec,
-  });
+  } satisfies AgentActionEvent;
+  return;
 }
 
 async function* runAction(
@@ -482,10 +591,7 @@ async function* runAction(
     step: number;
   }
 ): AsyncGenerator<
-  | AgentActionEvent
-  | AgentErrorEvent
-  | AgentActionEvent
-  | AgentActionSuccessEvent,
+  AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
   const now = Date.now();

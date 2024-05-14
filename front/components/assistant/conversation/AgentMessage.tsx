@@ -10,7 +10,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  AgentActionEvent,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentActionType,
   AgentErrorEvent,
@@ -128,7 +128,7 @@ export function AgentMessage({
       eventId: string;
       data:
         | AgentErrorEvent
-        | AgentActionEvent
+        | AgentActionSpecificEvent
         | AgentActionSuccessEvent
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
