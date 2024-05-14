@@ -91,10 +91,12 @@ export default function LabsTranscriptsIndex({
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
       isGDriveConnected: boolean;
+      isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
     }>({
       isGDriveConnected: false,
+      isGongConnected: false,
       assistantSelected: null as LightAgentConfigurationType | null,
       isActive: false,
     });
