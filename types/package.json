@@ -13,17 +13,12 @@
   "scripts": {
     "build": "dts build",
     "lint": "dts lint",
-    "format": "dts lint --fix",
-    "start": "dts watch"
+    "start": "dts watch",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "engines": {
     "node": ">=20"
-  },
-  "devDependencies": {
-    "@tsconfig/recommended": "^1.0.3",
-    "@types/uuid": "^9.0.7",
-    "tslib": "^2.6.2",
-    "typescript": "^5.4.5"
   },
   "dependencies": {
     "@notionhq/client": "^2.2.4",
@@ -36,6 +31,12 @@
     "io-ts-types": "^0.5.19",
     "redis": "^4.6.8",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/uuid": "^9.0.7",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
   },
   "browser": {
     "tls": false,
