@@ -80,7 +80,7 @@ export type ModelConfigurationType = {
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4_TURBO_MODEL_ID,
-  displayName: "GPT 4 Turbo",
+  displayName: "GPT-4 Turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -104,7 +104,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
-  displayName: "GPT 3.5 Turbo",
+  displayName: "GPT-3.5 Turbo",
   contextSize: 16_384,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 24, // 12_288
