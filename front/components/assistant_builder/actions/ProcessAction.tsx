@@ -137,10 +137,10 @@ function PropertiesFields({
                   prop["name"].length === 0
                     ? "Name is required"
                     : properties.find(
-                          (p, i) => p.name === prop.name && i !== index
-                        )
-                      ? "Name must be unique"
-                      : undefined
+                        (p, i) => p.name === prop.name && i !== index
+                      )
+                    ? "Name must be unique"
+                    : undefined
                 }
               />
             </div>
@@ -390,10 +390,10 @@ export function ActionProcess({
                     t.length === 0
                       ? "Tag is required"
                       : (actionConfiguration.tagsFilter?.in || []).filter(
-                            (tag) => tag === t
-                          ).length > 1
-                        ? "Tag must be unique"
-                        : undefined
+                          (tag) => tag === t
+                        ).length > 1
+                      ? "Tag must be unique"
+                      : undefined
                   }
                 />
               </div>

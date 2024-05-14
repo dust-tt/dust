@@ -134,8 +134,9 @@ export async function retrieveNewTranscriptsActivity(
       continue;
     }
 
-    const history =
-      await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },

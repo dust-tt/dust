@@ -241,8 +241,9 @@ export async function confluenceCheckAndUpsertPageActivity({
     return true;
   }
 
-  const confluenceConfig =
-    await fetchConfluenceConfigurationActivity(connectorId);
+  const confluenceConfig = await fetchConfluenceConfigurationActivity(
+    connectorId
+  );
 
   const client = await getConfluenceClient(
     {

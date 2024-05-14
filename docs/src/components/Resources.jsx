@@ -77,7 +77,7 @@ function Resource({ resource }) {
     >
       <ResourcePattern {...resource.pattern} mouseX={mouseX} mouseY={mouseY} />
       <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-zinc-900/7.5 group-hover:ring-zinc-900/10 dark:ring-white/10 dark:group-hover:ring-white/20" />
-      <div className="relative rounded-2xl px-4 pb-4 pt-8">
+      <div className="relative rounded-2xl px-4 pt-8 pb-4">
         <ResourceIcon icon={resource.icon} />
         <h3 className="mt-4 text-sm font-semibold leading-7 text-zinc-900 dark:text-white">
           <Link href={resource.href}>

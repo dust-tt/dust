@@ -249,7 +249,7 @@ export function Execution({
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 min-w-4 text-emerald-300" />
+                  <CheckCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-emerald-300" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer
@@ -278,7 +278,7 @@ export function Logs({ trace }: { trace: TraceType[] }) {
             <div key={i} className="flex-auto flex-col">
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <InformationCircleIcon className="mt-0.5 h-4 w-4 min-w-4 text-gray-400" />
+                  <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
                 </div>
                 <div className="font-mono flex flex-1">
                   <ValueViewer

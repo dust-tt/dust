@@ -1,8 +1,5 @@
 export class SSOEnforcedError extends Error {
-  constructor(
-    message: string,
-    readonly workspaceId: string
-  ) {
+  constructor(message: string, readonly workspaceId: string) {
     super(message);
   }
 }

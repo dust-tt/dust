@@ -1,4 +1,4 @@
-FROM node:20.12.2 as base
+FROM node:18.15.0 as base
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop curl libpq-dev build-essential

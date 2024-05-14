@@ -6,10 +6,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest } from "next";
 
 class InvalidPaginationParamsError extends Error {
-  constructor(
-    message: string,
-    readonly reason: string
-  ) {
+  constructor(message: string, readonly reason: string) {
     super(message);
   }
 }

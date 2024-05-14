@@ -27,8 +27,12 @@ async function run() {
       console.log(`SKIPPING ${c.name}`);
       continue;
     }
-    let offset: number | undefined | null | string | Record<string, unknown> =
-      0;
+    let offset:
+      | number
+      | undefined
+      | null
+      | string
+      | Record<string, unknown> = 0;
     while (offset !== null && offset !== undefined) {
       const res = await client.scroll(c.name, {
         limit: 1024,

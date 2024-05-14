@@ -67,6 +67,9 @@ export const Header = forwardRef(function Header({ className }, ref) {
       <div className="flex items-center gap-5">
         <nav className="hidden md:block">
           <ul role="list" className="flex items-center gap-8">
+            <TopLevelNavItem href="https://discord.gg/8NJR3zQU5X">
+              Discord
+            </TopLevelNavItem>
             <TopLevelNavItem href="https://github.com/dust-tt/dust">
               Github
             </TopLevelNavItem>

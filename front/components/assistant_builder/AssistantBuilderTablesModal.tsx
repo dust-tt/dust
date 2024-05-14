@@ -83,13 +83,10 @@ const getParents = async (
     }
   );
   const json: GetContentNodeParentsResponseBody = await res.json();
-  return json.nodes.reduce(
-    (acc, r) => {
-      acc[r.internalId] = new Set(r.parents);
-      return acc;
-    },
-    {} as Record<string, Set<string>>
-  );
+  return json.nodes.reduce((acc, r) => {
+    acc[r.internalId] = new Set(r.parents);
+    return acc;
+  }, {} as Record<string, Set<string>>);
 };
 
 export default function AssistantBuilderTablesModal({

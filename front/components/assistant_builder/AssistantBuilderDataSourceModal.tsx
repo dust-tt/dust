@@ -398,13 +398,10 @@ function DataSourceResourceSelector({
       }
       const json: GetContentNodeParentsResponseBody = await res.json();
       setParentsById(
-        json.nodes.reduce(
-          (acc, r) => {
-            acc[r.internalId] = new Set(r.parents);
-            return acc;
-          },
-          {} as Record<string, Set<string>>
-        )
+        json.nodes.reduce((acc, r) => {
+          acc[r.internalId] = new Set(r.parents);
+          return acc;
+        }, {} as Record<string, Set<string>>)
       );
     } catch (e) {
       setParentsAreError(true);

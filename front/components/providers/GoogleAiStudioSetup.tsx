@@ -185,8 +185,8 @@ export default function GoogleAiStudioSetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
+                            ? "Enabling..."
+                            : "Enable"
                         }
                       />
                     ) : (
