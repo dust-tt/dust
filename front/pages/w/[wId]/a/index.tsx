@@ -9,7 +9,8 @@ import {
   Page,
   PlusIcon,
   ShapesIcon,
-  Tab} from "@dust-tt/sparkle";
+  Tab,
+} from "@dust-tt/sparkle";
 import type { DustAppSecretType, WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
