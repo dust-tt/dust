@@ -35,6 +35,7 @@ export * from "./front/key";
 export * from "./front/lib/actions/registry";
 export * from "./front/lib/actions/types";
 export * from "./front/lib/api/assistant/actions/dust_app_run";
+export * from "./front/lib/api/assistant/actions/index";
 export * from "./front/lib/api/assistant/actions/process";
 export * from "./front/lib/api/assistant/actions/retrieval";
 export * from "./front/lib/api/assistant/actions/tables_query";
