@@ -15,6 +15,7 @@ import {
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { BaseAction } from "../../lib/api/assistant/actions";
 import { AgentActionConfigurationType } from "../agent";
 
 export function isTablesQueryConfiguration(
@@ -47,8 +48,13 @@ export function isDustAppRunConfiguration(
 
 export function isDustAppRunActionType(
   arg: AgentActionType
-): arg is DustAppRunActionType {
+): arg is BaseAction {
   return arg.type === "dust_app_run_action";
+}
+
+// This is temporary until we refactor all action to this class structure.
+export function isBaseActionClass(action: unknown): action is BaseAction {
+  return action instanceof BaseAction;
 }
 
 export function isRetrievalConfiguration(
