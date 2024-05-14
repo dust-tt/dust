@@ -13,11 +13,11 @@ async function terminateWorkflow(workflowId: string, logger: Logger) {
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
     await workflowHandle.terminate();
-    logger.info({workflowId}, "Workflow successfully terminated.");
+    logger.info({ workflowId }, "Workflow successfully terminated.");
     return true;
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
-      logger.info({workflowId}, "Workflow not found -- skipping.")
+      logger.info({ workflowId }, "Workflow not found -- skipping.");
     } else {
       throw e;
     }
@@ -25,58 +25,62 @@ async function terminateWorkflow(workflowId: string, logger: Logger) {
   return false;
 }
 
-makeScript({
-  filePath: {
-      type: 'string',
-      description: 'The path to the file'
-  }
-}, async ({execute, filePath}, logger) => {
-  const csvPath = path.resolve(filePath);
+makeScript(
+  {
+    filePath: {
+      type: "string",
+      description: "The path to the file",
+    },
+  },
+  async ({ execute, filePath }, logger) => {
+    const csvPath = path.resolve(filePath);
 
-  if (!fs.existsSync(path.resolve(csvPath))) {
-    logger.info({csvPath}, "File not found.");
-    return;
-  }
+    if (!fs.existsSync(path.resolve(csvPath))) {
+      logger.info({ csvPath }, "File not found.");
+      return;
+    }
 
-  const parseTasks = parse({columns: true, delimiter: ','});
+    const parseTasks = parse({ columns: true, delimiter: "," });
 
-  fs.createReadStream(filePath).pipe(parseTasks);
+    fs.createReadStream(filePath).pipe(parseTasks);
 
-  for await (const task of parseTasks) {
-
-    // Remove the double quotes if they exist.
-    for (const key in task) {
-      if (typeof task[key] === 'string') {
-        task[key] = task[key].replace(/"/g, '')
+    for await (const task of parseTasks) {
+      // Remove the double quotes if they exist.
+      for (const key in task) {
+        if (typeof task[key] === "string") {
+          task[key] = task[key].replace(/"/g, "");
+        }
       }
+
+      const { workspaceId, dataSourceName, upsertQueueId, enqueueTimestamp } =
+        task;
+
+      const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
+
+      logger.info(
+        { workspaceId, workflowId },
+        "Processing upsert document task."
+      );
+
+      if (!execute) {
+        continue;
+      }
+
+      // First, we terminate the current workflow.
+      await terminateWorkflow(workflowId, logger);
+
+      // The, we restart the workflow.
+      await launchUpsertDocumentWorkflow({
+        workspaceId,
+        dataSourceName,
+        upsertQueueId,
+        enqueueTimestamp,
+      });
+
+      logger.info(
+        { workspaceId, workflowId },
+        "Successfully processed upsert document task."
+      );
     }
-
-    const {
-      workspaceId,
-      dataSourceName,
-      upsertQueueId,
-      enqueueTimestamp
-    } = task;
-
-    const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
-
-    logger.info({workspaceId, workflowId}, "Processing upsert document task.");
-
-    if (!execute) {
-      continue;
-    }
-
-    // First, we terminate the current workflow.
-    await terminateWorkflow(workflowId, logger);
-
-    // The, we restart the workflow.
-    await launchUpsertDocumentWorkflow({
-      workspaceId,
-      dataSourceName,
-      upsertQueueId,
-      enqueueTimestamp
-    });
-
-    logger.info({workspaceId, workflowId}, "Successfully processed upsert document task.");
   }
-});
+);
