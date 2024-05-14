@@ -223,8 +223,15 @@ export const internalSubscribeWorkspaceToFreePlan = async ({
     );
   });
 
-  // Notify Stripe that we ended the subscription if the subscription was a paid one
-  if (activeSubscription?.stripeSubscriptionId) {
+  // Check if the workspace is switching to a new Stripe subscription ID.
+  const isNewStripeSubscriptionId =
+    activeSubscription &&
+    activeSubscription.stripeSubscriptionId !== stripeSubscriptionId;
+
+  // If the workspace is switching to a new Stripe subscription ID and the
+  // previous subscription was paid, notify Stripe to cancel the subscription
+  // immediately.
+  if (activeSubscription?.stripeSubscriptionId && isNewStripeSubscriptionId) {
     await cancelSubscriptionImmediately({
       stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
     });

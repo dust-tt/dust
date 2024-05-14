@@ -8,6 +8,7 @@ import { Authenticator, getSession } from "@app/lib/auth";
 import {
   assertStripeSubscriptionIsValid,
   getStripeSubscription,
+  isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import {
   getSubscriptionForStripeId,
@@ -67,7 +68,7 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      // We validate that the stripe subscription exists and is correctly configured
+      // We validate that the stripe subscription exists and is correctly configured.
       const stripeSubscription = await getStripeSubscription(
         body.stripeSubscriptionId
       );
@@ -81,16 +82,35 @@ async function handler(
         });
       }
 
+      // Ensure that the stripe subscription is either attached to the current workspace
+      // or is not attached to any workspace.
       const subscription = await getSubscriptionForStripeId(
         stripeSubscription.id
       );
+      const currentWorkspaceSubscription = auth.subscription();
+      const isCurrentWorkspaceSubscription =
+        currentWorkspaceSubscription &&
+        currentWorkspaceSubscription.stripeSubscriptionId ===
+          stripeSubscription.id;
 
-      if (subscription) {
+      if (subscription && !isCurrentWorkspaceSubscription) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The subscription is already attached to a workspace.",
+            message:
+              "The subscription is already attached to another workspace.",
+          },
+        });
+      }
+
+      if (!isEnterpriseSubscription(stripeSubscription)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The subscription provided is not an enterprise subscription.",
           },
         });
       }

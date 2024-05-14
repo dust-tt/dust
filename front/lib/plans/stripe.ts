@@ -9,6 +9,7 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
+  isEnterpriseReportUsage,
   isMauReportUsage,
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
@@ -311,6 +312,22 @@ export function assertStripeSubscriptionIsValid(
 
   return new Ok(true);
 } // TODO(2024-04-05,pr): immediately after flav's merge, use the global constant
+
+// "Cheap" way to verify if a Stripe subscription can be considered an enterprise subscription.
+export function isEnterpriseSubscription(
+  stripeSubscription: Stripe.Subscription
+) {
+  const activeItems = stripeSubscription.items.data.filter(
+    (item) => !item.deleted
+  );
+
+  return activeItems.every((item) => {
+    const isRecurring = Boolean(item.price.recurring);
+    const reportUsage = item.price.metadata?.REPORT_USAGE;
+
+    return isRecurring && isEnterpriseReportUsage(reportUsage);
+  });
+}
 
 export function assertStripeSubscriptionItemIsValid({
   item,
