@@ -16,6 +16,7 @@ import {
   AssistantInputBar,
   FixedAssistantInputBar,
 } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   CONVERSATION_PARENT_SCROLL_DIV_ID as CONVERSATION_PARENT_SCROLL_DIV_ID,
   createConversationWithMessage,
@@ -280,11 +281,7 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: {
-      title: string;
-      content: string;
-      file: File;
-    }[]
+    contentFragments: ContentFragmentInput[]
   ) => {
     if (!user) {
       return;

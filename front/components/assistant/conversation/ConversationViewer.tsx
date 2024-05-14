@@ -345,20 +345,22 @@ export default function ConversationViewer({
   // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
   // This allows us to change the layout per consecutive messages of the same type.
   const groupedMessages: MessageWithRankType[][] = useMemo(() => {
-    const groups: MessageWithRankType[][] = [];
-    for (const message of messages.flatMap((page) => page.messages)) {
-      if (groups.length === 0) {
-        groups.push([message]);
-      } else {
-        const lastGroup = groups[groups.length - 1];
-        const lastMessage = lastGroup[lastGroup.length - 1];
-        if (lastMessage.type === message.type) {
-          lastGroup.push(message);
+    const groups = messages
+      .flatMap((page) => page.messages)
+      .reduce((acc: MessageWithRankType[][], message) => {
+        if (acc.length === 0) {
+          acc.push([message]); // Start with the first message if the accumulator is empty
         } else {
-          groups.push([message]);
+          const lastGroup = acc[acc.length - 1];
+          const lastMessage = lastGroup[lastGroup.length - 1];
+          if (lastMessage.type === message.type) {
+            lastGroup.push(message); // Add to the last group if it's the same type
+          } else {
+            acc.push([message]); // Start a new group if it's a different type
+          }
         }
-      }
-    }
+        return acc;
+      }, []);
     return groups;
   }, [messages]);
 
@@ -384,19 +386,17 @@ export default function ConversationViewer({
       )}
 
       {groupedMessages.map((group) => {
+        const isContentFragmentGroup = group[0].type === "content_fragment";
         return (
           // First div is used to apply a background color to the content fragment group.
           <div
-            className={
-              group[0].type === "content_fragment" ? "bg-structure-50" : ""
-            }
-            message-type={group[0].type}
-            key={group[0].sId}
+            className={isContentFragmentGroup ? "bg-structure-50" : ""}
+            key={`group-${group[0].sId}`}
           >
             {/* Second div is used to apply a max-width and change the flex direction of the content fragment group. */}
             <div
               className={
-                group[0].type === "content_fragment"
+                isContentFragmentGroup
                   ? "mx-auto flex max-w-4xl flex-row flex-wrap"
                   : ""
               }
@@ -404,7 +404,7 @@ export default function ConversationViewer({
               {group.map((message) => {
                 return (
                   <MessageItem
-                    key={message.sId}
+                    key={`message-${message.sId}`}
                     conversationId={conversation.sId}
                     hideReactions={hideReactions}
                     isInModal={isInModal}

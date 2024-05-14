@@ -25,7 +25,6 @@ import { classNames } from "@app/lib/utils";
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
-  disableAttachment: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
@@ -33,12 +32,12 @@ export interface InputBarContainerProps {
   stickyMentions: AgentMention[] | undefined;
   hideQuickActions: boolean;
   disableAutoFocus: boolean;
+  disableSendButton: boolean;
 }
 
 const InputBarContainer = ({
   allAssistants,
   agentConfigurations,
-  disableAttachment,
   onEnterKeyDown,
   onInputFileChange,
   owner,
@@ -46,6 +45,7 @@ const InputBarContainer = ({
   stickyMentions,
   hideQuickActions,
   disableAutoFocus,
+  disableSendButton,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
@@ -128,7 +128,6 @@ const InputBarContainer = ({
             variant={"tertiary"}
             icon={AttachmentIcon}
             size="sm"
-            disabled={disableAttachment}
             tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
             tooltipPosition="above"
             className="flex"
@@ -163,7 +162,7 @@ const InputBarContainer = ({
           size="sm"
           icon={ArrowUpIcon}
           label="Send"
-          disabled={editorService.isEmpty()}
+          disabled={editorService.isEmpty() || disableSendButton}
           labelVisible={false}
           disabledTooltip
           onClick={async () => {

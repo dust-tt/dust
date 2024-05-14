@@ -33,6 +33,12 @@ export type ConversationErrorType = {
   message: string;
 };
 
+export type ContentFragmentInput = {
+  title: string;
+  content: string;
+  file: File;
+};
+
 export function createPlaceholderUserMessage({
   input,
   mentions,
@@ -80,11 +86,7 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: {
-      title: string;
-      content: string;
-      file: File;
-    }[];
+    contentFragments: ContentFragmentInput[];
   };
 }): Promise<
   Result<{ message: UserMessageWithRankType }, ConversationErrorType>
@@ -211,11 +213,7 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: {
-      title: string;
-      content: string;
-      file: File;
-    }[];
+    contentFragments: ContentFragmentInput[];
   };
   visibility?: ConversationVisibility;
   title?: string;
