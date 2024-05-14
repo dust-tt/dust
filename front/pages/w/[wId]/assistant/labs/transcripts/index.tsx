@@ -27,8 +27,6 @@ import {
 } from "@app/lib/swr";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
-const provider = "google_drive";
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
@@ -73,6 +71,7 @@ export default function LabsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
+  const [provider, setProvider] = useState<"google_drive" | "gong">("google_drive");
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -117,6 +116,11 @@ export default function LabsTranscriptsIndex({
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
+
+  const handleProviderChange = async (provider: "google_drive" | "gong") => {
+    setProvider(provider);
+    await mutateTranscriptsConfiguration();
+  }
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -283,28 +287,64 @@ export default function LabsTranscriptsIndex({
           description="Receive meeting minutes summarized by email automatically."
         />
         <Page.Layout direction="vertical">
-          <Page.SectionHeader title="1. Connect Google Drive" />
-          <Page.Layout direction="vertical">
-            <Page.P>
-              Connect to Google Drive so Dust can access 'My Drive' where your
-              meeting transcripts are stored.
-            </Page.P>
-            <div>
-              <Button
-                label={
-                  transcriptsConfigurationState.isGDriveConnected
-                    ? "Connected"
-                    : "Connect"
-                }
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                disabled={transcriptsConfigurationState?.isGDriveConnected}
-                onClick={async () => {
-                  await handleConnectTranscriptsSource();
-                }}
-              />
-            </div>
-          </Page.Layout>
+          <Page.SectionHeader title="1. Connect your transcripts provider" />
+          {/* logos of providers */}
+          <Page.Layout direction="horizontal" gap="xl">
+
+<div className={`border rounded-md p-4 hover:border-gray-400 cursor-pointer ${provider == "google_drive" ? 'border-gray-400' : 'border-gray-200'}`} onClick={() => handleProviderChange("google_drive")}>
+    <img src="/static/labs/transcripts/google.png" style={{ maxHeight: '50px' }} />
+</div>
+<div className={`border rounded-md p-4 hover:border-gray-400 cursor-pointer ${provider == "gong" ? 'border-gray-400' : 'border-gray-200'}`} onClick={() => handleProviderChange("gong")}>
+    <img src="/static/labs/transcripts/gong.jpeg" style={{ maxHeight: '50px' }}  />
+</div>
+</Page.Layout>
+
+          {provider === "google_drive" && (
+            <Page.Layout direction="vertical">
+              <Page.P>
+                Connect to Google Drive so Dust can access 'My Drive' where your
+                meeting transcripts are stored.
+              </Page.P>
+              <div>
+                <Button
+                  label={
+                    transcriptsConfigurationState.isGDriveConnected
+                      ? "Connected"
+                      : "Connect"
+                  }
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={transcriptsConfigurationState?.isGDriveConnected}
+                  onClick={async () => {
+                    await handleConnectTranscriptsSource();
+                  }}
+                />
+              </div>
+            </Page.Layout>
+          )}
+          {provider === "gong" && (
+            <Page.Layout direction="vertical">
+              <Page.P>
+                Add your Gong API key so Dust can access your Gong account and process your transcripts.
+              </Page.P>
+              <div>
+                <Button
+                  label={
+                    transcriptsConfigurationState.isGDriveConnected
+                      ? "Connected"
+                      : "Connect"
+                  }
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={transcriptsConfigurationState?.isGDriveConnected}
+                  onClick={async () => {
+                    await handleConnectTranscriptsSource();
+                  }}
+                />
+              </div>
+            </Page.Layout>
+          )}
+          
         </Page.Layout>
         {transcriptsConfigurationState.isGDriveConnected &&
           transcriptsConfiguration &&
