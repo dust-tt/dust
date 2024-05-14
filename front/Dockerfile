@@ -1,4 +1,4 @@
-FROM node:20.12.2 as front
+FROM node:18.15.0 as front
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 

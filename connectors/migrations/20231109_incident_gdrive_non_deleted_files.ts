@@ -34,13 +34,10 @@ async function main() {
 
     console.log(`Connector ${c.id}: found ${files.length} files`);
 
-    const fileHash = files.reduce(
-      (acc, f) => {
-        acc[f.dustFileId] = f.id;
-        return acc;
-      },
-      {} as { [key: string]: number }
-    );
+    const fileHash = files.reduce((acc, f) => {
+      acc[f.dustFileId] = f.id;
+      return acc;
+    }, {} as { [key: string]: number });
 
     // find dustProjectId from front based on workspaceId and connectorName
     const dsData = await front_sequelize.query(

@@ -218,6 +218,9 @@ export function Navigation(props) {
   return (
     <nav {...props}>
       <ul role="list">
+        <TopLevelNavItem href="https://discord.gg/8NJR3zQU5X">
+          Discord
+        </TopLevelNavItem>
         <TopLevelNavItem href="https://github.com/dust-tt/dust">
           Github
         </TopLevelNavItem>

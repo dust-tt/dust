@@ -3,16 +3,6 @@ const removeImports = require("next-remove-imports")();
 
 module.exports = removeImports({
   experimental: { esmExternals: false },
-  reactStrictMode: true,
-  poweredByHeader: false,
-  // TODO: revisit swcMinify with new version of Next 14/swc. As we moved to Next 14 we got the
-  // following error client-side in production:
-  // ```
-  // _app-4cdd284a9fb0426b.js:1 Uncaught SyntaxError: Identifier 't' has already been declared
-  // ```
-  // See: https://github.com/dust-tt/dust/pull/5028
-  // Make sure to deploy to font-edge before committing a remove of this flag.
-  swcMinify: false,
   async redirects() {
     return [
       {
@@ -40,6 +30,7 @@ module.exports = removeImports({
       },
     ];
   },
+  poweredByHeader: false,
   async headers() {
     return [
       {
@@ -57,19 +48,5 @@ module.exports = removeImports({
         ],
       },
     ];
-  },
-  webpack: (config) => {
-    // For `types` package import (which includes some dependence to server code).
-    // Otherwise client-side code will throw an error when importing the packaged file.
-    config.resolve.fallback = {
-      fs: false,
-      net: false,
-      child_process: false,
-      tls: false,
-      dgram: false,
-    };
-    // For react-pdf imports to work client-side (as recommended in their docs).
-    config.resolve.alias.canvas = false;
-    return config;
   },
 });

@@ -186,8 +186,8 @@ export default function AnthropicSetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                              ? "Enabling..."
-                              : "Enable"
+                            ? "Enabling..."
+                            : "Enable"
                         }
                       />
                     ) : (
