@@ -22,7 +22,6 @@ import {
   isAgentMessageType,
   isBaseActionClass,
   isContentFragmentType,
-  isDustAppRunActionType,
   isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -317,9 +316,6 @@ export async function renderConversationForModelMultiActions({
             renderRetrievalActionForMultiActionsModel(action)
           );
           function_calls.unshift(rendeRetrievalActionFunctionCall(action));
-        } else if (isDustAppRunActionType(action)) {
-          function_messages.unshift(action.renderForMultiActionsModel());
-          function_calls.unshift(action.renderForFunctionCall());
         } else if (isTablesQueryActionType(action)) {
           function_messages.unshift(
             renderTablesQueryActionForMultiActionsModel(action)
@@ -330,6 +326,9 @@ export async function renderConversationForModelMultiActions({
             renderProcessActionForMultiActionsModel(action)
           );
           function_calls.unshift(renderProcessActionFunctionCall(action));
+        } else if (isBaseActionClass(action)) {
+          function_messages.unshift(action.renderForMultiActionsModel());
+          function_calls.unshift(action.renderForFunctionCall());
         } else {
           assertNever(action);
         }

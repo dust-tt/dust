@@ -83,10 +83,9 @@ export function isUserMessageType(arg: MessageType): arg is UserMessageType {
 
 export type AgentActionType =
   | RetrievalActionType
-  // | DustAppRunActionType
+  | DustAppRunActionType
   | TablesQueryActionType
-  | ProcessActionType
-  | BaseAction;
+  | ProcessActionType;
 
 export type AgentMessageStatus =
   | "created"

@@ -46,9 +46,10 @@ export function isDustAppRunConfiguration(
   );
 }
 
+// TODO(2024-05-14 flav) Refactor for better separation of concerns in the front-end.
 export function isDustAppRunActionType(
   arg: AgentActionType
-): arg is BaseAction {
+): arg is DustAppRunActionType {
   return arg.type === "dust_app_run_action";
 }
 
