@@ -49,7 +49,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
-  renderConversationForModel,
+  renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
 import { isLegacyAgent } from "@app/lib/assistant";
@@ -275,8 +275,7 @@ export async function* runMultiActionsAgent(
   const MIN_GENERATION_TOKENS = 2048;
 
   // Turn the conversation into a digest that can be presented to the model.
-  // TODO(@fontanierh): Make a new one for multi actions.
-  const modelConversationRes = await renderConversationForModel({
+  const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,
