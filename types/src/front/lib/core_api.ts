@@ -254,7 +254,6 @@ export class CoreAPI {
     credentials,
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-
     const response = await fetch(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
       {
@@ -271,7 +270,7 @@ export class CoreAPI {
           inputs: inputs,
           config: config,
           credentials: credentials,
-          secrets: secrets
+          secrets: secrets,
         }),
       }
     );
@@ -289,14 +288,13 @@ export class CoreAPI {
     inputs,
     config,
     credentials,
-    secrets
+    secrets,
   }: CoreAPICreateRunParams): Promise<
     CoreAPIResponse<{
       chunkStream: AsyncGenerator<Uint8Array, void, unknown>;
       dustRunId: Promise<string>;
     }>
   > {
-
     const response = await fetch(
       `${CORE_API}/projects/${projectId}/runs/stream`,
       {
