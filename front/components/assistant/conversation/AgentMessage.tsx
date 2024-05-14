@@ -19,12 +19,17 @@ import type {
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  RetrievalActionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
 import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
-import { assertNever, isRetrievalActionType } from "@dust-tt/types";
+import {
+  assertNever,
+  isRetrievalActionType,
+  removeNulls,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -41,7 +46,6 @@ import {
 } from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
-import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 function cleanUpCitations(message: string): string {
@@ -223,10 +227,6 @@ export function AgentMessage({
     }
   })();
 
-  const actionToRender = getDeprecatedSingleAction(
-    agentMessageToRender.actions
-  );
-
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
   // start of the message, we do not want to scroll it back down.
@@ -260,7 +260,7 @@ export function AgentMessage({
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
-    actionToRender,
+    agentMessageToRender.actions.length,
     activeReferences.length,
     isInModal,
   ]);
@@ -325,23 +325,30 @@ export function AgentMessage({
       setActiveReferences([...activeReferences, { index, document }]);
     }
   }
+
   const [lastHoveredReference, setLastHoveredReference] = useState<
     number | null
   >(null);
   useEffect(() => {
-    if (
-      actionToRender &&
-      isRetrievalActionType(actionToRender) &&
-      actionToRender.documents
-    ) {
-      setReferences(
-        actionToRender.documents.reduce((acc, d) => {
-          acc[d.reference] = d;
-          return acc;
-        }, {} as { [key: string]: RetrievalDocumentType })
-      );
-    }
-  }, [actionToRender]);
+    const retrievalActionsWithDocs = agentMessageToRender.actions
+      .filter((a) => isRetrievalActionType(a) && a.documents)
+      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
+
+    const allDocs = removeNulls(
+      retrievalActionsWithDocs.map((a) => a.documents).flat()
+    );
+
+    setReferences(
+      allDocs.reduce((acc, d) => {
+        acc[d.reference] = d;
+        return acc;
+      }, {} as { [key: string]: RetrievalDocumentType })
+    );
+  }, [
+    agentMessageToRender.actions,
+    agentMessageToRender.status,
+    agentMessageToRender.sId,
+  ]);
 
   function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
     const router = useRouter();
@@ -401,7 +408,7 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType },
     streaming: boolean
   ) {
-    const action = getDeprecatedSingleAction(agentMessage.actions);
+    // const action = getDeprecatedSingleAction(agentMessage.actions);
     // Display the error to the user so they can report it to us (or some can be
     // understandable directly to them)
     if (agentMessage.status === "failed") {
@@ -421,7 +428,7 @@ export function AgentMessage({
     // Loading state (no action nor text yet)
     if (
       agentMessage.status === "created" &&
-      !action &&
+      !agentMessage.actions.length &&
       (!agentMessage.content || agentMessage.content === "")
     ) {
       return (
@@ -436,7 +443,9 @@ export function AgentMessage({
 
     return (
       <>
-        {action && <AgentAction action={action} />}
+        {agentMessage.actions.map((action) => (
+          <AgentAction action={action} key={`action-${action.id}`} />
+        ))}
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (

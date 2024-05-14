@@ -41,6 +41,7 @@ export function getSupportedModelConfig(
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_NEXT = "dust-next",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",

@@ -35,6 +35,7 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { rand } from "@app/lib/utils/seeded_random";
 import logger from "@app/logger/logger";
 
 /**
@@ -457,6 +458,7 @@ export function retrievalMetaPromptMutiActions() {
  */
 
 let REFS: string[] | null = null;
+const getRand = rand("chawarma");
 
 const getRefs = () => {
   if (REFS === null) {
@@ -469,7 +471,10 @@ const getRefs = () => {
       })
       .flat();
     // randomize
-    REFS.sort(() => Math.random() - 0.5);
+    REFS.sort(() => {
+      const r = getRand();
+      return r > 0.5 ? 1 : -1;
+    });
   }
   return REFS;
 };
@@ -489,6 +494,7 @@ export async function* runRetrieval(
     agentMessage,
     rawInputs,
     step,
+    refsOffset = 0,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: RetrievalConfigurationType;
@@ -496,6 +502,7 @@ export async function* runRetrieval(
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
     step: number;
+    refsOffset?: number;
   }
 ): AsyncGenerator<
   RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
@@ -754,7 +761,8 @@ export async function* runRetrieval(
           token_count: number;
         }[];
 
-        const refs = getRefs();
+        const refs = getRefs().slice(refsOffset, refsOffset + v.length);
+
         documents = v.map((d, i) => {
           const reference = refs[i % refs.length];
           return {
