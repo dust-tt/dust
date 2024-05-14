@@ -13,10 +13,12 @@ async function cancelWorkflow(workflowId: string, logger: Logger) {
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
     await workflowHandle.cancel();
+    logger.info({workflowId}, "Workflow successfully cancelled.");
     return true;
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
       logger.info({workflowId}, "Workflow not found -- skipping.")
+    } else {
       throw e;
     }
   }
@@ -56,7 +58,7 @@ makeScript({
       enqueueTimestamp
     } = task;
 
-    const workflowId = `workflow-usage-queue-${workspaceId}`;
+    const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceName}-${upsertQueueId}`;
 
     logger.info({workspaceId, workflowId}, "Processing upsert document task.");
 
