@@ -445,6 +445,7 @@ async function* runAction(
       agentMessage,
       spec: specRes.value,
       rawInputs,
+      functionCallId: null,
       step,
     });
 

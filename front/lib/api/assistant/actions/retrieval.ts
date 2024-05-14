@@ -165,7 +165,7 @@ export function rendeRetrievalActionFunctionCall(
   };
 
   return {
-    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
+    id: action.functionCallId ?? `call_${action.id.toString()}`,
     name: "search_data_sources",
     arguments: JSON.stringify(params),
   };
@@ -204,7 +204,7 @@ export function renderRetrievalActionForMultiActionsModel(
 
   return {
     role: "function" as const,
-    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
+    function_call_id: action.functionCallId ?? `call_${action.id.toString()}`,
     content,
   };
 }
@@ -423,6 +423,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
         relativeTimeFrame,
         topK: action.topK,
       },
+      functionCallId: action.functionCallId,
       documents,
       step: action.step,
     });
@@ -592,6 +593,7 @@ export async function* runRetrieval(
         query,
         topK,
       },
+      functionCallId: action.functionCallId,
       documents: null,
       step: action.step,
     },
@@ -844,6 +846,7 @@ export async function* runRetrieval(
         query: query,
         topK,
       },
+      functionCallId: action.functionCallId,
       documents,
       step: action.step,
     },
