@@ -35,8 +35,6 @@ export type CoreAPIError = {
   code: string;
 };
 
-type SecretsType = { [key: string]: string };
-
 export function isCoreAPIError(obj: unknown): obj is CoreAPIError {
   return (
     typeof obj === "object" &&

@@ -29,7 +29,6 @@ use dust::{
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
@@ -551,7 +550,7 @@ async fn datasets_retrieve(
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, serde::Deserialize)]
 struct Secret {
   name: String,
   value: String,
@@ -767,10 +766,7 @@ async fn runs_create(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let mut secrets_hashmap = HashMap::new();
-    for secret in payload.secrets.iter() {
-      secrets_hashmap.insert(secret.name.clone(), secret.value.clone());
-    }
+    let secrets_hashmap: HashMap<_, _> = payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect();
 
     let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
 
@@ -812,10 +808,7 @@ async fn runs_create_stream(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let mut secrets_hashmap = HashMap::new();
-    for secret in payload.secrets.iter() {
-      secrets_hashmap.insert(secret.name.clone(), secret.value.clone());
-    }
+    let secrets_hashmap: HashMap<_, _> = payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect();
     let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
 
     match headers.get("X-Dust-Workspace-Id") {
