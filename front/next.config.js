@@ -5,6 +5,12 @@ module.exports = removeImports({
   experimental: { esmExternals: false },
   reactStrictMode: true,
   poweredByHeader: false,
+  // TODO: revisit swcMinify with new version of Next 14/swc. As we moved to Next 14 we got the
+  // following error client-side in production:
+  // ```
+  // _app-4cdd284a9fb0426b.js:1 Uncaught SyntaxError: Identifier 't' has already been declared
+  // ```
+  // See: https://github.com/dust-tt/dust/pull/5028
   swcMinify: false,
   async redirects() {
     return [
