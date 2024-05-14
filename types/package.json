@@ -13,9 +13,8 @@
   "scripts": {
     "build": "dts build",
     "lint": "dts lint",
-    "start": "dts watch",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "dts lint --fix",
+    "start": "dts watch"
   },
   "engines": {
     "node": ">=20"
@@ -35,9 +34,8 @@
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
     "@types/uuid": "^9.0.7",
-    "prettier": "^3.2.5",
     "tslib": "^2.6.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.0.2"
   },
   "browser": {
     "tls": false,
