@@ -13,10 +13,11 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const acceptableTranscriptProvidersCodec = t.literal("google_drive");
+export const acceptableTranscriptProvidersCodec = t.union([t.literal("google_drive"), t.literal("gong")]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
-  connectionId: t.string,
+  connectionId: t.union([t.string, t.null]),
+  gongApiKey: t.union([t.string, t.null]),
   provider: acceptableTranscriptProvidersCodec,
 });
 
@@ -99,13 +100,14 @@ async function handler(
         });
       }
 
-      const { connectionId, provider } = bodyValidation.right;
+      const { connectionId, provider, gongApiKey } = bodyValidation.right;
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId,
           workspaceId: owner.id,
           connectionId,
+          gongApiKey,
           provider,
         });
 

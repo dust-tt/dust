@@ -23,8 +23,12 @@ export class LabsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare connectionId: string;
+  
   declare provider: LabsTranscriptsProviderType;
+
+  declare connectionId: string | null;
+  declare gongApiKey: string | null;
+  
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
 }
@@ -54,7 +58,7 @@ LabsTranscriptsConfigurationModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     provider: {
       type: DataTypes.STRING,
@@ -68,6 +72,10 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    gongApiKey: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

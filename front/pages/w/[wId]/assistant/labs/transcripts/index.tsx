@@ -99,11 +99,13 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
+      gongApiKey: string,
     }>({
       isGDriveConnected: false,
       isGongConnected: false,
       assistantSelected: null as LightAgentConfigurationType | null,
       isActive: false,
+      gongApiKey: "",
     });
 
   useEffect(() => {
@@ -123,6 +125,7 @@ export default function LabsTranscriptsIndex({
           (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
         ) || null,
       isActive: transcriptsConfiguration?.isActive || false,
+      gongApiKey: transcriptsConfiguration?.gongApiKey || "",
     });
   }, [transcriptsConfiguration, agentConfigurations]);
 
@@ -132,10 +135,17 @@ export default function LabsTranscriptsIndex({
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
 
-  const handleProviderChange = async (provider: "google_drive" | "gong") => {
+  const handleProviderChange = async (provider: LabsTranscriptsProviderType) => {
     setProvider(provider);
     await mutateTranscriptsConfiguration();
   };
+
+  const handleGongApiKeyChange = async (gongApiKey: string) => {
+    setTranscriptsConfigurationState({
+      ...transcriptsConfigurationState,
+      gongApiKey,
+    });
+  }
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -235,6 +245,7 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
+        gongApiKey: null,
         provider,
       }),
     });
@@ -262,6 +273,42 @@ export default function LabsTranscriptsIndex({
     return response;
   };
 
+  const saveGongConnection = async () => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gongApiKey: transcriptsConfigurationState.gongApiKey,
+        connectionId: null,
+        provider,
+      }),
+    });
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Connected Gong",
+        description: "Gong has been connected successfully.",
+      });
+      setTranscriptsConfigurationState({
+        ...transcriptsConfigurationState,
+        isGongConnected: true,
+      });
+
+      await mutateTranscriptsConfiguration();
+    }
+
+    return response;
+  }
+
   const handleConnectGoogleTranscriptsSource = async () => {
     try {
       if (provider !== "google_drive") {
@@ -287,10 +334,6 @@ export default function LabsTranscriptsIndex({
         description: "Could not connect to Google Drive. Please try again.",
       });
     }
-  };
-
-  const handleConnectGongTranscriptsSource = async () => {
-    console.log("Connecting to Gong");
   };
 
   return (
@@ -368,7 +411,7 @@ export default function LabsTranscriptsIndex({
                 process your transcripts.
               </Page.P>
               <Page.Layout direction="horizontal">
-                <Input placeholder="Gong API key" value="" name="gongApiKey" />
+                <Input placeholder="Gong API key" name="gongApiKey" onChange={(e) => handleGongApiKeyChange(e)} value={transcriptsConfigurationState.gongApiKey} />
                 <Button
                   label={
                      "Save"
@@ -376,7 +419,7 @@ export default function LabsTranscriptsIndex({
                   size="sm"
                   disabled={transcriptsConfigurationState?.isGDriveConnected}
                   onClick={async () => {
-                    await handleConnectGongTranscriptsSource();
+                    await saveGongConnection();
                   }}
                 />
               </Page.Layout>
