@@ -766,9 +766,7 @@ async fn runs_create(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let secrets_hashmap: HashMap<_, _> = payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect();
-
-    let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
+    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect::<HashMap<_, _>>() };
 
     match headers.get("X-Dust-Workspace-Id") {
       Some(v) => match v.to_str() {
@@ -808,8 +806,7 @@ async fn runs_create_stream(
     let mut credentials = payload.credentials.clone();
 
     // Convert payload secrets vector to hash map to use them with {secrets.SECRET_NAME}.
-    let secrets_hashmap: HashMap<_, _> = payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect();
-    let secrets = run::Secrets { redacted: true, secrets: secrets_hashmap };
+    let secrets = run::Secrets { redacted: true, secrets: payload.secrets.iter().map(|secret| (secret.name.clone(), secret.value.clone())).collect::<HashMap<_, _>>() };
 
     match headers.get("X-Dust-Workspace-Id") {
         Some(v) => match v.to_str() {
