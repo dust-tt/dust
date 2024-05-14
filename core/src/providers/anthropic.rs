@@ -232,7 +232,7 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
             .is_none()
             .then(|| {
                 cm.content.as_ref().map(|text| AnthropicContent {
-                    r#type: AnthropicContentType::ToolResult,
+                    r#type: AnthropicContentType::Text,
                     text: Some(format!("{}{}", meta_prompt, text)),
                     tool_result: None,
                     tool_use: None,
@@ -246,8 +246,6 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
             .chain(tool_uses.into_iter().flatten())
             .chain(tool_result.into_iter())
             .collect::<Vec<AnthropicContent>>();
-
-        println!("CONTENT_VEC: {:?}", content_vec);
 
         Ok(AnthropicChatMessage {
             content: content_vec,
@@ -494,8 +492,6 @@ impl AnthropicLLM {
         max_tokens: i32,
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
-
-        println!("MESSAGES: {:?}", messages);
 
         let mut body = json!({
             "model": self.id.clone(),
