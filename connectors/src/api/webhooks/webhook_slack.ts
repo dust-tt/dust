@@ -15,6 +15,7 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { setSlackConnectorPermissions } from "@connectors/connectors/slack";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -181,6 +182,13 @@ const _webhookSlackAPIHandler = async (
 
     switch (event?.type) {
       case "app_mention": {
+        const slackMessage = event?.text;
+        if (slackMessage && slackMessage.trim() === "!watch") {
+          await setSlackConnectorPermissions(
+            req.params.connector_id as number,
+            { permission: "read_write" }
+          )
+        }
         await handleChatBot(req, res, logger);
         break;
       }
