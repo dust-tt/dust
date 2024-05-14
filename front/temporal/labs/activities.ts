@@ -143,19 +143,63 @@ export async function retrieveNewTranscriptsActivity(
 
   if (transcriptsConfiguration.provider == "gong") {
     // Retrieve recent transcripts from Gong
-    const newTranscripts = await fetch(`https://api.gong.io/v2/calls/transcript`, {
+    // const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const fromDateTime = new Date(Date.now() - 2400 * 60 * 60 * 1000).toISOString(); // DEBUG A LOT OF TIME
+    const newTranscripts = await fetch(`https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`, {
       headers: {
-        Authorization: `Bearer ${transcriptsConfiguration.gongApiKey}`,
-      },
+        Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
+        'Content-Type': 'application/json'
+      }
     });
 
-    
+    if (!newTranscripts.ok) {
+      localLogger.error(
+        {},
+        "[retrieveNewTranscripts] Error fetching new transcripts from Gong. Skipping."
+      );
+      console.log('ERROR', await newTranscripts.json())
+      return [];
+    }
 
+    const newTranscriptsData = await newTranscripts.json();
+
+    if (!newTranscriptsData || newTranscriptsData.length === 0) {
+      localLogger.info(
+        {},
+        "[retrieveNewTranscripts] No new transcripts found from Gong."
+      );
+      return [];
+    }
+
+    for (const call of newTranscriptsData.calls) {
+      const { id: fileId } = call;
+      if (!fileId) {
+        localLogger.error(
+          {},
+          "[retrieveNewTranscripts] call does not have an id. Skipping."
+        );
+        continue;
+      }
+
+      const history = await transcriptsConfiguration.fetchHistoryForFileId(
+        fileId
+      );
+      if (history) {
+        localLogger.info(
+          { fileId },
+          "[retrieveNewTranscripts] call already processed. Skipping."
+        );
+        continue;
+      }
+
+      fileIdsToProcess.push(fileId);
+    }
+  } 
 
   return fileIdsToProcess;
 }
 
-export async function processGoogleDriveTranscriptActivity(
+export async function processTranscriptActivity(
   transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
@@ -199,21 +243,21 @@ export async function processGoogleDriveTranscriptActivity(
   if (!user) {
     localLogger.error(
       {},
-      "[processGoogleDriveTranscriptActivity] User not found. Stopping."
+      "[processTranscriptActivity] User not found. Stopping."
     );
     return;
   }
 
   localLogger.info(
     {},
-    "[processGoogleDriveTranscriptActivity] Starting processing of file "
+    "[processTranscriptActivity] Starting processing of file "
   );
 
   const hasExistingHistory =
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
     localLogger.info(
-      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
+      "[processTranscriptActivity] History record already exists. Stopping."
     );
     return;
   }
@@ -258,7 +302,7 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (!owner) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No owner found. Stopping."
+      "[processTranscriptActivity] No owner found. Stopping."
     );
     return;
   }
@@ -275,7 +319,7 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (!agentConfigurationId) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."
+      "[processTranscriptActivity] No agent configuration id found. Stopping."
     );
     return;
   }
@@ -291,7 +335,7 @@ export async function processGoogleDriveTranscriptActivity(
 
   if (!agent) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No agent found. Stopping."
+      "[processTranscriptActivity] No agent found. Stopping."
     );
     return;
   }
@@ -328,7 +372,7 @@ export async function processGoogleDriveTranscriptActivity(
   if (convRes.isErr()) {
     localLogger.error(
       { error: convRes.error },
-      "[processGoogleDriveTranscriptActivity] Error creating conversation."
+      "[processTranscriptActivity] Error creating conversation."
     );
     return new Err(new Error(convRes.error.message));
   }
@@ -336,7 +380,7 @@ export async function processGoogleDriveTranscriptActivity(
   const { conversation } = convRes.value;
   if (!conversation) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No conversation found. Stopping."
+      "[processTranscriptActivity] No conversation found. Stopping."
     );
     return;
   }
@@ -347,7 +391,7 @@ export async function processGoogleDriveTranscriptActivity(
         sId: conversation.sId,
       },
     },
-    "[processGoogleDriveTranscriptActivity] Created conversation."
+    "[processTranscriptActivity] Created conversation."
   );
 
   // Get first from array with type='agent_message' in conversation.content;
