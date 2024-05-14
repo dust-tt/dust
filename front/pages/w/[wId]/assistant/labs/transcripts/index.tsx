@@ -374,7 +374,16 @@ export default function LabsTranscriptsIndex({
                       ? "border-gray-400"
                       : "border-gray-200"
                   }`}
-                  onClick={() => handleProviderChange("gong")}
+                  onClick={() =>
+                    owner.flags.includes("labs_transcripts_gong")
+                      ? handleProviderChange("gong")
+                      : sendNotification({
+                          type: "error",
+                          title: "Gong is coming soon",
+                          description:
+                            "We're working on adding Gong support. Contact us if you'd like to be notified when it's available.",
+                        })
+                  }
                 >
                   <img
                     src="/static/labs/transcripts/gong.jpeg"
