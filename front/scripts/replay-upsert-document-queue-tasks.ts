@@ -16,7 +16,7 @@ async function terminateWorkflow(workflowId: string, logger: Logger) {
     logger.info({workflowId}, "Workflow successfully terminated.");
     return true;
   } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
+    if (e instanceof WorkflowNotFoundError) {
       logger.info({workflowId}, "Workflow not found -- skipping.")
     } else {
       throw e;
