@@ -780,6 +780,7 @@ export function parsePropertyValue(
     }
     case "unique_id":
       return parseUniqueIdProp(property.unique_id);
+    case "button":
     case "relation":
     case "rollup":
     case "verification":
