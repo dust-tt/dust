@@ -63,8 +63,9 @@ export class ActivityInboundLogInterceptor
     const startToCloseTimer = setTimeout(() => {
       const error = {
         __is_dust_error: true,
-        message: "Activity timed out",
-        type: "activity_timeout",
+        message:
+          "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
+        type: "starttoclose_timeout_failure",
       };
       this.logger.error(
         {
