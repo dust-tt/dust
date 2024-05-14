@@ -19,7 +19,6 @@ export type DustAppParameters = {
   [key: string]: string | number | boolean;
 };
 
-// TODO:
 export interface DustAppRunActionType extends BaseAction {
   agentMessageId: ModelId;
   appWorkspaceId: string;
