@@ -52,17 +52,6 @@ export async function enqueueUpsertDocument({
   const upsertQueueId = uuidv4();
   const now = Date.now();
 
-  logger.info(
-    {
-      upsertQueueId,
-      workspaceId: upsertDocument.workspaceId,
-      dataSourceName: upsertDocument.dataSourceName,
-      documentId: upsertDocument.documentId,
-      enqueueTimestamp: now,
-    },
-    "[UpsertQueue] Enqueueing item"
-  );
-
   try {
     const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
     const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
@@ -71,6 +60,17 @@ export async function enqueueUpsertDocument({
       .save(JSON.stringify(upsertDocument), {
         contentType: "application/json",
       });
+
+    logger.info(
+      {
+        upsertQueueId,
+        workspaceId: upsertDocument.workspaceId,
+        dataSourceName: upsertDocument.dataSourceName,
+        documentId: upsertDocument.documentId,
+        enqueueTimestamp: now,
+      },
+      "[UpsertQueue] Enqueueing item"
+    );
 
     const launchRes = await launchUpsertDocumentWorkflow({
       workspaceId: upsertDocument.workspaceId,
