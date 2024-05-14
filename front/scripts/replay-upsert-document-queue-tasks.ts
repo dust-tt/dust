@@ -8,12 +8,12 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 
-async function cancelWorkflow(workflowId: string, logger: Logger) {
+async function terminateWorkflow(workflowId: string, logger: Logger) {
   const client = await getTemporalClient();
   try {
     const workflowHandle = client.workflow.getHandle(workflowId);
-    await workflowHandle.cancel();
-    logger.info({workflowId}, "Workflow successfully cancelled.");
+    await workflowHandle.terminate();
+    logger.info({workflowId}, "Workflow successfully terminated.");
     return true;
   } catch (e) {
     if (!(e instanceof WorkflowNotFoundError)) {
@@ -67,7 +67,7 @@ makeScript({
     }
 
     // First, we cancel the current workflow.
-    await cancelWorkflow(workflowId, logger);
+    await terminateWorkflow(workflowId, logger);
 
     // The, we restart the workflow.
     await launchUpsertDocumentWorkflow({
