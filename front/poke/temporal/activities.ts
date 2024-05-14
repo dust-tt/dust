@@ -17,6 +17,11 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
+  AgentTablesQueryAction,
+  AgentTablesQueryConfiguration,
+  AgentTablesQueryConfigurationTable,
+} from "@app/lib/models/assistant/actions/tables_query";
+import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
@@ -297,7 +302,35 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
-      // TODO(@fontanierh): missing tables query here.
+      const tablesQueryConfigurations =
+        await AgentTablesQueryConfiguration.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+          },
+          transaction: t,
+        });
+      await AgentTablesQueryAction.destroy({
+        where: {
+          tablesQueryConfigurationId: {
+            [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
+          },
+        },
+        transaction: t,
+      });
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          tablesQueryConfigurationId: {
+            [Op.in]: tablesQueryConfigurations.map((r) => r.id),
+          },
+        },
+        transaction: t,
+      });
+      await AgentTablesQueryConfiguration.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+        },
+        transaction: t,
+      });
       await AgentUserRelation.destroy({
         where: {
           agentConfiguration: agent.sId,

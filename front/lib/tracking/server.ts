@@ -29,7 +29,6 @@ export class ServerSideTracking {
         user.workspaces.map((ws) => ws.sId)
       );
 
-      // TODO(@fontanierh): This is not efficient, we should batch this.
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
