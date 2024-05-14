@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   CommandLineIcon,
   Dialog,
@@ -8,8 +9,7 @@ import {
   Page,
   PlusIcon,
   ShapesIcon,
-  Tab,
-} from "@dust-tt/sparkle";
+  Tab} from "@dust-tt/sparkle";
 import type { DustAppSecretType, WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -787,14 +787,13 @@ export default function Developers({
               icon: ShapesIcon,
               sizing: "expand",
             },
-            // UNCOMMENT ON FEATURE RELEASE
-            // {
-            //   label: "Dev Secrets",
-            //   id: "secrets",
-            //   current: currentTab === "secrets",
-            //   icon: BracesIcon,
-            //   sizing: "expand",
-            // },
+            {
+              label: "Dev Secrets",
+              id: "secrets",
+              current: currentTab === "secrets",
+              icon: BracesIcon,
+              sizing: "expand",
+            },
             {
               label: "API Keys",
               id: "apikeys",
