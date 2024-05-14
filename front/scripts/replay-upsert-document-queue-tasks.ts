@@ -66,7 +66,7 @@ makeScript({
       continue;
     }
 
-    // First, we cancel the current workflow.
+    // First, we terminate the current workflow.
     await terminateWorkflow(workflowId, logger);
 
     // The, we restart the workflow.
