@@ -71,9 +71,38 @@ impl ToString for AnthropicChatMessageRole {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct AnthropicContent {
-    pub r#type: String,
-    pub text: String,
+struct AnthropicContentToolResult {
+    tool_use_id: String,
+    content: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct AnthropicContentToolUse {
+    name: String,
+    id: String,
+    input: Value,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum AnthropicContentType {
+    Text,
+    ToolUse,
+    ToolResult,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+struct AnthropicContent {
+    r#type: AnthropicContentType,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    text: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none", flatten)]
+    tool_use: Option<AnthropicContentToolUse>,
+
+    #[serde(skip_serializing_if = "Option::is_none", flatten)]
+    tool_result: Option<AnthropicContentToolResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -134,9 +163,9 @@ impl AnthropicResponseContent {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct AnthropicChatMessage {
-    pub content: Vec<AnthropicContent>,
-    pub role: AnthropicChatMessageRole,
+struct AnthropicChatMessage {
+    content: Vec<AnthropicContent>,
+    role: AnthropicChatMessageRole,
 }
 
 impl TryFrom<&ChatMessage> for AnthropicChatMessage {
@@ -146,27 +175,80 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
         let role = AnthropicChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
+        // Handling meta prompt.
         let meta_prompt = match cm.role {
-            ChatMessageRole::User => match cm.name.as_ref() {
-                Some(name) => format!("[user: {}] ", name), // Include space here.
-                None => String::from(""),
-            },
-            ChatMessageRole::Function => match cm.name.as_ref() {
-                Some(name) => format!("[function_result: {}] ", name), // Include space here.
-                None => "[function_result]".to_string(),
-            },
-            _ => String::from(""),
+            ChatMessageRole::User => cm
+                .name
+                .as_ref()
+                .map_or(String::new(), |name| format!("[user: {}] ", name)),
+            ChatMessageRole::Function if cm.function_call_id.is_none() => {
+                cm.name.as_ref().map_or(String::new(), |name| {
+                    format!("[function_result: {}] ", name)
+                })
+            }
+            _ => String::new(),
         };
 
+        // Handling tool_uses.
+        let tool_uses = match cm.function_calls.as_ref() {
+            Some(fc) => Some(
+                fc.iter()
+                    .map(|function_call| {
+                        let value = serde_json::from_str(function_call.arguments.as_str())?;
+
+                        Ok(AnthropicContent {
+                            r#type: AnthropicContentType::ToolUse,
+                            text: None,
+                            tool_use: Some(AnthropicContentToolUse {
+                                name: function_call.name.clone(),
+                                id: function_call.id.clone(),
+                                input: value,
+                            }),
+                            tool_result: None,
+                        })
+                    })
+                    .collect::<Result<Vec<AnthropicContent>>>()?,
+            ),
+            None => None,
+        };
+
+        // Handling tool_result.
+        let tool_result = match cm.function_call_id.as_ref() {
+            Some(fcid) => Some(AnthropicContent {
+                r#type: AnthropicContentType::ToolResult,
+                tool_use: None,
+                tool_result: Some(AnthropicContentToolResult {
+                    tool_use_id: fcid.clone(),
+                    content: cm.content.clone(),
+                }),
+                text: None,
+            }),
+            None => None,
+        };
+
+        // Handling text.
+        let text = cm
+            .function_call_id
+            .is_none()
+            .then(|| {
+                cm.content.as_ref().map(|text| AnthropicContent {
+                    r#type: AnthropicContentType::Text,
+                    text: Some(format!("{}{}", meta_prompt, text)),
+                    tool_result: None,
+                    tool_use: None,
+                })
+            })
+            .flatten();
+
+        // Combining all content into one vector using iterators.
+        let content_vec = text
+            .into_iter()
+            .chain(tool_uses.into_iter().flatten())
+            .chain(tool_result.into_iter())
+            .collect::<Vec<AnthropicContent>>();
+
         Ok(AnthropicChatMessage {
-            content: vec![AnthropicContent {
-                r#type: "text".to_string(),
-                text: format!(
-                    "{}{}",
-                    meta_prompt,
-                    cm.content.clone().unwrap_or(String::from(""))
-                ),
-            }],
+            content: content_vec,
             role,
         })
     }
@@ -1170,6 +1252,8 @@ impl LLM for AnthropicLLM {
             .map(|cm| AnthropicChatMessage::try_from(cm))
             .collect::<Result<Vec<AnthropicChatMessage>>>()?;
 
+        // Group consecutive messages with the same role by appending their content.
+        // This is needed to group all the `tool_results` within one content vector.
         messages = messages.iter().fold(
             vec![],
             |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
@@ -1184,25 +1268,6 @@ impl LLM for AnthropicLLM {
                 acc
             },
         );
-
-        messages = messages
-            .iter()
-            .map(|cm| AnthropicChatMessage {
-                content: vec![AnthropicContent {
-                    // TODO: Support `tool_result` here.
-                    r#type: String::from("text"),
-                    text: cm
-                        .content
-                        .iter()
-                        .map(|c| c.text.clone())
-                        .collect::<Vec<String>>()
-                        .join("\n"),
-                }],
-                role: cm.role.clone(),
-            })
-            .collect();
-
-        // merge messages of the same role
 
         let tools = functions
             .iter()
