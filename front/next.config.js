@@ -11,6 +11,7 @@ module.exports = removeImports({
   // _app-4cdd284a9fb0426b.js:1 Uncaught SyntaxError: Identifier 't' has already been declared
   // ```
   // See: https://github.com/dust-tt/dust/pull/5028
+  // Make sure to deploy to font-edge before committing a remove of this flag.
   swcMinify: false,
   async redirects() {
     return [
