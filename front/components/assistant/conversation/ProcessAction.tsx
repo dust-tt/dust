@@ -124,7 +124,6 @@ export default function ProcessAction({
                 },
                 "hljs-string": {
                   color: emerald["600"],
-                  // @ts-expect-error - this is a valid style
                   textWrap: "wrap",
                 },
                 hljs: {

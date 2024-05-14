@@ -183,8 +183,8 @@ export default function CohereSetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                            ? "Enabling..."
-                            : "Enable"
+                              ? "Enabling..."
+                              : "Enable"
                         }
                       />
                     ) : (

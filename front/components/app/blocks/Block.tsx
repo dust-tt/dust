@@ -113,8 +113,8 @@ export default function Block({
                 readOnly
                   ? "border-white ring-0 focus:border-white focus:ring-0"
                   : nameError != ""
-                  ? "border-orange-400 focus:border-orange-400 focus:ring-0"
-                  : "border-white focus:border-gray-300 focus:ring-0"
+                    ? "border-orange-400 focus:border-orange-400 focus:ring-0"
+                    : "border-white focus:border-gray-300 focus:ring-0"
               )}
               readOnly={readOnly}
               value={block.name}

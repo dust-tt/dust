@@ -183,8 +183,8 @@ export default function OpenAISetup({
                               ? "Updating..."
                               : "Update"
                             : enableRunning
-                            ? "Enabling..."
-                            : "Enable"
+                              ? "Enabling..."
+                              : "Enable"
                         }
                       />
                     ) : (
