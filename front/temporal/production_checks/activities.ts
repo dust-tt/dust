@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { checkActiveWorkflows } from "@app/lib/production_checks/checks/check_active_workflows_for_connectors";
 import { checkNotionActiveWorkflows } from "@app/lib/production_checks/checks/check_notion_active_workflows";
+import { checkStartToCloseTimeoutsInActivities } from "@app/lib/production_checks/checks/check_starttoclose_timeouts";
 import { managedDataSourceGCGdriveCheck } from "@app/lib/production_checks/checks/managed_data_source_gdrive_gc";
 import { nangoConnectionIdCleanupSlack } from "@app/lib/production_checks/checks/nango_connection_id_cleanup_slack";
 import { scrubDeletedCoreDocumentVersionsCheck } from "@app/lib/production_checks/checks/scrub_deleted_core_document_versions";
@@ -35,6 +36,11 @@ export async function runAllChecksActivity() {
       name: "check_active_workflows_for_connector",
       check: checkActiveWorkflows,
       everyHour: 1,
+    },
+    {
+      name: "check_startToClose_timeouts_in_activities",
+      check: checkStartToCloseTimeoutsInActivities,
+      everyHour: 2,
     },
   ];
   await runAllChecks(checks);
