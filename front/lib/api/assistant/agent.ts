@@ -176,8 +176,6 @@ export async function* runMultiActionsAgentLoop(
             },
             "[ASSISTANT_TRACE] Action inputs generation"
           );
-          // TODO(@fontanieh): Yield & handle downstream.
-          // yield event;
           const { action, inputs, specification } = event;
           const actionEventStream = runAction(auth, {
             configuration: configuration,
