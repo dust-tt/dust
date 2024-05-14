@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   CommandLineIcon,
   Dialog,
@@ -787,14 +788,13 @@ export default function Developers({
               icon: ShapesIcon,
               sizing: "expand",
             },
-            // UNCOMMENT ON FEATURE RELEASE
-            // {
-            //   label: "Dev Secrets",
-            //   id: "secrets",
-            //   current: currentTab === "secrets",
-            //   icon: BracesIcon,
-            //   sizing: "expand",
-            // },
+            {
+              label: "Dev Secrets",
+              id: "secrets",
+              current: currentTab === "secrets",
+              icon: BracesIcon,
+              sizing: "expand",
+            },
             {
               label: "API Keys",
               id: "apikeys",

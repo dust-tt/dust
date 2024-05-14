@@ -1,4 +1,5 @@
 import type {
+  AgentActionSpecificEvent,
   AgentMessageNewEvent,
   AgentMessageWithRankType,
   ConversationTitleEvent,
@@ -23,7 +24,6 @@ import type {
 import type { PlanType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type {
-  AgentActionEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -563,7 +563,7 @@ export async function* postUserMessage(
   | UserMessageNewEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -947,7 +947,7 @@ export async function* editUserMessage(
   | UserMessageErrorEvent
   | AgentMessageNewEvent
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -1333,7 +1333,7 @@ export async function* retryAgentMessage(
   | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentMessageErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -1602,7 +1602,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
-    | AgentActionEvent
+    | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
@@ -1614,7 +1614,7 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -1692,7 +1692,7 @@ async function* streamRunAgentEvents(
 
       default:
         ((event: never) => {
-          logger.error("Unknown `streamRunAgentEvents` event type", event);
+          logger.error({ event }, "Unknown `streamRunAgentEvents` event type");
         })(event);
         return;
     }

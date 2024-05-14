@@ -223,12 +223,12 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "assistant-v2-use-tools": {
+  "assistant-v2-multi-actions-agent": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0e9889c787",
       appHash:
-        "388a8ab72120c22d0865fd6fbbaf060b0034f30473c57d2eccb6d866d8297f88",
+        "a1dfbf2c9e59f5b9a5b05e3729eea064dd394c35f112dfa080b6573fdfdab229",
     },
     config: {
       MODEL: {
@@ -236,6 +236,7 @@ export const DustProdActionRegistry = createActionRegistry({
         model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
+        use_stream: true,
       },
     },
   },

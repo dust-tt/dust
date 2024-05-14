@@ -1,7 +1,7 @@
 import type {
   AgentActionConfigurationType,
-  AgentActionEvent,
   AgentActionSpecification,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationType,
   AgentErrorEvent,
@@ -20,7 +20,7 @@ import {
   DustProdActionRegistry,
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -84,12 +84,12 @@ async function generateActionInputs(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4O_MODEL_CONFIG.providerId,
+        modelId: GPT_4O_MODEL_CONFIG.modelId,
       };
 
   const contextSize = auth.isUpgraded()
-    ? GPT_4_TURBO_MODEL_CONFIG.contextSize
+    ? GPT_4O_MODEL_CONFIG.contextSize
     : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -186,7 +186,7 @@ export async function* runLegacyAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -294,9 +294,9 @@ async function* runAction(
     step: number;
   }
 ): AsyncGenerator<
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionSpecificEvent
   | AgentActionSuccessEvent,
   void
 > {

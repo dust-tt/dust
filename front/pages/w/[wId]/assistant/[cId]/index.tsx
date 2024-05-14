@@ -15,6 +15,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createPlaceholderUserMessage,
   submitMessage,
@@ -119,13 +120,9 @@ export default function AssistantConversation({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragment?: {
-      title: string;
-      content: string;
-      file: File;
-    }
+    contentFragments: ContentFragmentInput[]
   ) => {
-    const messageData = { input, mentions, contentFragment };
+    const messageData = { input, mentions, contentFragments };
 
     try {
       // Update the local state immediately and fire the

@@ -4,6 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
+import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { App, Provider, Run } from "@app/lib/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
@@ -70,12 +71,13 @@ async function handler(
         });
       }
 
-      const [providers] = await Promise.all([
+      const [providers, secrets] = await Promise.all([
         Provider.findAll({
           where: {
             workspaceId: owner.id,
           },
         }),
+        getDustAppSecrets(auth, true),
       ]);
 
       if (
@@ -129,6 +131,7 @@ async function handler(
         datasetId: inputDataset,
         config: { blocks: config },
         credentials: credentialsFromProviders(providers),
+        secrets,
       });
 
       if (dustRun.isErr()) {

@@ -33,6 +33,12 @@ export type ConversationErrorType = {
   message: string;
 };
 
+export type ContentFragmentInput = {
+  title: string;
+  content: string;
+  file: File;
+};
+
 export function createPlaceholderUserMessage({
   input,
   mentions,
@@ -80,55 +86,58 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragment?: {
-      title: string;
-      content: string;
-      file: File;
-    };
+    contentFragments: ContentFragmentInput[];
   };
 }): Promise<
   Result<{ message: UserMessageWithRankType }, ConversationErrorType>
 > {
-  const { input, mentions, contentFragment } = messageData;
+  const { input, mentions, contentFragments } = messageData;
   // Create a new content fragment.
-  if (contentFragment) {
-    const mcfRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: contentFragment.title,
-          content: contentFragment.content,
-          url: null,
-          contentType: "file_attachment",
-          context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-            profilePictureUrl: user.image,
-          },
-        }),
-      }
+  if (contentFragments.length > 0) {
+    const contentFragmentsRes = await Promise.all(
+      contentFragments.map((contentFragment) => {
+        return fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: contentFragment.title,
+              content: contentFragment.content,
+              url: null,
+              contentType: "file_attachment",
+              context: {
+                timezone:
+                  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                profilePictureUrl: user.image,
+              },
+            }),
+          }
+        );
+      })
     );
 
-    if (!mcfRes.ok) {
-      const data = await mcfRes.json();
-      console.error("Error creating content fragment", data);
-      return new Err({
-        type: "attachment_upload_error",
-        title: "Error uploading file.",
-        message: data.error.message || "Please try again or contact us.",
+    for (const [i, mcfRes] of contentFragmentsRes.entries()) {
+      if (!mcfRes.ok) {
+        const data = await mcfRes.json();
+        console.error("Error creating content fragment", data);
+        return new Err({
+          type: "attachment_upload_error",
+          title: "Error uploading file.",
+          message: data.error.message || "Please try again or contact us.",
+        });
+      }
+      const cfData = (await mcfRes.json())
+        .contentFragment as ContentFragmentType;
+      uploadRawContentFragment({
+        workspaceId: owner.sId,
+        conversationId,
+        contentFragmentId: cfData.sId,
+        file: contentFragments[i].file,
       });
     }
-
-    const cfData = (await mcfRes.json()).contentFragment as ContentFragmentType;
-    uploadRawContentFragment({
-      workspaceId: owner.sId,
-      conversationId,
-      contentFragmentId: cfData.sId,
-      file: contentFragment.file,
-    });
   }
 
   // Create a new user message.
@@ -204,24 +213,12 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragment?: {
-      title: string;
-      content: string;
-      file: File;
-    };
+    contentFragments: ContentFragmentInput[];
   };
   visibility?: ConversationVisibility;
   title?: string;
 }): Promise<Result<ConversationType, ConversationErrorType>> {
-  const {
-    input,
-    mentions,
-    contentFragment: contentFragmentWithFile,
-  } = messageData;
-  const { file } = contentFragmentWithFile ?? {};
-  const contentFragment = contentFragmentWithFile
-    ? { ...contentFragmentWithFile, file: undefined }
-    : undefined;
+  const { input, mentions, contentFragments } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {
     title: title ?? null,
@@ -234,17 +231,15 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragment: contentFragment
-      ? {
-          content: contentFragment.content,
-          title: contentFragment.title,
-          url: null, // sourceUrl will be set on raw content upload success
-          contentType: "file_attachment",
-          context: {
-            profilePictureUrl: user.image,
-          },
-        }
-      : undefined,
+    contentFragments: contentFragments.map((cf) => ({
+      content: cf.content,
+      title: cf.title,
+      url: null, // sourceUrl will be set on raw content upload success
+      contentType: "file_attachment",
+      context: {
+        profilePictureUrl: user.image,
+      },
+    })),
   };
 
   // Create new conversation and post the initial message at the same time.
@@ -270,13 +265,15 @@ export async function createConversationWithMessage({
 
   const conversationData = (await cRes.json()) as PostConversationsResponseBody;
 
-  if (file && conversationData.contentFragment) {
-    uploadRawContentFragment({
-      workspaceId: owner.sId,
-      conversationId: conversationData.conversation.sId,
-      contentFragmentId: conversationData.contentFragment?.sId,
-      file,
-    });
+  if (conversationData.contentFragments.length > 0) {
+    for (const [i, cf] of conversationData.contentFragments.entries()) {
+      uploadRawContentFragment({
+        workspaceId: owner.sId,
+        conversationId: conversationData.conversation.sId,
+        contentFragmentId: cf.sId,
+        file: contentFragments[i].file,
+      });
+    }
   }
 
   return new Ok(conversationData.conversation);

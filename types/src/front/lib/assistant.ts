@@ -25,6 +25,7 @@ export const ModelProviderIdCodec = ioTsEnum(MODEL_PROVIDER_IDS);
  */
 
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
+export const GPT_4O_MODEL_ID = "gpt-4o" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_SONNET_2024029_MODEL_ID =
@@ -41,6 +42,7 @@ export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const MODEL_IDS = [
   GPT_4_TURBO_MODEL_ID,
   GPT_3_5_TURBO_MODEL_ID,
+  GPT_4O_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_SONNET_2024029_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -83,8 +85,20 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description: "OpenAI's most powerful and recent model (128k context).",
-  shortDescription: "OpenAI's smartest model.",
+  description: "OpenAI's advanced model for complex tasks (128k context).",
+  shortDescription: "OpenAI's most capable model.",
+  supportsMultiActions: true,
+};
+export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4O_MODEL_ID,
+  displayName: "GPT-4o",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's newest and most advanced model (128k context).",
+  shortDescription: "OpenAI's most advanced model.",
   supportsMultiActions: true,
 };
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -220,6 +234,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,

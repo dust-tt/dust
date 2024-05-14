@@ -15,6 +15,10 @@ import {
   TablesQueryOutputEvent,
   TablesQueryParamsEvent,
 } from "../../../../front/lib/api/assistant/actions/tables_query";
+import {
+  AgentActionConfigurationType,
+  AgentActionSpecification,
+} from "../../../assistant/agent";
 import { ProcessParamsEvent } from "./actions/process";
 
 // Event sent when an agent error occured before we have a agent message in the database.
@@ -41,7 +45,7 @@ export type AgentErrorEvent = {
 };
 
 // Event sent during the execution of an action. These are action specific.
-export type AgentActionEvent =
+export type AgentActionSpecificEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
@@ -82,4 +86,12 @@ export type AgentMessageSuccessEvent = {
   configurationId: string;
   messageId: string;
   message: AgentMessageType;
+};
+
+export type AgentActionEvent = {
+  type: "agent_action";
+  created: number;
+  action: AgentActionConfigurationType;
+  inputs: Record<string, string | boolean | number>;
+  specification: AgentActionSpecification | null;
 };

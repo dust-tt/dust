@@ -50,12 +50,9 @@ export function rendeTablesQueryActionFunctionCall(
   action: TablesQueryActionType
 ): FunctionCallType {
   return {
-    id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: "query_tables",
-      arguments: JSON.stringify(action.params),
-    },
+    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
+    name: "query_tables",
+    arguments: JSON.stringify(action.params),
   };
 }
 export function renderTablesQueryActionForMultiActionsModel(
@@ -72,7 +69,7 @@ export function renderTablesQueryActionForMultiActionsModel(
 
   return {
     role: "function" as const,
-    function_call_id: action.id.toString(), // @todo Daph replace with the actual tool id
+    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     content,
   };
 }

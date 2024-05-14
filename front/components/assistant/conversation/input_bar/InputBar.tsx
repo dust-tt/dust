@@ -16,6 +16,7 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -61,7 +62,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string; file: File }
+    contentFragments: ContentFragmentInput[]
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -73,8 +74,8 @@ export function AssistantInputBar({
   const { mutate } = useSWRConfig();
 
   const [contentFragmentData, setContentFragmentData] = useState<
-    { title: string; content: string; file: File } | undefined
-  >(undefined);
+    { title: string; content: string; file: File }[]
+  >([]);
 
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
@@ -99,6 +100,8 @@ export function AssistantInputBar({
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, selectedAssistant } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isProcessingContentFragment, setIsProcessingContentFragment] =
+    useState(false);
 
   useEffect(() => {
     if (animate && !isAnimating) {
@@ -144,68 +147,85 @@ export function AssistantInputBar({
       configurationId: m.id,
     }));
 
-    let contentFragment:
-      | {
-          title: string;
-          content: string;
-          file: File;
-          contentType: string;
-        }
-      | undefined = undefined;
-    if (contentFragmentData) {
-      contentFragment = {
-        ...contentFragmentData,
-        contentType: "file_attachment",
-      };
-    }
-    onSubmit(text, mentions, contentFragment);
+    onSubmit(
+      text,
+      mentions,
+      contentFragmentData.map((cf) => {
+        return {
+          title: cf.title,
+          content: cf.content,
+          file: cf.file,
+        };
+      })
+    );
     resetEditorText();
-    setContentFragmentData(undefined);
+    setContentFragmentData([]);
   };
 
   const onInputFileChange: InputBarContainerProps["onInputFileChange"] =
     useCallback(
       async (event) => {
-        const file = (event?.target as HTMLInputElement)?.files?.[0];
-        if (!file) {
-          return;
-        }
-        if (file.size > 100_000_000) {
-          // Even though we don't display the file size limit in the UI, we still check it here to prevent
-          // processing files that are too large.
-          sendNotification({
-            type: "error",
-            title: "File too large.",
-            description:
-              "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
-          });
-          return;
-        }
-        const res = await handleFileUploadToText(file);
+        setIsProcessingContentFragment(true);
+        try {
+          let totalSize = 0;
+          for (const file of (event?.target as HTMLInputElement)?.files || []) {
+            if (!file) {
+              return;
+            }
+            if (file.size > 100_000_000) {
+              // Even though we don't display the file size limit in the UI, we still check it here to prevent
+              // processing files that are too large.
+              sendNotification({
+                type: "error",
+                title: "File too large.",
+                description:
+                  "PDF uploads are limited to 100Mb per file. Please consider uploading a smaller file.",
+              });
+              return;
+            }
+            const res = await handleFileUploadToText(file);
 
-        if (res.isErr()) {
-          sendNotification({
-            type: "error",
-            title: "Error uploading file.",
-            description: res.error.message,
-          });
-          return;
+            if (res.isErr()) {
+              sendNotification({
+                type: "error",
+                title: "Error uploading file.",
+                description: res.error.message,
+              });
+              return;
+            }
+            if (res.value.content.length > 500_000) {
+              // This error should pretty much never be triggered but it is a possible case, so here it is.
+              sendNotification({
+                type: "error",
+                title: "File too large.",
+                description:
+                  "The extracted text from your file has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+              });
+              return;
+            }
+            totalSize += res.value.content.length;
+            setContentFragmentData((prev) => {
+              return prev.concat([
+                {
+                  title: res.value.title,
+                  content: res.value.content,
+                  file,
+                },
+              ]);
+            });
+          }
+          // now we check for the total size of the content fragments
+          if (totalSize > 500_000) {
+            sendNotification({
+              type: "error",
+              title: "Files too large.",
+              description:
+                "The combined extracted text from the files you selected results in more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
+            });
+          }
+        } finally {
+          setIsProcessingContentFragment(false);
         }
-        if (res.value.content.length > 500_000) {
-          // This error should pretty much never be triggered but it is a possible case, so here it is.
-          sendNotification({
-            type: "error",
-            title: "File too large.",
-            description:
-              "The extracted text from your PDF has more than 500,000 characters. This will overflow the assistant context. Please consider uploading a smaller file.",
-          });
-          return;
-        }
-        setContentFragmentData({
-          title: res.value.title,
-          content: res.value.content,
-          file,
-        });
       },
       [sendNotification]
     );
@@ -288,17 +308,22 @@ export function AssistantInputBar({
               isAnimating ? "animate-shake" : ""
             )}
           >
-            <div className="relative flex w-full flex-1 flex-col">
-              {contentFragmentData && (
-                <div className="mr-4 border-b border-structure-300/50 pb-3 pt-4">
-                  <Citation
-                    title={contentFragmentData.title}
-                    size="xs"
-                    description={contentFragmentData.content?.substring(0, 100)}
-                    onClose={() => {
-                      setContentFragmentData(undefined);
-                    }}
-                  />
+            <div className="relative flex w-full flex-1 flex-col ">
+              {contentFragmentData.length > 0 && (
+                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+                  {contentFragmentData.map((cf, i) => (
+                    <Citation
+                      key={`cf-${i}`}
+                      title={cf.title}
+                      size="xs"
+                      description={cf.content?.substring(0, 100)}
+                      onClose={() => {
+                        setContentFragmentData((prev) => {
+                          return prev.filter((_, index) => index !== i);
+                        });
+                      }}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -312,7 +337,7 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
-                disableAttachment={!!contentFragmentData?.title}
+                disableSendButton={isProcessingContentFragment}
               />
             </div>
           </div>
@@ -335,7 +360,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragment?: { title: string; content: string; file: File }
+    contentFragments: ContentFragmentInput[]
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
