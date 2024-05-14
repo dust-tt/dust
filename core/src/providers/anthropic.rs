@@ -1273,25 +1273,6 @@ impl LLM for AnthropicLLM {
             },
         );
 
-        // messages = messages
-        //     .iter()
-        //     .map(|cm| AnthropicChatMessage {
-        //         content: vec![AnthropicContent {
-        //             // TODO: Support `tool_result` here.
-        //             r#type: String::from("text"),
-        //             text: Some(
-        //                 cm.content
-        //                     .iter()
-        //                     .filter_map(|c| c.text.clone())
-        //                     .collect::<Vec<String>>()
-        //                     .join("\n"),
-        //             ),
-        //             name: None,
-        //         }],
-        //         role: cm.role.clone(),
-        //     })
-        //     .collect();
-
         let tools = functions
             .iter()
             .map(AnthropicTool::try_from)
