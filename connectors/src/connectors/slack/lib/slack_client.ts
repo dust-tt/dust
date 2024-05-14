@@ -117,7 +117,26 @@ export type SlackUserInfo = {
   image_512: string | null;
 };
 
-export async function getSlackUserInfo(
+export async function getSlackUserOrBotInfo(
+  slackClient: WebClient,
+  userId: string
+) {
+  if (userId.startsWith("B")) {
+    return getSlackBotInfo(slackClient, userId);
+  }
+  const res = await slackClient.users.info({ user: userId });
+
+  if (!res.ok) {
+    throw res.error;
+  }
+  if (res.user?.is_bot) {
+    return getSlackBotInfo(slackClient, userId);
+  } else {
+    return getSlackUserInfo(slackClient, userId);
+  }
+}
+
+async function getSlackUserInfo(
   slackClient: WebClient,
   userId: string
 ): Promise<SlackUserInfo> {
@@ -141,7 +160,7 @@ export async function getSlackUserInfo(
   };
 }
 
-export async function getSlackBotInfo(
+async function getSlackBotInfo(
   slackClient: WebClient,
   botId: string
 ): Promise<SlackUserInfo> {
