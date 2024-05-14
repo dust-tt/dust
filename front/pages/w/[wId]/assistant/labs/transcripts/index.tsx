@@ -146,10 +146,15 @@ export default function LabsTranscriptsIndex({
     });
   };
 
-  const handleDisconnectProvider = async (transcriptConfigurationId: number) => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`, {
-      method: "DELETE",
-    });
+  const handleDisconnectProvider = async (
+    transcriptConfigurationId: number
+  ) => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "DELETE",
+      }
+    );
 
     if (!response.ok) {
       sendNotification({
@@ -160,7 +165,7 @@ export default function LabsTranscriptsIndex({
     } else {
       window.location.reload();
     }
-  }
+  };
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -318,7 +323,7 @@ export default function LabsTranscriptsIndex({
         isGongConnected: true,
       });
 
-      await mutateTranscriptsConfiguration();      
+      await mutateTranscriptsConfiguration();
     }
 
     return response;
@@ -369,44 +374,44 @@ export default function LabsTranscriptsIndex({
         <Page.Layout direction="vertical">
           <Page.SectionHeader title="1. Connect your transcripts provider" />
           {!transcriptsConfiguration && (
-              <Page.Layout direction="horizontal" gap="xl">
-                <div
-                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                    transcriptsConfigurationState.provider == "google_drive"
-                      ? "border-gray-400"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() => handleProviderChange("google_drive")}
-                >
-                  <img
-                    src="/static/labs/transcripts/google.png"
-                    style={{ maxHeight: "35px" }}
-                  />
-                </div>
-                <div
-                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                    transcriptsConfigurationState.provider == "gong"
-                      ? "border-gray-400"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() =>
-                    owner.flags.includes("labs_transcripts_gong")
-                      ? handleProviderChange("gong")
-                      : sendNotification({
-                          type: "error",
-                          title: "Gong is coming soon",
-                          description:
-                            "We're working on adding Gong support. Contact us if you'd like to be notified when it's available.",
-                        })
-                  }
-                >
-                  <img
-                    src="/static/labs/transcripts/gong.jpeg"
-                    style={{ maxHeight: "35px" }}
-                  />
-                </div>
-              </Page.Layout>
-            )}
+            <Page.Layout direction="horizontal" gap="xl">
+              <div
+                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                  transcriptsConfigurationState.provider == "google_drive"
+                    ? "border-gray-400"
+                    : "border-gray-200"
+                }`}
+                onClick={() => handleProviderChange("google_drive")}
+              >
+                <img
+                  src="/static/labs/transcripts/google.png"
+                  style={{ maxHeight: "35px" }}
+                />
+              </div>
+              <div
+                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                  transcriptsConfigurationState.provider == "gong"
+                    ? "border-gray-400"
+                    : "border-gray-200"
+                }`}
+                onClick={() =>
+                  owner.flags.includes("labs_transcripts_gong")
+                    ? handleProviderChange("gong")
+                    : sendNotification({
+                        type: "error",
+                        title: "Gong is coming soon",
+                        description:
+                          "We're working on adding Gong support. Contact us if you'd like to be notified when it's available.",
+                      })
+                }
+              >
+                <img
+                  src="/static/labs/transcripts/gong.jpeg"
+                  style={{ maxHeight: "35px" }}
+                />
+              </div>
+            </Page.Layout>
+          )}
 
           {transcriptsConfigurationState.provider === "google_drive" && (
             <Page.Layout direction="vertical">
@@ -437,7 +442,8 @@ export default function LabsTranscriptsIndex({
                 Add your Gong API key so Dust can access your Gong account and
                 process your transcripts.
               </Page.P>
-              {transcriptsConfiguration && transcriptsConfigurationState.isGongConnected ? (
+              {transcriptsConfiguration &&
+              transcriptsConfigurationState.isGongConnected ? (
                 <Page.Layout direction="horizontal">
                   <Button
                     label={"Gong API is connected"}
@@ -451,8 +457,11 @@ export default function LabsTranscriptsIndex({
                     size="sm"
                     variant="secondaryWarning"
                     onClick={async () => {
-                      await handleDisconnectProvider(transcriptsConfiguration.id);
-                    }} />
+                      await handleDisconnectProvider(
+                        transcriptsConfiguration.id
+                      );
+                    }}
+                  />
                 </Page.Layout>
               ) : (
                 <Page.Layout direction="horizontal">
