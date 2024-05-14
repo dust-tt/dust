@@ -51,11 +51,8 @@ export function rendeTablesQueryActionFunctionCall(
 ): FunctionCallType {
   return {
     id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: "query_tables",
-      arguments: JSON.stringify(action.params),
-    },
+    name: "query_tables",
+    arguments: JSON.stringify(action.params),
   };
 }
 export function renderTablesQueryActionForMultiActionsModel(

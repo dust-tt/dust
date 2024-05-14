@@ -26,16 +26,13 @@ export type UserMessageTypeModel = {
 
 export type FunctionCallType = {
   id: string;
-  type: "function";
-  function: {
-    name: string;
-    arguments: string;
-  };
+  name: string;
+  arguments: string;
 };
 
 export type AssistantFunctionCallMessageTypeModel = {
   role: "assistant";
-  content: string | null;
+  content?: string;
   function_calls: FunctionCallType[];
 };
 export type AssistantContentMessageTypeModel = {

@@ -54,11 +54,8 @@ export function renderDustAppRunActionFunctionCall(
 ): FunctionCallType {
   return {
     id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: action.appName,
-      arguments: JSON.stringify(action.params),
-    },
+    name: action.appName,
+    arguments: JSON.stringify(action.params),
   };
 }
 export function renderDustAppRunActionForMultiActionsModel(

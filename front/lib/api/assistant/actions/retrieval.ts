@@ -165,11 +165,8 @@ export function rendeRetrievalActionFunctionCall(
 
   return {
     id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: "search_data_sources",
-      arguments: JSON.stringify(params),
-    },
+    name: "search_data_sources",
+    arguments: JSON.stringify(params),
   };
 }
 export function renderRetrievalActionForMultiActionsModel(

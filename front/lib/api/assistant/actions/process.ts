@@ -81,11 +81,8 @@ export function renderProcessActionFunctionCall(
 ): FunctionCallType {
   return {
     id: action.id.toString(), // @todo Daph replace with the actual tool id
-    type: "function",
-    function: {
-      name: "process_data_sources",
-      arguments: JSON.stringify(action.params),
-    },
+    name: "process_data_sources",
+    arguments: JSON.stringify(action.params),
   };
 }
 export function renderProcessActionForMultiActionsModel(
