@@ -2,11 +2,15 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  Input,
   Page,
   SliderToggle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+  Spinner} from "@dust-tt/sparkle";
+import type {
+  LabsTranscriptsProviderType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
@@ -71,7 +75,8 @@ export default function LabsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [provider, setProvider] = useState<"google_drive" | "gong">("google_drive");
+  const [provider, setProvider] =
+    useState<LabsTranscriptsProviderType>("google_drive");
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -103,8 +108,16 @@ export default function LabsTranscriptsIndex({
 
   useEffect(() => {
     setTranscriptsConfigurationState({
+      isGongConnected:
+        (transcriptsConfiguration &&
+          transcriptsConfiguration.id > 0 &&
+          transcriptsConfiguration.provider == "gong") ||
+        false,
       isGDriveConnected:
-        (transcriptsConfiguration && transcriptsConfiguration.id > 0) || false,
+        (transcriptsConfiguration &&
+          transcriptsConfiguration.id > 0 &&
+          transcriptsConfiguration.provider == "google_drive") ||
+        false,
       assistantSelected:
         agentConfigurations.find(
           (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
@@ -122,7 +135,7 @@ export default function LabsTranscriptsIndex({
   const handleProviderChange = async (provider: "google_drive" | "gong") => {
     setProvider(provider);
     await mutateTranscriptsConfiguration();
-  }
+  };
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -249,8 +262,11 @@ export default function LabsTranscriptsIndex({
     return response;
   };
 
-  const handleConnectTranscriptsSource = async () => {
+  const handleConnectGoogleTranscriptsSource = async () => {
     try {
+      if (provider !== "google_drive") {
+        return;
+      }
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
@@ -273,6 +289,10 @@ export default function LabsTranscriptsIndex({
     }
   };
 
+  const handleConnectGongTranscriptsSource = async () => {
+    console.log("Connecting to Gong");
+  };
+
   return (
     <AppLayout
       subscription={subscription}
@@ -292,14 +312,31 @@ export default function LabsTranscriptsIndex({
           <Page.SectionHeader title="1. Connect your transcripts provider" />
           {/* logos of providers */}
           <Page.Layout direction="horizontal" gap="xl">
-
-<div className={`border rounded-md p-4 hover:border-gray-400 cursor-pointer ${provider == "google_drive" ? 'border-gray-400' : 'border-gray-200'}`} onClick={() => handleProviderChange("google_drive")}>
-    <img src="/static/labs/transcripts/google.png" style={{ maxHeight: '50px' }} />
-</div>
-<div className={`border rounded-md p-4 hover:border-gray-400 cursor-pointer ${provider == "gong" ? 'border-gray-400' : 'border-gray-200'}`} onClick={() => handleProviderChange("gong")}>
-    <img src="/static/labs/transcripts/gong.jpeg" style={{ maxHeight: '50px' }}  />
-</div>
-</Page.Layout>
+            <div
+              className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                provider == "google_drive"
+                  ? "border-gray-400"
+                  : "border-gray-200"
+              }`}
+              onClick={() => handleProviderChange("google_drive")}
+            >
+              <img
+                src="/static/labs/transcripts/google.png"
+                style={{ maxHeight: "35px" }}
+              />
+            </div>
+            <div
+              className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                provider == "gong" ? "border-gray-400" : "border-gray-200"
+              }`}
+              onClick={() => handleProviderChange("gong")}
+            >
+              <img
+                src="/static/labs/transcripts/gong.jpeg"
+                style={{ maxHeight: "35px" }}
+              />
+            </div>
+          </Page.Layout>
 
           {provider === "google_drive" && (
             <Page.Layout direction="vertical">
@@ -318,7 +355,7 @@ export default function LabsTranscriptsIndex({
                   icon={CloudArrowLeftRightIcon}
                   disabled={transcriptsConfigurationState?.isGDriveConnected}
                   onClick={async () => {
-                    await handleConnectTranscriptsSource();
+                    await handleConnectGoogleTranscriptsSource();
                   }}
                 />
               </div>
@@ -327,28 +364,26 @@ export default function LabsTranscriptsIndex({
           {provider === "gong" && (
             <Page.Layout direction="vertical">
               <Page.P>
-                Add your Gong API key so Dust can access your Gong account and process your transcripts.
+                Add your Gong API key so Dust can access your Gong account and
+                process your transcripts.
               </Page.P>
-              <div>
+              <Page.Layout direction="horizontal">
+                <Input placeholder="Gong API key" value="" name="gongApiKey" />
                 <Button
                   label={
-                    transcriptsConfigurationState.isGDriveConnected
-                      ? "Connected"
-                      : "Connect"
+                     "Save"
                   }
                   size="sm"
-                  icon={CloudArrowLeftRightIcon}
                   disabled={transcriptsConfigurationState?.isGDriveConnected}
                   onClick={async () => {
-                    await handleConnectTranscriptsSource();
+                    await handleConnectGongTranscriptsSource();
                   }}
                 />
-              </div>
+              </Page.Layout>
             </Page.Layout>
           )}
-          
         </Page.Layout>
-        {transcriptsConfigurationState.isGDriveConnected &&
+        {(provider == "google_drive" && transcriptsConfigurationState.isGDriveConnected || provider == "gong" && transcriptsConfigurationState.isGongConnected) &&
           transcriptsConfiguration &&
           transcriptsConfiguration.id && (
             <>

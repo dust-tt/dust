@@ -186,7 +186,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
       </Dialog>
       <Page.SectionHeader
         title="Developer Secrets"
-        description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions. "
+        description="Secrets usable in Dust apps to avoid showing sensitive data in blocks definitions."
         action={{
           label: "Create Developer Secret",
           variant: "primary",
