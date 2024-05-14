@@ -146,6 +146,22 @@ export default function LabsTranscriptsIndex({
     });
   };
 
+  const handleDisconnectProvider = async (transcriptConfigurationId: number) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to disconnect",
+        description: "Could not disconnect the provider. Please try again.",
+      });
+    } else {
+      window.location.reload();
+    }
+  }
+
   const makePatchRequest = async (
     transcriptConfigurationId: number,
     data: Partial<PatchTranscriptsConfiguration>,
@@ -302,7 +318,7 @@ export default function LabsTranscriptsIndex({
         isGongConnected: true,
       });
 
-      await mutateTranscriptsConfiguration();
+      await mutateTranscriptsConfiguration();      
     }
 
     return response;
@@ -352,8 +368,7 @@ export default function LabsTranscriptsIndex({
         />
         <Page.Layout direction="vertical">
           <Page.SectionHeader title="1. Connect your transcripts provider" />
-          {!transcriptsConfigurationState.isGDriveConnected &&
-            !transcriptsConfigurationState.isGongConnected && (
+          {!transcriptsConfiguration && (
               <Page.Layout direction="horizontal" gap="xl">
                 <div
                   className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
@@ -422,15 +437,23 @@ export default function LabsTranscriptsIndex({
                 Add your Gong API key so Dust can access your Gong account and
                 process your transcripts.
               </Page.P>
-              {transcriptsConfigurationState.isGongConnected ? (
-                <Page.P>
+              {transcriptsConfiguration && transcriptsConfigurationState.isGongConnected ? (
+                <Page.Layout direction="horizontal">
                   <Button
                     label={"Gong API is connected"}
                     size="sm"
                     icon={CloudArrowLeftRightIcon}
                     disabled={true}
                   />
-                </Page.P>
+                  {/* disconnect button */}
+                  <Button
+                    label={"Disconnect"}
+                    size="sm"
+                    variant="secondaryWarning"
+                    onClick={async () => {
+                      await handleDisconnectProvider(transcriptsConfiguration.id);
+                    }} />
+                </Page.Layout>
               ) : (
                 <Page.Layout direction="horizontal">
                   <Input
