@@ -485,6 +485,12 @@ export async function* runDustApp(
     }
   }
 
+  if (functionCallId) {
+    lastBlockOutput = lastBlockOutput
+      ? { ...lastBlockOutput, function_call_id: functionCallId }
+      : { function_call_id: functionCallId };
+  }
+
   // Update DustAppRunAction with the output of the last block.
   await action.update({
     output: lastBlockOutput,
