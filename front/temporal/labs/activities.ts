@@ -157,7 +157,6 @@ export async function retrieveNewTranscriptsActivity(
         {},
         "[retrieveNewTranscripts] Error fetching new transcripts from Gong. Skipping."
       );
-      console.log('ERROR', await newTranscripts.json())
       return [];
     }
 
