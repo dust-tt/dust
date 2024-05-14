@@ -3,6 +3,8 @@ const removeImports = require("next-remove-imports")();
 
 module.exports = removeImports({
   experimental: { esmExternals: false },
+  reactStrictMode: true,
+  poweredByHeader: false,
   async redirects() {
     return [
       {
@@ -30,7 +32,6 @@ module.exports = removeImports({
       },
     ];
   },
-  poweredByHeader: false,
   async headers() {
     return [
       {
