@@ -222,19 +222,6 @@ async function handler(
         });
       }
 
-      if (
-        bodyValidation.right.useMultiActions &&
-        bodyValidation.right.assistant.maxToolsUsePerRun === undefined
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message: "maxToolsUsePerRun is required in multi-actions mode.",
-          },
-        });
-      }
-
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
         assistant: bodyValidation.right.assistant,
