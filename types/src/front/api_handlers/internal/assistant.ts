@@ -31,10 +31,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("test"),
   ]),
   message: t.union([InternalPostMessagesRequestBodySchema, t.null]),
-  contentFragment: t.union([
-    InternalPostContentFragmentRequestBodySchema,
-    t.undefined,
-  ]),
+  contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
 });
 
 export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
