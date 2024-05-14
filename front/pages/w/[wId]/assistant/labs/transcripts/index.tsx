@@ -153,7 +153,7 @@ export default function LabsTranscriptsIndex({
       ...transcriptsConfigurationState,
       gongApiSecret,
     });
-  }
+  };
 
   const handleDisconnectProvider = async (
     transcriptConfigurationId: number
@@ -309,7 +309,9 @@ export default function LabsTranscriptsIndex({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        gongApiKey: Buffer.from(`${transcriptsConfigurationState.gongApiKey}:${transcriptsConfigurationState.gongApiSecret}`).toString('base64'),
+        gongApiKey: Buffer.from(
+          `${transcriptsConfigurationState.gongApiKey}:${transcriptsConfigurationState.gongApiSecret}`
+        ).toString("base64"),
         connectionId: null,
         provider: "gong",
       }),
@@ -480,7 +482,7 @@ export default function LabsTranscriptsIndex({
                     onChange={(e) => handleGongApiKeyChange(e)}
                     value={transcriptsConfigurationState.gongApiKey}
                   />
-                   <Input
+                  <Input
                     placeholder="Gong Access secret"
                     name="gongApiKey"
                     onChange={(e) => handleGongApiSecretChange(e)}
