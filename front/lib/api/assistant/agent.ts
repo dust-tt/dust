@@ -15,6 +15,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  RetrievalActionType,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -24,8 +25,10 @@ import {
   DustProdActionRegistry,
   isDustAppRunConfiguration,
   isProcessConfiguration,
+  isRetrievalActionType,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -596,6 +599,16 @@ async function* runAction(
 > {
   const now = Date.now();
 
+  const existingRetrievalActions = agentMessage.actions.filter(
+    isRetrievalActionType
+  ) as RetrievalActionType[];
+  const existingRefsCount = removeNulls(
+    existingRetrievalActions
+      .map((r) => r.documents)
+      .flat()
+      .map((d) => d?.reference)
+  ).length;
+
   if (isRetrievalConfiguration(actionConfiguration)) {
     const eventStream = runRetrieval(auth, {
       configuration,
@@ -604,6 +617,7 @@ async function* runAction(
       agentMessage,
       rawInputs: inputs,
       step,
+      refsOffset: existingRefsCount,
     });
 
     for await (const event of eventStream) {
