@@ -345,7 +345,8 @@ export async function* runMultiActionsAgent(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
-  config.MODEL.function_call = forcedActionName ?? "auto";
+  config.MODEL.function_call =
+    specifications.length === 0 ? null : forcedActionName ?? "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;
