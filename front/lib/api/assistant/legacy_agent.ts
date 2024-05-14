@@ -1,6 +1,6 @@
 import type {
   AgentActionConfigurationType,
-  AgentActionEvent,
+  AgentActionParamsOrOutputEvent,
   AgentActionSpecification,
   AgentActionSuccessEvent,
   AgentConfigurationType,
@@ -186,7 +186,7 @@ export async function* runLegacyAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionParamsOrOutputEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -294,9 +294,9 @@ async function* runAction(
     step: number;
   }
 ): AsyncGenerator<
-  | AgentActionEvent
+  | AgentActionParamsOrOutputEvent
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionParamsOrOutputEvent
   | AgentActionSuccessEvent,
   void
 > {

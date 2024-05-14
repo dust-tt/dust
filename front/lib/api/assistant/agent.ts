@@ -1,6 +1,7 @@
 import type {
   AgentActionConfigurationType,
   AgentActionEvent,
+  AgentActionParamsOrOutputEvent,
   AgentActionSpecification,
   AgentActionSuccessEvent,
   AgentConfigurationType,
@@ -9,7 +10,6 @@ import type {
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
-  AgentUseToolEvent,
   ConversationType,
   GenerationCancelEvent,
   GenerationSuccessEvent,
@@ -69,7 +69,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionParamsOrOutputEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -116,7 +116,7 @@ export async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionEvent
+  | AgentActionParamsOrOutputEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
@@ -169,7 +169,7 @@ export async function* runMultiActionsAgentLoop(
           );
           yield event;
           return;
-        case "agent_use_tool":
+        case "agent_action":
           localLogger.info(
             {
               elapsed: Date.now() - now,
@@ -257,7 +257,7 @@ export async function* runMultiActionsAgent(
   | GenerationSuccessEvent
   | GenerationCancelEvent
   | GenerationTokensEvent
-  | AgentUseToolEvent
+  | AgentActionEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -377,7 +377,7 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "use_tools_error",
+        code: "multi_actions_error",
         message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
       },
     } satisfies AgentErrorEvent;
@@ -435,7 +435,7 @@ export async function* runMultiActionsAgent(
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "use_tools_error",
+            code: "multi_actions_error",
             message: `Error running multi-actions agent action: ${JSON.stringify(
               event,
               null,
@@ -484,7 +484,7 @@ export async function* runMultiActionsAgent(
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
             error: {
-              code: "use_tools_error",
+              code: "multi_actions_error",
               message: `Error running multi-actions agent action: ${e.error}`,
             },
           } satisfies AgentErrorEvent;
@@ -562,12 +562,12 @@ export async function* runMultiActionsAgent(
   }
 
   yield {
-    type: "agent_use_tool",
+    type: "agent_action",
     created: Date.now(),
     action,
     inputs: output.arguments,
     specification: spec,
-  } satisfies AgentUseToolEvent;
+  } satisfies AgentActionEvent;
   return;
 }
 
@@ -593,10 +593,7 @@ async function* runAction(
     step: number;
   }
 ): AsyncGenerator<
-  | AgentActionEvent
-  | AgentErrorEvent
-  | AgentActionEvent
-  | AgentActionSuccessEvent,
+  AgentActionParamsOrOutputEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
   const now = Date.now();

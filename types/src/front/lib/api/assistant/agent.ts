@@ -45,7 +45,7 @@ export type AgentErrorEvent = {
 };
 
 // Event sent during the execution of an action. These are action specific.
-export type AgentActionEvent =
+export type AgentActionParamsOrOutputEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
@@ -88,8 +88,8 @@ export type AgentMessageSuccessEvent = {
   message: AgentMessageType;
 };
 
-export type AgentUseToolEvent = {
-  type: "agent_use_tool";
+export type AgentActionEvent = {
+  type: "agent_action";
   created: number;
   action: AgentActionConfigurationType;
   inputs: Record<string, string | boolean | number>;
