@@ -26,6 +26,7 @@ import type { ConversationLayoutProps } from "@app/components/assistant/conversa
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
@@ -137,11 +138,7 @@ export default function AssistantNew({
       async (
         input: string,
         mentions: MentionType[],
-        contentFragment?: {
-          title: string;
-          content: string;
-          file: File;
-        }
+        contentFragments: ContentFragmentInput[]
       ) => {
         const conversationRes = await createConversationWithMessage({
           owner,
@@ -149,7 +146,7 @@ export default function AssistantNew({
           messageData: {
             input,
             mentions,
-            contentFragment,
+            contentFragments,
           },
         });
         if (conversationRes.isErr()) {
@@ -182,6 +179,7 @@ export default function AssistantNew({
         messageData: {
           input: content.replace("@help", ":mention[help]{sId=helper}"),
           mentions: [{ configurationId: "helper" }],
+          contentFragments: [],
         },
         visibility: "test",
       });

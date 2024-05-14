@@ -1,5 +1,9 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  MessageWithRankType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { AgentMention } from "@dust-tt/types";
 import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
 import type {
@@ -337,6 +341,29 @@ export default function ConversationViewer({
   });
   const eventIds = useRef<string[]>([]);
 
+  // Building an array of arrays of messages grouped by message.type.
+  // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+  // This allows us to change the layout per consecutive messages of the same type.
+  const groupedMessages: MessageWithRankType[][] = useMemo(() => {
+    const groups = messages
+      .flatMap((page) => page.messages)
+      .reduce((acc: MessageWithRankType[][], message) => {
+        if (acc.length === 0) {
+          acc.push([message]); // Start with the first message if the accumulator is empty
+        } else {
+          const lastGroup = acc[acc.length - 1];
+          const lastMessage = lastGroup[lastGroup.length - 1];
+          if (lastMessage.type === message.type) {
+            lastGroup.push(message); // Add to the last group if it's the same type
+          } else {
+            acc.push([message]); // Start a new group if it's a different type
+          }
+        }
+        return acc;
+      }, []);
+    return groups;
+  }, [messages]);
+
   if (isConversationLoading) {
     return null;
   } else if (isConversationError) {
@@ -357,28 +384,49 @@ export default function ConversationViewer({
           <Spinner variant="color" size="xs" />
         </div>
       )}
-      {messages.map((page) => {
-        return page.messages.map((message) => {
-          return (
-            <MessageItem
-              key={message.sId}
-              conversationId={conversation.sId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
+
+      {groupedMessages.map((group) => {
+        const isContentFragmentGroup = group[0].type === "content_fragment";
+        return (
+          // First div is used to apply a background color to the content fragment group.
+          <div
+            className={isContentFragmentGroup ? "bg-structure-50" : ""}
+            key={`group-${group[0].sId}`}
+          >
+            {/* Second div is used to apply a max-width and change the flex direction of the content fragment group. */}
+            <div
+              className={
+                isContentFragmentGroup
+                  ? "mx-auto flex max-w-4xl flex-row flex-wrap"
+                  : ""
               }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-              latestMentions={latestMentions}
-            />
-          );
-        });
+            >
+              {group.map((message) => {
+                return (
+                  <MessageItem
+                    key={`message-${message.sId}`}
+                    conversationId={conversation.sId}
+                    hideReactions={hideReactions}
+                    isInModal={isInModal}
+                    message={message}
+                    owner={owner}
+                    reactions={reactions}
+                    ref={
+                      message.sId === prevFirstMessageId
+                        ? prevFirstMessageRef
+                        : undefined
+                    }
+                    user={user}
+                    isLastMessage={
+                      latestPage?.messages.at(-1)?.sId === message.sId
+                    }
+                    latestMentions={latestMentions}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
       })}
     </div>
   );

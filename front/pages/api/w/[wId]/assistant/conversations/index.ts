@@ -26,7 +26,7 @@ export type GetConversationsResponseBody = {
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
-  contentFragment?: ContentFragmentType;
+  contentFragments: ContentFragmentType[];
 };
 
 async function handler(
@@ -109,7 +109,7 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragment } =
+      const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
       let conversation = await createConversation(auth, {
@@ -117,25 +117,28 @@ async function handler(
         visibility,
       });
 
-      let newContentFragment: ContentFragmentType | null = null;
+      let newContentFragments: ContentFragmentType[] = [];
       let newMessage: UserMessageType | null = null;
 
-      if (contentFragment) {
-        const cf = await postNewContentFragment(auth, {
-          conversation,
-          title: contentFragment.title,
-          content: contentFragment.content,
-          url: contentFragment.url,
-          contentType: contentFragment.contentType,
-          context: {
-            username: user.username,
-            fullName: user.fullName,
-            email: user.email,
-            profilePictureUrl: contentFragment.context.profilePictureUrl,
-          },
-        });
+      if (contentFragments.length > 0) {
+        newContentFragments = await Promise.all(
+          contentFragments.map((contentFragment) => {
+            return postNewContentFragment(auth, {
+              conversation,
+              title: contentFragment.title,
+              content: contentFragment.content,
+              url: contentFragment.url,
+              contentType: contentFragment.contentType,
+              context: {
+                username: user.username,
+                fullName: user.fullName,
+                email: user.email,
+                profilePictureUrl: contentFragment.context.profilePictureUrl,
+              },
+            });
+          })
+        );
 
-        newContentFragment = cf;
         const updatedConversation = await getConversation(
           auth,
           conversation.sId
@@ -173,7 +176,7 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
-      if (newContentFragment || newMessage) {
+      if (newContentFragments.length > 0 || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been
         // created as well, so pulling the conversation again will allow to have an up to date view
@@ -191,7 +194,7 @@ async function handler(
       res.status(200).json({
         conversation,
         message: newMessage ?? undefined,
-        contentFragment: newContentFragment ?? undefined,
+        contentFragments: newContentFragments,
       });
       return;
 
