@@ -1,4 +1,5 @@
 import { ModelId } from "../../../shared/model_id";
+import { BaseAction } from "../../lib/api/assistant/actions";
 
 export type DustAppRunConfigurationType = {
   id: ModelId;
@@ -18,10 +19,8 @@ export type DustAppParameters = {
   [key: string]: string | number | boolean;
 };
 
-export type DustAppRunActionType = {
-  id: ModelId; // AgentDustAppRun.
+export interface DustAppRunActionType extends BaseAction {
   agentMessageId: ModelId;
-  type: "dust_app_run_action";
   appWorkspaceId: string;
   appId: string;
   appName: string;
@@ -33,4 +32,4 @@ export type DustAppRunActionType = {
   } | null;
   output: unknown | null;
   step: number;
-};
+}
