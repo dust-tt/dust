@@ -1,10 +1,11 @@
-import { Dialog, Page } from "@dust-tt/sparkle";
+import { Dialog, Hoverable, Page } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import { FairUsageModal } from "@app/components/FairUsageModal";
 import { isTrial } from "@app/lib/plans/trial";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
@@ -18,7 +19,8 @@ function getLimitPromptForCode(
   router: NextRouter,
   owner: WorkspaceType,
   code: WorkspaceLimit,
-  subscription: SubscriptionType
+  subscription: SubscriptionType,
+  displayFairUseModal: () => void
 ) {
   switch (code) {
     case "cant_invite_no_seats_available": {
@@ -124,7 +126,14 @@ function getLimitPromptForCode(
             <p className="text-sm font-normal text-element-800">
               As part of our fair usage policy, we've put a brief pause on your
               messaging since you've reached the 100 message limit within a 24h
-              window. Check our Fair Use policy to learn more.
+              window. Check our{" "}
+              <Hoverable
+                className="cursor-pointer font-bold text-action-500"
+                onClick={() => displayFairUseModal()}
+              >
+                Fair Use policy
+              </Hoverable>{" "}
+              to learn more.
             </p>
           ),
         };
@@ -149,13 +158,16 @@ export function ReachedLimitPopup({
   owner: WorkspaceType;
   code: WorkspaceLimit;
 }) {
+  const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
+
   const router = useRouter();
   const trialing = isTrial(subscription);
   const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
     router,
     owner,
     code,
-    subscription
+    subscription,
+    () => setIsFairUsageModalOpened(true)
   );
 
   useEffect(() => {
@@ -169,20 +181,26 @@ export function ReachedLimitPopup({
   }, [isOpened, owner.name, owner.sId, trialing]);
 
   return (
-    <Dialog
-      title={title}
-      isOpen={isOpened}
-      onValidate={
-        onValidate ||
-        (() => {
-          onClose();
-        })
-      }
-      onCancel={() => onClose()}
-      cancelLabel="Close"
-      validateLabel={validateLabel}
-    >
-      {children}
-    </Dialog>
+    <>
+      <FairUsageModal
+        isOpened={isFairUsageModalOpened}
+        onClose={() => setIsFairUsageModalOpened(false)}
+      />
+      <Dialog
+        title={title}
+        isOpen={isOpened}
+        onValidate={
+          onValidate ||
+          (() => {
+            onClose();
+          })
+        }
+        onCancel={() => onClose()}
+        cancelLabel="Close"
+        validateLabel={validateLabel}
+      >
+        {children}
+      </Dialog>
+    </>
   );
 }

@@ -1,18 +1,10 @@
-import {
-  AttachmentIcon,
-  Button,
-  Hoverable,
-  Icon,
-  Markdown,
-  Modal,
-  PriceTable,
-  RocketIcon,
-} from "@dust-tt/sparkle";
+import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
 import type { PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 
+import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
   getPriceWithCurrency,
   PRO_PLAN_29_COST,
@@ -126,11 +118,7 @@ export function ProPriceTable({
   isProcessing?: boolean;
   display: PriceTableDisplay;
 }) {
-  const [isFairUseModalOpen, setFairUseModalOpen] = useState(false);
-  const toggleFairUseModal = useCallback(
-    () => setFairUseModalOpen((open) => !open),
-    []
-  );
+  const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
   const PRO_PLAN_ITEMS: PriceTableItem[] = [
     {
@@ -162,7 +150,7 @@ export function ProPriceTable({
       label: (
         <>
           Unlimited messages (
-          <Hoverable onClick={toggleFairUseModal}>
+          <Hoverable onClick={() => setIsFairUseModalOpened(true)}>
             Fair use limits apply*
           </Hoverable>
           )
@@ -211,22 +199,10 @@ export function ProPriceTable({
   const biggerButtonSize = size === "xs" ? "sm" : "md";
   return (
     <>
-      <Modal
-        isOpen={isFairUseModalOpen}
-        onClose={toggleFairUseModal}
-        hasChanged={false}
-        variant="side-sm"
-        title="Dust's Fair Use Policy"
-      >
-        <div className="py-8">
-          <Icon
-            visual={AttachmentIcon}
-            size="lg"
-            className="text-emerald-500"
-          />
-          <Markdown content={FAIR_USE_CONTENT} size="sm" />
-        </div>
-      </Modal>
+      <FairUsageModal
+        isOpened={isFairUseModalOpened}
+        onClose={() => setIsFairUseModalOpened(true)}
+      />
       <PriceTable
         title="Pro"
         price={getPriceWithCurrency(PRO_PLAN_29_COST)}
@@ -316,23 +292,6 @@ function EnterprisePriceTable({
     </PriceTable>
   );
 }
-
-const FAIR_USE_CONTENT = `
-# Fair use principles
-**Dust Pro** is designed company setting and team use
-of AI. It is not designed as a model wrapper for programatic usage.
-
-**Dust Enterprise** provides programatic usage (though
-API), with custom prices.
-___
-# What is "unfair" usage?
-Is considered *"Unfair"* usage:
-- Sharing single seat between multiple people.
-- Using Dust programmatically at a large scale on a Pro plan.
-___
-# "Fair use" limitations
-For **Pro plans**, a limit at 100 messages / seat / day (Enough to cover any fair usage) is in place and apply to programatic (API) use as well.
-`;
 
 export function PricePlans({
   size = "sm",
