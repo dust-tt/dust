@@ -20,8 +20,8 @@ import {
   DustProdActionRegistry,
   Err,
   isAgentMessageType,
+  isBaseActionClass,
   isContentFragmentType,
-  isDustAppRunActionType,
   isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
@@ -33,11 +33,6 @@ import {
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  renderDustAppRunActionForModel,
-  renderDustAppRunActionForMultiActionsModel,
-  renderDustAppRunActionFunctionCall,
-} from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   renderProcessActionForModel,
   renderProcessActionForMultiActionsModel,
@@ -121,12 +116,12 @@ export async function renderConversationForModel({
             foundRetrieval = true;
             messages.unshift(renderRetrievalActionForModel(action));
           }
-        } else if (isDustAppRunActionType(action)) {
-          messages.unshift(renderDustAppRunActionForModel(action));
         } else if (isTablesQueryActionType(action)) {
           messages.unshift(renderTablesQueryActionForModel(action));
         } else if (isProcessActionType(action)) {
           messages.unshift(renderProcessActionForModel(action));
+        } else if (isBaseActionClass(action)) {
+          messages.unshift(action.renderForModel());
         } else {
           assertNever(action);
         }
@@ -321,11 +316,6 @@ export async function renderConversationForModelMultiActions({
             renderRetrievalActionForMultiActionsModel(action)
           );
           function_calls.unshift(rendeRetrievalActionFunctionCall(action));
-        } else if (isDustAppRunActionType(action)) {
-          function_messages.unshift(
-            renderDustAppRunActionForMultiActionsModel(action)
-          );
-          function_calls.unshift(renderDustAppRunActionFunctionCall(action));
         } else if (isTablesQueryActionType(action)) {
           function_messages.unshift(
             renderTablesQueryActionForMultiActionsModel(action)
@@ -336,6 +326,9 @@ export async function renderConversationForModelMultiActions({
             renderProcessActionForMultiActionsModel(action)
           );
           function_calls.unshift(renderProcessActionFunctionCall(action));
+        } else if (isBaseActionClass(action)) {
+          function_messages.unshift(action.renderForMultiActionsModel());
+          function_calls.unshift(action.renderForFunctionCall());
         } else {
           assertNever(action);
         }

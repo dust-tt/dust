@@ -18,7 +18,7 @@ import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import { BaseAction, DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { getApp } from "@app/lib/api/app";
@@ -29,49 +29,84 @@ import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import logger from "@app/logger/logger";
 
-/**
- * Model rendering of DustAppRuns.
- */
-
-export function renderDustAppRunActionForModel(
-  action: DustAppRunActionType
-): ModelMessageType {
-  let content = "";
-
-  // Note action.output can be any valid JSON including null.
-  content += `OUTPUT:\n`;
-  content += `${JSON.stringify(action.output, null, 2)}\n`;
-
-  return {
-    role: "action" as const,
-    name: action.appName,
-    content,
-  };
+interface DustAppRunActionBlob {
+  id: ModelId; // AgentDustAppRun.
+  agentMessageId: ModelId;
+  appWorkspaceId: string;
+  appId: string;
+  appName: string;
+  params: DustAppParameters;
+  runningBlock: {
+    type: string;
+    name: string;
+    status: "running" | "succeeded" | "errored";
+  } | null;
+  output: unknown | null;
+  step: number;
 }
 
-export function renderDustAppRunActionFunctionCall(
-  action: DustAppRunActionType
-): FunctionCallType {
-  return {
-    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
-    name: action.appName,
-    arguments: JSON.stringify(action.params),
-  };
-}
-export function renderDustAppRunActionForMultiActionsModel(
-  action: DustAppRunActionType
-): FunctionMessageTypeModel {
-  let content = "";
+export class DustAppRunAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly appWorkspaceId: string;
+  readonly appId: string;
+  readonly appName: string;
+  readonly params: DustAppParameters;
+  readonly runningBlock: {
+    type: string;
+    name: string;
+    status: "running" | "succeeded" | "errored";
+  } | null;
+  readonly output: unknown | null;
+  readonly step: number;
 
-  // Note action.output can be any valid JSON including null.
-  content += `OUTPUT:\n`;
-  content += `${JSON.stringify(action.output, null, 2)}\n`;
+  constructor(blob: DustAppRunActionBlob) {
+    super(blob.id, "dust_app_run_action");
 
-  return {
-    role: "function" as const,
-    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
-    content,
-  };
+    this.agentMessageId = blob.agentMessageId;
+    this.appWorkspaceId = blob.appWorkspaceId;
+    this.appId = blob.appId;
+    this.appName = blob.appName;
+    this.params = blob.params;
+    this.runningBlock = blob.runningBlock;
+    this.output = blob.output;
+    this.step = blob.step;
+  }
+
+  renderForModel(): ModelMessageType {
+    let content = "";
+
+    // Note action.output can be any valid JSON including null.
+    content += `OUTPUT:\n`;
+    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    return {
+      role: "action" as const,
+      name: this.appName,
+      content,
+    };
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
+      name: this.appName,
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  renderForMultiActionsModel(): FunctionMessageTypeModel {
+    let content = "";
+
+    // Note action.output can be any valid JSON including null.
+    content += `OUTPUT:\n`;
+    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    return {
+      role: "function" as const,
+      function_call_id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
+      content,
+    };
+  }
 }
 
 /**
@@ -213,9 +248,8 @@ export async function dustAppRunTypesFromAgentMessageIds(
   });
 
   return actions.map((action) => {
-    return {
+    return new DustAppRunAction({
       id: action.id,
-      type: "dust_app_run_action",
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
       appName: action.appName,
@@ -224,7 +258,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       output: action.output,
       agentMessageId: action.agentMessageId,
       step: action.step,
-    } satisfies DustAppRunActionType;
+    });
   });
 }
 
@@ -330,9 +364,8 @@ export async function* runDustApp(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new DustAppRunAction({
       id: action.id,
-      type: "dust_app_run_action",
       appWorkspaceId: actionConfiguration.appWorkspaceId,
       appId: actionConfiguration.appId,
       appName: app.name,
@@ -341,7 +374,7 @@ export async function* runDustApp(
       output: null,
       agentMessageId: agentMessage.agentMessageId,
       step,
-    },
+    }),
   };
 
   // Let's run the app now.
@@ -405,9 +438,8 @@ export async function* runDustApp(
         created: Date.now(),
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
-        action: {
+        action: new DustAppRunAction({
           id: action.id,
-          type: "dust_app_run_action",
           appWorkspaceId: actionConfiguration.appWorkspaceId,
           appId: actionConfiguration.appId,
           appName: app.name,
@@ -420,7 +452,7 @@ export async function* runDustApp(
           output: null,
           agentMessageId: agentMessage.agentMessageId,
           step: action.step,
-        },
+        }),
       };
     }
 
@@ -463,9 +495,8 @@ export async function* runDustApp(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new DustAppRunAction({
       id: action.id,
-      type: "dust_app_run_action",
       appWorkspaceId: actionConfiguration.appWorkspaceId,
       appId: actionConfiguration.appId,
       appName: app.name,
@@ -474,6 +505,6 @@ export async function* runDustApp(
       output: lastBlockOutput,
       agentMessageId: agentMessage.agentMessageId,
       step: action.step,
-    },
+    }),
   };
 }
