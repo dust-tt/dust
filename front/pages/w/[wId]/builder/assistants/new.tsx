@@ -54,7 +54,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
-  multiActionsMode: boolean;
+  multiActionsAllowed: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -63,11 +63,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     return {
       notFound: true,
     };
-  }
-
-  let multiActionsMode = context.query.multi_actions === "true";
-  if (multiActionsMode && !owner.flags.includes("multi_actions")) {
-    multiActionsMode = false;
   }
 
   const allDataSources = await getDataSources(auth);
@@ -113,12 +108,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
+  const multiActionsAllowed = owner.flags.includes("multi_actions");
+
   const actions = configuration
     ? await buildInitialActions({
         dataSourcesByName,
         dustApps: allDustApps,
         configuration,
-        multiActionsMode,
       })
     : [];
 
@@ -135,7 +131,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       flow,
       baseUrl: config.getAppUrl(),
       templateId,
-      multiActionsMode,
+      multiActionsAllowed,
     },
   };
 });
@@ -152,7 +148,7 @@ export default function CreateAssistant({
   flow,
   baseUrl,
   templateId,
-  multiActionsMode,
+  multiActionsAllowed,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({
     templateId,
@@ -237,7 +233,8 @@ export default function CreateAssistant({
       defaultIsEdited={true}
       baseUrl={baseUrl}
       defaultTemplate={assistantTemplate}
-      multiActionsMode={multiActionsMode}
+      multiActionsAllowed={multiActionsAllowed}
+      multiActionsEnabled={false}
     />
   );
 }
