@@ -3,6 +3,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleIcon,
@@ -11,6 +12,7 @@ import {
   SquareIcon,
   Tab,
   TriangleIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -100,7 +102,8 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
-  multiActionsMode: boolean;
+  multiActionsAllowed: boolean;
+  multiActionsEnabled: boolean;
 };
 
 const useNavigationLock = (
@@ -198,7 +201,8 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  multiActionsMode,
+  multiActionsAllowed,
+  multiActionsEnabled,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -236,6 +240,8 @@ export default function AssistantBuilder({
 
   const [template, setTemplate] =
     useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
+
+  const [multiActionsMode, setMultiActionsMode] = useState(multiActionsEnabled);
 
   const resetTemplate = async () => {
     setTemplate(null);
@@ -523,7 +529,18 @@ export default function AssistantBuilder({
             <div className="flex h-full flex-col gap-5 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
-                <div className="self-end pt-0.5">
+                <div className="flex flex-row gap-2 self-end pt-0.5">
+                  {multiActionsAllowed && (
+                    <Button
+                      icon={!multiActionsMode ? XMarkIcon : CheckIcon}
+                      label={`Multi Actions ${multiActionsMode ? "On" : "Off"}`}
+                      onClick={() => {
+                        setMultiActionsMode((mode) => !mode);
+                        setEdited(true);
+                      }}
+                      variant={!multiActionsMode ? "tertiary" : "primary"}
+                    />
+                  )}
                   <SharingButton
                     showSlackIntegration={showSlackIntegration}
                     slackDataSource={slackDataSource || null}
@@ -836,7 +853,9 @@ export async function submitAssistantBuilderForm({
         instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
-        actions: actionParams,
+        actions: useMultiActions
+          ? actionParams
+          : removeNulls([actionParams[0]]),
         model: {
           modelId: builderState.generationSettings.modelSettings.modelId,
           providerId: builderState.generationSettings.modelSettings.providerId,

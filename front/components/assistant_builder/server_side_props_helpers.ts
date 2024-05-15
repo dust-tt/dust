@@ -15,7 +15,6 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  removeNulls,
 } from "@dust-tt/types";
 
 import type {
@@ -31,19 +30,16 @@ import {
   getDefaultTablesQueryActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import logger from "@app/logger/logger";
 
 export async function buildInitialActions({
   dataSourcesByName,
   dustApps,
   configuration,
-  multiActionsMode,
 }: {
   dataSourcesByName: Record<string, DataSourceType>;
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
-  multiActionsMode: boolean;
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const coreAPI = new CoreAPI(logger);
 
@@ -105,9 +101,7 @@ export async function buildInitialActions({
     return dataSourceConfigurations;
   };
 
-  const actions = !multiActionsMode
-    ? removeNulls([deprecatedGetFirstActionConfiguration(configuration)])
-    : configuration.actions;
+  const actions = configuration.actions;
 
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
