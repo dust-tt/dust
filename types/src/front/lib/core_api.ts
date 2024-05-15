@@ -1214,9 +1214,10 @@ export class CoreAPI {
       this._logger.error(
         {
           connectorsError: err,
-          rawText: text,
           parseError: e,
+          rawText: text,
           status: response.status,
+          url: response.url,
         },
         "CoreAPI error"
       );
