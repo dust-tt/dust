@@ -128,10 +128,11 @@ export async function getSlackUserInfo(
   }
 
   return {
-    // Slack has two concept for bots: bots, that you can get through slackClient.bots.info() and
-    // user bots, which are the users related to a bot.
+    // Slack has two concepts for bots:
+    // - Bots, that you can get through slackClient.bots.info() and
+    // - User bots, which are the users related to a bot.
     // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
-    // I can't find much more information on why Slack has these two concepts.
+    // Not clear why Slack has these two concepts.
     // From our perspective, a Slack user bot is a bot.
     is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
