@@ -108,13 +108,22 @@ async function renderIssue(
   issue: GithubIssueType;
   updatedAtTimestamp: number;
   content: CoreAPIDataSourceDocumentSection;
-}> {
+} | null> {
   const localLogger = logger.child({
     ...loggerArgs,
     issueNumber,
   });
 
-  const issue = await getIssue(installationId, repoName, login, issueNumber);
+  const issue = await getIssue(
+    installationId,
+    repoName,
+    login,
+    issueNumber,
+    loggerArgs
+  );
+  if (!issue) {
+    return null;
+  }
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
@@ -210,11 +219,7 @@ export async function githubUpsertIssueActivity(
 
   localLogger.info("Upserting GitHub issue.");
 
-  const {
-    issue,
-    updatedAtTimestamp,
-    content: renderedIssue,
-  } = await renderIssue(
+  const renderedIssueResult = await renderIssue(
     dataSourceConfig,
     installationId,
     repoName,
@@ -223,6 +228,18 @@ export async function githubUpsertIssueActivity(
     issueNumber,
     loggerArgs
   );
+
+  // Silently skip the current issue if fetching fails.
+  if (!renderedIssueResult) {
+    localLogger.info("Skip upserting GitHub issue.");
+    return;
+  }
+
+  const {
+    issue,
+    updatedAtTimestamp,
+    content: renderedIssue,
+  } = renderedIssueResult;
 
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
