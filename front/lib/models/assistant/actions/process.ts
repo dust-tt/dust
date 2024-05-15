@@ -138,6 +138,7 @@ export class AgentProcessAction extends Model<
 
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: ProcessActionOutputsType | null;
+  declare functionCallId: string | null;
 
   declare step: number;
 
@@ -178,6 +179,10 @@ AgentProcessAction.init(
     },
     outputs: {
       type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    functionCallId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     step: {

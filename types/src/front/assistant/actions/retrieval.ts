@@ -98,6 +98,7 @@ export type RetrievalActionType = {
     query: string | null;
     topK: number;
   };
+  functionCallId: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
 };
