@@ -14,7 +14,7 @@ import type {
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { useConnectorPermissions } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
@@ -130,21 +130,22 @@ function DataSourceResourceSelectorChildren({
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const getCheckStatus = (
-    resourceId: string
-  ): "checked" | "unchecked" | "partial" => {
-    if (fullySelected || isChecked || selectedParentIds?.has(resourceId)) {
-      return "checked";
-    }
-
-    for (const x of selectedParentIds) {
-      if (parentsById?.[x]?.has(resourceId)) {
-        return "partial";
+  const getCheckStatus = useCallback(
+    (resourceId: string): "checked" | "unchecked" | "partial" => {
+      if (fullySelected || isChecked || selectedParentIds?.has(resourceId)) {
+        return "checked";
       }
-    }
 
-    return "unchecked";
-  };
+      for (const x of selectedParentIds) {
+        if (parentsById?.[x]?.has(resourceId)) {
+          return "partial";
+        }
+      }
+
+      return "unchecked";
+    },
+    [fullySelected, isChecked, selectedParentIds, parentsById]
+  );
 
   if (isResourcesError) {
     return (
@@ -167,6 +168,7 @@ function DataSourceResourceSelectorChildren({
             const checkStatus = getCheckStatus(r.internalId);
             const checkable = !isTablesView || r.type === "database";
             const showCheckbox = checkable || checkStatus !== "unchecked";
+
             return (
               <div key={r.internalId}>
                 <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
@@ -234,7 +236,8 @@ function DataSourceResourceSelectorChildren({
                       dataSource={dataSource}
                       parentId={r.internalId}
                       expandable={expandable}
-                      isChecked={checkStatus === "checked"}
+                      // In table view, only manually selected nodes are considered and hierarchy does not apply.
+                      isChecked={checkStatus === "checked" && !isTablesView}
                       selectedParentIds={selectedParentIds}
                       onSelectChange={onSelectChange}
                       parentsById={parentsById}
