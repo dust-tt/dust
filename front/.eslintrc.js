@@ -57,8 +57,6 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
-    // TODO(flavien): fix resource pattern
-    "@typescript-eslint/no-unsafe-declaration-merging": "off",
   },
   overrides: [
     {

@@ -41,8 +41,6 @@ module.exports = {
     ],
     "@typescript-eslint/no-unused-vars": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
-    // TODO(flavien): fix resource pattern
-    "@typescript-eslint/no-unsafe-declaration-merging": "off",
   },
   overrides: [
     {
