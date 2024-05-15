@@ -182,10 +182,12 @@ async function botAnswerMessage(
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
-  if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
-  } else if (slackUserId) {
+  // The order is important here because we want to prioritize the user id over the bot id.
+  // When a bot sends a message "as a user", we want to honor the user and not the bot.
+  if (slackUserId) {
     slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
+  } else if (slackBotId) {
+    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
   }
 
   if (!slackUserInfo) {
