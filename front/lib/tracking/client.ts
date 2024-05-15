@@ -32,6 +32,12 @@ export class ClientSideTracking {
     });
   }
 
+  static trackInputBarFileUploadUsed({ fileCount }: { fileCount: number }) {
+    return AmplitudeClientSideTracking.trackInputBarFileUploadUsed({
+      fileCount,
+    });
+  }
+
   static trackQuickGuideViewed({
     user,
     workspace,
