@@ -1,3 +1,4 @@
+import type { LoginOptions } from "@auth0/nextjs-auth0";
 import {
   CallbackHandlerError,
   handleAuth,
@@ -20,10 +21,16 @@ export default handleAuth({
           : undefined;
     }
 
-    const defaultAuthorizationParams = {
+    const defaultAuthorizationParams: Partial<
+      LoginOptions["authorizationParams"]
+    > = {
       scope: "openid profile email",
-      connection,
     };
+
+    // Set the Auth0 connection based on the provided connection param, redirecting the user to the correct screen.
+    if (connection) {
+      defaultAuthorizationParams.connection = connection;
+    }
 
     return {
       authorizationParams: defaultAuthorizationParams,
