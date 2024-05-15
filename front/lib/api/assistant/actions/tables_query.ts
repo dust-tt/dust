@@ -16,62 +16,82 @@ import type {
   TablesQueryParamsEvent,
   TablesQuerySuccessEvent,
 } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry, Ok } from "@dust-tt/types";
+import {
+  BaseAction,
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  Ok,
+} from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
-/**
- * Model rendering of TableQueries.
- */
-
-export function renderTablesQueryActionForModel(
-  action: TablesQueryActionType
-): ModelMessageType {
-  let content = "";
-  if (!action.output) {
-    throw new Error(
-      "Output not set on TablesQuery action; execution is likely not finished."
-    );
-  }
-  content += `OUTPUT:\n`;
-  content += `${JSON.stringify(action.output, null, 2)}\n`;
-
-  return {
-    role: "action" as const,
-    name: "query_tables",
-    content,
-  };
+interface TablesQueryActionBlob {
+  id: ModelId; // AgentTablesQueryAction.
+  agentMessageId: ModelId;
+  params: DustAppParameters;
+  output: Record<string, string | number | boolean> | null;
+  step: number;
 }
 
-export function rendeTablesQueryActionFunctionCall(
-  action: TablesQueryActionType
-): FunctionCallType {
-  return {
-    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
-    name: "query_tables",
-    arguments: JSON.stringify(action.params),
-  };
-}
-export function renderTablesQueryActionForMultiActionsModel(
-  action: TablesQueryActionType
-): FunctionMessageTypeModel {
-  let content = "";
-  if (!action.output) {
-    throw new Error(
-      "Output not set on TablesQuery action; execution is likely not finished."
-    );
-  }
-  content += `OUTPUT:\n`;
-  content += `${JSON.stringify(action.output, null, 2)}\n`;
+export class TablesQueryAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: DustAppParameters;
+  readonly output: Record<string, string | number | boolean> | null;
+  readonly step: number;
 
-  return {
-    role: "function" as const,
-    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
-    content,
-  };
+  constructor(blob: TablesQueryActionBlob) {
+    super(blob.id, "tables_query_action");
+
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.output = blob.output;
+    this.step = blob.step;
+  }
+
+  renderForModel(): ModelMessageType {
+    let content = "";
+    if (!this.output) {
+      throw new Error(
+        "Output not set on TablesQuery action; execution is likely not finished."
+      );
+    }
+    content += `OUTPUT:\n`;
+    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    return {
+      role: "action" as const,
+      name: "query_tables",
+      content,
+    };
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
+      name: "query_tables",
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  renderForMultiActionsModel(): FunctionMessageTypeModel {
+    let content = "";
+    if (!this.output) {
+      throw new Error(
+        "Output not set on TablesQuery action; execution is likely not finished."
+      );
+    }
+    content += `OUTPUT:\n`;
+    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    return {
+      role: "function" as const,
+      function_call_id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
+      content,
+    };
+  }
 }
 
 // Internal interface for the retrieval and rendering of a TableQuery action. This should not be
@@ -86,14 +106,13 @@ export async function tableQueryTypesFromAgentMessageIds(
     },
   });
   return actions.map((action) => {
-    return {
+    return new TablesQueryAction({
       id: action.id,
-      type: "tables_query_action",
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
       step: action.step,
-    } satisfies TablesQueryActionType;
+    });
   });
 }
 
@@ -205,14 +224,13 @@ export async function* runTablesQuery(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new TablesQueryAction({
       id: action.id,
-      type: "tables_query_action",
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
       step: action.step,
-    },
+    }),
   };
 
   // Generating configuration
@@ -341,14 +359,13 @@ export async function* runTablesQuery(
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
-          action: {
+          action: new TablesQueryAction({
             id: action.id,
-            type: "tables_query_action",
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
             agentMessageId: agentMessage.id,
             step: action.step,
-          },
+          }),
         };
       }
 
@@ -371,14 +388,13 @@ export async function* runTablesQuery(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new TablesQueryAction({
       id: action.id,
-      type: "tables_query_action",
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       agentMessageId: action.agentMessageId,
       step: action.step,
-    },
+    }),
   };
   return;
 }
