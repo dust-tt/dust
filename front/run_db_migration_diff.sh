@@ -12,13 +12,13 @@ echo "Original branch: $original_branch"
 echo "Checking out main branch..."
 git checkout main
 echo "Running command on main branch..."
-DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_output.txt
+NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_output.txt
 
 # Checkout original branch and run command.
 echo "Checking out $original_branch branch..."
 git checkout $original_branch
 echo "Running command on $original_branch branch..."
-DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > current_output.txt
+NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > current_output.txt
 
 # Pop the stash.
 echo "Restoring original changes..."
