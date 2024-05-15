@@ -21,6 +21,7 @@ import type { AssistantBuilderInitialState } from "@app/components/assistant_bui
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { isLegacyAgent } from "@app/lib/assistant";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -37,7 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
-  multiActionsEnabled: boolean;
+  isMultiActionsAgent: boolean;
   multiActionsAllowed: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -54,10 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
-
-  const multiActionsAllowed = owner.flags.includes("multi_actions");
-  const multiActionsEnabled =
-    multiActionsAllowed && context.query.multi_actions === "true";
 
   const allDataSources = await getDataSources(auth);
 
@@ -81,6 +78,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
+
+  const multiActionsAllowed = owner.flags.includes("multi_actions");
+  const isMultiActionsAgent =
+    multiActionsAllowed && !isLegacyAgent(configuration);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -107,7 +108,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       flow,
       baseUrl: URL,
       multiActionsAllowed,
-      multiActionsEnabled,
+      isMultiActionsAgent,
     },
   };
 });
@@ -124,7 +125,7 @@ export default function EditAssistant({
   flow,
   baseUrl,
   multiActionsAllowed,
-  multiActionsEnabled,
+  isMultiActionsAgent,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
 
@@ -190,7 +191,7 @@ export default function EditAssistant({
       baseUrl={baseUrl}
       defaultTemplate={null}
       multiActionsAllowed={multiActionsAllowed}
-      multiActionsEnabled={multiActionsEnabled}
+      multiActionsEnabled={isMultiActionsAgent}
     />
   );
 }
