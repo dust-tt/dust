@@ -30,7 +30,7 @@ export function SubscriptionContactUsDrawer({
       const formURL = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
         email
       )}`;
-      ClientSideTracking.trackClickEnterpriseContactUs({ email }).finally(
+      void ClientSideTracking.trackClickEnterpriseContactUs({ email }).finally(
         () => {
           window.location.href = formURL;
         }
