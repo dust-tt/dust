@@ -94,5 +94,4 @@ export type AgentActionEvent = {
   action: AgentActionConfigurationType;
   inputs: Record<string, string | boolean | number>;
   specification: AgentActionSpecification | null;
-  functionCallId: string | null;
 };

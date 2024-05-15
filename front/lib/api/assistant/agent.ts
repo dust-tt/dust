@@ -179,7 +179,7 @@ export async function* runMultiActionsAgentLoop(
             },
             "[ASSISTANT_TRACE] Action inputs generation"
           );
-          const { action, inputs, functionCallId, specification } = event;
+          const { action, inputs, specification } = event;
           const actionEventStream = runAction(auth, {
             configuration: configuration,
             actionConfiguration: action,
@@ -188,7 +188,6 @@ export async function* runMultiActionsAgentLoop(
             agentMessage,
             inputs,
             specification,
-            functionCallId,
             step: i,
           });
           for await (const actionEvent of actionEventStream) {
@@ -389,12 +388,10 @@ export async function* runMultiActionsAgent(
   const { eventStream } = res.value;
 
   const output: {
-    id: string | null;
     name: string | null;
     arguments: Record<string, string | boolean | number> | null;
     generation: string | null;
   } = {
-    id: null,
     name: null,
     arguments: null,
     generation: null,
@@ -513,9 +510,6 @@ export async function* runMultiActionsAgent(
 
         if (event.content.block_name === "OUTPUT" && e.value) {
           const v = e.value as any;
-          if ("id" in v) {
-            output.id = v.id;
-          }
           if ("name" in v) {
             output.name = v.name;
           }
@@ -573,7 +567,6 @@ export async function* runMultiActionsAgent(
     created: Date.now(),
     action,
     inputs: output.arguments,
-    functionCallId: output.id,
     specification: spec,
   } satisfies AgentActionEvent;
   return;
@@ -589,7 +582,6 @@ async function* runAction(
     agentMessage,
     inputs,
     specification,
-    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -599,7 +591,6 @@ async function* runAction(
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
-    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -625,7 +616,6 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
-      functionCallId,
       step,
       refsOffset: existingRefsCount,
     });
@@ -694,7 +684,6 @@ async function* runAction(
       agentMessage,
       spec: specification,
       rawInputs: inputs,
-      functionCallId,
       step,
     });
 
@@ -743,7 +732,6 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
-      functionCallId,
       step,
     });
 
@@ -790,7 +778,6 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs: inputs,
-      functionCallId,
       step,
     });
 
