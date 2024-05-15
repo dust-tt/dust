@@ -97,7 +97,6 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      gongApiKey: string;
       gongApiSecret: string;
     }>({
       provider: "",
@@ -105,7 +104,6 @@ export default function LabsTranscriptsIndex({
       isGongConnected: false,
       assistantSelected: null as LightAgentConfigurationType | null,
       isActive: false,
-      gongApiKey: "",
       gongApiSecret: "",
     });
 
@@ -124,6 +122,7 @@ export default function LabsTranscriptsIndex({
         isActive: transcriptsConfiguration.isActive || false,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {

@@ -98,7 +98,7 @@ async function handler(
         });
       }
 
-      const { connectionId, provider, gongApiKey } = bodyValidation.right;
+      const { connectionId, provider } = bodyValidation.right;
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
@@ -106,7 +106,6 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId,
-          gongApiKey,
         });
 
       return res

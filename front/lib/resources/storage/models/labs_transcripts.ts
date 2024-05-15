@@ -27,7 +27,6 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
 
   declare connectionId: string | null;
-  declare gongApiKey: string | null;
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
@@ -72,10 +71,6 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    gongApiKey: {
-      type: DataTypes.STRING,
-      allowNull: true,
     },
   },
   {
