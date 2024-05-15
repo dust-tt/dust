@@ -6,23 +6,23 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
-import type { AuthorizationParameters } from "@auth0/nextjs-auth0/dist/auth0-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 
 export default handleAuth({
   login: handleLogin((req) => {
-    const connection = "query" in req ? req.query.connection : undefined;
-
-    const defaultAuthorizationParams: Partial<AuthorizationParameters> = {
-      scope: "openid profile email",
-    };
-
-    // Set the Auth0 connection based on the provided connection param, redirecting the user to the correct screen.
-    if (connection) {
-      defaultAuthorizationParams.connection = connection;
+    let connection: string | undefined = undefined;
+    if ("query" in req && req.query.connection) {
+      connection = Array.isArray(req.query.connection)
+        ? req.query.connection[0]
+        : req.query.connection;
     }
+
+    const defaultAuthorizationParams = {
+      scope: "openid profile email",
+      connection,
+    };
 
     return {
       authorizationParams: defaultAuthorizationParams,

@@ -53,7 +53,6 @@ async function areTemporalWorkflowsRunning(
       if (h.events) {
         h.events.forEach((e) => {
           if (e.eventTime?.seconds) {
-            // @ts-expect-error eventTime is Long and it works
             const d = new Date(e.eventTime?.seconds * 1000);
             if (!latest || d > latest) {
               latest = d;
