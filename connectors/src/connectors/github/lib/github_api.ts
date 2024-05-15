@@ -13,7 +13,10 @@ import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
-import { isGithubRequestErrorNotFound } from "@connectors/connectors/github/lib/errors";
+import {
+  isGithubRequestErrorNotFound,
+  isGithubRequestRedirectCountExceededError,
+} from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
   DiscussionNode,
@@ -196,34 +199,46 @@ export async function getIssue(
   installationId: string,
   repoName: string,
   login: string,
-  issueNumber: number
-): Promise<GithubIssue> {
+  issueNumber: number,
+  loggerArgs: Record<string, string | number>
+): Promise<GithubIssue | null> {
   const octokit = await getOctokit(installationId);
 
-  const issue = (
-    await octokit.rest.issues.get({
-      owner: login,
-      repo: repoName,
-      issue_number: issueNumber,
-    })
-  ).data;
+  try {
+    const issue = (
+      await octokit.rest.issues.get({
+        owner: login,
+        repo: repoName,
+        issue_number: issueNumber,
+      })
+    ).data;
 
-  return {
-    id: issue.id,
-    number: issue.number,
-    title: issue.title,
-    url: issue.html_url,
-    creator: issue.user
-      ? {
-          id: issue.user.id,
-          login: issue.user.login,
-        }
-      : null,
-    createdAt: new Date(issue.created_at),
-    updatedAt: new Date(issue.updated_at),
-    body: issue.body,
-    isPullRequest: !!issue.pull_request,
-  };
+    return {
+      id: issue.id,
+      number: issue.number,
+      title: issue.title,
+      url: issue.html_url,
+      creator: issue.user
+        ? {
+            id: issue.user.id,
+            login: issue.user.login,
+          }
+        : null,
+      createdAt: new Date(issue.created_at),
+      updatedAt: new Date(issue.updated_at),
+      body: issue.body,
+      isPullRequest: !!issue.pull_request,
+    };
+  } catch (err) {
+    // Handle excessive redirection during issue retrieval by safely ignoring the issue.
+    if (isGithubRequestRedirectCountExceededError(err)) {
+      logger.info({ ...loggerArgs, err: err.message }, "Failed to get issue.");
+
+      return null;
+    }
+
+    throw err;
+  }
 }
 
 export async function getIssueCommentsPage(
