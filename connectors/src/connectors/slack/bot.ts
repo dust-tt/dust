@@ -24,8 +24,9 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
+  getSlackBotInfo,
   getSlackClient,
-  getSlackUserOrBotInfo,
+  getSlackUserInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
@@ -178,14 +179,12 @@ async function botAnswerMessage(
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
 
-  const userOrBotId = slackUserId || slackBotId;
-  if (!userOrBotId) {
-    throw new Error("Failed to get slack user id or bot id");
+  let slackUserInfo: SlackUserInfo | null = null;
+  if (slackBotId) {
+    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+  } else if (slackUserId) {
+    slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
   }
-  const slackUserInfo: SlackUserInfo = await getSlackUserOrBotInfo(
-    slackClient,
-    userOrBotId
-  );
 
   if (!slackUserInfo) {
     throw new Error("Failed to get slack user info");

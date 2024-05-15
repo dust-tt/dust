@@ -117,32 +117,7 @@ export type SlackUserInfo = {
   image_512: string | null;
 };
 
-export async function getSlackUserOrBotInfo(
-  slackClient: WebClient,
-  userId: string
-) {
-  // If a slack user id starts with B, it is a bot.
-  if (userId.startsWith("B")) {
-    return getSlackBotInfo(slackClient, userId);
-  }
-  const res = await slackClient.users.info({ user: userId });
-
-  if (!res.ok) {
-    throw res.error;
-  }
-  const u = await getSlackUserInfo(slackClient, userId);
-  if (res.user?.is_bot) {
-    // Slack also has a notion of "bot users" which are not real users but are bots.
-    // Eg: a Slack workflow talking to us is seen as a bot, but the Zapier bot talking to us
-    // is seen as a user, with a `is_bot` flag set to true.
-    // From our perspective, we treat them as bots.
-    u.is_bot = true;
-  }
-
-  return u;
-}
-
-async function getSlackUserInfo(
+export async function getSlackUserInfo(
   slackClient: WebClient,
   userId: string
 ): Promise<SlackUserInfo> {
@@ -153,7 +128,12 @@ async function getSlackUserInfo(
   }
 
   return {
-    is_bot: false,
+    // Slack has two concept for bots: bots, that you can get through slackClient.bots.info() and
+    // user bots, which are the users related to a bot.
+    // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
+    // I can't find much more information on why Slack has these two concepts.
+    // From our perspective, a Slack user bot is a bot.
+    is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
     display_name: res.user?.profile?.display_name,
     real_name: res.user?.profile?.real_name,
@@ -166,7 +146,7 @@ async function getSlackUserInfo(
   };
 }
 
-async function getSlackBotInfo(
+export async function getSlackBotInfo(
   slackClient: WebClient,
   botId: string
 ): Promise<SlackUserInfo> {
