@@ -36,7 +36,7 @@ interface TablesQueryActionBlob {
   step: number;
 }
 
-export class TablesQuerAction extends BaseAction {
+export class TablesQueryAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
@@ -106,7 +106,7 @@ export async function tableQueryTypesFromAgentMessageIds(
     },
   });
   return actions.map((action) => {
-    return new TablesQuerAction({
+    return new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
@@ -224,7 +224,7 @@ export async function* runTablesQuery(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: new TablesQuerAction({
+    action: new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
@@ -359,7 +359,7 @@ export async function* runTablesQuery(
           created: Date.now(),
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
-          action: new TablesQuerAction({
+          action: new TablesQueryAction({
             id: action.id,
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
@@ -388,7 +388,7 @@ export async function* runTablesQuery(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: new TablesQuerAction({
+    action: new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
