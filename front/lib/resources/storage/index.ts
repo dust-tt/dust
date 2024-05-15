@@ -6,6 +6,12 @@ import logger from "@app/logger/logger";
 
 const acquireAttempts = new WeakMap();
 
+const { DB_LOGGING_ENABLED = false } = process.env;
+
+function sequelizeLogger(message: string) {
+  console.log(message.replace("Executing (default): ", ""));
+}
+
 export const frontSequelize = new Sequelize(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
@@ -13,7 +19,7 @@ export const frontSequelize = new Sequelize(
       // Default is 5.
       max: isDevelopment() ? 5 : 30,
     },
-    logging: false,
+    logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
       beforePoolAcquire: (options) => {
         acquireAttempts.set(options, Date.now());
