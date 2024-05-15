@@ -21,13 +21,18 @@ import removeMarkdown from "remove-markdown";
 import slackifyMarkdown from "slackify-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
+  getSlackBotInfo,
   getSlackClient,
-  getSlackUserOrBotInfo,
+  getSlackUserInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
-import { notifyIfSlackUserIsNotAllowed } from "@connectors/connectors/slack/lib/workspace_limits";
+import {
+  isBotAllowed,
+  notifyIfSlackUserIsNotAllowed,
+} from "@connectors/connectors/slack/lib/workspace_limits";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   SlackChannel,
@@ -44,8 +49,6 @@ import {
 } from "./temporal/activities";
 
 const { DUST_CLIENT_FACING_URL, DUST_FRONT_API } = process.env;
-
-class SlackExternalUserError extends Error {}
 
 /* After this length we start risking that the chat.update Slack API returns
  * "msg_too_long" error. This length is experimentally tested and was not found
@@ -176,32 +179,37 @@ async function botAnswerMessage(
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
 
-  const userOrBotId = slackUserId || slackBotId;
-  if (!userOrBotId) {
-    throw new Error("Failed to get slack user id or bot id");
+  let slackUserInfo: SlackUserInfo | null = null;
+  if (slackBotId) {
+    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+  } else if (slackUserId) {
+    slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
   }
-  const slackUserInfo: SlackUserInfo = await getSlackUserOrBotInfo(
-    slackClient,
-    userOrBotId
-  );
 
   if (!slackUserInfo) {
     throw new Error("Failed to get slack user info");
   }
 
-  const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
-    connector,
-    slackClient,
-    slackUserInfo,
-    {
-      slackChannelId: slackChannel,
-      slackTeamId,
-      slackMessageTs,
-    },
-    slackConfig.whitelistedDomains
-  );
-  if (!hasChatbotAccess) {
-    return new Ok(undefined);
+  if (slackUserInfo.is_bot) {
+    const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
+    if (isBotAllowedRes.isErr()) {
+      return isBotAllowedRes;
+    }
+  } else {
+    const hasChatbotAccess = await notifyIfSlackUserIsNotAllowed(
+      connector,
+      slackClient,
+      slackUserInfo,
+      {
+        slackChannelId: slackChannel,
+        slackTeamId,
+        slackMessageTs,
+      },
+      slackConfig.whitelistedDomains
+    );
+    if (!hasChatbotAccess) {
+      return new Ok(undefined);
+    }
   }
 
   const displayName = slackUserInfo.display_name ?? "";
