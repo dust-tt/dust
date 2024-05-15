@@ -230,8 +230,10 @@ export async function getIssue(
       isPullRequest: !!issue.pull_request,
     };
   } catch (err) {
+    // Handle excessive redirection during issue retrieval by safely ignoring the issue.
     if (isGithubRequestRedirectCountExceededError(err)) {
       logger.info({ ...loggerArgs, err: err.message }, "Failed to get issue.");
+
       return null;
     }
 
