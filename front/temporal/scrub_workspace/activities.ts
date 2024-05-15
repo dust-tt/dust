@@ -10,6 +10,14 @@ import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
+import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
+import {
+  AgentRetrievalAction,
+  RetrievalDocument,
+  RetrievalDocumentChunk,
+} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentMessage,
   Conversation,
@@ -101,6 +109,7 @@ async function deleteAllConversations(auth: Authenticator) {
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
   );
+
   const chunks = chunk(conversations, 4);
   for (const chunk of chunks) {
     await Promise.all(
@@ -115,6 +124,37 @@ async function deleteAllConversations(auth: Authenticator) {
         const agentMessageIds = removeNulls(
           messages.map((m) => m.agentMessageId)
         );
+
+        const retrievalActions = await AgentRetrievalAction.findAll({
+          attributes: ["id"],
+          where: { agentMessageId: agentMessageIds },
+        });
+        const retrievalDocuments = await RetrievalDocument.findAll({
+          attributes: ["id"],
+          where: { retrievalActionId: retrievalActions.map((a) => a.id) },
+        });
+        await RetrievalDocumentChunk.destroy({
+          where: { retrievalDocumentId: retrievalDocuments.map((d) => d.id) },
+        });
+        await RetrievalDocument.destroy({
+          where: { retrievalActionId: retrievalActions.map((a) => a.id) },
+        });
+        await AgentRetrievalAction.destroy({
+          where: { agentMessageId: agentMessageIds },
+        });
+
+        await AgentTablesQueryAction.destroy({
+          where: { agentMessageId: agentMessageIds },
+        });
+
+        await AgentDustAppRunAction.destroy({
+          where: { agentMessageId: agentMessageIds },
+        });
+
+        await AgentProcessAction.destroy({
+          where: { agentMessageId: agentMessageIds },
+        });
+
         await Message.destroy({
           where: { conversationId: c.id },
         });
