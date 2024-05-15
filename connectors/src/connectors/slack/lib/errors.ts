@@ -1,6 +1,8 @@
 import type { WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 
+export class SlackExternalUserError extends Error {}
+
 export function isSlackWebAPIPlatformError(
   err: unknown
 ): err is WebAPIPlatformError {

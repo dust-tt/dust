@@ -121,6 +121,7 @@ export async function getSlackUserOrBotInfo(
   slackClient: WebClient,
   userId: string
 ) {
+  // If a slack user id starts with B, it is a bot.
   if (userId.startsWith("B")) {
     return getSlackBotInfo(slackClient, userId);
   }
@@ -129,11 +130,16 @@ export async function getSlackUserOrBotInfo(
   if (!res.ok) {
     throw res.error;
   }
+  const u = await getSlackUserInfo(slackClient, userId);
   if (res.user?.is_bot) {
-    return getSlackBotInfo(slackClient, userId);
-  } else {
-    return getSlackUserInfo(slackClient, userId);
+    // Slack also has a notion of "bot users" which are not real users but are bots.
+    // Eg: a Slack workflow talking to us is seen as a bot, but the Zapier bot talking to us
+    // is seen as a user, with a `is_bot` flag set to true.
+    // From our perspective, we treat them as bots.
+    u.is_bot = true;
   }
+
+  return u;
 }
 
 async function getSlackUserInfo(
