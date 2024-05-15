@@ -625,6 +625,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
+      functionCallId,
       step,
       refsOffset: existingRefsCount,
     });
@@ -742,6 +743,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs: inputs,
+      functionCallId,
       step,
     });
 
@@ -788,6 +790,7 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs: inputs,
+      functionCallId,
       step,
     });
 

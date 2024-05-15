@@ -399,6 +399,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      functionCallId: null,
       step,
     });
 
@@ -494,6 +495,7 @@ async function* runAction(
       conversation,
       agentMessage,
       rawInputs,
+      functionCallId: null,
       step,
     });
 
@@ -540,6 +542,7 @@ async function* runAction(
       userMessage,
       agentMessage,
       rawInputs,
+      functionCallId: null,
       step,
     });
 

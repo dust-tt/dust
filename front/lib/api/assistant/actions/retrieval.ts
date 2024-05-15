@@ -494,6 +494,7 @@ export async function* runRetrieval(
     conversation,
     agentMessage,
     rawInputs,
+    functionCallId,
     step,
     refsOffset = 0,
   }: {
@@ -502,6 +503,7 @@ export async function* runRetrieval(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    functionCallId: string | null;
     step: number;
     refsOffset?: number;
   }
@@ -574,6 +576,7 @@ export async function* runRetrieval(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     topK,
     retrievalConfigurationId: actionConfiguration.sId,
+    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step: step,
   });

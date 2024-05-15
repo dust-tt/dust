@@ -225,6 +225,7 @@ export async function* runProcess(
     userMessage,
     agentMessage,
     rawInputs,
+    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -233,6 +234,7 @@ export async function* runProcess(
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -276,6 +278,7 @@ export async function* runProcess(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
+    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step,
   });

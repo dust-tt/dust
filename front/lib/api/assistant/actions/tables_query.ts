@@ -176,6 +176,7 @@ export async function* runTablesQuery(
     conversation,
     agentMessage,
     rawInputs,
+    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -183,6 +184,7 @@ export async function* runTablesQuery(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
+    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -219,6 +221,7 @@ export async function* runTablesQuery(
     tablesQueryConfigurationId: configuration.sId,
     params: rawInputs,
     output,
+    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step: step,
   });
