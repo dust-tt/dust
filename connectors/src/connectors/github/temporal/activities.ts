@@ -219,7 +219,7 @@ export async function githubUpsertIssueActivity(
 
   localLogger.info("Upserting GitHub issue.");
 
-  const renderedIssueBlob = await renderIssue(
+  const renderedIssueResult = await renderIssue(
     dataSourceConfig,
     installationId,
     repoName,
@@ -230,7 +230,7 @@ export async function githubUpsertIssueActivity(
   );
 
   // Silently skip the current issue if fetching fails.
-  if (!renderedIssueBlob) {
+  if (!renderedIssueResult) {
     localLogger.info("Skip upserting GitHub issue.");
     return;
   }
@@ -239,7 +239,7 @@ export async function githubUpsertIssueActivity(
     issue,
     updatedAtTimestamp,
     content: renderedIssue,
-  } = renderedIssueBlob;
+  } = renderedIssueResult;
 
   const documentId = getIssueDocumentId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
