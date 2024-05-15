@@ -49,4 +49,16 @@ module.exports = removeImports({
       },
     ];
   },
+  webpack: (config) => {
+    // For `types` package import (which includes some dependence to server code).
+    // Otherwise client-side code will throw an error when importing the packaged file.
+    config.resolve.fallback = {
+      fs: false,
+      net: false,
+      child_process: false,
+      tls: false,
+      dgram: false,
+    };
+    return config;
+  },
 });
