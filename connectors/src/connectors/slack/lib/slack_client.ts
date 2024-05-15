@@ -117,26 +117,7 @@ export type SlackUserInfo = {
   image_512: string | null;
 };
 
-export async function getSlackUserOrBotInfo(
-  slackClient: WebClient,
-  userId: string
-) {
-  if (userId.startsWith("B")) {
-    return getSlackBotInfo(slackClient, userId);
-  }
-  const res = await slackClient.users.info({ user: userId });
-
-  if (!res.ok) {
-    throw res.error;
-  }
-  if (res.user?.is_bot) {
-    return getSlackBotInfo(slackClient, userId);
-  } else {
-    return getSlackUserInfo(slackClient, userId);
-  }
-}
-
-async function getSlackUserInfo(
+export async function getSlackUserInfo(
   slackClient: WebClient,
   userId: string
 ): Promise<SlackUserInfo> {
@@ -147,7 +128,13 @@ async function getSlackUserInfo(
   }
 
   return {
-    is_bot: false,
+    // Slack has two concepts for bots:
+    // - Bots, that you can get through slackClient.bots.info() and
+    // - User bots, which are the users related to a bot.
+    // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
+    // Not clear why Slack has these two concepts.
+    // From our perspective, a Slack user bot is a bot.
+    is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
     display_name: res.user?.profile?.display_name,
     real_name: res.user?.profile?.real_name,
@@ -160,7 +147,7 @@ async function getSlackUserInfo(
   };
 }
 
-async function getSlackBotInfo(
+export async function getSlackBotInfo(
   slackClient: WebClient,
   botId: string
 ): Promise<SlackUserInfo> {

@@ -1,8 +1,9 @@
-import type { WorkspaceDomain } from "@dust-tt/types";
-import { cacheWithRedis, DustAPI } from "@dust-tt/types";
+import type { Result, WorkspaceDomain } from "@dust-tt/types";
+import { cacheWithRedis, DustAPI, Err, Ok } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 
+import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -200,10 +201,10 @@ export async function isActiveMemberOfWorkspace(
   return workspaceActiveMemberEmails.includes(slackUserEmail);
 }
 
-async function isBotAllowed(
+export async function isBotAllowed(
   connector: ConnectorResource,
   slackUserInfo: SlackUserInfo
-) {
+): Promise<Result<undefined, Error>> {
   const displayName = slackUserInfo.display_name ?? "";
   const realName = slackUserInfo.real_name ?? "";
 
@@ -218,15 +219,21 @@ async function isBotAllowed(
     connector.id
   );
   const whitelist = await slackConfig?.isBotWhitelisted(names);
+
   if (!whitelist) {
     logger.info(
       { user: slackUserInfo, connectorId: connector.id },
       "Ignoring bot message"
     );
-    return false;
+
+    return new Err(
+      new SlackExternalUserError(
+        "To enable custom interactions between Slack bots and Dust assistants, email us at team@dust.tt."
+      )
+    );
   }
 
-  return true;
+  return new Ok(undefined);
 }
 
 interface SlackInfos {
@@ -335,10 +342,6 @@ export async function notifyIfSlackUserIsNotAllowed(
 ): Promise<boolean> {
   if (!slackUserInfo) {
     return false;
-  }
-
-  if (slackUserInfo.is_bot) {
-    return isBotAllowed(connector, slackUserInfo);
   }
 
   const isAllowed = await isSlackUserAllowed(
