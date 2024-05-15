@@ -115,6 +115,13 @@ export class AmplitudeClientSideTracking {
     });
     return AmplitudeClientSideTracking.flush();
   }
+  static trackInputBarFileUploadUsed({ fileCount }: { fileCount: number }) {
+    const client = getBrowserClient();
+    client.inputBarFileUploadUsed({
+      fileCount,
+    });
+    return AmplitudeClientSideTracking.flush();
+  }
 
   static trackFairUsageDialogViewed({
     trialing,

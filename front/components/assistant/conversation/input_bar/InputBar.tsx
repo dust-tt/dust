@@ -21,6 +21,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
+import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 // AGENT MENTION
@@ -146,6 +147,11 @@ export function AssistantInputBar({
     const mentions: MentionType[] = rawMentions.map((m) => ({
       configurationId: m.id,
     }));
+    if (contentFragmentData.length > 0) {
+      void ClientSideTracking.trackInputBarFileUploadUsed({
+        fileCount: contentFragmentData.length,
+      });
+    }
 
     onSubmit(
       text,
