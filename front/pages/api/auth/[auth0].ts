@@ -1,3 +1,4 @@
+import type { LoginOptions } from "@auth0/nextjs-auth0";
 import {
   CallbackHandlerError,
   handleAuth,
@@ -6,16 +7,23 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
-import type { AuthorizationParameters } from "@auth0/nextjs-auth0/dist/auth0-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 
 export default handleAuth({
   login: handleLogin((req) => {
-    const connection = "query" in req ? req.query.connection : undefined;
+    let connection: string | undefined = undefined;
+    if ("query" in req && req.query.connection) {
+      connection =
+        typeof req.query.connection === "string"
+          ? req.query.connection
+          : undefined;
+    }
 
-    const defaultAuthorizationParams: Partial<AuthorizationParameters> = {
+    const defaultAuthorizationParams: Partial<
+      LoginOptions["authorizationParams"]
+    > = {
       scope: "openid profile email",
     };
 

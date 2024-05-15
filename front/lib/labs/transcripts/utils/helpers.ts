@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import type { NangoConnectionId, NangoIntegrationId } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
-import type { Connection } from "@nangohq/node/dist/types";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
@@ -16,10 +15,7 @@ export async function getGoogleAuthObject(
   nangoIntegrationId: NangoIntegrationId,
   nangoConnectionId: NangoConnectionId
 ): Promise<OAuth2Client> {
-  const res: Connection = await nango.getConnection(
-    nangoIntegrationId,
-    nangoConnectionId
-  );
+  const res = await nango.getConnection(nangoIntegrationId, nangoConnectionId);
 
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({
