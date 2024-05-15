@@ -43,3 +43,11 @@ export async function scheduleWorkspaceScrubWorkflow({
   await scrubWorkspaceData({ workspaceId });
   return true;
 }
+
+export async function scheduleWorkspaceScrubWorkflowV2({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<boolean> {
+  return scheduleWorkspaceScrubWorkflow({ workspaceId });
+}
