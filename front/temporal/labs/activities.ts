@@ -13,7 +13,6 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
 async function retrieveRecentTranscripts(
   {
@@ -105,97 +104,22 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  const fileIdsToProcess: string[] = [];
+  const transcriptsIdsToProcess: string[] = [];
 
   if (transcriptsConfiguration.provider == "google_drive") {
-    const recentTranscriptFiles = await retrieveRecentGoogleTranscripts(
-      {
-        auth,
-        userId: transcriptsConfiguration.userId,
-      },
-      localLogger
-    );
-
-    for (const recentTranscriptFile of recentTranscriptFiles) {
-      const { id: fileId } = recentTranscriptFile;
-      if (!fileId) {
-        localLogger.error(
-          {},
-          "[retrieveNewTranscripts] File does not have an id. Skipping."
-        );
-        continue;
-      }
-
-      const history = await transcriptsConfiguration.fetchHistoryForFileId(
-        fileId
-      );
-      if (history) {
-        localLogger.info(
-          { fileId },
-          "[retrieveNewTranscripts] File already processed. Skipping."
-        );
-        continue;
-      }
-
-      fileIdsToProcess.push(fileId);
-    }
+    const transcriptsIds = await retrieveGoogleTranscripts(auth, transcriptsConfiguration, localLogger);
+    transcriptsIdsToProcess.push(...transcriptsIds);
   }
 
   if (transcriptsConfiguration.provider == "gong") {
-    // Retrieve recent transcripts from Gong
-    // const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const fromDateTime = new Date(Date.now() - 2400 * 60 * 60 * 1000).toISOString(); // DEBUG A LOT OF TIME
-    const newTranscripts = await fetch(`https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`, {
-      headers: {
-        Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!newTranscripts.ok) {
-      localLogger.error(
-        {},
-        "[retrieveNewTranscripts] Error fetching new transcripts from Gong. Skipping."
-      );
-      return [];
-    }
-
-    const newTranscriptsData = await newTranscripts.json();
-
-    if (!newTranscriptsData || newTranscriptsData.length === 0) {
-      localLogger.info(
-        {},
-        "[retrieveNewTranscripts] No new transcripts found from Gong."
-      );
-      return [];
-    }
-
-    for (const call of newTranscriptsData.calls) {
-      const { id: fileId } = call;
-      if (!fileId) {
-        localLogger.error(
-          {},
-          "[retrieveNewTranscripts] call does not have an id. Skipping."
-        );
-        continue;
-      }
-
-      const history = await transcriptsConfiguration.fetchHistoryForFileId(
-        fileId
-      );
-      if (history) {
-        localLogger.info(
-          { fileId },
-          "[retrieveNewTranscripts] call already processed. Skipping."
-        );
-        continue;
-      }
-
-      fileIdsToProcess.push(fileId);
-    }
+    console.log('GONG TRANSCRIPTS')
+    const transcriptsIds = await retrieveGongTranscripts(transcriptsConfiguration, localLogger);
+    transcriptsIdsToProcess.push(...transcriptsIds);
   } 
 
-  return fileIdsToProcess;
+  console.log('transcriptsIdsToProcess', transcriptsIdsToProcess)
+
+  return transcriptsIdsToProcess;
 }
 
 export async function processTranscriptActivity(
@@ -260,6 +184,9 @@ export async function processTranscriptActivity(
     );
     return;
   }
+  
+  let transcriptTitle = ""
+  let transcriptContent = ""
 
   const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
     auth,
