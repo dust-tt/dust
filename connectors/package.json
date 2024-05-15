@@ -78,7 +78,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "prettier": "^2.8.8",
-    "tsx": "^3.12.6",
+    "tsx": "^4.10.2",
     "typescript": "^5.3.3"
   }
 }
