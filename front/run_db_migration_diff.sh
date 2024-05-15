@@ -26,7 +26,7 @@ git stash pop
 
 # Run diff.
 echo "Running diff..."
-diff main_output.txt current_output.txt
+diff --unified=0 main_output.txt current_output.txt
 
 # Clean up the output files.
 echo "Cleaning up temporary files..."
