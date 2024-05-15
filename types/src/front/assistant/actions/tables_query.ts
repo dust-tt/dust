@@ -1,5 +1,6 @@
 import { DustAppParameters } from "../../../front/assistant/actions/dust_app_run";
 import { ModelId } from "../../../shared/model_id";
+import { BaseAction } from "../../lib/api/assistant/actions";
 
 export type TablesQueryConfigurationType = {
   id: ModelId;
@@ -16,12 +17,10 @@ export type TablesQueryConfigurationType = {
   forceUseAtIteration: number | null;
 };
 
-export type TablesQueryActionType = {
+export interface TablesQueryActionType extends BaseAction {
   id: ModelId;
-  type: "tables_query_action";
-
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
   agentMessageId: ModelId;
   step: number;
-};
+}
