@@ -233,7 +233,6 @@ export default function LabsTranscriptsIndex({
   };
 
   const saveOauthConnection = async (connectionId: string) => {
-    console.log('SAVING OAUTH CONNECTION');
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -249,13 +248,15 @@ export default function LabsTranscriptsIndex({
       sendNotification({
         type: "error",
         title: "Failed to connect provider",
-        description: "Could not connect to your transcripts provider. Please try again.",
+        description:
+          "Could not connect to your transcripts provider. Please try again.",
       });
     } else {
       sendNotification({
         type: "success",
         title: "Provider connected",
-        description: "Your transcripts provider has been connected successfully.",
+        description:
+          "Your transcripts provider has been connected successfully.",
       });
 
       await mutateTranscriptsConfiguration();

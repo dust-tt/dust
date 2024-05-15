@@ -12,7 +12,7 @@ const config = {
   },
   getNangoGongConnectorId: (): string => {
     return EnvironmentConfig.getEnvVariable("NANGO_GONG_CONNECTOR_ID");
-  }
+  },
 };
 
 export default config;
