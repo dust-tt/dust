@@ -18,8 +18,7 @@ export const acceptableTranscriptProvidersCodec = t.union([
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
-  connectionId: t.union([t.string, t.null]),
-  gongApiKey: t.union([t.string, t.null]),
+  connectionId: t.string,
   provider: acceptableTranscriptProvidersCodec,
 });
 

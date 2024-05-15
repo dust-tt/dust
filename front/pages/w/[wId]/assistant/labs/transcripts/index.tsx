@@ -2,7 +2,6 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
-  Input,
   Page,
   SliderToggle,
   Spinner,
@@ -62,6 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       nangoDriveConnectorId: config.getNangoGoogleDriveConnectorId(),
+      nangoGongConnectorId: config.getNangoGongConnectorId(),
       nangoPublicKey: config.getNangoPublicKey(),
     },
   };
@@ -73,6 +73,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   nangoDriveConnectorId,
+  nangoGongConnectorId,
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -139,41 +140,6 @@ export default function LabsTranscriptsIndex({
       provider,
     });
     await mutateTranscriptsConfiguration();
-  };
-
-  const handleGongApiKeyChange = async (gongApiKey: string) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      gongApiKey,
-    });
-  };
-
-  const handleGongApiSecretChange = async (gongApiSecret: string) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      gongApiSecret,
-    });
-  };
-
-  const handleDisconnectProvider = async (
-    transcriptConfigurationId: number
-  ) => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to disconnect",
-        description: "Could not disconnect the provider. Please try again.",
-      });
-    } else {
-      window.location.reload();
-    }
   };
 
   const makePatchRequest = async (
@@ -266,7 +232,8 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveGoogleDriveConnection = async (connectionId: string) => {
+  const saveOauthConnection = async (connectionId: string) => {
+    console.log('SAVING OAUTH CONNECTION');
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -274,7 +241,6 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
-        gongApiKey: null,
         provider: transcriptsConfigurationState.provider,
       }),
     });
@@ -282,56 +248,14 @@ export default function LabsTranscriptsIndex({
     if (!response.ok) {
       sendNotification({
         type: "error",
-        title: "Failed to connect Google Drive",
-        description: "Could not connect to Google Drive. Please try again.",
+        title: "Failed to connect provider",
+        description: "Could not connect to your transcripts provider. Please try again.",
       });
     } else {
       sendNotification({
         type: "success",
-        title: "Connected Google Drive",
-        description: "Google Drive has been connected successfully.",
-      });
-      setTranscriptsConfigurationState({
-        ...transcriptsConfigurationState,
-        isGDriveConnected: true,
-      });
-
-      await mutateTranscriptsConfiguration();
-    }
-
-    return response;
-  };
-
-  const saveGongConnection = async () => {
-    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        gongApiKey: Buffer.from(
-          `${transcriptsConfigurationState.gongApiKey}:${transcriptsConfigurationState.gongApiSecret}`
-        ).toString("base64"),
-        connectionId: null,
-        provider: "gong",
-      }),
-    });
-
-    if (!response.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to connect Gong",
-        description: "Could not connect to Gong. Please try again.",
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Connected Gong",
-        description: "Gong has been connected successfully.",
-      });
-      setTranscriptsConfigurationState({
-        ...transcriptsConfigurationState,
-        isGongConnected: true,
+        title: "Provider connected",
+        description: "Your transcripts provider has been connected successfully.",
       });
 
       await mutateTranscriptsConfiguration();
@@ -357,12 +281,39 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveGoogleDriveConnection(nangoConnectionId);
+      await saveOauthConnection(nangoConnectionId);
     } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
         description: "Could not connect to Google Drive. Please try again.",
+      });
+    }
+  };
+
+  const handleConnectGongTranscriptsSource = async () => {
+    try {
+      if (transcriptsConfigurationState.provider !== "gong") {
+        return;
+      }
+      const nango = new Nango({ publicKey: nangoPublicKey });
+      const newConnectionId = buildConnectionId(
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+        transcriptsConfigurationState.provider
+      );
+      const {
+        connectionId: nangoConnectionId,
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoGongConnectorId,
+        newConnectionId
+      );
+
+      await saveOauthConnection(nangoConnectionId);
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
       });
     }
   };
@@ -450,57 +401,23 @@ export default function LabsTranscriptsIndex({
           {transcriptsConfigurationState.provider === "gong" && (
             <Page.Layout direction="vertical">
               <Page.P>
-                Add your Gong API key so Dust can access your Gong account and
-                process your transcripts.
+                Connect to Gong so Dust can access your meeting transcripts.
               </Page.P>
-              {transcriptsConfiguration &&
-              transcriptsConfigurationState.isGongConnected ? (
-                <Page.Layout direction="horizontal">
-                  <Button
-                    label={"Gong API is connected"}
-                    size="sm"
-                    icon={CloudArrowLeftRightIcon}
-                    disabled={true}
-                  />
-                  {/* disconnect button */}
-                  <Button
-                    label={"Disconnect"}
-                    size="sm"
-                    variant="secondaryWarning"
-                    onClick={async () => {
-                      await handleDisconnectProvider(
-                        transcriptsConfiguration.id
-                      );
-                    }}
-                  />
-                </Page.Layout>
-              ) : (
-                <Page.Layout direction="horizontal">
-                  <Input
-                    placeholder="Gong Access key"
-                    name="gongApiKey"
-                    onChange={(e) => handleGongApiKeyChange(e)}
-                    value={transcriptsConfigurationState.gongApiKey}
-                  />
-                  <Input
-                    placeholder="Gong Access secret"
-                    name="gongApiKey"
-                    onChange={(e) => handleGongApiSecretChange(e)}
-                    value={transcriptsConfigurationState.gongApiSecret}
-                  />
-                  <Button
-                    label={"Save"}
-                    size="sm"
-                    disabled={
-                      transcriptsConfigurationState.gongApiKey.length != 32 ||
-                      transcriptsConfigurationState.gongApiSecret.length < 30
-                    }
-                    onClick={async () => {
-                      await saveGongConnection();
-                    }}
-                  />
-                </Page.Layout>
-              )}
+              <div>
+                <Button
+                  label={
+                    transcriptsConfigurationState.isGongConnected
+                      ? "Connected"
+                      : "Connect"
+                  }
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={transcriptsConfigurationState?.isGongConnected}
+                  onClick={async () => {
+                    await handleConnectGongTranscriptsSource();
+                  }}
+                />
+              </div>
             </Page.Layout>
           )}
         </Page.Layout>
