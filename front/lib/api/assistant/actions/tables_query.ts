@@ -33,7 +33,6 @@ interface TablesQueryActionBlob {
   agentMessageId: ModelId;
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
-  functionCallId: string | null;
   step: number;
 }
 
@@ -41,7 +40,6 @@ export class TablesQueryAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
-  readonly functionCallId: string | null;
   readonly step: number;
 
   constructor(blob: TablesQueryActionBlob) {
@@ -50,7 +48,6 @@ export class TablesQueryAction extends BaseAction {
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
     this.output = blob.output;
-    this.functionCallId = blob.functionCallId;
     this.step = blob.step;
   }
 
@@ -73,7 +70,7 @@ export class TablesQueryAction extends BaseAction {
 
   renderForFunctionCall(): FunctionCallType {
     return {
-      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
       name: "query_tables",
       arguments: JSON.stringify(this.params),
     };
@@ -91,7 +88,7 @@ export class TablesQueryAction extends BaseAction {
 
     return {
       role: "function" as const,
-      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      function_call_id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
       content,
     };
   }
@@ -113,7 +110,6 @@ export async function tableQueryTypesFromAgentMessageIds(
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
-      functionCallId: action.functionCallId,
       agentMessageId: action.agentMessageId,
       step: action.step,
     });
@@ -176,7 +172,6 @@ export async function* runTablesQuery(
     conversation,
     agentMessage,
     rawInputs,
-    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -184,7 +179,6 @@ export async function* runTablesQuery(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -221,7 +215,6 @@ export async function* runTablesQuery(
     tablesQueryConfigurationId: configuration.sId,
     params: rawInputs,
     output,
-    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step: step,
   });
@@ -235,7 +228,6 @@ export async function* runTablesQuery(
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
-      functionCallId: action.functionCallId,
       agentMessageId: action.agentMessageId,
       step: action.step,
     }),
@@ -371,7 +363,6 @@ export async function* runTablesQuery(
             id: action.id,
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
-            functionCallId: action.functionCallId,
             agentMessageId: agentMessage.id,
             step: action.step,
           }),
@@ -401,7 +392,6 @@ export async function* runTablesQuery(
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
-      functionCallId: action.functionCallId,
       agentMessageId: action.agentMessageId,
       step: action.step,
     }),

@@ -42,7 +42,6 @@ interface DustAppRunActionBlob {
     status: "running" | "succeeded" | "errored";
   } | null;
   output: unknown | null;
-  functionCallId: string | null;
   step: number;
 }
 
@@ -58,7 +57,6 @@ export class DustAppRunAction extends BaseAction {
     status: "running" | "succeeded" | "errored";
   } | null;
   readonly output: unknown | null;
-  readonly functionCallId: string | null;
   readonly step: number;
 
   constructor(blob: DustAppRunActionBlob) {
@@ -71,7 +69,6 @@ export class DustAppRunAction extends BaseAction {
     this.params = blob.params;
     this.runningBlock = blob.runningBlock;
     this.output = blob.output;
-    this.functionCallId = blob.functionCallId;
     this.step = blob.step;
   }
 
@@ -91,7 +88,7 @@ export class DustAppRunAction extends BaseAction {
 
   renderForFunctionCall(): FunctionCallType {
     return {
-      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
       name: this.appName,
       arguments: JSON.stringify(this.params),
     };
@@ -106,7 +103,7 @@ export class DustAppRunAction extends BaseAction {
 
     return {
       role: "function" as const,
-      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      function_call_id: `call_${this.id.toString()}`, // @todo Daph replace with the actual tool id
       content,
     };
   }
@@ -259,7 +256,6 @@ export async function dustAppRunTypesFromAgentMessageIds(
       params: action.params,
       runningBlock: null,
       output: action.output,
-      functionCallId: action.functionCallId,
       agentMessageId: action.agentMessageId,
       step: action.step,
     });
@@ -285,7 +281,6 @@ export async function* runDustApp(
     agentMessage,
     spec,
     rawInputs,
-    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -294,7 +289,6 @@ export async function* runDustApp(
     agentMessage: AgentMessageType;
     spec: AgentActionSpecification;
     rawInputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -361,7 +355,6 @@ export async function* runDustApp(
     appId: actionConfiguration.appId,
     appName: app.name,
     params,
-    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step,
   });
@@ -379,7 +372,6 @@ export async function* runDustApp(
       params,
       runningBlock: null,
       output: null,
-      functionCallId,
       agentMessageId: agentMessage.agentMessageId,
       step,
     }),
@@ -452,7 +444,6 @@ export async function* runDustApp(
           appId: actionConfiguration.appId,
           appName: app.name,
           params,
-          functionCallId,
           runningBlock: {
             type: event.content.block_type,
             name: event.content.name,
@@ -510,7 +501,6 @@ export async function* runDustApp(
       appId: actionConfiguration.appId,
       appName: app.name,
       params,
-      functionCallId,
       runningBlock: null,
       output: lastBlockOutput,
       agentMessageId: agentMessage.agentMessageId,
