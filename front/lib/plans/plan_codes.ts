@@ -34,5 +34,5 @@ export const isUpgraded = (plan: PlanType | null): boolean => {
   if (!plan) {
     return false;
   }
-  return plan.code !== FREE_TEST_PLAN_CODE;
+  return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
 };
