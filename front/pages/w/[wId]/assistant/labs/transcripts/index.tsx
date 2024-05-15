@@ -37,6 +37,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   gaTrackingId: string;
   nangoDriveConnectorId: string;
+  nangoGongConnectorId: string;
   nangoPublicKey: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
