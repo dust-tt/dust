@@ -182,10 +182,10 @@ async function botAnswerMessage(
   const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
-  if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
-  } else if (slackUserId) {
+  if (slackUserId) {
     slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
+  } else if (slackBotId) {
+    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
   }
 
   if (!slackUserInfo) {
