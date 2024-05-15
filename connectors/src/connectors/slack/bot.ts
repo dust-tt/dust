@@ -97,10 +97,12 @@ export async function botAnswerMessageWithErrorHandling(
       logger.error(
         {
           error: res.error,
+          errorMessage: res.error.message,
           slackTeamId: slackTeamId,
           slackChannel: slackChannel,
           slackUserId: slackUserId,
           slackMessageTs: slackMessageTs,
+          slackBotId,
         },
         "Failed answering to Slack Chat Bot message"
       );
