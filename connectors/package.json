@@ -67,7 +67,7 @@
     "@types/eslint": "^8.21.3",
     "@types/fast-levenshtein": "^0.0.2",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^18.15.5",
+    "@types/node": "^20.12.12",
     "@types/tar": "^6.1.10",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
@@ -78,7 +78,7 @@
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "prettier": "^2.8.8",
-    "tsx": "^3.12.6",
+    "tsx": "^4.10.2",
     "typescript": "^5.3.3"
   }
 }

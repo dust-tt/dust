@@ -17,7 +17,7 @@
     "start": "dts watch"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=18"
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
