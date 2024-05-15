@@ -25,7 +25,6 @@ import {
   isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
-  isTablesQueryActionType,
   isUserMessageType,
   Ok,
   removeNulls,
@@ -45,11 +44,6 @@ import {
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
-import {
-  renderTablesQueryActionForModel,
-  renderTablesQueryActionForMultiActionsModel,
-  rendeTablesQueryActionFunctionCall,
-} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -116,8 +110,6 @@ export async function renderConversationForModel({
             foundRetrieval = true;
             messages.unshift(renderRetrievalActionForModel(action));
           }
-        } else if (isTablesQueryActionType(action)) {
-          messages.unshift(renderTablesQueryActionForModel(action));
         } else if (isProcessActionType(action)) {
           messages.unshift(renderProcessActionForModel(action));
         } else if (isBaseActionClass(action)) {
@@ -316,11 +308,6 @@ export async function renderConversationForModelMultiActions({
             renderRetrievalActionForMultiActionsModel(action)
           );
           function_calls.unshift(rendeRetrievalActionFunctionCall(action));
-        } else if (isTablesQueryActionType(action)) {
-          function_messages.unshift(
-            renderTablesQueryActionForMultiActionsModel(action)
-          );
-          function_calls.unshift(rendeTablesQueryActionFunctionCall(action));
         } else if (isProcessActionType(action)) {
           function_messages.unshift(
             renderProcessActionForMultiActionsModel(action)
