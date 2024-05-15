@@ -51,3 +51,11 @@ export async function scheduleWorkspaceScrubWorkflowV2({
 }): Promise<boolean> {
   return scheduleWorkspaceScrubWorkflow({ workspaceId });
 }
+
+export async function immediateWorkspaceScrubWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  await scrubWorkspaceData({ workspaceId });
+}
