@@ -16,8 +16,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TemplateResource
   extends ReadonlyAttributesType<TemplateModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TemplateResource extends BaseResource<TemplateModel> {
   static model: ModelStatic<TemplateModel> = TemplateModel;
 

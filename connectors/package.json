@@ -65,21 +65,21 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/eslint": "^8.21.3",
+    "@types/eslint": "^8.56.10",
     "@types/fast-levenshtein": "^0.0.2",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.12.12",
     "@types/tar": "^6.1.10",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^5.56.0",
-    "@typescript-eslint/parser": "^5.56.0",
-    "eslint": "^8.36.0",
-    "eslint-config-prettier": "^8.8.0",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.0",
     "prettier": "^2.8.8",
     "tsx": "^4.10.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.4.5"
   }
 }

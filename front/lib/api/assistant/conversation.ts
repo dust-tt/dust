@@ -844,6 +844,7 @@ export async function* postUserMessage(
     );
     if (winner.v.done) {
       eventStreamGenerators.splice(winner.offset, 1);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       eventStreamsPromises.splice(winner.offset, 1);
     } else {
       eventStreamsPromises[winner.offset] =
@@ -1309,6 +1310,7 @@ export async function* editUserMessage(
     );
     if (winner.v.done) {
       eventStreamGenerators.splice(winner.offset, 1);
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       eventStreamsPromises.splice(winner.offset, 1);
     } else {
       eventStreamsPromises[winner.offset] =
