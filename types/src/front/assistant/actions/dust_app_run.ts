@@ -31,6 +31,5 @@ export interface DustAppRunActionType extends BaseAction {
     status: "running" | "succeeded" | "errored";
   } | null;
   output: unknown | null;
-  functionCallId: string | null;
   step: number;
 }

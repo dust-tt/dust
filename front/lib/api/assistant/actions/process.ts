@@ -80,7 +80,7 @@ export function renderProcessActionFunctionCall(
   action: ProcessActionType
 ): FunctionCallType {
   return {
-    id: action.functionCallId ?? `call_${action.id.toString()}`,
+    id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     name: "process_data_sources",
     arguments: JSON.stringify(action.params),
   };
@@ -107,7 +107,7 @@ export function renderProcessActionForMultiActionsModel(
 
   return {
     role: "function" as const,
-    function_call_id: action.functionCallId ?? `call_${action.id.toString()}`,
+    function_call_id: `call_${action.id.toString()}`, // @todo Daph replace with the actual tool id
     content,
   };
 }
@@ -201,7 +201,6 @@ export async function processActionTypesFromAgentMessageIds(
       },
       schema: action.schema,
       outputs: action.outputs,
-      functionCallId: action.functionCallId,
       step: action.step,
     } satisfies ProcessActionType;
   });
@@ -225,7 +224,6 @@ export async function* runProcess(
     userMessage,
     agentMessage,
     rawInputs,
-    functionCallId,
     step,
   }: {
     configuration: AgentConfigurationType;
@@ -234,7 +232,6 @@ export async function* runProcess(
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     rawInputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
     step: number;
   }
 ): AsyncGenerator<
@@ -278,7 +275,6 @@ export async function* runProcess(
     relativeTimeFrameUnit: relativeTimeFrame?.unit ?? null,
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
-    functionCallId,
     agentMessageId: agentMessage.agentMessageId,
     step,
   });
@@ -300,7 +296,6 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs: null,
-      functionCallId: action.functionCallId,
       step: action.step,
     },
   };
@@ -490,7 +485,6 @@ export async function* runProcess(
       },
       schema: action.schema,
       outputs,
-      functionCallId: action.functionCallId,
       step: action.step,
     },
   };
