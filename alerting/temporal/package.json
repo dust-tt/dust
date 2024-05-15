@@ -6,9 +6,9 @@
     "start": "ts-node src/index.ts"
   },
   "devDependencies": {
-    "@tsconfig/node16": "^16.1.1",
-    "@types/node": "^20.8.2",
-    "ts-node": "^10.9.1"
+    "@tsconfig/node20": "^20.1.4",
+    "@types/node": "^20.12.12",
+    "ts-node": "^10.9.2"
   },
   "dependencies": {
     "@datadog/datadog-api-client": "^1.17.0",
