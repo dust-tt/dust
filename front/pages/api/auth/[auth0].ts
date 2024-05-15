@@ -14,9 +14,10 @@ export default handleAuth({
   login: handleLogin((req) => {
     let connection: string | undefined = undefined;
     if ("query" in req && req.query.connection) {
-      connection = Array.isArray(req.query.connection)
-        ? req.query.connection[0]
-        : req.query.connection;
+      connection =
+        typeof req.query.connection === "string"
+          ? req.query.connection
+          : undefined;
     }
 
     const defaultAuthorizationParams = {
