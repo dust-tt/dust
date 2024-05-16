@@ -19,7 +19,11 @@ import type {
 } from "@dust-tt/types";
 import type { AgentMessageType, ConversationType } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
+import {
+  BaseAction,
+  cloneBaseConfig,
+  DustProdActionRegistry,
+} from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -109,104 +113,130 @@ export function timeFrameFromNow(timeFrame: TimeFrame): number {
   }
 }
 
-/**
- * Model rendering of retrievals.
- */
-
-export function renderRetrievalActionForModel(
-  action: RetrievalActionType
-): ModelMessageType {
-  let content = "";
-  if (!action.documents) {
-    throw new Error(
-      "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-    );
-  }
-  for (const d of action.documents) {
-    let title = d.documentId;
-    for (const t of d.tags) {
-      if (t.startsWith("title:")) {
-        title = t.substring(6);
-        break;
-      }
-    }
-
-    let dataSourceName = d.dataSourceId;
-    if (d.dataSourceId.startsWith("managed-")) {
-      dataSourceName = d.dataSourceId.substring(8);
-    }
-
-    content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-    content += `REFERENCE: ${d.reference}\n`;
-    content += `EXTRACTS:\n`;
-    for (const c of d.chunks) {
-      content += `${c.text}\n`;
-    }
-    content += "\n";
-  }
-
-  return {
-    role: "action" as const,
-    name: "search_data_sources",
-    content,
+interface RetrievalActionBlob {
+  id: ModelId; // AgentRetrievalAction.
+  agentMessageId: ModelId;
+  params: {
+    relativeTimeFrame: TimeFrame | null;
+    query: string | null;
+    topK: number;
   };
+  functionCallId: string | null;
+  documents: RetrievalDocumentType[] | null;
+  step: number;
 }
 
-export function rendeRetrievalActionFunctionCall(
-  action: RetrievalActionType
-): FunctionCallType {
-  const timeFrame = action.params.relativeTimeFrame;
-  const params = {
-    query: action.params.query,
-    relativeTimeFrame: timeFrame
-      ? `${timeFrame.duration}${timeFrame.unit}`
-      : "all",
-    topK: action.params.topK,
+export class RetrievalAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: {
+    relativeTimeFrame: TimeFrame | null;
+    query: string | null;
+    topK: number;
   };
+  readonly functionCallId: string | null;
+  readonly documents: RetrievalDocumentType[] | null;
+  readonly step: number;
 
-  return {
-    id: action.functionCallId ?? `call_${action.id.toString()}`,
-    name: "search_data_sources",
-    arguments: JSON.stringify(params),
-  };
-}
-export function renderRetrievalActionForMultiActionsModel(
-  action: RetrievalActionType
-): FunctionMessageTypeModel {
-  let content = "";
-  if (!action.documents) {
-    throw new Error(
-      "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-    );
+  constructor(blob: RetrievalActionBlob) {
+    super(blob.id, "retrieval_action");
+
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.documents = blob.documents;
+    this.functionCallId = blob.functionCallId;
+    this.step = blob.step;
   }
-  for (const d of action.documents) {
-    let title = d.documentId;
-    for (const t of d.tags) {
-      if (t.startsWith("title:")) {
-        title = t.substring(6);
-        break;
+
+  renderForModel(): ModelMessageType {
+    let content = "";
+    if (!this.documents) {
+      throw new Error(
+        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
+      );
+    }
+    for (const d of this.documents) {
+      let title = d.documentId;
+      for (const t of d.tags) {
+        if (t.startsWith("title:")) {
+          title = t.substring(6);
+          break;
+        }
       }
+
+      let dataSourceName = d.dataSourceId;
+      if (d.dataSourceId.startsWith("managed-")) {
+        dataSourceName = d.dataSourceId.substring(8);
+      }
+
+      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+      content += `REFERENCE: ${d.reference}\n`;
+      content += `EXTRACTS:\n`;
+      for (const c of d.chunks) {
+        content += `${c.text}\n`;
+      }
+      content += "\n";
     }
 
-    let dataSourceName = d.dataSourceId;
-    if (d.dataSourceId.startsWith("managed-")) {
-      dataSourceName = d.dataSourceId.substring(8);
-    }
-
-    content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-    content += `REFERENCE: ${d.reference}\n`;
-    content += `EXTRACTS:\n`;
-    for (const c of d.chunks) {
-      content += `${c.text}\n`;
-    }
-    content += "\n";
+    return {
+      role: "action" as const,
+      name: "search_data_sources",
+      content,
+    };
   }
 
-  return {
-    role: "function" as const,
-    function_call_id: action.functionCallId ?? `call_${action.id.toString()}`,
-    content,
-  };
+  renderForFunctionCall(): FunctionCallType {
+    const timeFrame = this.params.relativeTimeFrame;
+    const params = {
+      query: this.params.query,
+      relativeTimeFrame: timeFrame
+        ? `${timeFrame.duration}${timeFrame.unit}`
+        : "all",
+      topK: this.params.topK,
+    };
+
+    return {
+      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      name: "search_data_sources",
+      arguments: JSON.stringify(params),
+    };
+  }
+
+  renderForMultiActionsModel(): FunctionMessageTypeModel {
+    let content = "";
+    if (!this.documents) {
+      throw new Error(
+        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
+      );
+    }
+    for (const d of this.documents) {
+      let title = d.documentId;
+      for (const t of d.tags) {
+        if (t.startsWith("title:")) {
+          title = t.substring(6);
+          break;
+        }
+      }
+
+      let dataSourceName = d.dataSourceId;
+      if (d.dataSourceId.startsWith("managed-")) {
+        dataSourceName = d.dataSourceId.substring(8);
+      }
+
+      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+      content += `REFERENCE: ${d.reference}\n`;
+      content += `EXTRACTS:\n`;
+      for (const c of d.chunks) {
+        content += `${c.text}\n`;
+      }
+      content += "\n";
+    }
+
+    return {
+      role: "function" as const,
+      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      content,
+    };
+  }
 }
 
 /**
@@ -414,19 +444,20 @@ export async function retrievalActionTypesFromAgentMessageIds(
       );
     });
 
-    actions.push({
-      id: action.id,
-      agentMessageId: action.agentMessageId,
-      type: "retrieval_action",
-      params: {
-        query: action.query,
-        relativeTimeFrame,
-        topK: action.topK,
-      },
-      functionCallId: action.functionCallId,
-      documents,
-      step: action.step,
-    });
+    actions.push(
+      new RetrievalAction({
+        id: action.id,
+        agentMessageId: action.agentMessageId,
+        params: {
+          query: action.query,
+          relativeTimeFrame,
+          topK: action.topK,
+        },
+        functionCallId: action.functionCallId,
+        documents,
+        step: action.step,
+      })
+    );
   }
 
   return actions;
@@ -587,10 +618,9 @@ export async function* runRetrieval(
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     dataSources: actionConfiguration.dataSources,
-    action: {
+    action: new RetrievalAction({
       id: action.id,
       agentMessageId: agentMessage.agentMessageId,
-      type: "retrieval_action",
       params: {
         relativeTimeFrame,
         query,
@@ -599,7 +629,7 @@ export async function* runRetrieval(
       functionCallId: action.functionCallId,
       documents: null,
       step: action.step,
-    },
+    }),
   };
 
   const now = Date.now();
@@ -840,10 +870,9 @@ export async function* runRetrieval(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new RetrievalAction({
       id: action.id,
       agentMessageId: agentMessage.agentMessageId,
-      type: "retrieval_action",
       params: {
         relativeTimeFrame: relativeTimeFrame,
         query: query,
@@ -852,6 +881,6 @@ export async function* runRetrieval(
       functionCallId: action.functionCallId,
       documents,
       step: action.step,
-    },
+    }),
   };
 }
