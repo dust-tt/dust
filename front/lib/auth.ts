@@ -488,8 +488,9 @@ export async function getAPIKey(
     });
   }
 
-  key.lastUsedAt = new Date();
-  await key.save();
+  if (!key.isSystem) {
+    await key.update({ lastUsedAt: new Date() });
+  }
 
   return new Ok(key);
 }
