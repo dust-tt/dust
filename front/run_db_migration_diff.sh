@@ -18,10 +18,13 @@ NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_
 echo "Second run: Capturing stable production state..."
 NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_output.txt
 
-
-# Pop the stash.
-echo "Restoring original changes..."
-git stash pop --quiet
+# Determine if there were any stashed changes
+stash_list=$(git stash list)
+if [[ $stash_list == *"Temp stash for running diff"* ]]; then
+  # Pop the stash if it exists.
+  echo "Restoring original changes..."
+  git stash pop --quiet
+fi
 
 # Checkout original branch and run command.
 echo "Checking out $original_branch branch..."
@@ -36,4 +39,3 @@ diff --unified=0 --color=always main_output.txt current_output.txt
 # Clean up the output files.
 echo "Cleaning up temporary files..."
 rm main_output.txt current_output.txt
-
