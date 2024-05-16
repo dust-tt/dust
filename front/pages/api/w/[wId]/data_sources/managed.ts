@@ -244,10 +244,6 @@ async function handler(
             plan.limits.connections.isWebCrawlerAllowed;
           assistantDefaultSelected = false;
           break;
-        case "gong":
-          isDataSourceAllowedInPlan = false;
-          assistantDefaultSelected = false;
-          break;
         default:
           assertNever(provider);
       }
