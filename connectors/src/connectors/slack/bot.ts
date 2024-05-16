@@ -12,7 +12,12 @@ import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import { Err, Ok, sectionFullText } from "@dust-tt/types";
+import {
+  Err,
+  isRetrievalActionType,
+  Ok,
+  sectionFullText,
+} from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
@@ -583,7 +588,7 @@ function _processCiteMention(
 ): string {
   const references: { [key: string]: RetrievalDocumentType } = {};
 
-  if (action && action.type === "retrieval_action" && action.documents) {
+  if (action && isRetrievalActionType(action) && action.documents) {
     action.documents.forEach((d) => {
       references[d.reference] = d;
     });
