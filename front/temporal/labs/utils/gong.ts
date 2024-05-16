@@ -8,7 +8,7 @@ export async function retrieveGongTranscripts(transcriptsConfiguration: LabsTran
   const fromDateTime = new Date(Date.now() - 2400 * 60 * 60 * 1000).toISOString();
   const newTranscripts = await fetch(`https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`, {
     headers: {
-      Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
+      Authorization: `Bearer `,
       'Content-Type': 'application/json'
     }
   });

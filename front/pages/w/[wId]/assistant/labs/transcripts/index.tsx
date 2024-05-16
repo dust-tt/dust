@@ -231,10 +231,7 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveOauthConnection = async (
-    connectionId: string,
-    provider: string
-  ) => {
+  const saveOauthConnection = async (connectionId: string, provider: string) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -284,10 +281,7 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveOauthConnection(
-        nangoConnectionId,
-        transcriptsConfigurationState.provider
-      );
+      await saveOauthConnection(nangoConnectionId, transcriptsConfigurationState.provider);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -314,10 +308,7 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveOauthConnection(
-        nangoConnectionId,
-        transcriptsConfigurationState.provider
-      );
+      await saveOauthConnection(nangoConnectionId, transcriptsConfigurationState.provider);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -376,16 +367,17 @@ export default function LabsTranscriptsIndex({
               ) : (
                 <Tooltip label="Gong integration coming soon. Contact us at team@dust.tt to be notified when it's ready!">
                   <div
-                    className="cursor-not-allowed rounded-md border border-gray-200 p-4"
+                    className="cursor-not-allowed rounded-md border p-4 border-gray-200"
                     style={{ opacity: 0.5 }}
                   >
-                    <img
+                  <img
                       src="/static/labs/transcripts/gong.jpeg"
                       style={{ maxHeight: "35px" }}
                     />
                   </div>
                 </Tooltip>
               )}
+
             </Page.Layout>
           )}
 
