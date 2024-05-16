@@ -27,16 +27,11 @@ import { useAgentConfiguration, useUser } from "@app/lib/swr";
 interface AssistantEditionMenuProps {
   agentConfigurationId: string;
   owner: WorkspaceType;
-  variant: "button" | "plain";
+  variant?: "button" | "plain";
   onAgentDeletion?: () => void;
   tryButton?: boolean;
-  showAddRemoveToList: boolean;
+  showAddRemoveToList?: boolean;
 }
-
-AssistantEditionMenu.defaultProps = {
-  variant: "plain",
-  showAddRemoveToList: false,
-};
 
 export function AssistantEditionMenu({
   // The `agentConfiguration` cannot be used directly as it isn't dynamically
@@ -44,9 +39,9 @@ export function AssistantEditionMenu({
   // propagation method from <ConversationMessage>.
   agentConfigurationId,
   owner,
-  variant,
+  variant = "plain",
   onAgentDeletion,
-  showAddRemoveToList,
+  showAddRemoveToList = false,
   tryButton,
 }: AssistantEditionMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
