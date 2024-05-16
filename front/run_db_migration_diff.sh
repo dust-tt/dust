@@ -42,6 +42,18 @@ NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > curre
 echo "Running diff..."
 diff --unified=0 --color=always main_output.txt current_output.txt
 
-# Clean up the output files.
-echo "Cleaning up temporary files..."
-rm main_output.txt current_output.txt
+# Run diff and extract only SQL statements.
+echo "Running diff and extracting SQL statements..."
+diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' > diff_output.txt
+
+# # Find the last migration version
+# last_version=$(ls ./migrations/db/ | grep -oP 'migration_\K\d+' | sort -nr | head -n1)
+# next_version=$((last_version + 1))
+# formatted_next_version=$(printf "%02d" $next_version)
+
+# # Save the latest changes to a new migration file
+# mv diff_output.txt "./migrations/db/migration_$formatted_next_version.sql"
+
+# # Clean up the output files.
+# echo "Cleaning up temporary files..."
+# # rm main_output.txt current_output.txt
