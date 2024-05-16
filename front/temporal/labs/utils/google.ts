@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { google } from "googleapis";
 
 import type { Authenticator } from "@app/lib/auth";
 import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
@@ -34,7 +35,7 @@ export async function retrieveRecentGoogleTranscripts(
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - 1);
 
-  const files = await googleapis.google
+  const files = await google
     .drive({ version: "v3", auth: googleAuth })
     .files.list({
       q:
@@ -88,4 +89,38 @@ export async function retrieveGoogleTranscripts(auth: Authenticator, transcripts
     fileIdsToProcess.push(fileId);
   }
   return fileIdsToProcess;
+}
+
+export async function retrieveGoogleTranscriptContent(auth: Authenticator, transcriptsConfiguration: LabsTranscriptsConfigurationResource, fileId: string, localLogger: Logger): Promise<{transcriptTitle: string, transcriptContent: string}> {
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
+    auth,
+    transcriptsConfiguration.userId
+  );
+  const drive = google.drive({ version: "v3", auth: googleAuth });
+
+  const metadataRes = await drive.files.get({
+    fileId: fileId,
+    fields: "name",
+  });
+
+  const contentRes = await drive.files.export({
+    fileId: fileId,
+    mimeType: "text/plain",
+  });
+
+  if (contentRes.status !== 200) {
+    localLogger.error(
+      { error: contentRes.statusText },
+      "Error exporting Google document."
+    );
+
+    throw new Error(
+      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
+    );
+  }
+
+  const transcriptTitle = metadataRes.data.name || "Untitled";
+  const transcriptContent = <string>contentRes.data;
+  
+  return {transcriptTitle, transcriptContent};
 }

@@ -57,3 +57,39 @@ export async function retrieveGongTranscripts(transcriptsConfiguration: LabsTran
 
   return fileIdsToProcess;
 }
+
+export async function retrieveGongTranscriptContent(transcriptsConfiguration: LabsTranscriptsConfigurationResource, fileId: string, localLogger: Logger): Promise<{transcriptTitle: string, transcriptContent: string}> {
+  const transcript = await fetch(`https://api.gong.io/v2/calls`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      callIds: [fileId]
+    }),
+  });
+
+  if (!transcript.ok) {
+    localLogger.error(
+      {},
+      "[processTranscriptActivity] Error fetching transcript from Gong. Skipping."
+    );
+    throw new Error("Error fetching transcript from Gong. Skipping.");
+  }
+
+  const transcriptData = await transcript.json();
+
+  if (!transcriptData || transcriptData.length === 0) {
+    localLogger.info(
+      {},
+      "[processTranscriptActivity] No transcript content found from Gong."
+    );
+    return {transcriptTitle: "", transcriptContent: ""};
+  }
+
+  const transcriptTitle = transcriptData.call.title || "Untitled";
+  const transcriptContent = transcriptData.call.transcript
+
+  return {transcriptTitle, transcriptContent};
+}

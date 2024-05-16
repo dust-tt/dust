@@ -1,66 +1,25 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import * as googleapis from "googleapis";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
-async function retrieveRecentTranscripts(
-  {
-    auth,
-    userId,
-  }: {
-    auth: Authenticator;
-    userId: ModelId;
-  },
-  logger: Logger
-) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    userId
-  );
-
-  if (!googleAuth) {
-    logger.error(
-      {},
-      "[retrieveRecentTranscripts] No Google auth found. Stopping."
-    );
-    return [];
-  }
-
-  // Only pull transcripts from last day.
-  // We could do from the last 15 minutes
-  // but we want to avoid missing any if the workflow is down or slow.
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 1);
-
-  const files = await googleapis.google
-    .drive({ version: "v3", auth: googleAuth })
-    .files.list({
-      q:
-        "name contains '- Transcript' and createdTime > '" +
-        cutoffDate.toISOString() +
-        "'",
-      fields: "files(id, name)",
-    });
-
-  const { files: filesData } = files.data;
-  if (!filesData || filesData.length === 0) {
-    logger.info({}, "[retrieveRecentTranscripts] No new files found.");
-    return [];
-  }
-
-  return filesData;
-}
+import {
+  retrieveGongTranscriptContent,
+  retrieveGongTranscripts,
+} from "@app/temporal/labs/utils/gong";
+import {
+  retrieveGoogleTranscriptContent,
+  retrieveGoogleTranscripts,
+} from "@app/temporal/labs/utils/google";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -107,17 +66,24 @@ export async function retrieveNewTranscriptsActivity(
   const transcriptsIdsToProcess: string[] = [];
 
   if (transcriptsConfiguration.provider == "google_drive") {
-    const transcriptsIds = await retrieveGoogleTranscripts(auth, transcriptsConfiguration, localLogger);
+    const transcriptsIds = await retrieveGoogleTranscripts(
+      auth,
+      transcriptsConfiguration,
+      localLogger
+    );
     transcriptsIdsToProcess.push(...transcriptsIds);
   }
 
   if (transcriptsConfiguration.provider == "gong") {
-    console.log('GONG TRANSCRIPTS')
-    const transcriptsIds = await retrieveGongTranscripts(transcriptsConfiguration, localLogger);
+    console.log("GONG TRANSCRIPTS");
+    const transcriptsIds = await retrieveGongTranscripts(
+      transcriptsConfiguration,
+      localLogger
+    );
     transcriptsIdsToProcess.push(...transcriptsIds);
-  } 
+  }
 
-  console.log('transcriptsIdsToProcess', transcriptsIdsToProcess)
+  console.log("transcriptsIdsToProcess", transcriptsIdsToProcess);
 
   return transcriptsIdsToProcess;
 }
@@ -184,52 +150,35 @@ export async function processTranscriptActivity(
     );
     return;
   }
-  
-  let transcriptTitle = ""
-  let transcriptContent = ""
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    transcriptsConfiguration.userId
-  );
-  const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
+  let transcriptTitle = "";
+  let transcriptContent = "";
 
-  const metadataRes = await drive.files.get({
-    fileId: fileId,
-    fields: "name",
-  });
-
-  const contentRes = await drive.files.export({
-    fileId: fileId,
-    mimeType: "text/plain",
-  });
-
-  if (contentRes.status !== 200) {
-    localLogger.error(
-      { error: contentRes.statusText },
-      "Error exporting Google document."
+  if (transcriptsConfiguration.provider == "google_drive") {
+    const result = await retrieveGoogleTranscriptContent(
+      auth,
+      transcriptsConfiguration,
+      fileId,
+      localLogger
     );
-
-    throw new Error(
-      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
-    );
+    transcriptTitle = result.transcriptTitle;
+    transcriptContent = result.transcriptContent;
   }
 
-  const transcriptTitle = metadataRes.data.name || "Untitled";
-  const transcriptContent = contentRes.data;
-  if (!transcriptContent) {
-    localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No content found. Stopping."
+  if (transcriptsConfiguration.provider == "gong") {
+    const result = await retrieveGongTranscriptContent(
+      transcriptsConfiguration,
+      fileId,
+      localLogger
     );
-    return;
+    transcriptTitle = result.transcriptTitle;
+    transcriptContent = result.transcriptContent;
   }
 
   const owner = auth.workspace();
 
   if (!owner) {
-    localLogger.error(
-      "[processTranscriptActivity] No owner found. Stopping."
-    );
+    localLogger.error("[processTranscriptActivity] No owner found. Stopping.");
     return;
   }
 
@@ -260,9 +209,7 @@ export async function processTranscriptActivity(
   );
 
   if (!agent) {
-    localLogger.error(
-      "[processTranscriptActivity] No agent found. Stopping."
-    );
+    localLogger.error("[processTranscriptActivity] No agent found. Stopping.");
     return;
   }
 
