@@ -599,6 +599,7 @@ export default function DataSourcesView({
                                 isDataSourceAllowedInPlan =
                                   planConnectionsLimits.isIntercomAllowed;
                                 break;
+                              case "gong":
                               case "webcrawler":
                                 // Web crawler connector is not displayed on this web page.
                                 isDataSourceAllowedInPlan = false;

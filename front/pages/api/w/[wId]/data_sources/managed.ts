@@ -128,6 +128,7 @@ async function handler(
         case "google_drive":
         case "intercom":
         case "notion":
+        case "gong":
         case "slack": {
           if (!auth.isAdmin()) {
             return apiError(req, res, {
@@ -233,6 +234,10 @@ async function handler(
         case "webcrawler":
           isDataSourceAllowedInPlan =
             plan.limits.connections.isWebCrawlerAllowed;
+          assistantDefaultSelected = false;
+          break;
+        case "gong":
+          isDataSourceAllowedInPlan = false;
           assistantDefaultSelected = false;
           break;
         default:

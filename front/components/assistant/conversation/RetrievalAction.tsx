@@ -229,6 +229,7 @@ export function providerFromDocument(
     "managed-github": "github",
     "managed-confluence": "confluence",
     "managed-intercom": "intercom",
+    "managed-gong": "gong",
   };
 
   for (const [key, value] of Object.entries(providerMap)) {

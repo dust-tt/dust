@@ -9,7 +9,6 @@ export const CONNECTOR_PROVIDERS = [
   "notion",
   "slack",
   "webcrawler",
-  // Labs
   "gong"
 ] as const;
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];

@@ -942,6 +942,7 @@ const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
   intercom:
     "You cannot select another Intercom Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
+  gong: "You cannot change the Gong Connection. Contact us at team@dust.tt if necessary.",
 };
 
 interface ConnectorUiConfig {
@@ -1002,6 +1003,14 @@ function getRenderingConfigForConnectorProvider(
         displayManagePermissionButton: false,
         addDataButtonLabel: null,
         displaySettingsButton: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
+    case "gong":
+      return {
+        displayDataSourceDetailsModal: false,
+        displayManagePermissionButton: false,
+        addDataButtonLabel: null,
+        displaySettingsButton: false,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
     default:
@@ -1226,6 +1235,7 @@ function ManagedDataSourceView({
                 case "github":
                 case "notion":
                 case "intercom":
+                case "gong":
                   return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
@@ -1332,6 +1342,7 @@ function ManagedDataSourceView({
                           Changes may impact existing assistants.
                         </>
                       );
+                    case "gong":
                     case "webcrawler":
                       return null;
                     default:

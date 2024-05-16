@@ -112,4 +112,16 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: GlobeAltIcon,
     isNested: true,
   },
+  gong: {
+    name: "Gong",
+    connectorProvider: "gong",
+    status: "preview",
+    hide: true,
+    description:
+      "Authorize Gong access to let Dust index your Gong calls and transcripts.",
+    limitations: null,
+    guideLink: null,
+    logoComponent: GlobeAltIcon,
+    isNested: false,
+  },
 };

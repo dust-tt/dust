@@ -40,6 +40,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     unselected: "none",
   },
   webcrawler: undefined,
+  gong: undefined,
 };
 
 export function PermissionTreeChildren({
