@@ -82,6 +82,8 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
 ] as const;
 
+export const MAX_INSTRUCTIONS_LENGTH = 1_000_000;
+
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
     Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
@@ -111,6 +113,7 @@ export function InstructionScreen({
   setEdited,
   resetAt,
   isUsingTemplate,
+  instructionsError,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
@@ -121,6 +124,7 @@ export function InstructionScreen({
   setEdited: (edited: boolean) => void;
   resetAt: number | null;
   isUsingTemplate: boolean;
+  instructionsError: string | null;
 }) {
   const editor = useEditor({
     extensions: [Document, Text, Paragraph],
@@ -142,12 +146,15 @@ export function InstructionScreen({
       editorProps: {
         attributes: {
           class:
-            "overflow-auto min-h-[240px] h-full border-structure-200 border bg-structure-50 transition-all " +
-            "duration-200 rounded-xl focus:border-action-300 focus:ring-action-300 p-2 focus:outline-action-200",
+            "overflow-auto min-h-[240px] h-full border bg-structure-50 transition-all " +
+            "duration-200 rounded-xl " +
+            (instructionsError
+              ? "border-warning-500 focus:ring-warning-500 p-2 focus:outline-warning-500 focus:border-warning-500"
+              : "border-structure-200 focus:ring-action-300 p-2 focus:outline-action-200 focus:border-action-300"),
         },
       },
     });
-  }, [editor]);
+  }, [editor, instructionsError]);
 
   useEffect(() => {
     if (resetAt != null) {
@@ -191,6 +198,11 @@ export function InstructionScreen({
           className="absolute bottom-0 left-0 right-0 top-0"
         />
       </div>
+      {instructionsError && (
+        <div className="-mt-3 ml-2 text-sm text-warning-500">
+          {instructionsError}
+        </div>
+      )}
       {!isUsingTemplate && (
         <Suggestions
           owner={owner}

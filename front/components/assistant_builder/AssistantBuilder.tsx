@@ -51,7 +51,10 @@ import ActionsScreen, {
   isActionValid,
 } from "@app/components/assistant_builder/ActionsScreen";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
-import { InstructionScreen } from "@app/components/assistant_builder/InstructionScreen";
+import {
+  InstructionScreen,
+  MAX_INSTRUCTIONS_LENGTH,
+} from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
   removeLeadingAt,
   validateHandle,
@@ -313,6 +316,10 @@ export default function AssistantBuilder({
     string | null
   >(null);
 
+  const [instructionsError, setInstructionsError] = useState<string | null>(
+    null
+  );
+
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   const [rightPanelStatus, setRightPanelStatus] =
@@ -416,8 +423,21 @@ export default function AssistantBuilder({
       valid = false;
     }
 
+    // instructions
     if (!builderState.instructions?.trim()) {
       valid = false;
+    }
+
+    if (
+      builderState.instructions &&
+      builderState.instructions.length > MAX_INSTRUCTIONS_LENGTH
+    ) {
+      setInstructionsError(
+        `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
+      );
+      valid = false;
+    } else {
+      setInstructionsError(null);
     }
 
     if (!builderState.actions.every((a) => isActionValid(a))) {
@@ -575,6 +595,7 @@ export default function AssistantBuilder({
                         setEdited={setEdited}
                         resetAt={instructionsResetAt}
                         isUsingTemplate={template !== null}
+                        instructionsError={instructionsError}
                       />
                     );
                   case "actions":
