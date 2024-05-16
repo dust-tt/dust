@@ -122,6 +122,7 @@ interface RetrievalActionBlob {
     topK: number;
   };
   functionCallId: string | null;
+  functionCallName: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
 }
@@ -134,6 +135,7 @@ export class RetrievalAction extends BaseAction {
     topK: number;
   };
   readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
   readonly documents: RetrievalDocumentType[] | null;
   readonly step: number;
 
@@ -144,6 +146,7 @@ export class RetrievalAction extends BaseAction {
     this.params = blob.params;
     this.documents = blob.documents;
     this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
     this.step = blob.step;
   }
 
@@ -179,7 +182,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       role: "action" as const,
-      name: "search_data_sources",
+      name: this.functionCallName ?? "search_data_sources",
       content,
     };
   }
@@ -196,7 +199,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: "search_data_sources",
+      name: this.functionCallName ?? "search_data_sources",
       arguments: JSON.stringify(params),
     };
   }
@@ -454,6 +457,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
           topK: action.topK,
         },
         functionCallId: action.functionCallId,
+        functionCallName: action.functionCallName,
         documents,
         step: action.step,
       })
@@ -608,6 +612,7 @@ export async function* runRetrieval(
     topK,
     retrievalConfigurationId: actionConfiguration.sId,
     functionCallId,
+    functionCallName: actionConfiguration.name,
     agentMessageId: agentMessage.agentMessageId,
     step: step,
   });
@@ -627,6 +632,7 @@ export async function* runRetrieval(
         topK,
       },
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       documents: null,
       step: action.step,
     }),
@@ -879,6 +885,7 @@ export async function* runRetrieval(
         topK,
       },
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       documents,
       step: action.step,
     }),

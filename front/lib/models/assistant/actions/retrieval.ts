@@ -158,6 +158,7 @@ export class AgentRetrievalAction extends Model<
   declare topK: number;
 
   declare functionCallId: string | null;
+  declare functionCallName: string | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare step: number;
@@ -200,6 +201,10 @@ AgentRetrievalAction.init(
       allowNull: false,
     },
     functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
       type: DataTypes.STRING,
       allowNull: true,
     },

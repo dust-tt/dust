@@ -84,5 +84,6 @@ export interface ProcessActionType extends BaseAction {
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
   functionCallId: string | null;
+  functionCallName: string | null;
   step: number;
 }

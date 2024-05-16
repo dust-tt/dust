@@ -43,6 +43,7 @@ interface DustAppRunActionBlob {
   } | null;
   output: unknown | null;
   functionCallId: string | null;
+  functionCallName: string | null;
   step: number;
 }
 
@@ -59,6 +60,7 @@ export class DustAppRunAction extends BaseAction {
   } | null;
   readonly output: unknown | null;
   readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
   readonly step: number;
 
   constructor(blob: DustAppRunActionBlob) {
@@ -72,6 +74,7 @@ export class DustAppRunAction extends BaseAction {
     this.runningBlock = blob.runningBlock;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
     this.step = blob.step;
   }
 
@@ -92,7 +95,7 @@ export class DustAppRunAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.appName,
+      name: this.functionCallName ?? this.appName,
       arguments: JSON.stringify(this.params),
     };
   }
@@ -260,6 +263,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       runningBlock: null,
       output: action.output,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
     });
@@ -362,6 +366,7 @@ export async function* runDustApp(
     appName: app.name,
     params,
     functionCallId,
+    functionCallName: actionConfiguration.name,
     agentMessageId: agentMessage.agentMessageId,
     step,
   });
@@ -380,6 +385,7 @@ export async function* runDustApp(
       runningBlock: null,
       output: null,
       functionCallId,
+      functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
     }),
@@ -453,6 +459,7 @@ export async function* runDustApp(
           appName: app.name,
           params,
           functionCallId,
+          functionCallName: actionConfiguration.name,
           runningBlock: {
             type: event.content.block_type,
             name: event.content.name,
@@ -511,6 +518,7 @@ export async function* runDustApp(
       appName: app.name,
       params,
       functionCallId,
+      functionCallName: actionConfiguration.name,
       runningBlock: null,
       output: lastBlockOutput,
       agentMessageId: agentMessage.agentMessageId,

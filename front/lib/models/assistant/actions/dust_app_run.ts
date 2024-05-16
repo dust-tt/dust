@@ -112,6 +112,7 @@ export class AgentDustAppRunAction extends Model<
   declare params: DustAppParameters;
   declare output: unknown | null;
   declare functionCallId: string | null;
+  declare functionCallName: string | null;
 
   declare step: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
@@ -160,6 +161,10 @@ AgentDustAppRunAction.init(
       allowNull: true,
     },
     functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
       type: DataTypes.STRING,
       allowNull: true,
     },

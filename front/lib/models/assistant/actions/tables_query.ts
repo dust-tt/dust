@@ -169,6 +169,7 @@ export class AgentTablesQueryAction extends Model<
   declare params: unknown | null;
   declare output: unknown | null;
   declare functionCallId: string | null;
+  declare functionCallName: string | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 
@@ -207,6 +208,10 @@ AgentTablesQueryAction.init(
       allowNull: true,
     },
     functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
       type: DataTypes.STRING,
       allowNull: true,
     },
