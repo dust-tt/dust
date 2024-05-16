@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Ensure NODE_ENV is not set to production.
+if [ "$NODE_ENV" == "production" ]; then
+  echo "Error: NODE_ENV is set to production. Aborting script."
+  exit 1
+fi
+
 # Stash any uncommitted changes.
 echo "Stashing uncommitted changes..."
 git stash push -m "Temp stash for running diff" --quiet
