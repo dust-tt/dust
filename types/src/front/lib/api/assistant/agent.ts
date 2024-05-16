@@ -88,11 +88,13 @@ export type AgentMessageSuccessEvent = {
   message: AgentMessageType;
 };
 
-export type AgentActionEvent = {
-  type: "agent_action";
+export type AgentActionsEvent = {
+  type: "agent_actions";
   created: number;
-  action: AgentActionConfigurationType;
-  inputs: Record<string, string | boolean | number>;
-  specification: AgentActionSpecification | null;
-  functionCallId: string | null;
+  actions: Array<{
+    action: AgentActionConfigurationType;
+    inputs: Record<string, string | boolean | number>;
+    specification: AgentActionSpecification | null;
+    functionCallId: string | null;
+  }>;
 };

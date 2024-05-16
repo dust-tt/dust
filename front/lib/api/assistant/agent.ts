@@ -1,6 +1,6 @@
 import type {
   AgentActionConfigurationType,
-  AgentActionEvent,
+  AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -15,7 +15,6 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  RetrievalActionType,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -25,10 +24,8 @@ import {
   DustProdActionRegistry,
   isDustAppRunConfiguration,
   isProcessConfiguration,
-  isRetrievalActionType,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -172,27 +169,52 @@ export async function* runMultiActionsAgentLoop(
           );
           yield event;
           return;
-        case "agent_action":
+        case "agent_actions":
           localLogger.info(
             {
               elapsed: Date.now() - now,
             },
             "[ASSISTANT_TRACE] Action inputs generation"
           );
-          const { action, inputs, functionCallId, specification } = event;
-          const actionEventStream = runAction(auth, {
-            configuration: configuration,
-            actionConfiguration: action,
-            conversation,
-            userMessage,
-            agentMessage,
-            inputs,
-            specification,
-            functionCallId,
-            step: i,
-          });
-          for await (const actionEvent of actionEventStream) {
-            yield actionEvent;
+
+          const actionIndexByType: Record<string, number> = {};
+          const eventStreamGenerators = event.actions.map(
+            ({ action, inputs, functionCallId, specification }) => {
+              const index = actionIndexByType[action.type] ?? 0;
+              actionIndexByType[action.type] = index + 1;
+              return runAction(auth, {
+                configuration: configuration,
+                actionConfiguration: action,
+                conversation,
+                userMessage,
+                agentMessage,
+                inputs,
+                specification,
+                functionCallId,
+                step: i,
+                indexForType: index,
+              });
+            }
+          );
+
+          const eventStreamPromises = eventStreamGenerators.map((gen) =>
+            gen.next()
+          );
+          while (eventStreamPromises.length > 0) {
+            const winner = await Promise.race(
+              eventStreamPromises.map(async (p, i) => {
+                return { v: await p, offset: i };
+              })
+            );
+            if (winner.v.done) {
+              eventStreamGenerators.splice(winner.offset, 1);
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              eventStreamPromises.splice(winner.offset, 1);
+            } else {
+              eventStreamPromises[winner.offset] =
+                eventStreamGenerators[winner.offset].next();
+              yield winner.v.value;
+            }
           }
           break;
 
@@ -259,7 +281,7 @@ export async function* runMultiActionsAgent(
   | GenerationSuccessEvent
   | GenerationCancelEvent
   | GenerationTokensEvent
-  | AgentActionEvent
+  | AgentActionsEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -389,14 +411,14 @@ export async function* runMultiActionsAgent(
   const { eventStream } = res.value;
 
   const output: {
-    id: string | null;
-    name: string | null;
-    arguments: Record<string, string | boolean | number> | null;
+    actions: Array<{
+      functionCallId: string | null;
+      name: string | null;
+      arguments: Record<string, string | boolean | number> | null;
+    }>;
     generation: string | null;
   } = {
-    id: null,
-    name: null,
-    arguments: null,
+    actions: [],
     generation: null,
   };
 
@@ -513,14 +535,8 @@ export async function* runMultiActionsAgent(
 
         if (event.content.block_name === "OUTPUT" && e.value) {
           const v = e.value as any;
-          if ("id" in v) {
-            output.id = v.id;
-          }
-          if ("name" in v) {
-            output.name = v.name;
-          }
-          if ("arguments" in v) {
-            output.arguments = v.arguments;
+          if ("actions" in v) {
+            output.actions = v.actions;
           }
           if ("generation" in v) {
             output.generation = v.generation;
@@ -534,7 +550,7 @@ export async function* runMultiActionsAgent(
     await redis.quit();
   }
 
-  if (!output.name) {
+  if (!output.actions.length) {
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -548,34 +564,40 @@ export async function* runMultiActionsAgent(
     return;
   }
 
-  output.arguments = output.arguments ?? {};
+  const actions: AgentActionsEvent["actions"] = [];
+  for (const a of output.actions) {
+    const action = agentConfiguration.actions.find((ac) => ac.name === a.name);
 
-  const action = agentConfiguration.actions.find((a) => a.name === output.name);
+    if (!action) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "action_not_found",
+          message: `Action ${a.name} not found`,
+        },
+      } satisfies AgentErrorEvent;
+      return;
+    }
 
-  const spec = specifications.find((s) => s.name === output.name) ?? null;
+    const spec = specifications.find((s) => s.name === a.name) ?? null;
 
-  if (!action) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "action_not_found",
-        message: `Action ${output.name} not found`,
-      },
-    } satisfies AgentErrorEvent;
-    return;
+    actions.push({
+      action,
+      inputs: a.arguments ?? {},
+      specification: spec,
+      functionCallId: a.functionCallId ?? null,
+    });
   }
 
   yield {
-    type: "agent_action",
+    type: "agent_actions",
     created: Date.now(),
-    action,
-    inputs: output.arguments,
-    functionCallId: output.id,
-    specification: spec,
-  } satisfies AgentActionEvent;
+    actions,
+  };
+
   return;
 }
 
@@ -591,6 +613,7 @@ async function* runAction(
     specification,
     functionCallId,
     step,
+    indexForType,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: AgentActionConfigurationType;
@@ -601,22 +624,13 @@ async function* runAction(
     specification: AgentActionSpecification | null;
     functionCallId: string | null;
     step: number;
+    indexForType: number;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
   const now = Date.now();
-
-  const existingRetrievalActions = agentMessage.actions.filter(
-    isRetrievalActionType
-  ) as RetrievalActionType[];
-  const existingRefsCount = removeNulls(
-    existingRetrievalActions
-      .map((r) => r.documents)
-      .flat()
-      .map((d) => d?.reference)
-  ).length;
 
   if (isRetrievalConfiguration(actionConfiguration)) {
     const eventStream = runRetrieval(auth, {
@@ -627,7 +641,8 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
-      refsOffset: existingRefsCount,
+      // We allocate 32 refs per retrieval action.
+      refsOffset: indexForType * 32,
     });
 
     for await (const event of eventStream) {
