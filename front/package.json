@@ -11,7 +11,7 @@
     "test": "jest",
     "coverage": "jest --coverage",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./creeate_db_migration_file.sh"
+    "create-db-migration": "./create_db_migration_file.sh"
   },
   "dependencies": {
     "@amplitude/ampli": "^1.35.0",
