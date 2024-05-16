@@ -2,7 +2,7 @@ import type {
   ProcessSchemaPropertyType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { cloneBaseConfig } from "@dust-tt/types";
+import { cloneBaseConfig, ioTsParsePayload } from "@dust-tt/types";
 import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
 import { DustProdActionRegistry } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -41,18 +41,16 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation =
-        InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema.decode(
-          req.body
-        );
-
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyRes = ioTsParsePayload(
+        req.body,
+        InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema
+      );
+      if (bodyRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyRes.error.join(", ")}`,
           },
         });
       }
@@ -69,7 +67,7 @@ async function handler(
         config,
         [
           {
-            instructions: bodyValidation.right.instructions,
+            instructions: bodyRes.value.instructions,
           },
         ]
       );
