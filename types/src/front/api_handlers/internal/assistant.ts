@@ -73,3 +73,8 @@ export const BuilderSuggestionsResponseBodySchema = t.union([
 export type BuilderSuggestionsType = t.TypeOf<
   typeof BuilderSuggestionsResponseBodySchema
 >;
+
+export const InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema =
+  t.type({
+    instructions: t.string,
+  });

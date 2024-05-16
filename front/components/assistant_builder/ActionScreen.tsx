@@ -462,6 +462,7 @@ export default function ActionScreen({
         <ActionModeSection show={action?.type === "PROCESS" && !noDataSources}>
           <ActionProcess
             owner={owner}
+            instructions={builderState.instructions}
             actionConfiguration={
               action?.type === "PROCESS" ? action.configuration : null
             }
