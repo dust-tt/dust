@@ -691,31 +691,6 @@ export async function retrieveGoogleDriveContentNodes(
     );
   })();
 
-  await concurrentExecutor(
-    drivesOrTopLevelFolders,
-    async (f): Promise<ContentNode> => {
-      const sourceUrl = `https://drive.google.com/drive/folders/${f.folderId}`;
-      return {
-        provider: "google_drive",
-        internalId: f.folderId,
-        parentInternalId: null,
-        type: "folder",
-        title: "", // temporary fix: an empty title will be interpreted as needing title fetch in front
-        dustDocumentId: null,
-        lastUpdatedAt: f.updatedAt.getTime(),
-        sourceUrl,
-        expandable: await isDriveObjectExpandable({
-          objectId: f.folderId,
-          mimeType: "application/vnd.google-apps.folder",
-          connectorId,
-          viewType,
-        }),
-        permission: "read",
-      };
-    },
-    { concurrency: 4 }
-  );
-
   const sheetNodes: ContentNode[] = sheets.map((s) => ({
     provider: "google_drive",
     internalId: getGoogleSheetContentNodeInternalId(
