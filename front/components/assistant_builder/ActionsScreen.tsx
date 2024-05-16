@@ -291,6 +291,7 @@ export default function ActionsScreen({
                         return (
                           <ActionProcess
                             owner={owner}
+                            instructions={builderState.instructions}
                             actionConfiguration={a.configuration}
                             dataSources={dataSources}
                             updateAction={(setNewAction) => {
