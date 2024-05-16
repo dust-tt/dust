@@ -220,6 +220,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "assistant-builder-process-action-schema-generator": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "b36c7416bd",
+      appHash:
+        "1ca7b9568681b06ef6cc0830239a479644a3ecc203c812983f3386a72e214d48",
+    },
+    config: {
+      MODEL: {
+        provider_id: GPT_4O_MODEL_CONFIG.providerId,
+        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        function_call: "set_extraction_schema",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-v2-multi-actions-agent": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
