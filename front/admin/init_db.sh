@@ -3,6 +3,12 @@
 # Default to safe mode
 SAFE_MODE=1
 
+# Ensure NODE_ENV is not set to production.
+if [ "$NODE_ENV" == "production" ]; then
+    echo "Error: This script is not meant to be run in a production environment. Aborting."
+    exit 1
+fi
+
 BRANCH_NAME=main
 
 # Check environment variable to allow unsafe operations
@@ -37,7 +43,7 @@ if [[ $SAFE_MODE -eq 1 ]]; then
     mkdir -p ~/.ssh
     cp /etc/github-deploykey-deploybox/github-deploykey-deploybox ~/.ssh/github-deploykey-deploybox
     chmod 600 ~/.ssh/github-deploykey-deploybox
-     
+
 
     # Check if local is up-to-date with remote main
     git fetch origin "$BRANCH_NAME" && git diff --exit-code "origin/$BRANCH_NAME" > /dev/null
