@@ -6,7 +6,7 @@ if [ "$NODE_ENV" == "production" ]; then
   exit 1
 fi
 
-# Get current date in YYYYMMDD format
+# Get current date in YYYYMMDD format.
 current_date=$(date +%Y%m%d)
 
 # Stash any uncommitted changes.
@@ -27,7 +27,7 @@ NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_
 echo "Second run: Capturing stable production state..."
 NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > main_output.txt
 
-# Determine if there were any stashed changes
+# Determine if there were any stashed changes.
 stash_list=$(git stash list)
 if [[ $stash_list == *"Temp stash for running diff"* ]]; then
   # Pop the stash if it exists.
@@ -55,7 +55,7 @@ last_version=$(ls ./migrations/db | grep -oE 'migration_[0-9]{8}_([0-9]+).sql' |
 next_version=$(printf "%02d" $((10#$last_version + 1)))
 echo "Creating SQL migration $next_version."
 
-# Save the latest changes to a new migration file
+# Save the latest changes to a new migration file.
 mv diff_output.txt "./migrations/db/migration_${current_date}_${next_version}.sql"
 
 # Clean up the output files.
