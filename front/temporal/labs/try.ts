@@ -1,6 +1,6 @@
 import { retrieveNewTranscriptsActivity } from "./activities";
 
-const transcriptsConfigurationId = 29;
+const transcriptsConfigurationId = 30;
 
 async function main() {
   await retrieveNewTranscriptsActivity(transcriptsConfigurationId);

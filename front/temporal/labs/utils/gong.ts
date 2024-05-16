@@ -1,3 +1,4 @@
+import { getAccessTokenFromNango } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
@@ -11,11 +12,25 @@ export async function retrieveGongTranscripts(
   const fromDateTime = new Date(
     Date.now() - 2400 * 60 * 60 * 1000
   ).toISOString();
+
+  if (!transcriptsConfiguration.connectionId) {
+    localLogger.error(
+      {},
+      "[retrieveGongTranscripts] No connectionId found. Skipping."
+    );
+    return [];
+  }
+
+  const gongAccessToken = await getAccessTokenFromNango(
+    "gong-dev",
+    transcriptsConfiguration.connectionId
+  );
+
   const newTranscripts = await fetch(
     `https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`,
     {
       headers: {
-        Authorization: `Bearer `,
+        Authorization: `Bearer ${gongAccessToken}`,
         "Content-Type": "application/json",
       },
     }

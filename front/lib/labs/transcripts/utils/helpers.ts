@@ -51,3 +51,16 @@ export async function getGoogleAuthFromUserTranscriptsConfiguration(
     transcriptsConfiguration.connectionId
   );
 }
+
+
+export async function getAccessTokenFromNango(
+  nangoIntegrationId: NangoIntegrationId,
+  nangoConnectionId: NangoConnectionId
+): Promise<string> {
+  const res: Connection = await nango.getConnection(
+    nangoIntegrationId,
+    nangoConnectionId
+  );
+
+  return res.credentials.raw.access_token;
+}
