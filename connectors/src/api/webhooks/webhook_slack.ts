@@ -9,13 +9,12 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannel, SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { setSlackConnectorPermissions } from "@connectors/connectors/slack";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -183,11 +182,62 @@ const _webhookSlackAPIHandler = async (
     switch (event?.type) {
       case "app_mention": {
         const slackMessage = event?.text;
-        if (slackMessage && slackMessage.trim() === "!watch") {
-          await setSlackConnectorPermissions(
-            req.params.connector_id as number,
-            { permission: "read_write" }
-          )
+        const cleanedMessage = slackMessage?.replace(/<[^>]*>/g, "") || null;
+
+        if (cleanedMessage) {
+          switch (cleanedMessage.trim()) {
+            case "!watch": {
+              const teamId = req.body.team_id;
+              const slackChannelId = req.body.event?.channel;
+              const slackConfiguration = await SlackConfigurationModel.findOne({
+                where: {
+                  slackTeamId: teamId,
+                },
+              });
+              if (!slackConfiguration || !slackChannelId) {
+                return apiError(req, res, {
+                  api_error: {
+                    type: "slack_configuration_not_found",
+                    message: `Slack configuration not found for teamId ${teamId}`,
+                  },
+                  status_code: 404,
+                });
+              }
+              const connectorId = slackConfiguration.connectorId;
+              const connector = await ConnectorResource.fetchById(connectorId);
+              if (!connector) {
+                return apiError(req, res, {
+                  api_error: {
+                    type: "connector_not_found",
+                    message: `Connector ${req.params.connector_id} not found`,
+                  },
+                  status_code: 404,
+                });
+              }
+              const slackChannel = await SlackChannel.findOne({
+                where: {
+                  connectorId: connectorId,
+                  slackChannelId: slackChannelId,
+                },
+              });
+
+              if (!slackChannel) {
+                return apiError(req, res, {
+                  api_error: {
+                    type: "slack_channel_not_found",
+                    message: `Slack channel ${slackChannelId} not found`,
+                  },
+                  status_code: 404,
+                });
+              }
+              try {
+                slackChannel.permission = "read_write";
+                await slackChannel.save();
+              } catch (error) {
+                console.log("Error while saving channel", error);
+              }
+            }
+          }
         }
         await handleChatBot(req, res, logger);
         break;
