@@ -1,4 +1,4 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { Err, WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
@@ -15,6 +15,8 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -181,64 +183,6 @@ const _webhookSlackAPIHandler = async (
 
     switch (event?.type) {
       case "app_mention": {
-        const slackMessage = event?.text;
-        const cleanedMessage = slackMessage?.replace(/<[^>]*>/g, "") || null;
-
-        if (cleanedMessage) {
-          switch (cleanedMessage.trim()) {
-            case "!watch": {
-              const teamId = req.body.team_id;
-              const slackChannelId = req.body.event?.channel;
-              const slackConfiguration = await SlackConfigurationModel.findOne({
-                where: {
-                  slackTeamId: teamId,
-                },
-              });
-              if (!slackConfiguration || !slackChannelId) {
-                return apiError(req, res, {
-                  api_error: {
-                    type: "slack_configuration_not_found",
-                    message: `Slack configuration not found for teamId ${teamId}`,
-                  },
-                  status_code: 404,
-                });
-              }
-              const connectorId = slackConfiguration.connectorId;
-              const connector = await ConnectorResource.fetchById(connectorId);
-              if (!connector) {
-                return apiError(req, res, {
-                  api_error: {
-                    type: "connector_not_found",
-                    message: `Connector ${req.params.connector_id} not found`,
-                  },
-                  status_code: 404,
-                });
-              }
-              const slackChannel = await SlackChannel.findOne({
-                where: {
-                  connectorId: connectorId,
-                  slackChannelId: slackChannelId,
-                },
-              });
-
-              if (!slackChannel) {
-                return apiError(req, res, {
-                  api_error: {
-                    type: "slack_channel_not_found",
-                    message: `Slack channel ${slackChannelId} not found`,
-                  },
-                  status_code: 404,
-                });
-              }
-              try {
-                slackChannel.permission = "read_write";
-                await slackChannel.save();
-              } catch (error) {
-                console.log("Error while saving channel", error);
-              }
-            }
-          }
-        }
         await handleChatBot(req, res, logger);
         break;
       }
@@ -429,7 +373,81 @@ const _webhookSlackAPIHandler = async (
         }
         break;
       }
+      case "channel_created": {
+        const teamId = req.body.team_id;
+        const slackChannelId = req.body.event?.channel;
+        const slackConfiguration = await SlackConfigurationModel.findOne({
+          where: {
+            slackTeamId: teamId,
+          },
+        });
+        if (!slackConfiguration || !slackChannelId) {
+          return apiError(req, res, {
+            api_error: {
+              type: "slack_configuration_not_found",
+              message: `Slack configuration not found for teamId ${teamId}`,
+            },
+            status_code: 404,
+          });
+        }
+        const connectorId = slackConfiguration.connectorId;
+        const connector = await ConnectorResource.fetchById(connectorId);
+        if (!connector) {
+          return apiError(req, res, {
+            api_error: {
+              type: "connector_not_found",
+              message: `Connector ${req.params.connector_id} not found`,
+            },
+            status_code: 404,
+          });
+        }
+        const slackClient = await getSlackClient(connectorId);
+        const remoteChannel = await slackClient.conversations.info({
+          channel: slackChannelId
+        })
+        const remoteChannelName = remoteChannel.channel?.name;
 
+        if (!remoteChannel.ok || !remoteChannelName) {
+          logger.error(
+            {
+              connectorId,
+              channelId: slackChannelId,
+              error: remoteChannel.error
+            }
+          )
+          return new Err(
+            new Error("Could not get the Slack channel information.")
+          );
+        }
+
+        try {
+          await SlackChannel.create({
+            connectorId: connectorId,
+            slackChannelId: slackChannelId,
+            slackChannelName: remoteChannelName,
+            permission: "read_write"
+          })
+        } catch (error) {
+          logger.error({
+            connectorId,
+            channelId: slackChannelId,
+            error: remoteChannel.error
+          })
+          return new Err(
+            new Error("Could not create the Slack channel.")
+          );
+        }
+        const joinChannelRes = await joinChannel(
+          connectorId,
+          slackChannelId
+        );
+        if (joinChannelRes.isErr()) {
+          throw new Error(
+            `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
+          );
+        }
+        break;
+      }
       /**
        * `channel_left`, `channel_deleted` handler.
        */
