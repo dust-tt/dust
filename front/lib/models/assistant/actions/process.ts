@@ -139,6 +139,7 @@ export class AgentProcessAction extends Model<
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: ProcessActionOutputsType | null;
   declare functionCallId: string | null;
+  declare functionCallName: string | null;
 
   declare step: number;
 
@@ -182,6 +183,10 @@ AgentProcessAction.init(
       allowNull: true,
     },
     functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
       type: DataTypes.STRING,
       allowNull: true,
     },

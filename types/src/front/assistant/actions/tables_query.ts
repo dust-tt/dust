@@ -22,6 +22,7 @@ export interface TablesQueryActionType extends BaseAction {
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
   functionCallId: string | null;
+  functionCallName: string | null;
   agentMessageId: ModelId;
   step: number;
 }

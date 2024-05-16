@@ -34,6 +34,7 @@ interface TablesQueryActionBlob {
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
   functionCallId: string | null;
+  functionCallName: string | null;
   step: number;
 }
 
@@ -42,6 +43,7 @@ export class TablesQueryAction extends BaseAction {
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
   readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
   readonly step: number;
 
   constructor(blob: TablesQueryActionBlob) {
@@ -51,6 +53,7 @@ export class TablesQueryAction extends BaseAction {
     this.params = blob.params;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
     this.step = blob.step;
   }
 
@@ -74,7 +77,7 @@ export class TablesQueryAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: "query_tables",
+      name: this.functionCallName ?? "query_tables",
       arguments: JSON.stringify(this.params),
     };
   }
@@ -114,6 +117,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
     });
@@ -236,6 +240,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
     }),
@@ -372,6 +377,7 @@ export async function* runTablesQuery(
             params: action.params as DustAppParameters,
             output: tmpOutput as Record<string, string | number | boolean>,
             functionCallId: action.functionCallId,
+            functionCallName: action.functionCallName,
             agentMessageId: agentMessage.id,
             step: action.step,
           }),
@@ -402,6 +408,7 @@ export async function* runTablesQuery(
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
     }),
