@@ -22,7 +22,6 @@ import {
   isAgentMessageType,
   isBaseActionClass,
   isContentFragmentType,
-  isProcessActionType,
   isRetrievalActionType,
   isRetrievalConfiguration,
   isUserMessageType,
@@ -32,11 +31,6 @@ import {
 import moment from "moment-timezone";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  renderProcessActionForModel,
-  renderProcessActionForMultiActionsModel,
-  renderProcessActionFunctionCall,
-} from "@app/lib/api/assistant/actions/process";
 import {
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
@@ -102,9 +96,7 @@ export async function renderConversationForModel({
       // Eg: During the conversation title generation step.
       const action = getDeprecatedSingleAction(m.actions);
       if (action && !excludeActions) {
-        if (isProcessActionType(action)) {
-          messages.unshift(renderProcessActionForModel(action));
-        } else if (isBaseActionClass(action)) {
+        if (isBaseActionClass(action)) {
           if (isRetrievalActionType(action) && includeRetrieval) {
             foundRetrieval = true;
           }
@@ -298,12 +290,7 @@ export async function renderConversationForModelMultiActions({
       const function_messages = [];
 
       for (const action of actions) {
-        if (isProcessActionType(action)) {
-          function_messages.unshift(
-            renderProcessActionForMultiActionsModel(action)
-          );
-          function_calls.unshift(renderProcessActionFunctionCall(action));
-        } else if (isBaseActionClass(action)) {
+        if (isBaseActionClass(action)) {
           function_messages.unshift(action.renderForMultiActionsModel());
           function_calls.unshift(action.renderForFunctionCall());
         } else {
