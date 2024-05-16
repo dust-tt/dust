@@ -320,6 +320,7 @@ export async function renderConversationForModelMultiActions({
           assertNever(action);
         }
       }
+
       if (function_messages.length > 0) {
         messages.unshift(...function_messages);
       }
