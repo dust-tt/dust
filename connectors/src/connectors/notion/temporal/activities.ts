@@ -972,34 +972,44 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
   const pageSize = 500;
 
+  let offset = 0;
   const pagesNotSeenInGarbageCollectionRun: Array<{
     lastSeenTs: Date;
     resourceType: "page";
     resourceId: string;
     skipReason: string | null;
   }> = [];
-  const pages = (
-    await NotionPage.findAll({
-      where: {
-        connectorId,
-        lastSeenTs: {
-          [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+  for (;;) {
+    const pages = (
+      await NotionPage.findAll({
+        where: {
+          connectorId,
+          lastSeenTs: {
+            [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          },
         },
-      },
-      attributes: ["lastSeenTs", "notionPageId", "skipReason"],
-    })
-  )
-    .filter((p) => !pageIdsSeenInRun.has(p.notionPageId))
-    .map((p) => ({
-      lastSeenTs: p.lastSeenTs,
-      resourceType: "page" as const,
-      resourceId: p.notionPageId,
-      skipReason: p.skipReason || null,
-    }));
+        attributes: ["lastSeenTs", "notionPageId", "skipReason"],
+        limit: pageSize,
+        offset,
+      })
+    )
+      .filter((p) => !pageIdsSeenInRun.has(p.notionPageId))
+      .map((p) => ({
+        lastSeenTs: p.lastSeenTs,
+        resourceType: "page" as const,
+        resourceId: p.notionPageId,
+        skipReason: p.skipReason || null,
+      }));
 
-  pagesNotSeenInGarbageCollectionRun.push(...pages);
+    if (pages.length === 0) {
+      break;
+    }
 
-  let offset = 0;
+    pagesNotSeenInGarbageCollectionRun.push(...pages);
+    offset += pageSize;
+  }
+
+  offset = 0;
   const databasesNotSeenInGarbageCollectionRun: Array<{
     lastSeenTs: Date;
     resourceType: "database";
