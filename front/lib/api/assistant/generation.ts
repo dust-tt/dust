@@ -38,9 +38,6 @@ import {
   renderProcessActionFunctionCall,
 } from "@app/lib/api/assistant/actions/process";
 import {
-  rendeRetrievalActionFunctionCall,
-  renderRetrievalActionForModel,
-  renderRetrievalActionForMultiActionsModel,
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -105,14 +102,12 @@ export async function renderConversationForModel({
       // Eg: During the conversation title generation step.
       const action = getDeprecatedSingleAction(m.actions);
       if (action && !excludeActions) {
-        if (isRetrievalActionType(action)) {
-          if (includeRetrieval) {
-            foundRetrieval = true;
-            messages.unshift(renderRetrievalActionForModel(action));
-          }
-        } else if (isProcessActionType(action)) {
+        if (isProcessActionType(action)) {
           messages.unshift(renderProcessActionForModel(action));
         } else if (isBaseActionClass(action)) {
+          if (isRetrievalActionType(action) && includeRetrieval) {
+            foundRetrieval = true;
+          }
           messages.unshift(action.renderForModel());
         } else {
           assertNever(action);
@@ -303,12 +298,7 @@ export async function renderConversationForModelMultiActions({
       const function_messages = [];
 
       for (const action of actions) {
-        if (isRetrievalActionType(action)) {
-          function_messages.unshift(
-            renderRetrievalActionForMultiActionsModel(action)
-          );
-          function_calls.unshift(rendeRetrievalActionFunctionCall(action));
-        } else if (isProcessActionType(action)) {
+        if (isProcessActionType(action)) {
           function_messages.unshift(
             renderProcessActionForMultiActionsModel(action)
           );

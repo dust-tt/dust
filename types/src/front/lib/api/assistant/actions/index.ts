@@ -5,7 +5,10 @@ import {
   ModelMessageType,
 } from "../generation";
 
-type BaseActionType = "dust_app_run_action" | "tables_query_action";
+type BaseActionType =
+  | "dust_app_run_action"
+  | "tables_query_action"
+  | "retrieval_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;
