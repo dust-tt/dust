@@ -4,6 +4,7 @@
 
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
+import { BaseAction } from "../../lib/api/assistant/actions";
 
 export const TIME_FRAME_UNITS = [
   "hour",
@@ -87,11 +88,9 @@ export type RetrievalDocumentType = {
   }[];
 };
 
-export type RetrievalActionType = {
+export interface RetrievalActionType extends BaseAction {
   id: ModelId; // AgentRetrievalAction
   agentMessageId: ModelId; // AgentMessage
-
-  type: "retrieval_action";
 
   params: {
     relativeTimeFrame: TimeFrame | null;
@@ -101,4 +100,4 @@ export type RetrievalActionType = {
   functionCallId: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
-};
+}
