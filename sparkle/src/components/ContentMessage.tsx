@@ -21,13 +21,9 @@ export interface ContentMessageProps {
     | "red";
 }
 
-ContentMessage.defaultProps = {
-  variant: "amber" as const,
-};
-
 export function ContentMessage({
   title,
-  variant,
+  variant = "amber",
   children,
   size = "md",
   className = "",

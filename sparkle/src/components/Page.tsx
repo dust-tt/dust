@@ -7,14 +7,10 @@ import { Icon } from "./Icon";
 
 interface PageProps {
   children: React.ReactNode;
-  variant: "modal" | "normal";
+  variant?: "modal" | "normal";
 }
 
-Page.defaultProps = {
-  variant: "normal" as const,
-};
-
-export function Page({ children, variant }: PageProps) {
+export function Page({ children, variant = "normal" }: PageProps) {
   const mainVariantClasses =
     variant === "normal" ? "s-h-full s-py-16" : "s-h-full s-py-4 s-px-2";
   const divVariantClassNames =
