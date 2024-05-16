@@ -412,7 +412,7 @@ export async function* runMultiActionsAgent(
 
   const output: {
     actions: Array<{
-      id: string | null;
+      functionCallId: string | null;
       name: string | null;
       arguments: Record<string, string | boolean | number> | null;
     }>;
@@ -588,7 +588,7 @@ export async function* runMultiActionsAgent(
       action,
       inputs: a.arguments ?? {},
       specification: spec,
-      functionCallId: a.id ?? null,
+      functionCallId: a.functionCallId ?? null,
     });
   }
 
