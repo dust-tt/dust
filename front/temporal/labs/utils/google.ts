@@ -54,8 +54,11 @@ export async function retrieveRecentGoogleTranscripts(
   return filesData;
 }
 
-
-export async function retrieveGoogleTranscripts(auth: Authenticator, transcriptsConfiguration: LabsTranscriptsConfigurationResource, localLogger: Logger): Promise<string[]> {
+export async function retrieveGoogleTranscripts(
+  auth: Authenticator,
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  localLogger: Logger
+): Promise<string[]> {
   const fileIdsToProcess = [];
   const recentTranscriptFiles = await retrieveRecentGoogleTranscripts(
     {
@@ -91,7 +94,12 @@ export async function retrieveGoogleTranscripts(auth: Authenticator, transcripts
   return fileIdsToProcess;
 }
 
-export async function retrieveGoogleTranscriptContent(auth: Authenticator, transcriptsConfiguration: LabsTranscriptsConfigurationResource, fileId: string, localLogger: Logger): Promise<{transcriptTitle: string, transcriptContent: string}> {
+export async function retrieveGoogleTranscriptContent(
+  auth: Authenticator,
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  fileId: string,
+  localLogger: Logger
+): Promise<{ transcriptTitle: string; transcriptContent: string }> {
   const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
     auth,
     transcriptsConfiguration.userId
@@ -121,6 +129,6 @@ export async function retrieveGoogleTranscriptContent(auth: Authenticator, trans
 
   const transcriptTitle = metadataRes.data.name || "Untitled";
   const transcriptContent = <string>contentRes.data;
-  
-  return {transcriptTitle, transcriptContent};
+
+  return { transcriptTitle, transcriptContent };
 }

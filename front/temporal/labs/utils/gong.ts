@@ -1,17 +1,25 @@
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
-export async function retrieveGongTranscripts(transcriptsConfiguration: LabsTranscriptsConfigurationResource, localLogger: Logger): Promise<string[]> {
+export async function retrieveGongTranscripts(
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  localLogger: Logger
+): Promise<string[]> {
   // Retrieve recent transcripts from Gong
   // const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-   // DEBUG A LOT OF TIME AGO
-  const fromDateTime = new Date(Date.now() - 2400 * 60 * 60 * 1000).toISOString();
-  const newTranscripts = await fetch(`https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`, {
-    headers: {
-      Authorization: `Bearer `,
-      'Content-Type': 'application/json'
+  // DEBUG A LOT OF TIME AGO
+  const fromDateTime = new Date(
+    Date.now() - 2400 * 60 * 60 * 1000
+  ).toISOString();
+  const newTranscripts = await fetch(
+    `https://api.gong.io/v2/calls?fromDateTime=${fromDateTime}`,
+    {
+      headers: {
+        Authorization: `Bearer `,
+        "Content-Type": "application/json",
+      },
     }
-  });
+  );
 
   if (!newTranscripts.ok) {
     localLogger.error(
@@ -43,7 +51,9 @@ export async function retrieveGongTranscripts(transcriptsConfiguration: LabsTran
       continue;
     }
 
-    const history = await transcriptsConfiguration.fetchHistoryForFileId(fileId);
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },
@@ -58,15 +68,19 @@ export async function retrieveGongTranscripts(transcriptsConfiguration: LabsTran
   return fileIdsToProcess;
 }
 
-export async function retrieveGongTranscriptContent(transcriptsConfiguration: LabsTranscriptsConfigurationResource, fileId: string, localLogger: Logger): Promise<{transcriptTitle: string, transcriptContent: string}> {
+export async function retrieveGongTranscriptContent(
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  fileId: string,
+  localLogger: Logger
+): Promise<{ transcriptTitle: string; transcriptContent: string }> {
   const transcript = await fetch(`https://api.gong.io/v2/calls`, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      callIds: [fileId]
+      callIds: [fileId],
     }),
   });
 
@@ -85,11 +99,11 @@ export async function retrieveGongTranscriptContent(transcriptsConfiguration: La
       {},
       "[processTranscriptActivity] No transcript content found from Gong."
     );
-    return {transcriptTitle: "", transcriptContent: ""};
+    return { transcriptTitle: "", transcriptContent: "" };
   }
 
   const transcriptTitle = transcriptData.call.title || "Untitled";
-  const transcriptContent = transcriptData.call.transcript
+  const transcriptContent = transcriptData.call.transcript;
 
-  return {transcriptTitle, transcriptContent};
+  return { transcriptTitle, transcriptContent };
 }

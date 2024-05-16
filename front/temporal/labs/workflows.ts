@@ -48,8 +48,5 @@ export async function processTranscriptWorkflow({
   fileId: string;
   transcriptsConfigurationId: ModelId;
 }): Promise<void> {
-  await processTranscriptActivity(
-    transcriptsConfigurationId,
-    fileId
-  );
+  await processTranscriptActivity(transcriptsConfigurationId, fileId);
 }
