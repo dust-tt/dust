@@ -9,7 +9,7 @@ import {
   Tooltip,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type { APIError, Result, TimeframeUnit } from "@dust-tt/types";
+import type { Result, TimeframeUnit } from "@dust-tt/types";
 import type {
   DataSourceType,
   ProcessSchemaPropertyType,
@@ -506,6 +506,7 @@ export function ActionProcess({
                 setEdited(true);
 
                 if (instructions !== null) {
+                  console.log(instructions);
                   const res = await generateSchema({ owner, instructions });
                   console.log(res);
                 }
@@ -546,7 +547,7 @@ async function generateSchema({
 }: {
   owner: WorkspaceType;
   instructions: string;
-}): Promise<Result<ProcessSchemaPropertyType[], APIError>> {
+}): Promise<Result<ProcessSchemaPropertyType[], Error>> {
   const res = await fetch(
     `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
     {
@@ -560,10 +561,7 @@ async function generateSchema({
     }
   );
   if (!res.ok) {
-    return new Err({
-      type: "internal_server_error",
-      message: "Failed to get suggestions",
-    });
+    return new Err(new Error("Failed to generate schema"));
   }
   return new Ok(await res.json());
 }

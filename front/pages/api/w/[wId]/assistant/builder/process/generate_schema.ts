@@ -79,7 +79,9 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error running action: ${JSON.stringify(actionRes.error)}`,
+            message: `Error generating schema: ${JSON.stringify(
+              actionRes.error
+            )}`,
           },
         });
       }
@@ -94,7 +96,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `No results returned by action`,
+            message: `Error generating schema: no result returned by model.`,
           },
         });
       }
