@@ -1086,7 +1086,12 @@ function ManagedDataSourceView({
       const nango = new Nango({ publicKey: nangoConfig.publicKey });
 
       const newConnectionId = buildConnectionId(owner.sId, provider);
-      await nango.auth(nangoConnectorId, newConnectionId);
+      try {
+        await nango.auth(nangoConnectorId, newConnectionId);
+      } catch (err) {
+        console.error(`Failed to enable connection for ${provider}`, err);
+        throw err;
+      }
 
       const updateRes = await updateConnectorConnectionId(
         newConnectionId,
