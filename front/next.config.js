@@ -4,7 +4,6 @@ module.exports = {
   experimental: {
     serverMinification: false,
     esmExternals: false,
-    optimizePackageImports: ["@dust-tt/sparkle", "@dust-tt/types"],
   },
   async redirects() {
     return [
