@@ -413,11 +413,17 @@ export default function DataSourcesView({
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
-        const {
-          connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } =
-          await nango.auth(nangoConnectorId, newConnectionId);
-        connectionId = nangoConnectionId;
+
+        try {
+          const {
+            connectionId: nangoConnectionId,
+          }: { providerConfigKey: string; connectionId: string } =
+            await nango.auth(nangoConnectorId, newConnectionId);
+          connectionId = nangoConnectionId;
+        } catch (err) {
+          console.error(`Failed to enable connection for ${provider}`, err);
+          throw err;
+        }
       } else if (provider === "github") {
         const installationId = await githubAuth(githubAppUrl);
         connectionId = installationId;
