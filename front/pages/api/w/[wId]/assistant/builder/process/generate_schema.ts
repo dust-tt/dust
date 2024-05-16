@@ -5,8 +5,6 @@ import type {
 import { cloneBaseConfig, ioTsParsePayload } from "@dust-tt/types";
 import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
 import { DustProdActionRegistry } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
