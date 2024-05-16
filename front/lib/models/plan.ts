@@ -41,6 +41,7 @@ export class Plan extends Model<
   declare isManagedGithubAllowed: boolean;
   declare isManagedIntercomAllowed: boolean;
   declare isManagedWebCrawlerAllowed: boolean;
+  declare isManagedConfluencdeAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -98,6 +99,10 @@ Plan.init(
     },
     // TODO(2024-01-10 flav) Use a JSON Types field instead of group of booleans.
     isManagedConfluenceAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedConfluencdeAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
