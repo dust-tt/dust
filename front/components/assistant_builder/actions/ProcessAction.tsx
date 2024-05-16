@@ -6,6 +6,7 @@ import {
   Input,
   PlusIcon,
   SparklesIcon,
+  Spinner,
   Tooltip,
   XCircleIcon,
 } from "@dust-tt/sparkle";
@@ -16,7 +17,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -25,6 +26,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
 export function isActionProcessValid(
@@ -218,16 +220,14 @@ function PropertiesFields({
         )
       )}
       <div className="col-span-12">
-        {properties.length > 0 && (
-          <Button
-            label={"Add property"}
-            size="xs"
-            variant="secondary"
-            icon={PlusIcon}
-            onClick={handleAddProperty}
-            disabled={readOnly}
-          />
-        )}
+        <Button
+          label={"Add property"}
+          size="xs"
+          variant="secondary"
+          icon={PlusIcon}
+          onClick={handleAddProperty}
+          disabled={readOnly}
+        />
       </div>
     </div>
   );
@@ -254,6 +254,8 @@ export function ActionProcess({
 }) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
+  const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
 
   if (!actionConfiguration) {
     return null;
@@ -317,7 +319,10 @@ export function ActionProcess({
         1000 pages book). Learn more about this feature in the{" "}
         <Hoverable
           onClick={() => {
-            window.open("https://foo", "_blank");
+            window.open(
+              "https://dust-tt.notion.site/Process-Data-on-Dust-424a836b881e4664aa6077a344a55b0c",
+              "_blank"
+            );
           }}
           className="cursor-pointer font-bold text-action-500"
         >
@@ -498,45 +503,72 @@ export function ActionProcess({
             label={"Automatically generate the schema based on Instructions"}
           >
             <Button
-              label={"Generate"}
+              label={isGeneratingSchema ? "Generating..." : "Generate"}
               variant="primary"
               icon={SparklesIcon}
               size="sm"
+              disabled={isGeneratingSchema}
               onClick={async () => {
                 setEdited(true);
 
                 if (instructions !== null) {
-                  console.log(instructions);
-                  const res = await generateSchema({ owner, instructions });
-                  console.log(res);
-                }
+                  setIsGeneratingSchema(true);
+                  try {
+                    const res = await generateSchema({ owner, instructions });
 
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  schema: [
-                    {
-                      name: "data",
-                      type: "string" as const,
-                      description: "Required data to follow instructions",
-                    },
-                  ],
-                }));
+                    if (res.isOk()) {
+                      updateAction((previousAction) => ({
+                        ...previousAction,
+                        schema: res.value,
+                      }));
+                    } else {
+                      sendNotification({
+                        title: "Failed to generate schema.",
+                        type: "error",
+                        description: `An error occured while generating the schema: ${res.error.message}`,
+                      });
+                    }
+                  } catch (e) {
+                    sendNotification({
+                      title: "Failed to generate schema.",
+                      type: "error",
+                      description: `An error occured while generating the schema. Please contact us if the error persists.`,
+                    });
+                  } finally {
+                    setIsGeneratingSchema(false);
+                  }
+                } else {
+                  updateAction((previousAction) => ({
+                    ...previousAction,
+                    schema: [
+                      {
+                        name: "data",
+                        type: "string" as const,
+                        description: "Required data to follow instructions",
+                      },
+                    ],
+                  }));
+                }
               }}
             />
           </Tooltip>
         </div>
       </div>
-      <PropertiesFields
-        properties={actionConfiguration.schema}
-        onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-          setEdited(true);
-          updateAction((previousAction) => ({
-            ...previousAction,
-            schema,
-          }));
-        }}
-        readOnly={false}
-      />
+      {isGeneratingSchema ? (
+        <Spinner size="md" />
+      ) : (
+        <PropertiesFields
+          properties={actionConfiguration.schema}
+          onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
+            setEdited(true);
+            updateAction((previousAction) => ({
+              ...previousAction,
+              schema,
+            }));
+          }}
+          readOnly={false}
+        />
+      )}
     </>
   );
 }
@@ -563,5 +595,5 @@ async function generateSchema({
   if (!res.ok) {
     return new Err(new Error("Failed to generate schema"));
   }
-  return new Ok(await res.json());
+  return new Ok((await res.json()).schema || []);
 }

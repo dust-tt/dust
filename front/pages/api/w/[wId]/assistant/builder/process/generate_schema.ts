@@ -101,10 +101,18 @@ async function handler(
         });
       }
 
-      const schema = actionRes.value.results[0][0].value as unknown;
-      console.log(schema);
+      const rawSchema = actionRes.value.results[0][0].value as any;
 
-      return res.status(200).json({ schema: [] });
+      const schema: ProcessSchemaPropertyType[] = [];
+      for (const key in rawSchema) {
+        schema.push({
+          name: key,
+          type: rawSchema[key].type || "string",
+          description: rawSchema[key].description || "",
+        });
+      }
+
+      return res.status(200).json({ schema });
     default:
       return apiError(req, res, {
         status_code: 405,
