@@ -1,8 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const removeImports = require("next-remove-imports")();
-
-module.exports = removeImports({
-  experimental: { esmExternals: false },
+module.exports = {
+  transpilePackages: ["@uiw/react-textarea-code-editor"],
+  // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
+  swcMinify: false,
+  experimental: {
+    // Prevents minification of the temporalio client workflow ids.
+    serverMinification: false,
+    esmExternals: false,
+  },
   async redirects() {
     return [
       {
@@ -49,4 +53,16 @@ module.exports = removeImports({
       },
     ];
   },
-});
+  webpack: (config) => {
+    // For `types` package import (which includes some dependence to server code).
+    // Otherwise client-side code will throw an error when importing the packaged file.
+    config.resolve.fallback = {
+      fs: false,
+      net: false,
+      child_process: false,
+      tls: false,
+      dgram: false,
+    };
+    return config;
+  },
+};
