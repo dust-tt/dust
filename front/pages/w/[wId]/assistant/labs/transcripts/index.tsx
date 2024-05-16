@@ -5,6 +5,7 @@ import {
   Page,
   SliderToggle,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   LabsTranscriptsProviderType,
@@ -98,14 +99,12 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      gongApiSecret: string;
     }>({
-      provider: "",
+      provider: transcriptsConfiguration?.provider || "",
       isGDriveConnected: false,
       isGongConnected: false,
-      assistantSelected: null as LightAgentConfigurationType | null,
+      assistantSelected: null,
       isActive: false,
-      gongApiSecret: "",
     });
 
   useEffect(() => {
@@ -232,7 +231,7 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveOauthConnection = async (connectionId: string) => {
+  const saveOauthConnection = async (connectionId: string, provider: string) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -240,7 +239,7 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
-        provider: transcriptsConfigurationState.provider,
+        provider,
       }),
     });
 
@@ -282,7 +281,7 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveOauthConnection(nangoConnectionId);
+      await saveOauthConnection(nangoConnectionId, transcriptsConfigurationState.provider);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -309,7 +308,7 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveOauthConnection(nangoConnectionId);
+      await saveOauthConnection(nangoConnectionId, transcriptsConfigurationState.provider);
     } catch (error) {
       sendNotification({
         type: "error",
@@ -351,28 +350,34 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
-              <div
-                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                  transcriptsConfigurationState.provider == "gong"
-                    ? "border-gray-400"
-                    : "border-gray-200"
-                }`}
-                onClick={() =>
-                  owner.flags.includes("labs_transcripts_gong")
-                    ? handleProviderChange("gong")
-                    : sendNotification({
-                        type: "error",
-                        title: "Gong is coming soon",
-                        description:
-                          "We're working on adding Gong support. Contact us if you'd like to be notified when it's available.",
-                      })
-                }
-              >
-                <img
-                  src="/static/labs/transcripts/gong.jpeg"
-                  style={{ maxHeight: "35px" }}
-                />
-              </div>
+              {owner.flags.includes("labs_transcripts_gong") ? (
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("gong")}
+                >
+                  <img
+                    src="/static/labs/transcripts/gong.jpeg"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              ) : (
+                <Tooltip label="Gong integration coming soon. Contact us at team@dust.tt to be notified when it's ready!">
+                  <div
+                    className="cursor-not-allowed rounded-md border p-4 border-gray-200"
+                    style={{ opacity: 0.5 }}
+                  >
+                  <img
+                      src="/static/labs/transcripts/gong.jpeg"
+                      style={{ maxHeight: "35px" }}
+                    />
+                  </div>
+                </Tooltip>
+              )}
+
             </Page.Layout>
           )}
 
@@ -386,8 +391,8 @@ export default function LabsTranscriptsIndex({
                 <Button
                   label={
                     transcriptsConfigurationState.isGDriveConnected
-                      ? "Connected"
-                      : "Connect"
+                      ? "Google connected"
+                      : "Connect Google"
                   }
                   size="sm"
                   icon={CloudArrowLeftRightIcon}
@@ -408,8 +413,8 @@ export default function LabsTranscriptsIndex({
                 <Button
                   label={
                     transcriptsConfigurationState.isGongConnected
-                      ? "Connected"
-                      : "Connect"
+                      ? "Gong connected"
+                      : "Connect Gong"
                   }
                   size="sm"
                   icon={CloudArrowLeftRightIcon}

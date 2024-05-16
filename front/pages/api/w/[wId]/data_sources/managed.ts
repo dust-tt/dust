@@ -128,7 +128,6 @@ async function handler(
         case "google_drive":
         case "intercom":
         case "notion":
-        case "gong":
         case "slack": {
           if (!auth.isAdmin()) {
             return apiError(req, res, {
@@ -150,6 +149,16 @@ async function handler(
             });
           }
           break;
+        }
+        case "gong": {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "data_source_auth_error",
+              message:
+                "Datasource type not allowed to be created by the user.",
+            },
+          });
         }
         default:
           assertNever(provider);

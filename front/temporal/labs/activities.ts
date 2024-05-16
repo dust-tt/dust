@@ -15,53 +15,9 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-async function retrieveRecentTranscripts(
-  {
-    auth,
-    userId,
-  }: {
-    auth: Authenticator;
-    userId: ModelId;
-  },
-  logger: Logger
-) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    userId
-  );
+import { retrieveGongTranscriptContent, retrieveGongTranscripts } from "@app/temporal/labs/utils/gong";
+import { retrieveGoogleTranscriptContent,retrieveGoogleTranscripts } from "@app/temporal/labs/utils/google";
 
-  if (!googleAuth) {
-    logger.error(
-      {},
-      "[retrieveRecentTranscripts] No Google auth found. Stopping."
-    );
-    return [];
-  }
-
-  // Only pull transcripts from last day.
-  // We could do from the last 15 minutes
-  // but we want to avoid missing any if the workflow is down or slow.
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 1);
-
-  const files = await googleapis.google
-    .drive({ version: "v3", auth: googleAuth })
-    .files.list({
-      q:
-        "name contains '- Transcript' and createdTime > '" +
-        cutoffDate.toISOString() +
-        "'",
-      fields: "files(id, name)",
-    });
-
-  const { files: filesData } = files.data;
-  if (!filesData || filesData.length === 0) {
-    logger.info({}, "[retrieveRecentTranscripts] No new files found.");
-    return [];
-  }
-
-  return filesData;
-}
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -213,41 +169,29 @@ export async function processGoogleDriveTranscriptActivity(
     );
     return;
   }
+  
+  let transcriptTitle = ""
+  let transcriptContent = ""
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    transcriptsConfiguration.userId
-  );
-  const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
-
-  const metadataRes = await drive.files.get({
-    fileId: fileId,
-    fields: "name",
-  });
-
-  const contentRes = await drive.files.export({
-    fileId: fileId,
-    mimeType: "text/plain",
-  });
-
-  if (contentRes.status !== 200) {
-    localLogger.error(
-      { error: contentRes.statusText },
-      "Error exporting Google document."
+  if (transcriptsConfiguration.provider == "google_drive") {
+    const result = await retrieveGoogleTranscriptContent(
+      auth,
+      transcriptsConfiguration,
+      fileId,
+      localLogger
     );
-
-    throw new Error(
-      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
-    );
+    transcriptTitle = result.transcriptTitle
+    transcriptContent = result.transcriptContent
   }
 
-  const transcriptTitle = metadataRes.data.name || "Untitled";
-  const transcriptContent = contentRes.data;
-  if (!transcriptContent) {
-    localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No content found. Stopping."
+  if (transcriptsConfiguration.provider == "gong") {
+    const result = await retrieveGongTranscriptContent(
+      transcriptsConfiguration,
+      fileId,
+      localLogger
     );
-    return;
+    transcriptTitle = result.transcriptTitle
+    transcriptContent = result.transcriptContent
   }
 
   const owner = auth.workspace();
