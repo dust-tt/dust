@@ -15,9 +15,14 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-import { retrieveGongTranscriptContent, retrieveGongTranscripts } from "@app/temporal/labs/utils/gong";
-import { retrieveGoogleTranscriptContent,retrieveGoogleTranscripts } from "@app/temporal/labs/utils/google";
-
+import {
+  retrieveGongTranscriptContent,
+  retrieveGongTranscripts,
+} from "@app/temporal/labs/utils/gong";
+import {
+  retrieveGoogleTranscriptContent,
+  retrieveGoogleTranscripts,
+} from "@app/temporal/labs/utils/google";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -169,9 +174,9 @@ export async function processGoogleDriveTranscriptActivity(
     );
     return;
   }
-  
-  let transcriptTitle = ""
-  let transcriptContent = ""
+
+  let transcriptTitle = "";
+  let transcriptContent = "";
 
   if (transcriptsConfiguration.provider == "google_drive") {
     const result = await retrieveGoogleTranscriptContent(
@@ -180,8 +185,8 @@ export async function processGoogleDriveTranscriptActivity(
       fileId,
       localLogger
     );
-    transcriptTitle = result.transcriptTitle
-    transcriptContent = result.transcriptContent
+    transcriptTitle = result.transcriptTitle;
+    transcriptContent = result.transcriptContent;
   }
 
   if (transcriptsConfiguration.provider == "gong") {
@@ -190,8 +195,8 @@ export async function processGoogleDriveTranscriptActivity(
       fileId,
       localLogger
     );
-    transcriptTitle = result.transcriptTitle
-    transcriptContent = result.transcriptContent
+    transcriptTitle = result.transcriptTitle;
+    transcriptContent = result.transcriptContent;
   }
 
   const owner = auth.workspace();
