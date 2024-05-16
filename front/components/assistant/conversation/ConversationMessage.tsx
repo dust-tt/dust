@@ -84,12 +84,6 @@ export function EmojiSelector({
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
-
-ConversationMessage.defaultProps = {
-  avatarBusy: false,
-  enableEmojis: true,
-};
-
 export function ConversationMessage({
   owner,
   user,
@@ -100,8 +94,8 @@ export function ConversationMessage({
   pictureUrl,
   buttons,
   reactions,
-  avatarBusy,
-  enableEmojis,
+  avatarBusy = false,
+  enableEmojis = true,
   renderName,
 }: {
   owner: WorkspaceType;
@@ -119,7 +113,7 @@ export function ConversationMessage({
   }[];
   reactions: MessageReactionType[];
   avatarBusy?: boolean;
-  enableEmojis: boolean;
+  enableEmojis?: boolean;
   renderName: (name: string | null) => React.ReactNode;
 }) {
   const { mutate } = useSWRConfig();

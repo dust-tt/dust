@@ -5,15 +5,15 @@ import { classNames } from "@sparkle/lib/utils";
 
 interface HoverableProps {
   children: ReactNode;
-  className: string;
+  className?: string;
   onClick: (e: SyntheticEvent) => void;
 }
 
-Hoverable.defaultProps = {
-  className: "",
-};
-
-export function Hoverable({ children, className, onClick }: HoverableProps) {
+export function Hoverable({
+  children,
+  className = "",
+  onClick,
+}: HoverableProps) {
   return (
     <span
       className={classNames(
