@@ -6,8 +6,8 @@ if [ "$NODE_ENV" == "production" ]; then
   exit 1
 fi
 
-# Get current date in YYYYMMDD format.
-current_date=$(date +%Y%m%d)
+# Get current date in a human-readable format (e.g., May 28, 2024)
+current_date=$(date +"%b %d, %Y")
 
 # Stash any uncommitted changes.
 echo "Stashing uncommitted changes..."
@@ -47,16 +47,17 @@ diff --unified=0 --color=always main_output.txt current_output.txt
 
 # Run diff and extract only SQL statements.
 echo "Running diff and extracting SQL statements..."
-diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' > diff_output.txt
+echo "-- Migration created on $current_date" > diff_output.txt
+diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' >> diff_output.txt
 
 # Find the last migration version.
-last_version=$(ls ./migrations/db | grep -oE 'migration_[0-9]{8}_([0-9]+).sql' | grep -oE '([0-9]+)\.sql$' | sed s/\.sql// | sort -n | tail -n1)
+last_version=$(ls ./migrations/db | grep -oE 'migration_([0-9]+).sql' | grep -oE '([0-9]+)\.sql$' | sed s/\.sql// | sort -n | tail -n1)
 # 10# ensures the number is interpreted as base-10, preventing errors with leading zeros.
 next_version=$(printf "%02d" $((10#$last_version + 1)))
 echo "Creating SQL migration $next_version."
 
 # Save the latest changes to a new migration file.
-mv diff_output.txt "./migrations/db/migration_${current_date}_${next_version}.sql"
+mv diff_output.txt "./migrations/db/migration_${next_version}.sql"
 
 # Clean up the output files.
 echo "Cleaning up temporary files..."
