@@ -21,6 +21,8 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 
+const DESTROY_MESSAGE_BATCH = 50;
+
 async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
   // First, retrieve the retrieval actions and documents.
   const retrievalActions = await AgentRetrievalAction.findAll({
@@ -47,17 +49,15 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
   await AgentTablesQueryAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
-
   await AgentDustAppRunAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
-
   await AgentProcessAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
 
-async function destroyRelatedMessagesResources(messageIds: Array<ModelId>) {
+async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
   await MessageReaction.destroy({
     where: { messageId: messageIds },
   });
@@ -135,8 +135,8 @@ export async function destroyConversation(
     where: { conversationId },
   });
 
-  // To preserve the DB, we delete messages in batches of maximum 50.
-  const messagesChunks = chunk(messages, 50);
+  // To preserve the DB, we delete messages in batches.
+  const messagesChunks = chunk(messages, DESTROY_MESSAGE_BATCH);
   for (const messagesChunk of messagesChunks) {
     const messageIds = messagesChunk.map((m) => m.id);
     const userMessageIds = removeNulls(messages.map((m) => m.userMessageId));
@@ -160,13 +160,12 @@ export async function destroyConversation(
       where: { id: agentMessageIds },
     });
 
-    // Delete all content fragments.
     await destroyContentFragments(messageAndContentFragmentIds, {
       conversationId: conversation.sId,
       workspaceId: workspace.sId,
     });
 
-    await destroyRelatedMessagesResources(messageIds);
+    await destroyMessageRelatedResources(messageIds);
   }
 
   await ConversationParticipant.destroy({
