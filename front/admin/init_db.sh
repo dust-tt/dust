@@ -3,6 +3,12 @@
 # Default to safe mode
 SAFE_MODE=1
 
+# Ensure NODE_ENV is not set to production.
+if [ "$NODE_ENV" == "production" ]; then
+    echo "Error: This script is not meant to be run in a production environment. Aborting."
+    exit 1
+fi
+
 BRANCH_NAME=main
 
 # Check environment variable to allow unsafe operations
