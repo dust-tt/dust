@@ -1089,7 +1089,7 @@ function ManagedDataSourceView({
       try {
         await nango.auth(nangoConnectorId, newConnectionId);
       } catch (err) {
-        console.error(`Failed to enable connection for ${provider}`, e);
+        console.error(`Failed to enable connection for ${provider}`, err);
         throw err;
       }
 
