@@ -1,7 +1,9 @@
 module.exports = {
   transpilePackages: ["@uiw/react-textarea-code-editor"],
+  // As of Next 14.2.3 swc minification creates a bug in the generated client side files.
   swcMinify: false,
   experimental: {
+    // Prevents minification of the temporalio client workflow ids.
     serverMinification: false,
     esmExternals: false,
   },
