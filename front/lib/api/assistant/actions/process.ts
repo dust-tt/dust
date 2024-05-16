@@ -52,6 +52,7 @@ interface ProcessActionBlob {
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;
   functionCallId: string | null;
+  functionCallName: string | null;
   step: number;
 }
 
@@ -63,6 +64,7 @@ export class ProcessAction extends BaseAction {
   readonly schema: ProcessSchemaPropertyType[];
   readonly outputs: ProcessActionOutputsType | null;
   readonly functionCallId: string | null;
+  readonly functionCallName: string | null;
   readonly step: number;
 
   constructor(blob: ProcessActionBlob) {
@@ -73,6 +75,7 @@ export class ProcessAction extends BaseAction {
     this.schema = blob.schema;
     this.outputs = blob.outputs;
     this.functionCallId = blob.functionCallId;
+    this.functionCallName = blob.functionCallName;
     this.step = blob.step;
   }
 
@@ -100,7 +103,7 @@ export class ProcessAction extends BaseAction {
 
     return {
       role: "action" as const,
-      name: "process_data_sources",
+      name: this.functionCallName ?? "process_data_sources",
       content,
     };
   }
@@ -108,7 +111,7 @@ export class ProcessAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: "process_data_sources",
+      name: this.functionCallName ?? "process_data_sources",
       arguments: JSON.stringify(this.params),
     };
   }
@@ -228,6 +231,7 @@ export async function processActionTypesFromAgentMessageIds(
       schema: action.schema,
       outputs: action.outputs,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       step: action.step,
     });
   });
@@ -305,6 +309,7 @@ export async function* runProcess(
     processConfigurationId: actionConfiguration.sId,
     schema: actionConfiguration.schema,
     functionCallId,
+    functionCallName: actionConfiguration.name,
     agentMessageId: agentMessage.agentMessageId,
     step,
   });
@@ -326,6 +331,7 @@ export async function* runProcess(
       schema: action.schema,
       outputs: null,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       step: action.step,
     }),
   };
@@ -515,6 +521,7 @@ export async function* runProcess(
       schema: action.schema,
       outputs,
       functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
       step: action.step,
     }),
   };

@@ -98,6 +98,7 @@ export interface RetrievalActionType extends BaseAction {
     topK: number;
   };
   functionCallId: string | null;
+  functionCallName: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
 }
