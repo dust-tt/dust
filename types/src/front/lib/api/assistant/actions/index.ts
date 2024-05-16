@@ -8,7 +8,8 @@ import {
 type BaseActionType =
   | "dust_app_run_action"
   | "tables_query_action"
-  | "retrieval_action";
+  | "retrieval_action"
+  | "process_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;

@@ -12,12 +12,14 @@ import type {
   ProcessConfigurationType,
   ProcessErrorEvent,
   ProcessParamsEvent,
+  ProcessSchemaPropertyType,
   ProcessSuccessEvent,
   Result,
   TimeFrame,
   UserMessageType,
 } from "@dust-tt/types";
 import {
+  BaseAction,
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
@@ -41,75 +43,100 @@ import {
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
-/**
- * Model rendering of process actions.
- */
+interface ProcessActionBlob {
+  id: ModelId; // AgentProcessAction.
+  agentMessageId: ModelId;
+  params: {
+    relativeTimeFrame: TimeFrame | null;
+  };
+  schema: ProcessSchemaPropertyType[];
+  outputs: ProcessActionOutputsType | null;
+  functionCallId: string | null;
+  step: number;
+}
 
-export function renderProcessActionForModel(
-  action: ProcessActionType
-): ModelMessageType {
-  let content = "";
-  if (action.outputs === null) {
-    throw new Error(
-      "Output not set on process action; this usually means the process action is not finished."
-    );
+export class ProcessAction extends BaseAction {
+  readonly agentMessageId: ModelId;
+  readonly params: {
+    relativeTimeFrame: TimeFrame | null;
+  };
+  readonly schema: ProcessSchemaPropertyType[];
+  readonly outputs: ProcessActionOutputsType | null;
+  readonly functionCallId: string | null;
+  readonly step: number;
+
+  constructor(blob: ProcessActionBlob) {
+    super(blob.id, "process_action");
+
+    this.agentMessageId = blob.agentMessageId;
+    this.params = blob.params;
+    this.schema = blob.schema;
+    this.outputs = blob.outputs;
+    this.functionCallId = blob.functionCallId;
+    this.step = blob.step;
   }
 
-  content += "PROCESSED OUTPUTS:\n";
+  renderForModel(): ModelMessageType {
+    let content = "";
+    if (this.outputs === null) {
+      throw new Error(
+        "Output not set on process action; this usually means the process action is not finished."
+      );
+    }
 
-  // TODO(spolu): figure out if we want to add the schema here?
+    content += "PROCESSED OUTPUTS:\n";
 
-  if (action.outputs) {
-    if (action.outputs.data.length === 0) {
-      content += "(none)\n";
-    } else {
-      for (const o of action.outputs.data) {
+    // TODO(spolu): figure out if we want to add the schema here?
+
+    if (this.outputs) {
+      if (this.outputs.data.length === 0) {
+        content += "(none)\n";
+      } else {
+        for (const o of this.outputs.data) {
+          content += `${JSON.stringify(o)}\n`;
+        }
+      }
+    }
+
+    return {
+      role: "action" as const,
+      name: "process_data_sources",
+      content,
+    };
+  }
+
+  renderForFunctionCall(): FunctionCallType {
+    return {
+      id: this.functionCallId ?? `call_${this.id.toString()}`,
+      name: "process_data_sources",
+      arguments: JSON.stringify(this.params),
+    };
+  }
+
+  renderForMultiActionsModel(): FunctionMessageTypeModel {
+    let content = "";
+    if (this.outputs === null) {
+      throw new Error(
+        "Output not set on process action; this usually means the process action is not finished."
+      );
+    }
+
+    content += "PROCESSED OUTPUTS:\n";
+
+    // TODO(spolu): figure out if we want to add the schema here?
+
+    if (this.outputs) {
+      for (const o of this.outputs.data) {
         content += `${JSON.stringify(o)}\n`;
       }
     }
+
+    return {
+      role: "function" as const,
+      function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+      content,
+    };
   }
-
-  return {
-    role: "action" as const,
-    name: "process_data_sources",
-    content,
-  };
-}
-
-export function renderProcessActionFunctionCall(
-  action: ProcessActionType
-): FunctionCallType {
-  return {
-    id: action.functionCallId ?? `call_${action.id.toString()}`,
-    name: "process_data_sources",
-    arguments: JSON.stringify(action.params),
-  };
-}
-export function renderProcessActionForMultiActionsModel(
-  action: ProcessActionType
-): FunctionMessageTypeModel {
-  let content = "";
-  if (action.outputs === null) {
-    throw new Error(
-      "Output not set on process action; this usually means the process action is not finished."
-    );
-  }
-
-  content += "PROCESSED OUTPUTS:\n";
-
-  // TODO(spolu): figure out if we want to add the schema here?
-
-  if (action.outputs) {
-    for (const o of action.outputs.data) {
-      content += `${JSON.stringify(o)}\n`;
-    }
-  }
-
-  return {
-    role: "function" as const,
-    function_call_id: action.functionCallId ?? `call_${action.id.toString()}`,
-    content,
-  };
 }
 
 /**
@@ -192,10 +219,9 @@ export async function processActionTypesFromAgentMessageIds(
       };
     }
 
-    return {
+    return new ProcessAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      type: "process_action",
       params: {
         relativeTimeFrame,
       },
@@ -203,7 +229,7 @@ export async function processActionTypesFromAgentMessageIds(
       outputs: action.outputs,
       functionCallId: action.functionCallId,
       step: action.step,
-    } satisfies ProcessActionType;
+    });
   });
 }
 
@@ -291,10 +317,9 @@ export async function* runProcess(
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
     dataSources: actionConfiguration.dataSources,
-    action: {
+    action: new ProcessAction({
       id: action.id,
       agentMessageId: agentMessage.agentMessageId,
-      type: "process_action",
       params: {
         relativeTimeFrame,
       },
@@ -302,7 +327,7 @@ export async function* runProcess(
       outputs: null,
       functionCallId: action.functionCallId,
       step: action.step,
-    },
+    }),
   };
 
   const prompt = await constructPrompt(
@@ -481,10 +506,9 @@ export async function* runProcess(
     created: Date.now(),
     configurationId: configuration.sId,
     messageId: agentMessage.sId,
-    action: {
+    action: new ProcessAction({
       id: action.id,
       agentMessageId: agentMessage.agentMessageId,
-      type: "process_action",
       params: {
         relativeTimeFrame,
       },
@@ -492,6 +516,6 @@ export async function* runProcess(
       outputs,
       functionCallId: action.functionCallId,
       step: action.step,
-    },
+    }),
   };
 }
