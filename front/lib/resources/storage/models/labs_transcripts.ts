@@ -57,7 +57,7 @@ LabsTranscriptsConfigurationModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     provider: {
       type: DataTypes.STRING,
