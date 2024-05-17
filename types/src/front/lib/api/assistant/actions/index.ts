@@ -11,11 +11,11 @@ type BaseActionType =
   | "retrieval_action"
   | "process_action";
 
-export abstract class BaseAction {
+export abstract class BaseAction<T extends BaseActionType = BaseActionType> {
   readonly id: ModelId;
-  readonly type: BaseActionType;
+  readonly type: T;
 
-  constructor(id: ModelId, type: BaseActionType) {
+  constructor(id: ModelId, type: T) {
     this.id = id;
     this.type = type;
   }
@@ -24,3 +24,5 @@ export abstract class BaseAction {
   abstract renderForFunctionCall(): FunctionCallType;
   abstract renderForMultiActionsModel(): FunctionMessageTypeModel;
 }
+
+export type InferActionType<B extends { type: BaseActionType }> = B["type"];

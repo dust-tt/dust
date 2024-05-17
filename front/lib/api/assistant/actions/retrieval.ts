@@ -127,7 +127,7 @@ interface RetrievalActionBlob {
   step: number;
 }
 
-export class RetrievalAction extends BaseAction {
+class RetrievalAction extends BaseAction<"retrieval_action"> {
   readonly agentMessageId: ModelId;
   readonly params: {
     relativeTimeFrame: TimeFrame | null;

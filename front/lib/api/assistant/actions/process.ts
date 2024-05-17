@@ -56,7 +56,7 @@ interface ProcessActionBlob {
   step: number;
 }
 
-export class ProcessAction extends BaseAction {
+class ProcessAction extends BaseAction<"process_action"> {
   readonly agentMessageId: ModelId;
   readonly params: {
     relativeTimeFrame: TimeFrame | null;

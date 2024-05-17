@@ -47,7 +47,7 @@ interface DustAppRunActionBlob {
   step: number;
 }
 
-export class DustAppRunAction extends BaseAction {
+class DustAppRunAction extends BaseAction<"dust_app_run_action"> {
   readonly agentMessageId: ModelId;
   readonly appWorkspaceId: string;
   readonly appId: string;

@@ -1,4 +1,3 @@
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 
 export type DustAppRunConfigurationType = {
@@ -19,11 +18,13 @@ export type DustAppParameters = {
   [key: string]: string | number | boolean;
 };
 
-export interface DustAppRunActionType extends BaseAction {
+export interface DustAppRunActionType {
+  id: ModelId;
   agentMessageId: ModelId;
   appWorkspaceId: string;
   appId: string;
   appName: string;
+  type: "dust_app_run_action";
   params: DustAppParameters;
   runningBlock: {
     type: string;

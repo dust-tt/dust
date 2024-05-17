@@ -3,7 +3,6 @@ import {
   RetrievalTimeframe,
   TimeFrame,
 } from "../../../front/assistant/actions/retrieval";
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 
 // Properties in the process configuration table are stored as an array of objects.
@@ -74,10 +73,11 @@ export type ProcessActionOutputsType = {
 // Use top_k of 512 which is already a large number. We might want to bump to 1024.
 export const PROCESS_ACTION_TOP_K = 512;
 
-export interface ProcessActionType extends BaseAction {
+export interface ProcessActionType {
   id: ModelId; // AgentProcessAction
   agentMessageId: ModelId; // AgentMessage
 
+  type: "process_action";
   params: {
     relativeTimeFrame: TimeFrame | null;
   };

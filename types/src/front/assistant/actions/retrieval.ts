@@ -2,7 +2,6 @@
  * Data Source configuration
  */
 
-import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
 
@@ -88,9 +87,11 @@ export type RetrievalDocumentType = {
   }[];
 };
 
-export interface RetrievalActionType extends BaseAction {
+export interface RetrievalActionType {
   id: ModelId; // AgentRetrievalAction
   agentMessageId: ModelId; // AgentMessage
+
+  type: "retrieval_action";
 
   params: {
     relativeTimeFrame: TimeFrame | null;

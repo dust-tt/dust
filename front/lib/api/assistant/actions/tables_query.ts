@@ -38,7 +38,7 @@ interface TablesQueryActionBlob {
   step: number;
 }
 
-export class TablesQueryAction extends BaseAction {
+class TablesQueryAction extends BaseAction<"tables_query_action"> {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
