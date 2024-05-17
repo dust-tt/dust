@@ -47,8 +47,15 @@ diff --unified=0 --color=always main_output.txt current_output.txt
 
 # Run diff and extract only SQL statements.
 echo "Running diff and extracting SQL statements..."
-echo "-- Migration created on $current_date" > diff_output.txt
-diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}' >> diff_output.txt
+diff_output=$(diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}')
+if [ -n "$diff_output" ]; then
+  echo "-- Migration created on $current_date" > diff_output.txt
+  echo "$diff_output" >> diff_output.txt
+else
+    echo "No migration necessary. Cleaning up..."
+    rm main_output.txt current_output.txt
+    exit 0
+fi
 
 # Find the last migration version.
 last_version=$(ls ./migrations/db | grep -oE 'migration_([0-9]+).sql' | grep -oE '([0-9]+)\.sql$' | sed s/\.sql// | sort -n | tail -n1)
