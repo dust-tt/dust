@@ -6,6 +6,11 @@ if [ "$NODE_ENV" == "production" ]; then
   exit 1
 fi
 
+cleanup() {
+    echo "Cleaning up temporary files..."
+    rm main_output.txt current_output.txt
+}
+
 # Get current date in a human-readable format (e.g., May 28, 2024)
 current_date=$(date +"%b %d, %Y")
 
@@ -52,8 +57,8 @@ if [ -n "$diff_output" ]; then
   echo "-- Migration created on $current_date" > diff_output.txt
   echo "$diff_output" >> diff_output.txt
 else
-    echo "No migration necessary. Cleaning up..."
-    rm main_output.txt current_output.txt
+    echo "No migration necessary."
+    cleanup
     exit 0
 fi
 
@@ -66,6 +71,4 @@ echo "Creating SQL migration $next_version."
 # Save the latest changes to a new migration file.
 mv diff_output.txt "./migrations/db/migration_${next_version}.sql"
 
-# Clean up the output files.
-echo "Cleaning up temporary files..."
-rm main_output.txt current_output.txt
+cleanup
