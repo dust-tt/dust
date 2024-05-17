@@ -207,7 +207,14 @@ export async function deleteConversationsActivity({
                   t
                 );
                 if (contentFragment) {
-                  await contentFragment.delete(t);
+                  await contentFragment.destroy(
+                    {
+                      conversationId: c.sId,
+                      messageId: msg.sId,
+                      workspaceId: workspace.sId,
+                    },
+                    t
+                  );
                 }
               }
               await MessageReaction.destroy({
