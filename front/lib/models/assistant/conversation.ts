@@ -140,6 +140,7 @@ ConversationParticipant.init(
       },
       {
         fields: ["conversationId"],
+        concurrently: true,
       },
     ],
   }
@@ -380,15 +381,19 @@ Message.init(
       },
       {
         fields: ["agentMessageId"],
+        concurrently: true,
       },
       {
         fields: ["userMessageId"],
+        concurrently: true,
       },
       {
         fields: ["contentFragmentId"],
+        concurrently: true,
       },
       {
         fields: ["parentId"],
+        concurrently: true,
       },
     ],
     hooks: {
@@ -504,7 +509,10 @@ MessageReaction.init(
         fields: ["messageId", "reaction", "userContextUsername"], // Not perfect as that means that a user and slack user with the same username can't react with the same emoji, but that's an edge case.
       },
       { fields: ["messageId"] },
-      { fields: ["userId"] },
+      {
+        fields: ["userId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -574,6 +582,7 @@ Mention.init(
       },
       {
         fields: ["userId"],
+        concurrently: true,
       },
     ],
   }
