@@ -1,8 +1,11 @@
-import { Err, WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
+import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
@@ -18,8 +21,6 @@ import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 
 type SlackWebhookReqBody = {
   type?: string;
@@ -513,8 +514,11 @@ const _webhookSlackAPIHandler = async (
 
 function isChannelNameWhitelisted(
   remoteChannelName: string,
-  whiteListedChannelPatterns: string[]
+  whiteListedChannelPatterns?: string[]
 ): boolean {
+  if (!whiteListedChannelPatterns) {
+    return false;
+  }
   return whiteListedChannelPatterns.some((pattern) => {
     const regex = new RegExp(`^${pattern}$`);
     return regex.test(remoteChannelName);

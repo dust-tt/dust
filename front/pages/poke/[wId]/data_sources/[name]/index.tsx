@@ -46,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string[];
+    whiteListedChannelPatterns: string[] | null;
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
