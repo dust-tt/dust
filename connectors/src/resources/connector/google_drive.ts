@@ -1,6 +1,9 @@
 import type { Transaction } from "sequelize";
 
-import { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
+import {
+  GoogleDriveConfig,
+  GoogleDriveSheet,
+} from "@connectors/lib/models/google_drive";
 import {
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -44,6 +47,12 @@ export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
       },
       transaction,
     });
+    await GoogleDriveSheet.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
 
     await GoogleDriveSyncToken.destroy({
       where: {
@@ -52,6 +61,12 @@ export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
       transaction,
     });
     await GoogleDriveWebhook.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await GoogleDriveConfig.destroy({
       where: {
         connectorId: connector.id,
       },
