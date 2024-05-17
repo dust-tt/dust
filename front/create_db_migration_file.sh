@@ -9,6 +9,7 @@ fi
 cleanup() {
     echo "Cleaning up temporary files..."
     rm main_output.txt current_output.txt
+    exit 0
 }
 
 # Get current date in a human-readable format (e.g., May 28, 2024)
@@ -59,7 +60,6 @@ if [ -n "$diff_output" ]; then
 else
     echo "No migration necessary."
     cleanup
-    exit 0
 fi
 
 # Find the last migration version.
@@ -72,3 +72,6 @@ echo "Creating SQL migration $next_version."
 mv diff_output.txt "./migrations/db/migration_${next_version}.sql"
 
 cleanup
+
+# CLEANUP ON CTRL+C
+trap 'cleanup' SIGINT
