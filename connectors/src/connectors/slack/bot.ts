@@ -630,6 +630,22 @@ export async function getBotEnabled(
   return new Ok(slackConfig.botEnabled);
 }
 
+export async function getWhiteListedChannelPatterns(
+  connectorId: ModelId
+): Promise<Result<string[], Error>> {
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+  return new Ok(slackConfig.whiteListedChannelPatterns);
+}
+
 async function makeContentFragment(
   slackClient: WebClient,
   channelId: string,
