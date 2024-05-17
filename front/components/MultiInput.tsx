@@ -2,9 +2,10 @@ import React, { useState } from "react";
 
 interface MultiInputProps {
   initialValues: string[];
+  onValuesChange: (values: string[]) => void;
 }
 
-export function MultiInput({ initialValues }: MultiInputProps) {
+export function MultiInput({ initialValues, onValuesChange }: MultiInputProps) {
   const [inputValue, setInputValue] = useState<string>("");
   const [values, setValues] = useState<string[]>(initialValues);
 
@@ -16,14 +17,18 @@ export function MultiInput({ initialValues }: MultiInputProps) {
     if (event.key === "Enter") {
       event.preventDefault();
       if (inputValue.trim() !== "") {
-        setValues([...values, inputValue.trim()]);
+        const newValues = [...values, inputValue.trim()];
+        setValues(newValues);
+        onValuesChange(newValues);
         setInputValue("");
       }
     }
   };
 
   const handleRemoveValue = (index: number) => {
-    setValues(values.filter((_, i) => i !== index));
+    const newValues = values.filter((_, i) => i !== index);
+    setValues(newValues);
+    onValuesChange(newValues);
   };
 
   return (
