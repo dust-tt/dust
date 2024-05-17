@@ -44,7 +44,6 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
   webcrawler: { singular: "page", plural: "pages" },
-  gong: { singular: "transcript", plural: "transcripts" },
 };
 
 export default function AssistantBuilderDataSourceModal({
@@ -587,7 +586,6 @@ function getDisplayNameForDataSource(ds: DataSourceType) {
       case "github":
       case "intercom":
       case "notion":
-      case "gong":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":
         return ds.name;

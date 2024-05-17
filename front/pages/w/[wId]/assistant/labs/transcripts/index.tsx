@@ -23,7 +23,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
-import { buildConnectionId } from "@app/lib/connector_connection_id";
+import { buildLabsConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import config from "@app/lib/labs/config";
 import {
@@ -273,7 +273,7 @@ export default function LabsTranscriptsIndex({
         return;
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(
+      const newConnectionId = buildLabsConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );
@@ -303,7 +303,7 @@ export default function LabsTranscriptsIndex({
         return;
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(
+      const newConnectionId = buildLabsConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );

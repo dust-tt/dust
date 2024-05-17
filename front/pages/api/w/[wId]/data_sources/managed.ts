@@ -150,15 +150,6 @@ async function handler(
           }
           break;
         }
-        case "gong": {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "data_source_auth_error",
-              message: "Datasource type not allowed to be created by the user.",
-            },
-          });
-        }
         default:
           assertNever(provider);
       }

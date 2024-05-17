@@ -20,7 +20,6 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "google_drive":
       case "github":
       case "intercom":
-      case "gong":
       case "notion":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
         break;
