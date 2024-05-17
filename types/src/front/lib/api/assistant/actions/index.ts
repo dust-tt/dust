@@ -24,5 +24,3 @@ export abstract class BaseAction<T extends BaseActionType = BaseActionType> {
   abstract renderForFunctionCall(): FunctionCallType;
   abstract renderForMultiActionsModel(): FunctionMessageTypeModel;
 }
-
-export type InferActionType<B extends { type: BaseActionType }> = B["type"];
