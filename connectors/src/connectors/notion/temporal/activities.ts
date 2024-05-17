@@ -749,184 +749,191 @@ export async function garbageCollect({
   }
   const notionAccessToken = await getNotionAccessToken(connector.connectionId);
 
-  const resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-    connector.id
-  );
+  let resourcesToCheck: Awaited<
+    ReturnType<typeof findResourcesNotSeenInGarbageCollectionRun>
+  > = [];
+  do {
+    resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
+      connector.id
+    );
 
-  const NOTION_UNHEALTHY_ERROR_CODES = [
-    "internal_server_error",
-    "notionhq_client_request_timeout",
-    "service_unavailable",
-    "notionhq_client_response_error",
-  ];
+    const NOTION_UNHEALTHY_ERROR_CODES = [
+      "internal_server_error",
+      "notionhq_client_request_timeout",
+      "service_unavailable",
+      "notionhq_client_response_error",
+    ];
 
-  let deletedPagesCount = 0;
-  let deletedDatabasesCount = 0;
+    let deletedPagesCount = 0;
+    let deletedDatabasesCount = 0;
 
-  let skippedPagesCount = 0;
-  let skippedDatabasesCount = 0;
+    let skippedPagesCount = 0;
+    let skippedDatabasesCount = 0;
 
-  let stillAccessiblePagesCount = 0;
-  let stillAccessibleDatabasesCount = 0;
+    let stillAccessiblePagesCount = 0;
+    let stillAccessibleDatabasesCount = 0;
 
-  for (const [i, x] of resourcesToCheck.entries()) {
-    await heartbeat();
+    for (const [i, x] of resourcesToCheck.entries()) {
+      await heartbeat();
 
-    const iterationLogger = localLogger.child({
-      pageId: x.resourceType === "page" ? x.resourceId : undefined,
-      databaseId: x.resourceType === "database" ? x.resourceId : undefined,
-      resourcesToCheckCount: resourcesToCheck.length,
-      index: i,
-      deletedPagesCount,
-      deletedDatabasesCount,
-      skippedPagesCount,
-      skippedDatabasesCount,
-      stillAccessiblePagesCount,
-      stillAccessibleDatabasesCount,
-    });
-
-    if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
-      iterationLogger.warn("Garbage collection is taking too long, giving up.");
-      break;
-    }
-
-    if (x.skipReason) {
-      if (x.resourceType === "page") {
-        iterationLogger.info(
-          { skipReason: x.skipReason },
-          "Page is marked as skipped, not deleting."
-        );
-        skippedPagesCount++;
-      } else if (x.resourceType === "database") {
-        iterationLogger.info(
-          { skipReason: x.skipReason },
-          "Database is marked as skipped, not deleting."
-        );
-        skippedDatabasesCount++;
-      } else {
-        assertNever(x.resourceType);
-      }
-      continue;
-    }
-
-    let resourceIsAccessible: boolean;
-    try {
-      resourceIsAccessible = await isAccessibleAndUnarchived(
-        notionAccessToken,
-        x.resourceId,
-        x.resourceType,
-        iterationLogger
-      );
-    } catch (e) {
-      // Sometimes a request will consistently fail with a 500 We don't want to delete the page in
-      // that case, so we just log the error and move on.
-      const potentialNotionError = e as {
-        body: unknown;
-        code: string;
-        status: number;
-      };
-      if (
-        (NOTION_UNHEALTHY_ERROR_CODES.includes(potentialNotionError.code) ||
-          (typeof potentialNotionError.status === "number" &&
-            potentialNotionError.status >= 500 &&
-            potentialNotionError.status < 600)) &&
-        Context.current().info.attempt >= 15
-      ) {
-        iterationLogger.error(
-          {
-            error: potentialNotionError,
-            attempt: Context.current().info.attempt,
-          },
-          "Failed to check if notion resource is accessible. Giving up and moving on"
-        );
-        resourceIsAccessible = true;
-      } else {
-        throw e;
-      }
-    }
-
-    if (resourceIsAccessible) {
-      // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
-      if (x.resourceType === "page") {
-        await NotionPage.update(
-          {
-            lastSeenTs: new Date(runTimestamp),
-          },
-          {
-            where: {
-              connectorId: connector.id,
-              notionPageId: x.resourceId,
-            },
-          }
-        );
-        iterationLogger.info("Page is still accessible, not deleting.");
-        stillAccessiblePagesCount++;
-      } else if (x.resourceType === "database") {
-        await NotionDatabase.update(
-          {
-            lastSeenTs: new Date(runTimestamp),
-          },
-          {
-            where: {
-              connectorId: connector.id,
-              notionDatabaseId: x.resourceId,
-            },
-          }
-        );
-        iterationLogger.info("Database is still accessible, not deleting.");
-        stillAccessibleDatabasesCount++;
-      } else {
-        assertNever(x.resourceType);
-      }
-
-      continue;
-    }
-    const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    if (x.resourceType === "page") {
-      iterationLogger.info("Deleting page.");
-      await deleteFromDataSource(dataSourceConfig, `notion-${x.resourceId}`);
-      deletedPagesCount++;
-      const notionPage = await NotionPage.findOne({
-        where: {
-          connectorId: connector.id,
-          notionPageId: x.resourceId,
-        },
+      const iterationLogger = localLogger.child({
+        pageId: x.resourceType === "page" ? x.resourceId : undefined,
+        databaseId: x.resourceType === "database" ? x.resourceId : undefined,
+        resourcesToCheckCount: resourcesToCheck.length,
+        index: i,
+        deletedPagesCount,
+        deletedDatabasesCount,
+        skippedPagesCount,
+        skippedDatabasesCount,
+        stillAccessiblePagesCount,
+        stillAccessibleDatabasesCount,
       });
-      if (notionPage?.parentType === "database" && notionPage.parentId) {
-        const parentDatabase = await NotionDatabase.findOne({
-          where: {
-            connectorId: connector.id,
-            notionDatabaseId: notionPage.parentId,
-          },
-        });
-        if (parentDatabase) {
-          const tableId = `notion-${parentDatabase.notionDatabaseId}`;
-          const rowId = `notion-${notionPage.notionPageId}`;
-          await deleteTableRow({ dataSourceConfig, tableId, rowId });
+
+      if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
+        iterationLogger.warn(
+          "Garbage collection is taking too long, giving up."
+        );
+        break;
+      }
+
+      if (x.skipReason) {
+        if (x.resourceType === "page") {
+          iterationLogger.info(
+            { skipReason: x.skipReason },
+            "Page is marked as skipped, not deleting."
+          );
+          skippedPagesCount++;
+        } else if (x.resourceType === "database") {
+          iterationLogger.info(
+            { skipReason: x.skipReason },
+            "Database is marked as skipped, not deleting."
+          );
+          skippedDatabasesCount++;
+        } else {
+          assertNever(x.resourceType);
+        }
+        continue;
+      }
+
+      let resourceIsAccessible: boolean;
+      try {
+        resourceIsAccessible = await isAccessibleAndUnarchived(
+          notionAccessToken,
+          x.resourceId,
+          x.resourceType,
+          iterationLogger
+        );
+      } catch (e) {
+        // Sometimes a request will consistently fail with a 500 We don't want to delete the page in
+        // that case, so we just log the error and move on.
+        const potentialNotionError = e as {
+          body: unknown;
+          code: string;
+          status: number;
+        };
+        if (
+          (NOTION_UNHEALTHY_ERROR_CODES.includes(potentialNotionError.code) ||
+            (typeof potentialNotionError.status === "number" &&
+              potentialNotionError.status >= 500 &&
+              potentialNotionError.status < 600)) &&
+          Context.current().info.attempt >= 15
+        ) {
+          iterationLogger.error(
+            {
+              error: potentialNotionError,
+              attempt: Context.current().info.attempt,
+            },
+            "Failed to check if notion resource is accessible. Giving up and moving on"
+          );
+          resourceIsAccessible = true;
+        } else {
+          throw e;
         }
       }
-      await notionPage?.destroy();
-    } else {
-      iterationLogger.info("Deleting database.");
-      deletedDatabasesCount++;
-      const notionDatabase = await NotionDatabase.findOne({
-        where: {
-          connectorId: connector.id,
-          notionDatabaseId: x.resourceId,
-        },
-      });
-      if (notionDatabase) {
-        const tableId = `notion-${notionDatabase.notionDatabaseId}`;
-        await deleteTable({ dataSourceConfig, tableId });
+
+      if (resourceIsAccessible) {
+        // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
+        if (x.resourceType === "page") {
+          await NotionPage.update(
+            {
+              lastSeenTs: new Date(runTimestamp),
+            },
+            {
+              where: {
+                connectorId: connector.id,
+                notionPageId: x.resourceId,
+              },
+            }
+          );
+          iterationLogger.info("Page is still accessible, not deleting.");
+          stillAccessiblePagesCount++;
+        } else if (x.resourceType === "database") {
+          await NotionDatabase.update(
+            {
+              lastSeenTs: new Date(runTimestamp),
+            },
+            {
+              where: {
+                connectorId: connector.id,
+                notionDatabaseId: x.resourceId,
+              },
+            }
+          );
+          iterationLogger.info("Database is still accessible, not deleting.");
+          stillAccessibleDatabasesCount++;
+        } else {
+          assertNever(x.resourceType);
+        }
+
+        continue;
       }
-      await NotionDatabase.destroy({
-        where: {
-          connectorId: connector.id,
-          notionDatabaseId: x.resourceId,
-        },
-      });
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+      if (x.resourceType === "page") {
+        iterationLogger.info("Deleting page.");
+        await deleteFromDataSource(dataSourceConfig, `notion-${x.resourceId}`);
+        deletedPagesCount++;
+        const notionPage = await NotionPage.findOne({
+          where: {
+            connectorId: connector.id,
+            notionPageId: x.resourceId,
+          },
+        });
+        if (notionPage?.parentType === "database" && notionPage.parentId) {
+          const parentDatabase = await NotionDatabase.findOne({
+            where: {
+              connectorId: connector.id,
+              notionDatabaseId: notionPage.parentId,
+            },
+          });
+          if (parentDatabase) {
+            const tableId = `notion-${parentDatabase.notionDatabaseId}`;
+            const rowId = `notion-${notionPage.notionPageId}`;
+            await deleteTableRow({ dataSourceConfig, tableId, rowId });
+          }
+        }
+        await notionPage?.destroy();
+      } else {
+        iterationLogger.info("Deleting database.");
+        deletedDatabasesCount++;
+        const notionDatabase = await NotionDatabase.findOne({
+          where: {
+            connectorId: connector.id,
+            notionDatabaseId: x.resourceId,
+          },
+        });
+        if (notionDatabase) {
+          const tableId = `notion-${notionDatabase.notionDatabaseId}`;
+          await deleteTable({ dataSourceConfig, tableId });
+        }
+        await NotionDatabase.destroy({
+          where: {
+            connectorId: connector.id,
+            notionDatabaseId: x.resourceId,
+          },
+        });
+      }
     }
-  }
+  } while (resourcesToCheck.length > 0);
 
   const redisKey = redisGarbageCollectorKey(connector.id);
   const redisCli = await redisClient();
@@ -972,44 +979,36 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
   const pageSize = 500;
 
-  let offset = 0;
   const pagesNotSeenInGarbageCollectionRun: Array<{
     lastSeenTs: Date;
     resourceType: "page";
     resourceId: string;
     skipReason: string | null;
   }> = [];
-  for (;;) {
-    const pages = (
-      await NotionPage.findAll({
-        where: {
-          connectorId,
-          lastSeenTs: {
-            [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
-          },
+  const pages = (
+    await NotionPage.findAll({
+      where: {
+        connectorId,
+        lastSeenTs: {
+          [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
-        attributes: ["lastSeenTs", "notionPageId", "skipReason"],
-        limit: pageSize,
-        offset,
-      })
-    )
-      .filter((p) => !pageIdsSeenInRun.has(p.notionPageId))
-      .map((p) => ({
-        lastSeenTs: p.lastSeenTs,
-        resourceType: "page" as const,
-        resourceId: p.notionPageId,
-        skipReason: p.skipReason || null,
-      }));
+      },
+      attributes: ["lastSeenTs", "notionPageId", "skipReason"],
+      limit: pageSize,
+    })
+  )
+    .filter((p) => !pageIdsSeenInRun.has(p.notionPageId))
+    .map((p) => ({
+      lastSeenTs: p.lastSeenTs,
+      resourceType: "page" as const,
+      resourceId: p.notionPageId,
+      skipReason: p.skipReason || null,
+    }));
 
-    if (pages.length === 0) {
-      break;
-    }
+  pagesNotSeenInGarbageCollectionRun.push(...pages);
 
-    pagesNotSeenInGarbageCollectionRun.push(...pages);
-    offset += pageSize;
-  }
+  let offset = 0;
 
-  offset = 0;
   const databasesNotSeenInGarbageCollectionRun: Array<{
     lastSeenTs: Date;
     resourceType: "database";
