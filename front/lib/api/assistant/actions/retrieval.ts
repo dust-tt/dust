@@ -334,7 +334,7 @@ export async function generateRetrievalSpecification(
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function retrievalActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<RetrievalActionType[]> {
+): Promise<RetrievalAction[]> {
   const models = await AgentRetrievalAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
@@ -384,7 +384,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
     return acc;
   }, {});
 
-  const actions: RetrievalActionType[] = [];
+  const actions: RetrievalAction[] = [];
 
   for (const id of actionIds) {
     const action = actionById[id];

@@ -246,7 +246,7 @@ export async function generateDustAppRunSpecification(
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function dustAppRunTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<DustAppRunActionType[]> {
+): Promise<DustAppRunAction[]> {
   const actions = await AgentDustAppRunAction.findAll({
     where: {
       agentMessageId: agentMessageIds,

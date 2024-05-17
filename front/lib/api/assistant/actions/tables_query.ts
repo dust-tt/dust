@@ -105,7 +105,7 @@ class TablesQueryAction extends BaseAction<"tables_query_action"> {
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function tableQueryTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<TablesQueryActionType[]> {
+): Promise<TablesQueryAction[]> {
   const actions = await AgentTablesQueryAction.findAll({
     where: {
       agentMessageId: agentMessageIds,

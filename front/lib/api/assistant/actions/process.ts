@@ -206,7 +206,7 @@ export async function generateProcessSpecification(
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function processActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<ProcessActionType[]> {
+): Promise<ProcessAction[]> {
   const models = await AgentProcessAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
