@@ -138,6 +138,9 @@ ConversationParticipant.init(
         fields: ["userId", "conversationId"],
         unique: true,
       },
+      {
+        fields: ["conversationId"],
+      },
     ],
   }
 );
@@ -375,6 +378,18 @@ Message.init(
         unique: true,
         fields: ["conversationId", "rank", "version"],
       },
+      {
+        fields: ["agentMessageId"],
+      },
+      {
+        fields: ["userMessageId"],
+      },
+      {
+        fields: ["contentFragmentId"],
+      },
+      {
+        fields: ["parentId"],
+      },
     ],
     hooks: {
       beforeValidate: (message) => {
@@ -489,6 +504,7 @@ MessageReaction.init(
         fields: ["messageId", "reaction", "userContextUsername"], // Not perfect as that means that a user and slack user with the same username can't react with the same emoji, but that's an edge case.
       },
       { fields: ["messageId"] },
+      { fields: ["userId"] },
     ],
   }
 );
@@ -555,6 +571,9 @@ Mention.init(
       },
       {
         fields: ["agentConfigurationId", "createdAt"],
+      },
+      {
+        fields: ["userId"],
       },
     ],
   }
