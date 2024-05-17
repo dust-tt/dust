@@ -72,7 +72,8 @@ export type APIErrorType =
   // DustAppSecrets:
   | "dust_app_secret_not_found"
   // Labs:
-  | "transcripts_configuration_not_found";
+  | "transcripts_configuration_not_found"
+  | "transcripts_configuration_already_exists";
 
 export type APIError = {
   type: APIErrorType;

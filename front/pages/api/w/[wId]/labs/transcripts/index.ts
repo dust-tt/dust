@@ -58,8 +58,6 @@ async function handler(
   }
 
   switch (req.method) {
-    // List.
-    // TODO: This should be a proper list operation.
     case "GET":
       const transcriptsConfigurationGet =
         await LabsTranscriptsConfigurationResource.findByUserWorkspace({
@@ -99,6 +97,22 @@ async function handler(
       }
 
       const { connectionId, provider } = bodyValidation.right;
+
+      const transcriptsConfigurationAlreadyExists =
+        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+          auth,
+          userId,
+        });
+
+      if (transcriptsConfigurationAlreadyExists) {
+        return apiError(req, res, {
+          status_code: 409,
+          api_error: {
+            type: "transcripts_configuration_already_exists",
+            message: "The transcripts configuration already exists.",
+          },
+        });
+      }
 
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
