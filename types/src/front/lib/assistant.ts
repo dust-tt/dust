@@ -25,7 +25,7 @@ export const ModelProviderIdCodec = ioTsEnum(MODEL_PROVIDER_IDS);
  */
 
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
-export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4O_MODEL_ID = "gpt-4o-2024-05-13" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_SONNET_2024029_MODEL_ID =
