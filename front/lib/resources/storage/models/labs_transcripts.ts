@@ -23,10 +23,8 @@ export class LabsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-
+  declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
-
-  declare connectionId: string | null;
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
