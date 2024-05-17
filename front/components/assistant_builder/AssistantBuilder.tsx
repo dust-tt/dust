@@ -437,6 +437,8 @@ export default function AssistantBuilder({
         `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
       );
       valid = false;
+    } else {
+      setInstructionsError(null);
     }
 
     const modelConfig = SUPPORTED_MODEL_CONFIGS.filter(
@@ -453,8 +455,15 @@ export default function AssistantBuilder({
       builderState.instructions.trim().length / 4 >
         modelConfig.contextSize * 0.9
     ) {
+      console.log(
+        `csize ${builderState.instructions.trim().length / 4} and limit ${
+          modelConfig.contextSize * 0.9
+        }`
+      );
       setInstructionsError(`Instructions may exceed context size window.`);
       valid = false;
+    } else {
+      setInstructionsError(null);
     }
 
     if (!builderState.actions.every((a) => isActionValid(a))) {
