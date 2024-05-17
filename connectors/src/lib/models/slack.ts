@@ -21,6 +21,7 @@ export class SlackConfigurationModel extends Model<
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare whitelistedDomains?: readonly string[];
+  declare whiteListedChannelPatterns: string[];
 }
 SlackConfigurationModel.init(
   {
@@ -52,6 +53,10 @@ SlackConfigurationModel.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
+    whiteListedChannelPatterns: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    }
   },
   {
     sequelize: sequelizeConnection,
