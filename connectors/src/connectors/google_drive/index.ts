@@ -762,7 +762,7 @@ export async function getGoogleDriveConfig(
 export async function setGoogleDriveConfig(
   connectorId: ModelId,
   configKey: string,
-  configValue: string
+  configValue: string | string[]
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -777,7 +777,7 @@ export async function setGoogleDriveConfig(
     );
   }
 
-  if (!["true", "false"].includes(configValue)) {
+  if (!["true", "false"].includes(configValue as string)) {
     return new Err(
       new Error(`Invalid config value ${configValue}, must be true or false`)
     );

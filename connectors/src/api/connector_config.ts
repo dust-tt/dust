@@ -19,7 +19,7 @@ type ConfigSetReqBody = t.TypeOf<typeof ConfigSetReqBodySchema>;
 type ConfigGetResBody = WithConnectorsAPIErrorReponse<{
   connectorId: number;
   configKey: string;
-  configValue: string;
+  configValue: string | string[];
 }>;
 
 const _getConnectorConfig = async (
