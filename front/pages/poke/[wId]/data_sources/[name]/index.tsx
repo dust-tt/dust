@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import { MultiInput } from "@app/components/MultiInput";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -32,7 +33,6 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { MultiInput } from "@app/components/MultiInput";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -46,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string[] | null;
+    whiteListedChannelPatterns: string | string[];
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
@@ -133,7 +133,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           throw whiteListedChannelPatterns.error;
         }
         features.whiteListedChannelPatterns =
-          whiteListedChannelPatterns.value.configValue;
+          whiteListedChannelPatterns.value.configValue as string[];
         break;
       case "google_drive":
         const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
@@ -498,7 +498,7 @@ const DataSourcePage = ({
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
             {
               <MultiInput
-                initialValues={features.whiteListedChannelPatterns}
+                initialValues={features.whiteListedChannelPatterns as string[]}
                 onValuesChange={handleWhiteListedChannelPatternsChange}
               />
             }

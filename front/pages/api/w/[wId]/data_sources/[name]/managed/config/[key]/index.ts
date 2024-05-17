@@ -15,7 +15,7 @@ export const PostManagedDataSourceConfigRequestBodySchema = t.type({
 });
 
 export type GetOrPostManagedDataSourceConfigResponseBody = {
-  configValue: string;
+  configValue: string | string[];
 };
 
 async function handler(
