@@ -37,6 +37,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import _ from "lodash";
@@ -436,8 +437,24 @@ export default function AssistantBuilder({
         `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
       );
       valid = false;
-    } else {
-      setInstructionsError(null);
+    }
+
+    const modelConfig = SUPPORTED_MODEL_CONFIGS.filter(
+      (config) =>
+        config.modelId === builderState.generationSettings.modelSettings.modelId
+    )[0];
+    if (!modelConfig) {
+      // unreachable
+      throw new Error("Model configuration not found");
+    }
+
+    if (
+      builderState.instructions &&
+      builderState.instructions.trim().length / 4 >
+        modelConfig.contextSize * 0.9
+    ) {
+      setInstructionsError(`Instructions may exceed context size window.`);
+      valid = false;
     }
 
     if (!builderState.actions.every((a) => isActionValid(a))) {
