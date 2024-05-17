@@ -1,9 +1,16 @@
-import { retrieveNewTranscriptsActivity } from "./activities";
+import { processTranscriptActivity,retrieveNewTranscriptsActivity } from "./activities";
 
-const transcriptsConfigurationId = 30;
+const transcriptsConfigurationId = 31;
 
 async function main() {
-  await retrieveNewTranscriptsActivity(transcriptsConfigurationId);
+  const filesToProcess = await retrieveNewTranscriptsActivity(
+    transcriptsConfigurationId
+  );
+
+  for (const fileId of filesToProcess) {
+    console.log("Processing file:", fileId);
+    await processTranscriptActivity(transcriptsConfigurationId, fileId);
+  }
 }
 
 main().catch((error) => {

@@ -75,7 +75,6 @@ export async function retrieveNewTranscriptsActivity(
   }
 
   if (transcriptsConfiguration.provider == "gong") {
-    console.log("GONG TRANSCRIPTS");
     const transcriptsIds = await retrieveGongTranscripts(
       transcriptsConfiguration,
       localLogger

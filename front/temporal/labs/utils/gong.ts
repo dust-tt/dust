@@ -88,10 +88,15 @@ export async function retrieveGongTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string }> {
+  const gongAccessToken = await getAccessTokenFromNango(
+    "gong-dev",
+    transcriptsConfiguration.connectionId
+  );
+
   const transcript = await fetch(`https://api.gong.io/v2/calls`, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${transcriptsConfiguration.gongApiKey}`,
+      Authorization: `Bearer ${gongAccessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -104,6 +109,8 @@ export async function retrieveGongTranscriptContent(
       {},
       "[processTranscriptActivity] Error fetching transcript from Gong. Skipping."
     );
+    //console log the error message
+    console.log(transcript);
     throw new Error("Error fetching transcript from Gong. Skipping.");
   }
 
