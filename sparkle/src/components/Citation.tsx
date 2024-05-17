@@ -21,8 +21,7 @@ interface CitationProps {
     | "github"
     | "notion"
     | "intercom"
-    | "document"
-    | "gong";
+    | "document";
   title: string;
   description?: string;
   index?: ReactNode;
