@@ -25,7 +25,6 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare connectionId: string;
   declare provider: LabsTranscriptsProviderType;
-
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
 }
