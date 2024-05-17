@@ -1,4 +1,4 @@
-import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import {
@@ -11,20 +11,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { destroyConversation } from "@app/lib/conversation";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import {
-  AgentRetrievalAction,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentMessage,
-  Conversation,
-  Message,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
+import { Conversation } from "@app/lib/models/assistant/conversation";
 import logger from "@app/logger/logger";
 
 export async function sendDataDeletionEmail({
@@ -111,7 +98,8 @@ async function deleteAllConversations(auth: Authenticator) {
     "Deleting all conversations for workspace."
   );
 
-  const conversationChunks = chunk(conversations, 4);
+  // Temporary until we ease the load on the DB.
+  const conversationChunks = chunk(conversations, 1);
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
