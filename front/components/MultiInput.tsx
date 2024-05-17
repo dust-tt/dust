@@ -48,7 +48,7 @@ export function MultiInput({ initialValues, onValuesChange }: MultiInputProps) {
             key={index}
             className="value-tag rounded-md px-1 py-1 text-white"
             style={{
-              backgroundColor: 'gray'
+              backgroundColor: "gray",
             }}
           >
             {value}

@@ -56,7 +56,7 @@ SlackConfigurationModel.init(
     whiteListedChannelPatterns: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
-    }
+    },
   },
   {
     sequelize: sequelizeConnection,
