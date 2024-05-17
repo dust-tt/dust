@@ -73,6 +73,7 @@ Conversation.init(
       },
       {
         fields: ["workspaceId"],
+        name: "conversations_wId_idx",
       },
     ],
     sequelize: frontSequelize,
