@@ -250,11 +250,13 @@ export async function deleteDataSource(
     dataSourceName: dataSource.name,
   });
   if (coreDeleteRes.isErr()) {
-    return new Err({
-      type: "internal_server_error",
-      message: `Error deleting core data source: ${coreDeleteRes.error.message}`,
-      data_source_error: coreDeleteRes.error,
-    });
+    if (coreDeleteRes.error.code !== "data_source_not_found") {
+      return new Err({
+        type: "internal_server_error",
+        message: `Error deleting core data source: ${coreDeleteRes.error.message}`,
+        data_source_error: coreDeleteRes.error,
+      });
+    }
   }
 
   await dataSource.destroy();
