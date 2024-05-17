@@ -33,7 +33,6 @@ import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { MultiInput } from "@app/components/MultiInput";
-import { TextArea } from "@dust-tt/sparkle";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -47,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string
+    whiteListedChannelPatterns: string[];
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
@@ -103,13 +102,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string
+    whiteListedChannelPatterns: string[];
   } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
-    whiteListedChannelPatterns: "",
+    whiteListedChannelPatterns: [],
   };
 
   const connectorsAPI = new ConnectorsAPI(logger);
@@ -125,14 +124,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.slackBotEnabled = botEnabledRes.value.configValue === "true";
 
-        const whiteListedChannelPatterns = await connectorsAPI.getConnectorConfig(
-          dataSource.connectorId,
-          "whiteListedChannelPatterns",
-        );
+        const whiteListedChannelPatterns =
+          await connectorsAPI.getConnectorConfig(
+            dataSource.connectorId,
+            "whiteListedChannelPatterns"
+          );
         if (whiteListedChannelPatterns.isErr()) {
           throw whiteListedChannelPatterns.error;
         }
-        features.whiteListedChannelPatterns = whiteListedChannelPatterns.value.configValue;
+        features.whiteListedChannelPatterns =
+          whiteListedChannelPatterns.value.configValue;
         break;
       case "google_drive":
         const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
@@ -325,26 +326,33 @@ const DataSourcePage = ({
     }
   });
 
-  const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(async (newValues: string[]) => {
-    try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          configKey: 'whiteListedChannelPatterns',
-          configValue: newValues.join(','),
-        }),
-      });
-      if (!r.ok) {
-        throw new Error('Failed to update whiteListedChannelPatterns.');
+  const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(
+    async (newValues: string[]) => {
+      try {
+        const r = await fetch(
+          `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              configKey: "whiteListedChannelPatterns",
+              configValue: newValues,
+            }),
+          }
+        );
+        if (!r.ok) {
+          throw new Error("Failed to update whiteListedChannelPatterns.");
+        }
+      } catch (e) {
+        console.error(e);
+        window.alert(
+          "An error occurred while updating whiteListedChannelPatterns."
+        );
       }
-    } catch (e) {
-      console.error(e);
-      window.alert('An error occurred while updating whiteListedChannelPatterns.');
     }
-  });
+  );
 
   const onDisplayDocumentSource = (documentId: string) => {
     if (
@@ -487,11 +495,13 @@ const DataSourcePage = ({
             </div>
           )}
 
-          <div className="pb-8 pt-2 border-material-200 flex flex-grow flex-col rounded-lg border p-4 mb-4">
-            {<MultiInput
-              initialValues={features.whiteListedChannelPatterns.split(",")}
-              onValuesChange={handleWhiteListedChannelPatternsChange}
-            />}
+          <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
+            {
+              <MultiInput
+                initialValues={features.whiteListedChannelPatterns}
+                onValuesChange={handleWhiteListedChannelPatternsChange}
+              />
+            }
             <div className="s-text-sm pt-3">
               <p>Channels:</p>
             </div>

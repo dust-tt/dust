@@ -12,7 +12,7 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const ConfigSetReqBodySchema = t.type({
-  configValue: t.string,
+  configValue: t.union([t.string, t.array(t.string)]),
 });
 type ConfigSetReqBody = t.TypeOf<typeof ConfigSetReqBodySchema>;
 

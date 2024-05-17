@@ -607,7 +607,9 @@ export async function getWhiteListedChannelPatterns(
       )
     );
   }
-  return new Ok(slackConfig.whiteListedChannelPatterns);
+  const whiteListedChannelPatterns =
+    slackConfig.whiteListedChannelPatterns || [];
+  return new Ok(whiteListedChannelPatterns);
 }
 
 export const getSlackConfig: ConnectorConfigGetter = async function (
@@ -628,11 +630,13 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
       return new Ok(botEnabledRes.value.toString());
     }
     case "whiteListedChannelPatterns": {
-      const whiteListedChannelPatterns = await getWhiteListedChannelPatterns(connectorId);
+      const whiteListedChannelPatterns = await getWhiteListedChannelPatterns(
+        connectorId
+      );
       if (whiteListedChannelPatterns.isErr()) {
         return whiteListedChannelPatterns;
       }
-      return new Ok(JSON.stringify(whiteListedChannelPatterns.value));
+      return new Ok(whiteListedChannelPatterns.value);
     }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));
@@ -642,7 +646,7 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
 export async function setSlackConfig(
   connectorId: ModelId,
   configKey: string,
-  configValue: string
+  configValue: string | string[]
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -679,9 +683,9 @@ export async function setSlackConfig(
         );
       }
       if (typeof configValue === "string") {
-        return slackConfig.setWhiteListedChannelPatterns([configValue])
+        return slackConfig.setWhiteListedChannelPatterns([configValue]);
       } else {
-        return slackConfig.setWhiteListedChannelPatterns(configValue)
+        return slackConfig.setWhiteListedChannelPatterns(configValue);
       }
     }
 
