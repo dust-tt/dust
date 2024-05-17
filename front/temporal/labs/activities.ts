@@ -82,8 +82,6 @@ export async function retrieveNewTranscriptsActivity(
     transcriptsIdsToProcess.push(...transcriptsIds);
   }
 
-  console.log("transcriptsIdsToProcess", transcriptsIdsToProcess);
-
   return transcriptsIdsToProcess;
 }
 
@@ -190,7 +188,6 @@ export async function processTranscriptActivity(
   });
 
   const { agentConfigurationId } = transcriptsConfiguration;
-
   if (!agentConfigurationId) {
     localLogger.error(
       "[processTranscriptActivity] No agent configuration id found. Stopping."
@@ -202,6 +199,7 @@ export async function processTranscriptActivity(
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
+
   const agentConfigurations = agentConfigurationsRes.value;
   const agent = agentConfigurations.find(
     (agent) => agent.sId === agentConfigurationId

@@ -6,12 +6,8 @@ export async function retrieveGongTranscripts(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger
 ): Promise<string[]> {
-  // Retrieve recent transcripts from Gong
-  // const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  // DEBUG A LOT OF TIME AGO
-  const fromDateTime = new Date(
-    Date.now() - 2400 * 60 * 60 * 1000
-  ).toISOString();
+  // Retrieve transcripts from Gong from the last 24h
+  const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   if (!transcriptsConfiguration.connectionId) {
     localLogger.error(
@@ -88,11 +84,58 @@ export async function retrieveGongTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string }> {
-  
+  type GongParticipant = {
+    speakerId: string;
+    name: string;
+    [key: string]: any;
+  };
+
   const gongAccessToken = await getAccessTokenFromNango(
     "gong-dev",
     transcriptsConfiguration.connectionId
   );
+
+  const call = await fetch(`https://api.gong.io/v2/calls/extensive`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${gongAccessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      filter: {
+        callIds: [fileId],
+      },
+    }),
+  });
+
+  if (!call.ok) {
+    localLogger.error(
+      {},
+      "[processTranscriptActivity] Error fetching call from Gong. Skipping."
+    );
+    throw new Error("Error fetching call from Gong. Skipping.");
+  }
+
+  const callData = (await call.json()).calls[0];
+
+  if (!callData) {
+    localLogger.error(
+      {},
+      "[processTranscriptActivity] Call data not found from Gong. Skipping."
+    );
+    throw new Error("Call data not found from Gong. Skipping.");
+  }
+
+  const participants: { [key: string]: string } = {};
+  callData.participants?.map((participant: GongParticipant) => {
+    participants[participant.speakerId] = participant.name;
+  });
+
+  // console.log("CALL DETAILS;");
+  // console.log(callData);
+
+  // console.log('PARTICIPANTS:');
+  // console.log(participants);
 
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
@@ -101,9 +144,10 @@ export async function retrieveGongTranscriptContent(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      filter:{
-      callIds: [fileId],
-    }}),
+      filter: {
+        callIds: [fileId],
+      },
+    }),
   });
 
   if (!transcript.ok) {
@@ -117,12 +161,12 @@ export async function retrieveGongTranscriptContent(
   }
 
   const callsData = await transcript.json();
-  const transcriptData = callsData.callTranscripts[0];
+  const transcriptParagraph = callsData.callTranscripts[0]?.transcript;
 
   // DDEBUG
-  console.log(transcriptData)
+  console.log(transcriptParagraph);
 
-  if (!transcriptData || transcriptData.length === 0) {
+  if (!transcriptParagraph || transcriptParagraph.length === 0) {
     localLogger.info(
       {},
       "[processTranscriptActivity] No transcript content found from Gong."
@@ -130,8 +174,36 @@ export async function retrieveGongTranscriptContent(
     return { transcriptTitle: "", transcriptContent: "" };
   }
 
-  const transcriptTitle = transcriptData.call.title || "Untitled";
-  const transcriptContent = transcriptData.call.transcript;
+  const hours = Math.floor(callData.metaData.duration / 3600);
+  const minutes = Math.floor((callData.metaData.duration % 3600) / 60);
+  const callDuration = `${hours} hours ${
+    minutes < 10 ? "0" + minutes : minutes
+  } minutes`;
+
+  const transcriptTitle = callData.metaData.title || "Untitled";
+  let transcriptContent = `Meeting title: ${
+    transcriptTitle || "Untitled"
+  }\n\nDate: ${callData.metaData.started}\n\nDuration: ${callDuration}\n\n`;
+
+  // Rebuild the transcript content.
+  transcriptParagraph.map(
+    (paragraph: {
+      speakerId: string;
+      topic: string | null;
+      sentences: { start: number; end: number; text: string }[];
+    }) => {
+      paragraph.sentences.map(
+        (sentence: { start: number; end: number; text: string }) => {
+          transcriptContent += `${
+            participants[paragraph.speakerId] || "Unknown"
+          }: ${sentence.text}\n`;
+        }
+      );
+    }
+  );
+
+  // console.log('TRANSCRIPT CONTENT:');
+  // console.log(transcriptContent);
 
   return { transcriptTitle, transcriptContent };
 }
