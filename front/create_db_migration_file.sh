@@ -12,6 +12,9 @@ cleanup() {
     exit 0
 }
 
+# CLEANUP ON CTRL+C
+trap 'cleanup' SIGINT
+
 # Get current date in a human-readable format (e.g., May 28, 2024)
 current_date=$(date +"%b %d, %Y")
 
@@ -72,6 +75,3 @@ echo "Creating SQL migration $next_version."
 mv diff_output.txt "./migrations/db/migration_${next_version}.sql"
 
 cleanup
-
-# CLEANUP ON CTRL+C
-trap 'cleanup' SIGINT
