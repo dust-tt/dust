@@ -5,6 +5,7 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 
 import config from "@app/lib/file_storage/config";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 
 class FileStorage {
   private readonly bucket: Bucket;
@@ -78,6 +79,25 @@ class FileStorage {
 
   get name() {
     return this.bucket.name;
+  }
+
+  /**
+   * Delete functions.
+   */
+
+  async delete(
+    filePath: string,
+    { ignoreNotFound }: { ignoreNotFound?: boolean } = {}
+  ) {
+    try {
+      return await this.file(filePath).delete();
+    } catch (err) {
+      if (ignoreNotFound && isGCSNotFoundError(err)) {
+        return;
+      }
+
+      throw err;
+    }
   }
 }
 

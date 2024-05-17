@@ -18,8 +18,7 @@ const privateUploadGcs = getPrivateUploadBucket();
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface ContentFragmentResource
   extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -59,7 +58,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       );
     }
     return new ContentFragmentResource(
-      ContentFragmentModel,
+      ContentFragmentResource.model,
       message.contentFragment.get()
     );
   }
@@ -76,8 +75,59 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return ContentFragmentResource.fromMessage(message);
   }
 
-  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+  static async fetchMany(ids: Array<ModelId>) {
+    const blobs = await ContentFragmentResource.model.findAll({
+      where: {
+        id: ids,
+      },
+    });
+
+    return blobs.map(
+      // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
+      (b: ContentFragmentModel) =>
+        new ContentFragmentResource(ContentFragmentResource.model, b.get())
+    );
+  }
+
+  /**
+   * Temporary workaround until we can call this method from the MessageResource.
+   * @deprecated use the destroy method.
+   */
+  delete(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    throw new Error("Method not implemented.");
+  }
+
+  async destroy(
+    {
+      conversationId,
+      messageId,
+      workspaceId,
+    }: { conversationId: string; messageId: string; workspaceId: string },
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
     try {
+      const { filePath: textFilePath } = fileAttachmentLocation({
+        conversationId,
+        workspaceId,
+        messageId,
+        contentFormat: "text",
+      });
+
+      const { filePath: rawFilePath } = fileAttachmentLocation({
+        conversationId,
+        workspaceId,
+        messageId,
+        contentFormat: "raw",
+      });
+
+      // First, we delete the doc from the file storage.
+      await privateUploadGcs.delete(textFilePath, { ignoreNotFound: true });
+      await privateUploadGcs.delete(rawFilePath, { ignoreNotFound: true });
+
+      // Then, we delete the record from the DB.
       await this.model.destroy({
         where: {
           id: this.id,

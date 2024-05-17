@@ -9,6 +9,7 @@ import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { destroyConversation } from "@app/lib/conversation";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
@@ -110,61 +111,11 @@ async function deleteAllConversations(auth: Authenticator) {
     "Deleting all conversations for workspace."
   );
 
-  const chunks = chunk(conversations, 4);
-  for (const chunk of chunks) {
+  const conversationChunks = chunk(conversations, 4);
+  for (const conversationChunk of conversationChunks) {
     await Promise.all(
-      chunk.map(async (c) => {
-        const messages = await Message.findAll({
-          attributes: ["id", "userMessageId", "agentMessageId"],
-          where: { conversationId: c.id },
-        });
-        const userMessageIds = removeNulls(
-          messages.map((m) => m.userMessageId)
-        );
-        const agentMessageIds = removeNulls(
-          messages.map((m) => m.agentMessageId)
-        );
-
-        const retrievalActions = await AgentRetrievalAction.findAll({
-          attributes: ["id"],
-          where: { agentMessageId: agentMessageIds },
-        });
-        const retrievalDocuments = await RetrievalDocument.findAll({
-          attributes: ["id"],
-          where: { retrievalActionId: retrievalActions.map((a) => a.id) },
-        });
-        await RetrievalDocumentChunk.destroy({
-          where: { retrievalDocumentId: retrievalDocuments.map((d) => d.id) },
-        });
-        await RetrievalDocument.destroy({
-          where: { retrievalActionId: retrievalActions.map((a) => a.id) },
-        });
-        await AgentRetrievalAction.destroy({
-          where: { agentMessageId: agentMessageIds },
-        });
-
-        await AgentTablesQueryAction.destroy({
-          where: { agentMessageId: agentMessageIds },
-        });
-
-        await AgentDustAppRunAction.destroy({
-          where: { agentMessageId: agentMessageIds },
-        });
-
-        await AgentProcessAction.destroy({
-          where: { agentMessageId: agentMessageIds },
-        });
-
-        await Message.destroy({
-          where: { conversationId: c.id },
-        });
-        await UserMessage.destroy({
-          where: { id: userMessageIds },
-        });
-        await AgentMessage.destroy({
-          where: { id: agentMessageIds },
-        });
-        await c.destroy();
+      conversationChunk.map(async (c) => {
+        await destroyConversation(workspace, c);
       })
     );
   }
