@@ -5,7 +5,7 @@ import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runPostUpsertHooksWorker } from "@app/temporal/documents_post_process_hooks/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
-import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
+// import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
 
@@ -30,9 +30,9 @@ runUpdateWorkspaceUsageWorker().catch((err) =>
   logger.error({ error: err }, "Error running usage queue worker.")
 );
 
-runScrubWorkspaceQueueWorker().catch((err) =>
-  logger.error({ error: err }, "Error running scrub workspace queue worker.")
-);
+// runScrubWorkspaceQueueWorker().catch((err) =>
+//   logger.error({ error: err }, "Error running scrub workspace queue worker.")
+// );
 
 runLabsWorker().catch((err) =>
   logger.error({ error: err }, "Error running labs worker.")
