@@ -54,9 +54,9 @@ NODE_ENV=development DB_LOGGING_ENABLED=true ./admin/init_db.sh --unsafe > curre
 echo "Running diff..."
 diff --unified=0 --color=always main_output.txt current_output.txt
 
-# Run diff and extract only SQL statements.
+# Run diff and extract only SQL statements, ensuring they end with a semicolon.
 echo "Running diff and extracting SQL statements..."
-diff_output=$(diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}')
+diff_output=$(diff --unified=0 main_output.txt current_output.txt | awk '/^\+[^+]/ {print substr($0, 2)}') | sed 's/;*$/;/'
 if [ -n "$diff_output" ]; then
   echo "-- Migration created on $current_date" > diff_output.txt
   echo "$diff_output" >> diff_output.txt
