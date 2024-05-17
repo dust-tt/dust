@@ -8,7 +8,7 @@ fi
 
 cleanup() {
     echo "Cleaning up temporary files..."
-    rm main_output.txt current_output.txt
+    rm -f main_output.txt current_output.txt
     exit 0
 }
 
