@@ -14,7 +14,7 @@ cleanup() {
 }
 
 # CLEANUP TEMP FILES ON EXIT
-trap 'cleanup' SIGINT SIGTERM EXIT ERR
+trap 'cleanup' SIGINT SIGTERM EXIT
 
 # Get current date in a human-readable format (e.g., May 28, 2024)
 current_date=$(date +"%b %d, %Y")
