@@ -611,12 +611,17 @@ export async function retrieveGoogleDriveContentNodes(
     : [];
 
   const drivesOrTopLevelFolders = driveFileIds.length
-    ? await GoogleDriveFolders.findAll({
-        where: {
-          connectorId: connectorId,
-          folderId: driveFileIds,
-        },
-      })
+    ? (
+        await GoogleDriveFolders.findAll({
+          where: {
+            connectorId: connectorId,
+            folderId: driveFileIds,
+          },
+        })
+      ).filter(
+        // no need to add it if already in folderOrFiles
+        (f) => folderOrFiles.every((ff) => ff.driveFileId !== f.folderId)
+      )
     : [];
 
   const sheets = sheetIds.length
