@@ -1,6 +1,6 @@
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import type { GaxiosResponse } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
 import {
   getLocalParents,
@@ -318,33 +318,11 @@ export async function retrieveGoogleDriveConnectorPermissions({
         },
       });
 
-      const folderAsContentNodes = await concurrentExecutor(
+      const folderAsContentNodes = await getFoldersAsContentNodes({
+        authCredentials,
         folders,
-        async (f): Promise<ContentNode | null> => {
-          const fd = await getGoogleDriveObject(authCredentials, f.folderId);
-          if (!fd) {
-            return null;
-          }
-          return {
-            provider: c.type,
-            internalId: f.folderId,
-            parentInternalId: null,
-            type: "folder",
-            title: fd.name || "",
-            sourceUrl: null, // Out of consistency we don't send `fd.webViewLink`.
-            dustDocumentId: null,
-            lastUpdatedAt: fd.updatedAtMs || null,
-            expandable: await isDriveObjectExpandable({
-              objectId: f.folderId,
-              mimeType: "application/vnd.google-apps.folder",
-              connectorId,
-              viewType,
-            }),
-            permission: "read",
-          };
-        },
-        { concurrency: 4 }
-      );
+        viewType,
+      });
 
       const nodes = removeNulls(folderAsContentNodes);
 
@@ -631,6 +609,21 @@ export async function retrieveGoogleDriveContentNodes(
         },
       })
     : [];
+
+  const drivesOrTopLevelFolders = driveFileIds.length
+    ? (
+        await GoogleDriveFolders.findAll({
+          where: {
+            connectorId: connectorId,
+            folderId: driveFileIds,
+          },
+        })
+      ).filter(
+        // no need to add it if already in folderOrFiles
+        (f) => folderOrFiles.every((ff) => ff.driveFileId !== f.folderId)
+      )
+    : [];
+
   const sheets = sheetIds.length
     ? await GoogleDriveSheet.findAll({
         where: {
@@ -684,6 +677,25 @@ export async function retrieveGoogleDriveContentNodes(
     { concurrency: 4 }
   );
 
+  const drivesOrTopLevelFolderNodes = await (async () => {
+    if (drivesOrTopLevelFolders.length === 0) {
+      return [];
+    }
+    const c = await ConnectorResource.fetchById(connectorId);
+    if (!c) {
+      logger.error({ connectorId }, "Connector not found");
+      throw new Error("Connector not found");
+    }
+    const authCredentials = await getAuthObject(c.connectionId);
+    return removeNulls(
+      await getFoldersAsContentNodes({
+        authCredentials,
+        folders: drivesOrTopLevelFolders,
+        viewType,
+      })
+    );
+  })();
+
   const sheetNodes: ContentNode[] = sheets.map((s) => ({
     provider: "google_drive",
     internalId: getGoogleSheetContentNodeInternalId(
@@ -702,7 +714,9 @@ export async function retrieveGoogleDriveContentNodes(
 
   // Return the nodes in the same order as the input internalIds.
   const nodeByInternalId = new Map(
-    [...folderOrFileNodes, ...sheetNodes].map((n) => [n.internalId, n])
+    [...folderOrFileNodes, ...drivesOrTopLevelFolderNodes, ...sheetNodes].map(
+      (n) => [n.internalId, n]
+    )
   );
   return new Ok(
     internalIds
@@ -848,4 +862,43 @@ export async function unpauseGoogleDriveConnector(connectorId: ModelId) {
     return r;
   }
   return new Ok(undefined);
+}
+
+async function getFoldersAsContentNodes({
+  authCredentials,
+  folders,
+  viewType,
+}: {
+  authCredentials: OAuth2Client;
+  folders: GoogleDriveFolders[];
+  viewType: ContentNodesViewType;
+}) {
+  return concurrentExecutor(
+    folders,
+    async (f): Promise<ContentNode | null> => {
+      const fd = await getGoogleDriveObject(authCredentials, f.folderId);
+      if (!fd) {
+        return null;
+      }
+      const sourceUrl = `https://drive.google.com/drive/folders/${f.folderId}`;
+      return {
+        provider: "google_drive",
+        internalId: f.folderId,
+        parentInternalId: null,
+        type: "folder",
+        title: fd.name || "",
+        sourceUrl,
+        dustDocumentId: null,
+        lastUpdatedAt: fd.updatedAtMs || null,
+        expandable: await isDriveObjectExpandable({
+          objectId: f.folderId,
+          mimeType: "application/vnd.google-apps.folder",
+          connectorId: f.connectorId,
+          viewType,
+        }),
+        permission: "read",
+      };
+    },
+    { concurrency: 4 }
+  );
 }
