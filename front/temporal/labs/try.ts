@@ -1,6 +1,6 @@
 import { processTranscriptActivity,retrieveNewTranscriptsActivity } from "./activities";
 
-const transcriptsConfigurationId = 31;
+const transcriptsConfigurationId = 32;
 
 async function main() {
   const filesToProcess = await retrieveNewTranscriptsActivity(

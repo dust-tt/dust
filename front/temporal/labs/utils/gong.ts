@@ -88,20 +88,22 @@ export async function retrieveGongTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string }> {
+  
   const gongAccessToken = await getAccessTokenFromNango(
     "gong-dev",
     transcriptsConfiguration.connectionId
   );
 
-  const transcript = await fetch(`https://api.gong.io/v2/calls`, {
+  const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${gongAccessToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      filter:{
       callIds: [fileId],
-    }),
+    }}),
   });
 
   if (!transcript.ok) {
@@ -114,7 +116,11 @@ export async function retrieveGongTranscriptContent(
     throw new Error("Error fetching transcript from Gong. Skipping.");
   }
 
-  const transcriptData = await transcript.json();
+  const callsData = await transcript.json();
+  const transcriptData = callsData.callTranscripts[0];
+
+  // DDEBUG
+  console.log(transcriptData)
 
   if (!transcriptData || transcriptData.length === 0) {
     localLogger.info(

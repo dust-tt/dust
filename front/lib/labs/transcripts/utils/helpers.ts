@@ -57,7 +57,7 @@ export async function getAccessTokenFromNango(
   nangoIntegrationId: NangoIntegrationId,
   nangoConnectionId: NangoConnectionId
 ): Promise<string> {
-  const res: Connection = await nango.getConnection(
+  const res = await nango.getConnection(
     nangoIntegrationId,
     nangoConnectionId
   );
