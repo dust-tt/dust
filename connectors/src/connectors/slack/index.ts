@@ -14,7 +14,7 @@ import type {
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
-import { getBotEnabled } from "@connectors/connectors/slack/bot";
+import { getBotEnabled, getWhiteListedChannelPatterns } from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
@@ -611,6 +611,13 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
       }
       return new Ok(botEnabledRes.value.toString());
     }
+    case "whiteListedChannelPatterns": {
+      const whiteListedChannelPatterns = await getWhiteListedChannelPatterns(connectorId);
+      if (whiteListedChannelPatterns.isErr()) {
+        return whiteListedChannelPatterns;
+      }
+      return new Ok(JSON.stringify(whiteListedChannelPatterns.value));
+    }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));
   }
@@ -642,6 +649,23 @@ export async function setSlackConfig(
         return slackConfig.enableBot();
       } else {
         return slackConfig.disableBot();
+      }
+    }
+    case "whiteListedChannelPatterns": {
+      const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+        connectorId
+      );
+      if (!slackConfig) {
+        return new Err(
+          new Error(
+            `Slack configuration not found for connector ${connectorId}`
+          )
+        );
+      }
+      if (typeof configValue === "string") {
+        return slackConfig.setWhiteListedChannelPatterns([configValue])
+      } else {
+        return slackConfig.setWhiteListedChannelPatterns(configValue)
       }
     }
 
