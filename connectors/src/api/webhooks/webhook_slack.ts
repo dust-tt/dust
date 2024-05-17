@@ -9,7 +9,10 @@ import {
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import { SlackChannel, SlackConfigurationModel } from "@connectors/lib/models/slack";
+import {
+  SlackChannel,
+  SlackConfigurationModel,
+} from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -391,6 +394,7 @@ const _webhookSlackAPIHandler = async (
           });
         }
         const connectorId = slackConfiguration.connectorId;
+
         const connector = await ConnectorResource.fetchById(connectorId);
         if (!connector) {
           return apiError(req, res, {
@@ -403,48 +407,52 @@ const _webhookSlackAPIHandler = async (
         }
         const slackClient = await getSlackClient(connectorId);
         const remoteChannel = await slackClient.conversations.info({
-          channel: slackChannelId
-        })
+          channel: slackChannelId,
+        });
         const remoteChannelName = remoteChannel.channel?.name;
 
         if (!remoteChannel.ok || !remoteChannelName) {
-          logger.error(
-            {
-              connectorId,
-              channelId: slackChannelId,
-              error: remoteChannel.error
-            }
-          )
+          logger.error({
+            connectorId,
+            channelId: slackChannelId,
+            error: remoteChannel.error,
+          });
           return new Err(
             new Error("Could not get the Slack channel information.")
           );
         }
 
-        try {
-          await SlackChannel.create({
-            connectorId: connectorId,
-            slackChannelId: slackChannelId,
-            slackChannelName: remoteChannelName,
-            permission: "read_write"
-          })
-        } catch (error) {
-          logger.error({
-            connectorId,
-            channelId: slackChannelId,
-            error: remoteChannel.error
-          })
-          return new Err(
-            new Error("Could not create the Slack channel.")
-          );
-        }
-        const joinChannelRes = await joinChannel(
-          connectorId,
-          slackChannelId
+        const whiteListedChannelPatterns =
+          slackConfiguration.whiteListedChannelPatterns;
+        const isWhiteListed = isChannelNameWhitelisted(
+          remoteChannelName,
+          whiteListedChannelPatterns
         );
-        if (joinChannelRes.isErr()) {
-          throw new Error(
-            `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
+        if (isWhiteListed) {
+          try {
+            await SlackChannel.create({
+              connectorId: connectorId,
+              slackChannelId: slackChannelId,
+              slackChannelName: remoteChannelName,
+              permission: "read_write",
+            });
+          } catch (error) {
+            console.error({
+              connectorId,
+              channelId: slackChannelId,
+              error: remoteChannel.error,
+            });
+            return new Err(new Error("Could not create the Slack channel."));
+          }
+          const joinChannelRes = await joinChannel(
+            connectorId,
+            slackChannelId
           );
+          if (joinChannelRes.isErr()) {
+            throw new Error(
+              `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannelName}. Please re-authorize Slack or invite @Dust from #${remoteChannelName} on Slack.`
+            );
+          }
         }
         break;
       }
@@ -502,6 +510,16 @@ const _webhookSlackAPIHandler = async (
     return res.status(200).end();
   }
 };
+
+function isChannelNameWhitelisted(
+  remoteChannelName: string,
+  whiteListedChannelPatterns: string[]
+): boolean {
+  return whiteListedChannelPatterns.some((pattern) => {
+    const regex = new RegExp(`^${pattern}$`);
+    return regex.test(remoteChannelName);
+  });
+}
 
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
 /**
