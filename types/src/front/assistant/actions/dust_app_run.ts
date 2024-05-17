@@ -1,5 +1,5 @@
+import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
-import { BaseAction } from "../../lib/api/assistant/actions";
 
 export type DustAppRunConfigurationType = {
   id: ModelId;

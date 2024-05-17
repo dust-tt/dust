@@ -2,9 +2,9 @@
  * Data Source configuration
  */
 
+import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
-import { BaseAction } from "../../lib/api/assistant/actions";
 
 export const TIME_FRAME_UNITS = [
   "hour",
