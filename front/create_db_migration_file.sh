@@ -7,7 +7,6 @@ if [ "$NODE_ENV" == "production" ]; then
 fi
 
 cleanup() {
-    trap
     echo "Cleaning up temporary files..."
     rm -f main_output.txt current_output.txt
     exit 0
