@@ -27,11 +27,6 @@ const _deleteConnectorAPIHandler = async (
   const force = req.query.force === "true";
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
   if (!connector) {
-    if (req.query.force === "true") {
-      return res.json({
-        success: true,
-      });
-    }
     return apiError(req, res, {
       status_code: 404,
       api_error: {
