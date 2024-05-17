@@ -12,8 +12,8 @@ cleanup() {
     exit 0
 }
 
-# CLEANUP ON CTRL+C
-trap 'cleanup' SIGINT
+# CLEANUP TEMP FILES ON EXIT
+trap 'cleanup' SIGINT SIGTERM EXIT ERR
 
 # Get current date in a human-readable format (e.g., May 28, 2024)
 current_date=$(date +"%b %d, %Y")
@@ -62,7 +62,7 @@ if [ -n "$diff_output" ]; then
   echo "$diff_output" >> diff_output.txt
 else
     echo "No migration necessary."
-    cleanup
+    exit 0
 fi
 
 # Find the last migration version.
@@ -73,5 +73,3 @@ echo "Creating SQL migration $next_version."
 
 # Save the latest changes to a new migration file.
 mv diff_output.txt "./migrations/db/migration_${next_version}.sql"
-
-cleanup
