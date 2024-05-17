@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgShapesShare = (props: SVGProps<SVGSVGElement>) => (
+const SvgScan = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -9,10 +9,13 @@ const SvgShapesShare = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
+    <path fill="currentColor" d="M20 22v-7H4v7h16ZM4 5h16V2H4v3Z" />
     <path
       fill="currentColor"
-      d="M8.636 8.192 11 5.828V12h2V5.828l2.364 2.364 1.414-1.414L12 2 7.222 6.778l1.414 1.414ZM23 11h-7v7h7v-7ZM17 21l-5-7.5L7 21h10ZM5 18.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+      fillRule="evenodd"
+      d="M2 7h20v6H2V7Zm2 2h16v2H4V9Z"
+      clipRule="evenodd"
     />
   </svg>
 );
-export default SvgShapesShare;
+export default SvgScan;
