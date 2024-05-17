@@ -14,7 +14,7 @@ import type {
   ConnectorPermissionRetriever,
 } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
-import { getBotEnabled, getWhiteListedChannelPatterns } from "@connectors/connectors/slack/bot";
+import { getBotEnabled } from "@connectors/connectors/slack/bot";
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackAccessToken,
@@ -592,6 +592,22 @@ export async function retrieveSlackContentNodes(
   }));
 
   return new Ok(contentNodes);
+}
+
+export async function getWhiteListedChannelPatterns(
+  connectorId: ModelId
+): Promise<Result<string[], Error>> {
+  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
+    connectorId
+  );
+  if (!slackConfig) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+  return new Ok(slackConfig.whiteListedChannelPatterns);
 }
 
 export const getSlackConfig: ConnectorConfigGetter = async function (
