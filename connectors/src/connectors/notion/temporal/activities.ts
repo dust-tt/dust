@@ -754,7 +754,8 @@ export async function garbageCollect({
   > = [];
   do {
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-      connector.id
+      connector.id,
+      startTs
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
@@ -950,7 +951,8 @@ export async function garbageCollect({
 }
 
 async function findResourcesNotSeenInGarbageCollectionRun(
-  connectorId: ModelId
+  connectorId: ModelId,
+  startTs: number
 ): Promise<
   Array<{
     lastSeenTs: Date;
@@ -990,7 +992,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
       },
       attributes: ["lastSeenTs", "notionPageId", "skipReason"],
@@ -1007,43 +1009,33 @@ async function findResourcesNotSeenInGarbageCollectionRun(
 
   pagesNotSeenInGarbageCollectionRun.push(...pages);
 
-  let offset = 0;
-
   const databasesNotSeenInGarbageCollectionRun: Array<{
     lastSeenTs: Date;
     resourceType: "database";
     resourceId: string;
     skipReason: string | null;
   }> = [];
-  for (;;) {
-    const databases = (
-      await NotionDatabase.findAll({
-        where: {
-          connectorId,
-          lastSeenTs: {
-            [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
-          },
+  const databases = (
+    await NotionDatabase.findAll({
+      where: {
+        connectorId,
+        lastSeenTs: {
+          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
-        attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
-        limit: pageSize,
-        offset,
-      })
-    )
-      .filter((p) => !databaseIdsSeenInRun.has(p.notionDatabaseId))
-      .map((p) => ({
-        lastSeenTs: p.lastSeenTs,
-        resourceType: "database" as const,
-        resourceId: p.notionDatabaseId,
-        skipReason: p.skipReason || null,
-      }));
+      },
+      attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
+      limit: pageSize,
+    })
+  )
+    .filter((p) => !databaseIdsSeenInRun.has(p.notionDatabaseId))
+    .map((p) => ({
+      lastSeenTs: p.lastSeenTs,
+      resourceType: "database" as const,
+      resourceId: p.notionDatabaseId,
+      skipReason: p.skipReason || null,
+    }));
 
-    if (databases.length === 0) {
-      break;
-    }
-
-    databasesNotSeenInGarbageCollectionRun.push(...databases);
-    offset += pageSize;
-  }
+  databasesNotSeenInGarbageCollectionRun.push(...databases);
 
   const allResourcesNotSeenInGarbageCollectionRun = [
     ...pagesNotSeenInGarbageCollectionRun,
