@@ -754,7 +754,8 @@ export async function garbageCollect({
   > = [];
   do {
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-      connector.id
+      connector.id,
+      startTs
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
@@ -950,7 +951,8 @@ export async function garbageCollect({
 }
 
 async function findResourcesNotSeenInGarbageCollectionRun(
-  connectorId: ModelId
+  connectorId: ModelId,
+  startTs: number
 ): Promise<
   Array<{
     lastSeenTs: Date;
@@ -990,7 +992,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
       },
       attributes: ["lastSeenTs", "notionPageId", "skipReason"],
@@ -1018,7 +1020,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(Date.now() - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
       },
       attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
