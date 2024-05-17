@@ -131,12 +131,6 @@ export async function retrieveGongTranscriptContent(
     participants[participant.speakerId] = participant.name;
   });
 
-  // console.log("CALL DETAILS;");
-  // console.log(callData);
-
-  // console.log('PARTICIPANTS:');
-  // console.log(participants);
-
   const transcript = await fetch(`https://api.gong.io/v2/calls/transcript`, {
     method: "POST",
     headers: {
@@ -155,16 +149,11 @@ export async function retrieveGongTranscriptContent(
       {},
       "[processTranscriptActivity] Error fetching transcript from Gong. Skipping."
     );
-    //console log the error message
-    console.log(transcript);
     throw new Error("Error fetching transcript from Gong. Skipping.");
   }
 
   const callsData = await transcript.json();
   const transcriptParagraph = callsData.callTranscripts[0]?.transcript;
-
-  // DDEBUG
-  console.log(transcriptParagraph);
 
   if (!transcriptParagraph || transcriptParagraph.length === 0) {
     localLogger.info(
@@ -201,9 +190,6 @@ export async function retrieveGongTranscriptContent(
       );
     }
   );
-
-  // console.log('TRANSCRIPT CONTENT:');
-  // console.log(transcriptContent);
 
   return { transcriptTitle, transcriptContent };
 }
