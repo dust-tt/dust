@@ -15,7 +15,7 @@ import {
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
 import { AgentActionType } from "../../../front/assistant/conversation";
-import { BaseAction } from "../../lib/api/assistant/actions";
+import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { AgentActionConfigurationType } from "../agent";
 
 export function isTablesQueryConfiguration(
