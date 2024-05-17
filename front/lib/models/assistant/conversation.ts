@@ -71,6 +71,9 @@ Conversation.init(
         unique: true,
         fields: ["sId"],
       },
+      {
+        fields: ["workspaceId"],
+      },
     ],
     sequelize: frontSequelize,
   }
