@@ -33,6 +33,7 @@ import { useDocuments } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { MultiInput } from "@app/components/MultiInput";
+import { TextArea } from "@dust-tt/sparkle";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -442,8 +443,8 @@ const DataSourcePage = ({
             </div>
           )}
 
-          <div className="mt-4 flex flex-row">
-            {!dataSource.connectorId && (
+          {!dataSource.connectorId && (
+            <div className="mt-4 flex flex-row">
               <div className="flex flex-1">
                 <div className="flex flex-col">
                   <div className="flex flex-row">
@@ -483,14 +484,17 @@ const DataSourcePage = ({
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="pb-8 pt-2">
+          <div className="pb-8 pt-2 border-material-200 flex flex-grow flex-col rounded-lg border p-4 mb-4">
             {<MultiInput
               initialValues={features.whiteListedChannelPatterns.split(",")}
               onValuesChange={handleWhiteListedChannelPatternsChange}
             />}
+            <div className="s-text-sm pt-3">
+              <p>Channels:</p>
+            </div>
             {!dataSource.connectorId ? (
               <>
                 {" "}
