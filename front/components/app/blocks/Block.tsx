@@ -2,7 +2,7 @@ import {
   ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  Spinner2,
+  Spinner,
   Square3Stack3DStrokeIcon,
   Tooltip,
   TrashIcon,
@@ -202,7 +202,7 @@ export default function Block({
         !["map", "reduce", "end"].includes(block.type) ? (
           <div className="flex flex-row items-center text-sm text-gray-400">
             <div className="ml-2 mr-2">
-              <Spinner2 size="xs" variant="color" />
+              <Spinner size="xs" variant="color" />
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
@@ -210,7 +210,7 @@ export default function Block({
           <div className="flex flex-row items-center text-sm text-gray-400">
             <div role="status">
               <div className="ml-2 mr-2">
-                <Spinner2 size="xs" variant="color" />
+                <Spinner size="xs" variant="color" />
               </div>
             </div>
             {` 0 successes 0 errors`}
