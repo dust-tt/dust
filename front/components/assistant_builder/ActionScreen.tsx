@@ -7,6 +7,7 @@ import {
   MagnifyingGlassIcon,
   Page,
   RobotIcon,
+  ScanIcon,
   Square3Stack3DIcon,
   TableIcon,
   TimeIcon,
@@ -114,7 +115,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
   },
   PROCESS: {
     actionType: "PROCESS",
-    icon: RobotIcon,
+    icon: ScanIcon,
     label: "Extract data",
     description: "Structured extraction",
     flag: "process_action",
