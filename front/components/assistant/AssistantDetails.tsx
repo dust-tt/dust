@@ -254,7 +254,7 @@ export function AssistantDetails({
           ) : isProcessConfiguration(action) ? (
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">
-                Processed data sources
+                Extract from data sources
               </div>
               <DataSourcesSection
                 owner={owner}
