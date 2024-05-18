@@ -285,6 +285,13 @@ export function ActionProcess({
     });
   };
 
+  const foldersOnly =
+    Object.keys(actionConfiguration.dataSourceConfigurations).every(
+      (k) =>
+        actionConfiguration.dataSourceConfigurations[k].dataSource
+          .connectorProvider === null
+    ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
+
   return (
     <>
       <AssistantBuilderDataSourceModal
@@ -341,97 +348,100 @@ export function ActionProcess({
         onDelete={deleteDataSource}
       />
 
-      <div className="flex flex-col">
-        <div className="flex flex-row items-center gap-4 pb-4">
-          <div className="text-sm font-semibold text-element-900">
-            Tags Filtering
-          </div>
-          <div>
-            <Button
-              label={"Add tag filter"}
-              variant="tertiary"
-              size="xs"
-              onClick={() => {
-                setEdited(true);
-                updateAction((previousAction) => {
-                  const tagsFilter = {
-                    in: [...(previousAction.tagsFilter?.in || []), ""],
-                  };
-                  return {
-                    ...previousAction,
-                    tagsFilter,
-                  };
-                });
-              }}
-              disabled={
-                !!actionConfiguration.tagsFilter &&
-                actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
-                  .length > 0
-              }
-            />
-          </div>
-        </div>
-        {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
-          return (
-            <div className="flex flex-row gap-4" key={`tag-${i}`}>
-              <div className="flex">
-                <Input
-                  placeholder="Enter tag"
-                  size="sm"
-                  name="tags"
-                  value={t}
-                  onChange={(v) => {
-                    setEdited(true);
-                    updateAction((previousAction) => {
-                      const tags = [...(previousAction.tagsFilter?.in || [])];
-                      tags[i] = v;
-
-                      return {
-                        ...previousAction,
-                        tagsFilter: {
-                          in: tags,
-                        },
-                      };
-                    });
-                  }}
-                  error={
-                    t.length === 0
-                      ? "Tag is required"
-                      : (actionConfiguration.tagsFilter?.in || []).filter(
-                          (tag) => tag === t
-                        ).length > 1
-                      ? "Tag must be unique"
-                      : undefined
-                  }
-                />
-              </div>
-              <div className="flex items-end pb-2">
-                <IconButton
-                  icon={XCircleIcon}
-                  tooltip="Remove Property"
-                  variant="tertiary"
-                  onClick={async () => {
-                    setEdited(true);
-                    updateAction((previousAction) => {
-                      const tags = (previousAction.tagsFilter?.in || []).filter(
-                        (tag) => tag !== t
-                      );
-
-                      return {
-                        ...previousAction,
-                        tagsFilter: {
-                          in: tags,
-                        },
-                      };
-                    });
-                  }}
-                  className="ml-1"
-                />
-              </div>
+      {(foldersOnly ||
+        (actionConfiguration.tagsFilter?.in || []).length > 0) && (
+        <div className="flex flex-col">
+          <div className="flex flex-row items-center gap-4 pb-4">
+            <div className="text-sm font-semibold text-element-900">
+              Folder tags filtering
             </div>
-          );
-        })}
-      </div>
+            <div>
+              <Button
+                label={"Add tag filter"}
+                variant="tertiary"
+                size="xs"
+                onClick={() => {
+                  setEdited(true);
+                  updateAction((previousAction) => {
+                    const tagsFilter = {
+                      in: [...(previousAction.tagsFilter?.in || []), ""],
+                    };
+                    return {
+                      ...previousAction,
+                      tagsFilter,
+                    };
+                  });
+                }}
+                disabled={
+                  !!actionConfiguration.tagsFilter &&
+                  actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
+                    .length > 0
+                }
+              />
+            </div>
+          </div>
+          {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
+            return (
+              <div className="flex flex-row gap-4" key={`tag-${i}`}>
+                <div className="flex">
+                  <Input
+                    placeholder="Enter tag"
+                    size="sm"
+                    name="tags"
+                    value={t}
+                    onChange={(v) => {
+                      setEdited(true);
+                      updateAction((previousAction) => {
+                        const tags = [...(previousAction.tagsFilter?.in || [])];
+                        tags[i] = v;
+
+                        return {
+                          ...previousAction,
+                          tagsFilter: {
+                            in: tags,
+                          },
+                        };
+                      });
+                    }}
+                    error={
+                      t.length === 0
+                        ? "Tag is required"
+                        : (actionConfiguration.tagsFilter?.in || []).filter(
+                            (tag) => tag === t
+                          ).length > 1
+                        ? "Tag must be unique"
+                        : undefined
+                    }
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <IconButton
+                    icon={XCircleIcon}
+                    tooltip="Remove Property"
+                    variant="tertiary"
+                    onClick={async () => {
+                      setEdited(true);
+                      updateAction((previousAction) => {
+                        const tags = (
+                          previousAction.tagsFilter?.in || []
+                        ).filter((tag) => tag !== t);
+
+                        return {
+                          ...previousAction,
+                          tagsFilter: {
+                            in: tags,
+                          },
+                        };
+                      });
+                    }}
+                    className="ml-1"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-element-900">
@@ -503,7 +513,11 @@ export function ActionProcess({
             label={"Automatically generate the schema based on Instructions"}
           >
             <Button
-              label={isGeneratingSchema ? "Generating..." : "Generate"}
+              label={
+                isGeneratingSchema
+                  ? "Generating..."
+                  : "Generate from Instructions"
+              }
               variant="primary"
               icon={SparklesIcon}
               size="sm"

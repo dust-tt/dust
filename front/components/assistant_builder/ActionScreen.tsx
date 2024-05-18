@@ -115,7 +115,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
   PROCESS: {
     actionType: "PROCESS",
     icon: RobotIcon,
-    label: "Process data",
+    label: "Extract data",
     description: "Structured extraction",
     flag: "process_action",
   },
