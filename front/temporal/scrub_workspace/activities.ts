@@ -98,8 +98,7 @@ async function deleteAllConversations(auth: Authenticator) {
     "Deleting all conversations for workspace."
   );
 
-  // Temporary until we ease the load on the DB.
-  const conversationChunks = chunk(conversations, 1);
+  const conversationChunks = chunk(conversations, 4);
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {

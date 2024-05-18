@@ -13,7 +13,7 @@ export async function runScrubWorkspaceQueueWorker() {
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
     activities,
-    maxConcurrentActivityTaskExecutions: 1,
+    maxConcurrentActivityTaskExecutions: 2,
     taskQueue: QUEUE_NAME,
     connection,
     namespace,
