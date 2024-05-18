@@ -6,7 +6,6 @@ import {
   DropdownMenu,
   MagnifyingGlassIcon,
   Page,
-  RobotIcon,
   ScanIcon,
   Square3Stack3DIcon,
   TableIcon,
