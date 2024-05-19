@@ -758,9 +758,10 @@ export async function garbageCollect({
     // Temporary performance logging.
     const startTime = performance.now();
 
+    // Find the resources not seen in the GC run (using runTimestamp).
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
       connector.id,
-      startTs
+      runTimestamp
     );
 
     const endTime = performance.now();
@@ -768,6 +769,7 @@ export async function garbageCollect({
       {
         connectorId: connector.id,
         loopIteration,
+        runTimestamp,
         startTs,
         tookMs: endTime - startTime,
       },
