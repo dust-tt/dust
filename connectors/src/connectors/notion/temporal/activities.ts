@@ -735,7 +735,7 @@ export async function garbageCollect({
   }
 
   const localLogger = logger.child({
-    connectorId,
+    connectorId: connector.id,
     dataSourceName: connector.dataSourceName,
     workspaceId: connector.workspaceId,
   });
