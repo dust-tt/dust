@@ -752,10 +752,25 @@ export async function garbageCollect({
   let resourcesToCheck: Awaited<
     ReturnType<typeof findResourcesNotSeenInGarbageCollectionRun>
   > = [];
+  let loopIteration = 0;
   do {
+    // Temporary performance logging.
+    const startTime = performance.now();
+
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
       connector.id,
       startTs
+    );
+
+    const endTime = performance.now();
+    localLogger.info(
+      {
+        connectorId: connector.id,
+        loopIteration,
+        startTs,
+        tookMs: endTime - startTime,
+      },
+      "findResourcesNotSeenInGarbageCollectionRun duration"
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
@@ -788,6 +803,7 @@ export async function garbageCollect({
         skippedDatabasesCount,
         stillAccessiblePagesCount,
         stillAccessibleDatabasesCount,
+        loopIteration,
       });
 
       if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
@@ -934,6 +950,7 @@ export async function garbageCollect({
         });
       }
     }
+
   } while (resourcesToCheck.length > 0);
 
   const redisKey = redisGarbageCollectorKey(connector.id);
