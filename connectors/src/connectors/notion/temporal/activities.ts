@@ -983,7 +983,7 @@ export async function garbageCollect({
 
 async function findResourcesNotSeenInGarbageCollectionRun(
   connectorId: ModelId,
-  startTs: number
+  runTimestamp: number
 ): Promise<
   Array<{
     lastSeenTs: Date;
@@ -1023,7 +1023,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(runTimestamp - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
       },
       attributes: ["lastSeenTs", "notionPageId", "skipReason"],
@@ -1051,7 +1051,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(startTs - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(runTimestamp - GARBAGE_COLLECTION_INTERVAL_HOURS),
         },
       },
       attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
