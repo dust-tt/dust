@@ -107,7 +107,11 @@ export async function getPagesAndDatabasesEditedSince(
   let tries = 0;
   let page_size = 90;
   while (tries < retry.retries) {
-    const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
+    const tryLogger = localLogger.child({
+      tries,
+      maxTries: retry.retries,
+      page_size,
+    });
     tryLogger.info("Fetching result page from Notion API.");
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
