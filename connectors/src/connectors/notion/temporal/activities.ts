@@ -735,8 +735,9 @@ export async function garbageCollect({
   }
 
   const localLogger = logger.child({
-    workspaceId: connector.workspaceId,
+    connectorId,
     dataSourceName: connector.dataSourceName,
+    workspaceId: connector.workspaceId,
   });
 
   const notionConnectorState = await NotionConnectorState.findOne({
