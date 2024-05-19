@@ -951,6 +951,7 @@ export async function garbageCollect({
       }
     }
 
+    loopIteration++;
   } while (resourcesToCheck.length > 0);
 
   const redisKey = redisGarbageCollectorKey(connector.id);
