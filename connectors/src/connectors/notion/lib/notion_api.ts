@@ -18,6 +18,7 @@ import {
   isFullDatabase,
   isFullPage,
   isNotionClientError,
+  UnknownHTTPResponseError,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
@@ -105,12 +106,12 @@ export async function getPagesAndDatabasesEditedSince(
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
-  let page_size = 90;
+  let pageSize = 90;
   while (tries < retry.retries) {
     const tryLogger = localLogger.child({
       tries,
       maxTries: retry.retries,
-      page_size,
+      pageSize: pageSize,
     });
     tryLogger.info("Fetching result page from Notion API.");
     try {
@@ -123,7 +124,7 @@ export async function getPagesAndDatabasesEditedSince(
               }
             : undefined,
           start_cursor: cursor || undefined,
-          page_size,
+          page_size: pageSize,
         });
       });
       tryLogger.info(
@@ -142,13 +143,19 @@ export async function getPagesAndDatabasesEditedSince(
 
       // Notion API sometimes returns 504 errors.
       // In such cases, randomize the page_size before retrying.
-      if (APIResponseError.isAPIResponseError(e) && e.status === 504) {
+      if (
+        UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
+        e.status === 504
+      ) {
         // Generates a random number between 80 and 100.
-        page_size = Math.floor(Math.random() * (100 - 80 + 1) + 80);
+        pageSize = Math.floor(Math.random() * (100 - 80 + 1) + 80);
       }
 
       const sleepTime = 500 * retry.backoffFactor ** tries;
-      tryLogger.info({ sleepTime }, "Sleeping before retrying.");
+      tryLogger.info(
+        { sleepTime, newPageSize: pageSize },
+        "Sleeping before retrying."
+      );
 
       await new Promise((resolve) => setTimeout(resolve, sleepTime));
 
