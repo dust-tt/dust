@@ -130,11 +130,10 @@ export async function getPagesAndDatabasesEditedSince(
         { error: e },
         "Error fetching result page from Notion API."
       );
-
+      tries += 1;
       if (tries >= retry.retries) {
         throw e;
       }
-      tries += 1;
 
       const sleepTime = 500 * retry.backoffFactor ** tries;
       tryLogger.info({ sleepTime }, "Sleeping before retrying.");
