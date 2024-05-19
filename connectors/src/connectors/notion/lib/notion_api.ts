@@ -87,7 +87,11 @@ export async function getPagesAndDatabasesEditedSince(
   dbs: { id: string; lastEditedTs: number }[];
   nextCursor: string | null;
 }> {
-  const localLogger = logger.child(loggerArgs);
+  const localLogger = logger.child({
+    ...loggerArgs,
+    cursor,
+    sinceTs,
+  });
 
   const notionClient = new Client({
     auth: notionAccessToken,
@@ -114,6 +118,7 @@ export async function getPagesAndDatabasesEditedSince(
               }
             : undefined,
           start_cursor: cursor || undefined,
+          page_size: 90,
         });
       });
       tryLogger.info(
@@ -129,9 +134,12 @@ export async function getPagesAndDatabasesEditedSince(
       if (tries >= retry.retries) {
         throw e;
       }
+
       const sleepTime = 500 * retry.backoffFactor ** tries;
       tryLogger.info({ sleepTime }, "Sleeping before retrying.");
+
       await new Promise((resolve) => setTimeout(resolve, sleepTime));
+
       continue;
     }
     break;
@@ -210,17 +218,7 @@ export async function getPagesAndDatabasesEditedSince(
 
         // We're still more recent than the sinceTs, add the db to the list of edited dbs and loop
         // through its pages.
-        try {
-          editedDbs[pageOrDb.id] = lastEditedTime;
-        } catch (e) {
-          if (
-            APIResponseError.isAPIResponseError(e) &&
-            e.code === "object_not_found"
-          ) {
-            continue;
-          }
-          throw e;
-        }
+        editedDbs[pageOrDb.id] = lastEditedTime;
       }
     }
   }
