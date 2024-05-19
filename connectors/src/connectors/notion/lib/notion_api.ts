@@ -105,6 +105,7 @@ export async function getPagesAndDatabasesEditedSince(
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
+  let page_size = 90;
   while (tries < retry.retries) {
     const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
     tryLogger.info("Fetching result page from Notion API.");
@@ -118,7 +119,7 @@ export async function getPagesAndDatabasesEditedSince(
               }
             : undefined,
           start_cursor: cursor || undefined,
-          page_size: 90,
+          page_size,
         });
       });
       tryLogger.info(
@@ -133,6 +134,13 @@ export async function getPagesAndDatabasesEditedSince(
       tries += 1;
       if (tries >= retry.retries) {
         throw e;
+      }
+
+      // Notion API sometimes returns 504 errors.
+      // In such cases, randomize the page_size before retrying.
+      if (APIResponseError.isAPIResponseError(e) && e.status === 504) {
+        // Generates a random number between 80 and 100.
+        page_size = Math.floor(Math.random() * (100 - 80 + 1) + 80);
       }
 
       const sleepTime = 500 * retry.backoffFactor ** tries;
