@@ -807,13 +807,6 @@ export async function garbageCollect({
         loopIteration,
       });
 
-      if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
-        iterationLogger.warn(
-          "Garbage collection is taking too long, giving up."
-        );
-        break;
-      }
-
       if (x.skipReason) {
         if (x.resourceType === "page") {
           iterationLogger.info(
@@ -950,6 +943,23 @@ export async function garbageCollect({
           },
         });
       }
+    }
+
+    if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
+      localLogger.warn(
+        {
+          resourcesToCheckCount: resourcesToCheck.length,
+          deletedPagesCount,
+          deletedDatabasesCount,
+          skippedPagesCount,
+          skippedDatabasesCount,
+          stillAccessiblePagesCount,
+          stillAccessibleDatabasesCount,
+          loopIteration,
+        },
+        "Garbage collection is taking too long, giving up."
+      );
+      break;
     }
 
     loopIteration++;
