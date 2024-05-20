@@ -109,20 +109,21 @@ export default function LabsTranscriptsIndex({
 
   useEffect(() => {
     if (transcriptsConfiguration) {
-      setTranscriptsConfigurationState({
-        ...transcriptsConfigurationState,
-        provider: transcriptsConfiguration.provider || "",
-        isGongConnected: transcriptsConfiguration.provider == "gong" || false,
-        isGDriveConnected:
-          transcriptsConfiguration.provider == "google_drive" || false,
-        assistantSelected:
-          agentConfigurations.find(
-            (a) => a.sId === transcriptsConfiguration.agentConfigurationId
-          ) || null,
-        isActive: transcriptsConfiguration.isActive || false,
+      setTranscriptsConfigurationState((prev) => {
+        return {
+          ...prev,
+          provider: transcriptsConfiguration.provider || "",
+          isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+          isGDriveConnected:
+            transcriptsConfiguration.provider == "google_drive" || false,
+          assistantSelected:
+            agentConfigurations.find(
+              (a) => a.sId === transcriptsConfiguration.agentConfigurationId
+            ) || null,
+          isActive: transcriptsConfiguration.isActive || false,
+        };
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {
@@ -134,9 +135,11 @@ export default function LabsTranscriptsIndex({
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
   ) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      provider,
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        provider,
+      };
     });
     await mutateTranscriptsConfiguration();
   };
@@ -179,9 +182,11 @@ export default function LabsTranscriptsIndex({
     transcriptsConfigurationId: number,
     assistant: LightAgentConfigurationType
   ) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      assistantSelected: assistant,
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        assistantSelected: assistant,
+      };
     });
 
     const successMessage =
@@ -200,9 +205,11 @@ export default function LabsTranscriptsIndex({
     transcriptsConfigurationId: number,
     isActive: boolean
   ) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      isActive,
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        isActive,
+      };
     });
 
     const successMessage = isActive
