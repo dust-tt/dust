@@ -239,16 +239,18 @@ export default function ActionsScreen({
               }}
             />
           )}
-          <div className="mx-auto flex w-full flex-row flex-wrap gap-4">
+          <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {builderState.actions.map((a) => (
-              <ActionCard
-                action={a}
-                key={a.name}
-                editAction={() => {
-                  setActionToEdit(a);
-                  setNewActionModalOpen(true);
-                }}
-              />
+              <div className="flex w-full" key={a.name}>
+                <ActionCard
+                  action={a}
+                  key={a.name}
+                  editAction={() => {
+                    setActionToEdit(a);
+                    setNewActionModalOpen(true);
+                  }}
+                />
+              </div>
             ))}
           </div>
           {builderState.actions.length > 0 && (
