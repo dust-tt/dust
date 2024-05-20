@@ -5,8 +5,16 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use qdrant_client::prelude::{QdrantClient, QdrantClientConfig};
+use qdrant_client::{
+    prelude::{QdrantClient, QdrantClientConfig},
+    qdrant::{
+        Filter, PointId, PointsOperationResponse, ScrollPoints, ScrollResponse, SearchPoints,
+        SearchResponse, WithPayloadSelector, WithVectorsSelector,
+    },
+};
 use serde::{Deserialize, Serialize};
+
+use super::data_source::DataSource;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
 pub enum QdrantCluster {
@@ -151,4 +159,93 @@ impl QdrantClients {
             None => None,
         }
     }
+}
+
+#[derive(Clone)]
+pub struct DustQdrantClient {
+    client: Arc<QdrantClient>,
+    pub cluster: QdrantCluster,
+}
+
+impl DustQdrantClient {
+    // In v1 implementations, we'll be able:
+    // - we'll be able to retrieve the shared collection name from the data source config.
+    // - we'll be able to add a condition on the PointsSelector to match the
+    //   data_source.internal_id multi-tenancy filter.
+
+    pub async fn create_data_source(&self, data_source: &DataSource) -> Result<()> {
+        // TODO: v0 implementation
+        // no v1 implenentation
+
+        Ok(())
+    }
+
+    pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
+        // v0 implementation
+        self.client
+            .delete_collection(data_source.qdrant_collection())
+            .await?;
+        // TODO: v1 implementation
+        // - v1 implementation will delete points not collection.
+        Ok(())
+    }
+
+    pub async fn delete_points(
+        &self,
+        data_source: &DataSource,
+        filter: Filter,
+    ) -> Result<PointsOperationResponse> {
+        // v0 implementation
+        self.client
+            .delete_points(data_source.qdrant_collection(), None, &filter.into(), None)
+            .await
+        // TODO: v1 implemetation
+    }
+
+    pub async fn scroll(
+        &self,
+        data_source: &DataSource,
+        filter: Option<Filter>,
+        limit: Option<u32>,
+        offset: Option<PointId>,
+        with_vectors: Option<WithVectorsSelector>,
+    ) -> Result<ScrollResponse> {
+        // v0 implementation
+        self.client
+            .scroll(&ScrollPoints {
+                collection_name: data_source.qdrant_collection(),
+                with_vectors,
+                limit,
+                offset,
+                filter,
+                ..Default::default()
+            })
+            .await
+        // TODO: v1 implementation
+    }
+
+    pub async fn search_points(
+        &self,
+        data_source: &DataSource,
+        vector: Vec<f32>,
+        filter: Option<Filter>,
+        limit: u64,
+        with_payload: Option<WithPayloadSelector>,
+    ) -> Result<SearchResponse> {
+        // v0 implementation
+        self.client
+            .search_points(&SearchPoints {
+                collection_name: data_source.qdrant_collection(),
+                vector,
+                filter,
+                limit,
+                with_payload,
+                ..Default::default()
+            })
+            .await
+        // TODO: v1 implementation
+    }
+
+    // TODO: upsert__points
+    // TODO: set_payload
 }
