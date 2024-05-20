@@ -22,10 +22,10 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import { MultiInput } from "@app/components/MultiInput";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SlackChannelPatternInput } from "@app/components/SlackChannelPatternInput";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -497,7 +497,7 @@ const DataSourcePage = ({
 
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
             {
-              <MultiInput
+              <SlackChannelPatternInput
                 initialValues={features.whiteListedChannelPatterns}
                 onValuesChange={handleWhiteListedChannelPatternsChange}
               />
