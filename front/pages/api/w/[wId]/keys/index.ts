@@ -1,12 +1,10 @@
 import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
-import { formatUserFullName } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import { new_id } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetKeysResponseBody = {
