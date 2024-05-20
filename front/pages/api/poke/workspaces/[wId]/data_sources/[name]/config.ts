@@ -45,11 +45,7 @@ async function handler(
           },
         });
       }
-      if (
-        !req.body ||
-        (typeof req.body.configValue !== "string" &&
-          !Array.isArray(req.body.configValue))
-      ) {
+      if (!req.body || typeof req.body.configValue !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

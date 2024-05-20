@@ -373,7 +373,7 @@ const _webhookSlackAPIHandler = async (
         break;
       }
       case "channel_created": {
-        await autoJoinChannel(req, res, logger);
+        await autoJoinChannel(req, logger);
         break;
       }
       /**
@@ -437,36 +437,36 @@ export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
  * This is what Slack sends us when a new message is posted in a channel.
  *
  * {
- token: '6OiSmwn7QoyS8A3yL6tddCHd',
- team_id: 'T050RH73H9P',
- context_team_id: 'T050RH73H9P',
- context_enterprise_id: null,
- api_app_id: 'A04T6G3E9FY',
- event: {
- client_msg_id: 'af462834-af02-4f6b-82cf-a1f20150cdab',
- type: 'message',
- text: 'waiting for webhook….',
- user: 'U0506AXSHN2',
- ts: '1682680228.216339',
- blocks: [ [Object] ],
- team: 'T050RH73H9P',
- channel: 'C050DRFBYGK',
- event_ts: '1682680228.216339',
- channel_type: 'channel'
- },
- type: 'event_callback',
- event_id: 'Ev055EA9CB6X',
- event_time: 1682680228,
- authorizations: [
- {
- enterprise_id: null,
- team_id: 'T050RH73H9P',
- user_id: 'U04VCU7TB9V',
- is_bot: true,
- is_enterprise_install: false
- }
- ],
- is_ext_shared_channel: false,
- event_context: '4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDUwUkg3M0g5UCIsImFpZCI6IkEwNFQ2RzNFOUZZIiwiY2lkIjoiQzA1MERSRkJZR0sifQ'
- }
+  token: '6OiSmwn7QoyS8A3yL6tddCHd',
+  team_id: 'T050RH73H9P',
+  context_team_id: 'T050RH73H9P',
+  context_enterprise_id: null,
+  api_app_id: 'A04T6G3E9FY',
+  event: {
+    client_msg_id: 'af462834-af02-4f6b-82cf-a1f20150cdab',
+    type: 'message',
+    text: 'waiting for webhook….',
+    user: 'U0506AXSHN2',
+    ts: '1682680228.216339',
+    blocks: [ [Object] ],
+    team: 'T050RH73H9P',
+    channel: 'C050DRFBYGK',
+    event_ts: '1682680228.216339',
+    channel_type: 'channel'
+  },
+  type: 'event_callback',
+  event_id: 'Ev055EA9CB6X',
+  event_time: 1682680228,
+  authorizations: [
+    {
+      enterprise_id: null,
+      team_id: 'T050RH73H9P',
+      user_id: 'U04VCU7TB9V',
+      is_bot: true,
+      is_enterprise_install: false
+    }
+  ],
+  is_ext_shared_channel: false,
+  event_context: '4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDUwUkg3M0g5UCIsImFpZCI6IkEwNFQ2RzNFOUZZIiwiY2lkIjoiQzA1MERSRkJZR0sifQ'
+}
  */
