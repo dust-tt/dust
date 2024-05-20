@@ -1,7 +1,7 @@
 export const description =
   "An overview of the Dust Developer Platform along with its associated design principles.";
 
-# Developer Platform overview
+# Dust Developer Platform overview
 
 An overview of the Dust Developer Platform along with its associated design principles. You will
 learn how a Dust app is structured and how it is executed. {{ className: 'lead' }}
@@ -123,6 +123,18 @@ phase.
   to outputs from their respective streams of execution.
 </Image>
 
+## Developer secrets
+
+Dust apps can use developer secrets to store sensitive information such as API keys or passwords.
+Developer secrets are stored encrypted and are only accessible to the app they are associated with.
+
+Currently, only the `cURL` block can use developer secrets to authenticate to external services.
+
+You can use developer secrets by referencing them in the `cURL` block configuration using one of two ways:
+
+- By using the `{secrets.SECRET_NAME}` variable in the URL input field
+- By using the `{env.secrets.SECRET_NAME}` variable in the `headers` or `body` fields
+
 ## Datasets
 
 Dust apps can also define datasets which are arrays of JSON objects. Datasets' main roles are to:
@@ -148,7 +160,7 @@ execution eagearly when they are used.
 
 ## Data sources
 
-[Data sources](/data-sources-overview) are fully managed semantically searchable databases of
+[Data sources](/data-sources) are fully managed semantically searchable databases of
 documents. You can easily create Data Sources and add documents to them manually in the Dust
 interface or using our API. Data sources enable apps to perform semantic searches over large
 collections of documents, only retrieving the chunks of information that are the most relevant to

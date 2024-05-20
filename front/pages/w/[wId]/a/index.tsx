@@ -3,7 +3,7 @@ import {
   Button,
   CommandLineIcon,
   Dialog,
-  Hoverable,
+  ExternalLinkIcon,
   Input,
   LockIcon,
   Page,
@@ -759,18 +759,29 @@ export default function Developers({
           icon={CommandLineIcon}
           description="Design and deploy custom large language model apps with access to&nbsp;your data&nbsp;sources and other&nbsp;service&nbsp;providers."
         />
-        <Page.P variant="secondary">
-          You can access Dust's services{" "}
-          <Hoverable
+        <Page.Layout direction="horizontal">
+          <div className="w-full" />
+
+          <Button
+            variant="tertiary"
+            label="Developer Documentation"
             onClick={() => {
               window.open("https://docs.dust.tt", "_blank");
             }}
-            className="font-bold text-action-500"
-          >
-            through our API
-          </Hoverable>
-          .
-        </Page.P>
+            icon={ExternalLinkIcon}
+          />
+          <Button
+            variant="tertiary"
+            label="Examples"
+            onClick={() => {
+              window.open(
+                "https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046",
+                "_blank"
+              );
+            }}
+            icon={ExternalLinkIcon}
+          />
+        </Page.Layout>
 
         <Tab
           tabs={[

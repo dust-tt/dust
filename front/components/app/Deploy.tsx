@@ -142,7 +142,7 @@ export default function Deploy({
                       <CodeEditor
                         data-color-mode="light"
                         readOnly={true}
-                        value={`$ ${cURLRequest(false)}`}
+                        value={`$ ${cURLRequest(true)}`}
                         language="shell"
                         padding={15}
                         className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
