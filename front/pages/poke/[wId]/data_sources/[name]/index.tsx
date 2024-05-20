@@ -470,7 +470,7 @@ const DataSourcePage = ({
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
             {
               <SlackChannelPatternInput
-                initialValue={features.whiteListedChannelPattern}
+                initialValue={features.whiteListedChannelPattern || ""}
                 ownerSId={owner.sId}
               />
             }

@@ -8,12 +8,12 @@ import { InputField } from "@app/components/poke/shadcn/ui/form/fields";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface SlackChannelPatternInputProps {
-  initialValue: string | null;
+  initialValue: string;
   ownerSId: string;
 }
 
 export const SlackChannelFormSchema = t.type({
-  inputValue: t.union([t.string, t.null]),
+  inputValue: t.string,
 });
 
 export type SlackChannelFormType = t.TypeOf<typeof SlackChannelFormSchema>;
@@ -30,7 +30,7 @@ export function SlackChannelPatternInput({
   });
 
   const { submit: handleWhiteListedChannelPatternChange } = useSubmitFunction(
-    async (newValue: string | null) => {
+    async (newValue: string) => {
       try {
         const r = await fetch(
           `/api/poke/workspaces/${ownerSId}/data_sources/managed-slack/config`,
