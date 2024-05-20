@@ -124,7 +124,6 @@ export default function LabsTranscriptsIndex({
         };
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {
