@@ -373,7 +373,21 @@ const _webhookSlackAPIHandler = async (
         break;
       }
       case "channel_created": {
-        await autoJoinChannel(req, logger);
+        const autoJoinRes = await autoJoinChannel(
+          req.body.team_id,
+          logger,
+          req.params.connector_id,
+          req.body.event?.channel
+        );
+        if (autoJoinRes.isErr()) {
+          return apiError(req, res, {
+            api_error: {
+              type: "internal_server_error",
+              message: `Error joining slack channel: ${autoJoinRes.error}`,
+            },
+            status_code: 500,
+          })
+        }
         break;
       }
       /**

@@ -24,11 +24,11 @@ export function isChannelNameWhitelisted(
 }
 
 export async function autoJoinChannel(
-  req: Request,
-  logger: Logger
+  teamId: string,
+  logger: Logger,
+  requestedConnectorId?: string,
+  slackChannelId?: string,
 ): Promise<Result<undefined, Error>> {
-  const teamId = req.body.team_id;
-  const slackChannelId = req.body.event?.channel;
   const slackConfiguration = await SlackConfigurationModel.findOne({
     where: {
       slackTeamId: teamId,
@@ -43,7 +43,7 @@ export async function autoJoinChannel(
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return new Err(new Error(`Connector ${req.params.connector_id} not found`));
+    return new Err(new Error(`Connector ${requestedConnectorId} not found`));
   }
   const slackClient = await getSlackClient(connectorId);
   const remoteChannel = await slackClient.conversations.info({
