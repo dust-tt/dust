@@ -17,7 +17,13 @@ import type {
   RetrievalTimeframe,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, Err, isTimeFrame, Ok } from "@dust-tt/types";
+import {
+  assertNever,
+  Err,
+  isTimeFrame,
+  MAX_TOOLS_USE_PER_RUN_LIMIT,
+  Ok,
+} from "@dust-tt/types";
 import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -52,8 +58,6 @@ import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
-
-const MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN = 3;
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -803,7 +807,7 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxToolsUsePerRun?: number;
+    maxToolsUsePerRun: number;
     pictureUrl: string;
     status: AgentStatus;
     scope: Exclude<AgentConfigurationScope, "global">;
@@ -819,6 +823,13 @@ export async function createAgentConfiguration(
   const user = auth.user();
   if (!user) {
     throw new Error("Unexpected `auth` without `user`.");
+  }
+
+  if (
+    maxToolsUsePerRun < 0 ||
+    maxToolsUsePerRun > MAX_TOOLS_USE_PER_RUN_LIMIT
+  ) {
+    return new Err(new Error("maxToolsUsePerRun must be between 0 and 8."));
   }
 
   const isValidPictureUrl = await isSelfHostedImageWithValidContentType(
@@ -908,8 +919,7 @@ export async function createAgentConfiguration(
             providerId: model.providerId,
             modelId: model.modelId,
             temperature: model.temperature,
-            maxToolsUsePerRun:
-              maxToolsUsePerRun ?? MULTI_ACTIONS_DEFAULT_MAX_TOOLS_USE_PER_RUN,
+            maxToolsUsePerRun,
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,

@@ -113,6 +113,7 @@ export type AssistantBuilderState = {
     temperature: number;
   };
   actions: Array<AssistantBuilderActionConfiguration>;
+  maxToolsUsePerRun: number | null;
 };
 
 export type AssistantBuilderInitialState = {
@@ -126,10 +127,11 @@ export type AssistantBuilderInitialState = {
     temperature: number;
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
+  maxToolsUsePerRun: number | null;
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
-export function getDefaultAssistantState(): AssistantBuilderState {
+export function getDefaultAssistantState() {
   return {
     actions: [],
     handle: null,
@@ -144,7 +146,8 @@ export function getDefaultAssistantState(): AssistantBuilderState {
       },
       temperature: 0.7,
     },
-  };
+    maxToolsUsePerRun: 3,
+  } satisfies AssistantBuilderState;
 }
 
 export function getDefaultRetrievalSearchActionConfiguration() {

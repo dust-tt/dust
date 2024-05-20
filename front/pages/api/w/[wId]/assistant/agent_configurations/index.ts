@@ -208,25 +208,43 @@ async function handler(
         });
       }
 
-      if (
-        !bodyValidation.right.useMultiActions &&
-        bodyValidation.right.assistant.maxToolsUsePerRun !== undefined
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "maxToolsUsePerRun is only supported in multi-actions mode.",
-          },
+      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
+      const maxToolsUsePerRun =
+        bodyValidation.right.assistant.maxToolsUsePerRun;
+
+      if (!bodyValidation.right.useMultiActions) {
+        if (maxToolsUsePerRun !== undefined) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "app_auth_error",
+              message:
+                "maxToolsUsePerRun is only supported in multi-actions mode.",
+            },
+          });
+        }
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+          auth,
+          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+          legacySingleActionMode: true,
+        });
+      } else {
+        if (maxToolsUsePerRun === undefined) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "app_auth_error",
+              message: "maxToolsUsePerRun is required in multi-actions mode.",
+            },
+          });
+        }
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+          auth,
+          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+          legacySingleActionMode: false,
         });
       }
 
-      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-        auth,
-        assistant: bodyValidation.right.assistant,
-        legacySingleActionMode: !bodyValidation.right.useMultiActions,
-      });
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
@@ -236,6 +254,7 @@ async function handler(
           },
         });
       }
+
       return res.status(200).json({
         agentConfiguration: agentConfigurationRes.value,
       });
@@ -262,17 +281,7 @@ export default withLogging(handler);
  **/
 export async function createOrUpgradeAgentConfiguration({
   auth,
-  assistant: {
-    actions,
-    model,
-    name,
-    description,
-    pictureUrl,
-    status,
-    scope,
-    instructions,
-    maxToolsUsePerRun,
-  },
+  assistant,
   agentConfigurationId,
   legacySingleActionMode,
 }: {
@@ -281,22 +290,28 @@ export async function createOrUpgradeAgentConfiguration({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >["assistant"];
   agentConfigurationId?: string;
-  // TODO(@fontanierh): We'll remove this mode once we switch to multi-actions.
-  // For now, this allows to keep the forceUseAtIteration backwards compatibility logic in a single place.
   legacySingleActionMode: boolean;
-}): Promise<Result<AgentConfigurationType, Error>> {
+} & ( // Enforce that maxToolsUsePerRun is only (and always) defined in multi-actions mode.
+  | {
+      legacySingleActionMode: true;
+      assistant: { maxToolsUsePerRun?: undefined };
+    }
+  | { legacySingleActionMode: false; assistant: { maxToolsUsePerRun: number } }
+)): Promise<Result<AgentConfigurationType, Error>> {
+  const { actions } = assistant;
+
   if (legacySingleActionMode && actions.length > 1) {
     throw new Error("Only one action is supported in legacy mode.");
   }
 
   let legacyForceSingleActionAtIteration: number | null = null;
 
+  const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
+
   if (legacySingleActionMode) {
     if (actions.length) {
       legacyForceSingleActionAtIteration = 0;
     }
-
-    maxToolsUsePerRun = actions.length;
   } else {
     // Multi actions mode:
     // Enforce that every action has a name and a description and that every name is unique.
@@ -332,14 +347,14 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
-    name,
-    description,
-    instructions: instructions ?? null,
+    name: assistant.name,
+    description: assistant.description,
+    instructions: assistant.instructions ?? null,
     maxToolsUsePerRun,
-    pictureUrl,
-    status,
-    scope,
-    model,
+    pictureUrl: assistant.pictureUrl,
+    status: assistant.status,
+    scope: assistant.scope,
+    model: assistant.model,
     agentConfigurationId,
   });
 
