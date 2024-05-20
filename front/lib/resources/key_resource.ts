@@ -5,7 +5,12 @@
 import type { KeyType, ModelId } from "@dust-tt/types";
 import type { LightWorkspaceType, Result } from "@dust-tt/types";
 import { formatUserFullName, redactString } from "@dust-tt/types";
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -100,6 +105,18 @@ export class KeyResource extends BaseResource<KeyModel> {
     });
 
     return keys.map((key) => new this(KeyResource.model, key.get()));
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
   }
 
   async markAsUsed() {

@@ -38,12 +38,9 @@ import {
 import { DataSource } from "@app/lib/models/data_source";
 import { Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
-import {
-  Key,
-  MembershipInvitation,
-  Workspace,
-} from "@app/lib/models/workspace";
+import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
@@ -398,12 +395,9 @@ export async function deleteAppsActivity({
       logger.info(`[Workspace delete] Deleting app ${app.sId}`);
       await app.destroy({ transaction: t });
     }
-    await Key.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction: t,
-    });
+
+    await KeyResource.deleteAllForWorkspace(workspace);
+
     await Provider.destroy({
       where: {
         workspaceId: workspace.id,
