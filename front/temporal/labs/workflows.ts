@@ -8,7 +8,7 @@ import {
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";
 
-const { retrieveNewTranscriptsActivity, processGoogleDriveTranscriptActivity } =
+const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "20 minutes",
   });
@@ -48,8 +48,5 @@ export async function processTranscriptWorkflow({
   fileId: string;
   transcriptsConfigurationId: ModelId;
 }): Promise<void> {
-  await processGoogleDriveTranscriptActivity(
-    transcriptsConfigurationId,
-    fileId
-  );
+  await processTranscriptActivity(transcriptsConfigurationId, fileId);
 }

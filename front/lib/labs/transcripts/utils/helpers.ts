@@ -27,9 +27,7 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuthFromUserTranscriptsConfiguration(
-  auth: Authenticator
-) {
+export async function getTranscriptsGoogleAuth(auth: Authenticator) {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspace({
       auth,
@@ -47,4 +45,13 @@ export async function getGoogleAuthFromUserTranscriptsConfiguration(
     config.getNangoGoogleDriveConnectorId(),
     transcriptsConfiguration.connectionId
   );
+}
+
+export async function getAccessTokenFromNango(
+  nangoIntegrationId: NangoIntegrationId,
+  nangoConnectionId: NangoConnectionId
+): Promise<string> {
+  const res = await nango.getConnection(nangoIntegrationId, nangoConnectionId);
+
+  return res.credentials.raw.access_token;
 }
