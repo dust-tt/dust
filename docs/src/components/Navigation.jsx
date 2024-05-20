@@ -188,7 +188,7 @@ export const navigation = [
     title: "Concepts",
     links: [
       { title: "Welcome", href: "/" },
-      { title: "Introduction to LLMs", href: "/introduction" },
+      { title: "Introduction to Dust Apps", href: "/introduction" },
       { title: "Platform Overview", href: "/overview" },
       { title: "Core Blocks", href: "/core-blocks" },
       { title: "Integration Blocks", href: "/integration-blocks" },
