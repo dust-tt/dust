@@ -439,10 +439,10 @@ function ActionCard({
 }) {
   return (
     <Hoverable onClick={editAction}>
-      <div className="mx-aut inline-block flex min-w-[18rem] max-w-[18rem] max-w-md flex-col gap-4 rounded-lg border border-structure-200 px-4 pb-4 pt-2 drop-shadow-md">
+      <div className="mx-auto inline-block flex w-72 flex-col gap-4 rounded-lg border border-structure-200 px-4 pb-4 pt-2 drop-shadow-md">
         <div className="flex flex-row gap-2 font-semibold text-element-800">
           <Icon visual={ACTION_TYPE_TO_ICON[action.type]} />
-          <div>{action.name}</div>
+          <div className="truncate">{action.name}</div>
         </div>
         <div>{action.description}</div>
       </div>
