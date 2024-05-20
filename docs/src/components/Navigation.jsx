@@ -188,18 +188,22 @@ export const navigation = [
     title: "Concepts",
     links: [
       { title: "Welcome", href: "/" },
-      { title: "Introduction", href: "/introduction" },
-      { title: "Developer Platform overview", href: "/overview" },
+      { title: "Introduction to Dust Apps", href: "/introduction" },
+      { title: "Platform Overview", href: "/overview" },
       { title: "Core Blocks", href: "/core-blocks" },
       { title: "Integration Blocks", href: "/integration-blocks" },
-      { title: "Data Sources", href: "/data-sources-overview" },
+      { title: "Data Sources", href: "/data-sources" },
     ],
   },
   {
     title: "Guides",
     links: [
-      { title: "Quickstart", href: "/quickstart" },
-      { title: "Document Q&A", href: "/guide-document-qa" },
+      { title: "Dust Apps Quickstart", href: "/quickstart" },
+      { title: "Example: Document Q&A", href: "/guide-document-qa" },
+      {
+        title: "More examples",
+        href: "https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046",
+      },
     ],
   },
   {

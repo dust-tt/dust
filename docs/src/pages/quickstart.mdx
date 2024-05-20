@@ -12,7 +12,7 @@ Dust app. {{ className: 'lead' }}
   one [here](https://github.com).
 </Note>
 
-## Setting up your first model provider
+## Model providers
 
 Dust apps rely on model providers to interact with large language models. You can setup your first
 model provider by clicking on the **Providers** pane and setting up the OpenAI provider (you can
@@ -51,42 +51,71 @@ lets you manage datasets (for inputs or few-shot examples).
 
 The **Run** button is disabled at first as you haven't added any block to your app yet.
 
-## Add your first block
+## First block and first dataset
 
 You are ready to add your first block. Click on **+ Block** and add an `input` block. The
-`input` block appears in your app specification view. The `input` block needs to get attached to a
+`input` block appears in your app specification view.
+
+<Image
+  src="/quickstart_addinput.png"
+  alt="First run of the input block"
+></Image>
+
+The `input` block needs to get attached to a
 dataset. Each time it will be executed, it'll fork your app execution on each element of the dataset
 to enable you to design your app against multiple examples to avoid overfitting your design to one
 input. You can learn more about how the `input` block works in the [Inputs](/overview#inputs)
 section of the platform overview.
 
 Click on **Create Dataset** inside the `input` block to create a new dataset. You are now redirected
-to the **Datasets** panel. And a new draft dataset with basic arithmetic questions has been prepared
-for you. Give the name _dev_ to your dataset, you can leave the description empty. Our example app
-will attempt to answer these basic arithmetic questions. The **Schema** lets you control the schema
-of your dataset's entries. The Data section lets you edit, add, or remove elements to your dataset.
-You can leave the dataset as-is and click **Create**.
+to the **Datasets** panel. And a new draft dataset with GAFAM companies data has been prepared
+but we won't use it for the `input` block.
 
-You can now return to your app's specification view and select the _dev_ dataset from the `input`
+Give the name you want to your dataset, you can leave the description empty. The **Schema** lets you control the schema
+of your dataset's entries. The Data section lets you edit, add, or remove elements to your dataset.
+
+**Change the schema** to use `currentCompany` with a type of `string` and `currentCity` with a type of `string` as well.
+We will ask our user to provider their current company and city to generate find them a new place to work.
+
+Fill a few entries in the "Data" sections, these are the _example entries_ that will be used for testing during the app design.
+
+<Image src="/quickstart_dataset.png" alt="First run of the input block">
+  _This is the expected state of your dataset for this example_
+</Image>
+
+You can now return to your app's specification view and select the dataset you created from the `input`
 block dropdown.
+
+<Note>
+  The `input` block is a special block that is used to provide the initial input
+  to your app. You can think of it as the entry point to your app, so when
+  building your app the actual data in your dataset (not the schema, but the
+  data) are _mainly used to test your app_. You can edit them between runs by
+  clicking the "Edit" button next to the dataset name. The `input` block will
+  use your schema's descriptions to infer the right data when the app is run
+  from an assistant, or use the provided data when run from the API.
+</Note>
 
 It is time to run your app for the first time! Click **Run** and wait for the execution to complete.
 
 <Image src="/quickstart_input.png" alt="First run of the input block">
   _This is the expected state of your Dust app. The `input` block was run and
-  triggered 3 parallel executions of your app. For each execution you can see
-  the output of the `input` block which corresponds to each element of the
-  dataset it is associated with. The examples in your dataset might differ from
-  the ones shown above._
+  triggered 3 parallel executions of your app because we had 3 data points in
+  our dataset. For each execution you can see the output of the `input` block
+  which corresponds to each element of the dataset it is associated with. The
+  examples in your dataset might differ from the ones shown above._
 </Image>
 
 ## Data blocks
 
-Before we can add our first `llm` block, we'll add a `data` block to the app to store the few-shot
-examples used to prompt the model. Go to the **Datasets** panel and create a new dataset. Name it
-_examples_ and save it directly.
+Before we can add our first `chat` block, we'll add a `data` block to the app to store the few-shot
+examples used to prompt the model. Go to the **Datasets** panel and create a new dataset.
+
+Name it _examples_ and save it directly, as the default data in it correspond to what we are trying to add (a list of company names, location and employees count).
+You can add more examples to the dataset if you want to test your app with more examples or [download this file containing 20 examples](https://drive.google.com/file/d/19n3-7sHLg1O6HlZF69G2M6qnoJZN2DQA/view?usp=sharing) and use the `Import JSONL` button at the bottom of the page to import it.
 
 Return to the **Specification** panel and click the **+ Block** button and add a `data` block.
+
 Similarly to the `input` block, the data block must be attached to a dataset. Click on the `data`
 block **Select Dataset** button and select _examples_.
 
@@ -108,71 +137,75 @@ created `data` block.
   block. The examples in your datasets might differ from the ones shown above._
 </Image>
 
-## LLM blocks
+## Chat (LLM) blocks
 
-We're ready to interact with a large language model. Add an `llm` block, select _openai_ as provider
-and _text-davinci-003_ as model. You can leave the `temperature` and `max_tokens` unchanged.
+We're ready to interact with a Large Language Model. Add a `chat` block, select _openai_ as provider
+and _gpt-4o_ as model. You can leave the `temperature`, `max_tokens` and `stop` unchanged.
 
 Now it's time to construct our prompt. The prompt field supports [Tera](https://keats.github.io/tera/docs)
 templating to construct the prompt to the model from the outputs of the previously executed blocks.
 You can refer to the [LLM Block](core-blocks#llm-block) documentation for more details on the
 templating system.
 
-We will use the following prompt to encode in the model (using few-shot prompting) that we want it
-to reply with a valid numerical answer:
+We will use the following prompt in the _instructions_ text area to encode in the model (using few-shot prompting) the task of answering the question provided in the `input` block:
+
+**Instructions**
 
 ```
 {% for e in EXAMPLES %}
-QUESTION: {{e.question}}
-ANSWER: {{e.answer}}
+COMPANY NAME: {{e.companyName}}
+LOCATION: {{e.headquarters}}
+EMPLOYEES COUNT: {{e.employees}}
 {% endfor %}
-QUESTION: {{INPUT.question}}
-ANSWER:
 ```
 
-As the `llm` block will be executed, it will receive as prompt the result of executing the template
+**Message**
+
+```
+_fun = (env) => {
+  return [{ role: "user", content: `My current city is ${env.state.INPUT.currentCity} \
+  and my current company is ${env.state.INPUT.currentCompany} \
+  Using the examples provided which company should I work for? \
+  Make sure it is not my current company, that the headquarters are in my continent \
+  and be aware that I prefer smaller companies.`}];
+}
+```
+
+As the `chat` block will be executed, it will receive as prompt the result of executing the template
 above, which should consists in:
 
 ```
-QUESTION: What is 2+2?
-ANSWER: 4
+COMPANY NAME: AstraZeneca
+LOCATION: 70000
+EMPLOYEES COUNT: Vevey, Switzerland
 
-QUESTION: What is 5^2?
-ANSWER: 25
+COMPANY NAME: Toyota
+LOCATION: 359542
+EMPLOYEES COUNT: Toyota City, Japan
 
-QUESTION: What is 23*9?
-ANSWER: 207
-
-QUESTION: What is 12*4?
-ANSWER:
+[]...]
 ```
 
 This is called few-shot prompting, by showing a few valid examples, we encode the task in the model.
 We finish the prompt with just the question from the input we're working on. As the model will try
-to complete the prompt, it should naturally try to answer the question with a valid answer.
-
-Also add a `stop` sequence, by typing in _QUESTION_ and hitting enter. This will stop the generation
-from the model once it encounters the _QUESTION_ sequence. This may happen as the model may simply
-tries to complete the prompt with more questions and answers after genereting the answer to your
-question.
+to answer the prompt, it should naturally try to answer the question with a valid answer.
 
 You can now run your app. It will be a bit slower this time as we'll have to wait for the model to
 generate an answer by calling into the OpenAI API.
 
 <Note>
   If you run the unmodified app again, the automatic caching mechanism of the
-  `llm` block will kick in and you won't spend any resources on OpenAI.
+  `chat` block will kick in and you won't spend any resources on OpenAI.
 </Note>
 
-You can explore the outputs of the `llm` block. It contains both a `prompt` object representing
-what was sent to the model and a `completion` object which is the completion generated by the model.
+You can explore the outputs of the `chat` block. It contains a `message` object containing the `role` and `content` keys. The `content` key contains the model's answer.
 You can check that the values returned by the model are indeed correct.
 
-<Image src="/quickstart_llm.png" alt="Execution of the llm block">
-  _This is the expected configuration and state of the `llm` block after your
-  final execution of your app. Since there are 3 inputs in our `input` block
-  dataset, there are 3 parallel executions of the app and therefore 3 outputs
-  returned by the `llm` block._
+<Image src="/quickstart_chat.png" alt="Execution of the chat block">
+  _This is the expected configuration and state of the `chat` block after your
+  final execution of your app. Since there are 3 example data inputs in our
+  `input` block dataset, there are 3 parallel executions of the app and
+  therefore 3 outputs returned by the `chat` block._
 </Image>
 
 ## Final code block
@@ -185,14 +218,14 @@ use the following code:
 ```js
 _fun = (env) => {
   return {
-    question: env.state.INPUT.question,
-    answer: env.state.MODEL.completion.text.trim(),
+    currentJob: [env.state.INPUT.currentCompany, env.state.INPUT.currentCity],
+    nextJobAnswer: env.state.MODEL.message.content.trim(),
   };
 };
 ```
 
-We're simply echoing the input `question` and returning the answer generated by the model by triming
-its completion. You can now run your app and explore the 3 executions' final outputs to check that
+We're simply echoing the input `currentCompany` and `currentCity` and returning the answer generated by the model by triming
+its message content. You can now run your app and explore the 3 executions' final outputs to check that
 all answers are correct.
 
 <Image src="/quickstart_final.png" alt="Execution of the llm block">
@@ -201,36 +234,44 @@ all answers are correct.
 </Image>
 
 Congrats on designing your first Dust app! You can inspect the different runs on your app in the
-**Runs** panel and see the various iterations we went through as we built the app.
+**Logs** panel and see the various iterations we went through as we built the app.
 
 ## (Advanced) Running your app by API
 
 Congrats on designing your first app! You can now return to your profile by clicking the Dust logo
-to create a new API key in the **API Keys** panel. Click **Create new secret key** and
+to create a new API key in the **API Keys** panel. Click **Create new API Key**, name it and
 return to the **Apps** panel and finally to your app.
 
-As you can see the full state of the app is preserved, including block outputs.
+<Image src="/quickstart_apikey.png" alt="Execution of the chat block">
+  _API keys stay visible 10 minutes after creation. After that, you won't be
+  able to see them again. And in case you want to try, the visible API Key on
+  the screenshot is fake ;)_
+</Image>
 
-Now return to the **Specification** panel and click the **Deploy** button. Simply click the **Copy**
-button and copy the curl command in your favourite editor. You can leave the curl command untouched
-exception for the input given that your app expects an object with a `question` field. Modify the
-object and add an arithmetic question of your choice.
+Now return to the **Specification** panel in your app and click the **View API endpoint** button. Simply click the **Copy**
+button and copy the curl command in your favourite editor. You can leave the cURL command untouched and the `inputs` field in the body that your app expects:
+
+`"inputs": [{ "currentCompany": "La Poste", "currentCity": "Paris; France"}]`
 
 <Note>
   As you copy the curl command from the **Deploy** modal, your newly created API
-  key is automatically inserted as `Authentication` header.
+  key is automatically inserted as `Authentication` header. 10 minutes after
+  creation, the API key will be hidden and you will have to manually replace it
+  so save it somewhere!
 </Note>
 
 You can now prefix your file with `#!/bin/sh` and save it as a `.sh` and execute it from your
 terminal.
 
-Congrats, you've executed your app by API. You can check the execution in the **Runs** panel under
-the **API** section.
+Congrats, you've executed your app by API call.
+You can check the execution in the **Logs** panel under the **API** section.
+
+<Image src="/quickstart_apilog.png" alt="App API logs"></Image>
 
 ## Next steps
 
 Great, you're now familiar with Dust app design. You can review the rest of the [documentation
-portal](/) or explore a few more complex community app examples:
+portal](/), look at our [documented examples](https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046) or explore a few more complex community app examples:
 
 - [maths-generate-code](https://dust.tt/w/3e26b0e764/a/d12ac33169) Generate code to answer maths
   questions.
