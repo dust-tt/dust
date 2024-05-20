@@ -32,62 +32,127 @@ const defaultData = [
   {
     companyName: "Google",
     employees: 100000,
-    headquarters: "Mountain View, CA",
+    headquarters: "Mountain View, CA, USA",
   },
   {
     companyName: "Facebook",
     employees: 50000,
-    headquarters: "Menlo Park, CA",
+    headquarters: "Menlo Park, CA, USA",
   },
   {
     companyName: "Amazon",
     employees: 800000,
-    headquarters: "Seattle, WA",
+    headquarters: "Seattle, WA, USA",
   },
   {
     companyName: "Apple",
     employees: 150000,
-    headquarters: "Cupertino, CA",
+    headquarters: "Cupertino, CA, USA",
   },
   {
     companyName: "Microsoft",
     employees: 150000,
-    headquarters: "Redmond, WA",
-  },
-  {
-    companyName: "Tesla",
-    employees: 50000,
-    headquarters: "Palo Alto, CA",
+    headquarters: "Redmond, WA, USA",
   },
   {
     companyName: "Netflix",
     employees: 10000,
-    headquarters: "Los Gatos, CA",
+    headquarters: "Los Gatos, CA, USA",
   },
   {
     companyName: "Twitter",
     employees: 5000,
-    headquarters: "San Francisco, CA",
+    headquarters: "San Francisco, CA, USA",
   },
   {
     companyName: "Uber",
     employees: 20000,
-    headquarters: "San Francisco, CA",
+    headquarters: "San Francisco, CA, USA",
   },
   {
-    companyName: "Lyft",
-    employees: 5000,
-    headquarters: "San Francisco, CA",
+    companyName: "Samsung",
+    employees: 287439,
+    headquarters: "Seoul, South Korea",
   },
   {
-    companyName: "Airbnb",
-    employees: 15000,
-    headquarters: "San Francisco, CA",
+    companyName: "Toyota",
+    employees: 359542,
+    headquarters: "Toyota City, Japan",
   },
   {
-    companyName: "SpaceX",
-    employees: 8000,
-    headquarters: "Hawthorne, CA",
+    companyName: "Siemens",
+    employees: 293000,
+    headquarters: "Munich, Germany",
+  },
+  {
+    companyName: "Nestlé",
+    employees: 273000,
+    headquarters: "Vevey, Switzerland",
+  },
+  {
+    companyName: "Unilever",
+    employees: 149000,
+    headquarters: "London, United Kingdom",
+  },
+  {
+    companyName: "Alibaba",
+    employees: 117600,
+    headquarters: "Hangzhou, China",
+  },
+  {
+    companyName: "Tata Consultancy Services",
+    employees: 448464,
+    headquarters: "Mumbai, India",
+  },
+  {
+    companyName: "SAP",
+    employees: 102430,
+    headquarters: "Walldorf, Germany",
+  },
+  {
+    companyName: "Roche",
+    employees: 100920,
+    headquarters: "Basel, Switzerland",
+  },
+  {
+    companyName: "Sony",
+    employees: 109700,
+    headquarters: "Tokyo, Japan",
+  },
+  {
+    companyName: "BHP",
+    employees: 33000,
+    headquarters: "Melbourne, Australia",
+  },
+  {
+    companyName: "Volkswagen",
+    employees: 302554,
+    headquarters: "Wolfsburg, Germany",
+  },
+  {
+    companyName: "BP",
+    employees: 70000,
+    headquarters: "London, United Kingdom",
+  },
+  {
+    companyName: "ING Group",
+    employees: 57000,
+    headquarters: "Amsterdam, Netherlands",
+  },
+  {
+    companyName: "Philips",
+    employees: 77000,
+    headquarters: "Amsterdam, Netherlands",
+  },
+  {
+    companyName: "Daimler",
+    employees: 288481,
+    headquarters: "Stuttgart, Germany",
+  },
+  {
+    companyName: "AstraZeneca",
+    employees: 70000,
+    headquarters: "Cambridge, United Kingdom",
   },
 ];
 
@@ -502,12 +567,8 @@ export default function DatasetView({
               {!readOnly ? (
                 <p className="mt-2 text-sm text-gray-500">
                   Set the properties and types to ensure your dataset is valid
-                  when you update it.
-                  <br />
-                  <strong>
-                    The properties descriptions are used to generate the inputs
-                    to your app when run from an @assistant.
-                  </strong>
+                  when you update it. The properties descriptions are used to
+                  generate the inputs to your app when run from an Assistant.
                 </p>
               ) : null}
             </div>
