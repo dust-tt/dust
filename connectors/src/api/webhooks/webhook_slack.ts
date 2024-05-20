@@ -386,7 +386,7 @@ const _webhookSlackAPIHandler = async (
               message: `Error joining slack channel: ${autoJoinRes.error}`,
             },
             status_code: 500,
-          })
+          });
         }
         break;
       }

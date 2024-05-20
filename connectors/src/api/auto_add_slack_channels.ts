@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Request } from "express";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -27,7 +26,7 @@ export async function autoJoinChannel(
   teamId: string,
   logger: Logger,
   requestedConnectorId?: string,
-  slackChannelId?: string,
+  slackChannelId?: string
 ): Promise<Result<undefined, Error>> {
   const slackConfiguration = await SlackConfigurationModel.findOne({
     where: {
