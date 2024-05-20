@@ -242,6 +242,12 @@ export async function renderConversationForModel({
     selected.shift();
   }
 
+  console.log(
+    "SINGLE ACTION **************",
+    new Date(),
+    JSON.stringify(selected, null, 2)
+  );
+
   return new Ok({
     modelConversation: {
       messages: selected,
@@ -330,12 +336,7 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          content:
-            `TITLE: ${m.title}\n` +
-            `TYPE: ${m.contentType}${
-              m.contentType === "file_attachment" ? " (user provided)" : ""
-            }\n` +
-            `CONTENT:\n${content}`,
+          content: `<file-attachment content-type="${m.contentType}" title="${m.title}">${content}</file-attachment>`,
         });
       } catch (error) {
         logger.error(
@@ -392,7 +393,13 @@ export async function renderConversationForModelMultiActions({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      selected.unshift(messages[i]);
+      if (messages[i].role === "content_fragment") {
+        const previousMessage = selected[0];
+        previousMessage.content =
+          messages[i].content ?? "" + previousMessage.content;
+      } else {
+        selected.unshift(messages[i]);
+      }
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
@@ -406,10 +413,10 @@ export async function renderConversationForModelMultiActions({
       if (contentRes.isErr()) {
         return new Err(contentRes.error);
       }
-      selected.unshift({
-        ...msg,
-        content: contentRes.value + truncationMessage,
-      });
+
+      const previousMessage = selected[0];
+      previousMessage.content =
+        contentRes.value + truncationMessage + previousMessage.content;
       tokensUsed += remainingTokens;
       break;
     } else {
@@ -425,6 +432,12 @@ export async function renderConversationForModelMultiActions({
     tokensUsed -= tokenCountRes.value;
     selected.shift();
   }
+
+  console.log(
+    "MultiActions ~~~~~~~~~~~~~~~~~~~~~~~",
+    new Date(),
+    JSON.stringify(selected, null, 2)
+  );
 
   return new Ok({
     modelConversation: {
