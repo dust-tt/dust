@@ -18,17 +18,12 @@ import mainLogger from "@app/logger/logger";
 async function retrieveRecentTranscripts(
   {
     auth,
-    userId,
   }: {
     auth: Authenticator;
-    userId: ModelId;
   },
   logger: Logger
 ) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    userId
-  );
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
 
   if (!googleAuth) {
     logger.error(
@@ -118,7 +113,6 @@ export async function retrieveNewTranscriptsActivity(
   const recentTranscriptFiles = await retrieveRecentTranscripts(
     {
       auth,
-      userId: transcriptsConfiguration.userId,
     },
     localLogger
   );
@@ -214,10 +208,7 @@ export async function processGoogleDriveTranscriptActivity(
     return;
   }
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    transcriptsConfiguration.userId
-  );
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
   const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
 
   const metadataRes = await drive.files.get({

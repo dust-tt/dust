@@ -75,7 +75,7 @@ LabsTranscriptsConfigurationModel.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["userId"] },
-      { fields: ["provider", "connectionId"], unique: true },
+      { fields: ["userId", "workspaceId"], unique: true },
     ],
   }
 );

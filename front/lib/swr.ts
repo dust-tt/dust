@@ -1046,16 +1046,14 @@ export function useWorkspaceEnterpriseConnection({
 // Transcripts
 export function useLabsTranscriptsConfiguration({
   workspaceId,
-  provider,
 }: {
   workspaceId: string;
-  provider: string;
 }) {
   const transcriptsConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWR(
-    `/api/w/${workspaceId}/labs/transcripts?provider=${provider}`,
+    `/api/w/${workspaceId}/labs/transcripts`,
     transcriptsConfigurationFetcher
   );
 

@@ -10,6 +10,9 @@ const config = {
   getNangoGoogleDriveConnectorId: (): string => {
     return EnvironmentConfig.getEnvVariable("NANGO_GOOGLE_DRIVE_CONNECTOR_ID");
   },
+  getNangoGongConnectorId: (): string => {
+    return EnvironmentConfig.getEnvVariable("NANGO_GONG_CONNECTOR_ID");
+  },
 };
 
 export default config;

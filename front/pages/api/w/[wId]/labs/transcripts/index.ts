@@ -1,5 +1,4 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,7 +12,10 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
 };
 
-export const acceptableTranscriptProvidersCodec = t.literal("google_drive");
+export const acceptableTranscriptProvidersCodec = t.union([
+  t.literal("google_drive"),
+  t.literal("gong"),
+]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
   connectionId: t.string,
@@ -56,17 +58,11 @@ async function handler(
   }
 
   switch (req.method) {
-    // List.
-    // TODO: This should be a proper list operation.
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider(
-          {
-            auth,
-            userId,
-            provider: req.query.provider as LabsTranscriptsProviderType,
-          }
-        );
+        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+          auth,
+        });
 
       if (!transcriptsConfigurationGet) {
         return apiError(req, res, {
@@ -78,9 +74,9 @@ async function handler(
         });
       }
 
-      return res
-        .status(200)
-        .json({ configuration: transcriptsConfigurationGet });
+      return res.status(200).json({
+        configuration: transcriptsConfigurationGet,
+      });
 
     // Create.
     case "POST":
@@ -101,12 +97,27 @@ async function handler(
 
       const { connectionId, provider } = bodyValidation.right;
 
+      const transcriptsConfigurationAlreadyExists =
+        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+          auth,
+        });
+
+      if (transcriptsConfigurationAlreadyExists) {
+        return apiError(req, res, {
+          status_code: 409,
+          api_error: {
+            type: "transcripts_configuration_already_exists",
+            message: "The transcripts configuration already exists.",
+          },
+        });
+      }
+
       const transcriptsConfigurationPostResource =
         await LabsTranscriptsConfigurationResource.makeNew({
           userId,
           workspaceId: owner.id,
-          connectionId,
           provider,
+          connectionId,
         });
 
       return res

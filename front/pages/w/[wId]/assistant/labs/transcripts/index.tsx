@@ -5,8 +5,13 @@ import {
   Page,
   SliderToggle,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  LabsTranscriptsProviderType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import Nango from "@nangohq/frontend";
@@ -18,7 +23,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import apiConfig from "@app/lib/api/config";
-import { buildConnectionId } from "@app/lib/connector_connection_id";
+import { buildLabsConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import config from "@app/lib/labs/config";
 import {
@@ -27,14 +32,13 @@ import {
 } from "@app/lib/swr";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
-const provider = "google_drive";
-
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
   gaTrackingId: string;
   nangoDriveConnectorId: string;
+  nangoGongConnectorId: string;
   nangoPublicKey: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
@@ -59,6 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
       nangoDriveConnectorId: config.getNangoGoogleDriveConnectorId(),
+      nangoGongConnectorId: config.getNangoGongConnectorId(),
       nangoPublicKey: config.getNangoPublicKey(),
     },
   };
@@ -70,6 +75,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   gaTrackingId,
   nangoDriveConnectorId,
+  nangoGongConnectorId,
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -84,32 +90,40 @@ export default function LabsTranscriptsIndex({
     transcriptsConfiguration,
     isTranscriptsConfigurationLoading,
     mutateTranscriptsConfiguration,
-  } = useLabsTranscriptsConfiguration({
-    workspaceId: owner.sId,
-    provider,
-  });
+  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
+      provider: string;
       isGDriveConnected: boolean;
+      isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
     }>({
+      provider: transcriptsConfiguration?.provider || "",
       isGDriveConnected: false,
-      assistantSelected: null as LightAgentConfigurationType | null,
+      isGongConnected: false,
+      assistantSelected: null,
       isActive: false,
     });
 
   useEffect(() => {
-    setTranscriptsConfigurationState({
-      isGDriveConnected:
-        (transcriptsConfiguration && transcriptsConfiguration.id > 0) || false,
-      assistantSelected:
-        agentConfigurations.find(
-          (a) => a.sId === transcriptsConfiguration?.agentConfigurationId
-        ) || null,
-      isActive: transcriptsConfiguration?.isActive || false,
-    });
+    if (transcriptsConfiguration) {
+      setTranscriptsConfigurationState((prev) => {
+        return {
+          ...prev,
+          provider: transcriptsConfiguration.provider || "",
+          isGongConnected: transcriptsConfiguration.provider == "gong" || false,
+          isGDriveConnected:
+            transcriptsConfiguration.provider == "google_drive" || false,
+          assistantSelected:
+            agentConfigurations.find(
+              (a) => a.sId === transcriptsConfiguration.agentConfigurationId
+            ) || null,
+          isActive: transcriptsConfiguration.isActive || false,
+        };
+      });
+    }
   }, [transcriptsConfiguration, agentConfigurations]);
 
   if (isTranscriptsConfigurationLoading) {
@@ -117,6 +131,18 @@ export default function LabsTranscriptsIndex({
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
+
+  const handleProviderChange = async (
+    provider: LabsTranscriptsProviderType
+  ) => {
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        provider,
+      };
+    });
+    await mutateTranscriptsConfiguration();
+  };
 
   const makePatchRequest = async (
     transcriptConfigurationId: number,
@@ -156,9 +182,11 @@ export default function LabsTranscriptsIndex({
     transcriptsConfigurationId: number,
     assistant: LightAgentConfigurationType
   ) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      assistantSelected: assistant,
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        assistantSelected: assistant,
+      };
     });
 
     const successMessage =
@@ -177,9 +205,11 @@ export default function LabsTranscriptsIndex({
     transcriptsConfigurationId: number,
     isActive: boolean
   ) => {
-    setTranscriptsConfigurationState({
-      ...transcriptsConfigurationState,
-      isActive,
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        isActive,
+      };
     });
 
     const successMessage = isActive
@@ -208,7 +238,10 @@ export default function LabsTranscriptsIndex({
     return updateIsActive(transcriptConfigurationId, isActive);
   };
 
-  const saveGoogleDriveConnection = async (connectionId: string) => {
+  const saveOauthConnection = async (
+    connectionId: string,
+    provider: string
+  ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
       headers: {
@@ -223,18 +256,16 @@ export default function LabsTranscriptsIndex({
     if (!response.ok) {
       sendNotification({
         type: "error",
-        title: "Failed to connect Google Drive",
-        description: "Could not connect to Google Drive. Please try again.",
+        title: "Failed to connect provider",
+        description:
+          "Could not connect to your transcripts provider. Please try again.",
       });
     } else {
       sendNotification({
         type: "success",
-        title: "Connected Google Drive",
-        description: "Google Drive has been connected successfully.",
-      });
-      setTranscriptsConfigurationState({
-        ...transcriptsConfigurationState,
-        isGDriveConnected: true,
+        title: "Provider connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
       });
 
       await mutateTranscriptsConfiguration();
@@ -243,12 +274,15 @@ export default function LabsTranscriptsIndex({
     return response;
   };
 
-  const handleConnectTranscriptsSource = async () => {
+  const handleConnectGoogleTranscriptsSource = async () => {
     try {
+      if (transcriptsConfigurationState.provider !== "google_drive") {
+        return;
+      }
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildConnectionId(
+      const newConnectionId = buildLabsConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        provider
+        transcriptsConfigurationState.provider
       );
       const {
         connectionId: nangoConnectionId,
@@ -257,12 +291,45 @@ export default function LabsTranscriptsIndex({
         newConnectionId
       );
 
-      await saveGoogleDriveConnection(nangoConnectionId);
+      await saveOauthConnection(
+        nangoConnectionId,
+        transcriptsConfigurationState.provider
+      );
     } catch (error) {
       sendNotification({
         type: "error",
         title: "Failed to connect Google Drive",
         description: "Could not connect to Google Drive. Please try again.",
+      });
+    }
+  };
+
+  const handleConnectGongTranscriptsSource = async () => {
+    try {
+      if (transcriptsConfigurationState.provider !== "gong") {
+        return;
+      }
+      const nango = new Nango({ publicKey: nangoPublicKey });
+      const newConnectionId = buildLabsConnectionId(
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+        transcriptsConfigurationState.provider
+      );
+      const {
+        connectionId: nangoConnectionId,
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoGongConnectorId,
+        newConnectionId
+      );
+
+      await saveOauthConnection(
+        nangoConnectionId,
+        transcriptsConfigurationState.provider
+      );
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
       });
     }
   };
@@ -283,32 +350,101 @@ export default function LabsTranscriptsIndex({
           description="Receive meeting minutes summarized by email automatically."
         />
         <Page.Layout direction="vertical">
-          <Page.SectionHeader title="1. Connect Google Drive" />
-          <Page.Layout direction="vertical">
-            <Page.P>
-              Connect to Google Drive so Dust can access 'My Drive' where your
-              meeting transcripts are stored.
-            </Page.P>
-            <div>
-              <Button
-                label={
-                  transcriptsConfigurationState.isGDriveConnected
-                    ? "Connected"
-                    : "Connect"
-                }
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                disabled={transcriptsConfigurationState?.isGDriveConnected}
-                onClick={async () => {
-                  await handleConnectTranscriptsSource();
-                }}
-              />
-            </div>
-          </Page.Layout>
+          <Page.SectionHeader title="1. Connect your transcripts provider" />
+          {!transcriptsConfiguration && (
+            <Page.Layout direction="horizontal" gap="xl">
+              <div
+                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                  transcriptsConfigurationState.provider == "google_drive"
+                    ? "border-gray-400"
+                    : "border-gray-200"
+                }`}
+                onClick={() => handleProviderChange("google_drive")}
+              >
+                <img
+                  src="/static/labs/transcripts/google.png"
+                  style={{ maxHeight: "35px" }}
+                />
+              </div>
+              {owner.flags.includes("labs_transcripts_gong") ? (
+                <div
+                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                    transcriptsConfigurationState.provider == "gong"
+                      ? "border-gray-400"
+                      : "border-gray-200"
+                  }`}
+                  onClick={() => handleProviderChange("gong")}
+                >
+                  <img
+                    src="/static/labs/transcripts/gong.jpeg"
+                    style={{ maxHeight: "35px" }}
+                  />
+                </div>
+              ) : (
+                <Tooltip label="Gong integration coming soon. Contact us at team@dust.tt to be notified when it's ready!">
+                  <div
+                    className="cursor-not-allowed rounded-md border border-gray-200 p-4"
+                    style={{ opacity: 0.5 }}
+                  >
+                    <img
+                      src="/static/labs/transcripts/gong.jpeg"
+                      style={{ maxHeight: "35px" }}
+                    />
+                  </div>
+                </Tooltip>
+              )}
+            </Page.Layout>
+          )}
+
+          {transcriptsConfigurationState.provider === "google_drive" && (
+            <Page.Layout direction="vertical">
+              <Page.P>
+                Connect to Google Drive so Dust can access 'My Drive' where your
+                meeting transcripts are stored.
+              </Page.P>
+              <div>
+                <Button
+                  label={
+                    transcriptsConfigurationState.isGDriveConnected
+                      ? "Google connected"
+                      : "Connect Google"
+                  }
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={transcriptsConfigurationState?.isGDriveConnected}
+                  onClick={async () => {
+                    await handleConnectGoogleTranscriptsSource();
+                  }}
+                />
+              </div>
+            </Page.Layout>
+          )}
+          {transcriptsConfigurationState.provider === "gong" && (
+            <Page.Layout direction="vertical">
+              <Page.P>
+                Connect to Gong so Dust can access your meeting transcripts.
+              </Page.P>
+              <div>
+                <Button
+                  label={
+                    transcriptsConfigurationState.isGongConnected
+                      ? "Gong connected"
+                      : "Connect Gong"
+                  }
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={transcriptsConfigurationState?.isGongConnected}
+                  onClick={async () => {
+                    await handleConnectGongTranscriptsSource();
+                  }}
+                />
+              </div>
+            </Page.Layout>
+          )}
         </Page.Layout>
-        {transcriptsConfigurationState.isGDriveConnected &&
-          transcriptsConfiguration &&
-          transcriptsConfiguration.id && (
+        {transcriptsConfiguration &&
+          (transcriptsConfigurationState.isGDriveConnected ||
+            transcriptsConfigurationState.isGongConnected) && (
             <>
               <Page.Layout direction="vertical">
                 <Page.SectionHeader title="2. Choose an assistant" />

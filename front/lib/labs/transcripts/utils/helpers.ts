@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { NangoConnectionId, NangoIntegrationId } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import { google } from "googleapis";
@@ -29,19 +28,18 @@ export async function getGoogleAuthObject(
 }
 
 export async function getGoogleAuthFromUserTranscriptsConfiguration(
-  auth: Authenticator,
-  userId: ModelId
+  auth: Authenticator
 ) {
-  const providerId = "google_drive";
-
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspaceAndProvider({
+    await LabsTranscriptsConfigurationResource.findByUserWorkspace({
       auth,
-      userId,
-      provider: providerId,
     });
 
-  if (!transcriptsConfiguration) {
+  if (
+    !transcriptsConfiguration ||
+    transcriptsConfiguration.connectionId === null ||
+    transcriptsConfiguration.provider !== "google_drive"
+  ) {
     return;
   }
 
