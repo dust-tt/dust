@@ -58,8 +58,9 @@ GoogleDriveConfig.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-// GoogleDriveFolders stores the folders selected by the user to sync.
+ConnectorModel.hasOne(GoogleDriveConfig);
 
+// GoogleDriveFolders stores the folders selected by the user to sync.
 export class GoogleDriveFolders extends Model<
   InferAttributes<GoogleDriveFolders>,
   InferCreationAttributes<GoogleDriveFolders>
@@ -103,8 +104,8 @@ GoogleDriveFolders.init(
   }
 );
 ConnectorModel.hasOne(GoogleDriveFolders);
-// GoogleDriveFiles stores files and folders synced from Google Drive.
 
+// GoogleDriveFiles stores files and folders synced from Google Drive.
 export class GoogleDriveFiles extends Model<
   InferAttributes<GoogleDriveFiles>,
   InferCreationAttributes<GoogleDriveFiles>
@@ -247,7 +248,6 @@ ConnectorModel.hasOne(GoogleDriveSheet);
 
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
-
 export class GoogleDriveSyncToken extends Model<
   InferAttributes<GoogleDriveSyncToken>,
   InferCreationAttributes<GoogleDriveSyncToken>
