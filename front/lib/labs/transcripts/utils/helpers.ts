@@ -27,9 +27,7 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getTranscriptsGoogleAuth(
-  auth: Authenticator
-) {
+export async function getTranscriptsGoogleAuth(auth: Authenticator) {
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.findByUserWorkspace({
       auth,

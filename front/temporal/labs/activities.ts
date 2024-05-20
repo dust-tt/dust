@@ -174,8 +174,8 @@ export async function processTranscriptActivity(
         fileId,
         localLogger
       );
-      transcriptTitle = gongResult.transcriptTitle;
-      transcriptContent = gongResult.transcriptContent;
+      transcriptTitle = gongResult?.transcriptTitle || "";
+      transcriptContent = gongResult?.transcriptContent || "";
       break;
 
     default:
