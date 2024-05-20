@@ -125,7 +125,7 @@ export async function notionSyncWorkflow({
 
     const runTimestamp = Date.now();
 
-    let cursor: string | null = null;
+    let cursors: (string | null)[] = [null, null];
     let pageIndex = 0;
     const childWorkflowQueue = new PQueue({
       concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
@@ -145,7 +145,8 @@ export async function notionSyncWorkflow({
           // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
           // want to fetch pages that were updated since the last sync.
           lastSyncedAt: !isGarbageCollectionRun ? lastSyncedPeriodTs : null,
-          cursor,
+          // Only pass non-null cursors.
+          cursors: cursors.filter((c) => c !== null) as string[],
           excludeUpToDatePages: skipUpToDatePages,
           loggerArgs: {
             pageIndex,
@@ -156,7 +157,10 @@ export async function notionSyncWorkflow({
               : "incrementalSync",
           },
         });
-      cursor = nextCursor;
+
+      // Update the cursors array to keep only the last 2 cursors.
+      cursors = [cursors[1] ?? null, nextCursor];
+
       pageIndex += 1;
 
       // this function triggers child workflows to process batches of pages and databases.
@@ -176,7 +180,7 @@ export async function notionSyncWorkflow({
           forceResync,
         })
       );
-    } while (cursor);
+    } while (cursors[1]);
 
     // wait for all child workflows to finish
     await Promise.all(promises);

@@ -265,13 +265,13 @@ export async function fetchDatabaseChildPages({
 export async function getPagesAndDatabasesToSync({
   connectorId,
   lastSyncedAt,
-  cursor,
+  cursors,
   excludeUpToDatePages,
   loggerArgs,
 }: {
   connectorId: ModelId;
   lastSyncedAt: number | null;
-  cursor: string | null;
+  cursors: string[];
   excludeUpToDatePages: boolean;
   loggerArgs: Record<string, string | number>;
 }): Promise<{
@@ -310,7 +310,7 @@ export async function getPagesAndDatabasesToSync({
     res = await getPagesAndDatabasesEditedSince(
       accessToken,
       lastSyncedAt,
-      cursor,
+      cursors,
       {
         ...loggerArgs,
         dataSourceName: connector.dataSourceName,
@@ -1023,7 +1023,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(runTimestamp - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(runTimestamp),
         },
       },
       attributes: ["lastSeenTs", "notionPageId", "skipReason"],
@@ -1051,7 +1051,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       where: {
         connectorId,
         lastSeenTs: {
-          [Op.lt]: new Date(runTimestamp - GARBAGE_COLLECTION_INTERVAL_HOURS),
+          [Op.lt]: new Date(runTimestamp),
         },
       },
       attributes: ["lastSeenTs", "notionDatabaseId", "skipReason"],
