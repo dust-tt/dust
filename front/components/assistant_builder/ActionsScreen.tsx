@@ -412,12 +412,17 @@ function NewActionModal({
           {newAction && (
             <ActionEditor
               action={newAction}
-              updateAction={({ actionName, getNewActionConfig }) =>
+              updateAction={({
+                actionName,
+                actionDescription,
+                getNewActionConfig,
+              }) =>
                 setNewAction({
                   ...newAction,
                   configuration: getNewActionConfig(
                     newAction.configuration
                   ) as any,
+                  description: actionDescription,
                   name: actionName,
                 })
               }
@@ -481,6 +486,7 @@ function ActionEditor({
   descriptionValid: boolean;
   updateAction: (args: {
     actionName: string;
+    actionDescription: string;
     getNewActionConfig: (
       old: AssistantBuilderActionConfiguration["configuration"]
     ) => AssistantBuilderActionConfiguration["configuration"];
@@ -505,6 +511,7 @@ function ActionEditor({
                   updateAction={(setNewAction) => {
                     updateAction({
                       actionName: action.name,
+                      actionDescription: action.description,
                       getNewActionConfig: (old) =>
                         setNewAction(
                           old as AssistantBuilderDustAppConfiguration
@@ -523,6 +530,7 @@ function ActionEditor({
                   updateAction={(setNewAction) => {
                     updateAction({
                       actionName: action.name,
+                      actionDescription: action.description,
                       getNewActionConfig: (old) =>
                         setNewAction(
                           old as AssistantBuilderRetrievalConfiguration
@@ -541,6 +549,7 @@ function ActionEditor({
                   updateAction={(setNewAction) => {
                     updateAction({
                       actionName: action.name,
+                      actionDescription: action.description,
                       getNewActionConfig: (old) =>
                         setNewAction(
                           old as AssistantBuilderRetrievalConfiguration
@@ -560,6 +569,7 @@ function ActionEditor({
                   updateAction={(setNewAction) => {
                     updateAction({
                       actionName: action.name,
+                      actionDescription: action.description,
                       getNewActionConfig: (old) =>
                         setNewAction(
                           old as AssistantBuilderProcessConfiguration
@@ -578,6 +588,7 @@ function ActionEditor({
                   updateAction={(setNewAction) => {
                     updateAction({
                       actionName: action.name,
+                      actionDescription: action.description,
                       getNewActionConfig: (old) =>
                         setNewAction(
                           old as AssistantBuilderTablesQueryConfiguration
@@ -601,6 +612,7 @@ function ActionEditor({
           onChange={(v) => {
             updateAction({
               actionName: v,
+              actionDescription: action.description,
               getNewActionConfig: (old) => old,
             });
           }}
@@ -613,7 +625,8 @@ function ActionEditor({
           value={action.description}
           onChange={(v) => {
             updateAction({
-              actionName: v,
+              actionName: action.name,
+              actionDescription: v,
               getNewActionConfig: (old) => old,
             });
           }}
