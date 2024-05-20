@@ -242,12 +242,6 @@ export async function renderConversationForModel({
     selected.shift();
   }
 
-  console.log(
-    "SINGLE ACTION **************",
-    new Date(),
-    JSON.stringify(selected, null, 2)
-  );
-
   return new Ok({
     modelConversation: {
       messages: selected,
@@ -336,7 +330,7 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          content: `<file-attachment content-type="${m.contentType}" title="${m.title}">${content}</file-attachment>`,
+          content: `<file-attachment content-type="${m.contentType}" title="${m.title}">${content}</file-attachment>\n`,
         });
       } catch (error) {
         logger.error(
@@ -396,7 +390,7 @@ export async function renderConversationForModelMultiActions({
       if (messages[i].role === "content_fragment") {
         const previousMessage = selected[0];
         previousMessage.content =
-          messages[i].content ?? "" + previousMessage.content;
+          (messages[i].content || "") + `${previousMessage.content}`;
       } else {
         selected.unshift(messages[i]);
       }
@@ -416,7 +410,8 @@ export async function renderConversationForModelMultiActions({
 
       const previousMessage = selected[0];
       previousMessage.content =
-        contentRes.value + truncationMessage + previousMessage.content;
+        // The truncation message is outside of the xml tag <file-attachement/>
+        contentRes.value + truncationMessage + `${previousMessage.content}`;
       tokensUsed += remainingTokens;
       break;
     } else {
@@ -432,12 +427,6 @@ export async function renderConversationForModelMultiActions({
     tokensUsed -= tokenCountRes.value;
     selected.shift();
   }
-
-  console.log(
-    "MultiActions ~~~~~~~~~~~~~~~~~~~~~~~",
-    new Date(),
-    JSON.stringify(selected, null, 2)
-  );
 
   return new Ok({
     modelConversation: {
