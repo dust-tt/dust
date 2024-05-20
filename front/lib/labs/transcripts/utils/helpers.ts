@@ -27,7 +27,7 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getGoogleAuthFromUserTranscriptsConfiguration(
+export async function getTranscriptsGoogleAuth(
   auth: Authenticator
 ) {
   const transcriptsConfiguration =

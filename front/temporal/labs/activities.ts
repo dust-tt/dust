@@ -1,5 +1,5 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import { assertNever, DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -65,21 +65,26 @@ export async function retrieveNewTranscriptsActivity(
 
   const transcriptsIdsToProcess: string[] = [];
 
-  if (transcriptsConfiguration.provider == "google_drive") {
-    const transcriptsIds = await retrieveGoogleTranscripts(
-      auth,
-      transcriptsConfiguration,
-      localLogger
-    );
-    transcriptsIdsToProcess.push(...transcriptsIds);
-  }
+  switch (transcriptsConfiguration.provider) {
+    case "google_drive":
+      const googleTranscriptsIds = await retrieveGoogleTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...googleTranscriptsIds);
+      break;
 
-  if (transcriptsConfiguration.provider == "gong") {
-    const transcriptsIds = await retrieveGongTranscripts(
-      transcriptsConfiguration,
-      localLogger
-    );
-    transcriptsIdsToProcess.push(...transcriptsIds);
+    case "gong":
+      const gongTranscriptsIds = await retrieveGongTranscripts(
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...gongTranscriptsIds);
+      break;
+
+    default:
+      assertNever(transcriptsConfiguration.provider);
   }
 
   return transcriptsIdsToProcess;
@@ -151,25 +156,30 @@ export async function processTranscriptActivity(
   let transcriptTitle = "";
   let transcriptContent = "";
 
-  if (transcriptsConfiguration.provider == "google_drive") {
-    const result = await retrieveGoogleTranscriptContent(
-      auth,
-      transcriptsConfiguration,
-      fileId,
-      localLogger
-    );
-    transcriptTitle = result.transcriptTitle;
-    transcriptContent = result.transcriptContent;
-  }
+  switch (transcriptsConfiguration.provider) {
+    case "google_drive":
+      const googleResult = await retrieveGoogleTranscriptContent(
+        auth,
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      transcriptTitle = googleResult.transcriptTitle;
+      transcriptContent = googleResult.transcriptContent;
+      break;
 
-  if (transcriptsConfiguration.provider == "gong") {
-    const result = await retrieveGongTranscriptContent(
-      transcriptsConfiguration,
-      fileId,
-      localLogger
-    );
-    transcriptTitle = result.transcriptTitle;
-    transcriptContent = result.transcriptContent;
+    case "gong":
+      const gongResult = await retrieveGongTranscriptContent(
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      transcriptTitle = gongResult.transcriptTitle;
+      transcriptContent = gongResult.transcriptContent;
+      break;
+
+    default:
+      assertNever(transcriptsConfiguration.provider);
   }
 
   const owner = auth.workspace();

@@ -83,11 +83,10 @@ export async function retrieveGongTranscriptContent(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   fileId: string,
   localLogger: Logger
-): Promise<{ transcriptTitle: string; transcriptContent: string }> {
+): Promise<{ transcriptTitle: string; transcriptContent: string } | null> {
   type GongParticipant = {
     speakerId: string;
     name: string;
-    [key: string]: any;
   };
 
   const gongAccessToken = await getAccessTokenFromNango(
@@ -116,7 +115,10 @@ export async function retrieveGongTranscriptContent(
     throw new Error("Error fetching call from Gong. Skipping.");
   }
 
-  const callData = (await call.json()).calls[0];
+  const callData: {
+    participants: GongParticipant[];
+    metaData: { title: string; started: string; duration: number };
+  } = (await call.json()).calls[0];
 
   if (!callData) {
     localLogger.error(
@@ -152,7 +154,15 @@ export async function retrieveGongTranscriptContent(
     throw new Error("Error fetching transcript from Gong. Skipping.");
   }
 
-  const callsData = await transcript.json();
+  const callsData: {
+    callTranscripts: {
+      transcript: {
+        speakerId: string;
+        topic: string | null;
+        sentences: { start: number; end: number; text: string }[];
+      }[];
+    }[];
+  } = await transcript.json();
   const transcriptParagraph = callsData.callTranscripts[0]?.transcript;
 
   if (!transcriptParagraph || transcriptParagraph.length === 0) {
@@ -160,7 +170,7 @@ export async function retrieveGongTranscriptContent(
       {},
       "[processTranscriptActivity] No transcript content found from Gong."
     );
-    return { transcriptTitle: "", transcriptContent: "" };
+    return null;
   }
 
   const hours = Math.floor(callData.metaData.duration / 3600);

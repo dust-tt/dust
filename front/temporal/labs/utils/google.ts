@@ -2,7 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 import { google } from "googleapis";
 
 import type { Authenticator } from "@app/lib/auth";
-import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
+import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
@@ -15,7 +15,7 @@ export async function retrieveRecentGoogleTranscripts(
   },
   logger: Logger
 ) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
+  const googleAuth = await getTranscriptsGoogleAuth(auth);
 
   if (!googleAuth) {
     logger.error(
@@ -96,7 +96,7 @@ export async function retrieveGoogleTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string }> {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
+  const googleAuth = await getTranscriptsGoogleAuth(auth);
   const drive = google.drive({ version: "v3", auth: googleAuth });
 
   const metadataRes = await drive.files.get({
