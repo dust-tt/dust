@@ -133,6 +133,13 @@ async function handler(
 
       return res.status(200).json({ configuration: transcriptsConfiguration });
 
+    case "DELETE":
+      if (transcriptsConfiguration.isActive) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      }
+      await transcriptsConfiguration.delete();
+      return res.status(200).json({ configuration: null });
+
     default:
       return apiError(req, res, {
         status_code: 405,

@@ -1,5 +1,4 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -50,26 +49,22 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
-  static async findByUserWorkspaceAndProvider({
+  static async findByUserWorkspace({
     auth,
-    userId,
-    provider,
   }: {
     auth: Authenticator;
-    userId: ModelId;
-    provider: LabsTranscriptsProviderType;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
+    const user = auth.user();
 
-    if (!owner) {
+    if (!owner || !user) {
       return null;
     }
 
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        userId,
+        userId: user.id,
         workspaceId: owner.id,
-        provider,
       },
     });
 
