@@ -222,6 +222,7 @@ export function usePreviewAssistant({
         scope: "private",
         generationSettings: builderState.generationSettings,
         actions: removeNulls([action]),
+        maxToolsUsePerRun: builderState.maxToolsUsePerRun,
       },
 
       agentConfigurationId: null,
@@ -246,6 +247,7 @@ export function usePreviewAssistant({
     builderState.instructions,
     builderState.avatarUrl,
     builderState.generationSettings,
+    builderState.maxToolsUsePerRun,
   ]);
 
   useEffect(() => {

@@ -192,3 +192,5 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
 }
+
+export const MAX_TOOLS_USE_PER_RUN_LIMIT = 8;

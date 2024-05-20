@@ -1,4 +1,9 @@
-import type { AgentStatus, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  AgentStatus,
+  Result,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -126,16 +131,33 @@ async function handler(
         }
       }
 
-      const result = await createOrUpgradeAgentConfiguration({
-        auth,
-        assistant: {
-          ...assistant,
-          scope: bodyValidation.right.scope,
-          status: assistant.status as AgentStatus,
-        },
-        agentConfigurationId: assistant.sId,
-        legacySingleActionMode: isLegacyAgent(assistant),
-      });
+      const legacySingleActionMode = isLegacyAgent(assistant);
+      let result: Result<AgentConfigurationType, Error>;
+      if (legacySingleActionMode) {
+        result = await createOrUpgradeAgentConfiguration({
+          auth,
+          assistant: {
+            ...assistant,
+            scope: bodyValidation.right.scope,
+            status: assistant.status as AgentStatus,
+            maxToolsUsePerRun: undefined,
+          },
+          agentConfigurationId: assistant.sId,
+          legacySingleActionMode: true,
+        });
+      } else {
+        result = await createOrUpgradeAgentConfiguration({
+          auth,
+          assistant: {
+            ...assistant,
+            scope: bodyValidation.right.scope,
+            status: assistant.status as AgentStatus,
+          },
+          agentConfigurationId: assistant.sId,
+          legacySingleActionMode: false,
+        });
+      }
+
       if (result.isErr()) {
         return apiError(req, res, {
           status_code: 500,

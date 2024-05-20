@@ -229,6 +229,9 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
           },
           actions: initialBuilderState.actions,
+          maxToolsUsePerRun:
+            initialBuilderState.maxToolsUsePerRun ??
+            getDefaultAssistantState().maxToolsUsePerRun,
         }
       : {
           ...getDefaultAssistantState(),
@@ -908,6 +911,10 @@ export async function submitAssistantBuilderForm({
           providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
+        maxToolsUsePerRun: useMultiActions
+          ? builderState.maxToolsUsePerRun ??
+            getDefaultAssistantState().maxToolsUsePerRun
+          : undefined,
       },
       useMultiActions,
     };
