@@ -30,52 +30,64 @@ const CodeEditor = dynamic(
 
 const defaultData = [
   {
-    question: "What is 12*4?",
-    answer: "48",
+    companyName: "Google",
+    employees: 100000,
+    headquarters: "Mountain View, CA",
   },
   {
-    question: "What is 56/7?",
-    answer: "8",
+    companyName: "Facebook",
+    employees: 50000,
+    headquarters: "Menlo Park, CA",
   },
   {
-    question: "What is 43-78?",
-    answer: "-35",
+    companyName: "Amazon",
+    employees: 800000,
+    headquarters: "Seattle, WA",
   },
   {
-    question: "What is 2+2?",
-    answer: "4",
+    companyName: "Apple",
+    employees: 150000,
+    headquarters: "Cupertino, CA",
   },
   {
-    question: "What is 5^2?",
-    answer: "25",
+    companyName: "Microsoft",
+    employees: 150000,
+    headquarters: "Redmond, WA",
   },
   {
-    question: "What is 81/9?",
-    answer: "9",
+    companyName: "Tesla",
+    employees: 50000,
+    headquarters: "Palo Alto, CA",
   },
   {
-    question: "What is 5-24?",
-    answer: "-19",
+    companyName: "Netflix",
+    employees: 10000,
+    headquarters: "Los Gatos, CA",
   },
   {
-    question: "What is 67*4?",
-    answer: "268",
+    companyName: "Twitter",
+    employees: 5000,
+    headquarters: "San Francisco, CA",
   },
   {
-    question: "What is 5*6?",
-    answer: "30",
+    companyName: "Uber",
+    employees: 20000,
+    headquarters: "San Francisco, CA",
   },
   {
-    question: "What is 2^7?",
-    answer: "128",
+    companyName: "Lyft",
+    employees: 5000,
+    headquarters: "San Francisco, CA",
   },
   {
-    question: "What is 7*6?",
-    answer: "42",
+    companyName: "Airbnb",
+    employees: 15000,
+    headquarters: "San Francisco, CA",
   },
-  {
-    question: "What is 23*9?",
-    answer: "207",
+  { 
+    companyName: "SpaceX",
+    employees: 8000,
+    headquarters: "Hawthorne, CA",
   },
 ];
 
@@ -490,8 +502,10 @@ export default function DatasetView({
               {!readOnly ? (
                 <p className="mt-2 text-sm text-gray-500">
                   Set the properties and types to ensure your dataset is valid
-                  when you update it. The properties descriptions are used to
-                  generate the inputs to your app when run from an Assistant.
+                  when you update it. 
+                  <br />
+                  <strong>The properties descriptions are used to
+                  generate the inputs to your app when run from an @assistant.</strong>
                 </p>
               ) : null}
             </div>
