@@ -71,6 +71,8 @@ export type APIErrorType =
   | "invitation_already_sent_recently"
   // DustAppSecrets:
   | "dust_app_secret_not_found"
+  // Key:
+  | "key_not_found"
   // Labs:
   | "transcripts_configuration_not_found"
   | "transcripts_configuration_already_exists";

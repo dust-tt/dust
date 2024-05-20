@@ -47,12 +47,12 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
 import {
   DustAppSecret,
-  Key,
   MembershipInvitation,
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
 import {
   LabsTranscriptsConfigurationModel,
@@ -77,7 +77,7 @@ async function main() {
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });
-  await Key.sync({ alter: true });
+  await KeyModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
