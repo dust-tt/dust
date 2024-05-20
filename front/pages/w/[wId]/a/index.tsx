@@ -761,7 +761,7 @@ export default function Developers({
         />
         <Page.Layout direction="horizontal">
           <div className="w-full" />
-          
+
           <Button
             variant="tertiary"
             label="Developer Documentation"
@@ -774,7 +774,10 @@ export default function Developers({
             variant="tertiary"
             label="Examples"
             onClick={() => {
-              window.open("https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046", "_blank");
+              window.open(
+                "https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046",
+                "_blank"
+              );
             }}
             icon={ExternalLinkIcon}
           />
