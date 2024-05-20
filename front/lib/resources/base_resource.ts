@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
 import type { Attributes, Model, ModelStatic, Transaction } from "sequelize";
 
 interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {
@@ -29,7 +29,7 @@ export abstract class BaseResource<M extends Model> {
     this: BaseResourceConstructor<T, M> & {
       model: ModelStatic<M>;
     },
-    id: number | string,
+    id: ModelId | string,
     transaction?: Transaction
   ): Promise<T | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;

@@ -1,9 +1,9 @@
-import type { KeyType } from "@dust-tt/types";
+import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { Key } from "@app/lib/models/workspace";
-import { withLogging } from "@app/logger/withlogging";
+import { KeyResource } from "@app/lib/resources/key_resource";
+import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostKeysResponseBody = {
   key: KeyType;
@@ -11,7 +11,7 @@ export type PostKeysResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<PostKeysResponseBody>
+  res: NextApiResponse<WithAPIErrorReponse<PostKeysResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
   const auth = await Authenticator.fromSession(
@@ -21,51 +21,69 @@ async function handler(
 
   const owner = auth.workspace();
   if (!owner) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Workspace not found.",
+      },
+    });
   }
 
   if (!auth.isBuilder()) {
-    res.status(403).end();
-    return;
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message:
+          "Only the users that are `builders` for the current workspace can disable a key.",
+      },
+    });
   }
 
-  const [key] = await Promise.all([
-    Key.findOne({
-      where: {
-        id: req.query.id,
-        workspaceId: owner.id,
+  const { id } = req.query;
+  if (typeof id !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid key id",
       },
-    }),
-  ]);
+    });
+  }
+
+  const key = await KeyResource.fetchByWorkspaceAndId(owner, id);
 
   if (!key) {
-    res.status(404).end();
-    return;
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "key_not_found",
+        message: "Could not find the key.",
+      },
+    });
   }
 
   switch (req.method) {
     case "POST":
-      await key.update({
-        status: "disabled",
-      });
+      await key.setIsDisabled();
 
       res.status(200).json({
         key: {
-          id: key.id,
-          createdAt: key.createdAt.getTime(),
-          creator: null,
-          lastUsedAt: key.lastUsedAt?.getTime() || null,
-          secret: key.secret,
-          status: key.status,
-          name: key.name,
+          ...key.toJSON(),
+          status: "disabled",
         },
       });
       return;
 
     default:
-      res.status(405).end();
-      return;
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported, POST is expected.",
+        },
+      });
   }
 }
 

@@ -32,14 +32,14 @@ import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
-import { Key, Workspace } from "@app/lib/models/workspace";
+import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { new_id } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 const {
@@ -221,7 +221,7 @@ export class Authenticator {
    * @returns an Authenticator for wId and the key's own workspaceId
    */
   static async fromKey(
-    key: Key,
+    key: KeyResource,
     wId: string
   ): Promise<{ auth: Authenticator; keyWorkspaceId: string }> {
     const [workspace, keyWorkspace] = await Promise.all([
@@ -450,7 +450,7 @@ export async function getSession(
  */
 export async function getAPIKey(
   req: NextApiRequest
-): Promise<Result<Key, APIErrorWithStatusCode>> {
+): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return new Err({
       status_code: 401,
@@ -472,13 +472,9 @@ export async function getAPIKey(
     });
   }
 
-  const key = await Key.findOne({
-    where: {
-      secret: parse[1],
-    },
-  });
+  const key = await KeyResource.fetchBySecret(parse[1]);
 
-  if (!key || key.status !== "active") {
+  if (!key || !key.isActive) {
     return new Err({
       status_code: 401,
       api_error: {
@@ -489,7 +485,7 @@ export async function getAPIKey(
   }
 
   if (!key.isSystem) {
-    await key.update({ lastUsedAt: new Date() });
+    await key.markAsUsed();
   }
 
   return new Ok(key);
@@ -603,28 +599,23 @@ export async function subscriptionForWorkspaces(
 /**
  * Retrieves or create a system API key for a given workspace
  * @param workspace WorkspaceType
- * @returns Promise<Result<Key, Error>>
+ * @returns Promise<Result<KeyResource, Error>>
  */
 export async function getOrCreateSystemApiKey(
   workspace: LightWorkspaceType
-): Promise<Result<Key, Error>> {
-  let key = await Key.findOne({
-    where: {
-      workspaceId: workspace.id,
-      isSystem: true,
-    },
-  });
+): Promise<Result<KeyResource, Error>> {
+  let key = await KeyResource.fetchSystemKeyForWorkspace(workspace);
+
   if (!key) {
-    const secret = `sk-${new_id().slice(0, 32)}`;
-    key = await Key.create({
+    key = await KeyResource.makeNew({
       workspaceId: workspace.id,
       isSystem: true,
-      secret: secret,
       status: "active",
     });
   }
+
   if (!key) {
-    return new Err(new Error("Failed to create system key"));
+    return new Err(new Error("Failed to create system key."));
   }
 
   return new Ok(key);
