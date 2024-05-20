@@ -9,17 +9,13 @@ import type { Logger } from "@app/logger/logger";
 export async function retrieveRecentGoogleTranscripts(
   {
     auth,
-    userId,
   }: {
     auth: Authenticator;
     userId: ModelId;
   },
   logger: Logger
 ) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    userId
-  );
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
 
   if (!googleAuth) {
     logger.error(
@@ -100,10 +96,7 @@ export async function retrieveGoogleTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string }> {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(
-    auth,
-    transcriptsConfiguration.userId
-  );
+  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
   const drive = google.drive({ version: "v3", auth: googleAuth });
 
   const metadataRes = await drive.files.get({
