@@ -55,7 +55,7 @@ SlackConfigurationModel.init(
     },
     whiteListedChannelPatterns: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
   },
   {

@@ -608,7 +608,7 @@ export async function getWhiteListedChannelPatterns(
     );
   }
   if (!slackConfig.whiteListedChannelPatterns) {
-    return new Ok("")
+    return new Ok("");
   }
   const whiteListedChannelPatterns = slackConfig.whiteListedChannelPatterns;
   return new Ok(whiteListedChannelPatterns);

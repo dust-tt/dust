@@ -1,21 +1,16 @@
 import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
+import { autoJoinChannel } from "@connectors/api/auto_add_slack_channels";
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
 import { launchSlackGarbageCollectWorkflow } from "@connectors/connectors/slack/temporal/client";
-import {
-  SlackChannel,
-  SlackConfigurationModel,
-} from "@connectors/lib/models/slack";
+import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -378,83 +373,7 @@ const _webhookSlackAPIHandler = async (
         break;
       }
       case "channel_created": {
-        const teamId = req.body.team_id;
-        const slackChannelId = req.body.event?.channel;
-        const slackConfiguration = await SlackConfigurationModel.findOne({
-          where: {
-            slackTeamId: teamId,
-          },
-        });
-        if (!slackConfiguration || !slackChannelId) {
-          return apiError(req, res, {
-            api_error: {
-              type: "slack_configuration_not_found",
-              message: `Slack configuration not found for teamId ${teamId}`,
-            },
-            status_code: 404,
-          });
-        }
-        const connectorId = slackConfiguration.connectorId;
-
-        const connector = await ConnectorResource.fetchById(connectorId);
-        if (!connector) {
-          return apiError(req, res, {
-            api_error: {
-              type: "connector_not_found",
-              message: `Connector ${req.params.connector_id} not found`,
-            },
-            status_code: 404,
-          });
-        }
-        const slackClient = await getSlackClient(connectorId);
-        const remoteChannel = await slackClient.conversations.info({
-          channel: slackChannelId,
-        });
-        const remoteChannelName = remoteChannel.channel?.name;
-
-        if (!remoteChannel.ok || !remoteChannelName) {
-          logger.error({
-            connectorId,
-            channelId: slackChannelId,
-            error: remoteChannel.error,
-          });
-          return new Err(
-            new Error("Could not get the Slack channel information.")
-          );
-        }
-
-        const whiteListedChannelPatterns =
-          slackConfiguration.whiteListedChannelPatterns;
-        const isWhiteListed = isChannelNameWhitelisted(
-          remoteChannelName,
-          whiteListedChannelPatterns
-        );
-        if (isWhiteListed) {
-          try {
-            await SlackChannel.create({
-              connectorId: connectorId,
-              slackChannelId: slackChannelId,
-              slackChannelName: remoteChannelName,
-              permission: "read_write",
-            });
-          } catch (error) {
-            console.error({
-              connectorId,
-              channelId: slackChannelId,
-              error: remoteChannel.error,
-            });
-            return new Err(new Error("Could not create the Slack channel."));
-          }
-          const joinChannelRes = await joinChannel(
-            connectorId,
-            slackChannelId
-          );
-          if (joinChannelRes.isErr()) {
-            throw new Error(
-              `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannelName}. Please re-authorize Slack or invite @Dust from #${remoteChannelName} on Slack.`
-            );
-          }
-        }
+        await autoJoinChannel(req, res, logger);
         break;
       }
       /**
@@ -512,54 +431,42 @@ const _webhookSlackAPIHandler = async (
   }
 };
 
-function isChannelNameWhitelisted(
-  remoteChannelName: string,
-  whiteListedChannelPatterns?: string
-): boolean {
-  if (!whiteListedChannelPatterns) {
-    return false;
-  }
-
-  const regex = new RegExp(whiteListedChannelPatterns);
-  return regex.test(remoteChannelName);
-}
-
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
 /**
  * Webhhok payload example. Can be handy for working on it.
  * This is what Slack sends us when a new message is posted in a channel.
  *
  * {
-  token: '6OiSmwn7QoyS8A3yL6tddCHd',
-  team_id: 'T050RH73H9P',
-  context_team_id: 'T050RH73H9P',
-  context_enterprise_id: null,
-  api_app_id: 'A04T6G3E9FY',
-  event: {
-    client_msg_id: 'af462834-af02-4f6b-82cf-a1f20150cdab',
-    type: 'message',
-    text: 'waiting for webhook….',
-    user: 'U0506AXSHN2',
-    ts: '1682680228.216339',
-    blocks: [ [Object] ],
-    team: 'T050RH73H9P',
-    channel: 'C050DRFBYGK',
-    event_ts: '1682680228.216339',
-    channel_type: 'channel'
-  },
-  type: 'event_callback',
-  event_id: 'Ev055EA9CB6X',
-  event_time: 1682680228,
-  authorizations: [
-    {
-      enterprise_id: null,
-      team_id: 'T050RH73H9P',
-      user_id: 'U04VCU7TB9V',
-      is_bot: true,
-      is_enterprise_install: false
-    }
-  ],
-  is_ext_shared_channel: false,
-  event_context: '4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDUwUkg3M0g5UCIsImFpZCI6IkEwNFQ2RzNFOUZZIiwiY2lkIjoiQzA1MERSRkJZR0sifQ'
-}
+ token: '6OiSmwn7QoyS8A3yL6tddCHd',
+ team_id: 'T050RH73H9P',
+ context_team_id: 'T050RH73H9P',
+ context_enterprise_id: null,
+ api_app_id: 'A04T6G3E9FY',
+ event: {
+ client_msg_id: 'af462834-af02-4f6b-82cf-a1f20150cdab',
+ type: 'message',
+ text: 'waiting for webhook….',
+ user: 'U0506AXSHN2',
+ ts: '1682680228.216339',
+ blocks: [ [Object] ],
+ team: 'T050RH73H9P',
+ channel: 'C050DRFBYGK',
+ event_ts: '1682680228.216339',
+ channel_type: 'channel'
+ },
+ type: 'event_callback',
+ event_id: 'Ev055EA9CB6X',
+ event_time: 1682680228,
+ authorizations: [
+ {
+ enterprise_id: null,
+ team_id: 'T050RH73H9P',
+ user_id: 'U04VCU7TB9V',
+ is_bot: true,
+ is_enterprise_install: false
+ }
+ ],
+ is_ext_shared_channel: false,
+ event_context: '4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDUwUkg3M0g5UCIsImFpZCI6IkEwNFQ2RzNFOUZZIiwiY2lkIjoiQzA1MERSRkJZR0sifQ'
+ }
  */

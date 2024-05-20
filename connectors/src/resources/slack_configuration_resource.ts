@@ -199,7 +199,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {
       await SlackChannel.destroy({
