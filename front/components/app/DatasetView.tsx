@@ -84,7 +84,7 @@ const defaultData = [
     employees: 15000,
     headquarters: "San Francisco, CA",
   },
-  { 
+  {
     companyName: "SpaceX",
     employees: 8000,
     headquarters: "Hawthorne, CA",
@@ -502,10 +502,12 @@ export default function DatasetView({
               {!readOnly ? (
                 <p className="mt-2 text-sm text-gray-500">
                   Set the properties and types to ensure your dataset is valid
-                  when you update it. 
+                  when you update it.
                   <br />
-                  <strong>The properties descriptions are used to
-                  generate the inputs to your app when run from an @assistant.</strong>
+                  <strong>
+                    The properties descriptions are used to generate the inputs
+                    to your app when run from an @assistant.
+                  </strong>
                 </p>
               ) : null}
             </div>
