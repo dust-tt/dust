@@ -80,17 +80,17 @@ async function refreshLastPageCursor(
     sinceTs: number | null;
   }
 ): Promise<string | null> {
-  const localLogger = logger.child(loggerArgs);
+  // Using a lower page_size (between originalPageSize - 10 and originalPageSize - 1) is safe.
+  // In the worst case, some pages/databases might be processed multiple times,
+  // but this is properly handled downstream.
+  const pageSize = getRandomPageSize(
+    originalPageSize - 10,
+    originalPageSize - 1
+  );
+
+  const localLogger = logger.child({ ...loggerArgs, pageSize });
 
   try {
-    // Using a lower page_size (between originalPageSize - 10 and originalPageSize - 1) is safe.
-    // In the worst case, some pages/databases might be processed multiple times,
-    // but this is properly handled downstream.
-    const pageSize = getRandomPageSize(
-      originalPageSize - 10,
-      originalPageSize - 1
-    );
-
     const refreshedResults = await wrapNotionAPITokenErrors(async () => {
       return notionClient.search({
         sort: sinceTs
@@ -111,7 +111,6 @@ async function refreshLastPageCursor(
     localLogger.info(
       {
         nextCursor,
-        pageSize,
         previousCursor,
       },
       "Refreshed last page cursor from Notion API."
