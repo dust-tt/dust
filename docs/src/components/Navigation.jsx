@@ -200,7 +200,10 @@ export const navigation = [
     links: [
       { title: "Dust Apps Quickstart", href: "/quickstart" },
       { title: "Example: Document Q&A", href: "/guide-document-qa" },
-      { title: "More examples", href: "https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046" },
+      {
+        title: "More examples",
+        href: "https://dust-tt.notion.site/Dust-apps-examples-8aaf4184ed5f4ab590710dd6f83a6046",
+      },
     ],
   },
   {

@@ -54,10 +54,12 @@ The **Run** button is disabled at first as you haven't added any block to your a
 ## First block and first dataset
 
 You are ready to add your first block. Click on **+ Block** and add an `input` block. The
-`input` block appears in your app specification view. 
+`input` block appears in your app specification view.
 
-<Image src="/quickstart_addinput.png" alt="First run of the input block">
-</Image>
+<Image
+  src="/quickstart_addinput.png"
+  alt="First run of the input block"
+></Image>
 
 The `input` block needs to get attached to a
 dataset. Each time it will be executed, it'll fork your app execution on each element of the dataset
@@ -67,12 +69,12 @@ section of the platform overview.
 
 Click on **Create Dataset** inside the `input` block to create a new dataset. You are now redirected
 to the **Datasets** panel. And a new draft dataset with GAFAM companies data has been prepared
-but we won't use it for the `input` block. 
+but we won't use it for the `input` block.
 
 Give the name you want to your dataset, you can leave the description empty. The **Schema** lets you control the schema
 of your dataset's entries. The Data section lets you edit, add, or remove elements to your dataset.
 
-**Change the schema** to use `currentCompany` with a type of `string` and `currentCity` with a type of `string` as well. 
+**Change the schema** to use `currentCompany` with a type of `string` and `currentCity` with a type of `string` as well.
 We will ask our user to provider their current company and city to generate find them a new place to work.
 
 Fill a few entries in the "Data" sections, these are the _example entries_ that will be used for testing during the app design.
@@ -85,30 +87,31 @@ You can now return to your app's specification view and select the dataset you c
 block dropdown.
 
 <Note>
-  The `input` block is a special block that is used to provide the initial input to your app. 
-  
-  You can think of it as the entry point
-  to your app, so when building your app the actual data in your dataset (not the schema, but the data) are _mainly used to test your app_. You can edit them between runs by clicking the "Edit" button next to the dataset name.
-  
-  The `input` block will use your schema's descriptions to infer the right data when the app is run from an assistant, or use the provided data when run from the API.
+  The `input` block is a special block that is used to provide the initial input
+  to your app. You can think of it as the entry point to your app, so when
+  building your app the actual data in your dataset (not the schema, but the
+  data) are _mainly used to test your app_. You can edit them between runs by
+  clicking the "Edit" button next to the dataset name. The `input` block will
+  use your schema's descriptions to infer the right data when the app is run
+  from an assistant, or use the provided data when run from the API.
 </Note>
 
 It is time to run your app for the first time! Click **Run** and wait for the execution to complete.
 
 <Image src="/quickstart_input.png" alt="First run of the input block">
   _This is the expected state of your Dust app. The `input` block was run and
-  triggered 3 parallel executions of your app because we had 3 data points in our dataset. For each execution you can see
-  the output of the `input` block which corresponds to each element of the
-  dataset it is associated with. The examples in your dataset might differ from
-  the ones shown above._
+  triggered 3 parallel executions of your app because we had 3 data points in
+  our dataset. For each execution you can see the output of the `input` block
+  which corresponds to each element of the dataset it is associated with. The
+  examples in your dataset might differ from the ones shown above._
 </Image>
 
 ## Data blocks
 
 Before we can add our first `chat` block, we'll add a `data` block to the app to store the few-shot
-examples used to prompt the model. Go to the **Datasets** panel and create a new dataset. 
+examples used to prompt the model. Go to the **Datasets** panel and create a new dataset.
 
-Name it _examples_ and save it directly, as the default data in it correspond to what we are trying to add (a list of company names, location and employees count). 
+Name it _examples_ and save it directly, as the default data in it correspond to what we are trying to add (a list of company names, location and employees count).
 You can add more examples to the dataset if you want to test your app with more examples or [download this file containing 20 examples](https://drive.google.com/file/d/19n3-7sHLg1O6HlZF69G2M6qnoJZN2DQA/view?usp=sharing) and use the `Import JSONL` button at the bottom of the page to import it.
 
 Return to the **Specification** panel and click the **+ Block** button and add a `data` block.
@@ -157,6 +160,7 @@ EMPLOYEES COUNT: {{e.employees}}
 ```
 
 **Message**
+
 ```
 _fun = (env) => {
   return [{ role: "user", content: `My current city is ${env.state.INPUT.currentCity} \
@@ -199,9 +203,9 @@ You can check that the values returned by the model are indeed correct.
 
 <Image src="/quickstart_chat.png" alt="Execution of the chat block">
   _This is the expected configuration and state of the `chat` block after your
-  final execution of your app. Since there are 3 example data inputs in our `input` block
-  dataset, there are 3 parallel executions of the app and therefore 3 outputs
-  returned by the `chat` block._
+  final execution of your app. Since there are 3 example data inputs in our
+  `input` block dataset, there are 3 parallel executions of the app and
+  therefore 3 outputs returned by the `chat` block._
 </Image>
 
 ## Final code block
@@ -239,29 +243,30 @@ to create a new API key in the **API Keys** panel. Click **Create new API Key**,
 return to the **Apps** panel and finally to your app.
 
 <Image src="/quickstart_apikey.png" alt="Execution of the chat block">
-  _API keys stay visible 10 minutes after creation. After that, you won't be able to see them again. And in case you want to try, the visible API Key on the screenshot is fake ;)_
+  _API keys stay visible 10 minutes after creation. After that, you won't be
+  able to see them again. And in case you want to try, the visible API Key on
+  the screenshot is fake ;)_
 </Image>
 
 Now return to the **Specification** panel in your app and click the **View API endpoint** button. Simply click the **Copy**
-button and copy the curl command in your favourite editor. You can leave the cURL command untouched and the `inputs` field in the body that your app expects: 
+button and copy the curl command in your favourite editor. You can leave the cURL command untouched and the `inputs` field in the body that your app expects:
 
-```"inputs": [{ "currentCompany": "La Poste", "currentCity": "Paris; France"}]```
+`"inputs": [{ "currentCompany": "La Poste", "currentCity": "Paris; France"}]`
 
 <Note>
   As you copy the curl command from the **Deploy** modal, your newly created API
-  key is automatically inserted as `Authentication` header.
-  
-  10 minutes after creation, the API key will be hidden and you will have to manually replace it so save it somewhere!
+  key is automatically inserted as `Authentication` header. 10 minutes after
+  creation, the API key will be hidden and you will have to manually replace it
+  so save it somewhere!
 </Note>
 
 You can now prefix your file with `#!/bin/sh` and save it as a `.sh` and execute it from your
 terminal.
 
-Congrats, you've executed your app by API call. 
+Congrats, you've executed your app by API call.
 You can check the execution in the **Logs** panel under the **API** section.
 
-<Image src="/quickstart_apilog.png" alt="App API logs">
-</Image>
+<Image src="/quickstart_apilog.png" alt="App API logs"></Image>
 
 ## Next steps
 
