@@ -596,7 +596,7 @@ export async function retrieveSlackContentNodes(
 
 export async function getWhiteListedChannelPatterns(
   connectorId: ModelId
-): Promise<Result<string[], Error>> {
+): Promise<Result<string, Error>> {
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connectorId
   );
@@ -607,8 +607,10 @@ export async function getWhiteListedChannelPatterns(
       )
     );
   }
-  const whiteListedChannelPatterns =
-    slackConfig.whiteListedChannelPatterns || [];
+  if (!slackConfig.whiteListedChannelPatterns) {
+    return new Ok("")
+  }
+  const whiteListedChannelPatterns = slackConfig.whiteListedChannelPatterns;
   return new Ok(whiteListedChannelPatterns);
 }
 
@@ -646,7 +648,7 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
 export async function setSlackConfig(
   connectorId: ModelId,
   configKey: string,
-  configValue: string | string[]
+  configValue: string
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -682,11 +684,7 @@ export async function setSlackConfig(
           )
         );
       }
-      if (typeof configValue === "string") {
-        return slackConfig.setWhiteListedChannelPatterns([configValue]);
-      } else {
-        return slackConfig.setWhiteListedChannelPatterns(configValue);
-      }
+      return slackConfig.setWhiteListedChannelPatterns(configValue);
     }
 
     default: {

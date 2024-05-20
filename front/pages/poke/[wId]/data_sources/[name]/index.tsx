@@ -46,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string | string[];
+    whiteListedChannelPatterns: string;
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
@@ -102,13 +102,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPatterns: string[];
+    whiteListedChannelPatterns: string;
   } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
-    whiteListedChannelPatterns: [],
+    whiteListedChannelPatterns: "",
   };
 
   const connectorsAPI = new ConnectorsAPI(logger);
@@ -133,7 +133,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           throw whiteListedChannelPatterns.error;
         }
         features.whiteListedChannelPatterns =
-          whiteListedChannelPatterns.value.configValue as string[];
+          whiteListedChannelPatterns.value.configValue;
         break;
       case "google_drive":
         const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
@@ -327,7 +327,7 @@ const DataSourcePage = ({
   });
 
   const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(
-    async (newValues: string[]) => {
+    async (newValues: string) => {
       try {
         const r = await fetch(
           `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
@@ -498,7 +498,7 @@ const DataSourcePage = ({
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
             {
               <MultiInput
-                initialValues={features.whiteListedChannelPatterns as string[]}
+                initialValues={features.whiteListedChannelPatterns}
                 onValuesChange={handleWhiteListedChannelPatternsChange}
               />
             }

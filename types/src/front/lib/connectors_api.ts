@@ -382,7 +382,7 @@ export class ConnectorsAPI {
     ConnectorsAPIResponse<{
       connectorId: number;
       configKey: string;
-      configValue: string | string[];
+      configValue: string;
     }>
   > {
     const res = await fetch(

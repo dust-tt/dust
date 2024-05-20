@@ -514,15 +514,14 @@ const _webhookSlackAPIHandler = async (
 
 function isChannelNameWhitelisted(
   remoteChannelName: string,
-  whiteListedChannelPatterns?: string[]
+  whiteListedChannelPatterns?: string
 ): boolean {
   if (!whiteListedChannelPatterns) {
     return false;
   }
-  return whiteListedChannelPatterns.some((pattern) => {
-    const regex = new RegExp(pattern);
-    return regex.test(remoteChannelName);
-  });
+
+  const regex = new RegExp(whiteListedChannelPatterns);
+  return regex.test(remoteChannelName);
 }
 
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);

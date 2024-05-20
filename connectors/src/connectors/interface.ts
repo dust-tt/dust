@@ -76,13 +76,13 @@ export type ContentNodeParentsRetriever = (
 export type ConnectorConfigSetter = (
   connectorId: ModelId,
   configKey: string,
-  configValue: string | string[]
+  configValue: string
 ) => Promise<Result<void, Error>>;
 
 export type ConnectorConfigGetter = (
   connectorId: ModelId,
   configKey: string
-) => Promise<Result<string | string[], Error>>;
+) => Promise<Result<string, Error>>;
 
 export type ConnectorGarbageCollector = (
   connectorId: ModelId

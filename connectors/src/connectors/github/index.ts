@@ -703,7 +703,7 @@ export const getGithubConfig: ConnectorConfigGetter = async function (
 export async function setGithubConfig(
   connectorId: ModelId,
   configKey: string,
-  configValue: string | string[]
+  configValue: string
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

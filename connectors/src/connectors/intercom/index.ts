@@ -845,7 +845,7 @@ export const getIntercomConfig: ConnectorConfigGetter = async function (
 export async function setIntercomConfig(
   connectorId: ModelId,
   configKey: string,
-  configValue: string | string[]
+  configValue: string
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

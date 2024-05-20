@@ -12,14 +12,14 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const ConfigSetReqBodySchema = t.type({
-  configValue: t.union([t.string, t.array(t.string)]),
+  configValue: t.string,
 });
 type ConfigSetReqBody = t.TypeOf<typeof ConfigSetReqBodySchema>;
 
 type ConfigGetResBody = WithConnectorsAPIErrorReponse<{
   connectorId: number;
   configKey: string;
-  configValue: string | string[];
+  configValue: string;
 }>;
 
 const _getConnectorConfig = async (

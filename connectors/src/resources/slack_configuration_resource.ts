@@ -186,8 +186,8 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   async setWhiteListedChannelPatterns(
-    patterns: string[]
-  ): Promise<Result<undefined, Error>> {
+    patterns: string
+  ): Promise<Ok<undefined>> {
     await this.model.update(
       { whiteListedChannelPatterns: patterns },
       {
@@ -196,9 +196,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         },
       }
     );
-
     return new Ok(undefined);
   }
+
 
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {

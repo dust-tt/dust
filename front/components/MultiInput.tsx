@@ -1,65 +1,54 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface MultiInputProps {
-  initialValues: string[];
-  onValuesChange: (values: string[]) => void;
+  initialValues: string;
+  onValuesChange: (value: string) => void;
 }
 
 export function MultiInput({ initialValues, onValuesChange }: MultiInputProps) {
-  const [inputValue, setInputValue] = useState<string>("");
-  const [values, setValues] = useState<string[]>(initialValues);
+  const [inputValue, setInputValue] = useState<string>(initialValues);
+
+  useEffect(() => {
+    // Ensure onValuesChange is called with the initial value
+    onValuesChange(inputValue);
+  }, []);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
   };
 
-  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      if (inputValue.trim() !== "") {
-        const newValues = [...values, inputValue.trim()];
-        setValues(newValues);
-        onValuesChange(newValues);
-        setInputValue("");
-      }
-    }
+  const handleSave = () => {
+    onValuesChange(inputValue);
   };
 
-  const handleRemoveValue = (index: number) => {
-    const newValues = values.filter((_, i) => i !== index);
-    setValues(newValues);
-    onValuesChange(newValues);
+  const handleClear = () => {
+    setInputValue("");
+    onValuesChange("");
   };
 
   return (
     <div className="s-flex s-flex-col s-gap-1 s-text-sm">
       <p>White listed channel patterns:</p>
-      <input
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onKeyDown={handleInputKeyDown}
-        placeholder="Press Enter to add value"
-        className="multi-input s-gap-1 rounded-lg border p-4"
-      />
-      <div className="s-flex s-flex-wrap s-gap-2">
-        {values.map((value, index) => (
-          <div
-            key={index}
-            className="value-tag rounded-md px-1 py-1 text-white"
-            style={{
-              backgroundColor: "gray",
-            }}
-          >
-            {value}
-            <button
-              className="remove-button ml-1 cursor-pointer text-gray-400"
-              onClick={() => handleRemoveValue(index)}
-            >
-              &times;
-            </button>
-          </div>
-        ))}
+      <div className="s-flex s-flex-row s-gap-2">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Regex pattern to follow"
+          className="multi-input s-gap-1 flex-grow rounded-lg border p-4"
+        />
+        <button
+          onClick={handleSave}
+          className="save-button rounded-lg bg-green-600 p-4 text-white"
+        >
+          Save
+        </button>
+        <button
+          onClick={handleClear}
+          className="clear-button rounded-lg bg-gray-500 p-4 text-white"
+        >
+          Clear
+        </button>
       </div>
     </div>
   );
