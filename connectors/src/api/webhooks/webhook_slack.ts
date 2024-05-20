@@ -520,7 +520,7 @@ function isChannelNameWhitelisted(
     return false;
   }
   return whiteListedChannelPatterns.some((pattern) => {
-    const regex = new RegExp(`^${pattern}$`);
+    const regex = new RegExp(pattern);
     return regex.test(remoteChannelName);
   });
 }
