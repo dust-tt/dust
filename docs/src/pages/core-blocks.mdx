@@ -102,7 +102,7 @@ outputs.
 ## Chat block (LLM)
 
 The `chat` block provides a standardized interface to chat-based Large Language Models such as
-OpenAI's `gpt-3.5-turbo` ([Chat API](https://platform.openai.com/docs/guides/chat)) and `gpt-4-turbo`. It has templated instructions
+OpenAI's `gpt-4o` ([Chat API](https://platform.openai.com/docs/guides/chat)) or Anthropic's `claude-3-opus`. It has templated instructions
 that serve as initial prompt and exposes a `messages` code block to output previous messages
 (generally passed to the app as input)
 
@@ -112,8 +112,8 @@ generates a new message in response.
 ### Prompt templating
 
 The `instructions` field of the `chat` block can be templated using the
-[Tera](https://keats.github.io/tera/docs/#templates). This is particularly useful to construct few-shot
-prompts for models. Here's an example of templated model prompt:
+[Tera](https://keats.github.io/tera/docs/#templates) language. This is particularly useful to construct few-shot
+prompts for models from datasets or previous blocks' outputs. Here's an example of a templated model prompt:
 
 ```
 {% for e in EXAMPLES %}
@@ -295,7 +295,7 @@ blocks](#map-reduce-blocks) documentation for more details on this behavior).
 
 ## DataSource block
 
-The `data_source` block provides an interface to query a [Data Source](/data-sources-overview) and
+The `data_source` block provides an interface to query a [Data Source](/data-sources) and
 return chunks that are semantically similar to the query provided. When executed, the query is
 embedded using the embedding model set on the Data Source and the resulting enmbedding vector
 is used to perform semantic search on the Data Source's chunks.
@@ -303,7 +303,7 @@ is used to perform semantic search on the Data Source's chunks.
 The output of the `data_source` block is a list of [Document](/documents#the-document-model)
 objects. Each document may include one or more [Chunks](/documents#the-chunk-model) (only those
 that were returned from the search). The documents are sorted by decreasing order of the max of
-their retrieved chunks score. Please refer to the [Data Sources overview](/data-sources-overview)
+their retrieved chunks score. Please refer to the [Data Sources overview](/data-sources)
 for more details about how documents are chunked to enable semantic search.
 
 ### Specification
