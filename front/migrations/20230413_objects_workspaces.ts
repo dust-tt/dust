@@ -4,10 +4,10 @@ import { personalWorkspace } from "@app/lib/auth";
 import { App, Dataset, Provider, Run } from "@app/lib/models/apps";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
-import { Key } from "@app/lib/models/workspace";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 
 async function addWorkspaceToObject(
-  object: App | Dataset | Provider | Key | DataSource | Run
+  object: App | Dataset | Provider | KeyModel | DataSource | Run
 ) {
   if (object.workspaceId) {
     // @ts-expect-error old migration code kept for reference
@@ -41,7 +41,7 @@ async function addWorkspaceToObject(
 }
 
 async function updateObjects(
-  objects: App[] | Dataset[] | Provider[] | Key[] | DataSource[] | Run[]
+  objects: App[] | Dataset[] | Provider[] | KeyModel[] | DataSource[] | Run[]
 ) {
   const chunks = [];
   for (let i = 0; i < objects.length; i += 16) {
@@ -75,7 +75,7 @@ async function updateProviders() {
 }
 
 async function updateKeys() {
-  const keys = await Key.findAll();
+  const keys = await KeyModel.findAll();
   await updateObjects(keys);
 }
 

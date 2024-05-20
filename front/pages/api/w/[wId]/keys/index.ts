@@ -1,13 +1,10 @@
 import type { KeyType, WithAPIErrorReponse } from "@dust-tt/types";
-import { formatUserFullName, redactString } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
-import { User } from "@app/lib/models/user";
-import { Key } from "@app/lib/models/workspace";
-import { new_id } from "@app/lib/utils";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetKeysResponseBody = {
@@ -48,46 +45,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const keys = await Key.findAll({
-        where: {
-          workspaceId: owner.id,
-          isSystem: false,
-        },
-        order: [["createdAt", "DESC"]],
-        // Remove the day we have the users on the client side.
-        include: [
-          {
-            as: "user",
-            attributes: ["firstName", "lastName"],
-            model: User,
-            required: false,
-          },
-        ],
-      });
+      const keys = await KeyResource.listNonSystemKeysByWorkspace(owner);
 
       res.status(200).json({
-        keys: keys.map((k) => {
-          // We only display the full secret key for the first 10 minutes after creation.
-          const currentTime = new Date();
-          const createdAt = new Date(k.createdAt);
-          const timeDifference = Math.abs(
-            currentTime.getTime() - createdAt.getTime()
-          );
-          const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-          const secret =
-            differenceInMinutes > 10 ? redactString(k.secret, 4) : k.secret;
-
-          return {
-            id: k.id,
-            createdAt: k.createdAt.getTime(),
-            lastUsedAt: k.lastUsedAt?.getTime() ?? null,
-            creator: formatUserFullName(k.user),
-            name: k.name,
-            secret,
-            status: k.status,
-          };
-        }),
+        keys: keys.map((k) => k.toJSON()),
       });
+
       return;
 
     case "POST":
@@ -101,12 +64,10 @@ async function handler(
           },
         });
       }
-      const { name } = bodyValidation.right;
-      const secret = `sk-${new_id().slice(0, 32)}`;
 
-      const key = await Key.create({
+      const { name } = bodyValidation.right;
+      const key = await KeyResource.makeNew({
         name: name,
-        secret: secret,
         status: "active",
         userId: user?.id,
         workspaceId: owner.id,
@@ -114,15 +75,7 @@ async function handler(
       });
 
       res.status(201).json({
-        key: {
-          id: key.id,
-          createdAt: key.createdAt.getTime(),
-          creator: formatUserFullName(key.user),
-          lastUsedAt: null,
-          name: key.name,
-          secret: key.secret,
-          status: key.status,
-        },
+        key: key.toJSON(),
       });
       return;
 
