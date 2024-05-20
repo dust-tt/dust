@@ -82,7 +82,7 @@ export type ConnectorConfigSetter = (
 export type ConnectorConfigGetter = (
   connectorId: ModelId,
   configKey: string
-) => Promise<Result<string, Error>>;
+) => Promise<Result<string | null, Error>>;
 
 export type ConnectorGarbageCollector = (
   connectorId: ModelId

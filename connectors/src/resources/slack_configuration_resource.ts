@@ -185,9 +185,9 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  async setWhiteListedChannelPatterns(patterns: string) {
+  async setWhiteListedChannelPattern(pattern: string) {
     await this.model.update(
-      { whiteListedChannelPatterns: patterns },
+      { whiteListedChannelPattern: pattern },
       {
         where: {
           id: this.id,

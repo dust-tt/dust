@@ -7,30 +7,30 @@ import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { InputField } from "@app/components/poke/shadcn/ui/form/fields";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
-interface MultiInputProps {
-  initialValues: string;
+interface SlackChannelPatternInputProps {
+  initialValue: string | null;
   ownerSId: string;
 }
 
 export const SlackChannelFormSchema = t.type({
-  inputValue: t.string,
+  inputValue: t.union([t.string, t.null]),
 });
 
 export type SlackChannelFormType = t.TypeOf<typeof SlackChannelFormSchema>;
 
 export function SlackChannelPatternInput({
-  initialValues,
+  initialValue,
   ownerSId,
-}: MultiInputProps) {
+}: SlackChannelPatternInputProps) {
   const formMethods = useForm<SlackChannelFormType>({
     resolver: ioTsResolver(SlackChannelFormSchema),
     defaultValues: {
-      inputValue: initialValues,
+      inputValue: initialValue,
     },
   });
 
-  const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(
-    async (newValues: string) => {
+  const { submit: handleWhiteListedChannelPatternChange } = useSubmitFunction(
+    async (newValue: string | null) => {
       try {
         const r = await fetch(
           `/api/poke/workspaces/${ownerSId}/data_sources/managed-slack/config`,
@@ -40,30 +40,30 @@ export function SlackChannelPatternInput({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              configKey: "whiteListedChannelPatterns",
-              configValue: newValues,
+              configKey: "whiteListedChannelPattern",
+              configValue: newValue,
             }),
           }
         );
         if (!r.ok) {
-          throw new Error("Failed to update whiteListedChannelPatterns.");
+          throw new Error("Failed to update whiteListedChannelPattern.");
         }
       } catch (e) {
         console.error(e);
         window.alert(
-          "An error occurred while updating whiteListedChannelPatterns."
+          "An error occurred while updating whiteListedChannelPattern."
         );
       }
     }
   );
 
   const handleSave = async (values: SlackChannelFormType) => {
-    await handleWhiteListedChannelPatternsChange(values.inputValue);
+    await handleWhiteListedChannelPatternChange(values.inputValue);
   };
 
   const handleClear = async () => {
     formMethods.reset({ inputValue: "" });
-    await handleWhiteListedChannelPatternsChange("");
+    await handleWhiteListedChannelPatternChange("");
   };
 
   return (

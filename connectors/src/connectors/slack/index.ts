@@ -594,9 +594,9 @@ export async function retrieveSlackContentNodes(
   return new Ok(contentNodes);
 }
 
-export async function getWhiteListedChannelPatterns(
+export async function getWhiteListedChannelPattern(
   connectorId: ModelId
-): Promise<Result<string, Error>> {
+): Promise<Result<string | null, Error>> {
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connectorId
   );
@@ -607,11 +607,11 @@ export async function getWhiteListedChannelPatterns(
       )
     );
   }
-  if (!slackConfig.whiteListedChannelPatterns) {
+  if (!slackConfig.whiteListedChannelPattern) {
     return new Ok("");
   }
-  const whiteListedChannelPatterns = slackConfig.whiteListedChannelPatterns;
-  return new Ok(whiteListedChannelPatterns);
+  const whiteListedChannelPattern = slackConfig.whiteListedChannelPattern;
+  return new Ok(whiteListedChannelPattern);
 }
 
 export const getSlackConfig: ConnectorConfigGetter = async function (
@@ -631,14 +631,14 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
       }
       return new Ok(botEnabledRes.value.toString());
     }
-    case "whiteListedChannelPatterns": {
-      const whiteListedChannelPatterns = await getWhiteListedChannelPatterns(
+    case "whiteListedChannelPattern": {
+      const whiteListedChannelPattern = await getWhiteListedChannelPattern(
         connectorId
       );
-      if (whiteListedChannelPatterns.isErr()) {
-        return whiteListedChannelPatterns;
+      if (whiteListedChannelPattern.isErr()) {
+        return whiteListedChannelPattern;
       }
-      return new Ok(whiteListedChannelPatterns.value);
+      return new Ok(whiteListedChannelPattern.value);
     }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));
@@ -673,7 +673,7 @@ export async function setSlackConfig(
         return slackConfig.disableBot();
       }
     }
-    case "whiteListedChannelPatterns": {
+    case "whiteListedChannelPattern": {
       const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
         connectorId
       );
@@ -684,7 +684,7 @@ export async function setSlackConfig(
           )
         );
       }
-      return slackConfig.setWhiteListedChannelPatterns(configValue);
+      return slackConfig.setWhiteListedChannelPattern(configValue);
     }
 
     default: {
