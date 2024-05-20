@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { SlackChannelPatternInput } from "@app/components/SlackChannelPatternInput";
+import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
