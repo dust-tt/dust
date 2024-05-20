@@ -18,6 +18,7 @@ import {
   isFullDatabase,
   isFullPage,
   isNotionClientError,
+  UnknownHTTPResponseError,
 } from "@notionhq/client";
 import type {
   BlockObjectResponse,
@@ -61,6 +62,70 @@ async function wrapNotionAPITokenErrors<T>(
   }
 }
 
+function getRandomPageSize(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+async function refreshLastPageCursor(
+  notionClient: Client,
+  {
+    loggerArgs,
+    originalPageSize,
+    previousCursor,
+    sinceTs,
+  }: {
+    loggerArgs: Record<string, string | number>;
+    originalPageSize: number;
+    previousCursor: string;
+    sinceTs: number | null;
+  }
+): Promise<string | null> {
+  // Using a lower page_size (between originalPageSize - 10 and originalPageSize - 1) is safe.
+  // In the worst case, some pages/databases might be processed multiple times,
+  // but this is properly handled downstream.
+  const pageSize = getRandomPageSize(
+    originalPageSize - 10,
+    originalPageSize - 1
+  );
+
+  const localLogger = logger.child({ ...loggerArgs, pageSize });
+
+  try {
+    const refreshedResults = await wrapNotionAPITokenErrors(async () => {
+      return notionClient.search({
+        sort: sinceTs
+          ? {
+              timestamp: "last_edited_time",
+              direction: "descending",
+            }
+          : undefined,
+        start_cursor: previousCursor || undefined,
+        page_size: pageSize,
+      });
+    });
+
+    const nextCursor = refreshedResults.has_more
+      ? refreshedResults.next_cursor
+      : null;
+
+    localLogger.info(
+      {
+        nextCursor,
+        previousCursor,
+      },
+      "Refreshed last page cursor from Notion API."
+    );
+
+    return nextCursor;
+  } catch (e) {
+    localLogger.error(
+      { error: e },
+      "Error refreshing last page cursor from Notion API."
+    );
+    return null;
+  }
+}
+
 /**
  * @param notionAccessToken the access token to use to access the Notion API
  * @param sinceTs a millisecond timestamp representing the minimum last edited time of
@@ -75,7 +140,7 @@ async function wrapNotionAPITokenErrors<T>(
 export async function getPagesAndDatabasesEditedSince(
   notionAccessToken: string,
   sinceTs: number | null,
-  cursor: string | null,
+  cursors: string[],
   loggerArgs: Record<string, string | number> = {},
   skippedDatabaseIds: Set<string> = new Set(),
   retry: { retries: number; backoffFactor: number } = {
@@ -89,7 +154,7 @@ export async function getPagesAndDatabasesEditedSince(
 }> {
   const localLogger = logger.child({
     ...loggerArgs,
-    cursor,
+    cursors,
     sinceTs,
   });
 
@@ -105,9 +170,17 @@ export async function getPagesAndDatabasesEditedSince(
   let resultsPage: SearchResponse | null = null;
 
   let tries = 0;
+  const pageSize = 90;
+
+  const [previousCursor] = cursors;
+  let [, lastCursor = null] = cursors;
   while (tries < retry.retries) {
-    const tryLogger = localLogger.child({ tries, maxTries: retry.retries });
+    const tryLogger = localLogger.child({
+      tries,
+      maxTries: retry.retries,
+    });
     tryLogger.info("Fetching result page from Notion API.");
+
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
@@ -117,8 +190,8 @@ export async function getPagesAndDatabasesEditedSince(
                 direction: "descending",
               }
             : undefined,
-          start_cursor: cursor || undefined,
-          page_size: 90,
+          start_cursor: lastCursor || undefined,
+          page_size: pageSize,
         });
       });
       tryLogger.info(
@@ -133,6 +206,22 @@ export async function getPagesAndDatabasesEditedSince(
       tries += 1;
       if (tries >= retry.retries) {
         throw e;
+      }
+
+      // Notion API sometimes returns 504 errors.
+      // In such cases, refresh the previous page cursor with randomized page_size.
+      if (
+        UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
+        e.status === 504
+      ) {
+        if (previousCursor) {
+          lastCursor = await refreshLastPageCursor(notionClient, {
+            loggerArgs,
+            originalPageSize: pageSize,
+            previousCursor,
+            sinceTs,
+          });
+        }
       }
 
       const sleepTime = 500 * retry.backoffFactor ** tries;
