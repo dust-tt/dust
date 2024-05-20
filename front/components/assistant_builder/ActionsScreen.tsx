@@ -14,7 +14,7 @@ import {
   TableStrokeIcon,
 } from "@dust-tt/sparkle";
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -218,16 +218,31 @@ export default function ActionsScreen({
       />
 
       <div className="flex flex-col gap-8 text-sm text-element-700">
-        <div className="flex flex-col gap-2">
-          <Page.Header title="Actions & Data sources" />
-          <Page.P>
-            <span className="text-sm text-element-700">
-              Before replying, the assistant can perform actions like{" "}
-              <span className="font-bold">searching information</span> from your{" "}
-              <span className="font-bold">Data sources</span> (Connections and
-              Folders).
-            </span>
-          </Page.P>
+        <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-col gap-2">
+            <Page.Header title="Actions & Data sources" />
+            <Page.P>
+              <span className="text-sm text-element-700">
+                Before replying, the assistant can perform actions like{" "}
+                <span className="font-bold">searching information</span> from
+                your <span className="font-bold">Data sources</span>{" "}
+                (Connections and Folders).
+              </span>
+            </Page.P>
+          </div>
+          <div className="flex-grow" />
+          <div className="self-end">
+            <AdvancedSettings
+              maxToolsUsePerRun={builderState.maxToolsUsePerRun}
+              setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
+                setEdited(true);
+                setBuilderState((state) => ({
+                  ...state,
+                  maxToolsUsePerRun,
+                }));
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -606,5 +621,59 @@ function ActionEditor({
         />
       </div>
     </div>
+  );
+}
+
+function AdvancedSettings({
+  maxToolsUsePerRun,
+  setMaxToolsUsePerRun,
+}: {
+  maxToolsUsePerRun: number | null;
+  setMaxToolsUsePerRun: (maxToolsUsePerRun: number | null) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button
+          label="Advanced settings"
+          variant="tertiary"
+          size="sm"
+          type="menu"
+        />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items width={240} overflow="visible">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col items-start justify-start">
+              <div className="w-full grow text-sm font-bold text-element-800">
+                Max actions per run
+              </div>
+              <div className="w-full grow text-sm text-element-600">
+                up to {MAX_TOOLS_USE_PER_RUN_LIMIT}
+              </div>
+            </div>
+            <Input
+              value={maxToolsUsePerRun?.toString() ?? ""}
+              placeholder=""
+              name="maxToolsUsePerRun"
+              onChange={(v) => {
+                if (!v || v === "") {
+                  setMaxToolsUsePerRun(null);
+                  return;
+                }
+                const value = parseInt(v);
+                if (
+                  !isNaN(value) &&
+                  value >= 0 &&
+                  value <= MAX_TOOLS_USE_PER_RUN_LIMIT
+                ) {
+                  setMaxToolsUsePerRun(value);
+                }
+              }}
+            />
+          </div>
+        </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
   );
 }

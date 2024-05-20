@@ -186,6 +186,9 @@ export default function EditAssistant({
           temperature: agentConfiguration.model.temperature,
         },
         actions,
+        maxToolsUsePerRun: isMultiActionsAgent
+          ? agentConfiguration.maxToolsUsePerRun
+          : null,
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
