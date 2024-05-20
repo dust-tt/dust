@@ -2,7 +2,7 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { autoJoinChannel } from "@connectors/api/auto_add_slack_channels";
+import { autoJoinChannel } from "@connectors/connectors/slack/auto_join_channel";
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {

@@ -12,7 +12,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export function isChannelNameWhitelisted(
   remoteChannelName: string,
-  whiteListedChannelPattern: string | null
+  whiteListedChannelPattern: string | undefined
 ): boolean {
   if (!whiteListedChannelPattern || whiteListedChannelPattern === "") {
     return false;
