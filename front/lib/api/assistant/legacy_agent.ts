@@ -29,10 +29,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
+import { DustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   generateProcessSpecification,
   runProcess,
@@ -308,9 +305,8 @@ async function* runAction(
       actionConfiguration: action,
     });
   } else if (isDustAppRunConfiguration(action)) {
-    specRes = await generateDustAppRunSpecification(auth, {
-      actionConfiguration: action,
-    });
+    const actionAsObject = new DustAppRunConfiguration(action);
+    specRes = await actionAsObject.buildSpecification(auth, {});
   } else if (isTablesQueryConfiguration(action)) {
     specRes = await generateTablesQuerySpecification(auth);
   } else if (isProcessConfiguration(action)) {
@@ -439,16 +435,21 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration: action,
-      conversation,
-      agentMessage,
-      spec: specRes.value,
-      rawInputs,
-      functionCallId: null,
-      step,
-    });
+    const actionAsObject = new DustAppRunConfiguration(action);
+    const eventStream = actionAsObject.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs,
+        functionCallId: null,
+        step,
+      },
+      {
+        spec: specRes.value,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {

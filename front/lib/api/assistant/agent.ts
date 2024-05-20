@@ -30,10 +30,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
+import { DustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run";
 import {
   generateProcessSpecification,
   runProcess,
@@ -327,8 +324,8 @@ export async function* runMultiActionsAgent(
 
       specifications.push(r.value);
     } else if (isDustAppRunConfiguration(a)) {
-      const r = await generateDustAppRunSpecification(auth, {
-        actionConfiguration: a,
+      const actionAsObject = new DustAppRunConfiguration(a);
+      const r = await actionAsObject.buildSpecification(auth, {
         name: a.name ?? undefined,
         description: a.description ?? undefined,
       });
@@ -702,16 +699,22 @@ async function* runAction(
       };
       return;
     }
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration,
-      conversation,
-      agentMessage,
-      spec: specification,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
+
+    const actionAsObject = new DustAppRunConfiguration(actionConfiguration);
+    const eventStream = actionAsObject.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId,
+        step,
+      },
+      {
+        spec: specification,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
