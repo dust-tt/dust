@@ -1,10 +1,17 @@
 import {
   Button,
+  ClockStrokeIcon,
+  CommandLineStrokeIcon,
   DropdownMenu,
+  Hoverable,
+  Icon,
   Input,
+  MagnifyingGlassStrokeIcon,
   Modal,
   Page,
   PlusIcon,
+  RobotStrokeIcon,
+  TableStrokeIcon,
 } from "@dust-tt/sparkle";
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -34,6 +41,7 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 import {
   ActionDustAppRun,
@@ -49,6 +57,17 @@ const ACTION_TYPE_TO_LABEL: Record<
   PROCESS: "Process",
   DUST_APP_RUN: "Dust App",
   TABLES_QUERY: "Tables Query",
+};
+
+const ACTION_TYPE_TO_ICON: Record<
+  AssistantBuilderActionConfiguration["type"],
+  React.ComponentProps<typeof Icon>["visual"]
+> = {
+  RETRIEVAL_SEARCH: MagnifyingGlassStrokeIcon,
+  RETRIEVAL_EXHAUSTIVE: ClockStrokeIcon,
+  PROCESS: RobotStrokeIcon,
+  DUST_APP_RUN: CommandLineStrokeIcon,
+  TABLES_QUERY: TableStrokeIcon,
 };
 
 function ActionModeSection({
@@ -190,7 +209,14 @@ export default function ActionsScreen({
         onClose={() => {
           setActionToEdit(null);
         }}
+        updateAction={updateAction}
+        owner={owner}
+        setEdited={setEdited}
+        dataSources={dataSources}
+        dustApps={dustApps}
+        deleteAction={deleteAction}
       />
+
       <div className="flex flex-col gap-8 text-sm text-element-700">
         <div className="flex flex-col gap-2">
           <Page.Header title="Actions & Data sources" />
@@ -204,147 +230,42 @@ export default function ActionsScreen({
           </Page.P>
         </div>
 
-        <div className="flex flex-col gap-8">
-          {builderState.actions.map((a) => (
-            <div key={a.name}>
-              <div className="flex flex-row justify-between">
-                <div>
-                  <Page.SectionHeader title={a.name} />
-                  <Page.P>{a.description}</Page.P>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondaryWarning"
-                    label="Delete"
-                    onClick={() => deleteAction(a.name)}
-                  />
-                  <Button
-                    variant="secondary"
-                    label="Edit"
-                    onClick={() => {
-                      setActionToEdit(a);
-                      setNewActionModalOpen(true);
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="py-8">
-                <ActionModeSection show={true}>
-                  {(() => {
-                    switch (a.type) {
-                      case "DUST_APP_RUN":
-                        return (
-                          <ActionDustAppRun
-                            owner={owner}
-                            actionConfigration={a.configuration}
-                            dustApps={dustApps}
-                            updateAction={(setNewAction) => {
-                              updateAction({
-                                actionName: a.name,
-                                getNewActionConfig: (old) =>
-                                  setNewAction(
-                                    old as AssistantBuilderDustAppConfiguration
-                                  ),
-                              });
-                            }}
-                            setEdited={setEdited}
-                          />
-                        );
-                      case "RETRIEVAL_SEARCH":
-                        return (
-                          <ActionRetrievalSearch
-                            owner={owner}
-                            actionConfiguration={a.configuration}
-                            dataSources={dataSources}
-                            updateAction={(setNewAction) => {
-                              updateAction({
-                                actionName: a.name,
-                                getNewActionConfig: (old) =>
-                                  setNewAction(
-                                    old as AssistantBuilderRetrievalConfiguration
-                                  ),
-                              });
-                            }}
-                            setEdited={setEdited}
-                          />
-                        );
-                      case "RETRIEVAL_EXHAUSTIVE":
-                        return (
-                          <ActionRetrievalExhaustive
-                            owner={owner}
-                            actionConfiguration={a.configuration}
-                            dataSources={dataSources}
-                            updateAction={(setNewAction) => {
-                              updateAction({
-                                actionName: a.name,
-                                getNewActionConfig: (old) =>
-                                  setNewAction(
-                                    old as AssistantBuilderRetrievalConfiguration
-                                  ),
-                              });
-                            }}
-                            setEdited={setEdited}
-                          />
-                        );
-                      case "PROCESS":
-                        return (
-                          <ActionProcess
-                            owner={owner}
-                            instructions={builderState.instructions}
-                            actionConfiguration={a.configuration}
-                            dataSources={dataSources}
-                            updateAction={(setNewAction) => {
-                              updateAction({
-                                actionName: a.name,
-                                getNewActionConfig: (old) =>
-                                  setNewAction(
-                                    old as AssistantBuilderProcessConfiguration
-                                  ),
-                              });
-                            }}
-                            setEdited={setEdited}
-                          />
-                        );
-                      case "TABLES_QUERY":
-                        return (
-                          <ActionTablesQuery
-                            owner={owner}
-                            actionConfiguration={a.configuration}
-                            dataSources={dataSources}
-                            updateAction={(setNewAction) => {
-                              updateAction({
-                                actionName: a.name,
-                                getNewActionConfig: (old) =>
-                                  setNewAction(
-                                    old as AssistantBuilderTablesQueryConfiguration
-                                  ),
-                              });
-                            }}
-                            setEdited={setEdited}
-                          />
-                        );
-                      default:
-                        assertNever(a);
-                    }
-                  })()}
-                </ActionModeSection>
-              </div>
-              <Page.Separator />
-            </div>
-          ))}
-
-          <div className="pt-8">
-            <Button
-              variant="secondary"
-              label="Add Action"
-              icon={PlusIcon}
-              disabled={!allActionsValid}
+        <div className="flex flex-col gap-4">
+          {builderState.actions.length === 0 && (
+            <EmptyCallToAction
+              label="Add an action"
               onClick={() => {
                 setNewActionModalOpen(true);
               }}
             />
+          )}
+          <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {builderState.actions.map((a) => (
+              <div className="flex w-full" key={a.name}>
+                <ActionCard
+                  action={a}
+                  key={a.name}
+                  editAction={() => {
+                    setActionToEdit(a);
+                    setNewActionModalOpen(true);
+                  }}
+                />
+              </div>
+            ))}
           </div>
+          {builderState.actions.length > 0 && (
+            <div>
+              <Button
+                variant="primary"
+                label="Add Action"
+                icon={PlusIcon}
+                disabled={!allActionsValid}
+                onClick={() => {
+                  setNewActionModalOpen(true);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -354,10 +275,15 @@ export default function ActionsScreen({
 function NewActionModal({
   isOpen,
   setOpen,
-  builderState,
   initialAction,
   onSave,
   onClose,
+  owner,
+  setEdited,
+  dataSources,
+  dustApps,
+  builderState,
+  deleteAction,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -365,6 +291,17 @@ function NewActionModal({
   initialAction: AssistantBuilderActionConfiguration | null;
   onSave: (newAction: AssistantBuilderActionConfiguration) => void;
   onClose: () => void;
+  updateAction: (args: {
+    actionName: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
+  owner: WorkspaceType;
+  setEdited: (edited: boolean) => void;
+  dataSources: DataSourceType[];
+  dustApps: AppType[];
+  deleteAction: (name: string) => void;
 }) {
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
@@ -399,7 +336,7 @@ function NewActionModal({
       variant="side-md"
       title="Add Action"
       onSave={
-        newAction && titleValid && descriptionValid
+        newAction && titleValid && descriptionValid && isActionValid(newAction)
           ? () => {
               newAction.name = newAction.name.trim();
               newAction.description = newAction.description.trim();
@@ -457,35 +394,217 @@ function NewActionModal({
               ))}
             </DropdownMenu.Items>
           </DropdownMenu>
-          {newAction ? (
-            <>
-              <Input
-                name="actionName"
-                placeholder="My action name.."
-                value={newAction?.name ?? null}
-                onChange={(v) => {
-                  setNewAction({
-                    ...newAction,
-                    name: v.trim(),
-                  });
-                }}
-                error={!titleValid ? "Name already exists" : null}
+          {newAction && (
+            <ActionEditor
+              action={newAction}
+              updateAction={({ actionName, getNewActionConfig }) =>
+                setNewAction({
+                  ...newAction,
+                  configuration: getNewActionConfig(
+                    newAction.configuration
+                  ) as any,
+                  name: actionName,
+                })
+              }
+              owner={owner}
+              setEdited={setEdited}
+              dataSources={dataSources}
+              dustApps={dustApps}
+              builderState={builderState}
+              titleValid={titleValid}
+              descriptionValid={descriptionValid}
+            />
+          )}
+          {initialAction && (
+            <div className="pt-8">
+              <Button
+                variant="primaryWarning"
+                label="Delete Action"
+                onClick={() => deleteAction(initialAction.name)}
               />
-              <Input
-                name="actionDescription"
-                placeholder="My action description.."
-                value={newAction?.description ?? null}
-                onChange={(v) => {
-                  setNewAction({
-                    ...newAction,
-                    description: v,
-                  });
-                }}
-              />
-            </>
-          ) : null}
+            </div>
+          )}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function ActionCard({
+  action,
+  editAction,
+}: {
+  action: AssistantBuilderActionConfiguration;
+  editAction: () => void;
+}) {
+  return (
+    <Hoverable onClick={editAction}>
+      <div className="mx-auto inline-block flex w-72 flex-col gap-4 rounded-lg border border-structure-200 px-4 pb-4 pt-2 drop-shadow-md">
+        <div className="flex flex-row gap-2 font-semibold text-element-800">
+          <Icon visual={ACTION_TYPE_TO_ICON[action.type]} />
+          <div className="truncate">{action.name}</div>
+        </div>
+        <div>{action.description}</div>
+      </div>
+    </Hoverable>
+  );
+}
+
+function ActionEditor({
+  action,
+  titleValid,
+  descriptionValid,
+  updateAction,
+  owner,
+  setEdited,
+  dataSources,
+  dustApps,
+  builderState,
+}: {
+  action: AssistantBuilderActionConfiguration;
+  titleValid: boolean;
+  descriptionValid: boolean;
+  updateAction: (args: {
+    actionName: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
+  owner: WorkspaceType;
+  setEdited: (edited: boolean) => void;
+  dataSources: DataSourceType[];
+  dustApps: AppType[];
+  builderState: AssistantBuilderState;
+}) {
+  return (
+    <div>
+      <ActionModeSection show={true}>
+        {(() => {
+          switch (action.type) {
+            case "DUST_APP_RUN":
+              return (
+                <ActionDustAppRun
+                  owner={owner}
+                  actionConfigration={action.configuration}
+                  dustApps={dustApps}
+                  updateAction={(setNewAction) => {
+                    updateAction({
+                      actionName: action.name,
+                      getNewActionConfig: (old) =>
+                        setNewAction(
+                          old as AssistantBuilderDustAppConfiguration
+                        ),
+                    });
+                  }}
+                  setEdited={setEdited}
+                />
+              );
+            case "RETRIEVAL_SEARCH":
+              return (
+                <ActionRetrievalSearch
+                  owner={owner}
+                  actionConfiguration={action.configuration}
+                  dataSources={dataSources}
+                  updateAction={(setNewAction) => {
+                    updateAction({
+                      actionName: action.name,
+                      getNewActionConfig: (old) =>
+                        setNewAction(
+                          old as AssistantBuilderRetrievalConfiguration
+                        ),
+                    });
+                  }}
+                  setEdited={setEdited}
+                />
+              );
+            case "RETRIEVAL_EXHAUSTIVE":
+              return (
+                <ActionRetrievalExhaustive
+                  owner={owner}
+                  actionConfiguration={action.configuration}
+                  dataSources={dataSources}
+                  updateAction={(setNewAction) => {
+                    updateAction({
+                      actionName: action.name,
+                      getNewActionConfig: (old) =>
+                        setNewAction(
+                          old as AssistantBuilderRetrievalConfiguration
+                        ),
+                    });
+                  }}
+                  setEdited={setEdited}
+                />
+              );
+            case "PROCESS":
+              return (
+                <ActionProcess
+                  owner={owner}
+                  instructions={builderState.instructions}
+                  actionConfiguration={action.configuration}
+                  dataSources={dataSources}
+                  updateAction={(setNewAction) => {
+                    updateAction({
+                      actionName: action.name,
+                      getNewActionConfig: (old) =>
+                        setNewAction(
+                          old as AssistantBuilderProcessConfiguration
+                        ),
+                    });
+                  }}
+                  setEdited={setEdited}
+                />
+              );
+            case "TABLES_QUERY":
+              return (
+                <ActionTablesQuery
+                  owner={owner}
+                  actionConfiguration={action.configuration}
+                  dataSources={dataSources}
+                  updateAction={(setNewAction) => {
+                    updateAction({
+                      actionName: action.name,
+                      getNewActionConfig: (old) =>
+                        setNewAction(
+                          old as AssistantBuilderTablesQueryConfiguration
+                        ),
+                    });
+                  }}
+                  setEdited={setEdited}
+                />
+              );
+            default:
+              assertNever(action);
+          }
+        })()}
+      </ActionModeSection>
+      <div className="flex flex-col gap-4 pt-8">
+        <div className="font-semibold text-element-700">Action name</div>
+        <Input
+          name="actionName"
+          placeholder="My action name.."
+          value={action.name}
+          onChange={(v) => {
+            updateAction({
+              actionName: v,
+              getNewActionConfig: (old) => old,
+            });
+          }}
+          error={!titleValid ? "Name already exists" : null}
+        />
+        <div className="font-semibold text-element-700">Action description</div>
+        <Input
+          name="actionDescription"
+          placeholder="My action description.."
+          value={action.description}
+          onChange={(v) => {
+            updateAction({
+              actionName: v,
+              getNewActionConfig: (old) => old,
+            });
+          }}
+          error={!descriptionValid ? "Description cannot be empty" : null}
+        />
+      </div>
+    </div>
   );
 }
