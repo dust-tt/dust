@@ -326,34 +326,6 @@ const DataSourcePage = ({
     }
   });
 
-  const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(
-    async (newValues: string) => {
-      try {
-        const r = await fetch(
-          `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              configKey: "whiteListedChannelPatterns",
-              configValue: newValues,
-            }),
-          }
-        );
-        if (!r.ok) {
-          throw new Error("Failed to update whiteListedChannelPatterns.");
-        }
-      } catch (e) {
-        console.error(e);
-        window.alert(
-          "An error occurred while updating whiteListedChannelPatterns."
-        );
-      }
-    }
-  );
-
   const onDisplayDocumentSource = (documentId: string) => {
     if (
       window.confirm(
@@ -499,7 +471,7 @@ const DataSourcePage = ({
             {
               <SlackChannelPatternInput
                 initialValues={features.whiteListedChannelPatterns}
-                onValuesChange={handleWhiteListedChannelPatternsChange}
+                ownerSId={owner.sId}
               />
             }
             <div className="s-text-sm pt-3">

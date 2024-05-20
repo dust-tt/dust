@@ -5,10 +5,11 @@ import { FormProvider, useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { InputField } from "@app/components/poke/shadcn/ui/form/fields";
+import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface MultiInputProps {
   initialValues: string;
-  onValuesChange: (value: string) => void;
+  ownerSId: string;
 }
 
 export const SlackChannelFormSchema = t.type({
@@ -19,7 +20,7 @@ export type SlackChannelFormType = t.TypeOf<typeof SlackChannelFormSchema>;
 
 export function SlackChannelPatternInput({
   initialValues,
-  onValuesChange,
+  ownerSId,
 }: MultiInputProps) {
   const formMethods = useForm<SlackChannelFormType>({
     resolver: ioTsResolver(SlackChannelFormSchema),
@@ -28,13 +29,41 @@ export function SlackChannelPatternInput({
     },
   });
 
-  const handleSave = (values: SlackChannelFormType) => {
-    onValuesChange(values.inputValue);
+  const { submit: handleWhiteListedChannelPatternsChange } = useSubmitFunction(
+    async (newValues: string) => {
+      try {
+        const r = await fetch(
+          `/api/poke/workspaces/${ownerSId}/data_sources/managed-slack/config`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              configKey: "whiteListedChannelPatterns",
+              configValue: newValues,
+            }),
+          }
+        );
+        if (!r.ok) {
+          throw new Error("Failed to update whiteListedChannelPatterns.");
+        }
+      } catch (e) {
+        console.error(e);
+        window.alert(
+          "An error occurred while updating whiteListedChannelPatterns."
+        );
+      }
+    }
+  );
+
+  const handleSave = async (values: SlackChannelFormType) => {
+    await handleWhiteListedChannelPatternsChange(values.inputValue);
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     formMethods.reset({ inputValue: "" });
-    onValuesChange("");
+    await handleWhiteListedChannelPatternsChange("");
   };
 
   return (
