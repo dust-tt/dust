@@ -1,62 +1,25 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import { assertNever, DustAPI } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import * as googleapis from "googleapis";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
-import { getGoogleAuthFromUserTranscriptsConfiguration } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { Logger } from "@app/logger/logger";
 import mainLogger from "@app/logger/logger";
-async function retrieveRecentTranscripts(
-  {
-    auth,
-  }: {
-    auth: Authenticator;
-  },
-  logger: Logger
-) {
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
-
-  if (!googleAuth) {
-    logger.error(
-      {},
-      "[retrieveRecentTranscripts] No Google auth found. Stopping."
-    );
-    return [];
-  }
-
-  // Only pull transcripts from last day.
-  // We could do from the last 15 minutes
-  // but we want to avoid missing any if the workflow is down or slow.
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 1);
-
-  const files = await googleapis.google
-    .drive({ version: "v3", auth: googleAuth })
-    .files.list({
-      q:
-        "name contains '- Transcript' and createdTime > '" +
-        cutoffDate.toISOString() +
-        "'",
-      fields: "files(id, name)",
-    });
-
-  const { files: filesData } = files.data;
-  if (!filesData || filesData.length === 0) {
-    logger.info({}, "[retrieveRecentTranscripts] No new files found.");
-    return [];
-  }
-
-  return filesData;
-}
+import {
+  retrieveGongTranscriptContent,
+  retrieveGongTranscripts,
+} from "@app/temporal/labs/utils/gong";
+import {
+  retrieveGoogleTranscriptContent,
+  retrieveGoogleTranscripts,
+} from "@app/temporal/labs/utils/google";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -100,52 +63,34 @@ export async function retrieveNewTranscriptsActivity(
     return [];
   }
 
-  // We only support google_drive for now.
-  if (transcriptsConfiguration.provider !== "google_drive") {
-    localLogger.error(
-      {},
-      "[retrieveNewTranscripts] Provider not supported. Stopping."
-    );
+  const transcriptsIdsToProcess: string[] = [];
 
-    return [];
+  switch (transcriptsConfiguration.provider) {
+    case "google_drive":
+      const googleTranscriptsIds = await retrieveGoogleTranscripts(
+        auth,
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...googleTranscriptsIds);
+      break;
+
+    case "gong":
+      const gongTranscriptsIds = await retrieveGongTranscripts(
+        transcriptsConfiguration,
+        localLogger
+      );
+      transcriptsIdsToProcess.push(...gongTranscriptsIds);
+      break;
+
+    default:
+      assertNever(transcriptsConfiguration.provider);
   }
 
-  const recentTranscriptFiles = await retrieveRecentTranscripts(
-    {
-      auth,
-    },
-    localLogger
-  );
-
-  const fileIdsToProcess: string[] = [];
-  for (const recentTranscriptFile of recentTranscriptFiles) {
-    const { id: fileId } = recentTranscriptFile;
-    if (!fileId) {
-      localLogger.error(
-        {},
-        "[retrieveNewTranscripts] File does not have an id. Skipping."
-      );
-      continue;
-    }
-
-    const history = await transcriptsConfiguration.fetchHistoryForFileId(
-      fileId
-    );
-    if (history) {
-      localLogger.info(
-        { fileId },
-        "[retrieveNewTranscripts] File already processed. Skipping."
-      );
-      continue;
-    }
-
-    fileIdsToProcess.push(fileId);
-  }
-
-  return fileIdsToProcess;
+  return transcriptsIdsToProcess;
 }
 
-export async function processGoogleDriveTranscriptActivity(
+export async function processTranscriptActivity(
   transcriptsConfigurationId: ModelId,
   fileId: string
 ) {
@@ -189,64 +134,58 @@ export async function processGoogleDriveTranscriptActivity(
   if (!user) {
     localLogger.error(
       {},
-      "[processGoogleDriveTranscriptActivity] User not found. Stopping."
+      "[processTranscriptActivity] User not found. Stopping."
     );
     return;
   }
 
   localLogger.info(
     {},
-    "[processGoogleDriveTranscriptActivity] Starting processing of file "
+    "[processTranscriptActivity] Starting processing of file "
   );
 
   const hasExistingHistory =
     await transcriptsConfiguration.fetchHistoryForFileId(fileId);
   if (hasExistingHistory) {
     localLogger.info(
-      "[processGoogleDriveTranscriptActivity] History record already exists. Stopping."
+      "[processTranscriptActivity] History record already exists. Stopping."
     );
     return;
   }
 
-  const googleAuth = await getGoogleAuthFromUserTranscriptsConfiguration(auth);
-  const drive = googleapis.google.drive({ version: "v3", auth: googleAuth });
+  let transcriptTitle = "";
+  let transcriptContent = "";
 
-  const metadataRes = await drive.files.get({
-    fileId: fileId,
-    fields: "name",
-  });
+  switch (transcriptsConfiguration.provider) {
+    case "google_drive":
+      const googleResult = await retrieveGoogleTranscriptContent(
+        auth,
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      transcriptTitle = googleResult.transcriptTitle;
+      transcriptContent = googleResult.transcriptContent;
+      break;
 
-  const contentRes = await drive.files.export({
-    fileId: fileId,
-    mimeType: "text/plain",
-  });
+    case "gong":
+      const gongResult = await retrieveGongTranscriptContent(
+        transcriptsConfiguration,
+        fileId,
+        localLogger
+      );
+      transcriptTitle = gongResult?.transcriptTitle || "";
+      transcriptContent = gongResult?.transcriptContent || "";
+      break;
 
-  if (contentRes.status !== 200) {
-    localLogger.error(
-      { error: contentRes.statusText },
-      "Error exporting Google document."
-    );
-
-    throw new Error(
-      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
-    );
-  }
-
-  const transcriptTitle = metadataRes.data.name || "Untitled";
-  const transcriptContent = contentRes.data;
-  if (!transcriptContent) {
-    localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No content found. Stopping."
-    );
-    return;
+    default:
+      assertNever(transcriptsConfiguration.provider);
   }
 
   const owner = auth.workspace();
 
   if (!owner) {
-    localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No owner found. Stopping."
-    );
+    localLogger.error("[processTranscriptActivity] No owner found. Stopping.");
     return;
   }
 
@@ -259,10 +198,9 @@ export async function processGoogleDriveTranscriptActivity(
   });
 
   const { agentConfigurationId } = transcriptsConfiguration;
-
   if (!agentConfigurationId) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No agent configuration id found. Stopping."
+      "[processTranscriptActivity] No agent configuration id found. Stopping."
     );
     return;
   }
@@ -271,15 +209,14 @@ export async function processGoogleDriveTranscriptActivity(
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
+
   const agentConfigurations = agentConfigurationsRes.value;
   const agent = agentConfigurations.find(
     (agent) => agent.sId === agentConfigurationId
   );
 
   if (!agent) {
-    localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No agent found. Stopping."
-    );
+    localLogger.error("[processTranscriptActivity] No agent found. Stopping.");
     return;
   }
 
@@ -315,7 +252,7 @@ export async function processGoogleDriveTranscriptActivity(
   if (convRes.isErr()) {
     localLogger.error(
       { error: convRes.error },
-      "[processGoogleDriveTranscriptActivity] Error creating conversation."
+      "[processTranscriptActivity] Error creating conversation."
     );
     return new Err(new Error(convRes.error.message));
   }
@@ -323,7 +260,7 @@ export async function processGoogleDriveTranscriptActivity(
   const { conversation } = convRes.value;
   if (!conversation) {
     localLogger.error(
-      "[processGoogleDriveTranscriptActivity] No conversation found. Stopping."
+      "[processTranscriptActivity] No conversation found. Stopping."
     );
     return;
   }
@@ -334,7 +271,7 @@ export async function processGoogleDriveTranscriptActivity(
         sId: conversation.sId,
       },
     },
-    "[processGoogleDriveTranscriptActivity] Created conversation."
+    "[processTranscriptActivity] Created conversation."
   );
 
   // Get first from array with type='agent_message' in conversation.content;
