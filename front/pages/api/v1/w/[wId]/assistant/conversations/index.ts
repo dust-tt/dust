@@ -103,12 +103,12 @@ async function handler(
       // associate the message with the provided user email if it belongs to the same workspace.
       const userEmailFromHeader = req.headers["x-api-user-email"];
       if (typeof userEmailFromHeader === "string") {
-        userAuth = await auth.exchangeForUserAPIAuth(auth, {
+        userAuth = await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
           userEmail: userEmailFromHeader,
         });
       }
 
-      let conversation = await createConversation(userAuth, {
+      let conversation = await createConversation(auth, {
         title,
         visibility,
       });
@@ -117,6 +117,7 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragment) {
+        // Only use the userAuth to post the content fragment message.
         const cf = await postNewContentFragment(userAuth, {
           conversation,
           title: contentFragment.title,
@@ -134,7 +135,7 @@ async function handler(
 
         newContentFragment = cf;
         const updatedConversation = await getConversation(
-          userAuth,
+          auth,
           conversation.sId
         );
         if (updatedConversation) {
@@ -148,6 +149,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
+          // Only the userAuth to post the message.
           userAuth,
           {
             conversation,
@@ -177,7 +179,7 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(userAuth, conversation.sId);
+        const updated = await getConversation(auth, conversation.sId);
 
         if (!updated) {
           throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;

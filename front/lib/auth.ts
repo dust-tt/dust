@@ -364,7 +364,16 @@ export class Authenticator {
     });
   }
 
-  async exchangeForUserAPIAuth(
+  /**
+   * Exchanges an Authenticator associated with a system key for one associated with a user.
+   *
+   * /!\ This function should only be used with Authenticators that are associated with a system key.
+   *
+   * @param auth
+   * @param param1
+   * @returns
+   */
+  async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }
   ) {
@@ -377,7 +386,6 @@ export class Authenticator {
       throw new Error("Workspace not found.");
     }
 
-    // TODO: add missing index.
     const user = await User.findOne({
       where: {
         email: userEmail,
@@ -387,6 +395,7 @@ export class Authenticator {
       throw new Error("User not found.");
     }
 
+    // Verify that the user has an active membership in the specified workspace.
     const activeMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user: renderUserType(user),
