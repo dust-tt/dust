@@ -49,6 +49,7 @@ export function SlackChannelPatternInput({
         if (!r.ok) {
           throw new Error("Failed to update autoReadChannelPattern.");
         }
+        window.alert("Successfully updated channel pattern.");
       } catch (e) {
         console.error(e);
         window.alert(
