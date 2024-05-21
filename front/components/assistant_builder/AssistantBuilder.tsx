@@ -682,7 +682,17 @@ export default function AssistantBuilder({
                 }
                 onClick={toggleRightPanel}
               />
-              {rightPanelStatus.tab === null && (
+              {rightPanelStatus.tab === null && template === null && (
+                <Button
+                  icon={ChatBubbleBottomCenterTextIcon}
+                  onClick={() => openRightPanelTab("Preview")}
+                  size="md"
+                  label="Preview"
+                  labelVisible={false}
+                  variant="primary"
+                />
+              )}
+              {rightPanelStatus.tab === null && template !== null && (
                 <div className="flex flex-col gap-3 rounded-full border border-structure-200 p-4">
                   <IconButton
                     icon={ChatBubbleBottomCenterTextIcon}
@@ -690,14 +700,12 @@ export default function AssistantBuilder({
                     size="md"
                     variant="tertiary"
                   />
-                  {template !== null && (
-                    <IconButton
-                      icon={MagicIcon}
-                      onClick={() => openRightPanelTab("Template")}
-                      size="md"
-                      variant="tertiary"
-                    />
-                  )}
+                  <IconButton
+                    icon={MagicIcon}
+                    onClick={() => openRightPanelTab("Template")}
+                    size="md"
+                    variant="tertiary"
+                  />
                 </div>
               )}
             </>
