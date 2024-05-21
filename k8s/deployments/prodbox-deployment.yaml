@@ -20,7 +20,7 @@ spec:
       containers:
         - name: web
           image: gcr.io/or1g1n-186209/prodbox-image:latest
-          command: ["/bin/sh", "-c", "tail -f /dev/null"]
+          command: ["/bin/sh", "-c", "/dust/prodbox/init.sh"]
           imagePullPolicy: Always
 
           envFrom:
