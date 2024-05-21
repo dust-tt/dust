@@ -72,7 +72,7 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     }
 }
 
-pub fn verion_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
+pub fn version_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
     match cluster {
         QdrantCluster::Main0 => QdrantClusterVersion::V0,
         QdrantCluster::Dedicated0 => QdrantClusterVersion::V0,
@@ -197,7 +197,7 @@ impl DustQdrantClient {
         data_source: &DataSource,
         credentials: Credentials,
     ) -> Result<()> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 let mut embedder = provider(data_source.config().provider_id)
@@ -296,7 +296,7 @@ impl DustQdrantClient {
     }
 
     pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -316,7 +316,7 @@ impl DustQdrantClient {
         &self,
         data_source: &DataSource,
     ) -> Result<qdrant::GetCollectionInfoResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -335,7 +335,7 @@ impl DustQdrantClient {
         data_source: &DataSource,
         filter: qdrant::Filter,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -358,7 +358,7 @@ impl DustQdrantClient {
         offset: Option<qdrant::PointId>,
         with_vectors: Option<qdrant::WithVectorsSelector>,
     ) -> Result<qdrant::ScrollResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -388,7 +388,7 @@ impl DustQdrantClient {
         limit: u64,
         with_payload: Option<qdrant::WithPayloadSelector>,
     ) -> Result<qdrant::SearchResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -415,7 +415,7 @@ impl DustQdrantClient {
         data_source: &DataSource,
         points: Vec<qdrant::PointStruct>,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
@@ -436,7 +436,7 @@ impl DustQdrantClient {
         filter: qdrant::Filter,
         payload: Payload,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match verion_for_cluster(self.cluster) {
+        match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
