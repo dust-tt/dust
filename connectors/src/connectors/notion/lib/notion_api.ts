@@ -391,6 +391,7 @@ export async function isAccessibleAndUnarchived(
           }
           continue;
         }
+
         if (
           NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
           // This happens if the database is a "linked" database - we can't query those so
@@ -398,6 +399,11 @@ export async function isAccessibleAndUnarchived(
           // and return false.
           e.code === "validation_error"
         ) {
+          tryLogger.info(
+            { errorCode: e.code },
+            "Skipping page/database due to unauthorized status code."
+          );
+
           return false;
         }
       }
