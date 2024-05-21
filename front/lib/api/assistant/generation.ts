@@ -422,7 +422,7 @@ export async function renderConversationForModelMultiActions({
   }
 
   // Merging loop.
-  // Merging content fragments into the preceding user message.
+  // Merging content fragments into the upcoming user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
   for (let i = selected.length - 1; i >= 0; i--) {
     if (selected[i].role === "content_fragment") {
@@ -451,7 +451,7 @@ export async function renderConversationForModelMultiActions({
         closingAttachmentTag,
         userMessage.content,
       ].join("");
-      // Now we remove the content fragment from the array since it was merged into the preceding user message.
+      // Now we remove the content fragment from the array since it was merged into the upcoming user message.
       selected.splice(i, 1);
     }
   }
@@ -464,8 +464,6 @@ export async function renderConversationForModelMultiActions({
     tokensUsed -= tokenCountRes.value;
     selected.shift();
   }
-
-  console.log("~~~~~~~~~~~", new Date(), selected);
 
   return new Ok({
     modelConversation: {
