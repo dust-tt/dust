@@ -104,6 +104,7 @@ export async function joinChannel(
           {
             channelId,
             connectorId,
+            error: platformError,
           },
           "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
         );
