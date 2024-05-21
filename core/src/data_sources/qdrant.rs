@@ -1,4 +1,4 @@
-use crate::utils::ParseError;
+use crate::{providers::provider::provider, run::Credentials, utils::ParseError};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -6,11 +6,8 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use qdrant_client::{
-    prelude::{QdrantClient, QdrantClientConfig},
-    qdrant::{
-        Filter, PointId, PointsOperationResponse, ScrollPoints, ScrollResponse, SearchPoints,
-        SearchResponse, WithPayloadSelector, WithVectorsSelector,
-    },
+    prelude::{Payload, QdrantClient, QdrantClientConfig},
+    qdrant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +23,13 @@ pub enum QdrantCluster {
     Dedicated1,
     #[serde(rename = "dedicated-2")]
     Dedicated2,
+}
+
+pub enum QdrantClusterVersion {
+    // Legacy setup with one collection per data source.
+    V0,
+    // Future setup with a shared collection per embedder.
+    V1,
 }
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
@@ -65,6 +69,15 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
         QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
         QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
+    }
+}
+
+pub fn verion_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
+    match cluster {
+        QdrantCluster::Main0 => QdrantClusterVersion::V0,
+        QdrantCluster::Dedicated0 => QdrantClusterVersion::V0,
+        QdrantCluster::Dedicated1 => QdrantClusterVersion::V0,
+        QdrantCluster::Dedicated2 => QdrantClusterVersion::V0,
     }
 }
 
@@ -173,79 +186,251 @@ impl DustQdrantClient {
     // - we'll be able to add a condition on the PointsSelector to match the
     //   data_source.internal_id multi-tenancy filter.
 
-    pub async fn create_data_source(&self, data_source: &DataSource) -> Result<()> {
-        // TODO: v0 implementation
-        // no v1 implenentation
+    pub async fn create_data_source(
+        &self,
+        data_source: &DataSource,
+        credentials: Credentials,
+    ) -> Result<()> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                let mut embedder = provider(data_source.config().provider_id)
+                    .embedder(data_source.config().model_id.clone());
+                embedder.initialize(credentials).await?;
+
+                self.client
+                    .create_collection(&qdrant::CreateCollection {
+                        collection_name: data_source.qdrant_collection(),
+                        vectors_config: Some(qdrant::VectorsConfig {
+                            config: Some(qdrant::vectors_config::Config::Params(
+                                qdrant::VectorParams {
+                                    size: embedder.embedding_size() as u64,
+                                    distance: qdrant::Distance::Cosine.into(),
+                                    on_disk: Some(true),
+                                    ..Default::default()
+                                },
+                            )),
+                        }),
+                        hnsw_config: Some(qdrant::HnswConfigDiff {
+                            m: Some(16),
+                            max_indexing_threads: Some(1),
+                            ..Default::default()
+                        }),
+                        optimizers_config: Some(qdrant::OptimizersConfigDiff {
+                            memmap_threshold: Some(8192),
+                            ..Default::default()
+                        }),
+                        quantization_config: Some(qdrant::QuantizationConfig {
+                            quantization: Some(qdrant::quantization_config::Quantization::Scalar(
+                                qdrant::ScalarQuantization {
+                                    r#type: qdrant::QuantizationType::Int8.into(),
+                                    quantile: Some(0.99),
+                                    always_ram: Some(true),
+                                },
+                            )),
+                        }),
+                        // We keep the entire payload on disk and index on document_id and tags.
+                        on_disk_payload: Some(true),
+                        ..Default::default()
+                    })
+                    .await?;
+
+                let _ = self
+                    .client
+                    .create_field_index(
+                        data_source.qdrant_collection(),
+                        "document_id_hash",
+                        qdrant::FieldType::Keyword,
+                        None,
+                        None,
+                    )
+                    .await?;
+
+                let _ = self
+                    .client
+                    .create_field_index(
+                        data_source.qdrant_collection(),
+                        "tags",
+                        qdrant::FieldType::Keyword,
+                        None,
+                        None,
+                    )
+                    .await?;
+
+                let _ = self
+                    .client
+                    .create_field_index(
+                        data_source.qdrant_collection(),
+                        "parents",
+                        qdrant::FieldType::Keyword,
+                        None,
+                        None,
+                    )
+                    .await?;
+
+                let _ = self
+                    .client
+                    .create_field_index(
+                        data_source.qdrant_collection(),
+                        "timestamp",
+                        qdrant::FieldType::Integer,
+                        None,
+                        None,
+                    )
+                    .await?;
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - nothing to do.
+                unimplemented!()
+            }
+        }
 
         Ok(())
     }
 
     pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
-        // v0 implementation
-        self.client
-            .delete_collection(data_source.qdrant_collection())
-            .await?;
-        // TODO: v1 implementation
-        // - v1 implementation will delete points not collection.
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .delete_collection(data_source.qdrant_collection())
+                    .await?;
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - v1 implementation will delete points not collection.
+                unimplemented!()
+            }
+        }
         Ok(())
     }
 
     pub async fn delete_points(
         &self,
         data_source: &DataSource,
-        filter: Filter,
-    ) -> Result<PointsOperationResponse> {
-        // v0 implementation
-        self.client
-            .delete_points(data_source.qdrant_collection(), None, &filter.into(), None)
-            .await
-        // TODO: v1 implemetation
+        filter: qdrant::Filter,
+    ) -> Result<qdrant::PointsOperationResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .delete_points(data_source.qdrant_collection(), None, &filter.into(), None)
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implemetation
+                // - Inject the `data_source_internal_id` filter
+                unimplemented!()
+            }
+        }
     }
 
     pub async fn scroll(
         &self,
         data_source: &DataSource,
-        filter: Option<Filter>,
+        filter: Option<qdrant::Filter>,
         limit: Option<u32>,
-        offset: Option<PointId>,
-        with_vectors: Option<WithVectorsSelector>,
-    ) -> Result<ScrollResponse> {
-        // v0 implementation
-        self.client
-            .scroll(&ScrollPoints {
-                collection_name: data_source.qdrant_collection(),
-                with_vectors,
-                limit,
-                offset,
-                filter,
-                ..Default::default()
-            })
-            .await
-        // TODO: v1 implementation
+        offset: Option<qdrant::PointId>,
+        with_vectors: Option<qdrant::WithVectorsSelector>,
+    ) -> Result<qdrant::ScrollResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .scroll(&qdrant::ScrollPoints {
+                        collection_name: data_source.qdrant_collection(),
+                        with_vectors,
+                        limit,
+                        offset,
+                        filter,
+                        ..Default::default()
+                    })
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - Inject (or create) the `data_source_internal_id` filter
+                unimplemented!()
+            }
+        }
     }
 
     pub async fn search_points(
         &self,
         data_source: &DataSource,
         vector: Vec<f32>,
-        filter: Option<Filter>,
+        filter: Option<qdrant::Filter>,
         limit: u64,
-        with_payload: Option<WithPayloadSelector>,
-    ) -> Result<SearchResponse> {
-        // v0 implementation
-        self.client
-            .search_points(&SearchPoints {
-                collection_name: data_source.qdrant_collection(),
-                vector,
-                filter,
-                limit,
-                with_payload,
-                ..Default::default()
-            })
-            .await
-        // TODO: v1 implementation
+        with_payload: Option<qdrant::WithPayloadSelector>,
+    ) -> Result<qdrant::SearchResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .search_points(&qdrant::SearchPoints {
+                        collection_name: data_source.qdrant_collection(),
+                        vector,
+                        filter,
+                        limit,
+                        with_payload,
+                        ..Default::default()
+                    })
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - Inject (or create) the `data_source_internal_id` filter
+                unimplemented!()
+            }
+        }
     }
 
-    // TODO: upsert__points
-    // TODO: set_payload
+    pub async fn upsert_points(
+        &self,
+        data_source: &DataSource,
+        points: Vec<qdrant::PointStruct>,
+    ) -> Result<qdrant::PointsOperationResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .upsert_points(data_source.qdrant_collection(), None, points, None)
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - make sure that `data_source_internal_id` is part of the payload.
+                unimplemented!()
+            }
+        }
+    }
+
+    pub async fn set_payload(
+        &self,
+        data_source: &DataSource,
+        filter: qdrant::Filter,
+        payload: Payload,
+    ) -> Result<qdrant::PointsOperationResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .set_payload(
+                        data_source.qdrant_collection(),
+                        None,
+                        &filter.into(),
+                        payload,
+                        None,
+                        None,
+                    )
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                // - make sure that the filter includes the `data_source_internal_id` field.
+                unimplemented!()
+            }
+        }
+    }
 }
