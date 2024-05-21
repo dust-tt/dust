@@ -312,7 +312,7 @@ const JsonCopyLink = ({ value }: { value: string }) => {
 
   return (
     <Tooltip label="Copy JSON to clipboard">
-      <Hoverable className="cursor-pointer font-bold" onClick={handleClick}>
+      <Hoverable className="cursor-pointer font-bold text-gray-400 text-sm" onClick={handleClick}>
         <DocumentDuplicateIcon />
       </Hoverable>
     </Tooltip>
