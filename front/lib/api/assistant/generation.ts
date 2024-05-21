@@ -332,7 +332,7 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          // The closing xml tag </attachment> will be added after the selection messages loop because we might
+          // The closing xml tag </attachment> will be added after the selection loop because we might
           // need to add a "truncated..." mention there.
           content: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
         });
@@ -447,7 +447,7 @@ export async function renderConversationForModelMultiActions({
       userMessage.content = [
         cfMessage.content,
         // We can now close the </attachment> tag, because the message was already properly truncated.
-        // We also accounted for the the closing that above when computing the tokens count.
+        // We also accounted for the closing that above when computing the tokens count.
         closingAttachmentTag,
         userMessage.content,
       ].join("");
