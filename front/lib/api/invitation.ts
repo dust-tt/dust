@@ -331,7 +331,8 @@ export async function handleMembershipInvitations(
       },
     });
   }
-  const existingMembers = await getMembers(auth);
+
+  const existingMembers = await getMembers(auth, { activeOnly: true });
   const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
     auth
   );
@@ -390,8 +391,7 @@ export async function handleMembershipInvitations(
         return {
           success: false,
           email,
-          error_message:
-            "Cannot send invitation to existing member (active or revoked)",
+          error_message: "Cannot send invitation to existing active member.",
         };
       }
 
