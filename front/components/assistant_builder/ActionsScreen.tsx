@@ -14,6 +14,7 @@ import {
   RobotIcon,
   RobotStrokeIcon,
   TableStrokeIcon,
+  TextArea,
   TimeIcon,
   TimeStrokeIcon,
 } from "@dust-tt/sparkle";
@@ -618,7 +619,34 @@ function ActionEditor({
         })()}
       </ActionModeSection>
       <div className="flex flex-col gap-4 pt-8">
-        <div className="font-semibold text-element-700">Action name</div>
+        {DATA_SOURCES_ACTION_CATEGORIES.includes(action.type as any) ? (
+          <div className="flex flex-col gap-2">
+            <div className="font-semibold text-element-800">
+              What's the data?
+            </div>
+            <div className="text-sm text-element-600">
+              Clarify the data's content and context to guide your Assistant in
+              determining when and how to utilize it.
+            </div>
+          </div>
+        ) : (
+          <div className="font-semibold text-element-800">
+            Action description
+          </div>
+        )}
+        <TextArea
+          placeholder="My action description.."
+          value={action.description}
+          onChange={(v) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: v,
+              getNewActionConfig: (old) => old,
+            });
+          }}
+          error={!descriptionValid ? "Description cannot be empty" : null}
+        />
+        <div className="font-semibold text-element-800">Name of the action</div>
         <Input
           name="actionName"
           placeholder="My action name.."
@@ -631,20 +659,7 @@ function ActionEditor({
             });
           }}
           error={!titleValid ? "Name already exists" : null}
-        />
-        <div className="font-semibold text-element-700">Action description</div>
-        <Input
-          name="actionDescription"
-          placeholder="My action description.."
-          value={action.description}
-          onChange={(v) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: v,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!descriptionValid ? "Description cannot be empty" : null}
+          className="text-sm"
         />
       </div>
     </div>
