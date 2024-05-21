@@ -1,3 +1,4 @@
+import { ClipboardIcon, Hoverable, Tooltip } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationBlockType } from "@dust-tt/types";
 import type { TraceType } from "@dust-tt/types";
@@ -8,7 +9,7 @@ import {
   ExclamationCircleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRunBlock } from "@app/lib/swr";
 
@@ -297,6 +298,42 @@ export function Logs({ trace }: { trace: TraceType[] }) {
   );
 }
 
+const JsonCopyLink = ({ value }: { value: string }) => {
+  const [copyCount, setCopyCount] = useState(0);
+  const copied = copyCount > 0;
+
+  useEffect(() => {
+    if (copyCount > 0) {
+      const timeout = setTimeout(() => setCopyCount(0), 1000);
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [copyCount]);
+
+  const handleClick = () => {
+    setCopyCount(1);
+    void navigator.clipboard.writeText(value);
+  };
+
+  return (
+    <div className="items-top mr-3 flex">
+      {copied ? (
+        <div className="text-sm text-gray-400">Copied!</div>
+      ) : (
+        <Tooltip label="Copy JSON to clipboard">
+          <Hoverable
+            className="cursor-pointer text-sm font-bold text-gray-400"
+            onClick={handleClick}
+          >
+            <ClipboardIcon />
+          </Hoverable>
+        </Tooltip>
+      )}
+    </div>
+  );
+};
+
 export default function Output({
   owner,
   block,
@@ -416,9 +453,12 @@ export default function Output({
         ) : null}
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial cursor-pointer text-gray-400">
-              <div onClick={() => setExpandedResult(!expandedResult)}>
-                <span className="flex flex-row items-center">
+            <div className="w-full flex-initial cursor-pointer text-gray-400">
+              <div className="flex w-full flex-row items-center justify-between">
+                <div
+                  className="flex flex-row items-center"
+                  onClick={() => setExpandedResult(!expandedResult)}
+                >
                   {expandedResult ? (
                     <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                   ) : (
@@ -439,12 +479,14 @@ export default function Output({
                     ) : null}{" "}
                     ]
                   </span>
-                </span>
+                </div>
+                <JsonCopyLink value={JSON.stringify(traces)} />
               </div>
             </div>
           </div>
           {expandedResult ? (
             <>
+              <hr className="my-1" />
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
@@ -452,6 +494,7 @@ export default function Output({
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />
+                    <JsonCopyLink value={JSON.stringify(trace)} />
                   </div>
                 );
               })}
