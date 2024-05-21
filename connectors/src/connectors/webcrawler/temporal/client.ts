@@ -6,6 +6,7 @@ import { WorkflowNotFoundError } from "@temporalio/client";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
@@ -16,13 +17,18 @@ import {
 } from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
-  connectorId: ModelId,
-  priorityLevel: number | null
+  connectorId: ModelId
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
+  const webCrawlerQueueName = webcrawlerConfig?.lastCrawledAt
+    ? WebCrawlerQueueNames.NEW_WEBSITE
+    : WebCrawlerQueueNames.UPDATE_WEBSITE;
 
   const client = await getTemporalClient();
   const workflowId = crawlWebsiteWorkflowId(connectorId);
@@ -37,14 +43,9 @@ export async function launchCrawlWebsiteWorkflow(
       }
     }
 
-    const queueName =
-      priorityLevel === 0
-        ? WebCrawlerQueueNames.NEW_WEBSITE
-        : WebCrawlerQueueNames.UPDATE_WEBSITE;
-
     await client.workflow.start(crawlWebsiteWorkflow, {
       args: [connectorId],
-      taskQueue: queueName,
+      taskQueue: webCrawlerQueueName,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],

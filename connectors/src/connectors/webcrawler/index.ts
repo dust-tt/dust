@@ -72,7 +72,7 @@ export async function createWebcrawlerConnector(
     webCrawlerConfigurationBlob
   );
 
-  const workflowRes = await launchCrawlWebsiteWorkflow(connector.id, 0);
+  const workflowRes = await launchCrawlWebsiteWorkflow(connector.id);
   if (workflowRes.isErr()) {
     return workflowRes;
   }
@@ -235,7 +235,7 @@ export async function unpauseWebcrawlerConnector(
   }
   await connector.markAsUnpaused();
 
-  const startRes = await launchCrawlWebsiteWorkflow(connectorId, 1);
+  const startRes = await launchCrawlWebsiteWorkflow(connectorId);
   if (startRes.isErr()) {
     return startRes;
   }
@@ -444,8 +444,7 @@ export async function setWebcrawlerConfiguration(
     return new Err(stopRes.error);
   }
 
-  const queueName = webcrawlerConfig.lastCrawledAt ? 0 : 1;
-  const startRes = await launchCrawlWebsiteWorkflow(connector.id, queueName);
+  const startRes = await launchCrawlWebsiteWorkflow(connector.id);
   if (startRes.isErr()) {
     return new Err(startRes.error);
   }
