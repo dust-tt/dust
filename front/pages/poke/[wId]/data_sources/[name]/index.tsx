@@ -467,15 +467,18 @@ const DataSourcePage = ({
           )}
 
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
-            {
-              <SlackChannelPatternInput
-                initialValue={features.autoReadChannelPattern || ""}
-                owner={owner}
-              />
-            }
-            <div className="s-text-sm pt-3">
-              <p>Channels:</p>
-            </div>
+            {dataSource.connectorProvider === "slack" && (
+              <>
+                <SlackChannelPatternInput
+                  initialValue={features.autoReadChannelPattern || ""}
+                  owner={owner}
+                />
+
+                <div className="s-text-sm pt-3">
+                  <p>Channels:</p>
+                </div>
+              </>
+            )}
             {!dataSource.connectorId ? (
               <>
                 {" "}
