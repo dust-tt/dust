@@ -3,10 +3,13 @@
 # that are not available at build time.
 
 # Wait for the volume /etc/github-deploykey-deploybox to be mounted
-while [ ! -d /etc/github-deploykey-deploybox/github-deploykey-deploybox ]; do
-  echo "Waiting for /etc/github-deploykey-deploybox to be mounted..."
-  sleep 3
-done
+# while [ ! -d /etc/github-deploykey-deploybox/github-deploykey-deploybox ]; do
+#   echo "Waiting for /etc/github-deploykey-deploybox to be mounted..."
+#   sleep 3
+# done
+
+set -e
+set -x
 
 # only allow to pull via fast-forward
 git config pull.ff only
