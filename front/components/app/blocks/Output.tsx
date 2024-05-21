@@ -9,7 +9,7 @@ import {
   ExclamationCircleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/20/solid";
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useRunBlock } from "@app/lib/swr";
 
@@ -299,7 +299,6 @@ export function Logs({ trace }: { trace: TraceType[] }) {
 }
 
 const JsonCopyLink = ({ value }: { value: string }) => {
-
   const [copyCount, setCopyCount] = useState(0);
   const copied = copyCount > 0;
 
@@ -311,27 +310,26 @@ const JsonCopyLink = ({ value }: { value: string }) => {
       };
     }
   }, [copyCount]);
-  
+
   const handleClick = () => {
     setCopyCount(1);
     void navigator.clipboard.writeText(value);
   };
 
   return (
-    <div className="mr-3 flex items-top">
+    <div className="items-top mr-3 flex">
       {copied ? (
         <div className="text-sm text-gray-400">Copied!</div>
       ) : (
         <Tooltip label="Copy JSON to clipboard">
-      <Hoverable
-        className="cursor-pointer text-sm font-bold text-gray-400"
-        onClick={handleClick}
-      >
-        <ClipboardIcon />
-      </Hoverable>
-      </Tooltip>
+          <Hoverable
+            className="cursor-pointer text-sm font-bold text-gray-400"
+            onClick={handleClick}
+          >
+            <ClipboardIcon />
+          </Hoverable>
+        </Tooltip>
       )}
-    
     </div>
   );
 };
