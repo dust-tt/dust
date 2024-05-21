@@ -112,19 +112,12 @@ export class DustAppRunAction extends BaseAction {
   }
 }
 
-export class DustAppRunConfiguration extends BaseActionConfiguration {
+export class DustAppRunConfiguration extends BaseActionConfiguration<DustAppRunConfigurationType> {
   readonly appWorkspaceId: string;
   readonly appId: string;
 
   constructor(blob: DustAppRunConfigurationType) {
-    super(
-      blob.id,
-      blob.sId,
-      blob.type,
-      blob.name,
-      blob.description,
-      blob.forceUseAtIteration
-    );
+    super(blob);
 
     this.appWorkspaceId = blob.appWorkspaceId;
     this.appId = blob.appId;

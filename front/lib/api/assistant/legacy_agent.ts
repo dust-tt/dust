@@ -29,7 +29,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run";
+import { MAP_ACTION_TYPE_TO_CLASS } from "@app/lib/api/assistant/actions";
 import {
   generateProcessSpecification,
   runProcess,
@@ -305,8 +305,8 @@ async function* runAction(
       actionConfiguration: action,
     });
   } else if (isDustAppRunConfiguration(action)) {
-    const actionAsObject = new DustAppRunConfiguration(action);
-    specRes = await actionAsObject.buildSpecification(auth, {});
+    const actionClass = new MAP_ACTION_TYPE_TO_CLASS[action.type](action);
+    specRes = await actionClass.buildSpecification(auth, {});
   } else if (isTablesQueryConfiguration(action)) {
     specRes = await generateTablesQuerySpecification(auth);
   } else if (isProcessConfiguration(action)) {
@@ -435,8 +435,8 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const actionAsObject = new DustAppRunConfiguration(action);
-    const eventStream = actionAsObject.run(
+    const actionClass = new MAP_ACTION_TYPE_TO_CLASS[action.type](action);
+    const eventStream = actionClass.run(
       auth,
       {
         agentConfiguration: configuration,

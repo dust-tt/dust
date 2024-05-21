@@ -1,4 +1,5 @@
 import {
+  AgentActionConfigurationType,
   AgentActionSpecification,
   AgentConfigurationType,
 } from "../../../../../front/assistant/agent";
@@ -41,8 +42,16 @@ export abstract class BaseAction {
 /**
  * Base action configuration.
  */
+const BASE_ACTION_CONFIGURATION_TYPES = [
+  "dust_app_run_configuration",
+  "process_configuration",
+  "retrieval_configuration",
+  "tables_query_configuration",
+] as const;
 
-type BaseActionConfigurationType = "dust_app_run_configuration";
+// Define the ActionType type from the available actions
+export type BaseActionConfigurationType =
+  (typeof BASE_ACTION_CONFIGURATION_TYPES)[number];
 
 export type BaseActionRunParams = {
   agentConfiguration: AgentConfigurationType;
@@ -53,32 +62,34 @@ export type BaseActionRunParams = {
   step: number;
 };
 
-export abstract class BaseActionConfiguration {
-  constructor(
-    readonly id: ModelId,
-    readonly sId: string,
-    readonly type: BaseActionConfigurationType,
-    readonly name: string | null,
-    readonly description: string | null,
-    readonly forceUseAtIteration: number | null
-  ) {
-    this.id = id;
-    this.sId = sId;
-    this.type = type;
-    this.name = name;
-    this.description = description;
-    this.forceUseAtIteration = forceUseAtIteration;
+export abstract class BaseActionConfiguration<
+  T extends AgentActionConfigurationType
+> {
+  readonly id: ModelId;
+  readonly sId: string;
+  readonly type: BaseActionConfigurationType;
+  readonly name: string | null;
+  readonly description: string | null;
+  readonly forceUseAtIteration: number | null;
+
+  constructor(t: T) {
+    this.id = t.id;
+    this.sId = t.sId;
+    this.type = t.type;
+    this.name = t.name;
+    this.description = t.description;
+    this.forceUseAtIteration = t.forceUseAtIteration;
   }
 
   // Action rendering. (unknown for Authenticator - temporary solution until we move back this to Front)
   abstract buildSpecification(
-    T: unknown,
+    K: unknown,
     { name, description }: { name?: string; description?: string }
   ): Promise<Result<AgentActionSpecification, Error>>;
 
   // Action execution.
   abstract run(
-    T: unknown,
+    K: unknown,
     runParams: BaseActionRunParams,
     customParams: Record<string, unknown>
   ): AsyncGenerator<unknown>;

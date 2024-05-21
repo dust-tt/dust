@@ -30,7 +30,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DustAppRunConfiguration } from "@app/lib/api/assistant/actions/dust_app_run";
+import { MAP_ACTION_TYPE_TO_CLASS } from "@app/lib/api/assistant/actions";
 import {
   generateProcessSpecification,
   runProcess,
@@ -324,8 +324,8 @@ export async function* runMultiActionsAgent(
 
       specifications.push(r.value);
     } else if (isDustAppRunConfiguration(a)) {
-      const actionAsObject = new DustAppRunConfiguration(a);
-      const r = await actionAsObject.buildSpecification(auth, {
+      const actionClass = new MAP_ACTION_TYPE_TO_CLASS[a.type](a);
+      const r = await actionClass.buildSpecification(auth, {
         name: a.name ?? undefined,
         description: a.description ?? undefined,
       });
@@ -700,8 +700,10 @@ async function* runAction(
       return;
     }
 
-    const actionAsObject = new DustAppRunConfiguration(actionConfiguration);
-    const eventStream = actionAsObject.run(
+    const actionClass = new MAP_ACTION_TYPE_TO_CLASS[actionConfiguration.type](
+      actionConfiguration
+    );
+    const eventStream = actionClass.run(
       auth,
       {
         agentConfiguration: configuration,
