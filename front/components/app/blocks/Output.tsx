@@ -438,8 +438,8 @@ export default function Output({
         ) : null}
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
-            <div className="flex-initial cursor-pointer text-gray-400">
-              <div className="flex w-full flex-row items-center">
+            <div className="flex-initial cursor-pointer text-gray-400 w-full">
+              <div className="flex w-full flex-row items-center justify-between">
                 <div
                   className="flex flex-row items-center"
                   onClick={() => setExpandedResult(!expandedResult)}
