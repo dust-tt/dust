@@ -594,7 +594,7 @@ export async function retrieveSlackContentNodes(
   return new Ok(contentNodes);
 }
 
-export async function getWhiteListedChannelPattern(
+export async function getAutoReadChannelPattern(
   connectorId: ModelId
 ): Promise<Result<string | null, Error>> {
   const slackConfiguration =
@@ -606,10 +606,10 @@ export async function getWhiteListedChannelPattern(
       )
     );
   }
-  if (!slackConfiguration.whiteListedChannelPattern) {
+  if (!slackConfiguration.autoReadChannelPattern) {
     return new Ok(null);
   }
-  return new Ok(slackConfiguration.whiteListedChannelPattern);
+  return new Ok(slackConfiguration.autoReadChannelPattern);
 }
 
 export const getSlackConfig: ConnectorConfigGetter = async function (
@@ -629,11 +629,11 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
       }
       return new Ok(botEnabledRes.value.toString());
     }
-    case "whiteListedChannelPattern": {
-      const whiteListedChannelPattern = await getWhiteListedChannelPattern(
+    case "autoReadChannelPattern": {
+      const autoReadChannelPattern = await getAutoReadChannelPattern(
         connectorId
       );
-      return whiteListedChannelPattern;
+      return autoReadChannelPattern;
     }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));
@@ -668,7 +668,7 @@ export async function setSlackConfig(
         return slackConfig.disableBot();
       }
     }
-    case "whiteListedChannelPattern": {
+    case "autoReadChannelPattern": {
       const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
         connectorId
       );
@@ -679,7 +679,7 @@ export async function setSlackConfig(
           )
         );
       }
-      return slackConfig.setWhiteListedChannelPattern(configValue);
+      return slackConfig.setAutoReadChannelPattern(configValue);
     }
 
     default: {

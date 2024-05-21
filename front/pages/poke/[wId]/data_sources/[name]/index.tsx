@@ -46,7 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPattern: string | null;
+    autoReadChannelPattern: string | null;
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
@@ -102,13 +102,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
-    whiteListedChannelPattern: string | null;
+    autoReadChannelPattern: string | null;
   } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
-    whiteListedChannelPattern: null,
+    autoReadChannelPattern: null,
   };
 
   const connectorsAPI = new ConnectorsAPI(logger);
@@ -124,16 +124,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.slackBotEnabled = botEnabledRes.value.configValue === "true";
 
-        const whiteListedChannelPattern =
+        const autoReadChannelPattern =
           await connectorsAPI.getConnectorConfig(
             dataSource.connectorId,
-            "whiteListedChannelPattern"
+            "autoReadChannelPattern"
           );
-        if (whiteListedChannelPattern.isErr()) {
-          throw whiteListedChannelPattern.error;
+        if (autoReadChannelPattern.isErr()) {
+          throw autoReadChannelPattern.error;
         }
-        features.whiteListedChannelPattern =
-          whiteListedChannelPattern.value.configValue;
+        features.autoReadChannelPattern =
+          autoReadChannelPattern.value.configValue;
         break;
       case "google_drive":
         const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
@@ -470,7 +470,7 @@ const DataSourcePage = ({
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
             {
               <SlackChannelPatternInput
-                initialValue={features.whiteListedChannelPattern || ""}
+                initialValue={features.autoReadChannelPattern || ""}
                 owner={owner}
               />
             }

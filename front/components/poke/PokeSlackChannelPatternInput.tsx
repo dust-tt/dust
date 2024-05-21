@@ -30,7 +30,7 @@ export function SlackChannelPatternInput({
     },
   });
 
-  const { submit: handleWhiteListedChannelPatternChange } = useSubmitFunction(
+  const { submit: handleAutoReadChannelPatternChange } = useSubmitFunction(
     async (newValue: string) => {
       try {
         const r = await fetch(
@@ -41,30 +41,30 @@ export function SlackChannelPatternInput({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              configKey: "whiteListedChannelPattern",
+              configKey: "autoReadChannelPattern",
               configValue: newValue,
             }),
           }
         );
         if (!r.ok) {
-          throw new Error("Failed to update whiteListedChannelPattern.");
+          throw new Error("Failed to update autoReadChannelPattern.");
         }
       } catch (e) {
         console.error(e);
         window.alert(
-          "An error occurred while updating whiteListedChannelPattern."
+          "An error occurred while updating autoReadChannelPattern."
         );
       }
     }
   );
 
   const handleSave = async (values: SlackChannelFormType) => {
-    await handleWhiteListedChannelPatternChange(values.inputValue);
+    await handleAutoReadChannelPatternChange(values.inputValue);
   };
 
   const handleClear = async () => {
     formMethods.reset({ inputValue: "" });
-    await handleWhiteListedChannelPatternChange("");
+    await handleAutoReadChannelPatternChange("");
   };
 
   return (

@@ -185,11 +185,11 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  async setWhiteListedChannelPattern(pattern: string | null) {
+  async setAutoReadChannelPattern(pattern: string | null) {
     // To fit with the other setters signature we pass an empty string
     // to actually delete the pattern
     await this.model.update(
-      { whiteListedChannelPattern: pattern },
+      { autoReadChannelPattern: pattern },
       {
         where: {
           id: this.id,

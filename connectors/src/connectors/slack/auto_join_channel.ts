@@ -12,13 +12,13 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export function isChannelNameWhitelisted(
   remoteChannelName: string,
-  whiteListedChannelPattern?: string | null
+  autoReadChannelPattern?: string | null
 ): boolean {
-  if (!whiteListedChannelPattern) {
+  if (!autoReadChannelPattern) {
     return false;
   }
 
-  const regex = new RegExp(whiteListedChannelPattern);
+  const regex = new RegExp(autoReadChannelPattern);
   return regex.test(remoteChannelName);
 }
 
@@ -58,10 +58,10 @@ export async function autoJoinChannel(
     return new Err(new Error("Could not get the Slack channel information."));
   }
 
-  const { whiteListedChannelPattern } = slackConfiguration;
+  const { autoReadChannelPattern } = slackConfiguration;
   const isWhiteListed = isChannelNameWhitelisted(
     remoteChannelName,
-    whiteListedChannelPattern
+    autoReadChannelPattern
   );
   if (isWhiteListed) {
     const joinChannelRes = await joinChannel(connectorId, slackChannelId);
