@@ -404,9 +404,9 @@ export class Authenticator {
         workspace: owner,
       });
     // If the user does not have an active membership in the workspace,
-    // throw an error to alert the issue.
+    // simply ignore and return null.
     if (!activeMembership) {
-      throw new Error("User not found.");
+      return null;
     }
 
     return new Authenticator({

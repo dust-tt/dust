@@ -33,10 +33,12 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const authenticator = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
+  let { auth } = authenticator;
+  const { keyWorkspaceId } = authenticator;
 
   if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
     return apiError(req, res, {
@@ -96,14 +98,12 @@ async function handler(
         }
       }
 
-      let userAuth: Authenticator = auth;
-
       // /!\ This is reserved for internal use!
       // If the header "x-api-user-email" is present and valid,
       // associate the message with the provided user email if it belongs to the same workspace.
       const userEmailFromHeader = req.headers["x-api-user-email"];
       if (typeof userEmailFromHeader === "string") {
-        userAuth =
+        auth =
           (await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
             userEmail: userEmailFromHeader,
           })) ?? auth;
@@ -118,8 +118,7 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragment) {
-        // Only use the userAuth to post the content fragment message.
-        const cf = await postNewContentFragment(userAuth, {
+        const cf = await postNewContentFragment(auth, {
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
@@ -150,8 +149,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
-          // Only the userAuth to post the message.
-          userAuth,
+          auth,
           {
             conversation,
             content: message.content,

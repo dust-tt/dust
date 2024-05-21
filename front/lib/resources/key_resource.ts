@@ -173,6 +173,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     };
   }
 
+  // Use to serialize a KeyResource in the Authenticator.
   toAuthJSON(): KeyAuthType {
     return {
       id: this.id,

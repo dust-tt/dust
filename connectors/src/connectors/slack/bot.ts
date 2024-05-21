@@ -437,7 +437,7 @@ async function botAnswerMessage(
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
-      userEmail:
+      userEmailHeader:
         slackChatBotMessage.slackEmail !== "unknown"
           ? slackChatBotMessage.slackEmail
           : undefined,
@@ -459,7 +459,7 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment: buildContentFragmentRes.value || undefined,
-      userEmail:
+      userEmailHeader:
         slackChatBotMessage.slackEmail !== "unknown"
           ? slackChatBotMessage.slackEmail
           : undefined,

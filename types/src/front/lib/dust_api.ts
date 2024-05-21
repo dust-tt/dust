@@ -515,9 +515,9 @@ export class DustAPI {
     message,
     contentFragment,
     blocking = false,
-    userEmail,
+    userEmailHeader,
   }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema> & {
-    userEmail?: string;
+    userEmailHeader?: string;
   }): Promise<
     DustAPIResponse<{
       conversation: ConversationType;
@@ -529,8 +529,8 @@ export class DustAPI {
       "Content-Type": "application/json",
     };
 
-    if (userEmail) {
-      headers["x-api-user-email"] = userEmail;
+    if (userEmailHeader) {
+      headers["x-api-user-email"] = userEmailHeader;
     }
 
     const res = await fetch(
@@ -554,19 +554,19 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
-    userEmail,
+    userEmailHeader,
   }: {
     conversationId: string;
     message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
-    userEmail?: string;
+    userEmailHeader?: string;
   }): Promise<DustAPIResponse<UserMessageType>> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
     };
 
-    if (userEmail) {
-      headers["x-api-user-email"] = userEmail;
+    if (userEmailHeader) {
+      headers["x-api-user-email"] = userEmailHeader;
     }
 
     const res = await fetch(
