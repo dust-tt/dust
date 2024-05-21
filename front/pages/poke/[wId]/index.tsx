@@ -3,6 +3,7 @@ import type {
   AgentConfigurationType,
   DataSourceType,
   WhitelistableFeature,
+  WorkspaceDomain,
   WorkspaceSegmentationType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -19,9 +20,11 @@ import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
+import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import {
   GLOBAL_AGENTS_SID,
   orderDatasourceByImportance,
@@ -40,6 +43,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
+  workspaceVerifiedDomain: WorkspaceDomain | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -89,6 +93,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     })
   );
 
+  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+
   return {
     props: {
       owner,
@@ -99,6 +105,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
       registry: DustProdActionRegistry,
+      workspaceVerifiedDomain,
     },
   };
 });
@@ -111,6 +118,7 @@ const WorkspacePage = ({
   agentConfigurations,
   whitelistableFeatures,
   registry,
+  workspaceVerifiedDomain,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -227,11 +235,19 @@ const WorkspacePage = ({
 
           <div className="flex-col justify-center">
             <div className="flex flex-col space-y-8">
-              <ActiveSubscriptionTable
-                owner={owner}
-                subscription={activeSubscription}
-                subscriptions={subscriptions}
-              />
+              <div className="flex flex-col space-x-3 lg:flex-row">
+                <WorkspaceInfoTable
+                  owner={owner}
+                  workspaceVerifiedDomain={workspaceVerifiedDomain}
+                />
+                <div className="flex-grow">
+                  <ActiveSubscriptionTable
+                    owner={owner}
+                    subscription={activeSubscription}
+                    subscriptions={subscriptions}
+                  />
+                </div>
+              </div>
               <DataSourceDataTable
                 owner={owner}
                 dataSources={dataSources}
