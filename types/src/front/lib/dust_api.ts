@@ -508,27 +508,36 @@ export class DustAPI {
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
-  // was created (and if applicable the assocaited agent messages).
+  // was created (and if applicable the associated agent messages).
   async createConversation({
     title,
     visibility,
     message,
     contentFragment,
     blocking = false,
-  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
+    userEmailHeader,
+  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema> & {
+    userEmailHeader?: string;
+  }): Promise<
     DustAPIResponse<{
       conversation: ConversationType;
       message: UserMessageType;
     }>
   > {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (userEmailHeader) {
+      headers["x-api-user-email"] = userEmailHeader;
+    }
+
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           title,
           visibility,
@@ -545,18 +554,26 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
+    userEmailHeader,
   }: {
     conversationId: string;
     message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
+    userEmailHeader?: string;
   }): Promise<DustAPIResponse<UserMessageType>> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (userEmailHeader) {
+      headers["x-api-user-email"] = userEmailHeader;
+    }
+
     const res = await fetch(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           ...message,
         }),
