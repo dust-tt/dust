@@ -270,7 +270,9 @@ export async function renderConversationForModelMultiActions({
   >
 > {
   const messages: ModelMessageTypeMultiActions[] = [];
+  const closingAttachmentTag = "</attachment>\n";
 
+  // Render loop.
   // Render all messages and all actions.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
     const versions = conversation.content[i];
@@ -330,12 +332,9 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          content:
-            `TITLE: ${m.title}\n` +
-            `TYPE: ${m.contentType}${
-              m.contentType === "file_attachment" ? " (user provided)" : ""
-            }\n` +
-            `CONTENT:\n${content}`,
+          // The closing </attachment> tag will be added in the merging loop because we might
+          // need to add a "truncated..." mention in the selection loop.
+          content: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
         });
       } catch (error) {
         logger.error(
@@ -359,6 +358,10 @@ export async function renderConversationForModelMultiActions({
     Promise.all(
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        if (m.role === "content_fragment") {
+          // We want to account for the upcoming </attachment> tag, which will be added in the merging loop.
+          text += closingAttachmentTag;
+        }
         if ("function_calls" in m) {
           text += m.function_calls
             .map((f) => `${f.name} ${f.arguments}`)
@@ -384,6 +387,7 @@ export async function renderConversationForModelMultiActions({
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
+  // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
     const r = messagesCountRes[i];
     if (r.isErr()) {
@@ -414,6 +418,41 @@ export async function renderConversationForModelMultiActions({
       break;
     } else {
       break;
+    }
+  }
+
+  // Merging loop.
+  // Merging content fragments into the upcoming user message.
+  // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
+  for (let i = selected.length - 1; i >= 0; i--) {
+    if (selected[i].role === "content_fragment") {
+      const cfMessage = selected[i];
+      const userMessage = selected[i + 1];
+      if (!userMessage || userMessage.role !== "user") {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            selected: selected.map((m) => ({
+              ...m,
+              content: m.content?.slice(0, 100) + " (truncated...)",
+            })),
+          },
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+        throw new Error(
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+      }
+      userMessage.content = [
+        cfMessage.content,
+        // We can now close the </attachment> tag, because the message was already properly truncated.
+        // We also accounted for the closing that above when computing the tokens count.
+        closingAttachmentTag,
+        userMessage.content,
+      ].join("");
+      // Now we remove the content fragment from the array since it was merged into the upcoming user message.
+      selected.splice(i, 1);
     }
   }
 
