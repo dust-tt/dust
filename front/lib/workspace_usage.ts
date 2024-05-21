@@ -93,8 +93,8 @@ export async function unsafeGetUsageData(
     {
       replacements: {
         wId,
-        startDate: format(startDate, "yyyy-MM-dd"), // Use first day of start month
-        endDate: format(endDate, "yyyy-MM-dd"), // Use last day of end month
+        startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
+        endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
       },
       type: QueryTypes.SELECT,
     }
