@@ -15,4 +15,4 @@ chmod 600 ~/.ssh/github-deploykey-deploybox
 # Only allow to pull via fast-forward
 git config pull.ff only
 
-bash
+tail -f /dev/null
