@@ -1,5 +1,4 @@
 import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
-import { chunk } from "lodash";
 import _ from "lodash";
 
 import {
@@ -108,7 +107,7 @@ async function deleteAllConversations(auth: Authenticator) {
     "Deleting all conversations for workspace."
   );
 
-  const conversationChunks = chunk(conversations, 4);
+  const conversationChunks = _.chunk(conversations, 4);
   for (const conversationChunk of conversationChunks) {
     await Promise.all(
       conversationChunk.map(async (c) => {
@@ -185,7 +184,7 @@ async function cleanupCustomerio(auth: Authenticator) {
     : {};
 
   // Process the workspace users in chunks of 16.
-  const chunks = chunk(users, 16);
+  const chunks = _.chunk(users, 16);
 
   for (const c of chunks) {
     await Promise.all(

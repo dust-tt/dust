@@ -31,6 +31,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
+// @typescript-eslint/no-unsafe-declaration-merging
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
