@@ -3,7 +3,6 @@ import {
   BookOpenIcon,
   DropdownMenu,
   LogoutIcon,
-  RobotIcon,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 
@@ -46,14 +45,6 @@ export function UserMenu({
                 label="Transcripts processing"
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
                 icon={BookOpenIcon}
-              />
-            )}
-            {(owner.flags.includes("labs_extract") ||
-              isDevelopmentOrDustWorkspace(owner)) && (
-              <DropdownMenu.Item
-                label="Extract"
-                href={`/w/${owner.sId}/builder/labs/extract`}
-                icon={RobotIcon}
               />
             )}
           </>
