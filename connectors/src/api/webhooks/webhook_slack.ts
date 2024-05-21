@@ -2,7 +2,7 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
-import { autoJoinChannel } from "@connectors/connectors/slack/auto_join_channel";
+import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
@@ -383,16 +383,16 @@ const _webhookSlackAPIHandler = async (
             status_code: 400,
           });
         }
-        const autoJoinRes = await autoJoinChannel(
+        const autoReadRes = await autoReadChannel(
           req.body.team_id,
           logger,
           channelName
         );
-        if (autoJoinRes.isErr()) {
+        if (autoReadRes.isErr()) {
           return apiError(req, res, {
             api_error: {
               type: "internal_server_error",
-              message: `Error joining slack channel: ${autoJoinRes.error}`,
+              message: `Error joining slack channel: ${autoReadRes.error}`,
             },
             status_code: 500,
           });

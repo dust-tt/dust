@@ -22,7 +22,7 @@ export function isChannelNameWhitelisted(
   return regex.test(remoteChannelName);
 }
 
-export async function autoJoinChannel(
+export async function autoReadChannel(
   teamId: string,
   logger: Logger,
   slackChannelId: string
