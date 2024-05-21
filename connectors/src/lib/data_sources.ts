@@ -517,7 +517,24 @@ export async function upsertTableFromCsv({
       elapsed,
       statsDTags
     );
-    localLogger.error({ error: e }, "Error uploading structured data to Dust.");
+    if (axios.isAxiosError(e)) {
+      const sanitizedError = {
+        ...e,
+        response: { ...e.response, data: undefined },
+      };
+      localLogger.error(
+        { error: sanitizedError },
+        "Error uploading structured data to Dust."
+      );
+    } else if (e instanceof Error) {
+      localLogger.error(
+        { error: e.message },
+        "Error uploading structured data to Dust."
+      );
+    } else {
+      localLogger.error("Unknown error uploading structured data to Dust.");
+    }
+
     throw e;
   }
 
