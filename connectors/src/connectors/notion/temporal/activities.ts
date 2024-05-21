@@ -2447,7 +2447,6 @@ export async function upsertDatabaseStructuredDataFromCache({
       localLogger.info(
         {
           prefix: prefixSection.prefix,
-          content: csvRows,
         },
         "Skipping document upsert as prefix is too long."
       );
