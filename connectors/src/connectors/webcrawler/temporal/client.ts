@@ -3,12 +3,15 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
+import { getWebCrawlerConfiguration } from "@connectors/connectors/webcrawler";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { QUEUE_NAME } from "./config";
+import { NEW_QUEUE_NAME,QUEUE_NAME } from "./config";
 import {
+  crawlNewWebsiteWorkflow,
+  crawlNewWebsiteWorkflowId,
   crawlWebsiteSchedulerWorkflow,
   crawlWebsiteSchedulerWorkflowId,
   crawlWebsiteWorkflow,
@@ -25,9 +28,16 @@ export async function launchCrawlWebsiteWorkflow(
 
   const client = await getTemporalClient();
 
-  const workflowId = crawlWebsiteWorkflowId(connectorId);
+  const isNewWebsite = await isNewWebsiteToCrawl(connectorId);
+  const workflowId = isNewWebsite
+    ? crawlNewWebsiteWorkflowId(connectorId)
+    : crawlWebsiteWorkflowId(connectorId);
+  const workflow = isNewWebsite
+    ? crawlNewWebsiteWorkflow
+    : crawlWebsiteWorkflow;
+  const taskQueue = isNewWebsite ? NEW_QUEUE_NAME : QUEUE_NAME;
   try {
-    const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
+    const handle: WorkflowHandle<typeof workflow> =
       client.workflow.getHandle(workflowId);
     try {
       await handle.terminate();
@@ -36,9 +46,9 @@ export async function launchCrawlWebsiteWorkflow(
         throw e;
       }
     }
-    await client.workflow.start(crawlWebsiteWorkflow, {
+    await client.workflow.start(workflow, {
       args: [connectorId],
-      taskQueue: QUEUE_NAME,
+      taskQueue: taskQueue,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -133,4 +143,16 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
     );
     return new Err(e as Error);
   }
+}
+
+export async function isNewWebsiteToCrawl(
+  connectorId: ModelId
+): Promise<Result<boolean, Error>> {
+  const configuration = await getWebCrawlerConfiguration(connectorId);
+  if (configuration.isErr()) {
+    throw new Err(configuration.error as Error);
+  }
+
+  const isNew = !configuration.value.lastCrawledAt;
+  return new Ok(isNew);
 }
