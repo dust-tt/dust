@@ -592,6 +592,7 @@ export async function* postUserMessage(
   const isAboveMessageLimit = await isMessagesLimitReached({
     owner,
     plan,
+    mentions,
   });
   if (isAboveMessageLimit) {
     yield {
@@ -1704,10 +1705,16 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
+  mentions,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
+  mentions: MentionType[];
 }): Promise<boolean> {
+  if (mentions.length === 0) {
+    // No mention, the user message can be posted anyway.
+    return false;
+  }
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
   if (plan.limits.assistant.maxMessages === -1) {
@@ -1715,12 +1722,21 @@ async function isMessagesLimitReached({
   }
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
-  const remaining = await rateLimiter({
-    key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
-    maxPerTimeframe: maxMessages * activeSeats,
-    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
-    logger,
-  });
+  // Accounting for each mention separately.
+  // The return value won't account for the parallel calls depending on network timing
+  // but we are fine with a little bit of overusage.
+  const remainings = await Promise.all(
+    mentions.map(() =>
+      rateLimiter({
+        key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+        maxPerTimeframe: maxMessages * activeSeats,
+        timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+        logger,
+      })
+    )
+  );
 
-  return remaining <= 0;
+  // We let the user talk to all agents if any of the rate limiter answered "ok".
+  // Subsequent calls to the this function would block the user anyway.
+  return remainings.filter((r) => r > 0).length === 0;
 }
