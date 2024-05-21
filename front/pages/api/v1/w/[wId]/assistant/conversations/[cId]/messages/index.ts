@@ -78,9 +78,10 @@ async function handler(
       // associate the message with the provided user email if it belongs to the same workspace.
       const userEmailFromHeader = req.headers["x-api-user-email"];
       if (typeof userEmailFromHeader === "string") {
-        userAuth = await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
-          userEmail: userEmailFromHeader,
-        });
+        userAuth =
+          (await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
+            userEmail: userEmailFromHeader,
+          })) ?? auth;
       }
 
       const messageRes = await postUserMessageWithPubSub(

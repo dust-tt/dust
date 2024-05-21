@@ -376,7 +376,7 @@ export class Authenticator {
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }
-  ) {
+  ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
       throw new Error("Provided authenticator does not have a system key.");
     }
@@ -391,8 +391,10 @@ export class Authenticator {
         email: userEmail,
       },
     });
+    // If the user does not exist (e.g., whitelisted email addresses),
+    // simply ignore and return null.
     if (!user) {
-      throw new Error("User not found.");
+      return null;
     }
 
     // Verify that the user has an active membership in the specified workspace.
@@ -401,6 +403,8 @@ export class Authenticator {
         user: renderUserType(user),
         workspace: owner,
       });
+    // If the user does not have an active membership in the workspace,
+    // throw an error to alert the issue.
     if (!activeMembership) {
       throw new Error("User not found.");
     }
