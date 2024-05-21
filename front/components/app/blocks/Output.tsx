@@ -1,3 +1,4 @@
+import { DocumentDuplicateIcon, Hoverable, Tooltip } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationBlockType } from "@dust-tt/types";
 import type { TraceType } from "@dust-tt/types";
@@ -8,8 +9,9 @@ import {
   ExclamationCircleIcon,
   InformationCircleIcon,
 } from "@heroicons/react/20/solid";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useRunBlock } from "@app/lib/swr";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
@@ -367,6 +369,8 @@ export default function Output({
       );
     }, 0);
 
+    const sendNotification = useContext(SendNotificationsContext);
+
     return (
       <div>
         {logs ? (
@@ -417,8 +421,11 @@ export default function Output({
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
             <div className="flex-initial cursor-pointer text-gray-400">
-              <div onClick={() => setExpandedResult(!expandedResult)}>
-                <span className="flex flex-row items-center">
+              <div className="flex flex-row items-center">
+                <div
+                  className="flex flex-row items-center"
+                  onClick={() => setExpandedResult(!expandedResult)}
+                >
                   {expandedResult ? (
                     <ChevronDownIcon className="mt-0.5 h-4 w-4" />
                   ) : (
@@ -439,7 +446,24 @@ export default function Output({
                     ) : null}{" "}
                     ]
                   </span>
-                </span>
+                </div>
+                <Tooltip label="Copy JSON to clipboard">
+                  <Hoverable
+                    className="cursor-pointer font-bold text-action-500"
+                    onClick={() => {
+                      sendNotification({
+                        title: "Copied!",
+                        description: "JSON copied to clipboard",
+                        type: "success",
+                      });
+                      void navigator.clipboard.writeText(
+                        JSON.stringify(traces)
+                      );
+                    }}
+                  >
+                    <DocumentDuplicateIcon />
+                  </Hoverable>
+                </Tooltip>
               </div>
             </div>
           </div>
