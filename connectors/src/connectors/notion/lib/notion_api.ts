@@ -399,7 +399,10 @@ export async function isAccessibleAndUnarchived(
           // and return false.
           e.code === "validation_error"
         ) {
-          tryLogger.info({ errorCode: e.code }, "Skipping page/database.");
+          tryLogger.info(
+            { errorCode: e.code },
+            "Skipping page/database due to unauthorized status code."
+          );
 
           return false;
         }
