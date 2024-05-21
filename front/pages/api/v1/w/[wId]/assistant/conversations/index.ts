@@ -96,7 +96,19 @@ async function handler(
         }
       }
 
-      let conversation = await createConversation(auth, {
+      let userAuth: Authenticator = auth;
+
+      // /!\ This is reserved for internal use!
+      // If the header "x-api-user-email" is present and valid,
+      // associate the message with the provided user email if it belongs to the same workspace.
+      const userEmailFromHeader = req.headers["x-api-user-email"];
+      if (typeof userEmailFromHeader === "string") {
+        userAuth = await auth.exchangeForUserAPIAuth(auth, {
+          userEmail: userEmailFromHeader,
+        });
+      }
+
+      let conversation = await createConversation(userAuth, {
         title,
         visibility,
       });
@@ -105,7 +117,7 @@ async function handler(
       let newMessage: UserMessageType | null = null;
 
       if (contentFragment) {
-        const cf = await postNewContentFragment(auth, {
+        const cf = await postNewContentFragment(userAuth, {
           conversation,
           title: contentFragment.title,
           content: contentFragment.content,
@@ -122,7 +134,7 @@ async function handler(
 
         newContentFragment = cf;
         const updatedConversation = await getConversation(
-          auth,
+          userAuth,
           conversation.sId
         );
         if (updatedConversation) {
@@ -136,7 +148,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
-          auth,
+          userAuth,
           {
             conversation,
             content: message.content,
@@ -165,7 +177,7 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(auth, conversation.sId);
+        const updated = await getConversation(userAuth, conversation.sId);
 
         if (!updated) {
           throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;

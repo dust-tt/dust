@@ -437,6 +437,7 @@ async function botAnswerMessage(
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
+      userEmail: slackChatBotMessage.slackEmail,
     });
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
@@ -455,6 +456,7 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment: buildContentFragmentRes.value || undefined,
+      userEmail: slackChatBotMessage.slackEmail,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));

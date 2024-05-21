@@ -71,8 +71,20 @@ async function handler(
 
       const { content, context, mentions, blocking } = bodyValidation.right;
 
+      let userAuth: Authenticator = auth;
+
+      // /!\ This is reserved for internal use!
+      // If the header "x-api-user-email" is present and valid,
+      // associate the message with the provided user email if it belongs to the same workspace.
+      const userEmailFromHeader = req.headers["x-api-user-email"];
+      if (typeof userEmailFromHeader === "string") {
+        userAuth = await auth.exchangeForUserAPIAuth(auth, {
+          userEmail: userEmailFromHeader,
+        });
+      }
+
       const messageRes = await postUserMessageWithPubSub(
-        auth,
+        userAuth,
         {
           conversation,
           content,

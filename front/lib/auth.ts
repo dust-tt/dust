@@ -38,6 +38,7 @@ import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -60,11 +61,12 @@ const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
  * workspace oriented. Use `getUserFromSession` if needed.
  */
 export class Authenticator {
-  _workspace: Workspace | null;
-  _user: User | null;
+  _flags: WhitelistableFeature[];
+  _key?: KeyAuthType;
   _role: RoleType;
   _subscription: SubscriptionType | null;
-  _flags: WhitelistableFeature[];
+  _user: User | null;
+  _workspace: Workspace | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -73,18 +75,21 @@ export class Authenticator {
     role,
     subscription,
     flags,
+    key,
   }: {
     workspace?: Workspace | null;
     user?: User | null;
     role: RoleType;
     subscription?: SubscriptionType | null;
     flags: WhitelistableFeature[];
+    key?: KeyAuthType;
   }) {
     this._workspace = workspace || null;
     this._user = user || null;
     this._role = role;
     this._subscription = subscription || null;
     this._flags = flags;
+    this._key = key;
   }
 
   /**
@@ -275,6 +280,7 @@ export class Authenticator {
         role,
         subscription,
         flags,
+        key: key.toAuthJSON(),
       }),
       keyWorkspaceId: keyWorkspace.sId,
     };
@@ -358,6 +364,49 @@ export class Authenticator {
     });
   }
 
+  async exchangeForUserAPIAuth(
+    auth: Authenticator,
+    { userEmail }: { userEmail: string }
+  ) {
+    if (!auth.isSystemKey()) {
+      throw new Error("Provided authenticator does not have a system key.");
+    }
+
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Workspace not found.");
+    }
+
+    // TODO: add missing index.
+    const user = await User.findOne({
+      where: {
+        email: userEmail,
+      },
+    });
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    const activeMembership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: renderUserType(user),
+        workspace: owner,
+      });
+    if (!activeMembership) {
+      throw new Error("User not found.");
+    }
+
+    return new Authenticator({
+      flags: auth._flags,
+      key: auth._key,
+      // We limit scope to a user role.
+      role: "user",
+      user,
+      subscription: auth._subscription,
+      workspace: auth._workspace,
+    });
+  }
+
   role(): RoleType {
     return this._role;
   }
@@ -372,6 +421,10 @@ export class Authenticator {
 
   isAdmin(): boolean {
     return isAdmin(this.workspace());
+  }
+
+  isSystemKey(): boolean {
+    return !!this._key?.isSystem;
   }
 
   workspace(): WorkspaceType | null {
