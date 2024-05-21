@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
@@ -45,6 +46,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
+    autoReadChannelPattern: string | null;
   };
   temporalWorkspace: string;
 }>(async (context, auth) => {
@@ -100,11 +102,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDrivePdfEnabled: boolean;
     googleDriveLargeFilesEnabled: boolean;
     githubCodeSyncEnabled: boolean;
+    autoReadChannelPattern: string | null;
   } = {
     slackBotEnabled: false,
     googleDrivePdfEnabled: false,
     googleDriveLargeFilesEnabled: false,
     githubCodeSyncEnabled: false,
+    autoReadChannelPattern: null,
   };
 
   const connectorsAPI = new ConnectorsAPI(logger);
@@ -119,6 +123,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
           throw botEnabledRes.error;
         }
         features.slackBotEnabled = botEnabledRes.value.configValue === "true";
+
+        const autoReadChannelPattern = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "autoReadChannelPattern"
+        );
+        if (autoReadChannelPattern.isErr()) {
+          throw autoReadChannelPattern.error;
+        }
+        features.autoReadChannelPattern =
+          autoReadChannelPattern.value.configValue;
         break;
       case "google_drive":
         const gdrivePDFEnabledRes = await connectorsAPI.getConnectorConfig(
@@ -408,8 +422,8 @@ const DataSourcePage = ({
             </div>
           )}
 
-          <div className="mt-4 flex flex-row">
-            {!dataSource.connectorId && (
+          {!dataSource.connectorId && (
+            <div className="mt-4 flex flex-row">
               <div className="flex flex-1">
                 <div className="flex flex-col">
                   <div className="flex flex-row">
@@ -449,10 +463,19 @@ const DataSourcePage = ({
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <div className="pb-8 pt-2">
+          <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4 pb-8 pt-2">
+            {
+              <SlackChannelPatternInput
+                initialValue={features.autoReadChannelPattern || ""}
+                owner={owner}
+              />
+            }
+            <div className="s-text-sm pt-3">
+              <p>Channels:</p>
+            </div>
             {!dataSource.connectorId ? (
               <>
                 {" "}
