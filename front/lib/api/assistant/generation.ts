@@ -272,6 +272,7 @@ export async function renderConversationForModelMultiActions({
   const messages: ModelMessageTypeMultiActions[] = [];
   const closingAttachmentTag = "</attachment>\n";
 
+  // Render loop.
   // Render all messages and all actions.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
     const versions = conversation.content[i];
@@ -358,8 +359,7 @@ export async function renderConversationForModelMultiActions({
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
         if (m.role === "content_fragment") {
-          // We want to account for the upcoming </attachment> tag, which will be added once we know if we need to
-          // truncate the content fragment or not.
+          // We want to account for the upcoming </attachment> tag, which will be added in the merging loop.
           text += closingAttachmentTag;
         }
         if ("function_calls" in m) {
@@ -387,6 +387,7 @@ export async function renderConversationForModelMultiActions({
   const truncationMessage = `... (content truncated)`;
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
+  // Selection loop.
   for (let i = messages.length - 1; i >= 0; i--) {
     const r = messagesCountRes[i];
     if (r.isErr()) {
@@ -420,6 +421,7 @@ export async function renderConversationForModelMultiActions({
     }
   }
 
+  // Merging loop.
   // Merging content fragments into the preceding user message.
   // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
   for (let i = selected.length - 1; i >= 0; i--) {
