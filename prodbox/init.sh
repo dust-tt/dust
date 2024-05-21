@@ -15,4 +15,6 @@ chmod 600 ~/.ssh/github-deploykey-deploybox
 # Only allow to pull via fast-forward
 git config pull.ff only
 
-bash
+# This is the script used to start the container, so it needs to stay alive, otherwise the
+# kube pod (container) dies.
+tail -f /dev/null
