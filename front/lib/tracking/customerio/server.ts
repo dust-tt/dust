@@ -251,10 +251,12 @@ export class CustomerioServerSideTracking {
           role: w.role,
         };
         if (w.startAt !== undefined) {
-          relAttributes.start_at = w.startAt;
+          relAttributes.start_at = Math.floor(w.startAt.getTime() / 1000);
         }
         if (w.endAt !== undefined) {
-          relAttributes.end_at = w.endAt;
+          relAttributes.end_at = w.endAt
+            ? Math.floor(w.endAt.getTime() / 1000)
+            : null;
         }
         return {
           identifiers: {
