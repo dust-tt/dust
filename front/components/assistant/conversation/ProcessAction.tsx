@@ -69,7 +69,7 @@ export default function ProcessAction({
             >
               <Chip
                 color="warning"
-                label={`Warning: limited procesing (up to to ${minProcessingDateStr})`}
+                label={`Warning: limited processing (up to to ${minProcessingDateStr})`}
               />
             </Tooltip>
           )}
