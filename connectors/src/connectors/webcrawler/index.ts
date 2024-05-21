@@ -72,7 +72,7 @@ export async function createWebcrawlerConnector(
     webCrawlerConfigurationBlob
   );
 
-  const workflowRes = await launchCrawlWebsiteWorkflow(connector.id);
+  const workflowRes = await launchCrawlWebsiteWorkflow(connector.id, 0);
   if (workflowRes.isErr()) {
     return workflowRes;
   }
@@ -234,7 +234,8 @@ export async function unpauseWebcrawlerConnector(
     throw new Error("Connector not found.");
   }
   await connector.markAsUnpaused();
-  const startRes = await launchCrawlWebsiteWorkflow(connectorId);
+
+  const startRes = await launchCrawlWebsiteWorkflow(connectorId, 1);
   if (startRes.isErr()) {
     return startRes;
   }
@@ -413,7 +414,6 @@ export async function setWebcrawlerConfiguration(
       new Error(`Webcrawler configuration not found for ${connectorId}`)
     );
   }
-
   await webcrawlerConfig.update({
     url: configuration.url,
     maxPageToCrawl: configuration.maxPageToCrawl,
@@ -443,7 +443,9 @@ export async function setWebcrawlerConfiguration(
   if (stopRes.isErr()) {
     return new Err(stopRes.error);
   }
-  const startRes = await launchCrawlWebsiteWorkflow(connector.id);
+
+  const queueName = webcrawlerConfig.lastCrawledAt ? 0 : 1;
+  const startRes = await launchCrawlWebsiteWorkflow(connector.id, queueName);
   if (startRes.isErr()) {
     return new Err(startRes.error);
   }
@@ -451,19 +453,17 @@ export async function setWebcrawlerConfiguration(
   return new Ok(undefined);
 }
 
-export async function getWebCrawlerConfiguration(
+export async function isNewWebsiteToCrawl(
   connectorId: ModelId
-): Promise<Result<WebCrawlerConfigurationResource, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error("Connector not found"));
-  }
+): Promise<Result<boolean, Error>> {
   const webcrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+
   if (!webcrawlerConfig) {
     return new Err(
       new Error(`Webcrawler configuration not found for ${connectorId}`)
     );
   }
-  return new Ok(webcrawlerConfig);
+  const isNew = !webcrawlerConfig.lastCrawledAt;
+  return new Ok(isNew);
 }

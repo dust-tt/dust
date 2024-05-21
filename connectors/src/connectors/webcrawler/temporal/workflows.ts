@@ -47,20 +47,6 @@ export function crawlWebsiteWorkflowId(connectorId: ModelId) {
   return `webcrawler-${connectorId}`;
 }
 
-export async function crawlNewWebsiteWorkflow(
-  connectorId: ModelId
-): Promise<void> {
-  const startedAtTs = Date.now();
-  await CancellationScope.cancellable(
-    crawlWebsiteByConnectorId.bind(null, connectorId)
-  );
-  await webCrawlerGarbageCollector(connectorId, startedAtTs);
-}
-
-export function crawlNewWebsiteWorkflowId(connectorId: ModelId) {
-  return `webcrawler-new-${connectorId}`;
-}
-
 export async function crawlWebsiteSchedulerWorkflow() {
   const connectorIds = await getConnectorIdsForWebsitesToCrawl();
 

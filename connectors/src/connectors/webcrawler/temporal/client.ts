@@ -3,15 +3,12 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { getWebCrawlerConfiguration } from "@connectors/connectors/webcrawler";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { NEW_QUEUE_NAME,QUEUE_NAME } from "./config";
+import { QueueNames } from "./config";
 import {
-  crawlNewWebsiteWorkflow,
-  crawlNewWebsiteWorkflowId,
   crawlWebsiteSchedulerWorkflow,
   crawlWebsiteSchedulerWorkflowId,
   crawlWebsiteWorkflow,
@@ -19,7 +16,8 @@ import {
 } from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
-  connectorId: ModelId
+  connectorId: ModelId,
+  priorityLevel: number | null
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -27,17 +25,9 @@ export async function launchCrawlWebsiteWorkflow(
   }
 
   const client = await getTemporalClient();
-
-  const isNewWebsite = await isNewWebsiteToCrawl(connectorId);
-  const workflowId = isNewWebsite
-    ? crawlNewWebsiteWorkflowId(connectorId)
-    : crawlWebsiteWorkflowId(connectorId);
-  const workflow = isNewWebsite
-    ? crawlNewWebsiteWorkflow
-    : crawlWebsiteWorkflow;
-  const taskQueue = isNewWebsite ? NEW_QUEUE_NAME : QUEUE_NAME;
+  const workflowId = crawlWebsiteWorkflowId(connectorId);
   try {
-    const handle: WorkflowHandle<typeof workflow> =
+    const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
       await handle.terminate();
@@ -46,9 +36,15 @@ export async function launchCrawlWebsiteWorkflow(
         throw e;
       }
     }
-    await client.workflow.start(workflow, {
+
+    const queueName =
+      priorityLevel === 0
+        ? QueueNames.NEW_WEBSITE_QUEUE_NAME
+        : QueueNames.UPDATE_WEBSITE_QUEUE_NAME;
+
+    await client.workflow.start(crawlWebsiteWorkflow, {
       args: [connectorId],
-      taskQueue: taskQueue,
+      taskQueue: queueName,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -122,7 +118,7 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
   try {
     await client.workflow.start(crawlWebsiteSchedulerWorkflow, {
       args: [],
-      taskQueue: QUEUE_NAME,
+      taskQueue: QueueNames.UPDATE_WEBSITE_QUEUE_NAME,
       workflowId: workflowId,
       cronSchedule: "0 * * * *", // every hour, on the hour
     });
@@ -143,16 +139,4 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
     );
     return new Err(e as Error);
   }
-}
-
-export async function isNewWebsiteToCrawl(
-  connectorId: ModelId
-): Promise<Result<boolean, Error>> {
-  const configuration = await getWebCrawlerConfiguration(connectorId);
-  if (configuration.isErr()) {
-    throw new Err(configuration.error as Error);
-  }
-
-  const isNew = !configuration.value.lastCrawledAt;
-  return new Ok(isNew);
 }
