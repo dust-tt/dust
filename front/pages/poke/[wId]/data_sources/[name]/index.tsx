@@ -471,7 +471,7 @@ const DataSourcePage = ({
             {
               <SlackChannelPatternInput
                 initialValue={features.whiteListedChannelPattern || ""}
-                ownerSId={owner.sId}
+                owner={owner}
               />
             }
             <div className="s-text-sm pt-3">

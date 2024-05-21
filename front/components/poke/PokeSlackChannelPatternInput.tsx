@@ -1,3 +1,4 @@
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import * as t from "io-ts";
 import React from "react";
@@ -9,7 +10,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface SlackChannelPatternInputProps {
   initialValue: string;
-  ownerSId: string;
+  owner: LightWorkspaceType;
 }
 
 export const SlackChannelFormSchema = t.type({
@@ -20,7 +21,7 @@ export type SlackChannelFormType = t.TypeOf<typeof SlackChannelFormSchema>;
 
 export function SlackChannelPatternInput({
   initialValue,
-  ownerSId,
+  owner,
 }: SlackChannelPatternInputProps) {
   const formMethods = useForm<SlackChannelFormType>({
     resolver: ioTsResolver(SlackChannelFormSchema),
@@ -33,7 +34,7 @@ export function SlackChannelPatternInput({
     async (newValue: string) => {
       try {
         const r = await fetch(
-          `/api/poke/workspaces/${ownerSId}/data_sources/managed-slack/config`,
+          `/api/poke/workspaces/${owner.sId}/data_sources/managed-slack/config`,
           {
             method: "POST",
             headers: {
