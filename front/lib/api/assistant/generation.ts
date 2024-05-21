@@ -332,8 +332,8 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          // The closing xml tag </attachment> will be added after the selection loop because we might
-          // need to add a "truncated..." mention there.
+          // The closing </attachment> tag will be added in the merging loop because we might
+          // need to add a "truncated..." mention in the selection loop.
           content: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
         });
       } catch (error) {
@@ -464,6 +464,8 @@ export async function renderConversationForModelMultiActions({
     tokensUsed -= tokenCountRes.value;
     selected.shift();
   }
+
+  console.log("~~~~~~~~~~~", new Date(), selected);
 
   return new Ok({
     modelConversation: {
