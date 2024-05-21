@@ -9,7 +9,7 @@ import {
 import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitoring";
 import logger from "@connectors/logger/logger";
 
-import { QueueNames } from "./config";
+import { WebCrawlerQueueNames } from "./config";
 
 export async function runWebCrawlerWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -17,7 +17,7 @@ export async function runWebCrawlerWorker() {
     Worker.create({
       workflowsPath: require.resolve("./workflows"),
       activities,
-      taskQueue: QueueNames.UPDATE_WEBSITE_QUEUE_NAME,
+      taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
       connection,
       reuseV8Context: true,
       namespace,
@@ -34,7 +34,7 @@ export async function runWebCrawlerWorker() {
     Worker.create({
       workflowsPath: require.resolve("./workflows"),
       activities,
-      taskQueue: QueueNames.NEW_WEBSITE_QUEUE_NAME,
+      taskQueue: WebCrawlerQueueNames.NEW_WEBSITE,
       connection,
       reuseV8Context: true,
       namespace,

@@ -1,6 +1,6 @@
 export const WORKFLOW_VERSION = 1;
 
-export enum QueueNames {
-  UPDATE_WEBSITE_QUEUE_NAME = `webcrawler-update-queue-v${WORKFLOW_VERSION}`,
-  NEW_WEBSITE_QUEUE_NAME = `webcrawler-new-queue-v${WORKFLOW_VERSION}`,
+export enum WebCrawlerQueueNames {
+  UPDATE_WEBSITE = `webcrawler-update-website-queue-v${WORKFLOW_VERSION}`,
+  NEW_WEBSITE = `webcrawler-new-website-queue-v${WORKFLOW_VERSION}`,
 }

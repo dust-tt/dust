@@ -7,7 +7,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { QueueNames } from "./config";
+import { WebCrawlerQueueNames } from "./config";
 import {
   crawlWebsiteSchedulerWorkflow,
   crawlWebsiteSchedulerWorkflowId,
@@ -39,8 +39,8 @@ export async function launchCrawlWebsiteWorkflow(
 
     const queueName =
       priorityLevel === 0
-        ? QueueNames.NEW_WEBSITE_QUEUE_NAME
-        : QueueNames.UPDATE_WEBSITE_QUEUE_NAME;
+        ? WebCrawlerQueueNames.NEW_WEBSITE
+        : WebCrawlerQueueNames.UPDATE_WEBSITE;
 
     await client.workflow.start(crawlWebsiteWorkflow, {
       args: [connectorId],
@@ -118,7 +118,7 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
   try {
     await client.workflow.start(crawlWebsiteSchedulerWorkflow, {
       args: [],
-      taskQueue: QueueNames.UPDATE_WEBSITE_QUEUE_NAME,
+      taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
       workflowId: workflowId,
       cronSchedule: "0 * * * *", // every hour, on the hour
     });
