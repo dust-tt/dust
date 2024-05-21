@@ -18,6 +18,12 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { new_id } from "@app/lib/utils";
 
+export interface KeyAuthType {
+  id: ModelId;
+  name: string | null;
+  isSystem: boolean;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -164,6 +170,15 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
+    };
+  }
+
+  // Use to serialize a KeyResource in the Authenticator.
+  toAuthJSON(): KeyAuthType {
+    return {
+      id: this.id,
+      name: this.name,
+      isSystem: this.isSystem,
     };
   }
 

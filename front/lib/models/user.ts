@@ -103,6 +103,7 @@ User.init(
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
       { unique: true, fields: ["sId"] },
+      { fields: ["email"] },
     ],
   }
 );

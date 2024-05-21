@@ -27,10 +27,12 @@ async function handler(
     return apiError(req, res, keyRes.error);
   }
 
-  const { auth, keyWorkspaceId } = await Authenticator.fromKey(
+  const authenticator = await Authenticator.fromKey(
     keyRes.value,
     req.query.wId as string
   );
+  let { auth } = authenticator;
+  const { keyWorkspaceId } = authenticator;
 
   if (!auth.isBuilder() || keyWorkspaceId !== req.query.wId) {
     return apiError(req, res, {
@@ -70,6 +72,17 @@ async function handler(
       }
 
       const { content, context, mentions, blocking } = bodyValidation.right;
+
+      // /!\ This is reserved for internal use!
+      // If the header "x-api-user-email" is present and valid,
+      // associate the message with the provided user email if it belongs to the same workspace.
+      const userEmailFromHeader = req.headers["x-api-user-email"];
+      if (typeof userEmailFromHeader === "string") {
+        auth =
+          (await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
+            userEmail: userEmailFromHeader,
+          })) ?? auth;
+      }
 
       const messageRes = await postUserMessageWithPubSub(
         auth,
