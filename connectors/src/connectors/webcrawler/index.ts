@@ -450,3 +450,20 @@ export async function setWebcrawlerConfiguration(
 
   return new Ok(undefined);
 }
+
+export async function getWebCrawlerConfiguration(
+  connectorId: ModelId
+): Promise<Result<WebCrawlerConfigurationResource, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error("Connector not found"));
+  }
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+  if (!webcrawlerConfig) {
+    return new Err(
+      new Error(`Webcrawler configuration not found for ${connectorId}`)
+    );
+  }
+  return new Ok(webcrawlerConfig);
+}
