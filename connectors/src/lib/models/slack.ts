@@ -21,6 +21,7 @@ export class SlackConfigurationModel extends Model<
   declare botEnabled: boolean;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare whitelistedDomains?: readonly string[];
+  declare autoReadChannelPattern?: string | null;
 }
 SlackConfigurationModel.init(
   {
@@ -50,6 +51,10 @@ SlackConfigurationModel.init(
     },
     whitelistedDomains: {
       type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    autoReadChannelPattern: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

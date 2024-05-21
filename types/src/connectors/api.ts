@@ -12,7 +12,8 @@ export type ConnectorsAPIErrorType =
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
   | "slack_channel_not_found"
-  | "connector_rate_limit_error";
+  | "connector_rate_limit_error"
+  | "slack_configuration_not_found";
 
 export type ConnectorsAPIError = {
   type: ConnectorsAPIErrorType;

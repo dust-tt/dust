@@ -187,6 +187,18 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
+  async setAutoReadChannelPattern(pattern: string | null) {
+    await this.model.update(
+      { autoReadChannelPattern: pattern },
+      {
+        where: {
+          id: this.id,
+        },
+      }
+    );
+    return new Ok(undefined);
+  }
+
   async delete(transaction: Transaction): Promise<Result<undefined, Error>> {
     try {
       await SlackChannel.destroy({

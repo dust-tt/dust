@@ -2,6 +2,7 @@ import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
+import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
@@ -371,7 +372,33 @@ const _webhookSlackAPIHandler = async (
         }
         break;
       }
-
+      case "channel_created": {
+        const channelName = req.body.event?.channel;
+        if (!channelName) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: `Webhook message without 'channel_name'`,
+            },
+            status_code: 400,
+          });
+        }
+        const autoReadRes = await autoReadChannel(
+          req.body.team_id,
+          logger,
+          channelName
+        );
+        if (autoReadRes.isErr()) {
+          return apiError(req, res, {
+            api_error: {
+              type: "internal_server_error",
+              message: `Error joining slack channel: ${autoReadRes.error}`,
+            },
+            status_code: 500,
+          });
+        }
+        break;
+      }
       /**
        * `channel_left`, `channel_deleted` handler.
        */
