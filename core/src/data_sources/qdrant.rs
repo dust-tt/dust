@@ -83,7 +83,7 @@ pub fn verion_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
 
 #[derive(Clone)]
 pub struct QdrantClients {
-    clients: Arc<Mutex<HashMap<QdrantCluster, Arc<QdrantClient>>>>,
+    clients: Arc<Mutex<HashMap<QdrantCluster, DustQdrantClient>>>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -116,7 +116,13 @@ impl QdrantClients {
         let clients = futures::future::try_join_all(QDRANT_CLUSTER_VARIANTS.into_iter().map(
             |cluster| async move {
                 let client = Self::qdrant_client(*cluster).await?;
-                Ok::<_, anyhow::Error>((*cluster, Arc::new(client)))
+                Ok::<_, anyhow::Error>((
+                    *cluster,
+                    DustQdrantClient {
+                        client: Arc::new(client),
+                        cluster: *cluster,
+                    },
+                ))
             },
         ))
         .await?
@@ -128,7 +134,7 @@ impl QdrantClients {
         })
     }
 
-    pub fn client(&self, cluster: QdrantCluster) -> Arc<QdrantClient> {
+    pub fn client(&self, cluster: QdrantCluster) -> DustQdrantClient {
         let clients = self.clients.lock();
         match clients.get(&cluster) {
             Some(client) => client.clone(),
@@ -145,7 +151,7 @@ impl QdrantClients {
 
     // Returns the client for the cluster specified in the config or the main-0 cluster if no config
     // is provided.
-    pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> Arc<QdrantClient> {
+    pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> DustQdrantClient {
         self.client(self.main_cluster(config))
     }
 
@@ -163,7 +169,7 @@ impl QdrantClients {
     pub fn shadow_write_client(
         &self,
         config: &Option<QdrantDataSourceConfig>,
-    ) -> Option<Arc<QdrantClient>> {
+    ) -> Option<DustQdrantClient> {
         match config {
             Some(c) => match c.shadow_write_cluster {
                 Some(cluster) => Some(self.client(cluster)),
@@ -304,6 +310,24 @@ impl DustQdrantClient {
             }
         }
         Ok(())
+    }
+
+    pub async fn collection_info(
+        &self,
+        data_source: &DataSource,
+    ) -> Result<qdrant::GetCollectionInfoResponse> {
+        match verion_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                self.client
+                    .collection_info(data_source.qdrant_collection())
+                    .await
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                unimplemented!()
+            }
+        }
     }
 
     pub async fn delete_points(
