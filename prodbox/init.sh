@@ -2,6 +2,12 @@
 # Some commands can only be run once the container is deployed, because they rely on some files
 # that are not available at build time.
 
+# Wait for the volume /etc/github-deploykey-deploybox to be mounted
+while [ ! -d /etc/github-deploykey-deploybox ]; do
+  echo "Waiting for /etc/github-deploykey-deploybox to be mounted..."
+  sleep 3
+done
+
 # only allow to pull via fast-forward
 git config pull.ff only
 
