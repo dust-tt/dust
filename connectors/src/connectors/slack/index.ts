@@ -679,7 +679,7 @@ export async function setSlackConfig(
           )
         );
       }
-      return slackConfig.setAutoReadChannelPattern(configValue);
+      return slackConfig.setAutoReadChannelPattern(configValue || null);
     }
 
     default: {

@@ -124,11 +124,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.slackBotEnabled = botEnabledRes.value.configValue === "true";
 
-        const autoReadChannelPattern =
-          await connectorsAPI.getConnectorConfig(
-            dataSource.connectorId,
-            "autoReadChannelPattern"
-          );
+        const autoReadChannelPattern = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "autoReadChannelPattern"
+        );
         if (autoReadChannelPattern.isErr()) {
           throw autoReadChannelPattern.error;
         }

@@ -186,8 +186,6 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   async setAutoReadChannelPattern(pattern: string | null) {
-    // To fit with the other setters signature we pass an empty string
-    // to actually delete the pattern
     await this.model.update(
       { autoReadChannelPattern: pattern },
       {
