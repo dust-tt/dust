@@ -373,11 +373,20 @@ const _webhookSlackAPIHandler = async (
         break;
       }
       case "channel_created": {
+        const channelName = req.body.event?.channel;
+        if (!channelName) {
+          return apiError(req, res, {
+            api_error: {
+              type: "invalid_request_error",
+              message: `Webhook message without 'channel_name'`,
+            },
+            status_code: 400,
+          });
+        }
         const autoJoinRes = await autoJoinChannel(
           req.body.team_id,
           logger,
-          req.params.connector_id,
-          req.body.event?.channel
+          channelName
         );
         if (autoJoinRes.isErr()) {
           return apiError(req, res, {

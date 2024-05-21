@@ -597,21 +597,19 @@ export async function retrieveSlackContentNodes(
 export async function getWhiteListedChannelPattern(
   connectorId: ModelId
 ): Promise<Result<string | null, Error>> {
-  const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-    connectorId
-  );
-  if (!slackConfig) {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
     return new Err(
       new Error(
         `Failed to find a Slack configuration for connector ${connectorId}`
       )
     );
   }
-  if (!slackConfig.whiteListedChannelPattern) {
+  if (!slackConfiguration.whiteListedChannelPattern) {
     return new Ok(null);
   }
-  const whiteListedChannelPattern = slackConfig.whiteListedChannelPattern;
-  return new Ok(whiteListedChannelPattern);
+  return new Ok(slackConfiguration.whiteListedChannelPattern);
 }
 
 export const getSlackConfig: ConnectorConfigGetter = async function (
@@ -635,10 +633,7 @@ export const getSlackConfig: ConnectorConfigGetter = async function (
       const whiteListedChannelPattern = await getWhiteListedChannelPattern(
         connectorId
       );
-      if (whiteListedChannelPattern.isErr()) {
-        return whiteListedChannelPattern;
-      }
-      return new Ok(whiteListedChannelPattern.value);
+      return whiteListedChannelPattern;
     }
     default:
       return new Err(new Error(`Invalid config key ${configKey}`));

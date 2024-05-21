@@ -14,7 +14,7 @@ export function isChannelNameWhitelisted(
   remoteChannelName: string,
   whiteListedChannelPattern?: string | null
 ): boolean {
-  if (!whiteListedChannelPattern || whiteListedChannelPattern === "") {
+  if (!whiteListedChannelPattern) {
     return false;
   }
 
@@ -25,15 +25,14 @@ export function isChannelNameWhitelisted(
 export async function autoJoinChannel(
   teamId: string,
   logger: Logger,
-  requestedConnectorId?: string,
-  slackChannelId?: string
+  slackChannelId: string
 ): Promise<Result<undefined, Error>> {
   const slackConfiguration = await SlackConfigurationModel.findOne({
     where: {
       slackTeamId: teamId,
     },
   });
-  if (!slackConfiguration || !slackChannelId) {
+  if (!slackConfiguration) {
     return new Err(
       new Error(`Slack configuration not found for teamId ${teamId}`)
     );
@@ -42,7 +41,7 @@ export async function autoJoinChannel(
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return new Err(new Error(`Connector ${requestedConnectorId} not found`));
+    return new Err(new Error(`Connector ${connectorId} not found`));
   }
   const slackClient = await getSlackClient(connectorId);
   const remoteChannel = await slackClient.conversations.info({
@@ -65,17 +64,16 @@ export async function autoJoinChannel(
     whiteListedChannelPattern
   );
   if (isWhiteListed) {
+    const joinChannelRes = await joinChannel(connectorId, slackChannelId);
+    if (joinChannelRes.isErr()) {
+      return joinChannelRes;
+    }
     await SlackChannel.create({
       connectorId,
       slackChannelId,
       slackChannelName: remoteChannelName,
       permission: "read_write",
     });
-
-    const joinChannelRes = await joinChannel(connectorId, slackChannelId);
-    if (joinChannelRes.isErr()) {
-      return joinChannelRes;
-    }
   }
   return new Ok(undefined);
 }
