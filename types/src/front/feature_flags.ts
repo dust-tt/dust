@@ -4,7 +4,6 @@ export const WHITELISTABLE_FEATURES = [
   "okta_enterprise_connection",
   "labs_transcripts",
   "labs_transcripts_gong",
-  "labs_extract",
   "multi_actions",
   "process_action",
 ] as const;

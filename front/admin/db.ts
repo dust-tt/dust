@@ -41,7 +41,6 @@ import {
   DocumentTrackerChangeSuggestion,
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
-import { EventSchema, ExtractedEvent } from "@app/lib/models/extract";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { User, UserMetadata } from "@app/lib/models/user";
@@ -82,8 +81,6 @@ async function main() {
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
-  await EventSchema.sync({ alter: true });
-  await ExtractedEvent.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
   await Plan.sync({ alter: true });

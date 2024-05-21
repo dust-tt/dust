@@ -140,22 +140,6 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "extract-events": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "d4f31b6a63",
-      appHash:
-        "65304e44043046ff37dd85e98b31557f21937a6b0b468fbfa2eb4bf424f1cc0d",
-    },
-    config: {
-      MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
-        use_cache: false,
-        function_call: "extract_events",
-      },
-    },
-  },
   "assistant-v2-query-tables": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

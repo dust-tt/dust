@@ -5,13 +5,11 @@ import {
   documentTrackerSuggestChangesPostProcessHook,
   documentTrackerUpdateTrackedDocumentsPostProcessHook,
 } from "@app/lib/documents_post_process_hooks/hooks/document_tracker";
-import { extractEventPostProcessHook } from "@app/lib/documents_post_process_hooks/hooks/extract_event";
 import { DEFAULT_DOCUMENTS_POST_PROCESS_HOOKS_DEBOUNCE_MS } from "@app/lib/documents_post_process_hooks/hooks/types";
 
 export const DOCUMENTS_POST_PROCESS_HOOK_TYPES = [
   "document_tracker_update_tracked_documents",
   "document_tracker_suggest_changes",
-  "extract_event",
 ] as const;
 
 export type DocumentsPostProcessHookType =
@@ -83,7 +81,6 @@ export type DocumentsPostProcessHook = {
 export const DOCUMENTS_POST_PROCESS_HOOKS = [
   documentTrackerUpdateTrackedDocumentsPostProcessHook,
   documentTrackerSuggestChangesPostProcessHook,
-  extractEventPostProcessHook,
 ];
 
 export const DOCUMENTS_POST_PROCESS_HOOK_BY_TYPE: Record<

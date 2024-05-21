@@ -46,8 +46,6 @@ import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
-import type { GetExtractedEventsResponseBody } from "@app/pages/api/w/[wId]/use/extract/events/[sId]";
-import type { GetEventSchemasResponseBody } from "@app/pages/api/w/[wId]/use/extract/templates";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
@@ -305,21 +303,6 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useEventSchemas(owner: WorkspaceType) {
-  const eventSchemaFetcher: Fetcher<GetEventSchemasResponseBody> = fetcher;
-
-  const { data, error } = useSWR(
-    `/api/w/${owner.sId}/use/extract/templates`,
-    eventSchemaFetcher
-  );
-
-  return {
-    schemas: useMemo(() => (data ? data.schemas : []), [data]),
-    isSchemasLoading: !error && !data,
-    isSchemasError: error,
-  };
-}
-
 export function useDataSourceContentNodes({
   owner,
   dataSource,
@@ -493,28 +476,6 @@ export function useConnector({
     isConnectorLoading: !error && !data,
     isConnectorError: error,
     mutateConnector: mutate,
-  };
-}
-
-export function useExtractedEvents({
-  owner,
-  schemaSId,
-}: {
-  owner: WorkspaceType;
-  schemaSId: string;
-}) {
-  const extractedEventFetcher: Fetcher<GetExtractedEventsResponseBody> =
-    fetcher;
-
-  const { data, error } = useSWR(
-    `/api/w/${owner.sId}/use/extract/templates/${schemaSId}/events`,
-    extractedEventFetcher
-  );
-
-  return {
-    events: useMemo(() => (data ? data.events : []), [data]),
-    isEventsLoading: !error && !data,
-    isEventsError: error,
   };
 }
 
