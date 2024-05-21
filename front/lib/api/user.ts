@@ -147,3 +147,18 @@ export async function updateUserFullName({
 
   return true;
 }
+
+export async function unsafeGetUsersByModelId(
+  modelIds: number[]
+): Promise<UserType[]> {
+  if (modelIds.length === 0) {
+    return [];
+  }
+  const users = await User.findAll({
+    where: {
+      id: modelIds,
+    },
+  });
+
+  return users.map((u) => renderUserType(u));
+}

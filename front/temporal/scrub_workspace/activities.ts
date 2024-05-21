@@ -8,14 +8,15 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
-import { renderUserType } from "@app/lib/api/user";
-import { getMembers } from "@app/lib/api/workspace";
+import { unsafeGetUsersByModelId } from "@app/lib/api/user";
+import {
+  getMembers,
+  unsafeGetWorkspacesByModelId,
+} from "@app/lib/api/workspace";
 import { Authenticator, subscriptionForWorkspaces } from "@app/lib/auth";
 import { destroyConversation } from "@app/lib/conversation";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
@@ -156,15 +157,7 @@ async function cleanupCustomerio(auth: Authenticator) {
 
   // Fetch all the users in the workspace.
   const userIds = workspaceMemberships.map((m) => m.userId);
-  const users = (
-    userIds.length
-      ? await User.findAll({
-          where: {
-            id: userIds,
-          },
-        })
-      : []
-  ).map(renderUserType);
+  const users = await unsafeGetUsersByModelId(userIds);
 
   // For each user, fetch all their memberships.
   const allMembershipsByUserId = _.groupBy(
@@ -181,13 +174,7 @@ async function cleanupCustomerio(auth: Authenticator) {
     .flat()
     .map((m) => m.workspaceId);
   const workspaceById = _.keyBy(
-    workspaceIds.length
-      ? await Workspace.findAll({
-          where: {
-            id: workspaceIds,
-          },
-        })
-      : [],
+    await unsafeGetWorkspacesByModelId(workspaceIds),
     (w) => w.id.toString()
   );
 
