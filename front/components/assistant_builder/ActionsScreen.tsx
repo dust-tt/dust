@@ -1,19 +1,28 @@
 import {
   Button,
-  ClockStrokeIcon,
+  CommandLineIcon,
   CommandLineStrokeIcon,
   DropdownMenu,
   Hoverable,
   Icon,
   Input,
+  MagnifyingGlassIcon,
   MagnifyingGlassStrokeIcon,
   Modal,
   Page,
   PlusIcon,
+  RobotIcon,
   RobotStrokeIcon,
   TableStrokeIcon,
+  TimeIcon,
+  TimeStrokeIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AppType,
+  DataSourceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -41,34 +50,69 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
-import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "./actions/DustAppRunAction";
 
-const ACTION_TYPE_TO_LABEL: Record<
+const ACTION_SPECIFICATIONS: Record<
   AssistantBuilderActionConfiguration["type"],
-  string
+  {
+    label: string;
+    description: string;
+    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
+    cardIcon: React.ComponentProps<typeof Icon>["visual"];
+    flag: WhitelistableFeature | null;
+  }
 > = {
-  RETRIEVAL_SEARCH: "Search",
-  RETRIEVAL_EXHAUSTIVE: "Exhaustive Search",
-  PROCESS: "Process",
-  DUST_APP_RUN: "Dust App",
-  TABLES_QUERY: "Tables Query",
+  RETRIEVAL_EXHAUSTIVE: {
+    label: "Most recent data",
+    description: "Include as much data as possible",
+    cardIcon: TimeStrokeIcon,
+    dropDownIcon: TimeIcon,
+    flag: null,
+  },
+  RETRIEVAL_SEARCH: {
+    label: "Search",
+    description: "Search through selected Data sources",
+    cardIcon: MagnifyingGlassStrokeIcon,
+    dropDownIcon: MagnifyingGlassIcon,
+    flag: null,
+  },
+  PROCESS: {
+    label: "Extract data",
+    description: "Structured extraction",
+    cardIcon: RobotStrokeIcon,
+    dropDownIcon: RobotIcon,
+    flag: "process_action",
+  },
+  DUST_APP_RUN: {
+    label: "Run a Dust App",
+    description: "Run a Dust app, then reply",
+    cardIcon: CommandLineStrokeIcon,
+    dropDownIcon: CommandLineIcon,
+    flag: null,
+  },
+  TABLES_QUERY: {
+    label: "Query Tables",
+    description: "Tables, Spreadsheets, Notion DBs (quantitative)",
+    cardIcon: TableStrokeIcon,
+    dropDownIcon: TableStrokeIcon,
+    flag: null,
+  },
 };
 
-const ACTION_TYPE_TO_ICON: Record<
-  AssistantBuilderActionConfiguration["type"],
-  React.ComponentProps<typeof Icon>["visual"]
-> = {
-  RETRIEVAL_SEARCH: MagnifyingGlassStrokeIcon,
-  RETRIEVAL_EXHAUSTIVE: ClockStrokeIcon,
-  PROCESS: RobotStrokeIcon,
-  DUST_APP_RUN: CommandLineStrokeIcon,
-  TABLES_QUERY: TableStrokeIcon,
-};
+const DATA_SOURCES_ACTION_CATEGORIES = [
+  "RETRIEVAL_SEARCH",
+  "RETRIEVAL_EXHAUSTIVE",
+  "PROCESS",
+  "TABLES_QUERY",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
+
+const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
+  AssistantBuilderActionConfiguration["type"]
+>;
 
 function ActionModeSection({
   children,
@@ -117,7 +161,10 @@ export default function ActionsScreen({
   setEdited: (edited: boolean) => void;
 }) {
   const [newActionModalOpen, setNewActionModalOpen] = React.useState(false);
+
   const [actionToEdit, setActionToEdit] =
+    React.useState<AssistantBuilderActionConfiguration | null>(null);
+  const [pendingAction, setPendingAction] =
     React.useState<AssistantBuilderActionConfiguration | null>(null);
 
   const updateAction = useCallback(
@@ -182,15 +229,13 @@ export default function ActionsScreen({
     [setBuilderState, setEdited]
   );
 
-  const allActionsValid = builderState.actions.every(isActionValid);
-
   return (
     <>
       <NewActionModal
         isOpen={newActionModalOpen}
         setOpen={setNewActionModalOpen}
         builderState={builderState}
-        initialAction={actionToEdit}
+        initialAction={actionToEdit ?? pendingAction}
         onSave={(newAction) => {
           setEdited(true);
           if (actionToEdit) {
@@ -205,9 +250,11 @@ export default function ActionsScreen({
           }
           setNewActionModalOpen(false);
           setActionToEdit(null);
+          setPendingAction(null);
         }}
         onClose={() => {
           setActionToEdit(null);
+          setPendingAction(null);
         }}
         updateAction={updateAction}
         owner={owner}
@@ -247,12 +294,19 @@ export default function ActionsScreen({
 
         <div className="flex flex-col gap-4">
           {builderState.actions.length === 0 && (
-            <EmptyCallToAction
-              label="Add an action"
-              onClick={() => {
-                setNewActionModalOpen(true);
-              }}
-            />
+            <div
+              className={
+                "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
+              }
+            >
+              <AddAction
+                builderState={builderState}
+                onAddAction={(action) => {
+                  setPendingAction(action);
+                  setNewActionModalOpen(true);
+                }}
+              />
+            </div>
           )}
           <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {builderState.actions.map((a) => (
@@ -270,12 +324,10 @@ export default function ActionsScreen({
           </div>
           {builderState.actions.length > 0 && (
             <div>
-              <Button
-                variant="primary"
-                label="Add Action"
-                icon={PlusIcon}
-                disabled={!allActionsValid}
-                onClick={() => {
+              <AddAction
+                builderState={builderState}
+                onAddAction={(action) => {
+                  setPendingAction(action);
                   setNewActionModalOpen(true);
                 }}
               />
@@ -363,52 +415,6 @@ function NewActionModal({
     >
       <div className="w-full pl-4 pt-12">
         <div className="flex flex-col gap-4">
-          <DropdownMenu>
-            <DropdownMenu.Button tooltipPosition="above">
-              <Button
-                type="select"
-                labelVisible={true}
-                label={
-                  newAction
-                    ? ACTION_TYPE_TO_LABEL[newAction.type]
-                    : "Select Action"
-                }
-                variant="secondary"
-                size="sm"
-              />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topLeft">
-              {Object.entries(ACTION_TYPE_TO_LABEL).map(([key, value]) => (
-                <DropdownMenu.Item
-                  key={key}
-                  label={value}
-                  onClick={() => {
-                    const defaultConfiguration = getDefaultActionConfiguration(
-                      key as AssistantBuilderActionConfiguration["type"]
-                    );
-                    if (!defaultConfiguration) {
-                      // Unreachable
-                      return;
-                    }
-                    let index = 1;
-                    const suffixedName = () =>
-                      index > 1
-                        ? `${defaultConfiguration.name}_${index}`
-                        : defaultConfiguration.name;
-                    while (
-                      builderState.actions.some(
-                        (a) => a.name === suffixedName()
-                      )
-                    ) {
-                      index += 1;
-                    }
-                    defaultConfiguration.name = suffixedName();
-                    setNewAction(defaultConfiguration);
-                  }}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
           {newAction && (
             <ActionEditor
               action={newAction}
@@ -440,7 +446,10 @@ function NewActionModal({
               <Button
                 variant="primaryWarning"
                 label="Delete Action"
-                onClick={() => deleteAction(initialAction.name)}
+                onClick={() => {
+                  deleteAction(initialAction.name);
+                  onCloseLocal();
+                }}
               />
             </div>
           )}
@@ -457,11 +466,16 @@ function ActionCard({
   action: AssistantBuilderActionConfiguration;
   editAction: () => void;
 }) {
+  const spec = ACTION_SPECIFICATIONS[action.type];
+  if (!spec) {
+    // Unreachable
+    return null;
+  }
   return (
     <Hoverable onClick={editAction}>
       <div className="mx-auto inline-block flex w-72 flex-col gap-4 rounded-lg border border-structure-200 px-4 pb-4 pt-2 drop-shadow-md">
         <div className="flex flex-row gap-2 font-semibold text-element-800">
-          <Icon visual={ACTION_TYPE_TO_ICON[action.type]} />
+          <Icon visual={spec.cardIcon} />
           <div className="truncate">{action.name}</div>
         </div>
         <div>{action.description}</div>
@@ -686,6 +700,71 @@ function AdvancedSettings({
             />
           </div>
         </div>
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
+}
+
+function AddAction({
+  builderState,
+  onAddAction,
+}: {
+  builderState: AssistantBuilderState;
+  onAddAction: (action: AssistantBuilderActionConfiguration) => void;
+}) {
+  const onAddLocal = (action: AssistantBuilderActionConfiguration) => {
+    let index = 1;
+    const suffixedName = () =>
+      index > 1 ? `${action.name}_${index}` : action.name;
+    while (builderState.actions.some((a) => a.name === suffixedName())) {
+      index += 1;
+    }
+    action.name = suffixedName();
+    onAddAction(action);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button variant="primary" label="Add an action" icon={PlusIcon} />
+      </DropdownMenu.Button>
+      <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
+        <DropdownMenu.SectionHeader label="DATA SOURCES" />
+        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+          const spec = ACTION_SPECIFICATIONS[key];
+          const defaultAction = getDefaultActionConfiguration(key);
+          if (!defaultAction) {
+            // Unreachable
+            return null;
+          }
+          return (
+            <DropdownMenu.Item
+              key={key}
+              label={spec.label}
+              icon={spec.dropDownIcon}
+              description={spec.description}
+              onClick={() => onAddLocal(defaultAction)}
+            />
+          );
+        })}
+        <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
+        {ADVANCED_ACTION_CATEGORIES.map((key) => {
+          const spec = ACTION_SPECIFICATIONS[key];
+          const defaultAction = getDefaultActionConfiguration(key);
+          if (!defaultAction) {
+            // Unreachable
+            return null;
+          }
+          return (
+            <DropdownMenu.Item
+              key={key}
+              label={spec.label}
+              icon={spec.dropDownIcon}
+              description={spec.description}
+              onClick={() => onAddLocal(defaultAction)}
+            />
+          );
+        })}
       </DropdownMenu.Items>
     </DropdownMenu>
   );
