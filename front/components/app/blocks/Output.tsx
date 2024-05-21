@@ -299,6 +299,26 @@ export function Logs({ trace }: { trace: TraceType[] }) {
   );
 }
 
+const JsonCopyLink = ({ value }: { value: string }) => {
+  const sendNotification = useContext(SendNotificationsContext);
+  const handleClick = () => {
+    sendNotification({
+      title: "Copied!",
+      description: "JSON copied to clipboard",
+      type: "success",
+    });
+    void navigator.clipboard.writeText(value);
+  };
+
+  return (
+    <Tooltip label="Copy JSON to clipboard">
+      <Hoverable className="cursor-pointer font-bold text-action-500" onClick={handleClick}>
+        <DocumentDuplicateIcon />
+      </Hoverable>
+    </Tooltip>
+  );
+};
+
 export default function Output({
   owner,
   block,
@@ -369,8 +389,6 @@ export default function Output({
       );
     }, 0);
 
-    const sendNotification = useContext(SendNotificationsContext);
-
     return (
       <div>
         {logs ? (
@@ -421,7 +439,7 @@ export default function Output({
         <div className="flex flex-auto flex-col">
           <div className="flex flex-row items-center text-sm">
             <div className="flex-initial cursor-pointer text-gray-400">
-              <div className="flex flex-row items-center">
+              <div className="flex w-full flex-row items-center">
                 <div
                   className="flex flex-row items-center"
                   onClick={() => setExpandedResult(!expandedResult)}
@@ -447,23 +465,7 @@ export default function Output({
                     ]
                   </span>
                 </div>
-                <Tooltip label="Copy JSON to clipboard">
-                  <Hoverable
-                    className="cursor-pointer font-bold text-action-500"
-                    onClick={() => {
-                      sendNotification({
-                        title: "Copied!",
-                        description: "JSON copied to clipboard",
-                        type: "success",
-                      });
-                      void navigator.clipboard.writeText(
-                        JSON.stringify(traces)
-                      );
-                    }}
-                  >
-                    <DocumentDuplicateIcon />
-                  </Hoverable>
-                </Tooltip>
+                <JsonCopyLink value={JSON.stringify(traces)} />
               </div>
             </div>
           </div>
@@ -476,6 +478,7 @@ export default function Output({
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />
+                    <JsonCopyLink value={JSON.stringify(trace)} />
                   </div>
                 );
               })}
