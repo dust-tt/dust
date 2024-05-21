@@ -529,10 +529,8 @@ export class DustAPI {
       "Content-Type": "application/json",
     };
 
-    console.log(">> creating conversation for email:", userEmail);
-
     if (userEmail) {
-      headers["X-API-USER-EMAIL"] = userEmail;
+      headers["x-api-user-email"] = userEmail;
     }
 
     const res = await fetch(
@@ -568,7 +566,7 @@ export class DustAPI {
     };
 
     if (userEmail) {
-      headers["X-API-USER-EMAIL"] = userEmail;
+      headers["x-api-user-email"] = userEmail;
     }
 
     const res = await fetch(
