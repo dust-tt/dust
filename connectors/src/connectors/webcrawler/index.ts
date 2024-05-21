@@ -451,18 +451,3 @@ export async function setWebcrawlerConfiguration(
 
   return new Ok(undefined);
 }
-
-export async function isNewWebsiteToCrawl(
-  connectorId: ModelId
-): Promise<Result<boolean, Error>> {
-  const webcrawlerConfig =
-    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
-
-  if (!webcrawlerConfig) {
-    return new Err(
-      new Error(`Webcrawler configuration not found for ${connectorId}`)
-    );
-  }
-  const isNew = !webcrawlerConfig.lastCrawledAt;
-  return new Ok(isNew);
-}
