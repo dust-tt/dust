@@ -270,6 +270,7 @@ export async function renderConversationForModelMultiActions({
   >
 > {
   const messages: ModelMessageTypeMultiActions[] = [];
+  const closingAttachmentTag = "</attachment>\n";
 
   // Render all messages and all actions.
   for (let i = conversation.content.length - 1; i >= 0; i--) {
@@ -330,7 +331,9 @@ export async function renderConversationForModelMultiActions({
         messages.unshift({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
-          content: `<file-attachment content-type="${m.contentType}" title="${m.title}">${content}</file-attachment>\n`,
+          // The closing xml tag </attachment> will be added after the selection messages loop because we might
+          // need to add a "truncated..." mention there.
+          content: `<attachment type="${m.contentType}" title="${m.title}">\n${content}\n`,
         });
       } catch (error) {
         logger.error(
@@ -354,6 +357,11 @@ export async function renderConversationForModelMultiActions({
     Promise.all(
       messages.map((m) => {
         let text = `${m.role} ${"name" in m ? m.name : ""} ${m.content ?? ""}`;
+        if (m.role === "content_fragment") {
+          // We want to account for the upcoming </attachment> tag, which will be added once we know if we need to
+          // truncate the content fragment or not.
+          text += closingAttachmentTag;
+        }
         if ("function_calls" in m) {
           text += m.function_calls
             .map((f) => `${f.name} ${f.arguments}`)
@@ -387,13 +395,7 @@ export async function renderConversationForModelMultiActions({
     const c = r.value;
     if (tokensUsed + c <= allowedTokenCount) {
       tokensUsed += c;
-      if (messages[i].role === "content_fragment") {
-        const previousMessage = selected[0];
-        previousMessage.content =
-          (messages[i].content || "") + `${previousMessage.content}`;
-      } else {
-        selected.unshift(messages[i]);
-      }
+      selected.unshift(messages[i]);
     } else if (
       // When a content fragment has more than the remaining number of tokens, we split it.
       messages[i].role === "content_fragment" &&
@@ -407,15 +409,48 @@ export async function renderConversationForModelMultiActions({
       if (contentRes.isErr()) {
         return new Err(contentRes.error);
       }
-
-      const previousMessage = selected[0];
-      previousMessage.content =
-        // The truncation message is outside of the xml tag <file-attachement/>
-        contentRes.value + truncationMessage + `${previousMessage.content}`;
+      selected.unshift({
+        ...msg,
+        content: contentRes.value + truncationMessage,
+      });
       tokensUsed += remainingTokens;
       break;
     } else {
       break;
+    }
+  }
+
+  // Merging content fragments into the preceding user message.
+  // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
+  for (let i = selected.length - 1; i >= 0; i--) {
+    if (selected[i].role === "content_fragment") {
+      const cfMessage = selected[i];
+      const userMessage = selected[i + 1];
+      if (!userMessage || userMessage.role !== "user") {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            selected: selected.map((m) => ({
+              ...m,
+              content: m.content?.slice(0, 100) + " (truncated...)",
+            })),
+          },
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+        throw new Error(
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+      }
+      userMessage.content = [
+        cfMessage.content,
+        // We can now close the </attachment> tag, because the message was already properly truncated.
+        // We also accounted for the the closing that above when computing the tokens count.
+        closingAttachmentTag,
+        userMessage.content,
+      ].join("");
+      // Now we remove the content fragment from the array since it was merged into the preceding user message.
+      selected.splice(i, 1);
     }
   }
 
