@@ -100,10 +100,11 @@ export async function joinChannel(
     if (slackError.code === ErrorCode.PlatformError) {
       const platformError = slackError as WebAPIPlatformError;
       if (platformError.data.error === "missing_scope") {
-        logger.info(
+        logger.error(
           {
             channelId,
             connectorId,
+            error: platformError,
           },
           "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
         );
