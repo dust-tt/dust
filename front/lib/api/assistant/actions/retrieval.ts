@@ -313,7 +313,7 @@ export async function deprecatedGenerateRetrievalSpecificationForSingleActionAge
     actionConfiguration,
     name: "search_data_sources",
     description:
-      "Search the data sources specified by the user for information to answer their request." +
+      "Search the data sources specified by the user." +
       " The search is based on semantic similarity between the query and chunks of information" +
       " from the data sources.",
   });
@@ -341,22 +341,22 @@ export async function generateRetrievalSpecification(
   const baseDescription = (() => {
     if (actionConfiguration.query === "auto") {
       return (
-        "Search the data sources specified by the user for information to answer their request." +
+        "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources."
       );
     } else {
       let description =
-        "Retrieve the most recent content from the data sources specified by the user for information to answer their request.";
+        "Retrieve the most recent content from the data sources specified by the user for information to answer their request";
       if (
         actionConfiguration.relativeTimeFrame === "auto" ||
         actionConfiguration.relativeTimeFrame === "none"
       ) {
-        return description;
+        return `${description}.`;
       }
       const timeFrame = actionConfiguration.relativeTimeFrame;
       const plural = timeFrame.duration > 1 ? "s" : "";
-      description += ` The search is restricted to the last ${timeFrame.duration} ${timeFrame.unit}${plural}.`;
+      description += ` over the last ${timeFrame.duration} ${timeFrame.unit}${plural}.`;
       return description;
     }
   })();

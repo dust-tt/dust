@@ -166,8 +166,7 @@ export async function deprecatedGenerateTablesQuerySpecificationForSingleActionA
   }
 
   const actionDescription =
-    "Query the structured data tables specificied by the user to retrieve information to answer their request." +
-    " The data is queried by generating a SQL query from the natural language question.";
+    "Query the data tables specified by the user by executing a generated SQL query from the natural language.";
 
   const spec = await tablesQueryActionSpecification({
     name: "query_tables",
