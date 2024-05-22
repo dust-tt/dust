@@ -144,7 +144,7 @@ async function tablesQueryActionSpecification({
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user" +
+          "The natural language question to answer based on the user" +
           " request and conversation context. The question should include" +
           " all the context required to be understood without reference to the conversation." +
           " If the user has multiple unanswered questions, make sure to include all of them." +
@@ -167,7 +167,7 @@ export async function deprecatedGenerateTablesQuerySpecificationForSingleActionA
 
   const actionDescription =
     "Query the structured data tables specificied by the user to retrieve information to answer their request." +
-    " The data is queried by generating a SQL query from the plain text language question.";
+    " The data is queried by generating a SQL query from the natural language question.";
 
   const spec = await tablesQueryActionSpecification({
     name: "query_tables",
@@ -187,7 +187,7 @@ export async function generateTablesQuerySpecification(
 
   const actionDescription =
     "Query the structured data tables specificied by the user to retrieve information to answer their request." +
-    " The data is queried by generating a SQL query from the plain text language question.\n" +
+    " The data is queried by generating a SQL query from the natural language question.\n" +
     `The tables are described by the user as:\n${description}`;
 
   const spec = await tablesQueryActionSpecification({
