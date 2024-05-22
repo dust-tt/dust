@@ -29,7 +29,7 @@ pub enum QdrantCluster {
 }
 
 // See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
-const SHARD_KEY_COUNT: u8 = 24;
+pub const SHARD_KEY_COUNT: u8 = 24;
 
 pub enum QdrantClusterVersion {
     // Legacy setup with one collection per data source.
@@ -79,7 +79,6 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
         QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
         QdrantCluster::Main0 => "QDRANT_MAIN_0",
-        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
     }
 }
 
@@ -199,15 +198,38 @@ pub struct DustQdrantClient {
 }
 
 impl DustQdrantClient {
+    pub fn collection_prefix(&self) -> String {
+        match version_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                return String::from("ds");
+            }
+
+            QdrantClusterVersion::V1 => {
+                return String::from("c");
+            }
+        }
+    }
+
+    pub fn shard_key_prefix(&self) -> String {
+        match version_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                return String::from("ds");
+            }
+
+            QdrantClusterVersion::V1 => {
+                return String::from("key");
+            }
+        }
+    }
+
     // In v1 implementations, we'll be able:
     // - we'll be able to retrieve the shared collection name from the data source config.
     // - we'll be able to add a condition on the PointsSelector to match the
     //   data_source.internal_id multi-tenancy filter.
-
     pub fn collection_name(&self, data_source: &DataSource) -> String {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                format!("ds_{}", data_source.internal_id())
+                format!("{}_{}", self.collection_prefix(), data_source.internal_id())
             }
             QdrantClusterVersion::V1 => {
                 // The collection name depends on the embedding model which is stored on the
@@ -215,7 +237,8 @@ impl DustQdrantClient {
                 // add a notion of shadow_write embedding provider/model on the data source config
                 // that will have to be used here.
                 format!(
-                    "c_{}_{}",
+                    "{}_{}_{}",
+                    self.collection_prefix(),
                     data_source.config().provider_id.to_string(),
                     data_source.config().model_id,
                 )
@@ -228,7 +251,7 @@ impl DustQdrantClient {
         // generated using new_id and is guaranteed random. Using the last character gives us a
         // path to moving data sources across shard when needed.
         let key_id = data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT;
-        format!("key_{}", key_id).into()
+        format!("{}_{}", self.shard_key_prefix(), key_id).into()
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
@@ -556,5 +579,9 @@ impl DustQdrantClient {
                     .await
             }
         }
+    }
+
+    pub fn raw_client(&self) -> Arc<QdrantClient> {
+        return self.client.clone();
     }
 }

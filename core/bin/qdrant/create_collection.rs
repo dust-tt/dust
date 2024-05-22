@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use dust::{
-    data_sources::qdrant::{QdrantClients, QdrantCluster},
+    data_sources::qdrant::{QdrantClients, QdrantCluster, SHARD_KEY_COUNT},
     providers::{
-        embedder::{Embedder, EmbedderProvidersModelMap, SupportedEmbedderModels},
+        embedder::{EmbedderProvidersModelMap, SupportedEmbedderModels},
         provider::{provider, ProviderID},
     },
     utils,
@@ -29,17 +29,39 @@ struct Args {
 
 async fn create_qdrant_collection(
     cluster: QdrantCluster,
-    collection_name: String,
-    embedder: Box<dyn Embedder + Sync + Send>,
+    provider_id: ProviderID,
+    model_id: SupportedEmbedderModels,
 ) -> Result<()> {
     let qdrant_clients = QdrantClients::build().await?;
-
     let client = qdrant_clients.client(cluster);
+    let raw_client = client.raw_client();
+
+    let embedder = provider(provider_id).embedder(model_id.to_string());
+
+    let collection_name = format!(
+        "{}_{}_{}",
+        client.collection_prefix(),
+        provider_id,
+        model_id
+    );
+
+    println!(
+        "About to create collection {} on cluster {}",
+        collection_name, cluster
+    );
+
+    match utils::confirm(&format!(
+        "Are you sure you want to create collection {} on cluster {}?",
+        collection_name, cluster
+    ))? {
+        true => (),
+        false => Err(anyhow!("Aborted"))?,
+    }
 
     // See https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27.
 
     // First, we create the collection.
-    let res = client
+    let res = raw_client
         .create_collection(&qdrant::CreateCollection {
             collection_name: collection_name.clone(),
             vectors_config: Some(qdrant::VectorsConfig {
@@ -80,12 +102,11 @@ async fn create_qdrant_collection(
         .await?;
 
     // Then, we create the 24 shard_keys.
-    for i in 0..24 {
-        client
+    for i in 0..SHARD_KEY_COUNT {
+        raw_client
             .create_shard_key(
                 collection_name.clone(),
-                // TODO: Move to qdrant.rs.
-                &qdrant::shard_key::Key::Keyword(format!("key_{}", i)),
+                &qdrant::shard_key::Key::Keyword(format!("{}_{}", client.shard_key_prefix(), i)),
                 Some(2),
                 Some(2),
                 &[],
@@ -94,7 +115,14 @@ async fn create_qdrant_collection(
     }
 
     match res.result {
-        true => Ok(()),
+        true => {
+            println!(
+                "Done creating collection {} on cluster {}",
+                collection_name, cluster
+            );
+
+            Ok(())
+        }
         false => Err(anyhow!("Collection not created!")),
     }
 }
@@ -112,29 +140,7 @@ async fn main() -> Result<(), anyhow::Error> {
         std::process::exit(1);
     }
 
-    let collection_name = format!("c_{}_{}", args.provider, args.model);
-
-    println!(
-        "About to create collection {} on cluster {}",
-        collection_name, args.cluster
-    );
-
-    match utils::confirm(&format!(
-        "Are you sure you want to create collection {} on cluster {}?",
-        collection_name, args.cluster
-    ))? {
-        true => (),
-        false => Err(anyhow!("Aborted"))?,
-    }
-
-    let embedder = provider(args.provider).embedder(args.model.to_string());
-
-    create_qdrant_collection(args.cluster, collection_name.clone(), embedder).await?;
-
-    println!(
-        "Done creating collection {} on cluster {}",
-        collection_name, args.cluster
-    );
+    create_qdrant_collection(args.cluster, args.provider, args.model).await?;
 
     Ok(())
 }
