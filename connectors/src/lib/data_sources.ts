@@ -520,7 +520,7 @@ export async function upsertTableFromCsv({
     if (axios.isAxiosError(e)) {
       const sanitizedError = {
         ...e,
-        response: { ...e.response, data: undefined },
+        config: { ...e.config, data: undefined },
       };
       localLogger.error(
         { error: sanitizedError },
