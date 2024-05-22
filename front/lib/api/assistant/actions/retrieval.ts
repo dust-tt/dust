@@ -338,10 +338,30 @@ export async function generateRetrievalSpecification(
     throw new Error("Unexpected unauthenticated call to `runRetrieval`");
   }
 
-  const actionDescription =
-    "Search the data sources specified by the user for information to answer their request." +
-    " The search is based on semantic similarity between the query and chunks of information" +
-    ` from the data sources.\nThe data sources are described by the user as:\n${description}`;
+  const baseDescription = (() => {
+    if (actionConfiguration.query === "auto") {
+      return (
+        "Search the data sources specified by the user for information to answer their request." +
+        " The search is based on semantic similarity between the query and chunks of information" +
+        " from the data sources."
+      );
+    } else {
+      let description =
+        "Retrieve the most recent content from the data sources specified by the user for information to answer their request.";
+      if (
+        actionConfiguration.relativeTimeFrame === "auto" ||
+        actionConfiguration.relativeTimeFrame === "none"
+      ) {
+        return description;
+      }
+      const timeFrame = actionConfiguration.relativeTimeFrame;
+      const plural = timeFrame.duration > 1 ? "s" : "";
+      description += ` The search is restricted to the last ${timeFrame.duration} ${timeFrame.unit}${plural}.`;
+      return description;
+    }
+  })();
+
+  const actionDescription = `${baseDescription}\nThe data sources are described by the user as:\n${description}`;
 
   const spec = retrievalActionSpecification({
     actionConfiguration,
