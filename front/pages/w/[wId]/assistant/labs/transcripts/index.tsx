@@ -130,7 +130,10 @@ export default function LabsTranscriptsIndex({
     return <Spinner />;
   }
 
-  const agents = agentConfigurations.filter((a) => a.status === "active");
+  // Only custom assistants - there's no point in passing a transcript to a default assistant without instructions.
+  const agents = agentConfigurations.filter(
+    (a) => a.status === "active" && a.id != -1
+  );
 
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
