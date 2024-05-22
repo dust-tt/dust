@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "agent_browse_actions" (
     "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL,
     "browseConfigurationId" VARCHAR(255) NOT NULL,
     "url" VARCHAR(255) NOT NULL,
-    "output" JSONB,
+    "output" TEXT,
     "functionCallId" VARCHAR(255),
     "functionCallName" VARCHAR(255),
     "step" INTEGER NOT NULL,
