@@ -1,4 +1,5 @@
-import { Banner, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import { Banner, IconButton, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
@@ -151,15 +152,9 @@ function NavigationBar({
 export const SidebarContext = React.createContext<{
   sidebarOpen: boolean;
   setSidebarOpen: (value: boolean) => void;
-  laptopNavOpen: boolean;
-  setLaptopNavOpen: (value: boolean) => void;
 }>({
   sidebarOpen: false,
   setSidebarOpen: (value) => {
-    throw new Error("SidebarContext not initialized: " + value);
-  },
-  laptopNavOpen: false,
-  setLaptopNavOpen: (value) => {
     throw new Error("SidebarContext not initialized: " + value);
   },
 });
@@ -170,14 +165,35 @@ export const SidebarProvider = ({
   children: React.ReactNode;
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  return (
+    <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+};
+
+export const NavigationBarContext = React.createContext<{
+  laptopNavOpen: boolean;
+  setLaptopNavOpen: (value: boolean) => void;
+}>({
+  laptopNavOpen: true,
+  setLaptopNavOpen: (value) => {
+    throw new Error("NavigationBarContext not initialized: " + value);
+  },
+});
+
+export const NavigationBarProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const [laptopNavOpen, setLaptopNavOpen] = useState(true);
 
   return (
-    <SidebarContext.Provider
-      value={{ sidebarOpen, setSidebarOpen, laptopNavOpen, setLaptopNavOpen }}
-    >
+    <NavigationBarContext.Provider value={{ laptopNavOpen, setLaptopNavOpen }}>
       {children}
-    </SidebarContext.Provider>
+    </NavigationBarContext.Provider>
   );
 };
 
@@ -222,8 +238,8 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const { sidebarOpen, setSidebarOpen, laptopNavOpen, setLaptopNavOpen } =
-    useContext(SidebarContext);
+  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const { laptopNavOpen, setLaptopNavOpen } = useContext(NavigationBarContext);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -388,12 +404,12 @@ export default function AppLayout({
         <div
           className={classNames(
             "mt-0 h-full flex-1",
-            !hideSidebar ? "lg:pl-80" : ""
+            !hideSidebar ? "lg:pl-80" : "",
           )}
         >
           <div
             className={classNames(
-              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
+              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6",
             )}
           >
             <button
@@ -411,7 +427,7 @@ export default function AppLayout({
               !hideSidebar
                 ? "border-b border-structure-300/30 bg-white/80 backdrop-blur lg:left-80"
                 : "",
-              titleChildren ? "fixed" : "lg:hidden"
+              titleChildren ? "fixed" : "lg:hidden",
             )}
           >
             <div className="h-16 grow">
@@ -429,13 +445,13 @@ export default function AppLayout({
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "h-full overflow-x-hidden pt-16",
-              titleChildren ? "" : "lg:pt-8"
+              titleChildren ? "" : "lg:pt-8",
             )}
           >
             <div
               className={classNames(
                 "mx-auto h-full",
-                isWideMode ? "w-full" : "max-w-4xl px-6"
+                isWideMode ? "w-full" : "max-w-4xl px-6",
               )}
             >
               {loaded && children}
@@ -445,11 +461,25 @@ export default function AppLayout({
 
         <button
           type="button"
-          className="hidden lg:fixed lg:right-4 lg:top-4 lg:m-2.5 lg:block lg:p-2.5 lg:text-gray-700"
+          className={`hidden lg:flex lg:fixed lg:top-1/2 lg:text-gray-700 lg:rounded-full lg:items-center lg:justify-center lg:h-10 lg:w-5 lg:hover:bg-gray-100 ${laptopNavOpen ? "lg:left-80" : "lg:left-2"}`}
           onClick={() => setLaptopNavOpen(!laptopNavOpen)}
         >
           <span className="sr-only">Toggle laptop navigation bar</span>
-          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+          <div id="b1"
+               className={`lg:h-6 lg:w-1 lg:bg-gray-400 lg:rounded-full lg:block`}></div>
+          <span id="b2" className={`lg:h-6 lg:w-6 lg:text-gray-400 lg:hidden`}>
+            {laptopNavOpen ? "❮" : "❯"}
+          </span>
+
+          <style jsx>{`
+            button:hover #b1 {
+              display: none;
+            }
+        
+            button:hover #b2 {
+              display: block;
+            }
+          `}</style>
         </button>
       </div>
       <>
@@ -480,7 +510,7 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
 
   return (
     <div className="border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
-      <div className="font-bold">Subscription ending on {formattedEndDate}</div>
+    <div className="font-bold">Subscription ending on {formattedEndDate}</div>
       <div className="font-normal">
         Connections will be deleted and members will be revoked. Details{" "}
         <Link
