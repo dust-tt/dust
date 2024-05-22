@@ -27,6 +27,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
+  declare defaultForWorkspace: boolean;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -69,6 +70,11 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    defaultForWorkspace: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     modelName: "labs_transcripts_configuration",
@@ -76,6 +82,7 @@ LabsTranscriptsConfigurationModel.init(
     indexes: [
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
+      { fields: ["provider", "workspaceId", "defaultForWorkspace"], unique: true},
     ],
   }
 );

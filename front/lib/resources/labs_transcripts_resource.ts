@@ -76,6 +76,32 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  static async findByWorkspaceDefault({
+    auth,
+  }: {
+    auth: Authenticator;
+  }): Promise<LabsTranscriptsConfigurationResource | null> {
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return null;
+    }
+
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        defaultForWorkspace: true,
+        workspaceId: owner.id,
+      },
+    });
+
+    return configuration
+      ? new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
+      : null;
+  }
+
   private async update(
     blob: Partial<Attributes<LabsTranscriptsConfigurationModel>>
   ): Promise<[affectedCount: number]> {

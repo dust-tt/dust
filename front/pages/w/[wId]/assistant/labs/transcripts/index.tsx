@@ -131,6 +131,7 @@ export default function LabsTranscriptsIndex({
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
+  console.log(agents);
 
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
@@ -309,6 +310,9 @@ export default function LabsTranscriptsIndex({
       if (transcriptsConfigurationState.provider !== "gong") {
         return;
       }
+
+      // We first check if 
+
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildLabsConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,

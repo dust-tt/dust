@@ -1,4 +1,5 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type {WithAPIErrorReponse} from "@dust-tt/types";
+import { assertNever  } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -97,12 +98,32 @@ async function handler(
 
       const { connectionId, provider } = bodyValidation.right;
 
-      const transcriptsConfigurationAlreadyExists =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
-          auth,
-        });
+      let providerNeedsWorkspaceConfiguration;
+      switch (provider) {
+        case "google_drive":
+          providerNeedsWorkspaceConfiguration = false;
+          break;
+        case "gong":
+          providerNeedsWorkspaceConfiguration = true;
+          break;
+        default:
+          assertNever(provider);
+      }
 
-      if (transcriptsConfigurationAlreadyExists) {
+      let workspaceConfigurationAlreadyExists = null;
+      const userTranscriptsConfigurationAlreadyExists =
+            await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+              auth,
+            });
+
+      if(providerNeedsWorkspaceConfiguration) {
+        workspaceConfigurationAlreadyExists =
+            await LabsTranscriptsConfigurationResource.findByWorkspaceDefault({
+              auth,
+            });
+      }
+
+      if (userTranscriptsConfigurationAlreadyExists && !providerNeedsWorkspaceConfiguration) {
         return apiError(req, res, {
           status_code: 409,
           api_error: {
@@ -118,6 +139,7 @@ async function handler(
           workspaceId: owner.id,
           provider,
           connectionId,
+          defaultForWorkspace: providerNeedsWorkspaceConfiguration && !workspaceConfigurationAlreadyExists
         });
 
       return res
