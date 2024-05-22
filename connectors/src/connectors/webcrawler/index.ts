@@ -234,6 +234,7 @@ export async function unpauseWebcrawlerConnector(
     throw new Error("Connector not found.");
   }
   await connector.markAsUnpaused();
+
   const startRes = await launchCrawlWebsiteWorkflow(connectorId);
   if (startRes.isErr()) {
     return startRes;
@@ -413,7 +414,6 @@ export async function setWebcrawlerConfiguration(
       new Error(`Webcrawler configuration not found for ${connectorId}`)
     );
   }
-
   await webcrawlerConfig.update({
     url: configuration.url,
     maxPageToCrawl: configuration.maxPageToCrawl,
@@ -443,6 +443,7 @@ export async function setWebcrawlerConfiguration(
   if (stopRes.isErr()) {
     return new Err(stopRes.error);
   }
+
   const startRes = await launchCrawlWebsiteWorkflow(connector.id);
   if (startRes.isErr()) {
     return new Err(startRes.error);
