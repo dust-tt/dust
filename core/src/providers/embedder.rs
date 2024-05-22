@@ -1,8 +1,11 @@
+use std::fmt;
+
 use crate::cached_request::CachedRequest;
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
@@ -157,4 +160,38 @@ impl EmbedderRequest {
     //         }
     //     }
     // }
+}
+
+#[derive(Debug, ValueEnum, Clone, PartialEq)]
+pub enum SupportedEmbedderModels {
+    #[clap(name = "text-embedding-ada-002")]
+    TextEmbeddingAda002,
+}
+
+impl fmt::Display for SupportedEmbedderModels {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SupportedEmbedderModels::TextEmbeddingAda002 => write!(f, "text-embedding-ada-002"),
+        }
+    }
+}
+
+// Custom type to map provider to models.
+pub struct EmbedderProvidersModelMap;
+
+impl EmbedderProvidersModelMap {
+    fn get_models(provider: &ProviderID) -> Result<Vec<SupportedEmbedderModels>> {
+        match provider {
+            &ProviderID::OpenAI => Ok(vec![SupportedEmbedderModels::TextEmbeddingAda002]),
+            _ => Err(anyhow!("Provider not supported for embeddings.")),
+        }
+    }
+
+    pub fn is_model_supported(provider: &ProviderID, model: &SupportedEmbedderModels) -> bool {
+        if let Ok(models) = Self::get_models(provider) {
+            models.contains(model)
+        } else {
+            false
+        }
+    }
 }

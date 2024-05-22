@@ -1,6 +1,7 @@
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -10,30 +11,34 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
 pub enum QdrantCluster {
-    #[serde(rename = "main-0")]
-    Main0,
+    #[serde(rename = "cluster-0")]
+    Cluster0,
     #[serde(rename = "dedicated-0")]
     Dedicated0,
     #[serde(rename = "dedicated-1")]
     Dedicated1,
     #[serde(rename = "dedicated-2")]
     Dedicated2,
+    #[serde(rename = "main-0")]
+    Main0,
 }
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
-    QdrantCluster::Main0,
+    QdrantCluster::Cluster0,
     QdrantCluster::Dedicated0,
     QdrantCluster::Dedicated1,
     QdrantCluster::Dedicated2,
+    QdrantCluster::Main0,
 ];
 
-impl ToString for QdrantCluster {
-    fn to_string(&self) -> String {
+impl fmt::Display for QdrantCluster {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QdrantCluster::Main0 => String::from("main-0"),
-            QdrantCluster::Dedicated0 => String::from("dedicated-0"),
-            QdrantCluster::Dedicated1 => String::from("dedicated-1"),
-            QdrantCluster::Dedicated2 => String::from("dedicated-2"),
+            QdrantCluster::Cluster0 => write!(f, "cluster-0"),
+            QdrantCluster::Dedicated0 => write!(f, "dedicated-0"),
+            QdrantCluster::Dedicated1 => write!(f, "dedicated-1"),
+            QdrantCluster::Dedicated2 => write!(f, "dedicated-2"),
+            QdrantCluster::Main0 => write!(f, "main-0"),
         }
     }
 }
@@ -42,10 +47,11 @@ impl FromStr for QdrantCluster {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "main-0" => Ok(QdrantCluster::Main0),
+            "cluster-0" => Ok(QdrantCluster::Cluster0),
             "dedicated-0" => Ok(QdrantCluster::Dedicated0),
             "dedicated-1" => Ok(QdrantCluster::Dedicated1),
             "dedicated-2" => Ok(QdrantCluster::Dedicated2),
+            "main-0" => Ok(QdrantCluster::Main0),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -53,10 +59,11 @@ impl FromStr for QdrantCluster {
 
 pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
-        QdrantCluster::Main0 => "QDRANT_MAIN_0",
+        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
         QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
         QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
+        QdrantCluster::Main0 => "QDRANT_MAIN_0",
     }
 }
 

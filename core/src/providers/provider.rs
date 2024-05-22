@@ -9,14 +9,16 @@ use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use clap::ValueEnum;
 use futures::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
 use super::google_ai_studio::GoogleAiStudioProvider;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderID {
     OpenAI,
@@ -30,16 +32,16 @@ pub enum ProviderID {
     GoogleAiStudio,
 }
 
-impl ToString for ProviderID {
-    fn to_string(&self) -> String {
+impl fmt::Display for ProviderID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProviderID::OpenAI => String::from("openai"),
-            ProviderID::Cohere => String::from("cohere"),
-            ProviderID::AI21 => String::from("ai21"),
-            ProviderID::AzureOpenAI => String::from("azure_openai"),
-            ProviderID::Anthropic => String::from("anthropic"),
-            ProviderID::Mistral => String::from("mistral"),
-            ProviderID::GoogleAiStudio => String::from("google_ai_studio"),
+            ProviderID::OpenAI => write!(f, "openai"),
+            ProviderID::Cohere => write!(f, "cohere"),
+            ProviderID::AI21 => write!(f, "ai21"),
+            ProviderID::AzureOpenAI => write!(f, "azure_openai"),
+            ProviderID::Anthropic => write!(f, "anthropic"),
+            ProviderID::Mistral => write!(f, "mistral"),
+            ProviderID::GoogleAiStudio => write!(f, "google_ai_studio"),
         }
     }
 }
