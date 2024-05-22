@@ -295,16 +295,12 @@ function retrievalActionSpecification({
   };
 }
 
-// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
-export async function generateRetrievalSpecification(
+// This is deprecated and should only be used when running agents in "single action mode" (in legacy_agent.ts).
+export async function deprecatedGenerateRetrievalSpecificationForSingleActionAgent(
   auth: Authenticator,
   {
     actionConfiguration,
-    name = "search_data_sources",
-    description,
   }: {
-    name?: string;
-    description?: string;
     actionConfiguration: RetrievalConfigurationType;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
@@ -315,13 +311,44 @@ export async function generateRetrievalSpecification(
 
   const spec = retrievalActionSpecification({
     actionConfiguration,
-    name,
+    name: "search_data_sources",
     description:
-      description ??
       "Search the data sources specified by the user for information to answer their request." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
+      " The search is based on semantic similarity between the query and chunks of information" +
+      " from the data sources.",
   });
+  return new Ok(spec);
+}
+
+// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
+export async function generateRetrievalSpecification(
+  auth: Authenticator,
+  {
+    actionConfiguration,
+    name,
+    description,
+  }: {
+    name: string;
+    description: string;
+    actionConfiguration: RetrievalConfigurationType;
+  }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+  }
+
+  const actionDescription =
+    "Search the data sources specified by the user for information to answer their request." +
+    " The search is based on semantic similarity between the query and chunks of information" +
+    ` from the data sources.\nThe data sources are described by the user as:\n${description}`;
+
+  const spec = retrievalActionSpecification({
+    actionConfiguration,
+    name,
+    description: actionDescription,
+  });
+
   return new Ok(spec);
 }
 

@@ -152,19 +152,43 @@ async function tablesQueryActionSpecification({
 }
 
 // Generates the action specification for generation of rawInputs passed to `runTablesQuery`.
-export async function generateTablesQuerySpecification(
-  auth: Authenticator,
-  {
-    name = "query_tables",
-    description = "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
-  }: { name?: string; description?: string } = {}
+export async function deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
+  auth: Authenticator
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  const spec = await tablesQueryActionSpecification({ name, description });
+  const actionDescription =
+    "Query the structured data tables specificied by the user to retrieve ingormation to answer their request." +
+    " The data is queried by generating a SQL query from the plain text language question.";
+
+  const spec = await tablesQueryActionSpecification({
+    name: "query_tables",
+    description: actionDescription,
+  });
+  return new Ok(spec);
+}
+
+export async function generateTablesQuerySpecification(
+  auth: Authenticator,
+  { name, description }: { name: string; description: string }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
+  }
+
+  const actionDescription =
+    "Query the structured data tables specificied by the user to retrieve ingormation to answer their request." +
+    " The data is queried by generating a SQL query from the plain text language question.\n" +
+    `The tables are described by the user as:\n${description}`;
+
+  const spec = await tablesQueryActionSpecification({
+    name,
+    description: actionDescription,
+  });
   return new Ok(spec);
 }
 
