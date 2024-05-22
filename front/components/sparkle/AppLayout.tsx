@@ -1,5 +1,11 @@
-import { Banner, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
-import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import {
+  Banner,
+  CollapseButton,
+  Item,
+  Logo,
+  Tab,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
@@ -8,7 +14,14 @@ import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import React, { Fragment, useContext, useEffect, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type {
@@ -27,40 +40,32 @@ import { classNames } from "@app/lib/utils";
  */
 const SHOW_INCIDENT_BANNER = false;
 
-function ToggleSideBarButton({ laptopNavOpen, setLaptopNavOpen }) {
-  const [isHovered, setIsHovered] = useState(false);
+function ToggleSideBarButton({
+  laptopNavOpen,
+  setLaptopNavOpen,
+}: {
+  laptopNavOpen: boolean;
+  setLaptopNavOpen: (open: boolean) => void;
+}) {
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const [direction, setDirection] = useState<"left" | "right">("left");
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     setLaptopNavOpen(!laptopNavOpen);
-    setIsHovered(false);
-  };
+    setDirection((prevDirection) =>
+      prevDirection === "left" ? "right" : "left"
+    );
+  }, [laptopNavOpen, setLaptopNavOpen]);
 
   return (
     <div
-      className={`hidden lg:fixed lg:top-1/2 lg:flex lg:h-10 lg:w-5 lg:rounded-full lg:hover:bg-gray-100 ${
+      ref={buttonRef}
+      onClick={handleClick}
+      className={`hidden lg:fixed lg:top-1/2 lg:flex lg:h-10 lg:w-5 ${
         laptopNavOpen ? "lg:left-80" : "lg:left-2"
       }`}
     >
-      <button
-        type="button"
-        onClick={handleClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className="flex h-full w-full items-center justify-center"
-        aria-label="Toggle laptop navigation bar"
-      >
-        {!isHovered ? (
-          <div className="lg:h-6 lg:w-1 lg:rounded-full lg:bg-gray-400"></div>
-        ) : (
-          <div>
-            {laptopNavOpen ? (
-              <ChevronLeftIcon className="lg:h-6 lg:w-6 lg:text-gray-400" />
-            ) : (
-              <ChevronRightIcon className="lg:h-6 lg:w-6 lg:text-gray-400" />
-            )}
-          </div>
-        )}
-      </button>
+      <CollapseButton direction={direction} />
     </div>
   );
 }
