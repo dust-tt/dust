@@ -94,6 +94,9 @@ export { Avatar };
 import Spinner from "./components/Spinner";
 export { Spinner };
 
+import CollapseButton from "./components/CollapseButton";
+export { CollapseButton };
+
 import { Modal } from "./components/Modal";
 export { Modal };
 

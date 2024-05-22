@@ -1,11 +1,12 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import * as t from "io-ts";
-import React from "react";
+import React, { useContext } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { InputField } from "@app/components/poke/shadcn/ui/form/fields";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface SlackChannelPatternInputProps {
@@ -29,6 +30,7 @@ export function SlackChannelPatternInput({
       inputValue: initialValue,
     },
   });
+  const sendNotification = useContext(SendNotificationsContext);
 
   const { submit: handleAutoReadChannelPatternChange } = useSubmitFunction(
     async (newValue: string) => {
@@ -49,6 +51,11 @@ export function SlackChannelPatternInput({
         if (!r.ok) {
           throw new Error("Failed to update autoReadChannelPattern.");
         }
+        sendNotification({
+          title: "Success!",
+          description: "Slack channel pattern successfully updated.",
+          type: "success",
+        });
       } catch (e) {
         console.error(e);
         window.alert(

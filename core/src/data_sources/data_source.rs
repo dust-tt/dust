@@ -4,7 +4,7 @@ use crate::data_sources::splitter::{splitter, SplitterID};
 use crate::databases_store::store::DatabasesStore;
 use crate::project::Project;
 use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::provider::{provider, ProviderID};
+use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::stores::store::Store;
 use crate::utils;
@@ -15,22 +15,17 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
 use qdrant_client::qdrant::vectors::VectorsOptions;
-use qdrant_client::qdrant::{
-    points_selector::PointsSelectorOneOf, Filter, PointId, PointsSelector, RetrievedPoint,
-    ScoredPoint, ScrollPoints,
-};
-use qdrant_client::{
-    prelude::{Payload, QdrantClient},
-    qdrant,
-};
+use qdrant_client::qdrant::{Filter, PointId, RetrievedPoint, ScoredPoint};
+use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::try_join;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
+
+use super::qdrant::DustQdrantClient;
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
@@ -427,7 +422,7 @@ pub struct DataSourceConfig {
 
 /// The `data_source_id` is the unique identifier that allows routing to the right data in SQL store
 /// as well as vector search db. It is a generated unique ID.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct DataSource {
     project: Project,
     created: u64,
@@ -547,94 +542,6 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn create_qdrant_collection(
-        &self,
-        credentials: Credentials,
-        qdrant_client: Arc<QdrantClient>,
-    ) -> Result<()> {
-        let mut embedder = provider(self.config.provider_id).embedder(self.config.model_id.clone());
-        embedder.initialize(credentials).await?;
-
-        qdrant_client
-            .create_collection(&qdrant::CreateCollection {
-                collection_name: self.qdrant_collection(),
-                vectors_config: Some(qdrant::VectorsConfig {
-                    config: Some(qdrant::vectors_config::Config::Params(
-                        qdrant::VectorParams {
-                            size: embedder.embedding_size() as u64,
-                            distance: qdrant::Distance::Cosine.into(),
-                            on_disk: Some(true),
-                            ..Default::default()
-                        },
-                    )),
-                }),
-                hnsw_config: Some(qdrant::HnswConfigDiff {
-                    m: Some(16),
-                    max_indexing_threads: Some(1),
-                    ..Default::default()
-                }),
-                optimizers_config: Some(qdrant::OptimizersConfigDiff {
-                    memmap_threshold: Some(8192),
-                    ..Default::default()
-                }),
-                quantization_config: Some(qdrant::QuantizationConfig {
-                    quantization: Some(qdrant::quantization_config::Quantization::Scalar(
-                        qdrant::ScalarQuantization {
-                            r#type: qdrant::QuantizationType::Int8.into(),
-                            quantile: Some(0.99),
-                            always_ram: Some(true),
-                        },
-                    )),
-                }),
-                // We keep the entire payload on disk and index on document_id and tags.
-                on_disk_payload: Some(true),
-                ..Default::default()
-            })
-            .await?;
-
-        let _ = qdrant_client
-            .create_field_index(
-                self.qdrant_collection(),
-                "document_id_hash",
-                qdrant::FieldType::Keyword,
-                None,
-                None,
-            )
-            .await?;
-
-        let _ = qdrant_client
-            .create_field_index(
-                self.qdrant_collection(),
-                "tags",
-                qdrant::FieldType::Keyword,
-                None,
-                None,
-            )
-            .await?;
-
-        let _ = qdrant_client
-            .create_field_index(
-                self.qdrant_collection(),
-                "parents",
-                qdrant::FieldType::Keyword,
-                None,
-                None,
-            )
-            .await?;
-
-        let _ = qdrant_client
-            .create_field_index(
-                self.qdrant_collection(),
-                "timestamp",
-                qdrant::FieldType::Integer,
-                None,
-                None,
-            )
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn setup(
         &self,
         credentials: Credentials,
@@ -664,9 +571,7 @@ impl DataSource {
             "Created GCP bucket for data_source"
         );
 
-        // Qdrant create collection and indexes.
-        self.create_qdrant_collection(credentials, qdrant_client.clone())
-            .await?;
+        qdrant_client.create_data_source(self, credentials).await?;
 
         info!(
             data_source_id = self.data_source_id(),
@@ -748,24 +653,15 @@ impl DataSource {
             ..Default::default()
         };
 
-        let points_selector = PointsSelector {
-            points_selector_one_of: Some(PointsSelectorOneOf::Filter(Filter {
-                must: vec![field_condition.into()],
-                ..Default::default()
-            })),
+        let filter = Filter {
+            must: vec![field_condition.into()],
+            ..Default::default()
         };
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 match qdrant_client
-                    .set_payload(
-                        self.qdrant_collection().to_string(),
-                        None,
-                        &points_selector,
-                        payload.clone(),
-                        None,
-                        None,
-                    )
+                    .set_payload(self, filter.clone(), payload.clone())
                     .await
                 {
                     Ok(_) => {
@@ -788,16 +684,7 @@ impl DataSource {
             None => (),
         }
 
-        qdrant_client
-            .set_payload(
-                self.qdrant_collection().to_string(),
-                None,
-                &points_selector,
-                payload,
-                None,
-                None,
-            )
-            .await?;
+        qdrant_client.set_payload(&self, filter, payload).await?;
 
         Ok(())
     }
@@ -1006,12 +893,9 @@ impl DataSource {
         let mut page_offset: Option<PointId> = None;
         loop {
             let scroll_results = qdrant_client
-                .scroll(&ScrollPoints {
-                    collection_name: self.qdrant_collection(),
-                    with_vectors: Some(true.into()),
-                    limit: Some(1024),
-                    offset: page_offset,
-                    filter: Some(qdrant::Filter {
+                .scroll(
+                    self,
+                    Some(qdrant::Filter {
                         must_not: vec![],
                         should: vec![],
                         must: vec![qdrant::FieldCondition {
@@ -1026,8 +910,10 @@ impl DataSource {
                         .into()],
                         min_should: None,
                     }),
-                    ..Default::default()
-                })
+                    Some(1024),
+                    page_offset,
+                    Some(true.into()),
+                )
                 .await?;
 
             for result in &scroll_results.result {
@@ -1151,7 +1037,7 @@ impl DataSource {
         let now = utils::now();
 
         // Clean-up previous document chunks (vector search db).
-        let filter: PointsSelector = qdrant::Filter {
+        let filter = qdrant::Filter {
             must_not: vec![],
             should: vec![],
             must: vec![qdrant::FieldCondition {
@@ -1165,38 +1051,30 @@ impl DataSource {
             }
             .into()],
             min_should: None,
-        }
-        .into();
+        };
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
-            Some(qdrant_client) => {
-                match qdrant_client
-                    .delete_points(self.qdrant_collection(), None, &filter, None)
-                    .await
-                {
-                    Ok(_) => {
-                        info!(
-                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
-                            "[SHADOW_WRITE_SUCCESS] Delete points"
-                        );
-                    }
-                    Err(e) => {
-                        error!(
-                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
-                            error = %e,
-                            "[SHADOW_WRITE_FAIL] Delete points"
-                        );
-                    }
+            Some(qdrant_client) => match qdrant_client.delete_points(self, filter.clone()).await {
+                Ok(_) => {
+                    info!(
+                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                        collection = self.qdrant_collection(),
+                        "[SHADOW_WRITE_SUCCESS] Delete points"
+                    );
                 }
-            }
+                Err(e) => {
+                    error!(
+                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                        collection = self.qdrant_collection(),
+                        error = %e,
+                        "[SHADOW_WRITE_FAIL] Delete points"
+                    );
+                }
+            },
             None => (),
         }
 
-        qdrant_client
-            .delete_points(self.qdrant_collection(), None, &filter, None)
-            .await?;
+        qdrant_client.delete_points(self, filter).await?;
 
         info!(
             data_source_id = self.data_source_id(),
@@ -1262,10 +1140,7 @@ impl DataSource {
 
                 match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
                     Some(qdrant_client) => {
-                        match qdrant_client
-                            .upsert_points(self.qdrant_collection(), None, chunk.clone(), None)
-                            .await
-                        {
+                        match qdrant_client.upsert_points(self, chunk.clone()).await {
                             Ok(_) => {
                                 info!(
                                     cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
@@ -1286,9 +1161,7 @@ impl DataSource {
                     None => (),
                 }
 
-                qdrant_client
-                    .upsert_points(self.qdrant_collection(), None, chunk, None)
-                    .await?;
+                qdrant_client.upsert_points(self, chunk).await?;
 
                 info!(
                     points_count = chunk_len,
@@ -1360,7 +1233,7 @@ impl DataSource {
                     ))?;
                 }
                 let chunks = self
-                    .retrieve_chunks_without_query(store, &qdrant_client, top_k, &filter)
+                    .retrieve_chunks_without_query(store, qdrant_client.clone(), top_k, &filter)
                     .await?;
                 info!(
                     duration = utils::now() - time_embedding_start,
@@ -1388,22 +1261,13 @@ impl DataSource {
 
                 let time_search_start = utils::now();
                 let results = qdrant_client
-                    .search_points(&qdrant::SearchPoints {
-                        collection_name: self.qdrant_collection(),
-                        vector: v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
-                        filter: f,
-                        limit: top_k as u64,
-                        with_payload: Some(true.into()),
-                        params: None,
-                        score_threshold: None,
-                        offset: None,
-                        vector_name: None,
-                        with_vectors: None,
-                        read_consistency: None,
-                        shard_key_selector: None,
-                        timeout: None,
-                        sparse_indices: None,
-                    })
+                    .search_points(
+                        self,
+                        v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
+                        f,
+                        top_k as u64,
+                        Some(true.into()),
+                    )
                     .await?;
 
                 info!(
@@ -1513,7 +1377,7 @@ impl DataSource {
                             .filter(|(document_id, _)| document_id == &d.document_id)
                             .map(|(_, c)| c.clone())
                             .collect::<Vec<Chunk>>();
-                        let collection = self.qdrant_collection();
+                        let data_source = (*self).clone();
                         let chunk_size = self.config.max_chunk_size;
                         let qdrant_client = qdrant_client.clone();
                         let mut token_count = chunks.len() * chunk_size;
@@ -1580,13 +1444,16 @@ impl DataSource {
                                 ],
                                 ..Default::default()
                             };
-                            let search_points = qdrant::ScrollPoints {
-                                collection_name: collection,
-                                filter: Some(filter),
-                                limit: Some(new_offsets_count),
-                                ..Default::default()
-                            };
-                            let results_expand = match qdrant_client.scroll(&search_points).await {
+                            let results_expand = match qdrant_client
+                                .scroll(
+                                    &data_source,
+                                    Some(filter),
+                                    Some(new_offsets_count),
+                                    None,
+                                    None,
+                                )
+                                .await
+                            {
                                 Ok(r) => r.result,
                                 Err(e) => {
                                     error!(
@@ -1729,7 +1596,7 @@ impl DataSource {
     async fn retrieve_chunks_without_query(
         &self,
         store: Box<dyn Store + Sync + Send>,
-        qdrant_client: &Arc<QdrantClient>,
+        qdrant_client: DustQdrantClient,
         top_k: usize,
         filter: &Option<SearchFilter>,
     ) -> Result<Vec<(String, Chunk)>> {
@@ -1789,13 +1656,13 @@ impl DataSource {
             let mut page_count = 0;
             loop {
                 let mut r = qdrant_client
-                    .scroll(&qdrant::ScrollPoints {
-                        collection_name: self.qdrant_collection(),
-                        filter: Some(qdrant_batch_filter.clone()),
-                        limit: Some(qdrant_page_size),
-                        offset: page_offset,
-                        ..Default::default()
-                    })
+                    .scroll(
+                        &self,
+                        Some(qdrant_batch_filter.clone()),
+                        Some(qdrant_page_size),
+                        page_offset,
+                        None,
+                    )
                     .await?;
                 batch_points.append(&mut r.result);
                 page_offset = r.next_page_offset;
@@ -1926,7 +1793,7 @@ impl DataSource {
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
         // Clean-up document chunks (vector search db).
-        let filter: PointsSelector = qdrant::Filter {
+        let filter = qdrant::Filter {
             must_not: vec![],
             should: vec![],
             must: vec![qdrant::FieldCondition {
@@ -1940,38 +1807,30 @@ impl DataSource {
             }
             .into()],
             min_should: None,
-        }
-        .into();
+        };
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
-            Some(qdrant_client) => {
-                match qdrant_client
-                    .delete_points(self.qdrant_collection(), None, &filter, None)
-                    .await
-                {
-                    Ok(_) => {
-                        info!(
-                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
-                            "[SHADOW_WRITE_SUCCESS] Delete points"
-                        );
-                    }
-                    Err(e) => {
-                        error!(
-                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
-                            error = %e,
-                            "[SHADOW_WRITE_FAIL] Delete points"
-                        );
-                    }
+            Some(qdrant_client) => match qdrant_client.delete_points(self, filter.clone()).await {
+                Ok(_) => {
+                    info!(
+                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                        collection = self.qdrant_collection(),
+                        "[SHADOW_WRITE_SUCCESS] Delete points"
+                    );
                 }
-            }
+                Err(e) => {
+                    error!(
+                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                        collection = self.qdrant_collection(),
+                        error = %e,
+                        "[SHADOW_WRITE_FAIL] Delete points"
+                    );
+                }
+            },
             None => (),
         }
 
-        qdrant_client
-            .delete_points(self.qdrant_collection(), None, &filter, None)
-            .await?;
+        qdrant_client.delete_points(self, filter).await?;
 
         // Delete document (SQL)
         store
@@ -1999,10 +1858,7 @@ impl DataSource {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
         let store = store.clone();
 
-        // Delete collection (vector search db).
-        qdrant_client
-            .delete_collection(self.qdrant_collection())
-            .await?;
+        qdrant_client.delete_data_source(self).await?;
 
         info!(
             data_source_id = self.data_source_id(),

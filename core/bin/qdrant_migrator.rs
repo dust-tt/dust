@@ -11,7 +11,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
     prelude::Payload,
-    qdrant::{self, PointId, ScrollPoints},
+    qdrant::{self, PointId},
 };
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -96,11 +96,7 @@ async fn show(
     ));
 
     let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
-    match qdrant_client
-        .collection_info(ds.qdrant_collection())
-        .await?
-        .result
-    {
+    match qdrant_client.collection_info(&ds).await?.result {
         Some(info) => {
             utils::info(&format!(
                 "[MAIN] Qdrant collection: collection={} status={} \
@@ -122,7 +118,7 @@ async fn show(
                 .shadow_write_client(&ds.config().qdrant_config)
                 .unwrap();
             match shadow_write_qdrant_client
-                .collection_info(ds.qdrant_collection())
+                .collection_info(&ds)
                 .await?
                 .result
             {
@@ -184,7 +180,8 @@ async fn set_shadow_write(
     let mut credentials = Credentials::new();
     credentials.insert("OPENAI_API_KEY".to_string(), "foo".to_string());
 
-    ds.create_qdrant_collection(credentials, shadow_write_qdrant_client.clone())
+    shadow_write_qdrant_client
+        .create_data_source(&ds, credentials)
         .await?;
 
     utils::done(&format!(
@@ -235,7 +232,7 @@ async fn clear_shadow_write(
         };
 
     match shadow_write_qdrant_client
-        .collection_info(ds.qdrant_collection())
+        .collection_info(&ds)
         .await?
         .result
     {
@@ -262,9 +259,7 @@ async fn clear_shadow_write(
     };
 
     // Delete collection on shadow_write_cluster.
-    shadow_write_qdrant_client
-        .delete_collection(ds.qdrant_collection())
-        .await?;
+    shadow_write_qdrant_client.delete_data_source(&ds).await?;
 
     utils::done(&format!(
         "Deleted qdrant shadow_write_cluster collection: \
@@ -345,14 +340,13 @@ async fn migrate_shadow_write(
     loop {
         let now = utils::now();
         let scroll_results = match qdrant_client
-            .scroll(&ScrollPoints {
-                collection_name: ds.qdrant_collection(),
-                with_vectors: Some(true.into()),
-                with_payload: Some(true.into()),
-                limit: Some(points_per_request as u32),
-                offset: page_offset.clone(),
-                ..Default::default()
-            })
+            .scroll(
+                &ds,
+                None, // the v1 data_source.internal_id is injected by the client.
+                Some(points_per_request as u32),
+                page_offset.clone(),
+                Some(true.into()),
+            )
             .await
         {
             Ok(r) => r,
@@ -387,10 +381,7 @@ async fn migrate_shadow_write(
 
         // Empty upserts trigger errors.
         if count > 0 {
-            match shadow_write_qdrant_client
-                .upsert_points(ds.qdrant_collection(), None, points, None)
-                .await
-            {
+            match shadow_write_qdrant_client.upsert_points(&ds, points).await {
                 Ok(_) => (),
                 Err(e) => {
                     if retry < 3 {
@@ -553,7 +544,7 @@ async fn migrate(
                     .shadow_write_client(&ds.config().qdrant_config)
                     .unwrap();
                 match shadow_write_qdrant_client
-                    .collection_info(ds.qdrant_collection())
+                    .collection_info(&ds)
                     .await?
                     .result
                 {
