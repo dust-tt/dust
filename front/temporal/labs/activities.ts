@@ -77,6 +77,7 @@ export async function retrieveNewTranscriptsActivity(
 
     case "gong":
       const gongTranscriptsIds = await retrieveGongTranscripts(
+        auth,
         transcriptsConfiguration,
         localLogger
       );
@@ -170,6 +171,7 @@ export async function processTranscriptActivity(
 
     case "gong":
       const gongResult = await retrieveGongTranscriptContent(
+        auth,
         transcriptsConfiguration,
         fileId,
         localLogger
@@ -180,6 +182,21 @@ export async function processTranscriptActivity(
 
     default:
       assertNever(transcriptsConfiguration.provider);
+  }
+
+  // Meetings transcripts < 200 characters are likely not useful to process.
+  if (transcriptContent.length < 200) {
+    localLogger.info(
+      {},
+      "[processTranscriptActivity] Transcript content too short or empty. Skipping."
+    );
+    await transcriptsConfiguration.recordHistory({
+      configurationId: transcriptsConfiguration.id,
+      fileId,
+      fileName: transcriptTitle,
+      conversationId: null,
+    });
+    return;
   }
 
   const owner = auth.workspace();

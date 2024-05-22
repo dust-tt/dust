@@ -131,7 +131,6 @@ export default function LabsTranscriptsIndex({
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
-  console.log(agents);
 
   const handleProviderChange = async (
     provider: LabsTranscriptsProviderType
@@ -240,8 +239,9 @@ export default function LabsTranscriptsIndex({
   };
 
   const saveOauthConnection = async (
-    connectionId: string,
-    provider: string
+    connectionId: string | null,
+    provider: string,
+    defaultForWorkspace = false
   ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
@@ -251,6 +251,7 @@ export default function LabsTranscriptsIndex({
       body: JSON.stringify({
         connectionId,
         provider,
+        defaultForWorkspace,
       }),
     });
 
@@ -316,30 +317,22 @@ export default function LabsTranscriptsIndex({
         `/api/w/${owner.sId}/labs/transcripts/default`
       );
 
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect Gong",
-          description: "Could not connect to Gong. Please try again.",
-        });
-        return;
-      }
-
-      const defaultConfigurationRes = await response.json();
-      const defaultConfiguration = defaultConfigurationRes.data;
-
       // If we already have a default configuration, just create a configurationId for that user.
-      if (defaultConfiguration.id) {
+      if (response.ok) {
+        const defaultConfigurationRes = await response.json();
+        const defaultConfiguration = defaultConfigurationRes.configuration;
+
         if (defaultConfiguration.provider != "gong") {
           sendNotification({
             type: "error",
             title: "Failed to connect Gong",
-            description: "Your workspace is already connected to another provider",
+            description:
+              "Your workspace is already connected to another provider",
           });
           return;
         }
 
-        console.log('CREATING NEW NON DEFAULT CONNECTION HERE');
+        await saveOauthConnection(null, transcriptsConfigurationState.provider);
 
         // Create a new connection for the user without going through Nango auth
         return;
@@ -351,14 +344,13 @@ export default function LabsTranscriptsIndex({
         );
         const {
           connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-          nangoGongConnectorId,
-          newConnectionId
-        );
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoGongConnectorId, newConnectionId);
 
         await saveOauthConnection(
           nangoConnectionId,
-          transcriptsConfigurationState.provider
+          transcriptsConfigurationState.provider,
+          true
         );
       }
     } catch (error) {

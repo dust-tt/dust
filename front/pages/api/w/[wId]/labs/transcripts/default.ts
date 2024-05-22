@@ -1,15 +1,10 @@
-import type {WithAPIErrorReponse} from "@dust-tt/types";
-import { assertNever  } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts"
-
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 async function handler(
   req: NextApiRequest,
@@ -66,8 +61,7 @@ async function handler(
       return res.status(200).json({
         configuration: transcriptsConfigurationGet,
       });
-
-    }
   }
+}
 
 export default withLogging(handler);

@@ -23,11 +23,13 @@ export class LabsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare connectionId: string;
+  declare connectionId: string | null;
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
   declare defaultForWorkspace: boolean;
+
+  declare user: NonAttribute<User>;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -55,7 +57,7 @@ LabsTranscriptsConfigurationModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     provider: {
       type: DataTypes.STRING,
@@ -82,7 +84,10 @@ LabsTranscriptsConfigurationModel.init(
     indexes: [
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
-      { fields: ["provider", "workspaceId", "defaultForWorkspace"], unique: true},
+      {
+        fields: ["provider", "workspaceId", "defaultForWorkspace"],
+        unique: true,
+      },
     ],
   }
 );
