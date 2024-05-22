@@ -15,7 +15,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
 use qdrant_client::qdrant::vectors::VectorsOptions;
-use qdrant_client::qdrant::{Filter, PointId, RetrievedPoint, ScoredPoint};
+use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
@@ -633,16 +633,15 @@ impl DataSource {
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
 
-        let field_condition = qdrant::FieldCondition {
-            key: "document_id_hash".to_string(),
-            r#match: Some(qdrant::Match {
-                match_value: Some(qdrant::r#match::MatchValue::Keyword(document_id_hash)),
-            }),
-            ..Default::default()
-        };
-
-        let filter = Filter {
-            must: vec![field_condition.into()],
+        let filter = qdrant::Filter {
+            must: vec![qdrant::FieldCondition {
+                key: "document_id_hash".to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keyword(document_id_hash)),
+                }),
+                ..Default::default()
+            }
+            .into()],
             ..Default::default()
         };
 
