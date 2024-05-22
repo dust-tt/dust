@@ -311,24 +311,56 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      // We first check if 
-
-      const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildLabsConnectionId(
-        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        transcriptsConfigurationState.provider
-      );
-      const {
-        connectionId: nangoConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoGongConnectorId,
-        newConnectionId
+      // We first check if there's a default Gong connection for the workspace
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/transcripts/default`
       );
 
-      await saveOauthConnection(
-        nangoConnectionId,
-        transcriptsConfigurationState.provider
-      );
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect Gong",
+          description: "Could not connect to Gong. Please try again.",
+        });
+        return;
+      }
+
+      const defaultConfigurationRes = await response.json();
+      const defaultConfiguration = defaultConfigurationRes.data;
+
+      // If we already have a default configuration, just create a configurationId for that user.
+      if (defaultConfiguration.id) {
+        if (defaultConfiguration.provider != "gong") {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect Gong",
+            description: "Your workspace is already connected to another provider",
+          });
+          return;
+        }
+
+        console.log('CREATING NEW NON DEFAULT CONNECTION HERE');
+
+        // Create a new connection for the user without going through Nango auth
+        return;
+      } else {
+        const nango = new Nango({ publicKey: nangoPublicKey });
+        const newConnectionId = buildLabsConnectionId(
+          `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+          transcriptsConfigurationState.provider
+        );
+        const {
+          connectionId: nangoConnectionId,
+        }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+          nangoGongConnectorId,
+          newConnectionId
+        );
+
+        await saveOauthConnection(
+          nangoConnectionId,
+          transcriptsConfigurationState.provider
+        );
+      }
     } catch (error) {
       sendNotification({
         type: "error",
