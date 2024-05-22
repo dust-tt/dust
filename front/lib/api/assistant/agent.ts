@@ -347,18 +347,21 @@ export async function* runMultiActionsAgent(
 
       specifications.push(r.value);
     } else {
-      const r = await ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[a.type]
-        .fromActionConfiguration(a)
-        .buildSpecification(auth, {
-          name: a.name ?? undefined,
-          description: a.description ?? undefined,
-        });
+      const runner =
+        ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[
+          a.type
+        ].fromActionConfiguration(a);
 
-      if (r.isErr()) {
-        return r;
+      const res = await runner.buildSpecification(auth, {
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (res.isErr()) {
+        return res;
       }
 
-      specifications.push(r.value);
+      specifications.push(res.value);
     }
   }
   // not sure if the speicfications.push() is needed here TBD at review time.

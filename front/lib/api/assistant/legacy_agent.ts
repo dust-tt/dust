@@ -311,9 +311,12 @@ async function* runAction(
       actionConfiguration: action,
     });
   } else {
-    specRes = await ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[action.type]
-      .fromActionConfiguration(action)
-      .buildSpecification(auth, {});
+    const runner =
+      ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[
+        action.type
+      ].fromActionConfiguration(action);
+
+    specRes = await runner.buildSpecification(auth, {});
   }
 
   if (specRes.isErr()) {
