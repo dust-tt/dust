@@ -211,8 +211,8 @@ export const MISTRAL_8X22B_MODEL_CONFIG: ModelConfigurationType = {
   modelId: MISTRAL_8X22B_MODEL_ID,
   displayName: "Mistral 8x22B",
   contextSize: 64_000,
-  recommendedTopK: 16,
-  recommendedExhaustiveTopK: 56, // 28_672
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "Mistral's latest open model (64k context).",
   shortDescription: "Mistral's latest open model.",
