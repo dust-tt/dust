@@ -59,13 +59,13 @@ export class TablesQueryAction extends BaseAction {
 
   renderForModel(): ModelMessageType {
     let content = "";
-    if (!this.output) {
-      throw new Error(
-        "Output not set on TablesQuery action; execution is likely not finished."
-      );
-    }
     content += `OUTPUT:\n`;
-    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    if (this.output === null) {
+      content += "(query failed)\n";
+    } else {
+      content += `${JSON.stringify(this.output, null, 2)}\n`;
+    }
 
     return {
       role: "action" as const,
@@ -84,13 +84,13 @@ export class TablesQueryAction extends BaseAction {
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
-    if (!this.output) {
-      throw new Error(
-        "Output not set on TablesQuery action; execution is likely not finished."
-      );
-    }
     content += `OUTPUT:\n`;
-    content += `${JSON.stringify(this.output, null, 2)}\n`;
+
+    if (this.output === null) {
+      content += "(query failed)\n";
+    } else {
+      content += `${JSON.stringify(this.output, null, 2)}\n`;
+    }
 
     return {
       role: "function" as const,

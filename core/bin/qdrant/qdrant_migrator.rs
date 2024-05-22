@@ -11,7 +11,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
     prelude::Payload,
-    qdrant::{self, PointId, ScrollPoints},
+    qdrant::{self, PointId},
 };
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -84,8 +84,10 @@ async fn show(
     };
 
     utils::info(&format!(
-        "Data source: collection={} cluster={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+        "Data source: \
+            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
+        ds.data_source_id(),
+        ds.internal_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -96,16 +98,12 @@ async fn show(
     ));
 
     let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
-    match qdrant_client
-        .collection_info(ds.qdrant_collection())
-        .await?
-        .result
-    {
+    match qdrant_client.collection_info(&ds).await?.result {
         Some(info) => {
             utils::info(&format!(
                 "[MAIN] Qdrant collection: collection={} status={} \
-                             points_count={:?} cluster={} ",
-                ds.qdrant_collection(),
+                    points_count={:?} cluster={} ",
+                qdrant_client.collection_name(&ds),
                 info.status.to_string(),
                 info.points_count,
                 qdrant_clients
@@ -122,15 +120,15 @@ async fn show(
                 .shadow_write_client(&ds.config().qdrant_config)
                 .unwrap();
             match shadow_write_qdrant_client
-                .collection_info(ds.qdrant_collection())
+                .collection_info(&ds)
                 .await?
                 .result
             {
                 Some(info) => {
                     utils::info(&format!(
                         "[SHADOW] Qdrant collection: collection={} status={} \
-                             points_count={:?} cluster={}",
-                        ds.qdrant_collection(),
+                            points_count={:?} cluster={}",
+                        shadow_write_qdrant_client.collection_name(&ds),
                         info.status.to_string(),
                         info.points_count,
                         shadow_write_cluster.to_string(),
@@ -184,13 +182,14 @@ async fn set_shadow_write(
     let mut credentials = Credentials::new();
     credentials.insert("OPENAI_API_KEY".to_string(), "foo".to_string());
 
-    ds.create_qdrant_collection(credentials, shadow_write_qdrant_client.clone())
+    shadow_write_qdrant_client
+        .create_data_source(&ds, credentials)
         .await?;
 
     utils::done(&format!(
         "Created qdrant shadow_write_cluster collection: \
-                     collection={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+            collection={} shadow_write_cluster={}",
+        shadow_write_qdrant_client.collection_name(&ds),
         match qdrant_clients.shadow_write_cluster(&config.qdrant_config) {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
@@ -201,8 +200,10 @@ async fn set_shadow_write(
     ds.update_config(store, &config).await?;
 
     utils::done(&format!(
-        "Updated data source: collection={} cluster={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+        "Updated data source: \
+            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
+        ds.data_source_id(),
+        ds.internal_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -235,7 +236,7 @@ async fn clear_shadow_write(
         };
 
     match shadow_write_qdrant_client
-        .collection_info(ds.qdrant_collection())
+        .collection_info(&ds)
         .await?
         .result
     {
@@ -262,14 +263,12 @@ async fn clear_shadow_write(
     };
 
     // Delete collection on shadow_write_cluster.
-    shadow_write_qdrant_client
-        .delete_collection(ds.qdrant_collection())
-        .await?;
+    shadow_write_qdrant_client.delete_data_source(&ds).await?;
 
     utils::done(&format!(
         "Deleted qdrant shadow_write_cluster collection: \
-          collection={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+            collection={} shadow_write_cluster={}",
+        shadow_write_qdrant_client.collection_name(&ds),
         match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
@@ -293,8 +292,10 @@ async fn clear_shadow_write(
     ds.update_config(store, &config).await?;
 
     utils::done(&format!(
-        "Updated data source: collection={} cluster={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+        "Updated data source: \
+            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
+        ds.data_source_id(),
+        ds.internal_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -345,14 +346,13 @@ async fn migrate_shadow_write(
     loop {
         let now = utils::now();
         let scroll_results = match qdrant_client
-            .scroll(&ScrollPoints {
-                collection_name: ds.qdrant_collection(),
-                with_vectors: Some(true.into()),
-                with_payload: Some(true.into()),
-                limit: Some(points_per_request as u32),
-                offset: page_offset.clone(),
-                ..Default::default()
-            })
+            .scroll(
+                &ds,
+                None, // the v1 data_source.internal_id is injected by the client.
+                Some(points_per_request as u32),
+                page_offset.clone(),
+                Some(true.into()),
+            )
             .await
         {
             Ok(r) => r,
@@ -387,10 +387,7 @@ async fn migrate_shadow_write(
 
         // Empty upserts trigger errors.
         if count > 0 {
-            match shadow_write_qdrant_client
-                .upsert_points(ds.qdrant_collection(), None, points, None)
-                .await
-            {
+            match shadow_write_qdrant_client.upsert_points(&ds, points).await {
                 Ok(_) => (),
                 Err(e) => {
                     if retry < 3 {
@@ -459,8 +456,10 @@ async fn commit_shadow_write(
     ds.update_config(store, &config).await?;
 
     utils::info(&format!(
-        "Updated data source: collection={} cluster={} shadow_write_cluster={}",
-        ds.qdrant_collection(),
+        "Updated data source: \
+            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
+        ds.data_source_id(),
+        ds.internal_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -507,8 +506,9 @@ async fn migrate(
         // Confirm this is the migration we want.
         match utils::confirm(&format!(
             "Do you confirm `set_shadow_write` + `migrate_shadow_write`: \
-         ds={} from_cluster={} target_cluster={}?",
-            ds.qdrant_collection(),
+                data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
+            ds.data_source_id(),
+            ds.internal_id(),
             from_cluster,
             target_cluster,
         ))? {
@@ -553,15 +553,15 @@ async fn migrate(
                     .shadow_write_client(&ds.config().qdrant_config)
                     .unwrap();
                 match shadow_write_qdrant_client
-                    .collection_info(ds.qdrant_collection())
+                    .collection_info(&ds)
                     .await?
                     .result
                 {
                     Some(info) => {
                         utils::info(&format!(
-                            "[SHADOW] Qdrant collection: collection={} status={} \
-                             points_count={:?} cluster={}",
-                            ds.qdrant_collection(),
+                            "[SHADOW] Qdrant collection: \
+                                collection={} status={} points_count={:?} cluster={}",
+                            shadow_write_qdrant_client.collection_name(&ds),
                             info.status.to_string(),
                             info.points_count,
                             shadow_write_cluster.to_string(),
@@ -584,8 +584,9 @@ async fn migrate(
         // Confirm we're ready to commit.
         match utils::confirm(&format!(
             "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
-         ds={} from_cluster={} target_cluster={}?",
-            ds.qdrant_collection(),
+                data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
+            ds.data_source_id(),
+            ds.internal_id(),
             from_cluster,
             target_cluster,
         ))? {
@@ -613,8 +614,9 @@ async fn migrate(
 
     utils::done(&format!(
         "Collection migrated: \
-         ds={} from_cluster={} target_cluster={}?",
-        ds.qdrant_collection(),
+            data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
+        ds.data_source_id(),
+        ds.internal_id(),
         from_cluster,
         target_cluster,
     ));
@@ -655,7 +657,7 @@ async fn migrate_file(
 
     match utils::confirm(&format!(
         "Do you confirm you want to migrate {} collections: \
-         target_cluster={}?",
+            target_cluster={}?",
         records.len(),
         target_cluster,
     ))? {

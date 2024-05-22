@@ -30,10 +30,6 @@ import {
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
-import {
   generateProcessSpecification,
   runProcess,
 } from "@app/lib/api/assistant/actions/process";
@@ -41,6 +37,7 @@ import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
@@ -307,10 +304,6 @@ async function* runAction(
     specRes = await generateRetrievalSpecification(auth, {
       actionConfiguration: action,
     });
-  } else if (isDustAppRunConfiguration(action)) {
-    specRes = await generateDustAppRunSpecification(auth, {
-      actionConfiguration: action,
-    });
   } else if (isTablesQueryConfiguration(action)) {
     specRes = await generateTablesQuerySpecification(auth);
   } else if (isProcessConfiguration(action)) {
@@ -318,9 +311,9 @@ async function* runAction(
       actionConfiguration: action,
     });
   } else {
-    ((a: never) => {
-      throw new Error(`Unexpected action type: ${a}`);
-    })(action);
+    const runner = getRunnerforActionConfiguration(action);
+
+    specRes = await runner.buildSpecification(auth, {});
   }
 
   if (specRes.isErr()) {
@@ -439,16 +432,22 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration: action,
-      conversation,
-      agentMessage,
-      spec: specRes.value,
-      rawInputs,
-      functionCallId: null,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs,
+        functionCallId: null,
+        step,
+      },
+      {
+        spec: specRes.value,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
