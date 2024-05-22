@@ -214,8 +214,8 @@ impl DustQdrantClient {
                 // that will have to be used here.
                 format!(
                     "c_{}_{}",
+                    data_source.config().provider_id.to_string(),
                     data_source.config().model_id,
-                    data_source.internal_id(),
                 )
             }
         }
