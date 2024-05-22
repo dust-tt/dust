@@ -1,8 +1,4 @@
-import type {
-  AgentAction,
-  AgentActionConfigurationType,
-  DustAppRunConfigurationType,
-} from "@dust-tt/types";
+import type { AgentAction, DustAppRunConfigurationType } from "@dust-tt/types";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import type { BaseActionConfigurationStaticMethods } from "@app/lib/api/assistant/actions/types";
