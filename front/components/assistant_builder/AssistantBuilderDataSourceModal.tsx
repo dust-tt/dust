@@ -20,7 +20,10 @@ import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import type { AssistantBuilderDataSourceConfigurations } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderDataSourceConfiguration,
+  AssistantBuilderDataSourceConfigurations,
+} from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -231,7 +234,7 @@ export default function AssistantBuilderDataSourceModal({
 
                 const newConfiguration = {
                   ...oldConfiguration,
-                };
+                } satisfies AssistantBuilderDataSourceConfiguration;
 
                 if (selected) {
                   newConfiguration.selectedResources = [
@@ -245,10 +248,18 @@ export default function AssistantBuilderDataSourceModal({
                     );
                 }
 
-                return {
-                  ...currentConfigurations,
-                  [selectedDataSource.name]: newConfiguration,
-                };
+                const newConfigurations = { ...currentConfigurations };
+
+                if (
+                  newConfiguration.isSelectAll ||
+                  newConfiguration.selectedResources.length > 0
+                ) {
+                  newConfigurations[selectedDataSource.name] = newConfiguration;
+                } else {
+                  delete newConfigurations[selectedDataSource.name];
+                }
+
+                return newConfigurations;
               });
             }}
             toggleSelectAll={() => {
@@ -268,7 +279,19 @@ export default function AssistantBuilderDataSourceModal({
                 const newConfiguration = {
                   ...oldConfiguration,
                   isSelectAll: !oldConfiguration.isSelectAll,
-                };
+                  selectedResources: [],
+                } satisfies AssistantBuilderDataSourceConfiguration;
+
+                const newConfigurations = { ...currentConfigurations };
+
+                if (
+                  newConfiguration.isSelectAll ||
+                  newConfiguration.selectedResources.length > 0
+                ) {
+                  newConfigurations[selectedDataSource.name] = newConfiguration;
+                } else {
+                  delete newConfigurations[selectedDataSource.name];
+                }
 
                 return {
                   ...currentConfigurations,
