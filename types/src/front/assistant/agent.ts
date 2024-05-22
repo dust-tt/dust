@@ -4,6 +4,7 @@ import { RetrievalConfigurationType } from "../../front/assistant/actions/retrie
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { BrowseConfigurationType } from "./actions/browse";
 
 /**
  * Agent Action configuration
@@ -16,7 +17,8 @@ export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
   | RetrievalConfigurationType
   | DustAppRunConfigurationType
-  | ProcessConfigurationType;
+  | ProcessConfigurationType
+  | BrowseConfigurationType;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 

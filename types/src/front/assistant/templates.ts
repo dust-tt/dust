@@ -4,6 +4,7 @@ import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { BrowseConfigurationType } from "./actions/browse";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
 import { RetrievalConfigurationType } from "./actions/retrieval";
@@ -99,6 +100,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
   process_configuration: "Process data sources",
+  browse_configuration: "Browse the web",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
@@ -195,6 +197,16 @@ export function getAgentActionConfigurationType(
         description: "Process the workspace's internal data sources.",
         forceUseAtIteration: 0,
       } satisfies ProcessConfigurationType;
+
+    case "browse_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        type: "browse_configuration",
+        name: "browse",
+        description: "Browse the web.",
+        forceUseAtIteration: 0,
+      } satisfies BrowseConfigurationType;
 
     default:
       assertNever(action);

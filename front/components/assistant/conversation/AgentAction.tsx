@@ -1,6 +1,7 @@
 import type { AgentActionType } from "@dust-tt/types";
 import {
   assertNever,
+  isBrowseActionType,
   isDustAppRunActionType,
   isProcessActionType,
   isRetrievalActionType,
@@ -37,6 +38,8 @@ export function AgentAction({ action }: { action: AgentActionType }) {
         <ProcessAction processAction={action} />
       </div>
     );
+  } else if (isBrowseActionType(action)) {
+    return <div>Browse action, not supported yet</div>;
   } else {
     assertNever(action);
   }

@@ -17,6 +17,7 @@ import {
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { AgentActionConfigurationType } from "../agent";
+import { BrowseActionType } from "./browse";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -90,6 +91,12 @@ export function isProcessActionType(
   arg: AgentActionType
 ): arg is ProcessActionType {
   return arg.type === "process_action";
+}
+
+export function isBrowseActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "browse_action";
 }
 
 export function isAgentActionConfigurationType(
