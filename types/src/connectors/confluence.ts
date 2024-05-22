@@ -22,3 +22,9 @@ export class ConfluenceClientError extends Error {
     this.data = error_data.data;
   }
 }
+
+export function isConfluenceNotFoundError(
+  err: unknown
+): err is ConfluenceClientError {
+  return err instanceof ConfluenceClientError && err.status === 404;
+}
