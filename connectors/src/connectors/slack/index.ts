@@ -531,6 +531,14 @@ export async function setSlackConnectorPermissions(
             channel.slackChannelId
           );
           if (joinChannelRes.isErr()) {
+            logger.error(
+              {
+                connectorId,
+                channelId: channel.slackChannelId,
+                error: joinChannelRes.error,
+              },
+              "Could not join the Slack channel"
+            );
             throw new Error(
               `Our Slack bot (@Dust) was not able to join the Slack channel #${channel.slackChannelName}. Please re-authorize Slack or invite @Dust from #${channel.slackChannelName} on Slack.`
             );
