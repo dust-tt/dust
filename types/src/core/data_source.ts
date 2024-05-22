@@ -23,6 +23,7 @@ export type CoreAPIDataSourceConfig = {
 export type CoreAPIDataSource = {
   created: number;
   data_source_id: string;
+  data_source_internal_id: string;
   config: CoreAPIDataSourceConfig;
 };
 
