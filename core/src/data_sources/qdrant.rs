@@ -7,7 +7,7 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use qdrant_client::{
     prelude::{Payload, QdrantClient, QdrantClientConfig},
-    qdrant,
+    qdrant::{self, shard_key},
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +23,12 @@ pub enum QdrantCluster {
     Dedicated1,
     #[serde(rename = "dedicated-2")]
     Dedicated2,
+    #[serde(rename = "cluster-0")]
+    Cluster0,
 }
+
+// See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
+const SHARD_KEY_COUNT: u8 = 24;
 
 pub enum QdrantClusterVersion {
     // Legacy setup with one collection per data source.
@@ -37,6 +42,7 @@ static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
     QdrantCluster::Dedicated0,
     QdrantCluster::Dedicated1,
     QdrantCluster::Dedicated2,
+    QdrantCluster::Cluster0,
 ];
 
 impl ToString for QdrantCluster {
@@ -46,6 +52,7 @@ impl ToString for QdrantCluster {
             QdrantCluster::Dedicated0 => String::from("dedicated-0"),
             QdrantCluster::Dedicated1 => String::from("dedicated-1"),
             QdrantCluster::Dedicated2 => String::from("dedicated-2"),
+            QdrantCluster::Cluster0 => String::from("cluster-0"),
         }
     }
 }
@@ -58,6 +65,7 @@ impl FromStr for QdrantCluster {
             "dedicated-0" => Ok(QdrantCluster::Dedicated0),
             "dedicated-1" => Ok(QdrantCluster::Dedicated1),
             "dedicated-2" => Ok(QdrantCluster::Dedicated2),
+            "cluster-0" => Ok(QdrantCluster::Cluster0),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -69,6 +77,7 @@ pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
         QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
         QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
+        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
     }
 }
 
@@ -78,6 +87,7 @@ pub fn version_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
         QdrantCluster::Dedicated0 => QdrantClusterVersion::V0,
         QdrantCluster::Dedicated1 => QdrantClusterVersion::V0,
         QdrantCluster::Dedicated2 => QdrantClusterVersion::V0,
+        QdrantCluster::Cluster0 => QdrantClusterVersion::V1,
     }
 }
 
@@ -195,14 +205,45 @@ impl DustQdrantClient {
     pub fn collection_name(&self, data_source: &DataSource) -> String {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 format!("ds_{}", data_source.internal_id())
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                unimplemented!()
+                // The collection name depends on the embedding model which is stored on the
+                // data source config. To allow migrations between embedders in the future we will
+                // add a notion of shadow_write embedding provider/model on the data source config
+                // that will have to be used here.
+                format!(
+                    "c_{}_{}",
+                    data_source.config().provider_id.to_string(),
+                    data_source.config().model_id,
+                )
             }
         }
+    }
+
+    fn shard_key(&self, data_source: &DataSource) -> shard_key::Key {
+        // We use the last character of the internal_id to determine the pool_id. This id is
+        // generated using new_id and is guaranteed random. Using the last character gives us a
+        // path to moving data sources across shard when needed.
+        let pool_id = data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT;
+        format!("pool_{}", pool_id).into()
+    }
+
+    // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
+    // implementaiton ensure data separation of our users data. Modify with extreme caution.
+    fn apply_tenant_filter(&self, data_source: &DataSource, filter: &mut qdrant::Filter) -> () {
+        filter.must.push(
+            qdrant::FieldCondition {
+                key: "data_source_internal_id".to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                        data_source.internal_id().to_string(),
+                    )),
+                }),
+                ..Default::default()
+            }
+            .into(),
+        );
     }
 
     pub async fn create_data_source(
@@ -212,7 +253,6 @@ impl DustQdrantClient {
     ) -> Result<()> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 let mut embedder = provider(data_source.config().provider_id)
                     .embedder(data_source.config().model_id.clone());
                 embedder.initialize(credentials).await?;
@@ -299,9 +339,7 @@ impl DustQdrantClient {
                     .await?;
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - nothing to do.
-                unimplemented!()
+                // Nothing to do.
             }
         }
 
@@ -311,15 +349,24 @@ impl DustQdrantClient {
     pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .delete_collection(self.collection_name(data_source))
                     .await?;
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - v1 implementation will delete points not collection.
-                unimplemented!()
+                // Create a default filter and ensure tenant separation to delete all the points
+                // associated with the data source.
+                let mut filter = qdrant::Filter::default();
+                self.apply_tenant_filter(data_source, &mut filter);
+
+                self.client
+                    .delete_points(
+                        self.collection_name(data_source),
+                        Some(vec![self.shard_key(data_source)]),
+                        &filter.into(),
+                        None,
+                    )
+                    .await?;
             }
         }
         Ok(())
@@ -329,28 +376,18 @@ impl DustQdrantClient {
         &self,
         data_source: &DataSource,
     ) -> Result<qdrant::GetCollectionInfoResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .collection_info(self.collection_name(data_source))
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                unimplemented!()
-            }
-        }
+        self.client
+            .collection_info(self.collection_name(data_source))
+            .await
     }
 
     pub async fn delete_points(
         &self,
         data_source: &DataSource,
-        filter: qdrant::Filter,
+        mut filter: qdrant::Filter,
     ) -> Result<qdrant::PointsOperationResponse> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .delete_points(
                         self.collection_name(data_source),
@@ -361,9 +398,17 @@ impl DustQdrantClient {
                     .await
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implemetation
-                // - Inject the `data_source_internal_id` filter
-                unimplemented!()
+                // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
+                self.apply_tenant_filter(data_source, &mut filter);
+
+                self.client
+                    .delete_points(
+                        self.collection_name(data_source),
+                        Some(vec![self.shard_key(data_source)]),
+                        &filter.into(),
+                        None,
+                    )
+                    .await
             }
         }
     }
@@ -378,7 +423,6 @@ impl DustQdrantClient {
     ) -> Result<qdrant::ScrollResponse> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .scroll(&qdrant::ScrollPoints {
                         collection_name: self.collection_name(data_source),
@@ -391,9 +435,21 @@ impl DustQdrantClient {
                     .await
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - Inject (or create) the `data_source_internal_id` filter
-                unimplemented!()
+                // If we don't have a filter create an empty one to ensure tenant separation.
+                let mut filter = filter.unwrap_or_default();
+                self.apply_tenant_filter(data_source, &mut filter);
+
+                self.client
+                    .scroll(&qdrant::ScrollPoints {
+                        collection_name: self.collection_name(data_source),
+                        with_vectors,
+                        limit,
+                        offset,
+                        filter: Some(filter),
+                        shard_key_selector: Some(vec![self.shard_key(data_source)].into()),
+                        ..Default::default()
+                    })
+                    .await
             }
         }
     }
@@ -408,7 +464,6 @@ impl DustQdrantClient {
     ) -> Result<qdrant::SearchResponse> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .search_points(&qdrant::SearchPoints {
                         collection_name: self.collection_name(data_source),
@@ -421,9 +476,21 @@ impl DustQdrantClient {
                     .await
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - Inject (or create) the `data_source_internal_id` filter
-                unimplemented!()
+                // If we don't have a filter create an empty one to ensure tenant separation.
+                let mut filter = filter.unwrap_or_default();
+                self.apply_tenant_filter(data_source, &mut filter);
+
+                self.client
+                    .search_points(&qdrant::SearchPoints {
+                        collection_name: self.collection_name(data_source),
+                        vector,
+                        filter: Some(filter),
+                        limit,
+                        with_payload,
+                        shard_key_selector: Some(vec![self.shard_key(data_source)].into()),
+                        ..Default::default()
+                    })
+                    .await
             }
         }
     }
@@ -435,15 +502,19 @@ impl DustQdrantClient {
     ) -> Result<qdrant::PointsOperationResponse> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .upsert_points(self.collection_name(data_source), None, points, None)
                     .await
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - make sure that `data_source_internal_id` is part of the payload.
-                unimplemented!()
+                self.client
+                    .upsert_points(
+                        self.collection_name(data_source),
+                        Some(vec![self.shard_key(data_source)]),
+                        points,
+                        None,
+                    )
+                    .await
             }
         }
     }
@@ -451,12 +522,11 @@ impl DustQdrantClient {
     pub async fn set_payload(
         &self,
         data_source: &DataSource,
-        filter: qdrant::Filter,
+        mut filter: qdrant::Filter,
         payload: Payload,
     ) -> Result<qdrant::PointsOperationResponse> {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                // v0 implementation
                 self.client
                     .set_payload(
                         self.collection_name(data_source),
@@ -469,9 +539,19 @@ impl DustQdrantClient {
                     .await
             }
             QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - make sure that the filter includes the `data_source_internal_id` field.
-                unimplemented!()
+                // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
+                self.apply_tenant_filter(data_source, &mut filter);
+
+                self.client
+                    .set_payload(
+                        self.collection_name(data_source),
+                        Some(vec![self.shard_key(data_source)]),
+                        &filter.into(),
+                        payload,
+                        None,
+                        None,
+                    )
+                    .await
             }
         }
     }
