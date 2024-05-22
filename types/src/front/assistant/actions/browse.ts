@@ -16,7 +16,7 @@ export type BrowseConfigurationType = {
 export interface BrowseActionType extends BaseAction {
   agentMessageId: ModelId;
   url: string;
-  output: unknown | null;
+  output: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;

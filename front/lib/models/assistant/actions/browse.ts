@@ -92,7 +92,7 @@ export class AgentBrowseAction extends Model<
 
   declare url: string;
 
-  declare output: unknown | null;
+  declare output: string | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
@@ -126,7 +126,7 @@ AgentBrowseAction.init(
       allowNull: false,
     },
     output: {
-      type: DataTypes.JSONB,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     functionCallId: {
