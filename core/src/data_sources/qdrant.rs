@@ -354,24 +354,16 @@ impl DustQdrantClient {
                     .await?;
             }
             QdrantClusterVersion::V1 => {
+                // Create a default filter and ensure teanant separation to delete all the points
+                // associated with the data source.
+                let mut filter = qdrant::Filter::default();
+                self.enforce_tenant(data_source, &mut filter);
+
                 self.client
                     .delete_points(
                         self.collection_name(data_source),
                         Some(vec![self.shard_key(data_source)]),
-                        &qdrant::Filter {
-                            must: vec![qdrant::FieldCondition {
-                                key: "data_source_internal_id".to_string(),
-                                r#match: Some(qdrant::Match {
-                                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                        data_source.internal_id().to_string(),
-                                    )),
-                                }),
-                                ..Default::default()
-                            }
-                            .into()],
-                            ..Default::default()
-                        }
-                        .into(),
+                        &filter.into(),
                         None,
                     )
                     .await?;
