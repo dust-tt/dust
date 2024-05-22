@@ -301,22 +301,16 @@ export function ActionProcess({
         }}
         owner={owner}
         dataSources={dataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+        onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
-            dataSourceConfigurations: {
-              ...previousAction.dataSourceConfigurations,
-              [dataSource.name]: {
-                dataSource,
-                selectedResources,
-                isSelectAll,
-              },
-            },
+            dataSourceConfigurations: dsConfigs,
           }));
         }}
-        onDelete={deleteDataSource}
-        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
+        initialDataSourceConfigurations={
+          actionConfiguration.dataSourceConfigurations
+        }
       />
 
       <div className="text-sm text-element-700">
