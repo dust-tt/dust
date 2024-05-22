@@ -37,7 +37,7 @@ import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
-import { ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER } from "@app/lib/api/assistant/actions/runners";
+import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
@@ -311,10 +311,7 @@ async function* runAction(
       actionConfiguration: action,
     });
   } else {
-    const runner =
-      ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[
-        action.type
-      ].fromActionConfiguration(action);
+    const runner = getRunnerforActionConfiguration(action);
 
     specRes = await runner.buildSpecification(auth, {});
   }
@@ -435,10 +432,7 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const runner =
-      ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[
-        action.type
-      ].fromActionConfiguration(action);
+    const runner = getRunnerforActionConfiguration(action);
 
     const eventStream = runner.run(
       auth,

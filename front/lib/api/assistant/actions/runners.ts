@@ -1,4 +1,8 @@
-import type { AgentAction, DustAppRunConfigurationType } from "@dust-tt/types";
+import type {
+  AgentAction,
+  AgentActionConfigurationType,
+  DustAppRunConfigurationType,
+} from "@dust-tt/types";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import type { BaseActionConfigurationStaticMethods } from "@app/lib/api/assistant/actions/types";
@@ -22,7 +26,7 @@ type EnsureAllAgentActionsAreMapped<
 type ValidatedActionToConfigTypeMap =
   EnsureAllAgentActionsAreMapped<ActionToConfigTypeMap>;
 
-export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
+const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   [K in keyof ValidatedActionToConfigTypeMap]: {
     new (config: ValidatedActionToConfigTypeMap[K]): ActionTypeToClassMap[K];
   } & BaseActionConfigurationStaticMethods<
@@ -32,3 +36,14 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
 } = {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
 } as const;
+
+export function getRunnerforActionConfiguration<
+  K extends keyof ValidatedActionToConfigTypeMap
+>(
+  actionConfiguration: { type: K } & ValidatedActionToConfigTypeMap[K]
+): ActionTypeToClassMap[K] {
+  const RunnerClass =
+    ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[actionConfiguration.type];
+
+  return RunnerClass.fromActionConfiguration(actionConfiguration);
+}
