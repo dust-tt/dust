@@ -1,5 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
-import { ConfluenceClientError } from "@dust-tt/types";
+import {
+  ConfluenceClientError,
+  isConfluenceNotFoundError,
+} from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -169,7 +172,7 @@ export async function confluenceGetSpaceNameActivity({
 
     return space.name;
   } catch (err) {
-    if (isNotFoundError(err)) {
+    if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
       localLogger.info("Deleting stale Confluence space.");
 
       return null;
