@@ -144,7 +144,12 @@ async function tablesQueryActionSpecification({
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation. If the user has multiple unanswered questions, make sure to include all of them. If the user asked to correct a previous attempt at the same query in a specific way, this information must be included.",
+          "The plain language question to answer based on the user" +
+          " request and conversation context. The question should include" +
+          " all the context required to be understood without reference to the conversation." +
+          " If the user has multiple unanswered questions, make sure to include all of them." +
+          " If the user asked to correct a previous attempt at the same query in a specific way," +
+          " this information must be included.",
         type: "string" as const,
       },
     ],
@@ -161,7 +166,7 @@ export async function deprecatedGenerateTablesQuerySpecificationForSingleActionA
   }
 
   const actionDescription =
-    "Query the structured data tables specificied by the user to retrieve ingormation to answer their request." +
+    "Query the structured data tables specificied by the user to retrieve information to answer their request." +
     " The data is queried by generating a SQL query from the plain text language question.";
 
   const spec = await tablesQueryActionSpecification({
@@ -181,7 +186,7 @@ export async function generateTablesQuerySpecification(
   }
 
   const actionDescription =
-    "Query the structured data tables specificied by the user to retrieve ingormation to answer their request." +
+    "Query the structured data tables specificied by the user to retrieve information to answer their request." +
     " The data is queried by generating a SQL query from the plain text language question.\n" +
     `The tables are described by the user as:\n${description}`;
 
