@@ -1104,6 +1104,7 @@ export async function getGlobalAgent(
 const RETIRED_GLOABL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
 ];
 
 export async function getGlobalAgents(
