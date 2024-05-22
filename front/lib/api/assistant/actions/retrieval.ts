@@ -347,7 +347,7 @@ export async function generateRetrievalSpecification(
       );
     } else {
       let description =
-        "Retrieve the most recent content from the data sources specified by the user for information to answer their request";
+        "Retrieve the most recent content from the data sources specified by the user";
       if (
         actionConfiguration.relativeTimeFrame === "auto" ||
         actionConfiguration.relativeTimeFrame === "none"
@@ -361,7 +361,7 @@ export async function generateRetrievalSpecification(
     }
   })();
 
-  const actionDescription = `${baseDescription}\nThe data sources are described by the user as:\n${description}`;
+  const actionDescription = `${baseDescription}\nDescription of the data sources:\n${description}`;
 
   const spec = retrievalActionSpecification({
     actionConfiguration,
