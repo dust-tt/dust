@@ -83,28 +83,16 @@ export function ActionRetrievalSearch({
         }}
         owner={owner}
         dataSources={dataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+        onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
-            dataSourceConfigurations: {
-              ...previousAction.dataSourceConfigurations,
-              [dataSource.name]: {
-                dataSource,
-                selectedResources,
-                isSelectAll,
-              },
-            },
+            dataSourceConfigurations: dsConfigs,
           }));
         }}
-        onDelete={(name) => {
-          deleteDataSource({
-            name,
-            updateAction,
-            setEdited,
-          });
-        }}
-        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
+        initialDataSourceConfigurations={
+          actionConfiguration.dataSourceConfigurations
+        }
       />
 
       <DataSourceSelectionSection
@@ -177,28 +165,16 @@ export function ActionRetrievalExhaustive({
         }}
         owner={owner}
         dataSources={dataSources}
-        onSave={({ dataSource, selectedResources, isSelectAll }) => {
+        onSave={(dsConfigs) => {
           setEdited(true);
           updateAction((previousAction) => ({
             ...previousAction,
-            dataSourceConfigurations: {
-              ...previousAction.dataSourceConfigurations,
-              [dataSource.name]: {
-                dataSource,
-                selectedResources,
-                isSelectAll,
-              },
-            },
+            dataSourceConfigurations: dsConfigs,
           }));
         }}
-        onDelete={(name) => {
-          deleteDataSource({
-            name,
-            updateAction,
-            setEdited,
-          });
-        }}
-        dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
+        initialDataSourceConfigurations={
+          actionConfiguration.dataSourceConfigurations
+        }
       />
 
       <DataSourceSelectionSection
