@@ -23,7 +23,6 @@ export type CoreAPIDataSourceConfig = {
 export type CoreAPIDataSource = {
   created: number;
   data_source_id: string;
-  qdrant_collection: string;
   config: CoreAPIDataSourceConfig;
 };
 
