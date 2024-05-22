@@ -31,10 +31,6 @@ import {
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
-import {
   generateProcessSpecification,
   runProcess,
 } from "@app/lib/api/assistant/actions/process";
@@ -42,6 +38,7 @@ import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
@@ -326,18 +323,6 @@ export async function* runMultiActionsAgent(
       }
 
       specifications.push(r.value);
-    } else if (isDustAppRunConfiguration(a)) {
-      const r = await generateDustAppRunSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
     } else if (isTablesQueryConfiguration(a)) {
       const r = await generateTablesQuerySpecification(auth, {
         name: a.name ?? undefined,
@@ -362,7 +347,18 @@ export async function* runMultiActionsAgent(
 
       specifications.push(r.value);
     } else {
-      assertNever(a);
+      const runner = getRunnerforActionConfiguration(a);
+
+      const res = await runner.buildSpecification(auth, {
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (res.isErr()) {
+        return res;
+      }
+
+      specifications.push(res.value);
     }
   }
   // not sure if the speicfications.push() is needed here TBD at review time.
@@ -702,16 +698,22 @@ async function* runAction(
       };
       return;
     }
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration,
-      conversation,
-      agentMessage,
-      spec: specification,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId,
+        step,
+      },
+      {
+        spec: specification,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
