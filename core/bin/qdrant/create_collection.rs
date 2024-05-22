@@ -37,9 +37,11 @@ async fn create_qdrant_collection(
     let client = qdrant_clients.client(cluster);
 
     // See https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27.
+
+    // First, we create the collection.
     let res = client
         .create_collection(&qdrant::CreateCollection {
-            collection_name,
+            collection_name: collection_name.clone(),
             vectors_config: Some(qdrant::VectorsConfig {
                 config: Some(qdrant::vectors_config::Config::Params(
                     qdrant::VectorParams {
@@ -76,6 +78,20 @@ async fn create_qdrant_collection(
             ..Default::default()
         })
         .await?;
+
+    // Then, we create the 24 shard_keys.
+    for i in 0..24 {
+        client
+            .create_shard_key(
+                collection_name.clone(),
+                // TODO: Move to qdrant.rs.
+                &qdrant::shard_key::Key::Keyword(format!("key_{}", i)),
+                Some(2),
+                Some(2),
+                &[],
+            )
+            .await?;
+    }
 
     match res.result {
         true => Ok(()),
