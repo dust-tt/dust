@@ -228,14 +228,6 @@ impl SearchFilter {
                         None => (),
                     }
 
-                    info!(
-                        data_source_id = data_source_id,
-                        is_in = ?parents.is_in,
-                        is_in_map = ?parents.is_in_map,
-                        postprocessed_is_in = ?is_in,
-                        "Postprocessed `parents.in`"
-                    );
-
                     Some(ParentsFilter {
                         is_in,
                         is_in_map: None,
@@ -526,10 +518,6 @@ impl DataSource {
         &self.config
     }
 
-    pub fn qdrant_collection(&self) -> String {
-        format!("ds_{}", self.internal_id)
-    }
-
     pub async fn update_config(
         &mut self,
         store: Box<dyn Store + Sync + Send>,
@@ -567,14 +555,14 @@ impl DataSource {
         .await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             "Created GCP bucket for data_source"
         );
 
         qdrant_client.create_data_source(self, credentials).await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             "Created Qdrant collection and indexes for data_source"
         );
 
@@ -666,15 +654,17 @@ impl DataSource {
                 {
                     Ok(_) => {
                         info!(
+                            data_source_internal_id = self.internal_id(),
                             cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
+                            collection = qdrant_client.collection_name(self),
                             "[SHADOW_WRITE_SUCCESS] Update payload"
                         );
                     }
                     Err(e) => {
                         error!(
+                            data_source_internal_id = self.internal_id(),
                             cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = self.qdrant_collection(),
+                            collection = qdrant_client.collection_name(self),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Update payload"
                         );
@@ -818,34 +808,12 @@ impl DataSource {
         )?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             duration = utils::now() - now,
             blob_url = format!("gs://{}/{}", bucket, content_path),
             "Created document blob"
         );
-
-        // Commented for future debug use
-        // match document_id {
-        //     "notion-95804d6b-0274-43f6-8957-5b024234e3bf" => {
-        //         let debug_path = format!("{}/{}/debug.json", bucket_path, document_hash);
-        //         Object::create(
-        //             &bucket,
-        //             serde_json::to_string(&text).unwrap().into_bytes(),
-        //             &debug_path,
-        //             "application/json",
-        //         )
-        //         .await?;
-        //         info!(
-        //             data_source_id = self.data_source_id(),
-        //             document_id = document_id,
-        //             debug_blob_url = format!("gs://{}/{}", bucket, debug_path),
-        //             "Uploaded buggy document"
-        //         );
-        //         panic!("BUGGY document `{}`", document_id);
-        //     }
-        //     _ => (),
-        // };
 
         let now = utils::now();
 
@@ -881,7 +849,7 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             split_counts = splits.len(),
             duration = utils::now() - now,
@@ -953,7 +921,7 @@ impl DataSource {
         }
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             chunk_count = embeddings.len(),
             duration = utils::now() - now,
@@ -993,7 +961,7 @@ impl DataSource {
         }
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             chunk_count = splits_to_embbed.len(),
             duration = utils::now() - now,
@@ -1057,15 +1025,17 @@ impl DataSource {
             Some(qdrant_client) => match qdrant_client.delete_points(self, filter.clone()).await {
                 Ok(_) => {
                     info!(
+                        data_source_internal_id = self.internal_id(),
                         cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = self.qdrant_collection(),
+                        collection = qdrant_client.collection_name(self),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
                     );
                 }
                 Err(e) => {
                     error!(
+                        data_source_internal_id = self.internal_id(),
                         cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = self.qdrant_collection(),
+                        collection = qdrant_client.collection_name(self),
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
@@ -1077,7 +1047,7 @@ impl DataSource {
         qdrant_client.delete_points(self, filter).await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             duration = utils::now() - now,
             "Deleted previous document in Qdrant"
@@ -1143,15 +1113,17 @@ impl DataSource {
                         match qdrant_client.upsert_points(self, chunk.clone()).await {
                             Ok(_) => {
                                 info!(
+                                    data_source_internal_id = self.internal_id(),
                                     cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    collection = self.qdrant_collection(),
+                                    collection = qdrant_client.collection_name(self),
                                     "[SHADOW_WRITE_SUCCESS] Upsert points"
                                 )
                             }
                             Err(e) => {
                                 error!(
+                                    data_source_internal_id = self.internal_id(),
                                     cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    collection = self.qdrant_collection(),
+                                    collection = qdrant_client.collection_name(self),
                                     error = %e,
                                     "[SHADOW_WRITE_FAIL] Upsert points"
                                 );
@@ -1164,6 +1136,7 @@ impl DataSource {
                 qdrant_client.upsert_points(self, chunk).await?;
 
                 info!(
+                    data_source_internal_id = self.internal_id(),
                     points_count = chunk_len,
                     duration = utils::now() - now,
                     "Success upserting chunk in Qdrant"
@@ -1172,7 +1145,7 @@ impl DataSource {
         }
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_id = document_id,
             points_count = points_len,
             duration = utils::now() - start,
@@ -1236,6 +1209,7 @@ impl DataSource {
                     .retrieve_chunks_without_query(store, qdrant_client.clone(), top_k, &filter)
                     .await?;
                 info!(
+                    data_source_internal_id = self.internal_id(),
                     duration = utils::now() - time_embedding_start,
                     "DSSTAT Finished retrieving chunks without query"
                 );
@@ -1252,6 +1226,7 @@ impl DataSource {
                 assert!(v.len() == 1);
 
                 info!(
+                    data_source_internal_id = self.internal_id(),
                     duration = utils::now() - time_embedding_start,
                     "DSSTAT Finished embedding query"
                 );
@@ -1271,7 +1246,8 @@ impl DataSource {
                     .await?;
 
                 info!(
-                    collection_name = self.qdrant_collection(),
+                    data_source_internal_id = self.internal_id(),
+                    collection_name = qdrant_client.collection_name(self),
                     duration = utils::now() - time_search_start,
                     results_count = results.result.len(),
                     "DSSTAT Finished searching Qdrant documents"
@@ -1289,7 +1265,8 @@ impl DataSource {
                 )?;
 
                 info!(
-                    collection_name = self.qdrant_collection(),
+                    data_source_internal_id = self.internal_id(),
+                    collection_name = qdrant_client.collection_name(self),
                     duration = utils::now() - time_chunk_start,
                     chunk_length = chunks.len(),
                     "DSSTAT Finished chunking documents"
@@ -1359,7 +1336,7 @@ impl DataSource {
             .await?;
 
         info!(
-            collection_name = self.qdrant_collection(),
+            data_source_internal_id = self.internal_id(),
             duration = utils::now() - time_store_start,
             document_len = documents.len(),
             "DSSTAT Finished fetching documents from the store"
@@ -1556,7 +1533,7 @@ impl DataSource {
         };
 
         info!(
-            collection_name = self.qdrant_collection(),
+            data_source_internal_id = self.internal_id(),
             duration = utils::now() - time_qdrant_scroll_start,
             results_count = documents.len(),
             "DSSTAT Finished scrolling documents"
@@ -1583,7 +1560,7 @@ impl DataSource {
         }
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
             duration = utils::now() - time_embedding_start,
@@ -1813,15 +1790,17 @@ impl DataSource {
             Some(qdrant_client) => match qdrant_client.delete_points(self, filter.clone()).await {
                 Ok(_) => {
                     info!(
+                        data_source_internal_id = self.internal_id(),
                         cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = self.qdrant_collection(),
+                        collection = qdrant_client.collection_name(self),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
                     );
                 }
                 Err(e) => {
                     error!(
+                        data_source_internal_id = self.internal_id(),
                         cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = self.qdrant_collection(),
+                        collection = qdrant_client.collection_name(self),
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
@@ -1861,7 +1840,7 @@ impl DataSource {
         qdrant_client.delete_data_source(self).await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             "Deleted Qdrant collection"
         );
 
@@ -1877,7 +1856,7 @@ impl DataSource {
         .await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             table_count = total,
             "Deleted tables"
         );
@@ -1888,7 +1867,7 @@ impl DataSource {
             .await?;
 
         info!(
-            data_source_id = self.data_source_id(),
+            data_source_internal_id = self.internal_id(),
             "Deleted data source records"
         );
 

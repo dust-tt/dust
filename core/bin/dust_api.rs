@@ -1145,7 +1145,7 @@ async fn data_sources_register(
                         "data_source": {
                             "created": ds.created(),
                             "data_source_id": ds.data_source_id(),
-                            "qdrant_collection": ds.qdrant_collection(),
+                            "data_source_internal_id": ds.internal_id(),
                             "config": ds.config(),
                         },
                     })),
@@ -1239,7 +1239,7 @@ async fn data_sources_retrieve(
                         "data_source": {
                             "created": ds.created(),
                             "data_source_id": ds.data_source_id(),
-                            "qdrant_collection": ds.qdrant_collection(),
+                            "data_source_internal_id": ds.internal_id(),
                             "config": ds.config(),
                         },
                     })),
