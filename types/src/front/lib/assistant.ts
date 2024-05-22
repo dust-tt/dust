@@ -35,7 +35,8 @@ export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
-export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
+export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const; // @todo daph remove
+export const MISTRAL_8X22B_MODEL_ID = "open-mixtral-8x22b" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 
@@ -50,6 +51,7 @@ export const MODEL_IDS = [
   CLAUDE_INSTANT_1_2_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
+  MISTRAL_8X22B_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
 ] as const;
@@ -204,6 +206,18 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Mistral's smartest model.",
   supportsMultiActions: false,
 };
+export const MISTRAL_8X22B_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_8X22B_MODEL_ID,
+  displayName: "Mistral 8x22B",
+  contextSize: 64_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: true,
+  description: "Mistral's latest open model (64k context).",
+  shortDescription: "Mistral's latest open model.",
+  supportsMultiActions: false,
+};
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
   modelId: MISTRAL_SMALL_MODEL_ID,
@@ -241,6 +255,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
+  MISTRAL_8X22B_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,

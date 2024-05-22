@@ -263,7 +263,10 @@ async function handler(
               f = mList.filter((m) => m.id === "mistral-embed");
             } else {
               f = mList.filter(
-                (m) => m.id.startsWith("mistral-") && !m.id.endsWith("-embed")
+                (m) =>
+                  (m.id.startsWith("mistral-") ||
+                    m.id.startsWith("open-mixtral-")) &&
+                  !m.id.endsWith("-embed")
               );
             }
             f.sort((a, b) => {
