@@ -231,7 +231,7 @@ impl DustQdrantClient {
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
     // implementaiton ensure data separation of our users data. Modify with extreme caution.
-    fn enforce_tenant(&self, data_source: &DataSource, filter: &mut qdrant::Filter) -> () {
+    fn apply_tenant_filter(&self, data_source: &DataSource, filter: &mut qdrant::Filter) -> () {
         filter.must.push(
             qdrant::FieldCondition {
                 key: "data_source_internal_id".to_string(),
@@ -354,10 +354,10 @@ impl DustQdrantClient {
                     .await?;
             }
             QdrantClusterVersion::V1 => {
-                // Create a default filter and ensure teanant separation to delete all the points
+                // Create a default filter and ensure tenant separation to delete all the points
                 // associated with the data source.
                 let mut filter = qdrant::Filter::default();
-                self.enforce_tenant(data_source, &mut filter);
+                self.apply_tenant_filter(data_source, &mut filter);
 
                 self.client
                     .delete_points(
@@ -399,7 +399,7 @@ impl DustQdrantClient {
             }
             QdrantClusterVersion::V1 => {
                 // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
-                self.enforce_tenant(data_source, &mut filter);
+                self.apply_tenant_filter(data_source, &mut filter);
 
                 self.client
                     .delete_points(
@@ -437,7 +437,7 @@ impl DustQdrantClient {
             QdrantClusterVersion::V1 => {
                 // If we don't have a filter create an empty one to ensure tenant separation.
                 let mut filter = filter.unwrap_or_default();
-                self.enforce_tenant(data_source, &mut filter);
+                self.apply_tenant_filter(data_source, &mut filter);
 
                 self.client
                     .scroll(&qdrant::ScrollPoints {
@@ -478,7 +478,7 @@ impl DustQdrantClient {
             QdrantClusterVersion::V1 => {
                 // If we don't have a filter create an empty one to ensure tenant separation.
                 let mut filter = filter.unwrap_or_default();
-                self.enforce_tenant(data_source, &mut filter);
+                self.apply_tenant_filter(data_source, &mut filter);
 
                 self.client
                     .search_points(&qdrant::SearchPoints {
@@ -540,7 +540,7 @@ impl DustQdrantClient {
             }
             QdrantClusterVersion::V1 => {
                 // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
-                self.enforce_tenant(data_source, &mut filter);
+                self.apply_tenant_filter(data_source, &mut filter);
 
                 self.client
                     .set_payload(
