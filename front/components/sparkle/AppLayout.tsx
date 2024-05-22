@@ -151,9 +151,15 @@ function NavigationBar({
 export const SidebarContext = React.createContext<{
   sidebarOpen: boolean;
   setSidebarOpen: (value: boolean) => void;
+  laptopNavOpen: boolean;
+  setLaptopNavOpen: (value: boolean) => void;
 }>({
   sidebarOpen: false,
   setSidebarOpen: (value) => {
+    throw new Error("SidebarContext not initialized: " + value);
+  },
+  laptopNavOpen: false,
+  setLaptopNavOpen: (value) => {
     throw new Error("SidebarContext not initialized: " + value);
   },
 });
@@ -164,9 +170,12 @@ export const SidebarProvider = ({
   children: React.ReactNode;
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [laptopNavOpen, setLaptopNavOpen] = useState(true);
 
   return (
-    <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
+    <SidebarContext.Provider
+      value={{ sidebarOpen, setSidebarOpen, laptopNavOpen, setLaptopNavOpen }}
+    >
       {children}
     </SidebarContext.Provider>
   );
@@ -213,7 +222,8 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const { sidebarOpen, setSidebarOpen, laptopNavOpen, setLaptopNavOpen } =
+    useContext(SidebarContext);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -356,18 +366,23 @@ export default function AppLayout({
         )}
 
         {!hideSidebar && (
-          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-            {loaded && (
-              <NavigationBar
-                owner={owner}
-                subscription={subscription}
-                subNavigation={subNavigation}
-                topNavigationCurrent={topNavigationCurrent}
-              >
-                {loaded && navChildren && navChildren}
-              </NavigationBar>
-            )}
-          </div>
+          <Transition.Root show={laptopNavOpen} as={Fragment}>
+            <div
+              id="laptop-nav-bar"
+              className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col"
+            >
+              {loaded && (
+                <NavigationBar
+                  owner={owner}
+                  subscription={subscription}
+                  subNavigation={subNavigation}
+                  topNavigationCurrent={topNavigationCurrent}
+                >
+                  {loaded && navChildren && navChildren}
+                </NavigationBar>
+              )}
+            </div>
+          </Transition.Root>
         )}
 
         <div
@@ -427,6 +442,15 @@ export default function AppLayout({
             </div>
           </main>
         </div>
+
+        <button
+          type="button"
+          className="hidden lg:fixed lg:right-4 lg:top-4 lg:m-2.5 lg:block lg:p-2.5 lg:text-gray-700"
+          onClick={() => setLaptopNavOpen(!laptopNavOpen)}
+        >
+          <span className="sr-only">Toggle laptop navigation bar</span>
+          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+        </button>
       </div>
       <>
         <Script
