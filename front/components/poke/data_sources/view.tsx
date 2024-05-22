@@ -93,7 +93,7 @@ export function ViewDataSourceTable({
                     </Link>{" "}
                     /{" "}
                     <Link
-                      href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.qdrant_collection}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
+                      href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%22DSSTAT%20Finished%20searching%20Qdrant%20documents%22%20%22${coreDataSource.data_source_internal_id}%22%20&cols=host%2Cservice&index=%2A&messageDisplay=inline&refresh_mode=sliding&stream_sort=desc&view=spans&viz=stream&live=true`}
                       target="_blank"
                       className="text-sm text-action-400"
                     >

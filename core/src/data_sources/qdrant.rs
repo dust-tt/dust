@@ -192,6 +192,19 @@ impl DustQdrantClient {
     // - we'll be able to add a condition on the PointsSelector to match the
     //   data_source.internal_id multi-tenancy filter.
 
+    pub fn collection_name(&self, data_source: &DataSource) -> String {
+        match version_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                // v0 implementation
+                format!("ds_{}", data_source.internal_id())
+            }
+            QdrantClusterVersion::V1 => {
+                // TODO: v1 implementation
+                unimplemented!()
+            }
+        }
+    }
+
     pub async fn create_data_source(
         &self,
         data_source: &DataSource,
@@ -206,7 +219,7 @@ impl DustQdrantClient {
 
                 self.client
                     .create_collection(&qdrant::CreateCollection {
-                        collection_name: data_source.qdrant_collection(),
+                        collection_name: self.collection_name(data_source),
                         vectors_config: Some(qdrant::VectorsConfig {
                             config: Some(qdrant::vectors_config::Config::Params(
                                 qdrant::VectorParams {
@@ -244,7 +257,7 @@ impl DustQdrantClient {
                 let _ = self
                     .client
                     .create_field_index(
-                        data_source.qdrant_collection(),
+                        self.collection_name(data_source),
                         "document_id_hash",
                         qdrant::FieldType::Keyword,
                         None,
@@ -255,7 +268,7 @@ impl DustQdrantClient {
                 let _ = self
                     .client
                     .create_field_index(
-                        data_source.qdrant_collection(),
+                        self.collection_name(data_source),
                         "tags",
                         qdrant::FieldType::Keyword,
                         None,
@@ -266,7 +279,7 @@ impl DustQdrantClient {
                 let _ = self
                     .client
                     .create_field_index(
-                        data_source.qdrant_collection(),
+                        self.collection_name(data_source),
                         "parents",
                         qdrant::FieldType::Keyword,
                         None,
@@ -277,7 +290,7 @@ impl DustQdrantClient {
                 let _ = self
                     .client
                     .create_field_index(
-                        data_source.qdrant_collection(),
+                        self.collection_name(data_source),
                         "timestamp",
                         qdrant::FieldType::Integer,
                         None,
@@ -300,7 +313,7 @@ impl DustQdrantClient {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
-                    .delete_collection(data_source.qdrant_collection())
+                    .delete_collection(self.collection_name(data_source))
                     .await?;
             }
             QdrantClusterVersion::V1 => {
@@ -320,7 +333,7 @@ impl DustQdrantClient {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
-                    .collection_info(data_source.qdrant_collection())
+                    .collection_info(self.collection_name(data_source))
                     .await
             }
             QdrantClusterVersion::V1 => {
@@ -339,7 +352,12 @@ impl DustQdrantClient {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
-                    .delete_points(data_source.qdrant_collection(), None, &filter.into(), None)
+                    .delete_points(
+                        self.collection_name(data_source),
+                        None,
+                        &filter.into(),
+                        None,
+                    )
                     .await
             }
             QdrantClusterVersion::V1 => {
@@ -363,7 +381,7 @@ impl DustQdrantClient {
                 // v0 implementation
                 self.client
                     .scroll(&qdrant::ScrollPoints {
-                        collection_name: data_source.qdrant_collection(),
+                        collection_name: self.collection_name(data_source),
                         with_vectors,
                         limit,
                         offset,
@@ -393,7 +411,7 @@ impl DustQdrantClient {
                 // v0 implementation
                 self.client
                     .search_points(&qdrant::SearchPoints {
-                        collection_name: data_source.qdrant_collection(),
+                        collection_name: self.collection_name(data_source),
                         vector,
                         filter,
                         limit,
@@ -419,7 +437,7 @@ impl DustQdrantClient {
             QdrantClusterVersion::V0 => {
                 // v0 implementation
                 self.client
-                    .upsert_points(data_source.qdrant_collection(), None, points, None)
+                    .upsert_points(self.collection_name(data_source), None, points, None)
                     .await
             }
             QdrantClusterVersion::V1 => {
@@ -441,7 +459,7 @@ impl DustQdrantClient {
                 // v0 implementation
                 self.client
                     .set_payload(
-                        data_source.qdrant_collection(),
+                        self.collection_name(data_source),
                         None,
                         &filter.into(),
                         payload,
