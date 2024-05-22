@@ -81,11 +81,6 @@ export class ProcessAction extends BaseAction {
 
   renderForModel(): ModelMessageType {
     let content = "";
-    if (this.outputs === null) {
-      throw new Error(
-        "Output not set on process action; this usually means the process action is not finished."
-      );
-    }
 
     content += "PROCESSED OUTPUTS:\n";
 
@@ -99,6 +94,8 @@ export class ProcessAction extends BaseAction {
           content += `${JSON.stringify(o)}\n`;
         }
       }
+    } else if (this.outputs === null) {
+      content += "(processing failed)\n";
     }
 
     return {
@@ -118,20 +115,19 @@ export class ProcessAction extends BaseAction {
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
-    if (this.outputs === null) {
-      throw new Error(
-        "Output not set on process action; this usually means the process action is not finished."
-      );
-    }
 
     content += "PROCESSED OUTPUTS:\n";
 
-    // TODO(spolu): figure out if we want to add the schema here?
-
     if (this.outputs) {
-      for (const o of this.outputs.data) {
-        content += `${JSON.stringify(o)}\n`;
+      if (this.outputs.data.length === 0) {
+        content += "(none)\n";
+      } else {
+        for (const o of this.outputs.data) {
+          content += `${JSON.stringify(o)}\n`;
+        }
       }
+    } else if (this.outputs === null) {
+      content += "(processing failed)\n";
     }
 
     return {
