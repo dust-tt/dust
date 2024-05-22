@@ -442,7 +442,7 @@ export default function AppLayout({
         <div
           className={classNames(
             "mt-0 h-full flex-1",
-            !hideSidebar ? "lg:pl-80" : ""
+            !hideSidebar ? (laptopNavOpen ? "lg:pl-80" : "lg:pl-0") : ""
           )}
         >
           <div
