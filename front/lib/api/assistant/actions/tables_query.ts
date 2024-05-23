@@ -144,7 +144,12 @@ async function tablesQueryActionSpecification({
       {
         name: "question",
         description:
-          "The plain language question to answer based on the user request and conversation context. The question should include all the context required to be understood without reference to the conversation. If the user has multiple unanswered questions, make sure to include all of them. If the user asked to correct a previous attempt at the same query in a specific way, this information must be included.",
+          "The natural language question to answer based on the user" +
+          " request and conversation context. The question should include" +
+          " all the context required to be understood without reference to the conversation." +
+          " If the user has multiple unanswered questions, make sure to include all of them." +
+          " If the user asked to correct a previous attempt in a specific way," +
+          " take it into account when generating the question.",
         type: "string" as const,
       },
     ],
@@ -152,19 +157,43 @@ async function tablesQueryActionSpecification({
 }
 
 // Generates the action specification for generation of rawInputs passed to `runTablesQuery`.
-export async function generateTablesQuerySpecification(
-  auth: Authenticator,
-  {
-    name = "query_tables",
-    description = "Generates a SQL query from a question in plain language, executes the generated query and return the results.",
-  }: { name?: string; description?: string } = {}
+export async function deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
+  auth: Authenticator
 ): Promise<Result<AgentActionSpecification, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runQueryTables`");
   }
 
-  const spec = await tablesQueryActionSpecification({ name, description });
+  const actionDescription =
+    "Query data tables specified by the user by executing a generated SQL query from a" +
+    " natural language question.";
+
+  const spec = await tablesQueryActionSpecification({
+    name: "query_tables",
+    description: actionDescription,
+  });
+  return new Ok(spec);
+}
+
+export async function generateTablesQuerySpecification(
+  auth: Authenticator,
+  { name, description }: { name: string; description: string }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
+  }
+
+  const actionDescription =
+    "Query data tables specificied by the user by executing a generated SQL query from a" +
+    " natural language question.\n" +
+    `Description of the data tables:\n${description}`;
+
+  const spec = await tablesQueryActionSpecification({
+    name,
+    description: actionDescription,
+  });
   return new Ok(spec);
 }
 

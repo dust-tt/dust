@@ -619,7 +619,9 @@ function ActionEditor({
         })()}
       </ActionModeSection>
       <div className="flex flex-col gap-4 pt-8">
-        {DATA_SOURCES_ACTION_CATEGORIES.includes(action.type as any) ? (
+        {["TABLES_QUERY", "RETRIEVAL_EXHAUSTIVE", "RETRIEVAL_SEARCH"].includes(
+          action.type as any
+        ) ? (
           <div className="flex flex-col gap-2">
             <div className="font-semibold text-element-800">
               What's the data?
