@@ -239,7 +239,7 @@ export default function LabsTranscriptsIndex({
   };
 
   const saveOauthConnection = async (
-    connectionId: string | null,
+    connectionId: string,
     provider: string
   ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
@@ -249,7 +249,7 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
-        provider
+        provider,
       }),
     });
 
@@ -281,7 +281,7 @@ export default function LabsTranscriptsIndex({
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildLabsConnectionId(
-        `labs-transcripts-google-workspace-${owner.id}-user-${user.id}`,
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );
       const {
@@ -309,45 +309,22 @@ export default function LabsTranscriptsIndex({
       if (transcriptsConfigurationState.provider !== "gong") {
         return;
       }
-
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/transcripts/default`
+      const nango = new Nango({ publicKey: nangoPublicKey });
+      const newConnectionId = buildLabsConnectionId(
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+        transcriptsConfigurationState.provider
+      );
+      const {
+        connectionId: nangoConnectionId,
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoGongConnectorId,
+        newConnectionId
       );
 
-      // If we already have a default configuration, just create a configurationId for that user with an empty connectionId.
-      if (response.ok) {
-        const defaultConfigurationRes = await response.json();
-        const defaultConfiguration = defaultConfigurationRes.configuration;
-
-        if (defaultConfiguration.provider != "gong") {
-          sendNotification({
-            type: "error",
-            title: "Failed to connect Gong",
-            description:
-              "Your workspace is already connected to another provider",
-          });
-          return;
-        }
-
-        await saveOauthConnection(defaultConfiguration.connectionId, transcriptsConfigurationState.provider);
-
-        return;
-      } else {
-        const nango = new Nango({ publicKey: nangoPublicKey });
-        const newConnectionId = buildLabsConnectionId(
-          `labs-transcripts-gong-workspace-${owner.id}`,
-          transcriptsConfigurationState.provider
-        );
-        const {
-          connectionId: nangoConnectionId,
-        }: { providerConfigKey: string; connectionId: string } =
-          await nango.auth(nangoGongConnectorId, newConnectionId);
-
-        await saveOauthConnection(
-          nangoConnectionId,
-          transcriptsConfigurationState.provider
-        );
-      }
+      await saveOauthConnection(
+        nangoConnectionId,
+        transcriptsConfigurationState.provider
+      );
     } catch (error) {
       sendNotification({
         type: "error",

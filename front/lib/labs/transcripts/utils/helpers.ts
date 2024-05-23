@@ -1,4 +1,8 @@
-import type { NangoConnectionId, NangoIntegrationId } from "@dust-tt/types";
+import type {
+  ModelId,
+  NangoConnectionId,
+  NangoIntegrationId,
+} from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
@@ -27,10 +31,14 @@ export async function getGoogleAuthObject(
   return oauth2Client;
 }
 
-export async function getTranscriptsGoogleAuth(auth: Authenticator) {
+export async function getTranscriptsGoogleAuth(
+  auth: Authenticator,
+  userId: ModelId
+) {
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+    await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
       auth,
+      userId,
     });
 
   if (
@@ -54,8 +62,4 @@ export async function getAccessTokenFromNango(
   const res = await nango.getConnection(nangoIntegrationId, nangoConnectionId);
 
   return res.credentials.raw.access_token;
-}
-
-export function getNangoConnectionId({workspaceId: string, userId: number): NangoConnectionId {
-  return `user_${userId}`;
 }
