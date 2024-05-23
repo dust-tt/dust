@@ -6,7 +6,7 @@ export type QdrantCluster =
   | "cluster-0";
 
 export const DEFAULT_FREE_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
-export const DEFAULT_PAID_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
+export const DEFAULT_PAID_QDRANT_CLUSTER: QdrantCluster = "dedicated-2";
 
 export type CoreAPIDataSourceConfig = {
   provider_id: string;
