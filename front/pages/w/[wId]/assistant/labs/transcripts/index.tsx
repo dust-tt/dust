@@ -280,20 +280,21 @@ export default function LabsTranscriptsIndex({
       if (transcriptsConfigurationState.provider !== "google_drive") {
         return;
       }
-      const nangoConnectionId = `labs-google-transcripts-workspace-${owner.id}-user-${user.id}`
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildLabsConnectionId(
-        nangoConnectionId,
+      const nangoConnectionId = buildLabsConnectionId(
+        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );
-      
-      await nango.auth(
-        nangoDriveConnectorId,
-        newConnectionId
-      );
+      const {
+        connectionId: newConnectionId,
+      }: { providerConfigKey: string; connectionId: string } =
+        await nango.auth(
+          nangoDriveConnectorId,
+          nangoConnectionId
+        );
 
       await saveOauthConnection(
-        nangoConnectionId,
+        newConnectionId,
         transcriptsConfigurationState.provider
       );
     } catch (error) {
@@ -335,15 +336,19 @@ export default function LabsTranscriptsIndex({
       } else {
         const nango = new Nango({ publicKey: nangoPublicKey });
         
-        const nangoConnectionId = `labs-gong-transcripts-workspace-${owner.id}`
-        const newConnectionId = buildLabsConnectionId(
-          nangoConnectionId,
+        const nangoConnectionId = buildLabsConnectionId(
+          `labs-transcripts-workspace-${owner.id}`,
           transcriptsConfigurationState.provider
         );
-        await nango.auth(nangoGongConnectorId, newConnectionId);
-
+        const {
+          connectionId: newConnectionId,
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(
+            nangoGongConnectorId,
+            nangoConnectionId
+          );
         await saveOauthConnection(
-          nangoConnectionId,
+          newConnectionId,
           transcriptsConfigurationState.provider
         );
       }

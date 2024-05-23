@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import config from "@app/lib/labs/config";
 import { getAccessTokenFromNango } from "@app/lib/labs/transcripts/utils/helpers";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
 export async function retrieveGongTranscripts(
@@ -9,10 +9,8 @@ export async function retrieveGongTranscripts(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger
 ): Promise<string[]> {
-  const workspaceDefaultTranscriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByWorkspaceDefault({ auth });
 
-  if (!workspaceDefaultTranscriptsConfiguration) {
+  if (!transcriptsConfiguration) {
     localLogger.error(
       {},
       "[retrieveGongTranscripts] No default transcripts configuration found."
@@ -20,7 +18,7 @@ export async function retrieveGongTranscripts(
     return [];
   }
 
-  if (!workspaceDefaultTranscriptsConfiguration.connectionId) {
+  if (!transcriptsConfiguration.connectionId) {
     localLogger.error(
       {},
       "[retrieveGongTranscripts] No connectionId found for default configuration. Skipping."
@@ -30,7 +28,7 @@ export async function retrieveGongTranscripts(
 
   const gongAccessToken = await getAccessTokenFromNango(
     config.getNangoGongConnectorId(),
-    workspaceDefaultTranscriptsConfiguration.connectionId
+    transcriptsConfiguration.connectionId
   );
 
   const fromDateTime = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -83,7 +81,7 @@ export async function retrieveGongTranscripts(
     }
 
     const history =
-      await workspaceDefaultTranscriptsConfiguration.fetchHistoryForFileId(
+      await transcriptsConfiguration.fetchHistoryForFileId(
         fileId
       );
     if (history) {
@@ -111,12 +109,10 @@ export async function retrieveGongTranscriptContent(
     speakerId: string;
     name: string;
   };
-  const workspaceDefaultTranscriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByWorkspaceDefault({ auth });
 
   if (
-    !workspaceDefaultTranscriptsConfiguration ||
-    !workspaceDefaultTranscriptsConfiguration.connectionId
+    !transcriptsConfiguration ||
+    !transcriptsConfiguration.connectionId
   ) {
     localLogger.error(
       {},
@@ -129,7 +125,7 @@ export async function retrieveGongTranscriptContent(
 
   const gongAccessToken = await getAccessTokenFromNango(
     config.getNangoGongConnectorId(),
-    workspaceDefaultTranscriptsConfiguration.connectionId
+    transcriptsConfiguration.connectionId
   );
 
   const call = await fetch(`https://api.gong.io/v2/calls/extensive`, {
