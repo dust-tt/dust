@@ -1,6 +1,7 @@
 use crate::{providers::provider::provider, run::Credentials, utils::ParseError};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -15,20 +16,20 @@ use super::data_source::DataSource;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
 pub enum QdrantCluster {
-    #[serde(rename = "main-0")]
-    Main0,
+    #[serde(rename = "cluster-0")]
+    Cluster0,
     #[serde(rename = "dedicated-0")]
     Dedicated0,
     #[serde(rename = "dedicated-1")]
     Dedicated1,
     #[serde(rename = "dedicated-2")]
     Dedicated2,
-    #[serde(rename = "cluster-0")]
-    Cluster0,
+    #[serde(rename = "main-0")]
+    Main0,
 }
 
 // See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
-const SHARD_KEY_COUNT: u8 = 24;
+pub const SHARD_KEY_COUNT: u8 = 24;
 
 pub enum QdrantClusterVersion {
     // Legacy setup with one collection per data source.
@@ -38,21 +39,21 @@ pub enum QdrantClusterVersion {
 }
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
-    QdrantCluster::Main0,
+    QdrantCluster::Cluster0,
     QdrantCluster::Dedicated0,
     QdrantCluster::Dedicated1,
     QdrantCluster::Dedicated2,
-    QdrantCluster::Cluster0,
+    QdrantCluster::Main0,
 ];
 
-impl ToString for QdrantCluster {
-    fn to_string(&self) -> String {
+impl fmt::Display for QdrantCluster {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QdrantCluster::Main0 => String::from("main-0"),
-            QdrantCluster::Dedicated0 => String::from("dedicated-0"),
-            QdrantCluster::Dedicated1 => String::from("dedicated-1"),
-            QdrantCluster::Dedicated2 => String::from("dedicated-2"),
-            QdrantCluster::Cluster0 => String::from("cluster-0"),
+            QdrantCluster::Cluster0 => write!(f, "cluster-0"),
+            QdrantCluster::Dedicated0 => write!(f, "dedicated-0"),
+            QdrantCluster::Dedicated1 => write!(f, "dedicated-1"),
+            QdrantCluster::Dedicated2 => write!(f, "dedicated-2"),
+            QdrantCluster::Main0 => write!(f, "main-0"),
         }
     }
 }
@@ -61,11 +62,11 @@ impl FromStr for QdrantCluster {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "main-0" => Ok(QdrantCluster::Main0),
+            "cluster-0" => Ok(QdrantCluster::Cluster0),
             "dedicated-0" => Ok(QdrantCluster::Dedicated0),
             "dedicated-1" => Ok(QdrantCluster::Dedicated1),
             "dedicated-2" => Ok(QdrantCluster::Dedicated2),
-            "cluster-0" => Ok(QdrantCluster::Cluster0),
+            "main-0" => Ok(QdrantCluster::Main0),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -73,21 +74,21 @@ impl FromStr for QdrantCluster {
 
 pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
-        QdrantCluster::Main0 => "QDRANT_MAIN_0",
+        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
         QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
         QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
         QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
-        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
+        QdrantCluster::Main0 => "QDRANT_MAIN_0",
     }
 }
 
 pub fn version_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
     match cluster {
-        QdrantCluster::Main0 => QdrantClusterVersion::V0,
+        QdrantCluster::Cluster0 => QdrantClusterVersion::V1,
         QdrantCluster::Dedicated0 => QdrantClusterVersion::V0,
         QdrantCluster::Dedicated1 => QdrantClusterVersion::V0,
         QdrantCluster::Dedicated2 => QdrantClusterVersion::V0,
-        QdrantCluster::Cluster0 => QdrantClusterVersion::V1,
+        QdrantCluster::Main0 => QdrantClusterVersion::V0,
     }
 }
 
@@ -197,15 +198,38 @@ pub struct DustQdrantClient {
 }
 
 impl DustQdrantClient {
+    pub fn collection_prefix(&self) -> String {
+        match version_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                return String::from("ds");
+            }
+
+            QdrantClusterVersion::V1 => {
+                return String::from("c");
+            }
+        }
+    }
+
+    pub fn shard_key_prefix(&self) -> String {
+        match version_for_cluster(self.cluster) {
+            QdrantClusterVersion::V0 => {
+                unimplemented!();
+            }
+
+            QdrantClusterVersion::V1 => {
+                return String::from("key");
+            }
+        }
+    }
+
     // In v1 implementations, we'll be able:
     // - we'll be able to retrieve the shared collection name from the data source config.
     // - we'll be able to add a condition on the PointsSelector to match the
     //   data_source.internal_id multi-tenancy filter.
-
     pub fn collection_name(&self, data_source: &DataSource) -> String {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                format!("ds_{}", data_source.internal_id())
+                format!("{}_{}", self.collection_prefix(), data_source.internal_id())
             }
             QdrantClusterVersion::V1 => {
                 // The collection name depends on the embedding model which is stored on the
@@ -213,7 +237,8 @@ impl DustQdrantClient {
                 // add a notion of shadow_write embedding provider/model on the data source config
                 // that will have to be used here.
                 format!(
-                    "c_{}_{}",
+                    "{}_{}_{}",
+                    self.collection_prefix(),
                     data_source.config().provider_id.to_string(),
                     data_source.config().model_id,
                 )
@@ -222,11 +247,11 @@ impl DustQdrantClient {
     }
 
     fn shard_key(&self, data_source: &DataSource) -> shard_key::Key {
-        // We use the last character of the internal_id to determine the pool_id. This id is
+        // We use the last character of the internal_id to determine the key_id. This id is
         // generated using new_id and is guaranteed random. Using the last character gives us a
         // path to moving data sources across shard when needed.
-        let pool_id = data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT;
-        format!("pool_{}", pool_id).into()
+        let key_id = data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT;
+        format!("{}_{}", self.shard_key_prefix(), key_id).into()
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
@@ -554,5 +579,9 @@ impl DustQdrantClient {
                     .await
             }
         }
+    }
+
+    pub fn raw_client(&self) -> Arc<QdrantClient> {
+        return self.client.clone();
     }
 }
