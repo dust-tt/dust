@@ -42,7 +42,7 @@ const SHOW_INCIDENT_BANNER = false;
 
 function ToggleSideBarButton({
   navigationBarOpen,
-                               toggleNavigationBarVisibility,
+  toggleNavigationBarVisibility,
 }: {
   navigationBarOpen: boolean;
   toggleNavigationBarVisibility: (open: boolean) => void;
@@ -235,7 +235,6 @@ export const appLayoutBack = async (
 export default function AppLayout({
   owner,
   subscription,
-  isWideMode = false,
   hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
@@ -462,18 +461,16 @@ export default function AppLayout({
               titleChildren ? "" : "lg:pt-8"
             )}
           >
-            <div
-              className="mx-auto h-full max-w-4xl"
-            >
-              {loaded && children}
-            </div>
+            <div className="mx-auto h-full max-w-4xl">{loaded && children}</div>
           </main>
         </div>
 
         <div>
           <ToggleSideBarButton
             navigationBarOpen={navigationBarOpen}
-            toggleNavigationBarVisibility={(isVisible) => setNavigationBarOpen(isVisible)}
+            toggleNavigationBarVisibility={(isVisible) =>
+              setNavigationBarOpen(isVisible)
+            }
           />
         </div>
       </div>
