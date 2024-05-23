@@ -2,13 +2,11 @@ import {
   Avatar,
   Button,
   ChevronDownIcon,
-  ChevronRightIcon,
   Chip,
   ContentMessage,
   Dialog,
   DropdownMenu,
   ElementModal,
-  Icon,
   IconButton,
   Modal,
   Page,
@@ -39,6 +37,9 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import { InvitationsList } from "@app/components/members/InvitationsList";
+import { MembersList } from "@app/components/members/MembersList";
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import type { NotificationType } from "@app/components/sparkle/Notification";
@@ -58,8 +59,8 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isProPlanCode, isUpgraded } from "@app/lib/plans/plan_codes";
-import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
-import { classNames, isEmailValid } from "@app/lib/utils";
+import { useMembers } from "@app/lib/swr";
+import { isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
@@ -226,42 +227,11 @@ export default function WorkspaceAdmin({
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
-    const { invitations, isInvitationsLoading } =
-      useWorkspaceInvitations(owner);
+
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 
     const [changeRoleMember, setChangeRoleMember] =
       useState<UserTypeWithWorkspaces | null>(null);
-
-    function isInvitation(
-      arg: MembershipInvitationType | UserType
-    ): arg is MembershipInvitationType {
-      return (arg as MembershipInvitationType).inviteEmail !== undefined;
-    }
-
-    const displayedMembersAndInvitations: (
-      | UserTypeWithWorkspaces
-      | MembershipInvitationType
-    )[] = [
-      ...members
-        .sort((a, b) => a.fullName.localeCompare(b.fullName))
-        .filter((m) => m.workspaces[0].role !== "none")
-        .filter(
-          (m) =>
-            !searchText ||
-            m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-            m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-            m.username?.toLowerCase().includes(searchText.toLowerCase())
-        ),
-      ...invitations
-        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
-        .filter((i) => i.status === "pending")
-        .filter(
-          (i) =>
-            !searchText ||
-            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
-        ),
-    ];
 
     const popup = useMemo(() => {
       if (!inviteBlockedPopupReason) {
@@ -329,113 +299,32 @@ export default function WorkspaceAdmin({
             </div>
           </div>
           <div className="s-w-full">
-            {displayedMembersAndInvitations.map(
-              (item: UserTypeWithWorkspaces | MembershipInvitationType) => {
-                const role = isInvitation(item)
-                  ? item.initialRole
-                  : item.workspaces[0].role;
-                assert(
-                  role !== "none",
-                  "Unreachable (typescript pleasing): role cannot be none"
-                );
-                return (
-                  <div
-                    key={
-                      isInvitation(item)
-                        ? `invitation-${item.id}`
-                        : `member-${item.id}`
-                    }
-                    className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                    onClick={async () => {
-                      if (user.id === item.id) {
-                        return;
-                      } // no action on self
-                      if (isInvitation(item)) {
-                        await revokeInvitation({
-                          owner,
-                          invitation: item,
-                          mutate,
-                          sendNotification,
-                          confirm,
-                        });
-                      } else {
-                        setChangeRoleMember(item);
-                      }
-                    }}
-                  >
-                    <div className="hidden sm:block">
-                      {isInvitation(item) ? (
-                        <Avatar size="sm" />
-                      ) : (
-                        <Avatar
-                          visual={item.image}
-                          name={item.fullName}
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                    <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                      {!isInvitation(item) && (
-                        <div className="font-medium text-element-900">
-                          {item.fullName}
-                          {user.id === item.id && " (you)"}
-                        </div>
-                      )}
-
-                      <div className="grow font-normal text-element-700">
-                        {isInvitation(item)
-                          ? item.inviteEmail
-                          : item.email || item.username}
-                      </div>
-                    </div>
-                    {isInvitation(item) && (
-                      <div>
-                        <Chip size="xs" color="slate">
-                          Invitation {item.status}
-                        </Chip>
-                      </div>
-                    )}
-                    <div>
-                      <Chip
-                        size="xs"
-                        color={ROLES_DATA[role]["color"]}
-                        className="capitalize"
-                      >
-                        {displayRole(role)}
-                      </Chip>
-                    </div>
-                    <div className="hidden sm:block">
-                      <Icon
-                        visual={ChevronRightIcon}
-                        className={classNames(
-                          "text-element-600",
-                          user.id === item.id ? "invisible" : ""
-                        )}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-            )}
-            {(isMembersLoading || isInvitationsLoading) && (
-              <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
-                <div className="hidden sm:block">
-                  <Avatar size="xs" />
-                </div>
-                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                  <div className="font-medium text-element-900">Loading...</div>
-                  <div className="grow font-normal text-element-700"></div>
-                </div>
-                <div>
-                  <Chip size="xs" color="slate">
-                    Loading...
-                  </Chip>
-                </div>
-                <div className="hidden sm:block">
-                  <ChevronRightIcon />
-                </div>
-              </div>
-            )}
+            <div className="space-y-2 pt-4">
+              <Page.H variant="h5">Invitations</Page.H>
+              <InvitationsList
+                owner={owner}
+                onClickEvent={async (invitation: MembershipInvitationType) => {
+                  await revokeInvitation({
+                    owner,
+                    invitation,
+                    mutate,
+                    sendNotification,
+                    confirm,
+                  });
+                }}
+                searchText={searchText}
+              />
+            </div>
+            <div className="space-y-2 pb-3 pt-4">
+              <Page.H variant="h5">Members</Page.H>
+              <MembersList
+                users={members}
+                currentUserId={user.id}
+                isMembersLoading={isMembersLoading}
+                onClickEvent={(role) => setChangeRoleMember(role)}
+                searchText={searchText}
+              />
+            </div>
           </div>
         </Page.Vertical>
       </>
@@ -960,10 +849,6 @@ function ChangeMemberModal({
   );
 }
 
-function displayRole(role: RoleType): string {
-  return role === "user" ? "member" : role;
-}
-
 function RoleDropDown({
   selectedRole,
   onChange,
@@ -1073,23 +958,3 @@ async function sendInvitations({
     }
   }
 }
-
-const ROLES_DATA: Record<
-  ActiveRoleType,
-  { description: string; color: "red" | "amber" | "emerald" | "slate" }
-> = {
-  admin: {
-    description: "Admins can manage members, in addition to builders' rights.",
-    color: "red",
-  },
-  builder: {
-    description:
-      "Builders can create custom assistants and use advanced dev tools.",
-    color: "amber",
-  },
-  user: {
-    description:
-      "Members can use assistants provided by Dust as well as custom assistants created by their company.",
-    color: "emerald",
-  },
-};
