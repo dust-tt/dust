@@ -1,62 +1,86 @@
 import { Avatar, ChevronRightIcon, Chip, Icon } from "@dust-tt/sparkle";
-import type { MembershipInvitationType } from "@dust-tt/types";
+import type { UserTypeWithWorkspaces } from "@dust-tt/types";
+import assert from "assert";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { classNames } from "@app/lib/utils";
 
-export function RenderInvitations({
-  invitations,
-  isInvitationsLoading,
+export function MembersList({
+  users,
+  currentUserId,
+  isMembersLoading,
   onClickEvent,
   searchText,
 }: {
-  invitations: MembershipInvitationType[];
-  isInvitationsLoading: boolean;
-  onClickEvent: (invitation: MembershipInvitationType) => void;
+  users: UserTypeWithWorkspaces[];
+  currentUserId: number;
+  isMembersLoading: boolean;
+  onClickEvent: (role: UserTypeWithWorkspaces) => void;
   searchText?: string;
 }) {
-  const filteredInvitations = invitations
-    .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
-    .filter((i) => i.status === "pending")
+  const filteredUsers = users
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .filter((m) => m.workspaces[0].role !== "none")
     .filter(
-      (i) =>
+      (m) =>
         !searchText ||
-        i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
+        m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.username?.toLowerCase().includes(searchText.toLowerCase())
     );
   return (
     <div className="s-w-full">
-      {filteredInvitations.map((invitation: MembershipInvitationType) => {
+      {filteredUsers.map((user) => {
+        const role = user.workspaces[0].role;
+        assert(
+          role !== "none",
+          "Unreachable (typescript pleasing): role cannot be none"
+        );
         return (
           <div
-            key={`invitation-${invitation.id}`}
+            key={`member-${user.id}`}
             className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
             onClick={async () => {
-              onClickEvent(invitation);
+              if (currentUserId === user.id) {
+                return;
+              }
+              onClickEvent(user);
             }}
           >
             <div className="hidden sm:block">
-              <Avatar size="sm" className={invitation.sId} />
+              <Avatar visual={user.image} name={user.fullName} size="sm" />
             </div>
             <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="font-medium text-element-900">
+                {user.fullName}
+                {user.id === currentUserId && " (you)"}
+              </div>
               <div className="grow font-normal text-element-700">
-                {invitation.inviteEmail}
+                {user.email || user.username}
               </div>
             </div>
             <div>
               <Chip
                 size="xs"
-                color={ROLES_DATA[invitation.initialRole]["color"]}
+                color={ROLES_DATA[role]["color"]}
                 className="capitalize"
               >
-                {displayRole(invitation.initialRole)}
+                {displayRole(role)}
               </Chip>
             </div>
             <div className="hidden sm:block">
-              <Icon visual={ChevronRightIcon} className="text-element-600" />
+              <Icon
+                visual={ChevronRightIcon}
+                className={classNames(
+                  "text-element-600",
+                  user.id === currentUserId ? "invisible" : ""
+                )}
+              />
             </div>
           </div>
         );
       })}
-      {isInvitationsLoading && (
+      {isMembersLoading && (
         <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
           <div className="hidden sm:block">
             <Avatar size="xs" />

@@ -37,8 +37,8 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
-import {RenderInvitations} from "@app/components/members/RenderInvitations";
-import {RenderMembers} from "@app/components/members/RenderMembers"
+import {InvitationsList} from "@app/components/members/InvitationsList";
+import {MembersList} from "@app/components/members/MembersList"
 import {displayRole, ROLES_DATA} from "@app/components/members/Roles";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
@@ -227,7 +227,6 @@ export default function WorkspaceAdmin({
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
-    console.log(searchText);
     const { invitations, isInvitationsLoading } =
       useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
@@ -303,7 +302,7 @@ export default function WorkspaceAdmin({
           <div className="s-w-full">
             <div className="space-y-2 pt-4">
               <Page.H variant="h5">Invitations</Page.H>
-              <RenderInvitations
+              <InvitationsList
                 invitations={invitations}
                 isInvitationsLoading={isInvitationsLoading}
                 onClickEvent={async (invitation: MembershipInvitationType) => {
@@ -320,7 +319,7 @@ export default function WorkspaceAdmin({
             </div>
             <div className="space-y-2 pb-3 pt-4">
               <Page.H variant="h5">Members</Page.H>
-              <RenderMembers
+              <MembersList
                 users={members}
                 currentUserId={user.id}
                 isMembersLoading={isMembersLoading}
