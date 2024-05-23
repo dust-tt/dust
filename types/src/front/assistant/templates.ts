@@ -8,6 +8,7 @@ import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
 import { RetrievalConfigurationType } from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
+import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
 
@@ -99,6 +100,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
   process_configuration: "Process data sources",
+  websearch_configuration: "Web search",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
@@ -195,6 +197,16 @@ export function getAgentActionConfigurationType(
         description: "Process the workspace's internal data sources.",
         forceUseAtIteration: 0,
       } satisfies ProcessConfigurationType;
+
+    case "websearch_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        type: "websearch_configuration",
+        name: "web_search",
+        description: "Search the web.",
+        forceUseAtIteration: 0,
+      } satisfies WebsearchConfigurationType;
 
     default:
       assertNever(action);
