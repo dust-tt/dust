@@ -31,10 +31,6 @@ import {
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateProcessSpecification,
-  runProcess,
-} from "@app/lib/api/assistant/actions/process";
-import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -338,18 +334,6 @@ export async function* runMultiActionsAgent(
       specifications.push(r.value);
     } else if (isTablesQueryConfiguration(a)) {
       const r = await generateTablesQuerySpecification(auth, {
-        name: a.name,
-        description: a.description,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isProcessConfiguration(a)) {
-      const r = await generateProcessSpecification(auth, {
-        actionConfiguration: a,
         name: a.name,
         description: a.description,
       });
@@ -813,9 +797,10 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = runProcess(auth, {
-      configuration,
-      actionConfiguration,
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
       userMessage,
       agentMessage,
