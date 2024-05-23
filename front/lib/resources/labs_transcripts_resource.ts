@@ -49,7 +49,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
-  static async findByUserWorkspace({
+  static async findByUserAndWorkspace({
     auth,
     userId,
   }: {

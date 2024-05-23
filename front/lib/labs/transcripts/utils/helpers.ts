@@ -36,7 +36,7 @@ export async function getTranscriptsGoogleAuth(
   userId: ModelId
 ) {
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+    await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
       auth,
       userId,
     });

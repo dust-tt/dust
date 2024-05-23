@@ -60,7 +60,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+        await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
           userId,
         });
@@ -99,7 +99,7 @@ async function handler(
       const { connectionId, provider } = bodyValidation.right;
 
       const transcriptsConfigurationAlreadyExists =
-        await LabsTranscriptsConfigurationResource.findByUserWorkspace({
+        await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
           userId,
         });
