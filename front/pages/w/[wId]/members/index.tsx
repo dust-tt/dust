@@ -2,11 +2,13 @@ import {
   Avatar,
   Button,
   ChevronDownIcon,
+  ChevronRightIcon,
   Chip,
   ContentMessage,
   Dialog,
   DropdownMenu,
   ElementModal,
+  Icon,
   IconButton,
   Modal,
   Page,
@@ -37,9 +39,6 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
-import { InvitationsList } from "@app/components/members/InvitationsList";
-import { MembersList } from "@app/components/members/MembersList";
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import type { NotificationType } from "@app/components/sparkle/Notification";
@@ -59,8 +58,8 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isProPlanCode, isUpgraded } from "@app/lib/plans/plan_codes";
-import { useMembers } from "@app/lib/swr";
-import { isEmailValid } from "@app/lib/utils";
+import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
+import { classNames, isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
@@ -227,7 +226,9 @@ export default function WorkspaceAdmin({
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
-
+    console.log(searchText);
+    const { invitations, isInvitationsLoading } =
+      useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 
     const [changeRoleMember, setChangeRoleMember] =
@@ -301,8 +302,9 @@ export default function WorkspaceAdmin({
           <div className="s-w-full">
             <div className="space-y-2 pt-4">
               <Page.H variant="h5">Invitations</Page.H>
-              <InvitationsList
-                owner={owner}
+              <RenderInvitations
+                invitations={invitations}
+                isInvitationsLoading={isInvitationsLoading}
                 onClickEvent={async (invitation: MembershipInvitationType) => {
                   await revokeInvitation({
                     owner,
@@ -317,7 +319,7 @@ export default function WorkspaceAdmin({
             </div>
             <div className="space-y-2 pb-3 pt-4">
               <Page.H variant="h5">Members</Page.H>
-              <MembersList
+              <RenderMembers
                 users={members}
                 currentUserId={user.id}
                 isMembersLoading={isMembersLoading}
@@ -565,6 +567,185 @@ function ProPlanBillingNotice() {
         sign-up date.
       </p>
     </ContentMessage>
+  );
+}
+
+function RenderInvitations({
+  invitations,
+  isInvitationsLoading,
+  onClickEvent,
+  searchText,
+}: {
+  invitations: MembershipInvitationType[];
+  isInvitationsLoading: boolean;
+  onClickEvent: (invitation: MembershipInvitationType) => void;
+  searchText?: string;
+}) {
+  const filteredInvitations = invitations
+    .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+    .filter((i) => i.status === "pending")
+    .filter(
+      (i) =>
+        !searchText ||
+        i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
+    );
+  return (
+    <div className="s-w-full">
+      {filteredInvitations.map((invitation: MembershipInvitationType) => {
+        return (
+          <div
+            key={`invitation-${invitation.id}`}
+            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+            onClick={async () => {
+              onClickEvent(invitation);
+            }}
+          >
+            <div className="hidden sm:block">
+              <Avatar size="sm" className={invitation.sId} />
+            </div>
+            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="grow font-normal text-element-700">
+                {invitation.inviteEmail}
+              </div>
+            </div>
+            <div>
+              <Chip size="xs" color="slate">
+                Invitation {invitation.status}
+              </Chip>
+            </div>
+            <div>
+              <Chip
+                size="xs"
+                color={ROLES_DATA[invitation.initialRole]["color"]}
+                className="capitalize"
+              >
+                {displayRole(invitation.initialRole)}
+              </Chip>
+            </div>
+            <div className="hidden sm:block">
+              <Icon visual={ChevronRightIcon} className="text-element-600" />
+            </div>
+          </div>
+        );
+      })}
+      {isInvitationsLoading && (
+        <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+          <div className="hidden sm:block">
+            <Avatar size="xs" />
+          </div>
+          <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+            <div className="font-medium text-element-900">Loading...</div>
+            <div className="grow font-normal text-element-700"></div>
+          </div>
+          <div>
+            <Chip size="xs" color="slate">
+              Loading...
+            </Chip>
+          </div>
+          <div className="hidden sm:block">
+            <ChevronRightIcon />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RenderMembers({
+  users,
+  currentUserId,
+  isMembersLoading,
+  onClickEvent,
+  searchText,
+}: {
+  users: UserTypeWithWorkspaces[];
+  currentUserId: number;
+  isMembersLoading: boolean;
+  onClickEvent: (role: UserTypeWithWorkspaces) => void;
+  searchText?: string;
+}) {
+  const filteredUsers = users
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .filter((m) => m.workspaces[0].role !== "none")
+    .filter(
+      (m) =>
+        !searchText ||
+        m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.username?.toLowerCase().includes(searchText.toLowerCase())
+    );
+  return (
+    <div className="s-w-full">
+      {filteredUsers.map((user) => {
+        const role = user.workspaces[0].role;
+        assert(
+          role !== "none",
+          "Unreachable (typescript pleasing): role cannot be none"
+        );
+        return (
+          <div
+            key={`member-${user.id}`}
+            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+            onClick={async () => {
+              if (currentUserId === user.id) {
+                return;
+              }
+              onClickEvent(user);
+            }}
+          >
+            <div className="hidden sm:block">
+              <Avatar visual={user.image} name={user.fullName} size="sm" />
+            </div>
+            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="font-medium text-element-900">
+                {user.fullName}
+                {user.id === currentUserId && " (you)"}
+              </div>
+              <div className="grow font-normal text-element-700">
+                {user.email || user.username}
+              </div>
+            </div>
+            <div>
+              <Chip
+                size="xs"
+                color={ROLES_DATA[role]["color"]}
+                className="capitalize"
+              >
+                {displayRole(role)}
+              </Chip>
+            </div>
+            <div className="hidden sm:block">
+              <Icon
+                visual={ChevronRightIcon}
+                className={classNames(
+                  "text-element-600",
+                  user.id === currentUserId ? "invisible" : ""
+                )}
+              />
+            </div>
+          </div>
+        );
+      })}
+      {isMembersLoading && (
+        <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+          <div className="hidden sm:block">
+            <Avatar size="xs" />
+          </div>
+          <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+            <div className="font-medium text-element-900">Loading...</div>
+            <div className="grow font-normal text-element-700"></div>
+          </div>
+          <div>
+            <Chip size="xs" color="slate">
+              Loading...
+            </Chip>
+          </div>
+          <div className="hidden sm:block">
+            <ChevronRightIcon />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -849,6 +1030,10 @@ function ChangeMemberModal({
   );
 }
 
+function displayRole(role: RoleType): string {
+  return role === "user" ? "member" : role;
+}
+
 function RoleDropDown({
   selectedRole,
   onChange,
@@ -958,3 +1143,23 @@ async function sendInvitations({
     }
   }
 }
+
+const ROLES_DATA: Record<
+  ActiveRoleType,
+  { description: string; color: "red" | "amber" | "emerald" | "slate" }
+> = {
+  admin: {
+    description: "Admins can manage members, in addition to builders' rights.",
+    color: "red",
+  },
+  builder: {
+    description:
+      "Builders can create custom assistants and use advanced dev tools.",
+    color: "amber",
+  },
+  user: {
+    description:
+      "Members can use assistants provided by Dust as well as custom assistants created by their company.",
+    color: "emerald",
+  },
+};
