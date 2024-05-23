@@ -1087,6 +1087,50 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn load_data_source_by_internal_id(
+        &self,
+        data_source_internal_id: &str,
+    ) -> Result<Option<DataSource>> {
+        let data_source_internal_id = data_source_internal_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query(
+                "SELECT id, created, project, data_source_id, config_json FROM data_sources
+                   WHERE internal_id = $1 LIMIT 1",
+                &[&data_source_internal_id],
+            )
+            .await?;
+
+        let d: Option<(i64, i64, i64, String, String)> = match r.len() {
+            0 => None,
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+            )),
+            _ => unreachable!(),
+        };
+
+        match d {
+            None => Ok(None),
+            Some((_, created, project_id, data_source_id, config_data)) => {
+                let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+                Ok(Some(DataSource::new_from_store(
+                    &Project::new_from_id(project_id),
+                    created as u64,
+                    &data_source_id,
+                    &data_source_internal_id,
+                    &data_source_config,
+                )))
+            }
+        }
+    }
+
     async fn update_data_source_config(
         &self,
         project: &Project,
