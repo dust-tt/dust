@@ -437,6 +437,21 @@ export async function createOrUpgradeAgentConfiguration({
             agentConfigurationRes.value
           )
         );
+      } else if (action.type === "websearch_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "websearch_configuration",
+              name: action.name ?? null,
+              description: action.description ?? null,
+              forceUseAtIteration:
+                action.forceUseAtIteration ??
+                legacyForceSingleActionAtIteration,
+            },
+            agentConfigurationRes.value
+          )
+        );
       } else {
         assertNever(action);
       }

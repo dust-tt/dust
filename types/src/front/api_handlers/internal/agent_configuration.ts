@@ -93,6 +93,10 @@ const TablesQueryActionConfigurationSchema = t.type({
   ),
 });
 
+const WebsearchActionConfigurationSchema = t.type({
+  type: t.literal("websearch_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -149,6 +153,7 @@ const ActionConfigurationSchema = t.intersection([
     DustAppRunActionConfigurationSchema,
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
+    WebsearchActionConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);

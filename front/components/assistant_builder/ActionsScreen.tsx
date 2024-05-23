@@ -42,6 +42,10 @@ import {
   ActionTablesQuery,
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
+import {
+  ActionWebsearch,
+  isActionWebsearchValid,
+} from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderDustAppConfiguration,
@@ -102,6 +106,13 @@ const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: TableStrokeIcon,
     flag: null,
   },
+  WEBSEARCH: {
+    label: "Web search",
+    description: "Perform a web search",
+    cardIcon: MagnifyingGlassStrokeIcon,
+    dropDownIcon: MagnifyingGlassIcon,
+    flag: "websearch_action",
+  },
 };
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -139,6 +150,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
+    case "WEBSEARCH":
+      return isActionWebsearchValid(action);
     default:
       assertNever(action);
   }
@@ -613,6 +626,8 @@ function ActionEditor({
                   setEdited={setEdited}
                 />
               );
+            case "WEBSEARCH":
+              return <ActionWebsearch />;
             default:
               assertNever(action);
           }

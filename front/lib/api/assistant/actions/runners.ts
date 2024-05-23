@@ -3,6 +3,7 @@ import type {
   DustAppRunConfigurationType,
   ProcessConfigurationType,
 } from "@dust-tt/types";
+import type { WebsearchConfigurationType } from "@dust-tt/types/dist/front/assistant/actions/websearch";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
@@ -11,16 +12,19 @@ import type {
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/api/assistant/actions/types";
+import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
 interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
+  websearch_configuration: WebsearchConfigurationType;
   // Add other configurations once migrated to classes.
 }
 
 interface ActionTypeToClassMap {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
+  websearch_configuration: WebsearchConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -61,6 +65,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
 } = {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
+  websearch_configuration: WebsearchConfigurationServerRunner,
 } as const;
 
 export function getRunnerforActionConfiguration<K extends keyof CombinedMap>(

@@ -17,6 +17,7 @@ import {
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { AgentActionConfigurationType } from "../agent";
+import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -90,6 +91,23 @@ export function isProcessActionType(
   arg: AgentActionType
 ): arg is ProcessActionType {
   return arg.type === "process_action";
+}
+
+export function isWebsearchConfiguration(
+  arg: unknown
+): arg is WebsearchConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "websearch_configuration"
+  );
+}
+
+export function isWebsearchActionType(
+  arg: AgentActionType
+): arg is WebsearchActionType {
+  return arg.type === "websearch_action";
 }
 
 export function isAgentActionConfigurationType(
