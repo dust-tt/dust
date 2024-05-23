@@ -96,6 +96,10 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>>;
+    async fn load_data_source_by_internal_id(
+        &self,
+        data_source_internal_id: &str,
+    ) -> Result<Option<DataSource>>;
     async fn update_data_source_config(
         &self,
         project: &Project,

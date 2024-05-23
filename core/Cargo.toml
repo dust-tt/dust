@@ -9,7 +9,7 @@ path = "bin/dust_api.rs"
 
 [[bin]]
 name = "qdrant_migrator"
-path = "bin/qdrant/qdrant_migrator.rs"
+path = "bin/qdrant/migrator.rs"
 
 [[bin]]
 name = "qdrant_create_collection"
