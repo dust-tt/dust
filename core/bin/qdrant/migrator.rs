@@ -72,8 +72,8 @@ async fn show(
     utils::info(&format!(
         "Data source: \
             data_source_internal_id={}  data_source_id={} cluster={} shadow_write_cluster={}",
-        ds.data_source_id(),
         ds.internal_id(),
+        ds.data_source_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -626,9 +626,8 @@ async fn migrate(
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MigrationRecord {
-    project_id: i64,
     data_source_id: String,
-    data_source_internal_id: String,
+    internal_id: String,
 }
 
 async fn migrate_file(
@@ -666,7 +665,7 @@ async fn migrate_file(
             migrate(
                 store,
                 qdrant_clients,
-                record.data_source_internal_id,
+                record.internal_id,
                 target_cluster,
                 false,
             )
