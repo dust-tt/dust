@@ -40,6 +40,7 @@ import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
+import { generateWebsearchSpecification } from "@app/lib/api/assistant/actions/websearch";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
@@ -50,7 +51,6 @@ import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
-import { generateWebsearchSpecification } from "@app/lib/api/assistant/actions/websearch";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
