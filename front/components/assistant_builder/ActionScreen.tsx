@@ -87,7 +87,7 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
   WEBSEARCH: {
     label: "Web search",
     icon: MagnifyingGlassIcon,
-    description: "Search the web for an answer",
+    description: "Perform a web search",
     defaultActionType: "WEBSEARCH",
     flag: "websearch_action",
   },

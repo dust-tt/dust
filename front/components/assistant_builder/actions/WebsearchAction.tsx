@@ -11,7 +11,7 @@ export function isActionWebsearchValid(
 export function ActionWebsearch() {
   return (
     <div>
-      This action will search the web and provide the 8 first results (title,
+      This action will perform a web search and return the top results (title,
       link and summary) to the assistant.
     </div>
   );

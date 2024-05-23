@@ -14,25 +14,25 @@ function websearchActionSpecification(arg0: {
     inputs: [
       {
         name: "query",
-        description: "The search query to run.",
+        description: "The query used to perform the web search.",
         type: "string",
       },
     ],
   } as AgentActionSpecification;
 }
 
-export async function generateWebsearchSpecification(
+export function generateWebsearchSpecification(
   auth: Authenticator,
   {
     actionConfiguration,
-    name = "websearch",
+    name = "web_search",
     description,
   }: {
     actionConfiguration: WebsearchConfigurationType;
     name?: string;
     description?: string;
   }
-): Promise<Result<AgentActionSpecification, Error>> {
+): Result<AgentActionSpecification, Error> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected unauthenticated call to `runWebsearchAction`");
@@ -42,7 +42,7 @@ export async function generateWebsearchSpecification(
     actionConfiguration,
     name,
     description:
-      description ?? "Search the web for information on a given topic.",
+      description ?? "Perform a web search and return the top results.",
   });
 
   return new Ok(spec);
