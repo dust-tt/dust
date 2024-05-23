@@ -59,7 +59,7 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isProPlanCode, isUpgraded } from "@app/lib/plans/plan_codes";
-import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
+import { useMembers } from "@app/lib/swr";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
@@ -227,8 +227,7 @@ export default function WorkspaceAdmin({
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
-    const { invitations, isInvitationsLoading } =
-      useWorkspaceInvitations(owner);
+
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 
     const [changeRoleMember, setChangeRoleMember] =
@@ -303,8 +302,7 @@ export default function WorkspaceAdmin({
             <div className="space-y-2 pt-4">
               <Page.H variant="h5">Invitations</Page.H>
               <InvitationsList
-                invitations={invitations}
-                isInvitationsLoading={isInvitationsLoading}
+                owner={owner}
                 onClickEvent={async (invitation: MembershipInvitationType) => {
                   await revokeInvitation({
                     owner,

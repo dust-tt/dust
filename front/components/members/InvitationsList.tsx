@@ -1,19 +1,20 @@
 import { Avatar, ChevronRightIcon, Chip, Icon } from "@dust-tt/sparkle";
-import type { MembershipInvitationType } from "@dust-tt/types";
+import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { useWorkspaceInvitations } from "@app/lib/swr";
 
 export function InvitationsList({
-  invitations,
-  isInvitationsLoading,
+  owner,
   onClickEvent,
   searchText,
 }: {
-  invitations: MembershipInvitationType[];
-  isInvitationsLoading: boolean;
+  owner: WorkspaceType;
   onClickEvent: (invitation: MembershipInvitationType) => void;
   searchText?: string;
 }) {
+  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
+
   const filteredInvitations = invitations
     .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
     .filter((i) => i.status === "pending")
