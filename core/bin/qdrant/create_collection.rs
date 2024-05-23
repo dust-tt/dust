@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use dust::{
@@ -8,7 +10,7 @@ use dust::{
     },
     utils,
 };
-use qdrant_client::qdrant;
+use qdrant_client::{client::QdrantClient, qdrant};
 use tokio;
 
 #[derive(Parser, Debug)]
@@ -25,6 +27,69 @@ struct Args {
     /// Name of the cluster.
     #[arg(short, long)]
     cluster: QdrantCluster,
+}
+
+async fn create_indexes_for_collection(
+    raw_client: &Arc<QdrantClient>,
+    cluster: &QdrantCluster,
+    collection_name: &String,
+) -> Result<()> {
+    let _ = raw_client
+        .create_field_index(
+            collection_name,
+            "document_id_hash",
+            qdrant::FieldType::Keyword,
+            None,
+            None,
+        )
+        .await?;
+
+    let _ = raw_client
+        .create_field_index(
+            collection_name,
+            "data_source_internal_id",
+            qdrant::FieldType::Keyword,
+            None,
+            None,
+        )
+        .await?;
+
+    let _ = raw_client
+        .create_field_index(
+            collection_name,
+            "tags",
+            qdrant::FieldType::Keyword,
+            None,
+            None,
+        )
+        .await?;
+
+    let _ = raw_client
+        .create_field_index(
+            collection_name,
+            "parents",
+            qdrant::FieldType::Keyword,
+            None,
+            None,
+        )
+        .await?;
+
+    let _ = raw_client
+        .create_field_index(
+            collection_name,
+            "timestamp",
+            qdrant::FieldType::Integer,
+            None,
+            None,
+        )
+        .await?;
+
+    println!(
+        "Done creating indexes for collection {} on cluster {}",
+        collection_name, cluster
+    );
+
+    Ok(())
 }
 
 async fn create_qdrant_collection(
@@ -140,6 +205,8 @@ async fn create_qdrant_collection(
             false => Err(anyhow!("Collection not created!")),
         }?;
     }
+
+    create_indexes_for_collection(&raw_client, &cluster, &collection_name).await?;
 
     Ok(())
 }
