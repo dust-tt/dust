@@ -60,7 +60,9 @@ async function fetchPrometheusMetrics(
 
     // Parse and update metric values.
     metricLines.forEach((line) => {
-      const [metricName, metricValue] = line.split(" ");
+      const [metricPart, metricValue] = line.split(" ");
+      // Extract metric name, ignoring any labels if present.
+      const [metricName] = metricPart.split("{", 1);
 
       const timestamp = Math.floor(Date.now() / 1000);
 
