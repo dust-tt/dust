@@ -11,7 +11,7 @@ import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { useUser } from "@app/lib/swr";
+import { useUser, useWorkspaceSubscriptions } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -44,6 +44,15 @@ export default function Subscribe({
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
+
+  const { subscriptions } = useWorkspaceSubscriptions({
+    workspaceId: owner.sId,
+  });
+
+  // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
+  // Current plan is always FREE_NO_PLAN if you're on this paywall.
+  // Since FREE_NO_PLAN is not on the database, we check if there is at least 1 subscription.
+  const hasPreviouSubscription = subscriptions?.length > 0;
 
   useEffect(() => {
     if (user?.id) {
@@ -127,18 +136,41 @@ export default function Subscribe({
                   icon={CreditCardIcon}
                   title="Setting up your subscription"
                 />
-                <Page.P>
-                  <span className="font-bold">
-                    You can try the Pro plan for free for two weeks.
-                  </span>
-                </Page.P>
-                <Page.P>
-                  After your trial ends, you will be charged monthly. You can
-                  cancel at any time.
-                </Page.P>
+                {hasPreviouSubscription ? (
+                  <>
+                    <Page.P>
+                      <span className="font-bold">
+                        Welcome back! You can reactivate your subscription
+                        anytime.
+                      </span>
+                    </Page.P>
+                    <Page.P>
+                      Please note that if your previous contract expired over 15
+                      days ago, previously stored data will no longer be
+                      available. This is to ensure privacy and security.
+                    </Page.P>
+                  </>
+                ) : (
+                  <>
+                    <Page.P>
+                      <span className="font-bold">
+                        You can try the Pro plan for free for two weeks.
+                      </span>
+                    </Page.P>
+                    <Page.P>
+                      After your trial ends, you will be charged monthly. You
+                      can cancel at any time.
+                    </Page.P>
+                  </>
+                )}
+
                 <Button
                   variant="primary"
-                  label="Start your trial"
+                  label={
+                    hasPreviouSubscription
+                      ? "Resume your subscription"
+                      : "Start your trial"
+                  }
                   icon={CreditCardIcon}
                   size="md"
                   onClick={() => {

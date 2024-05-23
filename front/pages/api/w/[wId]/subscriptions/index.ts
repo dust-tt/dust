@@ -1,4 +1,8 @@
-import type { PlanType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  PlanType,
+  SubscriptionType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -10,7 +14,10 @@ import {
   cancelSubscriptionImmediately,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
-import { getCheckoutUrlForUpgrade } from "@app/lib/plans/subscription";
+import {
+  getCheckoutUrlForUpgrade,
+  getSubscriptions,
+} from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -23,6 +30,10 @@ type PatchSubscriptionResponseBody = {
   success: boolean;
 };
 
+export type GetSubscriptionsResponseBody = {
+  subscriptions: SubscriptionType[];
+};
+
 export const PatchSubscriptionRequestBody = t.type({
   action: t.union([t.literal("cancel_free_trial"), t.literal("pay_now")]),
 });
@@ -31,7 +42,9 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorReponse<
-      PostSubscriptionResponseBody | PatchSubscriptionResponseBody
+      | GetSubscriptionsResponseBody
+      | PostSubscriptionResponseBody
+      | PatchSubscriptionResponseBody
     >
   >
 ): Promise<void> {
@@ -65,6 +78,22 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET": {
+      try {
+        const subscriptions = await getSubscriptions(auth);
+        return res.status(200).json({ subscriptions });
+      } catch (error) {
+        logger.error({ error }, "Error while subscribing workspace to plan");
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Error while subscribing workspace to plan",
+          },
+        });
+      }
+      break;
+    }
     case "POST": {
       try {
         const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
@@ -174,7 +203,7 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message: "The method passed is not supported.",
         },
       });
   }
