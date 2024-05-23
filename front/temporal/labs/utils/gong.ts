@@ -141,8 +141,8 @@ export async function retrieveGongTranscriptContent(
     body: JSON.stringify({
       contentSelector: {
         exposedFields: {
-          parties: true
-        }
+          parties: true,
+        },
       },
       filter: {
         callIds: [fileId],
