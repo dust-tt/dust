@@ -31,10 +31,6 @@ import {
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateProcessSpecification,
-  runProcess,
-} from "@app/lib/api/assistant/actions/process";
-import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
