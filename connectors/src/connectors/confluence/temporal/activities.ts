@@ -623,9 +623,6 @@ export async function confluenceGetReportPersonalActionActivity(
   if (connector.isThirdPartyInternalError !== null) {
     return false;
   }
-  if (connector.pausedAt !== null) {
-    return false;
-  }
 
   // We look for the oldest updated data.
   const oldestPageSync = await ConfluencePage.findOne({
