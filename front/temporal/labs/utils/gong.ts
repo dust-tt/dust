@@ -107,6 +107,7 @@ export async function retrieveGongTranscriptContent(
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string } | null> {
   type GongParticipant = {
+    userId: string;
     speakerId: string;
     name: string;
   };
@@ -138,6 +139,11 @@ export async function retrieveGongTranscriptContent(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      contentSelector: {
+        exposedFields: {
+          parties: true
+        }
+      },
       filter: {
         callIds: [fileId],
       },
@@ -153,7 +159,7 @@ export async function retrieveGongTranscriptContent(
   }
 
   const callData: {
-    participants: GongParticipant[];
+    parties: GongParticipant[];
     metaData: { title: string; started: string; duration: number };
   } = (await call.json()).calls[0];
 
@@ -212,12 +218,15 @@ export async function retrieveGongTranscriptContent(
     return null;
   }
 
-  const participants: { [key: string]: string } = {};
-  callData.participants?.map((participant: GongParticipant) => {
-    participants[participant.speakerId] = participant.name;
+  const participantsUsers: { [key: string]: string } = {};
+  const participantsSpeakers: { [key: string]: string } = {};
+
+  callData.parties?.map((participant: GongParticipant) => {
+    participantsUsers[participant.userId] = participant.name;
+    participantsSpeakers[participant.speakerId] = participant.name;
   });
 
-  if (!participants[gongUser.id]) {
+  if (!participantsUsers[gongUser.id]) {
     localLogger.info(
       {},
       "[processTranscriptActivity] User did not participate in this call. Skipping."
@@ -288,7 +297,7 @@ export async function retrieveGongTranscriptContent(
         (sentence: { start: number; end: number; text: string }) => {
           if (paragraph.speakerId !== lastSpeakerId) {
             transcriptContent += `${
-              participants[paragraph.speakerId] || "Unknown"
+              participantsSpeakers[paragraph.speakerId] || "Unknown"
             }: `;
             lastSpeakerId = paragraph.speakerId;
           }
