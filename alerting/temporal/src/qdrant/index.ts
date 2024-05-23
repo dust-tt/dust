@@ -41,6 +41,10 @@ configuration.setServerVariables({
 const datadogMetricsApi = new v2.MetricsApi(configuration);
 const qdrantClusters = QDRANT_CLUSTERS.split(",");
 
+function formatMetricName(rawMetricName: string) {
+  return `qdrant.${rawMetricName.replace("_", ".")}`;
+}
+
 async function fetchPrometheusMetrics(
   clusterName: string
 ): Promise<v2.MetricSeries[]> {
@@ -58,12 +62,14 @@ async function fetchPrometheusMetrics(
     metricLines.forEach((line) => {
       const [metricName, metricValue] = line.split(" ");
 
+      const timestamp = Math.floor(Date.now() / 1000);
+
       if (QDRANT_METRICS_TO_WATCH.gauge_metrics.includes(metricName)) {
         metrics.push({
-          metric: `qdrant.${metricName.replace("_", ".")}`,
+          metric: formatMetricName(metricName),
           points: [
             {
-              timestamp: Math.floor(Date.now() / 1000),
+              timestamp,
               value: parseFloat(metricValue),
             },
           ],
@@ -72,11 +78,11 @@ async function fetchPrometheusMetrics(
         });
       } else if (QDRANT_METRICS_TO_WATCH.count_metrics.includes(metricName)) {
         metrics.push({
-          metric: `qdrant.${metricName.replace("_", ".")}`,
+          metric: formatMetricName(metricName),
           points: [
             {
-              timestamp: Math.floor(Date.now() / 1000),
-              value: parseFloat(metricValue),
+              timestamp,
+              value: parseInt(metricValue),
             },
           ],
           tags: ["resource:qdrant", `cluster:${clusterName}`],
