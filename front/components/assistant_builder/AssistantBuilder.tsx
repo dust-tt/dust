@@ -866,6 +866,13 @@ export async function submitAssistantBuilderForm({
               tables: Object.values(a.configuration),
             };
 
+          case "WEBSEARCH":
+            return {
+              type: "websearch_configuration",
+              name: a.name,
+              description: a.description,
+            };
+
           case "PROCESS":
             return {
               type: "process_configuration",
