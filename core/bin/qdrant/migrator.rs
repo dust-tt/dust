@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
     data_sources::qdrant::{QdrantClients, QdrantCluster, QdrantDataSourceConfig},
-    project,
     run::Credentials,
     stores::{postgres, store::Store},
     utils,
@@ -23,45 +22,31 @@ use tokio_stream::{self as stream};
 enum Commands {
     #[command(arg_required_else_help = true)]
     #[command(about = "Show qdrant state for data source", long_about = None)]
-    Show {
-        project_id: i64,
-        data_source_id: String,
-    },
+    Show { data_source_internal_id: String },
     #[command(arg_required_else_help = true)]
     #[command(about = "Set `shadow_write_cluster` \
                        (!!! creates collection on `shadow_write_cluster`)", long_about = None)]
     SetShadowWrite {
-        project_id: i64,
-        data_source_id: String,
+        data_source_internal_id: String,
         cluster: String,
     },
     #[command(arg_required_else_help = true)]
     #[command(about = "Clear `shadow_write_cluster` \
                        (!!! deletes collection from `shadow_write_cluster`)", long_about = None)]
-    ClearShadowWrite {
-        project_id: i64,
-        data_source_id: String,
-    },
+    ClearShadowWrite { data_source_internal_id: String },
     #[command(arg_required_else_help = true)]
     #[command(about = "Migrate `cluster` collection to `shadow_write_cluster`", long_about = None)]
-    MigrateShadowWrite {
-        project_id: i64,
-        data_source_id: String,
-    },
+    MigrateShadowWrite { data_source_internal_id: String },
     #[command(arg_required_else_help = true)]
     #[command(about = "Switch `shadow_write_cluster` and `cluster` \
                        (!!! moves read traffic to `shadow_write_cluster`)", long_about = None)]
-    CommitShadowWrite {
-        project_id: i64,
-        data_source_id: String,
-    },
+    CommitShadowWrite { data_source_internal_id: String },
     #[command(arg_required_else_help = true)]
     #[command(about = "Automatically migrate a collection to a new cluster \
                        (!!! creates, shadow writes, migrates, \
                         and deletes collection from original cluster)", long_about = None)]
     Migrate {
-        project_id: i64,
-        data_source_id: String,
+        data_source_internal_id: String,
         cluster: String,
     },
     #[command(arg_required_else_help = true)]
@@ -74,20 +59,21 @@ enum Commands {
 async fn show(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
 ) -> Result<()> {
-    let project = project::Project::new_from_id(project_id);
-    let ds = match store.load_data_source(&project, &data_source_id).await? {
+    let ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
 
     utils::info(&format!(
         "Data source: \
-            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
-        ds.data_source_id(),
+            data_source_internal_id={}  data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
+        ds.data_source_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -101,8 +87,7 @@ async fn show(
     match qdrant_client.collection_info(&ds).await?.result {
         Some(info) => {
             utils::info(&format!(
-                "[MAIN] Qdrant collection: collection={} status={} \
-                    points_count={:?} cluster={} ",
+                "[MAIN] Qdrant collection: collection={} status={} points_count={:?} cluster={}",
                 qdrant_client.collection_name(&ds),
                 info.status.to_string(),
                 info.points_count,
@@ -146,12 +131,13 @@ async fn show(
 async fn set_shadow_write(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
     cluster: String,
 ) -> Result<()> {
-    let project = project::Project::new_from_id(project_id);
-    let mut ds = match store.load_data_source(&project, &data_source_id).await? {
+    let mut ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
@@ -187,7 +173,7 @@ async fn set_shadow_write(
         .await?;
 
     utils::done(&format!(
-        "Created qdrant shadow_write_cluster collection: \
+        "Created data source on shadow_write_cluster: \
             collection={} shadow_write_cluster={}",
         shadow_write_qdrant_client.collection_name(&ds),
         match qdrant_clients.shadow_write_cluster(&config.qdrant_config) {
@@ -201,9 +187,9 @@ async fn set_shadow_write(
 
     utils::done(&format!(
         "Updated data source: \
-            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
-        ds.data_source_id(),
+            data_source_internal_id={} data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
+        ds.data_source_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -219,12 +205,13 @@ async fn set_shadow_write(
 async fn clear_shadow_write(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
     ask_confirmation: bool,
 ) -> Result<()> {
-    let project = project::Project::new_from_id(project_id);
-    let mut ds = match store.load_data_source(&project, &data_source_id).await? {
+    let mut ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
@@ -245,8 +232,9 @@ async fn clear_shadow_write(
                 // confirm
                 match utils::confirm(&format!(
                     "[DANGER] Are you sure you want to delete this qdrant \
-                  shadow_write_cluster collection? \
-                  (this is definitive) points_count={:?} shadow_write_cluster={}",
+                        shadow_write_cluster data source? \
+                        (this is definitive) collection={} points_count={:?} shadow_write_cluster={}",
+                    shadow_write_qdrant_client.collection_name(&ds),
                     info.points_count,
                     match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
                         Some(cluster) => cluster.to_string(),
@@ -266,7 +254,7 @@ async fn clear_shadow_write(
     shadow_write_qdrant_client.delete_data_source(&ds).await?;
 
     utils::done(&format!(
-        "Deleted qdrant shadow_write_cluster collection: \
+        "Deleted qdrant shadow_write_cluster data source: \
             collection={} shadow_write_cluster={}",
         shadow_write_qdrant_client.collection_name(&ds),
         match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
@@ -293,9 +281,9 @@ async fn clear_shadow_write(
 
     utils::done(&format!(
         "Updated data source: \
-            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
-        ds.data_source_id(),
+            data_source_internal_id={} data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
+        ds.data_source_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -311,11 +299,12 @@ async fn clear_shadow_write(
 async fn migrate_shadow_write(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
 ) -> Result<()> {
-    let project = project::Project::new_from_id(project_id);
-    let ds = match store.load_data_source(&project, &data_source_id).await? {
+    let ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
@@ -431,11 +420,12 @@ async fn migrate_shadow_write(
 async fn commit_shadow_write(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
 ) -> Result<()> {
-    let project = project::Project::new_from_id(project_id);
-    let mut ds = match store.load_data_source(&project, &data_source_id).await? {
+    let mut ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
@@ -457,9 +447,9 @@ async fn commit_shadow_write(
 
     utils::info(&format!(
         "Updated data source: \
-            data_source_id={} data_source_internal_id={} cluster={} shadow_write_cluster={}",
-        ds.data_source_id(),
+            data_source_internal_id={}  data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
+        ds.data_source_id(),
         qdrant_clients
             .main_cluster(&ds.config().qdrant_config)
             .to_string(),
@@ -474,20 +464,23 @@ async fn commit_shadow_write(
 async fn migrate(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
-    project_id: i64,
-    data_source_id: String,
+    data_source_internal_id: String,
     target_cluster: String,
     ask_confirmation: bool,
 ) -> Result<()> {
-    utils::info(&format!(
-        "Migrating collection: project_id={} data_source_id={} target_cluster={}",
-        project_id, data_source_id, target_cluster
-    ));
-    let project = project::Project::new_from_id(project_id);
-    let ds = match store.load_data_source(&project, &data_source_id).await? {
+    let ds = match store
+        .load_data_source_by_internal_id(&data_source_internal_id)
+        .await?
+    {
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
+    utils::info(&format!(
+        "Migrating data source: data_source_internal_id={} data_source_id={} target_cluster={}",
+        ds.internal_id(),
+        ds.data_source_id(),
+        target_cluster
+    ));
 
     let from_cluster = qdrant_clients
         .main_cluster(&ds.config().qdrant_config)
@@ -497,8 +490,7 @@ async fn migrate(
     show(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
     )
     .await?;
 
@@ -506,9 +498,9 @@ async fn migrate(
         // Confirm this is the migration we want.
         match utils::confirm(&format!(
             "Do you confirm `set_shadow_write` + `migrate_shadow_write`: \
-                data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
-            ds.data_source_id(),
+                data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
             ds.internal_id(),
+            ds.data_source_id(),
             from_cluster,
             target_cluster,
         ))? {
@@ -520,8 +512,7 @@ async fn migrate(
     set_shadow_write(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
         target_cluster.clone(),
     )
     .await?;
@@ -529,64 +520,68 @@ async fn migrate(
     migrate_shadow_write(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
     )
     .await?;
 
-    utils::info(&format!(
-        "Waiting for collection to be ready: target_cluster={}",
-        target_cluster
-    ));
+    // Not needed anymore in v1 setup.
 
-    // Reload the ds so that it sees the shadow_write cluster.
-    let ds = match store.load_data_source(&project, &data_source_id).await? {
-        Some(ds) => ds,
-        None => Err(anyhow!("Data source not found"))?,
-    };
+    // utils::info(&format!(
+    //     "Waiting for target collection to be ready: target_cluster={}",
+    //     target_cluster
+    // ));
 
-    // Wait for the target_cluster to be ready.
-    loop {
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
-            Some(shadow_write_cluster) => {
-                let shadow_write_qdrant_client = qdrant_clients
-                    .shadow_write_client(&ds.config().qdrant_config)
-                    .unwrap();
-                match shadow_write_qdrant_client
-                    .collection_info(&ds)
-                    .await?
-                    .result
-                {
-                    Some(info) => {
-                        utils::info(&format!(
-                            "[SHADOW] Qdrant collection: \
-                                collection={} status={} points_count={:?} cluster={}",
-                            shadow_write_qdrant_client.collection_name(&ds),
-                            info.status.to_string(),
-                            info.points_count,
-                            shadow_write_cluster.to_string(),
-                        ));
-                        if info.status == 1 {
-                            break;
-                        }
-                    }
-                    None => Err(anyhow!("Qdrant collection not found"))?,
-                }
-            }
-            None => (),
-        };
+    // // Reload the ds so that it sees the shadow_write cluster.
+    // let ds = match store
+    //     .load_data_source_by_internal_id(&data_source_internal_id)
+    //     .await?
+    // {
+    //     Some(ds) => ds,
+    //     None => Err(anyhow!("Data source not found"))?,
+    // };
 
-        // Sleep for 1 second.
-        tokio::time::sleep(tokio::time::Duration::from_secs(8)).await;
-    }
+    // // Wait for the target_cluster to be ready.
+    // loop {
+    //     match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+    //         Some(shadow_write_cluster) => {
+    //             let shadow_write_qdrant_client = qdrant_clients
+    //                 .shadow_write_client(&ds.config().qdrant_config)
+    //                 .unwrap();
+    //             match shadow_write_qdrant_client
+    //                 .collection_info(&ds)
+    //                 .await?
+    //                 .result
+    //             {
+    //                 Some(info) => {
+    //                     utils::info(&format!(
+    //                         "[SHADOW] Qdrant collection: \
+    //                             collection={} status={} points_count={:?} cluster={}",
+    //                         shadow_write_qdrant_client.collection_name(&ds),
+    //                         info.status.to_string(),
+    //                         info.points_count,
+    //                         shadow_write_cluster.to_string(),
+    //                     ));
+    //                     if info.status == 1 {
+    //                         break;
+    //                     }
+    //                 }
+    //                 None => Err(anyhow!("Qdrant collection not found"))?,
+    //             }
+    //         }
+    //         None => (),
+    //     };
+
+    //     // Sleep for 1 second.
+    //     tokio::time::sleep(tokio::time::Duration::from_secs(8)).await;
+    // }
 
     if ask_confirmation {
         // Confirm we're ready to commit.
         match utils::confirm(&format!(
             "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
-                data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
-            ds.data_source_id(),
+               data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
             ds.internal_id(),
+            ds.data_source_id(),
             from_cluster,
             target_cluster,
         ))? {
@@ -598,23 +593,21 @@ async fn migrate(
     commit_shadow_write(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
     )
     .await?;
 
     clear_shadow_write(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
         ask_confirmation,
     )
     .await?;
 
     utils::done(&format!(
-        "Collection migrated: \
-            data_source_id={} data_source_internal_id={} from_cluster={} target_cluster={}?",
+        "Data source migrated: \
+           data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
         ds.data_source_id(),
         ds.internal_id(),
         from_cluster,
@@ -624,8 +617,7 @@ async fn migrate(
     show(
         store.clone(),
         qdrant_clients.clone(),
-        project_id,
-        data_source_id.clone(),
+        data_source_internal_id.clone(),
     )
     .await?;
 
@@ -634,8 +626,8 @@ async fn migrate(
 
 #[derive(Serialize, Deserialize, Debug)]
 struct MigrationRecord {
-    project_id: i64,
     data_source_id: String,
+    internal_id: String,
 }
 
 async fn migrate_file(
@@ -673,8 +665,7 @@ async fn migrate_file(
             migrate(
                 store,
                 qdrant_clients,
-                record.project_id,
-                record.data_source_id,
+                record.internal_id,
                 target_cluster,
                 false,
             )
@@ -690,7 +681,7 @@ async fn migrate_file(
 
 #[derive(Debug, Parser)]
 #[command(name = "collection_migrator")]
-#[command(about = "Tooling to migrate Qdrant collections", long_about = None)]
+#[command(about = "Tooling to migrate Data sources on Qdrant", long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -723,40 +714,33 @@ fn main() -> Result<()> {
 
         match args.command {
             Commands::Show {
-                project_id,
-                data_source_id,
-            } => show(store, qdrant_clients, project_id, data_source_id).await,
+                data_source_internal_id,
+            } => show(store, qdrant_clients, data_source_internal_id).await,
             Commands::SetShadowWrite {
-                project_id,
-                data_source_id,
+                data_source_internal_id,
                 cluster,
-            } => set_shadow_write(store, qdrant_clients, project_id, data_source_id, cluster).await,
+            } => set_shadow_write(store, qdrant_clients, data_source_internal_id, cluster).await,
             Commands::ClearShadowWrite {
-                project_id,
-                data_source_id,
+                data_source_internal_id,
             } => {
                 // This is the most dangerous command of all as it is the only one to actually
                 // delete data in an unrecoverable way.
-                clear_shadow_write(store, qdrant_clients, project_id, data_source_id, true).await
+                clear_shadow_write(store, qdrant_clients, data_source_internal_id, true).await
             }
             Commands::MigrateShadowWrite {
-                project_id,
-                data_source_id,
-            } => migrate_shadow_write(store, qdrant_clients, project_id, data_source_id).await,
+                data_source_internal_id,
+            } => migrate_shadow_write(store, qdrant_clients, data_source_internal_id).await,
             Commands::CommitShadowWrite {
-                project_id,
-                data_source_id,
-            } => commit_shadow_write(store, qdrant_clients, project_id, data_source_id).await,
+                data_source_internal_id,
+            } => commit_shadow_write(store, qdrant_clients, data_source_internal_id).await,
             Commands::Migrate {
-                project_id,
-                data_source_id,
+                data_source_internal_id,
                 cluster,
             } => {
                 migrate(
                     store,
                     qdrant_clients,
-                    project_id,
-                    data_source_id,
+                    data_source_internal_id,
                     cluster,
                     true,
                 )
