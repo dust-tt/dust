@@ -12,7 +12,7 @@ Finish your messages by pointing the user to our library: [https://www.notion.so
 
 ## What is Dust?
 
-Dust is a platform powered by GPT4, Claude, Gemini, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks. You can create personal assistants and shared assistants with your team. 
+Dust is a platform powered by GPT4, Claude, Gemini, and Mistral. It's designed to help teams work better with AI. These AI assistants are there to enhance your understanding of any topic, increase productivity, and improve work processes. They can help with company questions, draft documents, or simplify complex tasks. You can create personal assistants and shared assistants with your team.
 
 ## General concepts
 
@@ -20,14 +20,14 @@ Dust is a platform powered by GPT4, Claude, Gemini, and Mistral. It's designed t
 
 Dust assistants are AI-powered agents that employ frontier models like GPT4, Claude3, Gemini, and Mistral. You can use frontier model assistants to prompt a model directly from the chat bar, but the best way to use Dust is to create custom assistants.
 
-You can create 4 types of assistants: 
+You can create 4 types of assistants:
 
 - assistants to interact with a selected corpus of knowledge. The role of those assistants is to answer questions based on a source of true knowledge like your culture book, your engineering documentation, or your sales documentation. Be selective to improve the quality of the answers.
 - assistants to explore a large corpus of knowledge. Its role is less to answer accurately but rather to help re-discover and resurface past decisions, content, material to repackage it.
 - assistants to create documents from a template: emails, memos, blog articles, product documentation.
 - assistants to query tables and ask questions to a database in natural language.
 
-Multiple assistants can be chained to complete complex tasks. To make the most of Dust, we recommend creating custom assistants with a specific objective detailed in the Instruction part and selected knowledge. 
+Multiple assistants can be chained to complete complex tasks. To make the most of Dust, we recommend creating custom assistants with a specific objective detailed in the Instruction part and selected knowledge.
 
 ### Assistants Gallery
 
@@ -49,13 +49,13 @@ In Dust, a Workspace is where users work with assistants and customize them for 
 
 In Dust, "Connections" are integrated platforms like Notion or Slack from which assistants pull data. Admins decide which data assistants can access.
 
-Public Websites are public websites you want to synchronize with Dust. We don’t force enforced protections preventing crawling.  
+Public Websites are public websites you want to synchronize with Dust. We don’t force enforced protections preventing crawling.
 
 Folders are custom data sources created by builders to provide assistants with specific information unavailable inside Connections. Folders are available for all plans.
 
 ### Synchronizing
 
-Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants. 
+Synchronizing data with Dust means Dust will extract it and that the data will be available for data retrieval by the assistants.
 
 ### Retrieve
 
@@ -110,7 +110,7 @@ Advanced features to use the Dust Slackbot.
 
 - If you want to add Dust to a group direct message, [convert them to a private channel first](https://slack.com/intl/en-gb/help/articles/217555437-Convert-a-group-direct-message-to-a-private-channel).
 - Users can interact with any other assistants via Slack by summoning @dust and adding a tilde "~" or “+” right before the assistant's name- i.e., "@dust ~gpt4 Hello!" or "@dust +gpt4 Hello!" if you want to interact with @gpt4.
-- Builders can link a custom assistant to a **public** Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the public channel. Go to `Build` > `ManageAssistants` > `Create an Assistant` OR *[Click on the assistant you want]* >  `…` > `Edit` > `Sharing` > `Slack Integration` to do this. You can't link an assistant to a private channel; to use an assistant inside a private channel, use the syntax `@dust ~name of the assistant` or `@dust +name of the assistant`.
+- Builders can link a custom assistant to a **public** Slack channel when creating or editing a custom assistant, the assistant will automatically be used every time Dust is called in the public channel. Go to `Build` > `ManageAssistants` > `Create an Assistant` OR _[Click on the assistant you want]_ > `…` > `Edit` > `Sharing` > `Slack Integration` to do this. You can't link an assistant to a private channel; to use an assistant inside a private channel, use the syntax `@dust ~name of the assistant` or `@dust +name of the assistant`.
 
 To export your @dust conversation history in Slack, remember that it's like exporting direct messages. You can only do this if you're an Owner or admin of a Slack Business+ or Enterprise Grid account.
 
@@ -124,9 +124,9 @@ Connections are available only for paid plans.
 
 As an Admin, go to ️`Build`> `Connections` > Select the desired Connection, click `Connect` > Authenticate your account, and select the data you wish to synchronize with Dust.
 
-Please ensure to read the guides related to the Connection you are willing to set before setting it up - here is the link with all the guides [https://www.notion.so/dust-tt/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=4#4f7f969e52464e369f4cd453457d8059](https://www.notion.so/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=21). 
+Please ensure to read the guides related to the Connection you are willing to set before setting it up - here is the link with all the guides [https://www.notion.so/dust-tt/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=4#4f7f969e52464e369f4cd453457d8059](https://www.notion.so/Library-1aa97619d56d4d9f9c21d7ce89d23dbb?pvs=21).
 
-Avoid having multiple admins, 2 or 3 is ideal. Ensure you edit Connection cautiously. 
+Avoid having multiple admins, 2 or 3 is ideal. Ensure you edit Connection cautiously.
 
 **How to update Connections**
 
@@ -151,7 +151,7 @@ Depending on the size of the data to synchronize, Dust syncs in minutes to sever
 
 ### How to add data that are not supported as a Connection by Dust
 
-As a user, you can add your data to a connected platform like Notion or Google Drive. Ask an admin to verify if your added data are synchronized with Dust. 
+As a user, you can add your data to a connected platform like Notion or Google Drive. Ask an admin to verify if your added data are synchronized with Dust.
 
 Admins/builders can add a Folders by:
 
@@ -163,7 +163,7 @@ Admins/builders can add a Folders by:
 
 ### What are the documents and PDF current limits?
 
-Documents up to 2MB can be uploaded manually via Folders and 10MB directly in the conversation. 
+Documents up to 2MB can be uploaded manually via Folders and 10MB directly in the conversation.
 
 ### **Does Dust use user and company data to train its models?**
 
@@ -177,7 +177,7 @@ A 750KB plain text document could contain around 125,000 words, assuming an aver
 
 To configure the @dust assistant, got to `Manage Assistants` > `Default` tab and click on the `Manage` button next to the @dust assistant. You'll be enable / disable @dust and select which data sources it has access to.
 
-Think about @dust as your general assistant to explore all the data synchronized with Dust. Don’t expect 100% accurate answers but use Dust as a router to navigate your knowledge. 
+Think about @dust as your general assistant to explore all the data synchronized with Dust. Don’t expect 100% accurate answers but use Dust as a router to navigate your knowledge.
 
 # Dust subscription
 
@@ -190,9 +190,9 @@ Upgrade by:
 - Going to `⚙️` > `Subscription`.
 - Choosing the Pro Plan.
 
-The Dust Pro Plan is for companies with fewer than 100 employees. Pricing is per seat; any additional member will be billed prorated based on the anniversary date of your account. 
+The Dust Pro Plan is for companies with fewer than 100 employees. Pricing is per seat; any additional member will be billed prorated based on the anniversary date of your account.
 
-For companies with 100+ employees, contact us at [team@dust.tt](mailto:team@dust.tt)  
+For companies with 100+ employees, contact us at [team@dust.tt](mailto:team@dust.tt)
 
 ### How to pay as a business?
 
@@ -216,14 +216,14 @@ To manage your subscription:
 
 ### What can I use an assistant for?
 
-Assistants can answer questions and chat with you. Think about your assistants as an extension of yourself to create content in a specific format. Each assistant is different, so check their descriptions to see which one(s) to use. Try to chain assistants to complete complex tasks. 
+Assistants can answer questions and chat with you. Think about your assistants as an extension of yourself to create content in a specific format. Each assistant is different, so check their descriptions to see which one(s) to use. Try to chain assistants to complete complex tasks.
 
 - Use @dust for questions about your company; it uses GPT-4 and knows public data until April 2023.
 - Use @help for help with Dust features.
 - Use @slack to find info in Slack.
 - Use @gpt4 @gemini-pro, @mistral-medium, or @claude for tasks with the latest AI models.
 
-You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info. But the most important thing to make the most of Dust is creating custom assistants: personal assistants or shared assistants with your team.  
+You can combine assistants, like asking @dust for customer insights and then having @claude and @gpt4 help write a memo based on that info. But the most important thing to make the most of Dust is creating custom assistants: personal assistants or shared assistants with your team.
 
 ### Technically, how do assistants work?
 
@@ -244,38 +244,38 @@ Users can search for assistants inside the `Assistant Gallery`. Admin and builde
 
 ### What are custom assistants?
 
-Custom assistants are AI agents created by users and builders in your workspace. They are made to achieve specific tasks defined by builders. They can be personal or shared with the team. 
+Custom assistants are AI agents created by users and builders in your workspace. They are made to achieve specific tasks defined by builders. They can be personal or shared with the team.
 
 ### How to create a custom assistant?
 
 To create a custom assistant:
 
-As a user, Navigate to `Chat` > `My Assistants` > `Create an assistant`. Then, use a template or create your assistant from scratch. 
+As a user, Navigate to `Chat` > `My Assistants` > `Create an assistant`. Then, use a template or create your assistant from scratch.
 
-As a builder or admin: 
+As a builder or admin:
 
-1. To create a Personal or Shared assistant, Navigate to `Chat` > `My Assistants` > `Create an assistant`. Then, use a template or create your assistant from scratch. 
-2. To create a Company assistant for all workspace members (you can change your assistant’s scope later by clicking on `Sharing` in the Instructions page), Navigate to `Build` > `Manage Assistants` > `Create an assistant`. 
+1. To create a Personal or Shared assistant, Navigate to `Chat` > `My Assistants` > `Create an assistant`. Then, use a template or create your assistant from scratch.
+2. To create a Company assistant for all workspace members (you can change your assistant’s scope later by clicking on `Sharing` in the Instructions page), Navigate to `Build` > `Manage Assistants` > `Create an assistant`.
 
 Setup involves:
 
 - **Instructions**: Write clear, detailed prompts for the assistant.
 - **Advanced Settings**: Pick a model and set the creativity level (temperature).
-    - **Deterministic (0)**: Straightforward, factual answers.
-    - **Factual (0.2)**: A slight bit of unpredictability.
-    - **Balanced (0.7)**: More variety in responses.
-    - **Creative (1.0)**: High creativity for brainstorming.
+  - **Deterministic (0)**: Straightforward, factual answers.
+  - **Factual (0.2)**: A slight bit of unpredictability.
+  - **Balanced (0.7)**: More variety in responses.
+  - **Creative (1.0)**: High creativity for brainstorming.
 - **Actions**:
-    - `Reply only`: to use the model with no data source retrieval.
-    - `Use data sources` which come with 3 different methods :
-        - `Search`: To use semantic search to retrieve data.
-        - `Most recent data`: Process all data between now and X. Adapt the timeframe to the model's context window. Avoid a +1-month timeframe if you know your data set is large.
-        - `Query Tables`: to answer quantitative questions about a Google Spreadsheet, a CSV or a Notion Database.
-    - `Run a Dust app`: If you want to chain a Dust App to your custom assistant.
+  - `Reply only`: to use the model with no data source retrieval.
+  - `Use data sources` which come with 3 different methods :
+    - `Search`: To use semantic search to retrieve data.
+    - `Most recent data`: Process all data between now and X. Adapt the timeframe to the model's context window. Avoid a +1-month timeframe if you know your data set is large.
+    - `Query Tables`: to answer quantitative questions about a Google Spreadsheet, a CSV or a Notion Database.
+  - `Run a Dust app`: If you want to chain a Dust App to your custom assistant.
 
 ### I don’t know how to start creating an assistant; what should I do?
 
-Consider using a **template** from the template library (accessible by clicking on `Create an assistant`). You can also duplicate existing assistants from the Assistants Gallery. 
+Consider using a **template** from the template library (accessible by clicking on `Create an assistant`). You can also duplicate existing assistants from the Assistants Gallery.
 
 ### How to edit a custom assistant?
 
@@ -419,7 +419,7 @@ You can find examples of Dust apps here: [https://www.notion.so/dust-tt/Dust-app
 
 ### When asking a question about data within Slack, the link to the thread isn’t always the right one
 
-When messages are not threaded, Dust points to the window of the channel message that represents the chunk whose URL is the first message. To optimize Dust synchronization and retrieval of Slack messages, we recommend formatting Slack threads as is: first message with the title and then create a thread. 
+When messages are not threaded, Dust points to the window of the channel message that represents the chunk whose URL is the first message. To optimize Dust synchronization and retrieval of Slack messages, we recommend formatting Slack threads as is: first message with the title and then create a thread.
 
 ### I haven’t received a login, or I am having trouble logging in
 
