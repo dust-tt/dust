@@ -311,11 +311,24 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
+    if (!a.name || !a.description) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "missing_name_or_description",
+          message: `Action ${a.name} is missing a name or description`,
+        },
+      } satisfies AgentErrorEvent;
+      return;
+    }
     if (isRetrievalConfiguration(a)) {
       const r = await generateRetrievalSpecification(auth, {
         actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        name: a.name,
+        description: a.description,
       });
 
       if (r.isErr()) {
@@ -325,8 +338,8 @@ export async function* runMultiActionsAgent(
       specifications.push(r.value);
     } else if (isTablesQueryConfiguration(a)) {
       const r = await generateTablesQuerySpecification(auth, {
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        name: a.name,
+        description: a.description,
       });
 
       if (r.isErr()) {
@@ -337,8 +350,8 @@ export async function* runMultiActionsAgent(
     } else if (isProcessConfiguration(a)) {
       const r = await generateProcessSpecification(auth, {
         actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        name: a.name,
+        description: a.description,
       });
 
       if (r.isErr()) {
