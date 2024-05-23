@@ -78,8 +78,10 @@ function NavigationBar({
             ) : null}
           </div>
           <div className="flex flex-1"></div>
-          {user && owner.flags?.some((flag: string) => flag.startsWith("labs_")) && <BetaMenu user={user} owner={owner} />}
-          {user && <UserMenu user={user} owner={owner} />}
+          {owner.flags?.some((flag: string) => flag.startsWith("labs_")) && (
+            <BetaMenu owner={owner} />
+          )}
+          {user && <UserMenu user={user} />}
         </div>
 
         {subscription.endDate && (

@@ -121,7 +121,7 @@ export default function Subscribe({
                     />
                   </div>
                 )}
-                <div>{user && <UserMenu user={user} owner={owner} />}</div>
+                <div>{user && <UserMenu user={user} />}</div>
               </div>
             </>
           }

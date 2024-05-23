@@ -1,20 +1,7 @@
-import {
-  Avatar,
-  BookOpenIcon,
-  DropdownMenu,
-  LogoutIcon,
-} from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import { Avatar, DropdownMenu, LogoutIcon } from "@dust-tt/sparkle";
+import type { UserType } from "@dust-tt/types";
 
-import { isDevelopmentOrDustWorkspace } from "@app/lib/development";
-
-export function UserMenu({
-  user,
-  owner,
-}: {
-  user: UserType;
-  owner: WorkspaceType;
-}) {
+export function UserMenu({ user }: { user: UserType }) {
   return (
     <DropdownMenu>
       <DropdownMenu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none">
