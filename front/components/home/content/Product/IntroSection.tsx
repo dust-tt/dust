@@ -62,22 +62,19 @@ export function IntroSection() {
           )}
         >
           <H1 from="from-red-200" to="to-red-400">
-            Cracking team productivity with&nbsp;AI
+            Build custom AI&nbsp;assistants to speed up your work
           </H1>
           {<div className="w-full md:hidden">{MainVisualImage()}</div>}
           <P size="lg" className="text-slate-50">
-            The way we&nbsp;work is&nbsp;changing.
-            <br />
-            Break down knowledge silos and&nbsp;amplify team performance
-            with&nbsp;data-augmented, customizable and&nbsp;secure
-            AI&nbsp;assistants.
+            Amplify your team's performance with personalized assistants
+            connected to your proprietary knowledge and data.
           </P>
           <div>
             <Link href="/pricing" shallow={true}>
               <Button
                 variant="primary"
                 size="md"
-                label="Start now, check our pricing"
+                label="Get started"
                 icon={RocketIcon}
               />
             </Link>
