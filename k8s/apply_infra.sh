@@ -95,6 +95,7 @@ apply_deployment front-edge-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
 apply_deployment connectors-worker-notion-deployment
+apply_deployment connectors-worker-webcrawler-deployment
 apply_deployment docs-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
