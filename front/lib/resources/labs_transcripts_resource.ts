@@ -67,7 +67,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         userId: user.id,
         workspaceId: owner.id,
       },
-      include: [User],
     });
 
     return configuration
