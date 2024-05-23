@@ -153,31 +153,30 @@ export class RetrievalAction extends BaseAction {
   renderForModel(): ModelMessageType {
     let content = "";
     if (!this.documents) {
-      throw new Error(
-        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-      );
-    }
-    for (const d of this.documents) {
-      let title = d.documentId;
-      for (const t of d.tags) {
-        if (t.startsWith("title:")) {
-          title = t.substring(6);
-          break;
+      content += "(retrieval failed)\n";
+    } else {
+      for (const d of this.documents) {
+        let title = d.documentId;
+        for (const t of d.tags) {
+          if (t.startsWith("title:")) {
+            title = t.substring(6);
+            break;
+          }
         }
-      }
 
-      let dataSourceName = d.dataSourceId;
-      if (d.dataSourceId.startsWith("managed-")) {
-        dataSourceName = d.dataSourceId.substring(8);
-      }
+        let dataSourceName = d.dataSourceId;
+        if (d.dataSourceId.startsWith("managed-")) {
+          dataSourceName = d.dataSourceId.substring(8);
+        }
 
-      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-      content += `REFERENCE: ${d.reference}\n`;
-      content += `EXTRACTS:\n`;
-      for (const c of d.chunks) {
-        content += `${c.text}\n`;
+        content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+        content += `REFERENCE: ${d.reference}\n`;
+        content += `EXTRACTS:\n`;
+        for (const c of d.chunks) {
+          content += `${c.text}\n`;
+        }
+        content += "\n";
       }
-      content += "\n";
     }
 
     return {
@@ -207,31 +206,30 @@ export class RetrievalAction extends BaseAction {
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
     if (!this.documents) {
-      throw new Error(
-        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-      );
-    }
-    for (const d of this.documents) {
-      let title = d.documentId;
-      for (const t of d.tags) {
-        if (t.startsWith("title:")) {
-          title = t.substring(6);
-          break;
+      content += "(retrieval failed)\n";
+    } else {
+      for (const d of this.documents) {
+        let title = d.documentId;
+        for (const t of d.tags) {
+          if (t.startsWith("title:")) {
+            title = t.substring(6);
+            break;
+          }
         }
-      }
 
-      let dataSourceName = d.dataSourceId;
-      if (d.dataSourceId.startsWith("managed-")) {
-        dataSourceName = d.dataSourceId.substring(8);
-      }
+        let dataSourceName = d.dataSourceId;
+        if (d.dataSourceId.startsWith("managed-")) {
+          dataSourceName = d.dataSourceId.substring(8);
+        }
 
-      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-      content += `REFERENCE: ${d.reference}\n`;
-      content += `EXTRACTS:\n`;
-      for (const c of d.chunks) {
-        content += `${c.text}\n`;
+        content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+        content += `REFERENCE: ${d.reference}\n`;
+        content += `EXTRACTS:\n`;
+        for (const c of d.chunks) {
+          content += `${c.text}\n`;
+        }
+        content += "\n";
       }
-      content += "\n";
     }
 
     return {
@@ -295,16 +293,12 @@ function retrievalActionSpecification({
   };
 }
 
-// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
-export async function generateRetrievalSpecification(
+// This is deprecated and should only be used when running agents in "single action mode" (in legacy_agent.ts).
+export async function deprecatedGenerateRetrievalSpecificationForSingleActionAgent(
   auth: Authenticator,
   {
     actionConfiguration,
-    name = "search_data_sources",
-    description,
   }: {
-    name?: string;
-    description?: string;
     actionConfiguration: RetrievalConfigurationType;
   }
 ): Promise<Result<AgentActionSpecification, Error>> {
@@ -315,13 +309,64 @@ export async function generateRetrievalSpecification(
 
   const spec = retrievalActionSpecification({
     actionConfiguration,
-    name,
+    name: "search_data_sources",
     description:
-      description ??
-      "Search the data sources specified by the user for information to answer their request." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
+      "Search the data sources specified by the user." +
+      " The search is based on semantic similarity between the query and chunks of information" +
+      " from the data sources.",
   });
+  return new Ok(spec);
+}
+
+// Generates the action specification for generation of rawInputs passed to `runRetrieval`.
+export async function generateRetrievalSpecification(
+  auth: Authenticator,
+  {
+    actionConfiguration,
+    name,
+    description,
+  }: {
+    name: string;
+    description: string;
+    actionConfiguration: RetrievalConfigurationType;
+  }
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+  }
+
+  const baseDescription = (() => {
+    if (actionConfiguration.query === "auto") {
+      return (
+        "Search the data sources specified by the user." +
+        " The search is based on semantic similarity between the query and chunks of information" +
+        " from the data sources."
+      );
+    } else {
+      let description =
+        "Retrieve the most recent content from the data sources specified by the user";
+      if (
+        actionConfiguration.relativeTimeFrame === "auto" ||
+        actionConfiguration.relativeTimeFrame === "none"
+      ) {
+        return `${description}.`;
+      }
+      const timeFrame = actionConfiguration.relativeTimeFrame;
+      const plural = timeFrame.duration > 1 ? "s" : "";
+      description += ` over the last ${timeFrame.duration} ${timeFrame.unit}${plural}.`;
+      return description;
+    }
+  })();
+
+  const actionDescription = `${baseDescription}\nDescription of the data sources:\n${description}`;
+
+  const spec = retrievalActionSpecification({
+    actionConfiguration,
+    name,
+    description: actionDescription,
+  });
+
   return new Ok(spec);
 }
 

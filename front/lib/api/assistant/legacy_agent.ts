@@ -34,12 +34,12 @@ import {
   runProcess,
 } from "@app/lib/api/assistant/actions/process";
 import {
-  generateRetrievalSpecification,
+  deprecatedGenerateRetrievalSpecificationForSingleActionAgent,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
-  generateTablesQuerySpecification,
+  deprecatedGenerateTablesQuerySpecificationForSingleActionAgent,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
 import {
@@ -301,11 +301,15 @@ async function* runAction(
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
   if (isRetrievalConfiguration(action)) {
-    specRes = await generateRetrievalSpecification(auth, {
-      actionConfiguration: action,
-    });
+    specRes =
+      await deprecatedGenerateRetrievalSpecificationForSingleActionAgent(auth, {
+        actionConfiguration: action,
+      });
   } else if (isTablesQueryConfiguration(action)) {
-    specRes = await generateTablesQuerySpecification(auth);
+    specRes =
+      await deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
+        auth
+      );
   } else if (isProcessConfiguration(action)) {
     specRes = await generateProcessSpecification(auth, {
       actionConfiguration: action,

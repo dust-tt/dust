@@ -187,8 +187,8 @@ export async function generateProcessSpecification(
     name,
     description:
       description ??
-      "Process data sources specified by the user by performing a search and extracting" +
-        " structured information (complying to a fixed schema) from the retrieved information.",
+      "Process data sources specified by the user over a specific time-frame by extracting" +
+        " structured blobs of information (complying to a fixed schema).",
   });
   return new Ok(spec);
 }
