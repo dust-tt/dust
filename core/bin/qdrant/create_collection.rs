@@ -121,8 +121,9 @@ async fn create_qdrant_collection(
             .create_shard_key(
                 collection_name.clone(),
                 &qdrant::shard_key::Key::Keyword(shard_key.clone()),
-                Some(2),
-                Some(2),
+                // No need to pass shard_key and replication_factor; using the ones specified during collection creation.
+                None,
+                None,
                 &[],
             )
             .await?;
