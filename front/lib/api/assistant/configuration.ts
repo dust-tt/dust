@@ -45,6 +45,7 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -1065,6 +1066,9 @@ export async function createAgentActionConfiguration(
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
       }
+    | {
+        type: "websearch_configuration";
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1223,6 +1227,24 @@ export async function createAgentActionConfiguration(
           forceUseAtIteration: action.forceUseAtIteration,
         };
       });
+    }
+    case "websearch_configuration": {
+      const websearchConfig = await AgentWebsearchConfiguration.create({
+        sId: generateModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+        forceUseAtIteration: action.forceUseAtIteration,
+      });
+
+      return {
+        id: websearchConfig.id,
+        sId: websearchConfig.sId,
+        type: "websearch_configuration",
+        name: action.name,
+        description: action.description,
+        forceUseAtIteration: action.forceUseAtIteration,
+      };
     }
     default:
       assertNever(action);

@@ -75,6 +75,12 @@ export type AssistantBuilderProcessConfiguration = {
   schema: ProcessSchemaPropertyType[];
 };
 
+// Websearch configuration
+
+export type AssistantBuilderWebsearchConfiguration = {
+  searchResults: 8; // not configurable at the time of writing, placeholder
+};
+
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
@@ -93,6 +99,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "PROCESS";
       configuration: AssistantBuilderProcessConfiguration;
+    }
+  | {
+      type: "WEBSEARCH";
+      configuration: AssistantBuilderWebsearchConfiguration;
     }
 ) & {
   name: string;
@@ -217,6 +227,17 @@ export function getDefaultProcessActionConfiguration() {
   } satisfies AssistantBuilderActionConfiguration;
 }
 
+export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "WEBSEARCH",
+    configuration: {
+      searchResults: 8,
+    },
+    name: "websearch",
+    description: "Perform a web search.",
+  };
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfiguration | null {
@@ -233,6 +254,8 @@ export function getDefaultActionConfiguration(
       return getDefaultTablesQueryActionConfiguration();
     case "PROCESS":
       return getDefaultProcessActionConfiguration();
+    case "WEBSEARCH":
+      return getDefaultWebsearchActionConfiguration();
     default:
       assertNever(actionType);
   }
