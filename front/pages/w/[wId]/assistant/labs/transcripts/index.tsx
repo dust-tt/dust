@@ -312,12 +312,11 @@ export default function LabsTranscriptsIndex({
         return;
       }
 
-      // We first check if there's a default Gong connection for the workspace
       const response = await fetch(
         `/api/w/${owner.sId}/labs/transcripts/default`
       );
 
-      // If we already have a default configuration, just create a configurationId for that user.
+      // If we already have a default configuration, just create a configurationId for that user with an empty connectionId.
       if (response.ok) {
         const defaultConfigurationRes = await response.json();
         const defaultConfiguration = defaultConfigurationRes.configuration;
@@ -334,7 +333,6 @@ export default function LabsTranscriptsIndex({
 
         await saveOauthConnection(null, transcriptsConfigurationState.provider);
 
-        // Create a new connection for the user without going through Nango auth
         return;
       } else {
         const nango = new Nango({ publicKey: nangoPublicKey });
