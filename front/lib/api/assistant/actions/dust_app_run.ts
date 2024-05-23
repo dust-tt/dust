@@ -121,10 +121,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
   // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     auth: Authenticator,
-    {
-      name,
-      description,
-    }: { name?: string | undefined; description?: string | undefined }
+    { name, description }: { name?: string; description?: string }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
