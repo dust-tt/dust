@@ -213,7 +213,7 @@ impl DustQdrantClient {
     pub fn shard_key_prefix(&self) -> String {
         match version_for_cluster(self.cluster) {
             QdrantClusterVersion::V0 => {
-                return String::from("ds");
+                unimplemented!();
             }
 
             QdrantClusterVersion::V1 => {

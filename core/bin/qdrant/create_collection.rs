@@ -101,19 +101,6 @@ async fn create_qdrant_collection(
         })
         .await?;
 
-    // Then, we create the 24 shard_keys.
-    for i in 0..SHARD_KEY_COUNT {
-        raw_client
-            .create_shard_key(
-                collection_name.clone(),
-                &qdrant::shard_key::Key::Keyword(format!("{}_{}", client.shard_key_prefix(), i)),
-                Some(2),
-                Some(2),
-                &[],
-            )
-            .await?;
-    }
-
     match res.result {
         true => {
             println!(
@@ -124,7 +111,36 @@ async fn create_qdrant_collection(
             Ok(())
         }
         false => Err(anyhow!("Collection not created!")),
+    }?;
+
+    // Then, we create the 24 shard_keys.
+    for i in 0..SHARD_KEY_COUNT {
+        let shard_key = format!("{}_{}", client.shard_key_prefix(), i);
+
+        let operation_result = raw_client
+            .create_shard_key(
+                collection_name.clone(),
+                &qdrant::shard_key::Key::Keyword(shard_key.clone()),
+                Some(2),
+                Some(2),
+                &[],
+            )
+            .await?;
+
+        match operation_result.result {
+            true => {
+                println!(
+                    "Done creating shard key [{}] for collection {} on cluster {}",
+                    shard_key, collection_name, cluster
+                );
+
+                Ok(())
+            }
+            false => Err(anyhow!("Collection not created!")),
+        }?;
     }
+
+    Ok(())
 }
 
 #[tokio::main]
