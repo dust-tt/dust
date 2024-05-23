@@ -1229,27 +1229,22 @@ export async function createAgentActionConfiguration(
       });
     }
     case "websearch_configuration": {
-      return frontSequelize.transaction(async (t) => {
-        const websearchConfig = await AgentWebsearchConfiguration.create(
-          {
-            sId: generateModelSId(),
-            agentConfigurationId: agentConfiguration.id,
-            name: action.name,
-            description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
-          },
-          { transaction: t }
-        );
-
-        return {
-          id: websearchConfig.id,
-          sId: websearchConfig.sId,
-          type: "websearch_configuration",
-          name: action.name,
-          description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
-        };
+      const websearchConfig = await AgentWebsearchConfiguration.create({
+        sId: generateModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+        forceUseAtIteration: action.forceUseAtIteration,
       });
+
+      return {
+        id: websearchConfig.id,
+        sId: websearchConfig.sId,
+        type: "websearch_configuration",
+        name: action.name,
+        description: action.description,
+        forceUseAtIteration: action.forceUseAtIteration,
+      };
     }
     default:
       assertNever(action);
