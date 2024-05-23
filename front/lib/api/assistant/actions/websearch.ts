@@ -2,48 +2,53 @@ import type { AgentActionSpecification, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type { WebsearchConfigurationType } from "@dust-tt/types/dist/front/assistant/actions/websearch";
 
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 
-function websearchActionSpecification(arg0: {
-  actionConfiguration: WebsearchConfigurationType;
-  name: string;
-  description: string;
-}) {
-  return {
-    ...arg0,
-    inputs: [
-      {
-        name: "query",
-        description: "The query used to perform the web search.",
-        type: "string",
-      },
-    ],
-  } as AgentActionSpecification;
-}
+/**
+ * Params generation.
+ */
 
-export function generateWebsearchSpecification(
-  auth: Authenticator,
-  {
-    actionConfiguration,
-    name = "web_search",
-    description,
-  }: {
-    actionConfiguration: WebsearchConfigurationType;
-    name?: string;
-    description?: string;
-  }
-): Result<AgentActionSpecification, Error> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runWebsearchAction`");
+export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
+  run(
+    auth: Authenticator,
+    runParams: BaseActionRunParams,
+    customParams: Record<string, unknown>
+  ): AsyncGenerator<unknown, any, unknown> {
+    throw new Error(
+      "Method not implemented." +
+        JSON.stringify(runParams) +
+        JSON.stringify(customParams) +
+        JSON.stringify(auth)
+    );
   }
 
-  const spec = websearchActionSpecification({
-    actionConfiguration,
-    name,
-    description:
-      description ?? "Perform a web search and return the top results.",
-  });
+  async buildSpecification(
+    auth: Authenticator,
+    {
+      name,
+      description,
+    }: { name?: string | undefined; description?: string | undefined }
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error(
+        "Unexpected unauthenticated call to `runWebsearchAction`"
+      );
+    }
 
-  return new Ok(spec);
+    return new Ok({
+      name: name ?? "web_search",
+      description:
+        description ?? "Perform a web search and return the top results.",
+      inputs: [
+        {
+          name: "query",
+          description: "The query used to perform the web search.",
+          type: "string",
+        },
+      ],
+    });
+  }
 }

@@ -39,7 +39,6 @@ import {
   deprecatedGenerateTablesQuerySpecificationForSingleActionAgent,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
-import { generateWebsearchSpecification } from "@app/lib/api/assistant/actions/websearch";
 import {
   constructPrompt,
   renderConversationForModel,
