@@ -30,10 +30,6 @@ import {
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateProcessSpecification,
-  runProcess,
-} from "@app/lib/api/assistant/actions/process";
-import {
   deprecatedGenerateRetrievalSpecificationForSingleActionAgent,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
@@ -310,10 +306,6 @@ async function* runAction(
       await deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
         auth
       );
-  } else if (isProcessConfiguration(action)) {
-    specRes = await generateProcessSpecification(auth, {
-      actionConfiguration: action,
-    });
   } else {
     const runner = getRunnerforActionConfiguration(action);
 
@@ -538,12 +530,13 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(action)) {
-    const eventStream = runProcess(auth, {
-      configuration,
-      actionConfiguration: action,
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
-      userMessage,
       agentMessage,
+      userMessage,
       rawInputs,
       functionCallId: null,
       step,

@@ -347,18 +347,6 @@ export async function* runMultiActionsAgent(
       }
 
       specifications.push(r.value);
-    } else if (isProcessConfiguration(a)) {
-      const r = await generateProcessSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name,
-        description: a.description,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
     } else {
       const runner = getRunnerforActionConfiguration(a);
 
@@ -813,9 +801,10 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = runProcess(auth, {
-      configuration,
-      actionConfiguration,
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
       userMessage,
       agentMessage,
