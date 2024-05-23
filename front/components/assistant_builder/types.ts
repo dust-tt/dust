@@ -234,7 +234,7 @@ export function getDefaultWebsearchActionConfiguration() {
       searchResults: 8,
     } satisfies AssistantBuilderWebsearchConfiguration,
     name: "websearch",
-    description: "Search the web.",
+    description: "Perform a web search.",
   } satisfies AssistantBuilderActionConfiguration;
 }
 

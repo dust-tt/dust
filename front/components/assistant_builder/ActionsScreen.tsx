@@ -108,7 +108,7 @@ const ACTION_SPECIFICATIONS: Record<
   },
   WEBSEARCH: {
     label: "Web search",
-    description: "Search the web for information",
+    description: "Perform a web search",
     cardIcon: MagnifyingGlassStrokeIcon,
     dropDownIcon: MagnifyingGlassIcon,
     flag: "websearch_action",

@@ -50,6 +50,7 @@ import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
+import { generateWebsearchSpecification } from "@app/lib/api/assistant/actions/websearch";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
