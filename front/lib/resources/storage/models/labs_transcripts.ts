@@ -85,7 +85,7 @@ LabsTranscriptsConfigurationModel.init(
       { fields: ["userId"] },
       { fields: ["userId", "workspaceId"], unique: true },
       {
-        fields: ["provider", "workspaceId", "defaultForWorkspace"],
+        fields: ["workspaceId", "defaultForWorkspace"],
         unique: true,
       },
     ],
