@@ -148,8 +148,8 @@ async function tablesQueryActionSpecification({
           " request and conversation context. The question should include" +
           " all the context required to be understood without reference to the conversation." +
           " If the user has multiple unanswered questions, make sure to include all of them." +
-          " If the user asked to correct a previous attempt at the same query in a specific way," +
-          " this information must be included.",
+          " If the user asked to correct a previous attempt in a specific way," +
+          " take it into account when generating the question.",
         type: "string" as const,
       },
     ],
@@ -166,7 +166,8 @@ export async function deprecatedGenerateTablesQuerySpecificationForSingleActionA
   }
 
   const actionDescription =
-    "Query the data tables specified by the user by executing a generated SQL query from the natural language.";
+    "Query data tables specified by the user by executing a generated SQL query from a" +
+    " natural language question.";
 
   const spec = await tablesQueryActionSpecification({
     name: "query_tables",
@@ -185,9 +186,9 @@ export async function generateTablesQuerySpecification(
   }
 
   const actionDescription =
-    "Query the structured data tables specificied by the user to retrieve information to answer their request." +
-    " The data is queried by generating a SQL query from the natural language question.\n" +
-    `The tables are described by the user as:\n${description}`;
+    "Query data tables specificied by the user by executing a generated SQL query from a" +
+    " natural language question.\n" +
+    `Description of the data tables:\n${description}`;
 
   const spec = await tablesQueryActionSpecification({
     name,

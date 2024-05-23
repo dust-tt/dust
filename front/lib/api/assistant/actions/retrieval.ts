@@ -153,31 +153,30 @@ export class RetrievalAction extends BaseAction {
   renderForModel(): ModelMessageType {
     let content = "";
     if (!this.documents) {
-      throw new Error(
-        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-      );
-    }
-    for (const d of this.documents) {
-      let title = d.documentId;
-      for (const t of d.tags) {
-        if (t.startsWith("title:")) {
-          title = t.substring(6);
-          break;
+      content += "(retrieval failed)\n";
+    } else {
+      for (const d of this.documents) {
+        let title = d.documentId;
+        for (const t of d.tags) {
+          if (t.startsWith("title:")) {
+            title = t.substring(6);
+            break;
+          }
         }
-      }
 
-      let dataSourceName = d.dataSourceId;
-      if (d.dataSourceId.startsWith("managed-")) {
-        dataSourceName = d.dataSourceId.substring(8);
-      }
+        let dataSourceName = d.dataSourceId;
+        if (d.dataSourceId.startsWith("managed-")) {
+          dataSourceName = d.dataSourceId.substring(8);
+        }
 
-      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-      content += `REFERENCE: ${d.reference}\n`;
-      content += `EXTRACTS:\n`;
-      for (const c of d.chunks) {
-        content += `${c.text}\n`;
+        content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+        content += `REFERENCE: ${d.reference}\n`;
+        content += `EXTRACTS:\n`;
+        for (const c of d.chunks) {
+          content += `${c.text}\n`;
+        }
+        content += "\n";
       }
-      content += "\n";
     }
 
     return {
@@ -207,31 +206,30 @@ export class RetrievalAction extends BaseAction {
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
     if (!this.documents) {
-      throw new Error(
-        "Documents not set on retrieval action; this usually means the retrieval action is not finished."
-      );
-    }
-    for (const d of this.documents) {
-      let title = d.documentId;
-      for (const t of d.tags) {
-        if (t.startsWith("title:")) {
-          title = t.substring(6);
-          break;
+      content += "(retrieval failed)\n";
+    } else {
+      for (const d of this.documents) {
+        let title = d.documentId;
+        for (const t of d.tags) {
+          if (t.startsWith("title:")) {
+            title = t.substring(6);
+            break;
+          }
         }
-      }
 
-      let dataSourceName = d.dataSourceId;
-      if (d.dataSourceId.startsWith("managed-")) {
-        dataSourceName = d.dataSourceId.substring(8);
-      }
+        let dataSourceName = d.dataSourceId;
+        if (d.dataSourceId.startsWith("managed-")) {
+          dataSourceName = d.dataSourceId.substring(8);
+        }
 
-      content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-      content += `REFERENCE: ${d.reference}\n`;
-      content += `EXTRACTS:\n`;
-      for (const c of d.chunks) {
-        content += `${c.text}\n`;
+        content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
+        content += `REFERENCE: ${d.reference}\n`;
+        content += `EXTRACTS:\n`;
+        for (const c of d.chunks) {
+          content += `${c.text}\n`;
+        }
+        content += "\n";
       }
-      content += "\n";
     }
 
     return {
