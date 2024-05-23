@@ -62,6 +62,7 @@ async function handler(
       const transcriptsConfigurationGet =
         await LabsTranscriptsConfigurationResource.findByUserWorkspace({
           auth,
+          userId,
         });
 
       if (!transcriptsConfigurationGet) {
@@ -100,6 +101,7 @@ async function handler(
       const transcriptsConfigurationAlreadyExists =
         await LabsTranscriptsConfigurationResource.findByUserWorkspace({
           auth,
+          userId,
         });
 
       if (transcriptsConfigurationAlreadyExists) {
