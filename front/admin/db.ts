@@ -22,6 +22,10 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import {
+  AgentWebsearchAction,
+  AgentWebsearchConfiguration,
+} from "@app/lib/models/assistant/actions/websearch";
+import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
@@ -95,6 +99,7 @@ async function main() {
   await AgentTablesQueryConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
+  await AgentWebsearchConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -111,6 +116,7 @@ async function main() {
   await AgentTablesQueryAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
+  await AgentWebsearchAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
