@@ -37,9 +37,9 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
-import {InvitationsList} from "@app/components/members/InvitationsList";
-import {MembersList} from "@app/components/members/MembersList"
-import {displayRole, ROLES_DATA} from "@app/components/members/Roles";
+import { InvitationsList } from "@app/components/members/InvitationsList";
+import { MembersList } from "@app/components/members/MembersList";
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import type { NotificationType } from "@app/components/sparkle/Notification";
@@ -850,8 +850,6 @@ function ChangeMemberModal({
     </ElementModal>
   );
 }
-
-
 
 function RoleDropDown({
   selectedRole,
