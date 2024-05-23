@@ -147,7 +147,7 @@ export default function Subscribe({
                     <Page.P>
                       Please note that if your previous contract expired over 15
                       days ago, previously stored data will no longer be
-                      available to ensure privacy and security.
+                      available. This is to ensure privacy and security.
                     </Page.P>
                   </>
                 ) : (
