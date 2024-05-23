@@ -209,12 +209,13 @@ export const CarousselContentBlock = ({
         </P>
       </div>
       <div className="w-full text-center">
-        <Link href={href} shallow={true}>
+        <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
             variant="tertiary"
             size="md"
             icon={ArrowRightIcon}
+            className="max-w-full"
           />
         </Link>
       </div>
