@@ -40,7 +40,6 @@ import {
   generateTablesQuerySpecification,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
-import { generateWebsearchSpecification } from "@app/lib/api/assistant/actions/websearch";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
