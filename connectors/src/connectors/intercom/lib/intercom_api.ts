@@ -91,7 +91,7 @@ async function queryIntercomAPI({
     return response;
   } catch (e) {
     logger.info(
-      { path, response: rawResponse.text, status: rawResponse.status },
+      { path, response: text, status: rawResponse.status },
       "Failed to parse Intercom JSON response."
     );
 
