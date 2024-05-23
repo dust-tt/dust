@@ -26,9 +26,13 @@ export async function launchCrawlWebsiteWorkflow(
   const webcrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
 
-  const webCrawlerQueueName = webcrawlerConfig?.lastCrawledAt
-    ? WebCrawlerQueueNames.NEW_WEBSITE
-    : WebCrawlerQueueNames.UPDATE_WEBSITE;
+  if (!webcrawlerConfig) {
+    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
+  }
+
+  const webCrawlerQueueName = webcrawlerConfig.lastCrawledAt
+    ? WebCrawlerQueueNames.UPDATE_WEBSITE
+    : WebCrawlerQueueNames.NEW_WEBSITE;
 
   const client = await getTemporalClient();
   const workflowId = crawlWebsiteWorkflowId(connectorId);

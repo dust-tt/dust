@@ -161,7 +161,7 @@ export const HeaderContentBlock = ({
             <Button
               variant="primary"
               size="md"
-              label="Start now, check our pricing"
+              label="Get started"
               icon={RocketIcon}
             />
           </Link>
