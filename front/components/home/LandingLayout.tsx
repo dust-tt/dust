@@ -230,7 +230,7 @@ const CookieBanner = ({
 const Header = () => {
   return (
     <Head>
-      <title>Dust - Cracking team productivity with AI</title>
+      <title>Dust - Build custom AI assistants to speed up your work</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
 
       <meta name="apple-mobile-web-app-title" content="Dust" />
@@ -284,7 +284,7 @@ const Header = () => {
       <meta
         id="og-title"
         property="og:title"
-        content="Dust - Cracking team productivity with AI"
+        content="Dust - Build custom AI assistants to speed up your work"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
 
