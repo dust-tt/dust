@@ -226,42 +226,13 @@ export default function WorkspaceAdmin({
 
     const [searchText, setSearchText] = useState("");
     const { members, isMembersLoading } = useMembers(owner);
+    console.log(searchText);
     const { invitations, isInvitationsLoading } =
       useWorkspaceInvitations(owner);
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 
     const [changeRoleMember, setChangeRoleMember] =
       useState<UserTypeWithWorkspaces | null>(null);
-
-    function isInvitation(
-      arg: MembershipInvitationType | UserType
-    ): arg is MembershipInvitationType {
-      return (arg as MembershipInvitationType).inviteEmail !== undefined;
-    }
-
-    const displayedMembersAndInvitations: (
-      | UserTypeWithWorkspaces
-      | MembershipInvitationType
-    )[] = [
-      ...members
-        .sort((a, b) => a.fullName.localeCompare(b.fullName))
-        .filter((m) => m.workspaces[0].role !== "none")
-        .filter(
-          (m) =>
-            !searchText ||
-            m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-            m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-            m.username?.toLowerCase().includes(searchText.toLowerCase())
-        ),
-      ...invitations
-        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
-        .filter((i) => i.status === "pending")
-        .filter(
-          (i) =>
-            !searchText ||
-            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
-        ),
-    ];
 
     const popup = useMemo(() => {
       if (!inviteBlockedPopupReason) {
@@ -329,113 +300,33 @@ export default function WorkspaceAdmin({
             </div>
           </div>
           <div className="s-w-full">
-            {displayedMembersAndInvitations.map(
-              (item: UserTypeWithWorkspaces | MembershipInvitationType) => {
-                const role = isInvitation(item)
-                  ? item.initialRole
-                  : item.workspaces[0].role;
-                assert(
-                  role !== "none",
-                  "Unreachable (typescript pleasing): role cannot be none"
-                );
-                return (
-                  <div
-                    key={
-                      isInvitation(item)
-                        ? `invitation-${item.id}`
-                        : `member-${item.id}`
-                    }
-                    className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-                    onClick={async () => {
-                      if (user.id === item.id) {
-                        return;
-                      } // no action on self
-                      if (isInvitation(item)) {
-                        await revokeInvitation({
-                          owner,
-                          invitation: item,
-                          mutate,
-                          sendNotification,
-                          confirm,
-                        });
-                      } else {
-                        setChangeRoleMember(item);
-                      }
-                    }}
-                  >
-                    <div className="hidden sm:block">
-                      {isInvitation(item) ? (
-                        <Avatar size="sm" />
-                      ) : (
-                        <Avatar
-                          visual={item.image}
-                          name={item.fullName}
-                          size="sm"
-                        />
-                      )}
-                    </div>
-                    <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                      {!isInvitation(item) && (
-                        <div className="font-medium text-element-900">
-                          {item.fullName}
-                          {user.id === item.id && " (you)"}
-                        </div>
-                      )}
-
-                      <div className="grow font-normal text-element-700">
-                        {isInvitation(item)
-                          ? item.inviteEmail
-                          : item.email || item.username}
-                      </div>
-                    </div>
-                    {isInvitation(item) && (
-                      <div>
-                        <Chip size="xs" color="slate">
-                          Invitation {item.status}
-                        </Chip>
-                      </div>
-                    )}
-                    <div>
-                      <Chip
-                        size="xs"
-                        color={ROLES_DATA[role]["color"]}
-                        className="capitalize"
-                      >
-                        {displayRole(role)}
-                      </Chip>
-                    </div>
-                    <div className="hidden sm:block">
-                      <Icon
-                        visual={ChevronRightIcon}
-                        className={classNames(
-                          "text-element-600",
-                          user.id === item.id ? "invisible" : ""
-                        )}
-                      />
-                    </div>
-                  </div>
-                );
-              }
-            )}
-            {(isMembersLoading || isInvitationsLoading) && (
-              <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
-                <div className="hidden sm:block">
-                  <Avatar size="xs" />
-                </div>
-                <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                  <div className="font-medium text-element-900">Loading...</div>
-                  <div className="grow font-normal text-element-700"></div>
-                </div>
-                <div>
-                  <Chip size="xs" color="slate">
-                    Loading...
-                  </Chip>
-                </div>
-                <div className="hidden sm:block">
-                  <ChevronRightIcon />
-                </div>
-              </div>
-            )}
+            <div className="space-y-2 pt-4">
+              <Page.H variant="h5">Invitations</Page.H>
+              <RenderInvitations
+                invitations={invitations}
+                isInvitationsLoading={isInvitationsLoading}
+                onClickEvent={async (invitation: MembershipInvitationType) => {
+                  await revokeInvitation({
+                    owner,
+                    invitation,
+                    mutate,
+                    sendNotification,
+                    confirm,
+                  });
+                }}
+                searchText={searchText}
+              />
+            </div>
+            <div className="space-y-2 pb-3 pt-4">
+              <Page.H variant="h5">Members</Page.H>
+              <RenderMembers
+                users={members}
+                currentUserId={user.id}
+                isMembersLoading={isMembersLoading}
+                onClickEvent={(role) => setChangeRoleMember(role)}
+                searchText={searchText}
+              />
+            </div>
           </div>
         </Page.Vertical>
       </>
@@ -676,6 +567,185 @@ function ProPlanBillingNotice() {
         sign-up date.
       </p>
     </ContentMessage>
+  );
+}
+
+function RenderInvitations({
+  invitations,
+  isInvitationsLoading,
+  onClickEvent,
+  searchText,
+}: {
+  invitations: MembershipInvitationType[];
+  isInvitationsLoading: boolean;
+  onClickEvent: (invitation: MembershipInvitationType) => void;
+  searchText?: string;
+}) {
+  const filteredInvitations = invitations
+    .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+    .filter((i) => i.status === "pending")
+    .filter(
+      (i) =>
+        !searchText ||
+        i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
+    );
+  return (
+    <div className="s-w-full">
+      {filteredInvitations.map((invitation: MembershipInvitationType) => {
+        return (
+          <div
+            key={`invitation-${invitation.id}`}
+            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+            onClick={async () => {
+              onClickEvent(invitation);
+            }}
+          >
+            <div className="hidden sm:block">
+              <Avatar size="sm" className={invitation.sId} />
+            </div>
+            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="grow font-normal text-element-700">
+                {invitation.inviteEmail}
+              </div>
+            </div>
+            <div>
+              <Chip size="xs" color="slate">
+                Invitation {invitation.status}
+              </Chip>
+            </div>
+            <div>
+              <Chip
+                size="xs"
+                color={ROLES_DATA[invitation.initialRole]["color"]}
+                className="capitalize"
+              >
+                {displayRole(invitation.initialRole)}
+              </Chip>
+            </div>
+            <div className="hidden sm:block">
+              <Icon visual={ChevronRightIcon} className="text-element-600" />
+            </div>
+          </div>
+        );
+      })}
+      {isInvitationsLoading && (
+        <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+          <div className="hidden sm:block">
+            <Avatar size="xs" />
+          </div>
+          <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+            <div className="font-medium text-element-900">Loading...</div>
+            <div className="grow font-normal text-element-700"></div>
+          </div>
+          <div>
+            <Chip size="xs" color="slate">
+              Loading...
+            </Chip>
+          </div>
+          <div className="hidden sm:block">
+            <ChevronRightIcon />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RenderMembers({
+  users,
+  currentUserId,
+  isMembersLoading,
+  onClickEvent,
+  searchText,
+}: {
+  users: UserTypeWithWorkspaces[];
+  currentUserId: number;
+  isMembersLoading: boolean;
+  onClickEvent: (role: UserTypeWithWorkspaces) => void;
+  searchText?: string;
+}) {
+  const filteredUsers = users
+    .sort((a, b) => a.fullName.localeCompare(b.fullName))
+    .filter((m) => m.workspaces[0].role !== "none")
+    .filter(
+      (m) =>
+        !searchText ||
+        m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.username?.toLowerCase().includes(searchText.toLowerCase())
+    );
+  return (
+    <div className="s-w-full">
+      {filteredUsers.map((user) => {
+        const role = user.workspaces[0].role;
+        assert(
+          role !== "none",
+          "Unreachable (typescript pleasing): role cannot be none"
+        );
+        return (
+          <div
+            key={`member-${user.id}`}
+            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+            onClick={async () => {
+              if (currentUserId === user.id) {
+                return;
+              }
+              onClickEvent(user);
+            }}
+          >
+            <div className="hidden sm:block">
+              <Avatar visual={user.image} name={user.fullName} size="sm" />
+            </div>
+            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="font-medium text-element-900">
+                {user.fullName}
+                {user.id === currentUserId && " (you)"}
+              </div>
+              <div className="grow font-normal text-element-700">
+                {user.email || user.username}
+              </div>
+            </div>
+            <div>
+              <Chip
+                size="xs"
+                color={ROLES_DATA[role]["color"]}
+                className="capitalize"
+              >
+                {displayRole(role)}
+              </Chip>
+            </div>
+            <div className="hidden sm:block">
+              <Icon
+                visual={ChevronRightIcon}
+                className={classNames(
+                  "text-element-600",
+                  user.id === currentUserId ? "invisible" : ""
+                )}
+              />
+            </div>
+          </div>
+        );
+      })}
+      {isMembersLoading && (
+        <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+          <div className="hidden sm:block">
+            <Avatar size="xs" />
+          </div>
+          <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+            <div className="font-medium text-element-900">Loading...</div>
+            <div className="grow font-normal text-element-700"></div>
+          </div>
+          <div>
+            <Chip size="xs" color="slate">
+              Loading...
+            </Chip>
+          </div>
+          <div className="hidden sm:block">
+            <ChevronRightIcon />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
