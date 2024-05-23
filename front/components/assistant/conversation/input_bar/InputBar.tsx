@@ -375,19 +375,17 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="relative z-20 flex-initial">
-      <div className="4xl:px-0 absolute bottom-0 left-0 right-0">
-        <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">
-          <AssistantInputBar
-            owner={owner}
-            onSubmit={onSubmit}
-            conversationId={conversationId}
-            stickyMentions={stickyMentions}
-            additionalAgentConfiguration={additionalAgentConfiguration}
-            hideQuickActions={hideQuickActions}
-            disableAutoFocus={disableAutoFocus}
-          />
-        </div>
+    <div className="4xl:px-0 fixed bottom-0 z-20 w-full flex-initial">
+      <div className="max-h-screen max-w-4xl pb-0 sm:pb-8">
+        <AssistantInputBar
+          owner={owner}
+          onSubmit={onSubmit}
+          conversationId={conversationId}
+          stickyMentions={stickyMentions}
+          additionalAgentConfiguration={additionalAgentConfiguration}
+          hideQuickActions={hideQuickActions}
+          disableAutoFocus={disableAutoFocus}
+        />
       </div>
     </div>
   );
