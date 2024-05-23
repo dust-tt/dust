@@ -22,15 +22,12 @@ export function TeamSection() {
           )}
         >
           <H2 from="from-amber-200" to="to-amber-400">
-            Bring your&nbsp;team
+            Keep your&nbsp;team
             <br />
             up&nbsp;to&nbsp;speed
           </H2>
           <P size="lg">
-            Adopting AI is a&nbsp;fundamental shift for&nbsp;your
-            team’s&nbsp;workflows.
-            <br />
-            Adopt and spread best&nbsp;practices and AI&nbsp;knowledge now.
+            Anyone on your&nbsp;team can create personalized&nbsp;assistants.
           </P>
         </div>
         <div

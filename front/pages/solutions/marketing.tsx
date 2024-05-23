@@ -63,14 +63,18 @@ interface pageSettingsProps {
 
 const pageSettings: pageSettingsProps = {
   uptitle: "Marketing",
-  title: <>Enhance Content Production and&nbsp;Creativity</>,
+  title: (
+    <>
+      Go&nbsp;from&nbsp;insight&nbsp;to&nbsp;content
+      in&nbsp;the&nbsp;blink&nbsp;of&nbsp;an&nbsp;eye
+    </>
+  ),
   from: "from-pink-200",
   to: "to-pink-500",
   description: (
     <>
-      Leverage AI assistants to&nbsp;generate innovative ideas
-      and&nbsp;high-quality content. Streamline your&nbsp;creative process
-      and&nbsp;adapt content for international&nbsp;markets.
+      Leverage AI assistants to&nbsp;gather market&nbsp;intelligence and
+      customer&nbsp;insights, and to produce content faster.
     </>
   ),
 };
@@ -89,9 +93,9 @@ export default function Marketing() {
         <SolutionSection
           title={
             <>
-              Create better content,
+              Generate content fast
               <br />
-              faster and&nbsp;on-brand.
+              that remains on brand.
             </>
           }
           blocks={[
@@ -121,13 +125,17 @@ export default function Marketing() {
                   ),
                 },
               ],
-              assistantBlocks: [assistantExamples[0], assistantExamples[1]],
+              assistantBlocks: [
+                assistantExamples[0],
+                assistantExamples[1],
+                assistantExamples[6],
+              ],
             },
           ]}
         />
 
         <SolutionSection
-          title={<>AI Power-ups for&nbsp;each team and&nbsp;on&nbsp;demand.</>}
+          title={<>AI&nbsp;Power-ups on&nbsp;tap.</>}
           blocks={[
             {
               color: "pink",
@@ -250,6 +258,16 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
         Generates arguments for your product in comparison to a specific
         competitor, in line with internal product guidelines and category
         positioning
+      </>
+    ),
+  },
+  {
+    emoji: "🌍",
+    name: "@internationalizer",
+    backgroundColor: "bg-pink-300",
+    description: (
+      <>
+        Transcreate all your content to adapt content for international markets
       </>
     ),
   },
