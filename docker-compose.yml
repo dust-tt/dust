@@ -1,5 +1,4 @@
 services:
-
   db:
     image: postgres:14.1-alpine
     restart: always
@@ -7,23 +6,38 @@ services:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev
     volumes:
-          - dustvolume:/postgres
+      - dustvolume:/postgres
     ports:
       - 5432:5432
-  qdrant:
-    image: qdrant/qdrant
+  qdrant_primary:
+    image: "qdrant/qdrant"
     volumes:
-      - dustvolume:/qdrant
+      - dustvolume:/qdrant_primary
     ports:
-      - 6334:6334
-      - 6333:6333
+      - "6334:6334"
+      - "6333:6333"
+    environment:
+      QDRANT__CLUSTER__ENABLED: "true"
+    command: ["./qdrant", "--uri", "http://qdrant_primary:6335"]
+    healthcheck:
+      test: ["CMD", "sleep", "5"] # Hack: `curl` not accessible in qdrant image, sleep for 5 seconds.
+      interval: 1s
+      timeout: 10s
+      retries: 1 # Only retry once to minimize delay
+  qdrant_secondary:
+    image: "qdrant/qdrant"
+    volumes:
+      - dustvolume:/qdrant_secondary
+    environment:
+      QDRANT__CLUSTER__ENABLED: "true"
+    command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
+    depends_on:
+      qdrant_primary:
+        condition: service_healthy # Ensure qdrant is healthy before starting qdrant_primary.
   redis:
     image: redis
     ports:
       - 6379:6379
 
-
 volumes:
   dustvolume:
-    
-    
