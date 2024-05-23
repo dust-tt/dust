@@ -11,19 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
  */
 
 export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
-  run(
-    auth: Authenticator,
-    runParams: BaseActionRunParams,
-    customParams: Record<string, unknown>
-  ): AsyncGenerator<unknown, any, unknown> {
-    throw new Error(
-      "Method not implemented." +
-        JSON.stringify(runParams) +
-        JSON.stringify(customParams) +
-        JSON.stringify(auth)
-    );
-  }
-
   async buildSpecification(
     auth: Authenticator,
     {
@@ -50,5 +37,18 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         },
       ],
     });
+  }
+
+  run(
+    auth: Authenticator,
+    runParams: BaseActionRunParams,
+    customParams: Record<string, unknown>
+  ): AsyncGenerator<unknown, any, unknown> {
+    throw new Error(
+      "Method not implemented." +
+        JSON.stringify(runParams) +
+        JSON.stringify(customParams) +
+        JSON.stringify(auth)
+    );
   }
 }

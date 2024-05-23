@@ -227,15 +227,15 @@ export function getDefaultProcessActionConfiguration() {
   } satisfies AssistantBuilderActionConfiguration;
 }
 
-export function getDefaultWebsearchActionConfiguration() {
+export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "WEBSEARCH",
     configuration: {
       searchResults: 8,
-    } satisfies AssistantBuilderWebsearchConfiguration,
+    },
     name: "websearch",
     description: "Perform a web search.",
-  } satisfies AssistantBuilderActionConfiguration;
+  };
 }
 
 export function getDefaultActionConfiguration(
