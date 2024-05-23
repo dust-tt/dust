@@ -46,6 +46,7 @@ import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
@@ -524,6 +525,26 @@ export function usePokePlans() {
     plans: useMemo(() => (data ? data.plans : []), [data]),
     isPlansLoading: !error && !data,
     isPlansError: error,
+  };
+}
+
+export function useWorkspaceSubscriptions({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWR(
+    `/api/w/${workspaceId}/subscriptions`,
+    workspaceSubscrptionsFetcher
+  );
+
+  return {
+    subscriptions: useMemo(() => (data ? data.subscriptions : []), [data]),
+    isSubscriptionsLoading: !error && !data,
+    isSubscriptionsError: error,
   };
 }
 
