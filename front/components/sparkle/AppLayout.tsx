@@ -41,28 +41,28 @@ import { classNames } from "@app/lib/utils";
 const SHOW_INCIDENT_BANNER = false;
 
 function ToggleSideBarButton({
-  laptopNavOpen,
-  setLaptopNavOpen,
+  navigationBarOpen,
+  setNavigationBarOpen,
 }: {
-  laptopNavOpen: boolean;
-  setLaptopNavOpen: (open: boolean) => void;
+  navigationBarOpen: boolean;
+  setNavigationBarOpen: (open: boolean) => void;
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState<"left" | "right">("left");
 
   const handleClick = useCallback(() => {
-    setLaptopNavOpen(!laptopNavOpen);
+    setNavigationBarOpen(!navigationBarOpen);
     setDirection((prevDirection) =>
       prevDirection === "left" ? "right" : "left"
     );
-  }, [laptopNavOpen, setLaptopNavOpen]);
+  }, [navigationBarOpen, setNavigationBarOpen]);
 
   return (
     <div
       ref={buttonRef}
       onClick={handleClick}
       className={`hidden lg:fixed lg:top-1/2 lg:flex lg:h-10 lg:w-5 ${
-        laptopNavOpen ? "lg:left-80" : "lg:left-2"
+        navigationBarOpen ? "lg:left-80" : "lg:left-2"
       }`}
     >
       <CollapseButton direction={direction} />
@@ -217,11 +217,11 @@ export const SidebarProvider = ({
 };
 
 export const NavigationBarContext = React.createContext<{
-  laptopNavOpen: boolean;
-  setLaptopNavOpen: (value: boolean) => void;
+  navigationBarOpen: boolean;
+  setNavigationBarOpen: (value: boolean) => void;
 }>({
-  laptopNavOpen: true,
-  setLaptopNavOpen: (value) => {
+  navigationBarOpen: true,
+  setNavigationBarOpen: (value) => {
     throw new Error("NavigationBarContext not initialized: " + value);
   },
 });
@@ -231,10 +231,10 @@ export const NavigationBarProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const [laptopNavOpen, setLaptopNavOpen] = useState(true);
+  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
 
   return (
-    <NavigationBarContext.Provider value={{ laptopNavOpen, setLaptopNavOpen }}>
+    <NavigationBarContext.Provider value={{ navigationBarOpen, setNavigationBarOpen }}>
       {children}
     </NavigationBarContext.Provider>
   );
@@ -282,7 +282,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const { laptopNavOpen, setLaptopNavOpen } = useContext(NavigationBarContext);
+  const { navigationBarOpen, setNavigationBarOpen } = useContext(NavigationBarContext);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -425,9 +425,9 @@ export default function AppLayout({
         )}
 
         {!hideSidebar && (
-          <Transition.Root show={laptopNavOpen} as={Fragment}>
+          <Transition.Root show={navigationBarOpen} as={Fragment}>
             <div
-              id="laptop-nav-bar"
+              id="nav-bar"
               className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col"
             >
               {loaded && (
@@ -447,7 +447,7 @@ export default function AppLayout({
         <div
           className={classNames(
             "mt-0 h-full flex-1",
-            !hideSidebar ? (laptopNavOpen ? "lg:pl-80" : "lg:pl-0") : ""
+            !hideSidebar ? (navigationBarOpen ? "lg:pl-80" : "lg:pl-0") : ""
           )}
         >
           <div
@@ -504,8 +504,8 @@ export default function AppLayout({
 
         <div>
           <ToggleSideBarButton
-            laptopNavOpen={laptopNavOpen}
-            setLaptopNavOpen={setLaptopNavOpen}
+            navigationBarOpen={navigationBarOpen}
+            setNavigationBarOpen={setNavigationBarOpen}
           />
         </div>
       </div>
