@@ -10,6 +10,7 @@ import Script from "next/script";
 import React, { Fragment, useContext, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import { BetaMenu } from "@app/components/BetaMenu";
 import type {
   SidebarNavigation,
   TopNavigationId,
@@ -77,6 +78,7 @@ function NavigationBar({
             ) : null}
           </div>
           <div className="flex flex-1"></div>
+          {user && owner.flags?.some((flag: string) => flag.startsWith("labs_")) && <BetaMenu user={user} owner={owner} />}
           {user && <UserMenu user={user} owner={owner} />}
         </div>
 
