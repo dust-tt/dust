@@ -77,7 +77,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  static async findByWorkspaceDefault({
+  static async findByWorkspace({
     auth,
   }: {
     auth: Authenticator;
@@ -90,7 +90,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        defaultForWorkspace: true,
         workspaceId: owner.id,
       },
     });

@@ -19,8 +19,7 @@ export const acceptableTranscriptProvidersCodec = t.union([
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
   connectionId: t.union([t.string, t.null]),
-  provider: acceptableTranscriptProvidersCodec,
-  defaultForWorkspace: t.union([t.boolean, t.undefined]),
+  provider: acceptableTranscriptProvidersCodec
 });
 
 async function handler(
@@ -118,8 +117,7 @@ async function handler(
           userId,
           workspaceId: owner.id,
           provider,
-          connectionId,
-          defaultForWorkspace: req.body.defaultForWorkspace == true,
+          connectionId
         });
 
       return res

@@ -1,4 +1,5 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type {WithAPIErrorReponse} from "@dust-tt/types";
+import { assertNever  } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -44,7 +45,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const transcriptsConfigurationGet =
-        await LabsTranscriptsConfigurationResource.findByWorkspaceDefault({
+        await LabsTranscriptsConfigurationResource.findByWorkspace({
           auth,
         });
 
@@ -56,6 +57,21 @@ async function handler(
             message: "The configuration was not found.",
           },
         });
+      }
+
+      switch (transcriptsConfigurationGet.provider) {
+        case "google_drive":
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "transcripts_configuration_default_not_allowed",
+              message: "The provider does not allow default configurations.",
+            },
+          });
+        case "gong":
+          break;
+        default:
+          assertNever(transcriptsConfigurationGet.provider);
       }
 
       return res.status(200).json({

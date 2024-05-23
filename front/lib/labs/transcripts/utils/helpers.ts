@@ -55,3 +55,7 @@ export async function getAccessTokenFromNango(
 
   return res.credentials.raw.access_token;
 }
+
+export function getNangoConnectionId({workspaceId: string, userId: number): NangoConnectionId {
+  return `user_${userId}`;
+}

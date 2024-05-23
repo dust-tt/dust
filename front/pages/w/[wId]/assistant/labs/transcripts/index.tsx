@@ -240,8 +240,7 @@ export default function LabsTranscriptsIndex({
 
   const saveOauthConnection = async (
     connectionId: string | null,
-    provider: string,
-    defaultForWorkspace = false
+    provider: string
   ) => {
     const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
       method: "POST",
@@ -250,8 +249,7 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
-        provider,
-        defaultForWorkspace,
+        provider
       }),
     });
 
@@ -283,7 +281,7 @@ export default function LabsTranscriptsIndex({
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
       const newConnectionId = buildLabsConnectionId(
-        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+        `labs-transcripts-google-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );
       const {
@@ -331,13 +329,13 @@ export default function LabsTranscriptsIndex({
           return;
         }
 
-        await saveOauthConnection(null, transcriptsConfigurationState.provider);
+        await saveOauthConnection(defaultConfiguration.connectionId, transcriptsConfigurationState.provider);
 
         return;
       } else {
         const nango = new Nango({ publicKey: nangoPublicKey });
         const newConnectionId = buildLabsConnectionId(
-          `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
+          `labs-transcripts-gong-workspace-${owner.id}`,
           transcriptsConfigurationState.provider
         );
         const {
@@ -347,8 +345,7 @@ export default function LabsTranscriptsIndex({
 
         await saveOauthConnection(
           nangoConnectionId,
-          transcriptsConfigurationState.provider,
-          true
+          transcriptsConfigurationState.provider
         );
       }
     } catch (error) {
