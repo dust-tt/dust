@@ -42,20 +42,20 @@ const SHOW_INCIDENT_BANNER = false;
 
 function ToggleSideBarButton({
   navigationBarOpen,
-  setNavigationBarOpen,
+                               toggleNavigationBarVisibility,
 }: {
   navigationBarOpen: boolean;
-  setNavigationBarOpen: (open: boolean) => void;
+  toggleNavigationBarVisibility: (open: boolean) => void;
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState<"left" | "right">("left");
 
   const handleClick = useCallback(() => {
-    setNavigationBarOpen(!navigationBarOpen);
+    toggleNavigationBarVisibility(!navigationBarOpen);
     setDirection((prevDirection) =>
       prevDirection === "left" ? "right" : "left"
     );
-  }, [navigationBarOpen, setNavigationBarOpen]);
+  }, [navigationBarOpen, toggleNavigationBarVisibility]);
 
   return (
     <div
@@ -401,10 +401,7 @@ export default function AppLayout({
         )}
 
         {!hideSidebar && navigationBarOpen && (
-          <div
-            id="nav-bar"
-            className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col"
-          >
+          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             {loaded && (
               <NavigationBar
                 owner={owner}
@@ -466,10 +463,7 @@ export default function AppLayout({
             )}
           >
             <div
-              className={classNames(
-                "mx-auto h-full",
-                isWideMode ? "w-full" : "max-w-4xl"
-              )}
+              className="mx-auto h-full max-w-4xl"
             >
               {loaded && children}
             </div>
@@ -479,7 +473,7 @@ export default function AppLayout({
         <div>
           <ToggleSideBarButton
             navigationBarOpen={navigationBarOpen}
-            setNavigationBarOpen={setNavigationBarOpen}
+            toggleNavigationBarVisibility={(isVisible) => setNavigationBarOpen(isVisible)}
           />
         </div>
       </div>
