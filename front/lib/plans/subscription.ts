@@ -473,3 +473,24 @@ export async function getSubscriptionForStripeId(
     activeSubscription: res,
   });
 }
+
+export async function getSubscriptions(
+  auth: Authenticator
+): Promise<SubscriptionType[]> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Cannot find workspace.");
+  }
+
+  const subscriptions = await Subscription.findAll({
+    where: { workspaceId: owner.id },
+    include: [Plan],
+  });
+
+  return subscriptions.map((s) =>
+    renderSubscriptionFromModels({
+      plan: s.plan,
+      activeSubscription: s,
+    })
+  );
+}
