@@ -2,9 +2,10 @@ export type QdrantCluster =
   | "main-0"
   | "dedicated-0"
   | "dedicated-1"
-  | "dedicated-2";
+  | "dedicated-2"
+  | "cluster-0";
 
-export const DEFAULT_FREE_QDRANT_CLUSTER: QdrantCluster = "main-0";
+export const DEFAULT_FREE_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 export const DEFAULT_PAID_QDRANT_CLUSTER: QdrantCluster = "dedicated-2";
 
 export type CoreAPIDataSourceConfig = {
