@@ -49,21 +49,22 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     );
   }
 
-  static async findByUserWorkspace({
+  static async findByUserAndWorkspace({
     auth,
+    userId,
   }: {
     auth: Authenticator;
+    userId: number;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
-    const user = auth.user();
 
-    if (!owner || !user) {
+    if (!owner) {
       return null;
     }
 
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        userId: user.id,
+        userId,
         workspaceId: owner.id,
       },
     });
