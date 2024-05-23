@@ -26,6 +26,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
@@ -844,6 +845,40 @@ async function* runAction(
           assertNever(event);
       }
     }
+  } else if (isWebsearchConfiguration(actionConfiguration)) {
+    // Dummy implementation while in development (gated)
+    // TODO(pr,websearch) Implement this function
+    yield {
+      type: "agent_action_success",
+      created: now,
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      action: {
+        agentMessageId: agentMessage.id,
+        type: "websearch_action",
+        query: "testing it",
+        output: {
+          results: [{ title: "test", snippet: "sniptest", url: "http://lol" }],
+        },
+        functionCallId: null,
+        functionCallName: null,
+        step,
+        id: -1,
+        renderForFunctionCall: () => {
+          return { id: "Websearch", name: "Websearch", arguments: "None" };
+        },
+        renderForModel: () => {
+          return { role: "action", name: "Websearch", content: "None" };
+        },
+        renderForMultiActionsModel: () => {
+          return {
+            role: "function",
+            function_call_id: "websearch",
+            content: "None",
+          };
+        },
+      },
+    };
   } else {
     assertNever(actionConfiguration);
   }

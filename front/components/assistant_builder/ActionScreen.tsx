@@ -37,7 +37,11 @@ import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_buil
 
 import { ActionDustAppRun } from "./actions/DustAppRunAction";
 
-const BASIC_ACTION_CATEGORIES = ["REPLY_ONLY", "USE_DATA_SOURCES"] as const;
+const BASIC_ACTION_CATEGORIES = [
+  "REPLY_ONLY",
+  "USE_DATA_SOURCES",
+  "WEBSEARCH",
+] as const;
 const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
 
 type ActionCategory =
@@ -59,6 +63,7 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     icon: ComponentType;
     description: string;
     defaultActionType: AssistantBuilderActionType | null;
+    flag?: WhitelistableFeature | null;
   }
 > = {
   REPLY_ONLY: {
@@ -78,6 +83,13 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     icon: CommandLineIcon,
     description: "Run a Dust app, then reply",
     defaultActionType: "DUST_APP_RUN",
+  },
+  WEBSEARCH: {
+    label: "Web search",
+    icon: MagnifyingGlassIcon,
+    description: "Perform a web search",
+    defaultActionType: "WEBSEARCH",
+    flag: "websearch_action",
   },
 };
 
@@ -159,6 +171,8 @@ export default function ActionScreen({
         return "USE_DATA_SOURCES";
       case "DUST_APP_RUN":
         return "RUN_DUST_APP";
+      case "WEBSEARCH":
+        return "WEBSEARCH";
       default:
         assertNever(actionType);
     }
@@ -176,6 +190,7 @@ export default function ActionScreen({
         return "PROCESS";
 
       case null:
+      case "WEBSEARCH":
       case "DUST_APP_RUN":
         // Unused for non data sources related actions.
         return "RETRIEVAL_SEARCH";
@@ -227,7 +242,10 @@ export default function ActionScreen({
               />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topLeft" width={260}>
-              {BASIC_ACTION_CATEGORIES.map((key) => {
+              {BASIC_ACTION_CATEGORIES.filter((key) => {
+                const flag = ACTION_CATEGORY_SPECIFICATIONS[key].flag;
+                return !flag || owner.flags.includes(flag);
+              }).map((key) => {
                 const spec = ACTION_CATEGORY_SPECIFICATIONS[key];
                 const defaultAction = getDefaultActionConfiguration(
                   spec.defaultActionType

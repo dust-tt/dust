@@ -5,12 +5,14 @@ import {
   isProcessActionType,
   isRetrievalActionType,
   isTablesQueryActionType,
+  isWebsearchActionType,
 } from "@dust-tt/types";
 
 import DustAppRunAction from "@app/components/assistant/conversation/DustAppRunAction";
 import ProcessAction from "@app/components/assistant/conversation/ProcessAction";
 import RetrievalAction from "@app/components/assistant/conversation/RetrievalAction";
 import TablesQueryAction from "@app/components/assistant/conversation/TablesQueryAction";
+import WebsearchAction from "@app/components/assistant/conversation/WebsearchAction";
 
 export function AgentAction({ action }: { action: AgentActionType }) {
   if (isRetrievalActionType(action)) {
@@ -35,6 +37,12 @@ export function AgentAction({ action }: { action: AgentActionType }) {
     return (
       <div className="pb-4">
         <ProcessAction processAction={action} />
+      </div>
+    );
+  } else if (isWebsearchActionType(action)) {
+    return (
+      <div className="pb-4">
+        <WebsearchAction websearchAction={action} />
       </div>
     );
   } else {
