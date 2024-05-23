@@ -609,11 +609,6 @@ function RenderInvitations({
               </div>
             </div>
             <div>
-              <Chip size="xs" color="slate">
-                Invitation {invitation.status}
-              </Chip>
-            </div>
-            <div>
               <Chip
                 size="xs"
                 color={ROLES_DATA[invitation.initialRole]["color"]}
