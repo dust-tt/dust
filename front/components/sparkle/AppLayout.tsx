@@ -424,24 +424,22 @@ export default function AppLayout({
           </Transition.Root>
         )}
 
-        {!hideSidebar && (
-          <Transition.Root show={navigationBarOpen} as={Fragment}>
-            <div
-              id="nav-bar"
-              className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col"
-            >
-              {loaded && (
-                <NavigationBar
-                  owner={owner}
-                  subscription={subscription}
-                  subNavigation={subNavigation}
-                  topNavigationCurrent={topNavigationCurrent}
-                >
-                  {loaded && navChildren && navChildren}
-                </NavigationBar>
-              )}
-            </div>
-          </Transition.Root>
+        {!hideSidebar && navigationBarOpen && (
+          <div
+            id="nav-bar"
+            className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col"
+          >
+            {loaded && (
+              <NavigationBar
+                owner={owner}
+                subscription={subscription}
+                subNavigation={subNavigation}
+                topNavigationCurrent={topNavigationCurrent}
+              >
+                {loaded && navChildren && navChildren}
+              </NavigationBar>
+            )}
+          </div>
         )}
 
         <div
