@@ -216,30 +216,6 @@ export const SidebarProvider = ({
   );
 };
 
-export const NavigationBarContext = React.createContext<{
-  navigationBarOpen: boolean;
-  setNavigationBarOpen: (value: boolean) => void;
-}>({
-  navigationBarOpen: true,
-  setNavigationBarOpen: (value) => {
-    throw new Error("NavigationBarContext not initialized: " + value);
-  },
-});
-
-export const NavigationBarProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
-
-  return (
-    <NavigationBarContext.Provider value={{ navigationBarOpen, setNavigationBarOpen }}>
-      {children}
-    </NavigationBarContext.Provider>
-  );
-};
-
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
 export const appLayoutBack = async (
@@ -282,7 +258,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const { navigationBarOpen, setNavigationBarOpen } = useContext(NavigationBarContext);
+  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
