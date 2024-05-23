@@ -315,8 +315,6 @@ export default function LabsTranscriptsIndex({
         `/api/w/${owner.sId}/labs/transcripts/default`
       );
 
-      console.log(await response.json())
-
       if (response.ok) {
         const defaultConfigurationRes = await response.json();
         const defaultConfiguration : LabsTranscriptsConfigurationResource = defaultConfigurationRes.configuration;
