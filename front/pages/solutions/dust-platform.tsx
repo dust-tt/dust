@@ -58,13 +58,7 @@ export default function DustPlatform() {
     <>
       <HeaderContentBlock
         uptitle="Dust Platform"
-        title={
-          <>
-            Developer-
-            <br />
-            and&nbsp;tinkerer-friendly
-          </>
-        }
+        title={<>For Developers</>}
         from="from-amber-200"
         to="to-amber-400"
         subtitle={
@@ -75,7 +69,7 @@ export default function DustPlatform() {
             <a href="https://docs.dust.tt" target="_blank">
               <Button
                 variant="primary"
-                label="Consult our Documentation"
+                label="Go to Documentation"
                 size="md"
                 className="mt-8"
               />
@@ -101,7 +95,7 @@ export default function DustPlatform() {
             }
             content={[
               <>
-                Complete complex workflows and&nbsp;specific tasks
+                Orchestrate complex workflows and&nbsp;specific tasks
                 by&nbsp;calling models, reaching APIs, executing code,
                 or&nbsp;consulting Data&nbsp;Sources.
               </>,
