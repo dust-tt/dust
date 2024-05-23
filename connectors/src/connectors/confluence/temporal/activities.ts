@@ -620,7 +620,10 @@ export async function confluenceGetReportPersonalActionActivity(
   if (connector.isAuthTokenRevoked) {
     return false;
   }
-  if (connector.errorType !== null) {
+  if (connector.isThirdPartyInternalError !== null) {
+    return false;
+  }
+  if (connector.pausedAt !== null) {
     return false;
   }
 
