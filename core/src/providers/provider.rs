@@ -20,6 +20,7 @@ use super::google_ai_studio::GoogleAiStudioProvider;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, ValueEnum, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[clap(rename_all = "lowercase")]
 pub enum ProviderID {
     OpenAI,
     Cohere,
