@@ -370,6 +370,7 @@ async function handleInvitationRoleChange(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      status: invitation.status,
       initialRole: newRole,
     }),
   });
