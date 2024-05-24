@@ -218,7 +218,9 @@ export function Button({
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
       {avatar && <Avatar size={size} visual={avatar} isRounded />}
       {labelVisible ? (
-        <div className={finalContainerClasses}>{label}</div>
+        <div className={classNames("truncate", finalContainerClasses)}>
+          {label}
+        </div>
       ) : null}
       {type === "menu" && (
         <Icon

@@ -209,12 +209,13 @@ export const CarousselContentBlock = ({
         </P>
       </div>
       <div className="w-full text-center">
-        <Link href={href} shallow={true}>
+        <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
             variant="tertiary"
             size="md"
             icon={ArrowRightIcon}
+            className="max-w-full"
           />
         </Link>
       </div>
@@ -224,7 +225,7 @@ export const CarousselContentBlock = ({
         {assistants.map((block, index) => (
           <CarouselItem
             key={index}
-            className="basis-1/2 md:basis-1/3 lg:basis-1/4"
+            className="basis-1/2 px-8 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
           >
             <SolutionSectionAssistantBlock {...block} />
           </CarouselItem>
