@@ -408,7 +408,7 @@ export const getCheckoutUrlForUpgrade = async (
   };
 };
 
-export async function isStripeSubscriptionOnProPlan(
+async function isStripeSubscriptionOnProPlan(
   stripeSubscription: Stripe.Subscription
 ): Promise<boolean> {
   const { data: subscriptionItems } = stripeSubscription.items;
