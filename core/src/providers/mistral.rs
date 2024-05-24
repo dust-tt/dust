@@ -4,11 +4,9 @@ use super::sentencepiece::sentencepiece::{
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton, tokenize_async,
 };
-
-use crate::providers::embedder::Embedder;
+use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
-
 use crate::run::Credentials;
 use crate::utils::{self, now};
 use crate::utils::{new_id, ParseError};
@@ -959,6 +957,117 @@ impl LLM for MistralAILLM {
         unimplemented!();
     }
 }
+
+pub struct MistralEmbedder {
+    id: String,
+    api_key: Option<String>,
+}
+
+impl MistralEmbedder {
+    pub fn new(id: String) -> Self {
+        MistralEmbedder { id, api_key: None }
+    }
+
+    fn chat_uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.mistral.ai/v1/embeddings",).parse::<Uri>()?)
+    }
+
+    fn tokenizer(&self) -> Arc<RwLock<SentencePieceProcessor>> {
+        // Tokenizer for the `mistral-embed` model.
+        return mistral_tokenizer_model_v1_base_singleton();
+    }
+}
+
+#[async_trait]
+impl Embedder for MistralEmbedder {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        if !(vec!["mistral-embed"].contains(&self.id.as_str())) {
+            return Err(anyhow!(
+                "Unexpected embedder model id (`{}`) for provider `openai`",
+                self.id
+            ));
+        }
+
+        match credentials.get("MISTRAL_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
+                }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
+                ))?,
+            },
+        }
+        Ok(())
+    }
+
+    fn context_size(&self) -> usize {
+        match self.id.as_str() {
+            "mistral-embed" => 8000,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn embedding_size(&self) -> usize {
+        match self.id.as_str() {
+            "mistral-embed" => 1024,
+            _ => unimplemented!(),
+        }
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        encode_async(self.tokenizer(), text).await
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let e = embed(
+            self.uri()?,
+            self.api_key.clone().unwrap(),
+            match &extras {
+                Some(e) => match e.get("openai_organization_id") {
+                    Some(Value::String(o)) => Some(o.to_string()),
+                    _ => None,
+                },
+                None => None,
+            },
+            Some(self.id.clone()),
+            text,
+            match &extras {
+                Some(e) => match e.get("openai_user") {
+                    Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                None => None,
+            },
+        )
+        .await?;
+
+        assert!(e.data.len() > 0);
+        // println!("EMBEDDING: {:?}", e);
+
+        Ok(e.data
+            .into_iter()
+            .map(|v| EmbedderVector {
+                created: utils::now(),
+                provider: ProviderID::OpenAI.to_string(),
+                model: self.id.clone(),
+                vector: v.embedding.clone(),
+            })
+            .collect::<Vec<_>>())
+    }
+}
+
 pub struct MistralProvider {}
 
 impl MistralProvider {
