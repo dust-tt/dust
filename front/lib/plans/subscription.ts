@@ -12,13 +12,11 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import {
-  isProPlanCode,
-  PRO_PLAN_SEAT_29_CODE,
-} from "@app/lib/plans/plan_codes";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
+  getProPlanStripeProductId,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -307,7 +305,7 @@ export const pokeUpgradeWorkspaceToPlan = async (
   }
 
   const isUgradeToEnterprise = newPlan.code.startsWith("ENT_");
-  const isUpgradeToPro = isProPlanCode(newPlan.code);
+  const isUpgradeToPro = newPlan.code.startsWith("PRO_");
 
   // Ugrade to Enterprise is not allowed through this function.
   if (isUgradeToEnterprise) {
@@ -320,23 +318,33 @@ export const pokeUpgradeWorkspaceToPlan = async (
   // This is a way to change the plan limitations but stay on Pro.
   if (isUpgradeToPro) {
     if (
-      activeSubscription &&
-      activeSubscription.sId &&
-      isProPlanCode(activeSubscription.plan.code)
+      !activeSubscription ||
+      !activeSubscription.sId ||
+      !activeSubscription.stripeSubscriptionId
     ) {
-      await Subscription.update(
-        { planId: newPlan.id },
-        {
-          where: {
-            sId: activeSubscription.sId,
-          },
-        }
-      );
-    } else {
       throw new Error(
-        `Cannot subscribe to ${planCode}: Pro Plans requires a stripe checkout session done by the user on the product.`
+        `Cannot subscribe to ${planCode}: Workspace has no subscription. It needs to be on Pro Plan already (stripe checkout session must be done on the product).`
       );
     }
+
+    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
+      activeSubscription
+    );
+
+    if (!isAlreadyOnProPlan) {
+      throw new Error(
+        `Cannot subscribe to ${planCode}: Workspace has a subscription but it's not a Pro Plan.`
+      );
+    }
+
+    await Subscription.update(
+      { planId: newPlan.id },
+      {
+        where: {
+          sId: activeSubscription.sId,
+        },
+      }
+    );
     return;
   }
 
@@ -370,13 +378,20 @@ export const getCheckoutUrlForUpgrade = async (
   }
 
   const existingSubscription = auth.subscription();
-  if (existingSubscription && isProPlanCode(existingSubscription.plan.code)) {
-    throw new Error(
-      `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed to a Pro plan.`
+
+  // We verify that the workspace is not already subscribed to the Pro plan product.
+  if (existingSubscription) {
+    const isAlreadyOnProPlan = await isSubscriptionOnProPlan(
+      existingSubscription
     );
+    if (isAlreadyOnProPlan) {
+      throw new Error(
+        `Cannot subscribe to plan ${PRO_PLAN_SEAT_29_CODE}: already subscribed to a Pro plan.`
+      );
+    }
   }
 
-  // We enter Stripe Checkout flow
+  // We enter Stripe Checkout flow.
   const checkoutUrl = await createProPlanCheckoutSession({
     auth,
   });
@@ -392,6 +407,33 @@ export const getCheckoutUrlForUpgrade = async (
     plan: renderPlanFromModel({ plan: proPlan }),
   };
 };
+
+async function isStripeSubscriptionOnProPlan(
+  stripeSubscription: Stripe.Subscription
+): Promise<boolean> {
+  const { data: subscriptionItems } = stripeSubscription.items;
+  const proPlanStripeProductId = getProPlanStripeProductId();
+
+  return subscriptionItems.some(
+    (item) => item.plan.product === proPlanStripeProductId
+  );
+}
+
+export async function isSubscriptionOnProPlan(
+  subscription: SubscriptionType
+): Promise<boolean> {
+  if (!subscription.stripeSubscriptionId) {
+    return false;
+  }
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+  if (!stripeSubscription) {
+    return false;
+  }
+
+  return isStripeSubscriptionOnProPlan(stripeSubscription);
+}
 
 /**
  * Proactively cancel inactive trials.
