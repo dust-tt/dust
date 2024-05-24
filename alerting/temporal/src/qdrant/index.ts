@@ -53,7 +53,7 @@ const NODE_AND_CLUSTER_REGEXP = /https:\/\/(node-\d+)-(.+)\:\d+/;
  */
 
 // Example: "grpc_responses_max_duration_seconds{endpoint="/qdrant.Points/Search"} 3.701747".
-const prometheusMetricsRegexp = /(\w+)\{([^}]*)\} (\d+(\.\d+)?)/;
+const prometheusMetricsRegexp = /(\w+)(?:\{([^}]*)\})? (\d+(\.\d+)?)/;
 const supportedPrometheusLabels = ["endpoint", "le"] as const;
 type SupportedPrometheusLabels = (typeof supportedPrometheusLabels)[number];
 
@@ -67,13 +67,17 @@ function extractMetricDetails(line: string) {
   const match = line.match(prometheusMetricsRegexp);
   if (match) {
     const name = match[1];
-    const labels = match[2].split(",").reduce((acc, label) => {
-      const [key, value] = label.split("=");
-      if (isSupportedPrometheusLabel(key)) {
-        acc[key] = value.replace(/"/g, "");
-      }
-      return acc;
-    }, {} as { [key: string]: string });
+
+    // Labels are optional.
+    const labels =
+      match[2]?.split(",").reduce((acc, label) => {
+        const [key, value] = label.split("=");
+        if (isSupportedPrometheusLabel(key)) {
+          acc[key] = value.replace(/"/g, "");
+        }
+        return acc;
+      }, {} as { [key: string]: string }) ?? {};
+
     const value = match[3];
 
     return { name, labels, value };
@@ -106,7 +110,12 @@ async function fetchPrometheusMetrics(
       },
     });
 
-    const metricLines: string[] = response.data.trim().split("\n");
+    const metricLines: string[] = response.data
+      .trim()
+      .split("\n")
+      // Ignore comments.
+      .filter((l) => !l.startsWith("#"));
+
     // Create a single timestamp for all Prometheus metrics retrievals to ensure histogram consistency.
     const timestamp = Math.floor(Date.now() / 1000);
     const clusterTags = [
