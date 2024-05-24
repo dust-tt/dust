@@ -10,9 +10,9 @@ import { ACTIVE_ROLES } from "@dust-tt/types";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 
 export function RoleDropDown({
-                               selectedRole,
-                               onChange,
-                             }: {
+  selectedRole,
+  onChange,
+}: {
   selectedRole: ActiveRoleType;
   onChange: (role: ActiveRoleType) => void;
 }) {
