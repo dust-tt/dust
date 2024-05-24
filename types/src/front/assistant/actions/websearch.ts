@@ -21,7 +21,7 @@ export type WebsearchActionOutputType = {
 export interface WebsearchActionType extends BaseAction {
   agentMessageId: ModelId;
   query: string;
-  output: WebsearchActionOutputType;
+  output: WebsearchActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;

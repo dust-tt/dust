@@ -357,6 +357,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     dustAppRunConfigs,
     tablesQueryConfigs,
     processConfigs,
+    websearchConfigs,
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -383,6 +384,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentProcessConfiguration[]>),
+    variant === "full"
+      ? AgentWebsearchConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentWebsearchConfiguration[]>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -532,6 +540,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
           name: dustAppRunConfig.name,
           description: dustAppRunConfig.description,
           forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
+        });
+      }
+
+      const websearchConfigurations = websearchConfigs[agent.id] ?? [];
+      for (const websearchConfig of websearchConfigurations) {
+        actions.push({
+          id: websearchConfig.id,
+          sId: websearchConfig.sId,
+          type: "websearch_configuration",
+          name: websearchConfig.name,
+          description: websearchConfig.description,
+          forceUseAtIteration: websearchConfig.forceUseAtIteration,
         });
       }
 
