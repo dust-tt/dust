@@ -8,7 +8,6 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type { MembershipInvitationType } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
 import type {
   ActiveRoleType,
@@ -26,11 +25,7 @@ import { useSWRConfig } from "swr";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { ConfirmContext } from "@app/components/Confirm";
-import {
-  InviteEmailModal,
-  revokeInvitation,
-} from "@app/components/members/InvitationModal";
+import { InviteEmailModal } from "@app/components/members/InvitationModal";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { ROLES_DATA } from "@app/components/members/Roles";
@@ -113,10 +108,6 @@ export default function WorkspaceAdmin({
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
-
-  const sendNotification = useContext(SendNotificationsContext);
-  const confirm = useContext(ConfirmContext);
-  const { mutate } = useSWRConfig();
 
   const { domain = "", domainAutoJoinEnabled = false } =
     workspaceVerifiedDomain ?? {};
@@ -286,19 +277,7 @@ export default function WorkspaceAdmin({
           <div className="s-w-full">
             <div className="space-y-2 pt-4">
               <Page.H variant="h5">Invitations</Page.H>
-              <InvitationsList
-                owner={owner}
-                onClickEvent={async (invitation: MembershipInvitationType) => {
-                  await revokeInvitation({
-                    owner,
-                    invitation,
-                    mutate,
-                    sendNotification,
-                    confirm,
-                  });
-                }}
-                searchText={searchText}
-              />
+              <InvitationsList owner={owner} searchText={searchText} />
             </div>
             <div className="space-y-2 pb-3 pt-4">
               <Page.H variant="h5">Members</Page.H>

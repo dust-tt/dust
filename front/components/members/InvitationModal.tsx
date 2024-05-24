@@ -295,16 +295,18 @@ export function EditInvitationModal({
             <RoleDropDown
               selectedRole={invitation.initialRole}
               onChange={async (invitationRole) => {
-                await handleInvitationRoleChange(
+                await handleInvitationRoleChange({
                   owner,
                   invitation,
-                  invitationRole
-                );
+                  newRole: invitationRole,
+                });
+                await mutate(`/api/w/${owner.sId}/invitations`);
                 sendNotification({
                   title: "Success!",
                   description: "Invitation role successfully updated.",
                   type: "success",
                 });
+                setOpen(false);
               }}
             />
           </div>
@@ -335,8 +337,8 @@ export function EditInvitationModal({
               icon={XMarkIcon}
               onClick={async () => {
                 await revokeInvitation({
-                  owner,
                   invitation,
+                  owner,
                   mutate,
                   sendNotification,
                   confirm,
@@ -350,11 +352,15 @@ export function EditInvitationModal({
   );
 }
 
-async function handleInvitationRoleChange(
-  owner: WorkspaceType,
-  invitation: MembershipInvitationType,
-  newRole: RoleType
-): Promise<void> {
+async function handleInvitationRoleChange({
+  owner,
+  invitation,
+  newRole,
+}: {
+  owner: WorkspaceType;
+  invitation: MembershipInvitationType;
+  newRole: RoleType;
+}) {
   const r = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
     method: "POST",
     headers: {
@@ -466,8 +472,8 @@ async function sendInvitations({
 }
 
 export async function revokeInvitation({
-  owner,
   invitation,
+  owner,
   mutate,
   sendNotification,
   confirm,
@@ -496,6 +502,7 @@ export async function revokeInvitation({
     },
     body: JSON.stringify({
       status: "revoked",
+      initialRole: invitation.initialRole,
     }),
   });
   if (!res.ok) {

@@ -11,7 +11,6 @@ export function InvitationsList({
   searchText,
 }: {
   owner: WorkspaceType;
-  onClickEvent: (invitation: MembershipInvitationType) => void;
   searchText?: string;
 }) {
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
