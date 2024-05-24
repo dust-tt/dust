@@ -31,10 +31,10 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
-  isProPlanCode,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { isSubscriptionOnProPlan } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 
@@ -47,6 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   trialDaysRemaining: number | null;
   gaTrackingId: string;
   workspaceSeats: number;
+  isOnProPlan: boolean;
   estimatedMonthlyBilling: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -76,6 +77,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         )
       : null;
   }
+
+  const isOnProPlan = await isSubscriptionOnProPlan(subscription);
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
   const estimatedMonthlyBilling = PRO_PLAN_29_COST * workspaceSeats;
 
@@ -87,6 +90,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: GA_TRACKING_ID,
       user,
       workspaceSeats,
+      isOnProPlan,
       estimatedMonthlyBilling,
     },
   };
@@ -100,6 +104,7 @@ export default function Subscription({
   gaTrackingId,
   workspaceSeats,
   estimatedMonthlyBilling,
+  isOnProPlan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -365,7 +370,7 @@ export default function Subscription({
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
-              {isProPlanCode(plan.code) && (
+              {isOnProPlan && (
                 <>
                   <Page.P>
                     Estimated monthly billing:{" "}

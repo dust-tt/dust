@@ -44,6 +44,7 @@ import {
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isSubscriptionOnProPlan } from "@app/lib/plans/subscription";
 import { useMembers } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -52,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isOnProPlan: boolean;
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   gaTrackingId: string;
@@ -80,11 +82,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       strategy: "okta",
     };
 
+  const isOnProPlan = await isSubscriptionOnProPlan(subscription);
+
   return {
     props: {
       user,
       owner,
       subscription,
+      isOnProPlan,
       enterpriseConnectionStrategyDetails,
       plan,
       gaTrackingId: GA_TRACKING_ID,
@@ -98,6 +103,7 @@ export default function WorkspaceAdmin({
   user,
   owner,
   subscription,
+  isOnProPlan,
   enterpriseConnectionStrategyDetails,
   plan,
   gaTrackingId,
@@ -192,12 +198,12 @@ export default function WorkspaceAdmin({
           plan={plan}
           strategyDetails={enterpriseConnectionStrategyDetails}
         />
-        <MemberList />
+        <MemberList isOnProPlan={isOnProPlan} />
       </Page.Vertical>
     </AppLayout>
   );
 
-  function MemberList() {
+  function MemberList({ isOnProPlan }: { isOnProPlan: boolean }) {
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
       useState<WorkspaceLimit | null>(null);
 
@@ -234,7 +240,7 @@ export default function WorkspaceAdmin({
           owner={owner}
           prefillText={searchText}
           members={members}
-          plan={plan}
+          isOnProPlan={isOnProPlan}
         />
         <ChangeMemberModal
           owner={owner}

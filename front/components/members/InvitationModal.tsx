@@ -11,7 +11,6 @@ import {
 import type {
   ActiveRoleType,
   MembershipInvitationType,
-  PlanType,
   RoleType,
   UserTypeWithWorkspaces,
   WorkspaceType,
@@ -31,7 +30,6 @@ import {
   PRO_PLAN_29_COST,
 } from "@app/lib/client/subscription";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
-import { isProPlanCode } from "@app/lib/plans/plan_codes";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
@@ -42,16 +40,16 @@ export function InviteEmailModal({
   showModal,
   onClose,
   owner,
-  plan,
   prefillText,
   members,
+  isOnProPlan,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  plan: PlanType;
   prefillText: string;
   members: UserTypeWithWorkspaces[];
+  isOnProPlan: boolean;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
@@ -257,7 +255,7 @@ export function InviteEmailModal({
               {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
-          {isProPlanCode(plan.code) && (
+          {isOnProPlan && (
             <div className="justify-self-end">
               <ProPlanBillingNotice />
             </div>
