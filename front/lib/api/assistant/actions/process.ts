@@ -429,7 +429,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         conversationId: conversation.sId,
         elapsed: Date.now() - now,
       },
-      "[ASSISTANT_TRACE] Process acion run execution"
+      "[ASSISTANT_TRACE] Finished process action run execution"
     );
 
     yield {
