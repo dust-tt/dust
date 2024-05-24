@@ -2,7 +2,6 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
     data_sources::qdrant::{QdrantClients, QdrantCluster, QdrantDataSourceConfig},
-    run::Credentials,
     stores::{postgres, store::Store},
     utils,
 };
@@ -150,7 +149,7 @@ async fn set_shadow_write(
             shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
         }),
         None => Some(QdrantDataSourceConfig {
-            cluster: QdrantCluster::Main0,
+            cluster: QdrantCluster::Cluster0,
             shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
         }),
     };
@@ -161,16 +160,6 @@ async fn set_shadow_write(
         Some(client) => client,
         None => unreachable!(),
     };
-
-    // We send a fake credentials here since this is not really used for OpenAI to get
-    // the embeedding size (which is what happens here). May need to be revisited in
-    // future.
-    let mut credentials = Credentials::new();
-    credentials.insert("OPENAI_API_KEY".to_string(), "foo".to_string());
-
-    shadow_write_qdrant_client
-        .create_data_source(&ds, credentials)
-        .await?;
 
     utils::done(&format!(
         "Created data source on shadow_write_cluster: \
@@ -222,33 +211,23 @@ async fn clear_shadow_write(
             None => Err(anyhow!("No shadow write cluster to clear"))?,
         };
 
-    match shadow_write_qdrant_client
-        .collection_info(&ds)
-        .await?
-        .result
-    {
-        Some(info) => {
-            if ask_confirmation {
-                // confirm
-                match utils::confirm(&format!(
-                    "[DANGER] Are you sure you want to delete this qdrant \
-                        shadow_write_cluster data source? \
-                        (this is definitive) collection={} points_count={:?} shadow_write_cluster={}",
-                    shadow_write_qdrant_client.collection_name(&ds),
-                    info.points_count,
-                    match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
-                        Some(cluster) => cluster.to_string(),
-                        None => "none".to_string(),
-                    }
-                    .to_string(),
-                ))? {
-                    true => (),
-                    false => Err(anyhow!("Aborted"))?,
-                }
+    if ask_confirmation {
+        // confirm
+        match utils::confirm(&format!(
+            "[DANGER] Are you sure you want to delete this qdrant \
+                shadow_write_cluster data source? \
+                (this is definitive) collection={} shadow_write_cluster={}",
+            shadow_write_qdrant_client.collection_name(&ds),
+            match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+                Some(cluster) => cluster.to_string(),
+                None => "none".to_string(),
             }
+            .to_string(),
+        ))? {
+            true => (),
+            false => Err(anyhow!("Aborted"))?,
         }
-        None => Err(anyhow!("Qdrant collection not found"))?,
-    };
+    }
 
     // Delete collection on shadow_write_cluster.
     shadow_write_qdrant_client.delete_data_source(&ds).await?;
@@ -272,7 +251,7 @@ async fn clear_shadow_write(
             shadow_write_cluster: None,
         }),
         None => Some(QdrantDataSourceConfig {
-            cluster: QdrantCluster::Main0,
+            cluster: QdrantCluster::Cluster0,
             shadow_write_cluster: None,
         }),
     };
@@ -523,57 +502,6 @@ async fn migrate(
         data_source_internal_id.clone(),
     )
     .await?;
-
-    // Not needed anymore in v1 setup.
-
-    // utils::info(&format!(
-    //     "Waiting for target collection to be ready: target_cluster={}",
-    //     target_cluster
-    // ));
-
-    // // Reload the ds so that it sees the shadow_write cluster.
-    // let ds = match store
-    //     .load_data_source_by_internal_id(&data_source_internal_id)
-    //     .await?
-    // {
-    //     Some(ds) => ds,
-    //     None => Err(anyhow!("Data source not found"))?,
-    // };
-
-    // // Wait for the target_cluster to be ready.
-    // loop {
-    //     match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
-    //         Some(shadow_write_cluster) => {
-    //             let shadow_write_qdrant_client = qdrant_clients
-    //                 .shadow_write_client(&ds.config().qdrant_config)
-    //                 .unwrap();
-    //             match shadow_write_qdrant_client
-    //                 .collection_info(&ds)
-    //                 .await?
-    //                 .result
-    //             {
-    //                 Some(info) => {
-    //                     utils::info(&format!(
-    //                         "[SHADOW] Qdrant collection: \
-    //                             collection={} status={} points_count={:?} cluster={}",
-    //                         shadow_write_qdrant_client.collection_name(&ds),
-    //                         info.status.to_string(),
-    //                         info.points_count,
-    //                         shadow_write_cluster.to_string(),
-    //                     ));
-    //                     if info.status == 1 {
-    //                         break;
-    //                     }
-    //                 }
-    //                 None => Err(anyhow!("Qdrant collection not found"))?,
-    //             }
-    //         }
-    //         None => (),
-    //     };
-
-    //     // Sleep for 1 second.
-    //     tokio::time::sleep(tokio::time::Duration::from_secs(8)).await;
-    // }
 
     if ask_confirmation {
         // Confirm we're ready to commit.

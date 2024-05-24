@@ -3,8 +3,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorConfigurationTypeSchema,
-  DEFAULT_FREE_QDRANT_CLUSTER,
-  DEFAULT_PAID_QDRANT_CLUSTER,
+  DEFAULT_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
   ioTsParsePayload,
   isConnectorProvider,
@@ -30,8 +29,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { NODE_ENV } = process.env;
 
 export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
@@ -293,16 +290,10 @@ async function handler(
           model_id: EMBEDDING_CONFIG.model_id,
           splitter_id: EMBEDDING_CONFIG.splitter_id,
           max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-          qdrant_config:
-            NODE_ENV === "production"
-              ? {
-                  cluster: DEFAULT_PAID_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                }
-              : {
-                  cluster: DEFAULT_FREE_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                },
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
         },
         credentials,
       });

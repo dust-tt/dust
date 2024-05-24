@@ -530,13 +530,7 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn setup(
-        &self,
-        credentials: Credentials,
-        qdrant_clients: QdrantClients,
-    ) -> Result<()> {
-        let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-
+    pub async fn setup(&self) -> Result<()> {
         // GCP store created data to test GCP.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
             Ok(bucket) => bucket,
@@ -557,13 +551,6 @@ impl DataSource {
         info!(
             data_source_internal_id = self.internal_id(),
             "Created GCP bucket for data_source"
-        );
-
-        qdrant_client.create_data_source(self, credentials).await?;
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            "Created Qdrant collection and indexes for data_source"
         );
 
         Ok(())
@@ -1583,16 +1570,19 @@ impl DataSource {
                 &self.project,
                 self.data_source_id(),
                 filter,
-                // with top_k documents, we should be guaranteed to have at
-                // least top_k chunks, if we make the assumption that each
-                // document has at least one chunk.
+                // With top_k documents, we should be guaranteed to have at least top_k chunks, if
+                // we make the assumption that each document has at least one chunk.
                 Some((top_k, 0)),
             )
             .await?;
 
-        let qdrant_batch_size: usize = 8; // number of `document_ids` to query at once in Qdrant
-        let qdrant_page_size: u32 = 128; // number of points to fetch per page in Qdrant
-        let qdrant_max_pages: usize = 16_000; // stop iteration if we can't get all the points in a batch after iterating this many pages
+        // Number of `document_ids` to query at once in Qdrant.
+        let qdrant_batch_size: usize = 8;
+        // Number of points to fetch per page in Qdrant.
+        let qdrant_page_size: u32 = 128;
+        // Stop iteration if we can't get all the points in a batch after iterating this many
+        // pages.
+        let qdrant_max_pages: usize = 16_000;
 
         let mut chunks: Vec<(String, Chunk)> = vec![];
 
@@ -1626,9 +1616,9 @@ impl DataSource {
             let mut page_offset: Option<PointId> = None;
             let mut batch_points: Vec<RetrievedPoint> = vec![];
 
-            // we must scroll through all result pages of a batch, because we want to
-            // to sort by reverse-chron timestamp and then by chunk_offset
-            // and Qdrant doesn't support any kind of sorting
+            // We must scroll through all result pages of a batch, because we want to to sort by
+            // reverse-chron timestamp and then by chunk_offset and Qdrant doesn't support any kind
+            // of sorting.
             let mut page_count = 0;
             loop {
                 let mut r = qdrant_client
@@ -1663,8 +1653,7 @@ impl DataSource {
                     .collect(),
             )?;
 
-            // sort chunks by document_id (in their original order)
-            // and then by chunk_offset
+            // Sort chunks by document_id (in their original order) and then by chunk_offset.
             let mut batch_index: HashMap<String, usize> = HashMap::new();
             for (idx, doc_id) in batch.iter().enumerate() {
                 batch_index.insert(doc_id.clone(), idx);
@@ -1674,20 +1663,20 @@ impl DataSource {
                 let b_idx = batch_index.get(doc_id_b).unwrap_or(&usize::MAX);
 
                 match a_idx.cmp(b_idx) {
-                    // if the document_ids have the same original order, sort by chunk_offset
+                    // If the document_ids have the same original order, sort by chunk_offset.
                     std::cmp::Ordering::Equal => a.offset.cmp(&b.offset),
-                    // Else use the original order
+                    // Else use the original order.
                     ordering => ordering,
                 }
             });
 
-            // add the first `top_k` chunks to the result
-            // (or all chunks if there are less than `top_k`)
+            // Add the first `top_k` chunks to the result (or all chunks if there are less than
+            // `top_k`).
             for chunk in batch_chunks.into_iter().take(top_k) {
                 chunks.push(chunk);
             }
 
-            // if we have enough chunks, we can stop
+            // If we have enough chunks, we can stop.
             if chunks.len() >= top_k {
                 break;
             }
