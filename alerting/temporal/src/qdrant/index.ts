@@ -100,7 +100,7 @@ async function fetchPrometheusMetrics(
   const [, node, clusterName] = found;
 
   try {
-    const response = await axios.get(`${clusterNodeUrl}:6333/metrics`, {
+    const response = await axios.get(`${clusterNodeUrl}/metrics`, {
       headers: {
         "api-key": QDRANT_MONITORING_API_KEY,
       },
@@ -130,6 +130,7 @@ async function fetchPrometheusMetrics(
         ...Object.entries(labels).map(([key, value]) => `${key}:${value}`),
       ];
 
+      // Use the raw metric name to determine if it should be reported.
       if (QDRANT_METRICS_TO_WATCH.gauge_metrics.includes(name)) {
         metrics.push({
           metric: metricName,
