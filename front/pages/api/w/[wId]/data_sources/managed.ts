@@ -30,8 +30,6 @@ import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { NODE_ENV } = process.env;
-
 export const PostManagedDataSourceRequestBodySchema = t.type({
   provider: t.string,
   connectionId: t.string,
