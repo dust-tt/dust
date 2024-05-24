@@ -276,14 +276,11 @@ export function EditInvitationModal({
     setOpen(false);
   }
 
-  async function save() {}
-
   return (
     <Modal
       title="Edit Invitation"
       isOpen={isOpen}
       onClose={closeModal}
-      onSave={save}
       saveLabel="Save"
       savingLabel="Saving..."
       hasChanged={false}
