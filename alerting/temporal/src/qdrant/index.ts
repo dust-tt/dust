@@ -114,7 +114,7 @@ async function fetchPrometheusMetrics(
       .trim()
       .split("\n")
       // Ignore comments.
-      .filter((l) => !l.startsWith("#"));
+      .filter((l: string) => !l.startsWith("#"));
 
     // Create a single timestamp for all Prometheus metrics retrievals to ensure histogram consistency.
     const timestamp = Math.floor(Date.now() / 1000);
