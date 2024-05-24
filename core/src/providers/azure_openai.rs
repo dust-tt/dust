@@ -683,7 +683,7 @@ impl Embedder for AzureOpenAIEmbedder {
             Some(model_id) => match model_id.as_str() {
                 "text-embedding-ada-002" => 1536,
                 "text-embedding-3-small" => 1536,
-                "text-embedding-3-large" => 8191,
+                "text-embedding-3-large" => 3072,
                 _ => unimplemented!(),
             },
             None => unimplemented!(),
