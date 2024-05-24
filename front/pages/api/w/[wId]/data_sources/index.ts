@@ -1,7 +1,6 @@
 import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import {
-  DEFAULT_FREE_QDRANT_CLUSTER,
-  DEFAULT_PAID_QDRANT_CLUSTER,
+  DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIG,
 } from "@dust-tt/types";
@@ -14,8 +13,6 @@ import { DataSource } from "@app/lib/models/data_source";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { NODE_ENV } = process.env;
 
 export type GetDataSourcesResponseBody = {
   dataSources: Array<DataSourceType>;
@@ -137,16 +134,10 @@ async function handler(
           model_id: EMBEDDING_CONFIG.model_id,
           splitter_id: EMBEDDING_CONFIG.splitter_id,
           max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-          qdrant_config:
-            auth.isUpgraded() && NODE_ENV === "production"
-              ? {
-                  cluster: DEFAULT_PAID_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                }
-              : {
-                  cluster: DEFAULT_FREE_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                },
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
         },
         credentials,
       });
