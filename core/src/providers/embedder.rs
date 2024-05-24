@@ -166,15 +166,17 @@ impl EmbedderRequest {
 pub enum SupportedEmbedderModels {
     #[clap(name = "text-embedding-ada-002")]
     TextEmbeddingAda002,
-    #[clap(name = "text-embedding-3-large")]
-    TextEmbedding3Large,
+    #[clap(name = "text-embedding-3-large-1536")]
+    TextEmbedding3Large1536,
 }
 
 impl fmt::Display for SupportedEmbedderModels {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SupportedEmbedderModels::TextEmbeddingAda002 => write!(f, "text-embedding-ada-002"),
-            SupportedEmbedderModels::TextEmbedding3Large => write!(f, "text-embedding-3-large"),
+            SupportedEmbedderModels::TextEmbedding3Large1536 => {
+                write!(f, "text-embedding-3-large-1536")
+            }
         }
     }
 }
@@ -187,7 +189,7 @@ impl EmbedderProvidersModelMap {
         match provider {
             &ProviderID::OpenAI => Ok(vec![
                 SupportedEmbedderModels::TextEmbeddingAda002,
-                SupportedEmbedderModels::TextEmbedding3Large,
+                SupportedEmbedderModels::TextEmbedding3Large1536,
             ]),
             _ => Err(anyhow!("Provider not supported for embeddings.")),
         }

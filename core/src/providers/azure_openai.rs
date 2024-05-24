@@ -600,7 +600,7 @@ impl AzureOpenAIEmbedder {
             Some(model_id) => match model_id.as_str() {
                 "text-embedding-ada-002" => cl100k_base_singleton(),
                 "text-embedding-3-small" => cl100k_base_singleton(),
-                "text-embedding-3-large" => cl100k_base_singleton(),
+                "text-embedding-3-large-1536" => cl100k_base_singleton(),
                 _ => unimplemented!(),
             },
             None => unimplemented!(),
@@ -657,7 +657,7 @@ impl Embedder for AzureOpenAIEmbedder {
         match d.model.as_str() {
             "text-embedding-ada-002" => (),
             "text-embedding-3-small" => (),
-            "text-embedding-3-large" => (),
+            "text-embedding-3-large-1536" => (),
             _ => Err(anyhow!("Unsupported model: {}", d.model))?,
         }
 
@@ -671,7 +671,7 @@ impl Embedder for AzureOpenAIEmbedder {
             Some(model_id) => match model_id.as_str() {
                 "text-embedding-ada-002" => 8191,
                 "text-embedding-3-small" => 8191,
-                "text-embedding-3-large" => 8191,
+                "text-embedding-3-large-1536" => 8191,
                 _ => unimplemented!(),
             },
             None => unimplemented!(),
@@ -683,7 +683,7 @@ impl Embedder for AzureOpenAIEmbedder {
             Some(model_id) => match model_id.as_str() {
                 "text-embedding-ada-002" => 1536,
                 "text-embedding-3-small" => 1536,
-                "text-embedding-3-large" => 3072,
+                "text-embedding-3-large-1536" => 1536,
                 _ => unimplemented!(),
             },
             None => unimplemented!(),

@@ -1298,8 +1298,17 @@ pub async fn embed(
     if user.is_some() {
         body["user"] = json!(user);
     }
-    if model_id.is_some() {
-        body["model"] = json!(model_id);
+    match model_id {
+        Some(model_id) => {
+            body["model"] = json!(model_id);
+            match model_id.as_str() {
+                "text-embedding-3-large-1536" => {
+                    body["dimensions"] = json!(1536);
+                }
+                _ => (),
+            }
+        }
+        None => (),
     }
 
     let mut req = reqwest::Client::new()
@@ -1819,7 +1828,7 @@ impl OpenAIEmbedder {
         match self.id.as_str() {
             "text-embedding-ada-002" => cl100k_base_singleton(),
             "text-embedding-3-small" => cl100k_base_singleton(),
-            "text-embedding-3-large" => cl100k_base_singleton(),
+            "text-embedding-3-large-1536" => cl100k_base_singleton(),
             _ => r50k_base_singleton(),
         }
     }
@@ -1835,7 +1844,7 @@ impl Embedder for OpenAIEmbedder {
         if !(vec![
             "text-embedding-ada-002",
             "text-embedding-3-small",
-            "text-embedding-3-large",
+            "text-embedding-3-large-1536",
         ]
         .contains(&self.id.as_str()))
         {
@@ -1865,7 +1874,7 @@ impl Embedder for OpenAIEmbedder {
         match self.id.as_str() {
             "text-embedding-ada-002" => 8191,
             "text-embedding-3-small" => 8191,
-            "text-embedding-3-large" => 8191,
+            "text-embedding-3-large-1536" => 8191,
             _ => unimplemented!(),
         }
     }
@@ -1874,7 +1883,7 @@ impl Embedder for OpenAIEmbedder {
         match self.id.as_str() {
             "text-embedding-ada-002" => 1536,
             "text-embedding-3-small" => 1536,
-            "text-embedding-3-large" => 3072,
+            "text-embedding-3-large-1536" => 1536,
             _ => unimplemented!(),
         }
     }
