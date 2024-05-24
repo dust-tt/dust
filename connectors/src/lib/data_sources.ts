@@ -535,7 +535,7 @@ export async function upsertTableFromCsv({
       localLogger.error("Unknown error uploading structured data to Dust.");
     }
 
-    throw e;
+    throw new Error("Error uploading structured data to Dust.");
   }
 
   const elapsed = new Date().getTime() - now.getTime();
