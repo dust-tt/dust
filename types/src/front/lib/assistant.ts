@@ -97,7 +97,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
-  description: "OpenAI's newest and most advanced model (128k context).",
+  description: "OpenAI's GPT-4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   supportsMultiActions: true,
 };
