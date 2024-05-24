@@ -1110,6 +1110,7 @@ async fn runs_retrieve_status(
 struct DataSourcesRegisterPayload {
     data_source_id: String,
     config: data_source::DataSourceConfig,
+    #[allow(dead_code)]
     credentials: run::Credentials,
 }
 
@@ -1120,10 +1121,7 @@ async fn data_sources_register(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
-    match ds
-        .setup(payload.credentials, state.qdrant_clients.clone())
-        .await
-    {
+    match ds.setup().await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
