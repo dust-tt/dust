@@ -72,7 +72,7 @@ export async function updateInvitationStatusAndRole(
   }: {
     invitation: MembershipInvitationType;
     status: "pending" | "consumed" | "revoked";
-    role?: ActiveRoleType;
+    role: ActiveRoleType;
   }
 ): Promise<MembershipInvitationType> {
   const owner = auth.workspace();
@@ -91,14 +91,10 @@ export async function updateInvitationStatusAndRole(
     throw new Err("Invitation unexpectedly not found.");
   }
 
-  await existingInvitation.update(
-    role
-      ? {
-          status: status,
-          initialRole: role,
-        }
-      : { status }
-  );
+  await existingInvitation.update({
+    status: status,
+    initialRole: role,
+  });
 
   return typeFromModel(existingInvitation);
 }

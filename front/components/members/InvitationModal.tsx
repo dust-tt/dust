@@ -24,6 +24,7 @@ import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import type { NotificationType } from "@app/components/sparkle/Notification";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { handleMembersRoleChange } from "@app/lib/client/members";
 import {
   getPriceWithCurrency,
   PRO_PLAN_29_COST,
@@ -35,7 +36,6 @@ import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
-import { handleMembersRoleChange } from "@app/pages/w/[wId]/members";
 
 export function InviteEmailModal({
   showModal,
@@ -266,9 +266,6 @@ export function EditInvitationModal({
   isOpen: boolean;
   setOpen: (open: boolean) => void;
 }) {
-  const [invitationRole, setInvitationRole] = useState<ActiveRoleType>(
-    invitation.initialRole
-  );
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
 
@@ -298,14 +295,13 @@ export function EditInvitationModal({
           <div className="flex items-center gap-2">
             <div className="font-semibold text-element-900">Role:</div>
             <RoleDropDown
-              selectedRole={invitationRole}
+              selectedRole={invitation.initialRole}
               onChange={async (invitationRole) => {
                 await handleInvitationRoleChange(
                   owner,
                   invitation,
                   invitationRole
                 );
-                setInvitationRole(invitationRole);
                 sendNotification({
                   title: "Success!",
                   description: "Invitation role successfully updated.",
@@ -316,7 +312,7 @@ export function EditInvitationModal({
           </div>
           <div className="grow font-normal text-element-700">
             The role defines the rights of a member fo the workspace.{" "}
-            {ROLES_DATA[invitationRole].description}
+            {ROLES_DATA[invitation.initialRole].description}
           </div>
           <div className="flex items-center gap-2">
             <Button

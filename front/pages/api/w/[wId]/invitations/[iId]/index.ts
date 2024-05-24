@@ -1,5 +1,4 @@
 import type {
-  ActiveRoleType,
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
@@ -22,7 +21,7 @@ export type PostMemberInvitationsResponseBody = {
 
 export const PostMemberInvitationBodySchema = t.type({
   status: t.union([t.literal("revoked"), t.literal("pending")]),
-  initialRole: t.union([ActiveRoleSchema, t.undefined]),
+  initialRole: ActiveRoleSchema,
 });
 
 async function handler(
@@ -97,7 +96,7 @@ async function handler(
       invitation = await updateInvitationStatusAndRole(auth, {
         invitation: invitation,
         status: body.status,
-        role: body.initialRole as ActiveRoleType,
+        role: body.initialRole,
       });
 
       res.status(200).json({
