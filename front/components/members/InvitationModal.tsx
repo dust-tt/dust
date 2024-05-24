@@ -269,15 +269,13 @@ export function EditInvitationModal({
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
 
-  function closeModal() {
-    setOpen(false);
-  }
-
   return (
     <Modal
       title="Edit Invitation"
       isOpen={isOpen}
-      onClose={closeModal}
+      onClose={() => {
+        setOpen(false);
+      }}
       saveLabel="Save"
       savingLabel="Saving..."
       hasChanged={false}
@@ -324,7 +322,7 @@ export function EditInvitationModal({
                 await sendInvitations({
                   owner,
                   emails: [invitation.inviteEmail],
-                  invitationRole,
+                  invitationRole: invitation.initialRole,
                   sendNotification,
                   isNewInvitation: false,
                 });
