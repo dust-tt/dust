@@ -3,8 +3,7 @@ import type { ConnectorType } from "@dust-tt/types";
 import {
   assertNever,
   ConnectorConfigurationTypeSchema,
-  DEFAULT_FREE_QDRANT_CLUSTER,
-  DEFAULT_PAID_QDRANT_CLUSTER,
+  DEFAULT_QDRANT_CLUSTER,
   EMBEDDING_CONFIG,
   ioTsParsePayload,
   isConnectorProvider,
@@ -293,16 +292,10 @@ async function handler(
           model_id: EMBEDDING_CONFIG.model_id,
           splitter_id: EMBEDDING_CONFIG.splitter_id,
           max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-          qdrant_config:
-            NODE_ENV === "production"
-              ? {
-                  cluster: DEFAULT_PAID_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                }
-              : {
-                  cluster: DEFAULT_FREE_QDRANT_CLUSTER,
-                  shadow_write_cluster: null,
-                },
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
         },
         credentials,
       });
