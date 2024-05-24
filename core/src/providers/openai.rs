@@ -1302,15 +1302,6 @@ pub async fn embed(
         body["model"] = json!(model_id);
     }
 
-    // let mut req_builder = Request::builder()
-    //     .method(Method::POST)
-    //     .uri(uri)
-    //     .header("Content-Type", "application/json")
-    //     // This one is for `openai`.
-    //     .header("Authorization", format!("Bearer {}", api_key.clone()))
-    //     // This one is for `azure_openai`.
-    //     .header("api-key", api_key.clone());
-
     let mut req = reqwest::Client::new()
         .post(uri.to_string())
         .header("Content-Type", "application/json")
@@ -1827,6 +1818,8 @@ impl OpenAIEmbedder {
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.id.as_str() {
             "text-embedding-ada-002" => cl100k_base_singleton(),
+            "text-embedding-3-small" => cl100k_base_singleton(),
+            "text-embedding-3-large" => cl100k_base_singleton(),
             _ => r50k_base_singleton(),
         }
     }
@@ -1839,10 +1832,15 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        if !(vec!["text-embedding-ada-002"].contains(&self.id.as_str())) {
+        if !(vec![
+            "text-embedding-ada-002",
+            "text-embedding-3-small",
+            "text-embedding-3-large",
+        ]
+        .contains(&self.id.as_str()))
+        {
             return Err(anyhow!(
-                "Unexpected embedder model id (`{}`) for provider `openai`, \
-                  expected: `text-embedding-ada-002`",
+                "Unexpected embedder model id (`{}`) for provider `openai`",
                 self.id
             ));
         }
@@ -1866,6 +1864,8 @@ impl Embedder for OpenAIEmbedder {
     fn context_size(&self) -> usize {
         match self.id.as_str() {
             "text-embedding-ada-002" => 8191,
+            "text-embedding-3-small" => 8191,
+            "text-embedding-3-large" => 8191,
             _ => unimplemented!(),
         }
     }
@@ -1873,6 +1873,8 @@ impl Embedder for OpenAIEmbedder {
     fn embedding_size(&self) -> usize {
         match self.id.as_str() {
             "text-embedding-ada-002" => 1536,
+            "text-embedding-3-small" => 1536,
+            "text-embedding-3-large" => 8191,
             _ => unimplemented!(),
         }
     }
