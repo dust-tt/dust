@@ -98,7 +98,6 @@ async function handler(
           status: body.status,
         });
       }
-      console.log("HELLO");
       if (body.initialRole) {
         const retrievedInvitation = await MembershipInvitation.findOne({
           where: {
