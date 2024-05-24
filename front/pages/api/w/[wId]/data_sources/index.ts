@@ -3,6 +3,7 @@ import {
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIG,
+  isDataSourceNameValid,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -88,6 +89,17 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "The data source name cannot start with `managed-`.",
+          },
+        });
+      }
+
+      if (!isDataSourceNameValid(req.body.name)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Data source names must only contain letters, numbers, and the characters `._-`, and cannot be empty.",
           },
         });
       }
