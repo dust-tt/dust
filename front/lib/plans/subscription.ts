@@ -323,7 +323,7 @@ export const pokeUpgradeWorkspaceToPlan = async (
       !activeSubscription.stripeSubscriptionId
     ) {
       throw new Error(
-        `Cannot subscribe to ${planCode}: Pro Plans requires a stripe checkout session done by the user on the product.`
+        `Cannot subscribe to ${planCode}: Workspace has no subscription. It needs to be on Pro Plan already (stripe checkout session must be done on the product).`
       );
     }
 
@@ -333,7 +333,7 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
     if (!isAlreadyOnProPlan) {
       throw new Error(
-        `Cannot subscribe to ${planCode}: Pro Plans requires a stripe checkout session done by the user on the product.`
+        `Cannot subscribe to ${planCode}: Workspace has a subscription but it's not a Pro Plan.`
       );
     }
 
