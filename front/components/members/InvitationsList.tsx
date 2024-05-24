@@ -90,8 +90,7 @@ export function InvitationsList({
                 Loading...
               </Chip>
             </div>
-            <div
-              className="hidden sm:block">
+            <div className="hidden sm:block">
               <ChevronRightIcon />
             </div>
           </div>
