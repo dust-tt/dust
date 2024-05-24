@@ -139,10 +139,10 @@ async function getAnalytics(
       growth_calculations AS (
         SELECT
           COALESCE(MAX(CASE WHEN period = 'last_7_days' THEN active_users END), 0) AS "last_7_days_active_users",
-          COALESCE(MAX(CASE WHEN period = 'last_30_days' THEN active_users END), 0) AS "last_30_days_active_users",
-          (COALESCE(MAX(CASE WHEN period = 'last_7_days' THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_7_days' THEN active_users END), 0))::FLOAT 
+          COALESCE(MAX(CASE WHEN period IN ('last_30_days', 'last_7_days', 'previous_7_days') THEN active_users END), 0) AS "last_30_days_active_users",
+          (COALESCE(MAX(CASE WHEN period = 'last_7_days' THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_7_days' THEN active_users END), 0))::FLOAT
           / GREATEST(COALESCE(MAX(CASE WHEN period = 'previous_7_days' THEN active_users END), 1), 1) * 100 AS "wow_growth_pct",
-          (COALESCE(MAX(CASE WHEN period = 'last_30_days' THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_30_days' THEN active_users END), 0))::FLOAT 
+          (COALESCE(MAX(CASE WHEN period IN ('last_30_days', 'last_7_days', 'previous_7_days') THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_30_days' THEN active_users END), 0))::FLOAT
           / GREATEST(COALESCE(MAX(CASE WHEN period = 'previous_30_days' THEN active_users END), 1), 1) * 100 AS "mom_growth_pct"
         FROM aggregated_counts
       )
