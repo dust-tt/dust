@@ -20,6 +20,7 @@ import type { CustomEditorProps } from "@app/components/assistant/conversation/i
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { FilePicker } from "@app/components/assistant/FilePicker";
 import { classNames } from "@app/lib/utils";
 
 export interface InputBarContainerProps {
@@ -137,6 +138,15 @@ const InputBarContainer = ({
           />
           {!hideQuickActions && (
             <>
+              <FilePicker
+                owner={owner}
+                size="sm"
+                onItemClick={(c) => {
+                  editorService.insertMention({ id: c.sId, label: c.name });
+                }}
+                assistants={allAssistants}
+                showFooterButtons={true}
+              />
               <AssistantPicker
                 owner={owner}
                 size="sm"
