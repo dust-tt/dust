@@ -41,7 +41,7 @@ export type DataSourceType = {
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();
   if (trimmed.length === 0) {
-    return new Err("");
+    return new Err("DataSource name cannot be empty");
   }
   if (name.startsWith("managed-")) {
     return new Err("DataSource name cannot start with the prefix `managed-`");

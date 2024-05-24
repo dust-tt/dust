@@ -74,6 +74,7 @@ export default function DataSourceNew({
       valid = false;
     } else if (nameValidRes.isErr()) {
       setDataSourceNameError(nameValidRes.error);
+      valid = false;
     } else {
       edited = true;
       setDataSourceNameError("");
