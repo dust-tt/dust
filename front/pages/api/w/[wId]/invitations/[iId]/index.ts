@@ -1,7 +1,9 @@
 import type {
+  ActiveRoleType,
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getInvitation, updateInvitationStatus } from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { MembershipInvitation } from "@app/lib/models/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMemberInvitationsResponseBody = {
@@ -16,7 +19,8 @@ export type PostMemberInvitationsResponseBody = {
 };
 
 export const PostMemberInvitationBodySchema = t.type({
-  status: t.literal("revoked"),
+  status: t.union([t.literal("revoked"), t.undefined]),
+  initialRole: t.union([ActiveRoleSchema, t.undefined]),
 });
 
 async function handler(
@@ -88,10 +92,31 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      invitation = await updateInvitationStatus(auth, {
-        invitation,
-        status: body.status,
-      });
+      if (body.status) {
+        invitation = await updateInvitationStatus(auth, {
+          invitation: invitation,
+          status: body.status,
+        });
+      }
+      console.log("HELLO");
+      if (body.initialRole) {
+        const retrievedInvitation = await MembershipInvitation.findOne({
+          where: {
+            sId: invitation.sId,
+          },
+        });
+        if (!retrievedInvitation) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "invitation_not_found",
+              message: "The invitation model requested was not found.",
+            },
+          });
+        }
+        retrievedInvitation.initialRole = body.initialRole as ActiveRoleType;
+        await retrievedInvitation.save();
+      }
 
       res.status(200).json({
         invitation,
