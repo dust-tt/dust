@@ -7,9 +7,9 @@ import {
   GAUGE,
 } from "@datadog/datadog-api-client/dist/packages/datadog-api-client-v2/models/MetricIntakeType";
 
-const { QDRANT_CLUSTERS, QDRANT_MONITORING_API_KEY } = process.env;
+const { QDRANT_NODES, QDRANT_MONITORING_API_KEY } = process.env;
 
-assert(QDRANT_CLUSTERS, "QDRANT_CLUSTERS is not set.");
+assert(QDRANT_NODES, "QDRANT_NODES is not set.");
 assert(QDRANT_MONITORING_API_KEY, "QDRANT_MONITORING_API_KEY is not set.");
 
 const QDRANT_METRICS_TO_WATCH: Record<
@@ -43,7 +43,7 @@ configuration.setServerVariables({
 });
 
 const datadogMetricsApi = new v2.MetricsApi(configuration);
-const qdrantClusters = QDRANT_CLUSTERS.split(",");
+const qdrantClusters = QDRANT_NODES.split(",");
 
 // Example: "https://node-3-xyz123abc-456-789-xyz-cloud.example.com:6333".
 const NODE_AND_CLUSTER_REGEXP = /https:\/\/(node-\d+)-(.+)\:\d+/;
