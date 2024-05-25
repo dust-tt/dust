@@ -10,6 +10,7 @@ export type MembershipInvitationType = {
   status: "pending" | "consumed" | "revoked";
   inviteEmail: string;
   initialRole: ActiveRoleType;
+  createdAt: number;
 };
 
 // Types for the invite form in Poke.

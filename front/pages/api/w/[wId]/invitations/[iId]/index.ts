@@ -2,12 +2,16 @@ import type {
   MembershipInvitationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getInvitation, updateInvitationStatus } from "@app/lib/api/invitation";
+import {
+  getInvitation,
+  updateInvitationStatusAndRole,
+} from "@app/lib/api/invitation";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -16,7 +20,8 @@ export type PostMemberInvitationsResponseBody = {
 };
 
 export const PostMemberInvitationBodySchema = t.type({
-  status: t.literal("revoked"),
+  status: t.union([t.literal("revoked"), t.literal("pending")]),
+  initialRole: ActiveRoleSchema,
 });
 
 async function handler(
@@ -88,9 +93,10 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      invitation = await updateInvitationStatus(auth, {
+      invitation = await updateInvitationStatusAndRole(auth, {
         invitation,
         status: body.status,
+        role: body.initialRole,
       });
 
       res.status(200).json({
