@@ -295,16 +295,12 @@ export function EditInvitationModal({
             <RoleDropDown
               selectedRole={invitation.initialRole}
               onChange={async (invitationRole) => {
-                await handleInvitationRoleChange({
+                await updateInvitation({
                   owner,
                   invitation,
+                  mutate,
+                  sendNotification,
                   newRole: invitationRole,
-                });
-                await mutate(`/api/w/${owner.sId}/invitations`);
-                sendNotification({
-                  title: "Success!",
-                  description: "Invitation role successfully updated.",
-                  type: "success",
                 });
                 setOpen(false);
               }}
@@ -336,7 +332,7 @@ export function EditInvitationModal({
               label="Revoke invitation"
               icon={XMarkIcon}
               onClick={async () => {
-                await revokeInvitation({
+                await updateInvitation({
                   invitation,
                   owner,
                   mutate,
@@ -350,33 +346,6 @@ export function EditInvitationModal({
       </Page>
     </Modal>
   );
-}
-
-async function handleInvitationRoleChange({
-  owner,
-  invitation,
-  newRole,
-}: {
-  owner: WorkspaceType;
-  invitation: MembershipInvitationType;
-  newRole: RoleType;
-}) {
-  const r = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      status: invitation.status,
-      initialRole: newRole,
-    }),
-  });
-
-  if (!r.ok) {
-    const error: { error: { message: string } } = await r.json();
-    window.alert(error.error.message);
-  }
-  await mutate(`/api/w/${owner.sId}/invitations/${invitation.sId}`);
 }
 
 function ProPlanBillingNotice() {
@@ -471,52 +440,85 @@ async function sendInvitations({
   }
 }
 
-export async function revokeInvitation({
-  invitation,
+async function updateInvitation({
   owner,
+  invitation,
+  newRole,
   mutate,
   sendNotification,
   confirm,
 }: {
-  invitation: MembershipInvitationType;
   owner: WorkspaceType;
+  invitation: MembershipInvitationType;
+  newRole?: RoleType; // Optional parameter for role change
   mutate: any;
   sendNotification: (notificationData: NotificationType) => void;
-  confirm: (confirmData: ConfirmDataType) => Promise<boolean>;
+  confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
-  if (
-    !(await confirm({
-      title: "Revoke invitation",
-      message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
-      validateLabel: "Yes, revoke",
-      validateVariant: "primaryWarning",
-    }))
-  ) {
-    return;
-  }
-
-  const res = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      status: "revoked",
-      initialRole: invitation.initialRole,
-    }),
-  });
-  if (!res.ok) {
-    sendNotification({
-      type: "error",
-      title: "Revoke failed",
-      description: "Failed to revoke member's invitation.",
+  if (newRole) {
+    const r = await fetch(`/api/w/${owner.sId}/invitations/${invitation.sId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        status: invitation.status,
+        initialRole: newRole,
+      }),
     });
-  } else {
+
+    if (!r.ok) {
+      const error: { error: { message: string } } = await r.json();
+      window.alert(error.error.message);
+    }
     sendNotification({
+      title: "Success!",
+      description: "Invitation role successfully updated.",
       type: "success",
-      title: "Invitation revoked",
-      description: `Invitation revoked for ${invitation.inviteEmail}.`,
     });
     await mutate(`/api/w/${owner.sId}/invitations`);
+  } else {
+    if (
+      !(
+        confirm &&
+        (await confirm({
+          title: "Revoke invitation",
+          message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
+          validateLabel: "Yes, revoke",
+          validateVariant: "primaryWarning",
+        }))
+      )
+    ) {
+      return;
+    }
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/invitations/${invitation.sId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: "revoked",
+          initialRole: invitation.initialRole,
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Update failed",
+        description: "Failed to update member's invitation.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Invitation updated",
+        description: `Invitation updated for ${invitation.inviteEmail}.`,
+      });
+      await mutate(`/api/w/${owner.sId}/invitations`);
+    }
   }
 }
