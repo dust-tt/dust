@@ -1,4 +1,4 @@
-use crate::utils::ParseError;
+use crate::{providers::provider::ProviderID, utils::ParseError};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fmt;
@@ -176,12 +176,33 @@ impl DustQdrantClient {
         )
     }
 
-    fn shard_key(&self, data_source: &DataSource) -> shard_key::Key {
-        // We use the last character of the internal_id to determine the key_id. This id is
-        // generated using new_id and is guaranteed random. Using the last character gives us a
-        // path to moving data sources across shard when needed.
-        let key_id = data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT;
-        format!("{}_{}", self.shard_key_prefix(), key_id).into()
+    fn shard_key(&self, data_source: &DataSource) -> Result<shard_key::Key> {
+        let key_id: u8 = match (
+            data_source.config().provider_id,
+            data_source.config().model_id.as_str(),
+        ) {
+            (ProviderID::OpenAI, "text-embedding-ada-002") => {
+                // The startegy below was a mistake as the last character is an hex encoding
+                // character so can only take values from 0-9 and a-f which does not cover the
+                // SHARD_KEY_COUNT range, leading to unbalanced shards:
+                //
+                // We use the last character of the internal_id to determine the key_id. This id is
+                // generated using new_id and is guaranteed random. Using the last character gives
+                // us a path to moving data sources across shard when needed.
+                data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT
+            }
+            _ => {
+                // `internal_id` is the hexadecimal representation of a blake3 hash (massive
+                // number). We want to get a u64 out of it so we take the first 16 characters which
+                // will turn into a fully random u64. Taking the modulo SHARD_KEY_COUNT will give
+                // us a random shard key. 16=2^4 and 64/4=16 so u64 is represented by 16
+                // hexadecimal characters.
+                let h: u64 = u64::from_str_radix(&data_source.internal_id()[0..16], 16)?;
+                (h % SHARD_KEY_COUNT as u64) as u8
+            }
+        };
+
+        Ok(format!("{}_{}", self.shard_key_prefix(), key_id).into())
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
@@ -210,7 +231,7 @@ impl DustQdrantClient {
         self.client
             .delete_points(
                 self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)]),
+                Some(vec![self.shard_key(data_source)?]),
                 &filter.into(),
                 None,
             )
@@ -239,7 +260,7 @@ impl DustQdrantClient {
         self.client
             .delete_points(
                 self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)]),
+                Some(vec![self.shard_key(data_source)?]),
                 &filter.into(),
                 None,
             )
@@ -265,7 +286,7 @@ impl DustQdrantClient {
                 limit,
                 offset,
                 filter: Some(filter),
-                shard_key_selector: Some(vec![self.shard_key(data_source)].into()),
+                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
                 ..Default::default()
             })
             .await
@@ -290,7 +311,7 @@ impl DustQdrantClient {
                 filter: Some(filter),
                 limit,
                 with_payload,
-                shard_key_selector: Some(vec![self.shard_key(data_source)].into()),
+                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
                 ..Default::default()
             })
             .await
@@ -304,7 +325,7 @@ impl DustQdrantClient {
         self.client
             .upsert_points(
                 self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)]),
+                Some(vec![self.shard_key(data_source)?]),
                 points,
                 None,
             )
@@ -323,7 +344,7 @@ impl DustQdrantClient {
         self.client
             .set_payload(
                 self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)]),
+                Some(vec![self.shard_key(data_source)?]),
                 &filter.into(),
                 payload,
                 None,
