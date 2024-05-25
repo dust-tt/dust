@@ -94,7 +94,7 @@ async function handler(
       const body = bodyValidation.right;
 
       invitation = await updateInvitationStatusAndRole(auth, {
-        invitation: invitation,
+        invitation,
         status: body.status,
         role: body.initialRole,
       });

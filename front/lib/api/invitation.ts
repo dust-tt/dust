@@ -32,7 +32,7 @@ function typeFromModel(
     inviteEmail: invitation.inviteEmail,
     status: invitation.status,
     initialRole: invitation.initialRole,
-    createdAt: invitation.createdAt,
+    createdAt: invitation.createdAt.getTime(),
   };
 }
 
@@ -194,7 +194,7 @@ export async function getPendingInvitations(
       status: i.status,
       inviteEmail: i.inviteEmail,
       initialRole: i.initialRole,
-      createdAt: i.createdAt,
+      createdAt: i.createdAt.getTime(),
     };
   });
 }
@@ -252,7 +252,7 @@ export async function getRecentPendingAndRevokedInvitations(
       status,
       inviteEmail: i.inviteEmail,
       initialRole: i.initialRole,
-      createdAt: i.createdAt,
+      createdAt: i.createdAt.getTime(),
     });
   }
 
