@@ -39,6 +39,7 @@ import { AssistantEditionMenu } from "@app/components/assistant/conversation/Ass
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import type { SizeType } from "@app/components/assistant/conversation/messages/MessageHeader";
 import {
   linkFromDocument,
   providerFromDocument,
@@ -51,6 +52,17 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
   return message.replace(regex, "");
+}
+
+interface AgentMessageProps {
+  message: AgentMessageType;
+  owner: WorkspaceType;
+  user: UserType;
+  conversationId: string;
+  reactions: MessageReactionType[];
+  isInModal?: boolean;
+  hideReactions?: boolean;
+  size: SizeType;
 }
 
 /**
@@ -67,15 +79,8 @@ export function AgentMessage({
   reactions,
   isInModal,
   hideReactions,
-}: {
-  message: AgentMessageType;
-  owner: WorkspaceType;
-  user: UserType;
-  conversationId: string;
-  reactions: MessageReactionType[];
-  isInModal?: boolean;
-  hideReactions?: boolean;
-}) {
+  size,
+}: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
@@ -396,6 +401,8 @@ export function AgentMessage({
           </div>
         );
       }}
+      type="agent"
+      size={size}
     >
       <div ref={messageRef}>
         {renderMessage(agentMessageToRender, references, shouldStream)}

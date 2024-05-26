@@ -14,6 +14,7 @@ import React from "react";
 
 import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
 import { MessageActions } from "@app/components/assistant/conversation/messages/MessageActions";
+import { MessageContent } from "@app/components/assistant/conversation/messages/MessageContent";
 import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { classNames } from "@app/lib/utils";
 
@@ -136,7 +137,7 @@ export function ConversationMessage({
   renderName: (name: string | null) => React.ReactNode;
   type: MessageType;
   size?: "normal" | "compact";
-  citations: ContentFragmentType[];
+  citations?: ContentFragmentType[];
 }) {
   return (
     <>
@@ -147,9 +148,6 @@ export function ConversationMessage({
           messageSizeClasses[size]
         )}
       >
-        {/* COLUMN 2: CONTENT
-         * min-w-0 prevents the content from overflowing the container
-         */}
         <MessageHeader
           avatarUrl={pictureUrl}
           name={name ?? undefined}
@@ -157,22 +155,10 @@ export function ConversationMessage({
           isBusy={avatarBusy}
           renderName={renderName}
         />
-        <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
+
+        <MessageContent citations={citations} size={size}>
           {children}
-        </div>
-        {citations && (
-          <div
-            className={classNames(
-              "s-grid s-gap-2",
-              size === "compact" ? "s-grid-cols-2" : "s-grid-cols-4"
-            )}
-          >
-            {citations.map((c) => {
-              // TODO: key.
-              return <ContentFragment message={c} key={c.id} />;
-            })}
-          </div>
-        )}
+        </MessageContent>
 
         <MessageActions
           buttons={buttons}
