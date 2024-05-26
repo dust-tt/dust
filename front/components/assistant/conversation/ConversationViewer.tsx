@@ -344,6 +344,7 @@ export default function ConversationViewer({
   // Building an array of arrays of messages grouped by message.type.
   // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
   // This allows us to change the layout per consecutive messages of the same type.
+  // TODO: Update comment.
   const groupedMessages: MessageWithRankType[][] = useMemo(() => {
     const groups = messages
       .flatMap((page) => page.messages)
@@ -355,6 +356,13 @@ export default function ConversationViewer({
           const lastMessage = lastGroup[lastGroup.length - 1];
           if (lastMessage.type === message.type) {
             lastGroup.push(message); // Add to the last group if it's the same type
+          } else if (
+            lastMessage.type === "content_fragment" &&
+            message.type === "user_message"
+          ) {
+            // Here, we attached the content_fragments to the right user message.
+            const messageWithCitations = { ...message, citations: lastGroup };
+            acc[acc.length - 1] = [messageWithCitations];
           } else {
             acc.push([message]); // Start a new group if it's a different type
           }
@@ -386,47 +394,27 @@ export default function ConversationViewer({
       )}
 
       {groupedMessages.map((group) => {
-        const isContentFragmentGroup = group[0].type === "content_fragment";
-        return (
-          // First div is used to apply a background color to the content fragment group.
-          <div
-            className={isContentFragmentGroup ? "bg-structure-50" : ""}
-            key={`group-${group[0].sId}`}
-          >
-            {/* Second div is used to apply a max-width and change the flex direction of the content fragment group. */}
-            <div
-              className={
-                isContentFragmentGroup
-                  ? "mx-auto flex max-w-4xl flex-row flex-wrap"
-                  : ""
+        return group.map((message) => {
+          return (
+            <MessageItem
+              key={`message-${message.sId}`}
+              conversationId={conversation.sId}
+              hideReactions={hideReactions}
+              isInModal={isInModal}
+              message={message}
+              owner={owner}
+              reactions={reactions}
+              ref={
+                message.sId === prevFirstMessageId
+                  ? prevFirstMessageRef
+                  : undefined
               }
-            >
-              {group.map((message) => {
-                return (
-                  <MessageItem
-                    key={`message-${message.sId}`}
-                    conversationId={conversation.sId}
-                    hideReactions={hideReactions}
-                    isInModal={isInModal}
-                    message={message}
-                    owner={owner}
-                    reactions={reactions}
-                    ref={
-                      message.sId === prevFirstMessageId
-                        ? prevFirstMessageRef
-                        : undefined
-                    }
-                    user={user}
-                    isLastMessage={
-                      latestPage?.messages.at(-1)?.sId === message.sId
-                    }
-                    latestMentions={latestMentions}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        );
+              user={user}
+              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+              latestMentions={latestMentions}
+            />
+          );
+        });
       })}
     </div>
   );

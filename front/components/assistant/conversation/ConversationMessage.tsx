@@ -1,19 +1,21 @@
-import { Avatar, Button, DropdownMenu, EmojiPicker } from "@dust-tt/sparkle";
+import { Button, DropdownMenu, EmojiPicker } from "@dust-tt/sparkle";
 import { ReactionIcon } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ContentFragmentType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { MessageReactionType } from "@dust-tt/types";
 // TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
 import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import type { ComponentType, MouseEventHandler } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import React from "react";
-import { useSWRConfig } from "swr";
 
+import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import { MessageActions } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
-
-const MAX_MORE_REACTIONS_TO_SHOW = 9;
 
 export function EmojiSelector({
   user,
@@ -81,6 +83,19 @@ export function EmojiSelector({
   );
 }
 
+type MessageType = "user" | "agent" | "fragment";
+
+const messageSizeClasses = {
+  compact: "p-3",
+  normal: "p-4",
+};
+
+const messageTypeClasses = {
+  user: "bg-structure-50",
+  agent: "",
+  fragment: "",
+};
+
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
@@ -98,6 +113,9 @@ export function ConversationMessage({
   avatarBusy = false,
   enableEmojis = true,
   renderName,
+  type,
+  size = "normal",
+  citations,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -116,133 +134,55 @@ export function ConversationMessage({
   avatarBusy?: boolean;
   enableEmojis?: boolean;
   renderName: (name: string | null) => React.ReactNode;
+  type: MessageType;
+  size?: "normal" | "compact";
+  citations: ContentFragmentType[];
 }) {
-  const { mutate } = useSWRConfig();
-
-  const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
-
-  useEffect(() => {
-    async function loadEmojiData() {
-      const mod = await import("@emoji-mart/data");
-      const data: EmojiMartData = mod.default as EmojiMartData;
-      setEmojiData(data);
-    }
-
-    void loadEmojiData();
-  }, []);
-
-  const { submit: handleEmoji, isSubmitting: isSubmittingEmoji } =
-    useSubmitFunction(
-      async ({ emoji, isToRemove }: { emoji: string; isToRemove: boolean }) => {
-        const res = await fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/reactions`,
-          {
-            method: isToRemove ? "DELETE" : "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              reaction: emoji,
-            }),
-          }
-        );
-        if (res.ok) {
-          await mutate(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
-          );
-        }
-      }
-    );
-
-  let slicedReactions = [...reactions];
-  let hasMoreReactions = null;
-  if (slicedReactions.length > MAX_MORE_REACTIONS_TO_SHOW) {
-    hasMoreReactions = slicedReactions.length - MAX_MORE_REACTIONS_TO_SHOW;
-    slicedReactions = slicedReactions.slice(0, MAX_MORE_REACTIONS_TO_SHOW);
-  }
-
   return (
     <>
-      <div className="flex w-full flex-col gap-2 px-4 sm:flex-row sm:gap-4">
+      <div
+        className={classNames(
+          "flex w-full flex-col justify-stretch gap-4 rounded-2xl",
+          messageTypeClasses[type],
+          messageSizeClasses[size]
+        )}
+      >
         {/* COLUMN 2: CONTENT
          * min-w-0 prevents the content from overflowing the container
          */}
-        <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 sm:order-2">
-          <MessageHeader
-            avatarUrl={pictureUrl}
-            name={name ?? undefined}
-            size="normal"
-            isBusy={avatarBusy}
-            renderName={renderName}
-          />
-          <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
-            {children}
+        <MessageHeader
+          avatarUrl={pictureUrl}
+          name={name ?? undefined}
+          size={size}
+          isBusy={avatarBusy}
+          renderName={renderName}
+        />
+        <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
+          {children}
+        </div>
+        {citations && (
+          <div
+            className={classNames(
+              "s-grid s-gap-2",
+              size === "compact" ? "s-grid-cols-2" : "s-grid-cols-4"
+            )}
+          >
+            {citations.map((c) => {
+              // TODO: key.
+              return <ContentFragment message={c} key={c.id} />;
+            })}
           </div>
-        </div>
+        )}
 
-        {/* COLUMN 3: BUTTONS */}
-        <div className="order-2 flex w-full shrink-0 flex-row-reverse flex-wrap gap-2 self-end sm:order-3 sm:w-24 sm:flex-row sm:justify-end sm:gap-1.5 sm:self-start">
-          {/* COPY / RETRY */}
-          {buttons && (
-            <>
-              {buttons.map((button, i) => (
-                <Button
-                  key={`message-${messageId}-button-${i}`}
-                  variant="tertiary"
-                  size="xs"
-                  label={button.label}
-                  labelVisible={false}
-                  icon={button.icon}
-                  onClick={button.onClick}
-                  disabled={button.disabled || false}
-                />
-              ))}
-            </>
-          )}
-
-          {/* EMOJIS */}
-
-          {enableEmojis && (
-            <>
-              <EmojiSelector
-                user={user}
-                reactions={reactions}
-                handleEmoji={handleEmoji}
-                emojiData={emojiData}
-                disabled={isSubmittingEmoji}
-              />
-              {slicedReactions.map((reaction) => {
-                const hasReacted = reaction.users.some(
-                  (u) => u.userId === user.id
-                );
-                const emoji = emojiData?.emojis[reaction.emoji];
-                const nativeEmoji = emoji?.skins[0].native;
-                if (!nativeEmoji) {
-                  return null;
-                }
-                return (
-                  <ButtonEmoji
-                    key={reaction.emoji}
-                    variant={hasReacted ? "selected" : "unselected"}
-                    emoji={nativeEmoji}
-                    count={reaction.users.length.toString()}
-                    onClick={async () =>
-                      handleEmoji({
-                        emoji: reaction.emoji,
-                        isToRemove: hasReacted,
-                      })
-                    }
-                  />
-                );
-              })}
-              {hasMoreReactions && (
-                <div className="px-2 pt-1.5 text-xs font-medium">
-                  +{hasMoreReactions}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <MessageActions
+          buttons={buttons}
+          messageId={messageId}
+          enableEmojis={enableEmojis}
+          conversationId={conversationId}
+          owner={owner}
+          reactions={reactions}
+          user={user}
+        />
       </div>
     </>
   );

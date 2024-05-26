@@ -1,4 +1,8 @@
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ContentFragmentType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
@@ -15,6 +19,7 @@ interface UserMessageProps {
   owner: WorkspaceType;
   reactions: MessageReactionType[];
   user: UserType;
+  citations: ContentFragmentType[];
 }
 
 export function UserMessage({
@@ -26,6 +31,7 @@ export function UserMessage({
   owner,
   reactions,
   user,
+  citations,
 }: UserMessageProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -43,6 +49,8 @@ export function UserMessage({
       reactions={reactions}
       enableEmojis={!hideReactions}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
+      type="user"
+      citations={citations}
     >
       <div className="flex flex-col gap-4">
         <div>

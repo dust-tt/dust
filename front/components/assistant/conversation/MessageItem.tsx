@@ -22,6 +22,7 @@ interface MessageItemProps {
   user: UserType;
 }
 
+// TODO: Fix message.type + citations.
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
@@ -37,7 +38,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }: MessageItemProps,
     ref
   ) {
-    const { sId, type } = message;
+    const { sId, type, citations } = message;
 
     const convoReactions = reactions.find((r) => r.messageId === sId);
     const messageReactions = convoReactions?.reactions || [];
@@ -49,11 +50,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     switch (type) {
       case "user_message":
         return (
-          <div
-            key={`message-id-${sId}`}
-            className="bg-structure-50 px-2 py-8"
-            ref={ref}
-          >
+          <div key={`message-id-${sId}`} ref={ref}>
             <div className="mx-auto flex max-w-4xl flex-col gap-4">
               <UserMessage
                 conversationId={conversationId}
@@ -64,13 +61,14 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 owner={owner}
                 reactions={messageReactions}
                 user={user}
+                citations={citations}
               />
             </div>
           </div>
         );
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} className="px-2 py-8" ref={ref}>
+          <div key={`message-id-${sId}`} ref={ref}>
             <div className="mx-auto flex max-w-4xl gap-4">
               <AgentMessage
                 message={message}
@@ -84,18 +82,14 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             </div>
           </div>
         );
-      case "content_fragment":
-        return (
-          <div
-            key={`message-id-${sId}`}
-            className="items-center pt-8"
-            ref={ref}
-          >
-            <div className="mx-auto flex max-w-4xl flex-col gap-4">
-              <ContentFragment message={message} />
-            </div>
-          </div>
-        );
+      // case "content_fragment":
+      //   return (
+      //     <div key={`message-id-${sId}`} ref={ref}>
+      //       <div className="mx-auto flex max-w-4xl flex-col gap-4 pt-8">
+      //         <ContentFragment message={message} />
+      //       </div>
+      //     </div>
+      //   );
       default:
         console.error("Unknown message type", message);
     }
