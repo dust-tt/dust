@@ -7,6 +7,7 @@ import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import type { SizeType } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
 
@@ -20,6 +21,7 @@ interface UserMessageProps {
   reactions: MessageReactionType[];
   user: UserType;
   citations: ContentFragmentType[];
+  size: SizeType;
 }
 
 export function UserMessage({
@@ -32,6 +34,7 @@ export function UserMessage({
   reactions,
   user,
   citations,
+  size,
 }: UserMessageProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -51,6 +54,7 @@ export function UserMessage({
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
       citations={citations}
+      size={size}
     >
       <div className="flex flex-col gap-4">
         <div>
