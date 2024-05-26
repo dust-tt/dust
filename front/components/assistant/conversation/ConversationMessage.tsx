@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
+import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 
@@ -163,41 +164,17 @@ export function ConversationMessage({
   return (
     <>
       <div className="flex w-full flex-col gap-2 px-4 sm:flex-row sm:gap-4">
-        {/* COLUMN 1: AVATAR*/}
-        <div className="order-1 hidden xl:block">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="md"
-            busy={avatarBusy}
-          />
-        </div>
-        <div className="hidden sm:block xl:hidden">
-          <Avatar
-            visual={pictureUrl}
-            name={name || undefined}
-            size="sm"
-            busy={avatarBusy}
-            className=""
-          />
-        </div>
-
         {/* COLUMN 2: CONTENT
          * min-w-0 prevents the content from overflowing the container
          */}
         <div className="order-3 flex min-w-0 flex-grow flex-col gap-4 sm:order-2">
-          <div className="flex gap-3">
-            <div className="sm:hidden">
-              <Avatar
-                visual={pictureUrl}
-                name={name || undefined}
-                size="xs"
-                busy={avatarBusy}
-                className=""
-              />
-            </div>
-            {renderName(name)}
-          </div>
+          <MessageHeader
+            avatarUrl={pictureUrl}
+            name={name ?? undefined}
+            size="normal"
+            isBusy={avatarBusy}
+            renderName={renderName}
+          />
           <div className="min-w-0 break-words pl-8 text-base font-normal sm:p-0">
             {children}
           </div>
