@@ -51,35 +51,31 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         return (
           <div key={`message-id-${sId}`} ref={ref}>
-            <div className="mx-auto flex max-w-4xl flex-col gap-4">
-              <UserMessage
-                conversationId={conversationId}
-                hideReactions={hideReactions}
-                isLastMessage={isLastMessage}
-                latestMentions={latestMentions}
-                message={message}
-                owner={owner}
-                reactions={messageReactions}
-                user={user}
-                citations={citations}
-              />
-            </div>
+            <UserMessage
+              conversationId={conversationId}
+              hideReactions={hideReactions}
+              isLastMessage={isLastMessage}
+              latestMentions={latestMentions}
+              message={message}
+              owner={owner}
+              reactions={messageReactions}
+              user={user}
+              citations={citations}
+            />
           </div>
         );
       case "agent_message":
         return (
           <div key={`message-id-${sId}`} ref={ref}>
-            <div className="mx-auto flex max-w-4xl gap-4">
-              <AgentMessage
-                message={message}
-                owner={owner}
-                user={user}
-                conversationId={conversationId}
-                reactions={messageReactions}
-                isInModal={isInModal}
-                hideReactions={hideReactions}
-              />
-            </div>
+            <AgentMessage
+              message={message}
+              owner={owner}
+              user={user}
+              conversationId={conversationId}
+              reactions={messageReactions}
+              isInModal={isInModal}
+              hideReactions={hideReactions}
+            />
           </div>
         );
       // case "content_fragment":
