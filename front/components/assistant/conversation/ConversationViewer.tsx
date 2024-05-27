@@ -2,6 +2,7 @@ import { Spinner } from "@dust-tt/sparkle";
 import type {
   AgentMessageType,
   ContentFragmentType,
+  MessageWithRankType,
   UserMessageType,
   UserType,
   WorkspaceType,
@@ -349,39 +350,7 @@ export default function ConversationViewer({
   });
   const eventIds = useRef<string[]>([]);
 
-  // TODO:
-  // Grouping messages into arrays based on their type, associating content_fragments with the closest following user_message.
-  // Example:
-  // Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
-  // Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
-  // This structure enables layout customization for consecutive messages of the same type
-  // and displays content_fragments within user_messages.
-  const groupedMessages: MessageWithCitationsType[][] = useMemo(() => {
-    const groups: MessageWithCitationsType[][] = [];
-    let tempContentFragments: ContentFragmentType[] = [];
-
-    messages
-      .flatMap((page) => page.messages)
-      .forEach((message) => {
-        if (message.type === "content_fragment") {
-          tempContentFragments.push(message); // Collect content fragments.
-        } else {
-          if (message.type === "user_message") {
-            // Attach collected content fragments to the user message.
-            const messageWithCitations: MessageWithCitationsType = {
-              ...message,
-              citations: tempContentFragments,
-            };
-            groups.push([messageWithCitations]);
-            tempContentFragments = []; // Reset the collected content fragments.
-          } else {
-            groups.push([message]); // Directly push agent_message or other types.
-          }
-        }
-      });
-
-    return groups;
-  }, [messages]);
+  const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
   if (isConversationLoading) {
     return null;
@@ -436,3 +405,38 @@ export default function ConversationViewer({
     </div>
   );
 }
+
+// Grouping messages into arrays based on their type, associating content_fragments with the closest following user_message.
+// Example:
+// Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+// Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
+// This structure enables layout customization for consecutive messages of the same type
+// and displays content_fragments within user_messages.
+const groupMessages = (
+  messages: FetchConversationMessagesResponse[]
+): MessageWithCitationsType[][] => {
+  const groups: MessageWithCitationsType[][] = [];
+  let tempContentFragments: ContentFragmentType[] = [];
+
+  messages
+    .flatMap((page) => page.messages)
+    .forEach((message) => {
+      if (message.type === "content_fragment") {
+        tempContentFragments.push(message); // Collect content fragments.
+      } else {
+        if (message.type === "user_message") {
+          // Attach collected content fragments to the user message.
+          const messageWithCitations: MessageWithCitationsType = {
+            ...message,
+            citations: tempContentFragments,
+          };
+          groups.push([messageWithCitations]);
+          tempContentFragments = []; // Reset the collected content fragments.
+        } else {
+          groups.push([message]); // Directly push agent_message or other types.
+        }
+      }
+    });
+
+  return groups;
+};
