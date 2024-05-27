@@ -505,7 +505,7 @@ async function updateInvitation({
     : "Invitation revoked";
   sendNotification({
     type: "success",
-    title: `${newRole ? `Role updated` : "Invitation Revoked"}`,
+    title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
   await mutate(`/api/w/${owner.sId}/invitations`);
