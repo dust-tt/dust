@@ -170,6 +170,7 @@ export function AgentMessage({
       case "tables_query_params":
       case "tables_query_output":
       case "process_params":
+      case "websearch_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
