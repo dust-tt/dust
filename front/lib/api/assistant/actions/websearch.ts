@@ -55,11 +55,12 @@ export class WebsearchAction extends BaseAction {
   }
 
   renderForModel(): ModelMessageType {
-    let content = "";
-
-    // Note action.output can be any valid JSON including null.
-    content += `WEBSEARCH OUTPUT:\n`;
-    content += `${JSON.stringify(this.output, null, 2)}\n`;
+    let content = "WEBSEARCH OUTPUT:\n";
+    if (this.output === null) {
+      content += "The web search failed.\n";
+    } else {
+      content += `${JSON.stringify(this.output, null, 2)}\n`;
+    }
 
     return {
       role: "action" as const,
@@ -77,11 +78,12 @@ export class WebsearchAction extends BaseAction {
   }
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "";
-
-    // Note action.output can be any valid JSON including null.
-    content += `WEBSEARCH OUTPUT:\n`;
-    content += `${JSON.stringify(this.output, null, 2)}\n`;
+    let content = "WEBSEARCH OUTPUT:\n";
+    if (this.output === null) {
+      content += "The web search failed.\n";
+    } else {
+      content += `${JSON.stringify(this.output, null, 2)}\n`;
+    }
 
     return {
       role: "function" as const,

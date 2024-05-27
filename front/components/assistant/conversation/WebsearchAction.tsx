@@ -1,4 +1,4 @@
-import type { WebsearchActionType } from "@dust-tt/types/dist";
+import type { WebsearchActionType } from "@dust-tt/types";
 
 // TODO(pr,websearch) Implement this function
 export default function WebsearchAction({
