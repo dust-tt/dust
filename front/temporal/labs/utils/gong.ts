@@ -123,6 +123,50 @@ export async function retrieveGongTranscriptContent(
     transcriptsConfiguration.connectionId
   );
 
+  const findGongUser = async () => {
+    const user = await transcriptsConfiguration.getUser();
+
+    if (!user) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] User not found. Skipping."
+      );
+      return null;
+    }
+
+    const gongUsers = await fetch(`https://api.gong.io/v2/users`, {
+      headers: {
+        Authorization: `Bearer ${gongAccessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!gongUsers.ok) {
+      localLogger.error(
+        {},
+        "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
+      );
+      return null;
+    }
+
+    const gongUsersData = await gongUsers.json();
+
+    if (!gongUsersData || gongUsersData.length === 0) {
+      localLogger.warn(
+        {},
+        "[retrieveGongTranscripts] No Gong users found. Skipping."
+      );
+      return null;
+    }
+
+    const gongUser = gongUsersData.users.find(
+      (gongUser: { emailAddress: string }) =>
+        gongUser.emailAddress === user.email
+    );
+
+    return gongUser;
+  };
+
   const call = await fetch(`https://api.gong.io/v2/calls/extensive`, {
     method: "POST",
     headers: {
@@ -162,44 +206,7 @@ export async function retrieveGongTranscriptContent(
     return null;
   }
 
-  const user = await transcriptsConfiguration.getUser();
-
-  if (!user) {
-    localLogger.error(
-      {},
-      "[processTranscriptActivity] User not found. Skipping."
-    );
-    return null;
-  }
-
-  const gongUsers = await fetch(`https://api.gong.io/v2/users`, {
-    headers: {
-      Authorization: `Bearer ${gongAccessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!gongUsers.ok) {
-    localLogger.error(
-      {},
-      "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
-    );
-    return null;
-  }
-
-  const gongUsersData = await gongUsers.json();
-
-  if (!gongUsersData || gongUsersData.length === 0) {
-    localLogger.warn(
-      {},
-      "[retrieveGongTranscripts] No Gong users found. Skipping."
-    );
-    return null;
-  }
-
-  const gongUser = gongUsersData.users.find(
-    (gongUser: { emailAddress: string }) => gongUser.emailAddress === user.email
-  );
+  const gongUser = await findGongUser();
 
   if (!gongUser) {
     localLogger.warn(
@@ -212,10 +219,12 @@ export async function retrieveGongTranscriptContent(
   const participantsUsers: { [key: string]: string } = {};
   const participantsSpeakers: { [key: string]: string } = {};
 
-  callData.parties?.map((participant: GongParticipant) => {
-    participantsUsers[participant.userId] = participant.name;
-    participantsSpeakers[participant.speakerId] = participant.name;
-  });
+  if (callData.parties) {
+    for (const participant of callData.parties) {
+      participantsUsers[participant.userId] = participant.name;
+      participantsSpeakers[participant.speakerId] = participant.name;
+    }
+  }
 
   if (!participantsUsers[gongUser.id]) {
     localLogger.info(

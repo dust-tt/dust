@@ -1,5 +1,5 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, DustAPI } from "@dust-tt/types";
+import { assertNever, DustAPI, minTranscriptsSize } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -184,8 +184,8 @@ export async function processTranscriptActivity(
       assertNever(transcriptsConfiguration.provider);
   }
 
-  // Meetings transcripts < 200 characters are likely not useful to process.
-  if (transcriptContent.length < 200) {
+  // Short transcripts are likely not useful to process.
+  if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
       {},
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."

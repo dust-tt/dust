@@ -1,5 +1,4 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -44,38 +43,39 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfigurationGet =
+      const transcriptsConfiguration =
         await LabsTranscriptsConfigurationResource.findByWorkspace({
           auth,
         });
 
-      if (!transcriptsConfigurationGet) {
+      if (!transcriptsConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "agent_configuration_not_found",
-            message: "The configuration was not found.",
+            type: "transcripts_configuration_not_found",
+            message: "The transcripts configuration was not found.",
           },
         });
       }
 
-      switch (transcriptsConfigurationGet.provider) {
-        case "google_drive":
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "transcripts_configuration_default_not_allowed",
-              message: "The provider does not allow default configurations.",
-            },
-          });
-        case "gong":
-          break;
-        default:
-          assertNever(transcriptsConfigurationGet.provider);
+      // Whitelist providers that allow workspace-wide configuration.
+      const providersWithWorkspaceConfiguration = ["gong"];
+      if (
+        !providersWithWorkspaceConfiguration.includes(
+          transcriptsConfiguration.provider
+        )
+      ) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "transcripts_configuration_default_not_allowed",
+            message: "The provider does not allow default configurations.",
+          },
+        });
       }
 
       return res.status(200).json({
-        configuration: transcriptsConfigurationGet,
+        configuration: transcriptsConfiguration,
       });
   }
 }
