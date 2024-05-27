@@ -1,17 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: connectors-worker-deployment
+  name: connectors-worker-google_drive-deployment
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: connectors-worker
+      worker: google_drive
   template:
     metadata:
       labels:
         app: connectors-worker
         name: connectors-worker-pod
+        worker: google_drive
         admission.datadoghq.com/enabled: "true"
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "connectors-worker","service": "connectors-worker","tags": ["env:prod"]}]'
@@ -20,14 +22,13 @@ spec:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
           command: ["npm", "run", "start:worker"]
-          args: ["--", "--workers", "confluence", "github", "intercom", "slack"]
+          args: ["--", "--workers", "google_drive"]
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
-                name: connectors-worker-config
+                name: connectors-worker-specific-config
             - secretRef:
                 name: connectors-secrets
-
           env:
             - name: DD_AGENT_HOST
               valueFrom:
@@ -42,14 +43,14 @@ spec:
 
           resources:
             requests:
-              cpu: 3000m
-              memory: 8Gi
-              ephemeral-storage: 32Gi
+              cpu: 2000m
+              memory: 4Gi
+              ephemeral-storage: 4Gi
 
             limits:
-              cpu: 3000m
-              memory: 8Gi
-              ephemeral-storage: 32Gi
+              cpu: 2000m
+              memory: 4Gi
+              ephemeral-storage: 4Gi
 
       volumes:
         - name: cert-volume
