@@ -18,6 +18,7 @@ import type {
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
 import type { KeyedMutator } from "swr";
+import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -32,7 +33,6 @@ import {
 } from "@app/lib/client/subscription";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isProPlanCode } from "@app/lib/plans/plan_codes";
-import { useMembers } from "@app/lib/swr";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   GetWorkspaceInvitationsResponseBody,
@@ -185,9 +185,9 @@ export function InviteEmailModal({
           role: invitationRole,
           sendNotification,
         });
+        await mutate(`/api/w/${owner.sId}/members`);
       }
-      const { mutateMembers } = useMembers(owner);
-      await mutateMembers();
+      await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
     }
   }
@@ -339,7 +339,6 @@ export function EditInvitationModal({
               label="Revoke invitation"
               icon={XMarkIcon}
               onClick={async () => {
-                console.log(mutateInvitations);
                 await updateInvitation({
                   invitation,
                   owner,
