@@ -69,36 +69,34 @@ export function ConversationMessage({
   citations?: ContentFragmentType[];
 }) {
   return (
-    <>
-      <div
-        className={classNames(
-          "flex w-full flex-col justify-stretch gap-4 rounded-2xl",
-          messageTypeClasses[type],
-          messageSizeClasses[size]
-        )}
-      >
-        <MessageHeader
-          avatarUrl={pictureUrl}
-          name={name ?? undefined}
-          size={size}
-          isBusy={avatarBusy}
-          renderName={renderName}
-        />
+    <div
+      className={classNames(
+        "flex w-full flex-col justify-stretch gap-4 rounded-2xl",
+        messageTypeClasses[type],
+        messageSizeClasses[size]
+      )}
+    >
+      <MessageHeader
+        avatarUrl={pictureUrl}
+        name={name ?? undefined}
+        size={size}
+        isBusy={avatarBusy}
+        renderName={renderName}
+      />
 
-        <MessageContent citations={citations} size={size}>
-          {children}
-        </MessageContent>
+      <MessageContent citations={citations} size={size}>
+        {children}
+      </MessageContent>
 
-        <MessageActions
-          buttons={buttons}
-          messageId={messageId}
-          enableEmojis={enableEmojis}
-          conversationId={conversationId}
-          owner={owner}
-          reactions={reactions}
-          user={user}
-        />
-      </div>
-    </>
+      <MessageActions
+        buttons={buttons}
+        messageId={messageId}
+        enableEmojis={enableEmojis}
+        conversationId={conversationId}
+        owner={owner}
+        reactions={reactions}
+        user={user}
+      />
+    </div>
   );
 }

@@ -58,6 +58,7 @@ export function MessageActions({
   if (enableEmojis) {
     buttonNodes.push(
       <MessageEmojiSelector
+        key={`message-${messageId}-emoji-selector`}
         conversationId={conversationId}
         messageId={messageId}
         owner={owner}
@@ -87,7 +88,7 @@ function MessageEmojiSelector({
   reactions,
   user,
 }: MessageEmojiSelectorProps) {
-  // TODO: Investigate why we do a global mutate.
+  // TODO(2024-05-27 flav) Use mutate from `useConversationReactions` instead.
   const { mutate } = useSWRConfig();
 
   const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
