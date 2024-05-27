@@ -9,3 +9,21 @@ export const getPriceWithCurrency = (price: number): string => {
   const isLikelyInUS = timeZone.startsWith("America");
   return isLikelyInUS ? `$${price}` : `${price}€`;
 };
+
+export const getPriceAsString = ({
+  currency,
+  priceInCents,
+}: {
+  currency: string;
+  priceInCents: number;
+}): string => {
+  const price = (priceInCents / 100).toFixed(2);
+  switch (currency) {
+    case "usd":
+      return `$${price}`;
+    case "eur":
+      return `${price}€`;
+    default:
+      return `${price}${currency}`;
+  }
+};

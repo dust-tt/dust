@@ -8,7 +8,11 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
+import type {
+  PlanType,
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+} from "@dust-tt/types";
 import type {
   ActiveRoleType,
   UserType,
@@ -44,7 +48,7 @@ import {
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { isSubscriptionOnProPlan } from "@app/lib/plans/subscription";
+import { getSubscriptionPricingIfPerSeatOrNull } from "@app/lib/plans/subscription";
 import { useMembers } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -53,7 +57,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  isOnProPlan: boolean;
+  perSeatPricing: SubscriptionPerSeatPricing | null;
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   gaTrackingId: string;
@@ -82,14 +86,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       strategy: "okta",
     };
 
-  const isOnProPlan = await isSubscriptionOnProPlan(subscription);
+  const perSeatPricing = await getSubscriptionPricingIfPerSeatOrNull(
+    subscription
+  );
 
   return {
     props: {
       user,
       owner,
       subscription,
-      isOnProPlan,
+      perSeatPricing,
       enterpriseConnectionStrategyDetails,
       plan,
       gaTrackingId: GA_TRACKING_ID,
@@ -103,7 +109,7 @@ export default function WorkspaceAdmin({
   user,
   owner,
   subscription,
-  isOnProPlan,
+  perSeatPricing,
   enterpriseConnectionStrategyDetails,
   plan,
   gaTrackingId,
@@ -198,12 +204,16 @@ export default function WorkspaceAdmin({
           plan={plan}
           strategyDetails={enterpriseConnectionStrategyDetails}
         />
-        <MemberList isOnProPlan={isOnProPlan} />
+        <MemberList perSeatPricing={perSeatPricing} />
       </Page.Vertical>
     </AppLayout>
   );
 
-  function MemberList({ isOnProPlan }: { isOnProPlan: boolean }) {
+  function MemberList({
+    perSeatPricing,
+  }: {
+    perSeatPricing: SubscriptionPerSeatPricing | null;
+  }) {
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
       useState<WorkspaceLimit | null>(null);
 
@@ -240,7 +250,7 @@ export default function WorkspaceAdmin({
           owner={owner}
           prefillText={searchText}
           members={members}
-          isOnProPlan={isOnProPlan}
+          perSeatPricing={perSeatPricing}
         />
         <ChangeMemberModal
           owner={owner}

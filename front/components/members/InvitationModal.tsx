@@ -12,6 +12,7 @@ import type {
   ActiveRoleType,
   MembershipInvitationType,
   RoleType,
+  SubscriptionPerSeatPricing,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -25,10 +26,7 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import type { NotificationType } from "@app/components/sparkle/Notification";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
-import {
-  getPriceWithCurrency,
-  PRO_PLAN_29_COST,
-} from "@app/lib/client/subscription";
+import { getPriceAsString } from "@app/lib/client/subscription";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isEmailValid } from "@app/lib/utils";
 import type {
@@ -42,14 +40,14 @@ export function InviteEmailModal({
   owner,
   prefillText,
   members,
-  isOnProPlan,
+  perSeatPricing,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   prefillText: string;
   members: UserTypeWithWorkspaces[];
-  isOnProPlan: boolean;
+  perSeatPricing: SubscriptionPerSeatPricing | null;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
@@ -255,9 +253,9 @@ export function InviteEmailModal({
               {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
-          {isOnProPlan && (
+          {perSeatPricing !== null && (
             <div className="justify-self-end">
-              <ProPlanBillingNotice />
+              <ProPlanBillingNotice perSeatPricing={perSeatPricing} />
             </div>
           )}
         </div>
@@ -360,13 +358,21 @@ export function EditInvitationModal({
   );
 }
 
-function ProPlanBillingNotice() {
+function ProPlanBillingNotice({
+  perSeatPricing,
+}: {
+  perSeatPricing: SubscriptionPerSeatPricing;
+}) {
   return (
     <ContentMessage size="md" variant="amber" title="Note">
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">
-          monthly fee of {getPriceWithCurrency(PRO_PLAN_29_COST)}
+          {perSeatPricing.billingPeriod} fee of{" "}
+          {getPriceAsString({
+            currency: perSeatPricing.seatCurrency,
+            priceInCents: perSeatPricing.seatPrice,
+          })}
         </span>
         .{" "}
       </p>

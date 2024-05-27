@@ -9,7 +9,11 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SubscriptionPerSeatPricing,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
@@ -22,10 +26,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import {
-  getPriceWithCurrency,
-  PRO_PLAN_29_COST,
-} from "@app/lib/client/subscription";
+import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -34,7 +35,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { isSubscriptionOnProPlan } from "@app/lib/plans/subscription";
+import { getSubscriptionPricingIfPerSeatOrNull } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 
@@ -47,8 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   trialDaysRemaining: number | null;
   gaTrackingId: string;
   workspaceSeats: number;
-  isOnProPlan: boolean;
-  estimatedMonthlyBilling: number;
+  perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -78,9 +78,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       : null;
   }
 
-  const isOnProPlan = await isSubscriptionOnProPlan(subscription);
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const estimatedMonthlyBilling = PRO_PLAN_29_COST * workspaceSeats;
+  const perSeatPricing = await getSubscriptionPricingIfPerSeatOrNull(
+    subscription
+  );
 
   return {
     props: {
@@ -90,8 +91,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: GA_TRACKING_ID,
       user,
       workspaceSeats,
-      isOnProPlan,
-      estimatedMonthlyBilling,
+      perSeatPricing,
     },
   };
 });
@@ -103,8 +103,7 @@ export default function Subscription({
   trialDaysRemaining,
   gaTrackingId,
   workspaceSeats,
-  estimatedMonthlyBilling,
-  isOnProPlan,
+  perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -287,24 +286,29 @@ export default function Subscription({
       topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
-      <CancelFreeTrialDialog
-        show={showCancelFreeTrialDialog}
-        onClose={() => setShowCancelFreeTrialDialog(false)}
-        onValidate={cancelFreeTrial}
-        isSaving={cancelFreeTrialSubmitting}
-      />
+      {perSeatPricing && (
+        <>
+          <CancelFreeTrialDialog
+            show={showCancelFreeTrialDialog}
+            onClose={() => setShowCancelFreeTrialDialog(false)}
+            onValidate={cancelFreeTrial}
+            isSaving={cancelFreeTrialSubmitting}
+          />
 
-      <SkipFreeTrialDialog
-        plan={subscription.plan}
-        show={showSkipFreeTrialDialog}
-        onClose={() => {
-          setShowSkipFreeTrialDialog(false);
-        }}
-        onValidate={skipFreeTrial}
-        workspaceSeats={workspaceSeats}
-        estimatedMonthlyBilling={estimatedMonthlyBilling}
-        isSaving={skipFreeTrialIsSubmitting}
-      />
+          <SkipFreeTrialDialog
+            plan={subscription.plan}
+            show={showSkipFreeTrialDialog}
+            onClose={() => {
+              setShowSkipFreeTrialDialog(false);
+            }}
+            onValidate={skipFreeTrial}
+            workspaceSeats={workspaceSeats}
+            perSeatPricing={perSeatPricing}
+            isSaving={skipFreeTrialIsSubmitting}
+          />
+        </>
+      )}
+
       <SubscriptionContactUsDrawer
         show={showContactUsDrawer}
         onClose={() => {
@@ -351,7 +355,7 @@ export default function Subscription({
               </>
             )}
           </div>
-          {subscription.trialing && (
+          {perSeatPricing && subscription.trialing && (
             <Page.Vertical>
               <Page.Horizontal gap="sm">
                 <Button
@@ -370,12 +374,15 @@ export default function Subscription({
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
-              {isOnProPlan && (
+              {perSeatPricing !== null && (
                 <>
                   <Page.P>
-                    Estimated monthly billing:{" "}
+                    Estimated {perSeatPricing.billingPeriod} billing:{" "}
                     <span className="font-bold">
-                      {getPriceWithCurrency(estimatedMonthlyBilling)}
+                      {getPriceAsString({
+                        currency: perSeatPricing.seatCurrency,
+                        priceInCents: perSeatPricing.seatPrice * workspaceSeats,
+                      })}
                     </span>{" "}
                     (excluding taxes).
                   </Page.P>
@@ -383,12 +390,20 @@ export default function Subscription({
                     {workspaceSeats === 1 ? (
                       <>
                         {workspaceSeats} member,{" "}
-                        {getPriceWithCurrency(PRO_PLAN_29_COST)} per member.
+                        {getPriceAsString({
+                          currency: perSeatPricing.seatCurrency,
+                          priceInCents: perSeatPricing.seatPrice,
+                        })}
+                        per member.
                       </>
                     ) : (
                       <>
                         {workspaceSeats} members,{" "}
-                        {getPriceWithCurrency(PRO_PLAN_29_COST)} per member.
+                        {getPriceAsString({
+                          currency: perSeatPricing.seatCurrency,
+                          priceInCents: perSeatPricing.seatPrice,
+                        })}{" "}
+                        per member.
                       </>
                     )}
                   </Page.P>
@@ -451,7 +466,7 @@ function SkipFreeTrialDialog({
   onClose,
   onValidate,
   workspaceSeats,
-  estimatedMonthlyBilling,
+  perSeatPricing,
   isSaving,
   plan,
 }: {
@@ -459,7 +474,7 @@ function SkipFreeTrialDialog({
   onClose: () => void;
   onValidate: () => void;
   workspaceSeats: number;
-  estimatedMonthlyBilling: number;
+  perSeatPricing: SubscriptionPerSeatPricing;
   isSaving: boolean;
   plan: SubscriptionType["plan"];
 }) {
@@ -487,7 +502,10 @@ function SkipFreeTrialDialog({
                 <>
                   Billing will start immediately for your workspace. <br />
                   Currently: {workspaceSeats} member,{" "}
-                  {getPriceWithCurrency(estimatedMonthlyBilling)}
+                  {getPriceAsString({
+                    currency: perSeatPricing.seatCurrency,
+                    priceInCents: perSeatPricing.seatPrice,
+                  })}
                   monthly (excluding taxes).
                 </>
               );
@@ -497,7 +515,10 @@ function SkipFreeTrialDialog({
                 Billing will start immediately for your workspace:.
                 <br />
                 Currently: {workspaceSeats} members,{" "}
-                {getPriceWithCurrency(estimatedMonthlyBilling)}
+                {getPriceAsString({
+                  currency: perSeatPricing.seatCurrency,
+                  priceInCents: perSeatPricing.seatPrice,
+                })}
                 monthly (excluding taxes).
               </>
             );
