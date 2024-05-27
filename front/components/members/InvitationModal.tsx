@@ -1,6 +1,7 @@
 import {
   Button,
   ContentMessage,
+  ElementModal,
   Modal,
   MovingMailIcon,
   Page,
@@ -258,28 +259,43 @@ export function InviteEmailModal({
 export function EditInvitationModal({
   owner,
   invitation,
-  isOpen,
-  setOpen,
+  onClose,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
-  isOpen: boolean;
-  setOpen: (open: boolean) => void;
+  onClose: () => void;
 }) {
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
+    invitation.initialRole
+  );
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
 
   return (
-    <Modal
-      title="Edit Invitation"
-      isOpen={isOpen}
+    <ElementModal
+      title="Edit invitation"
+      openOnElement={invitation}
       onClose={() => {
-        setOpen(false);
+        onClose();
+        setSelectedRole(invitation.initialRole);
       }}
-      saveLabel="Save"
-      savingLabel="Saving..."
-      hasChanged={false}
+      hasChanged={selectedRole !== invitation.initialRole}
       variant="side-sm"
+      onSave={async (closeModalFn) => {
+        if (!selectedRole) {
+          return;
+        }
+        await updateInvitation({
+          owner,
+          invitation,
+          newRole: selectedRole,
+          mutate,
+          sendNotification,
+          confirm,
+        });
+        closeModalFn();
+      }}
+      saveLabel="Update role"
     >
       <Page variant="modal">
         <Page.Layout direction="vertical">
@@ -293,17 +309,8 @@ export function EditInvitationModal({
           <div className="flex items-center gap-2">
             <div className="font-semibold text-element-900">Role:</div>
             <RoleDropDown
-              selectedRole={invitation.initialRole}
-              onChange={async (invitationRole) => {
-                await updateInvitation({
-                  owner,
-                  invitation,
-                  mutate,
-                  sendNotification,
-                  newRole: invitationRole,
-                });
-                setOpen(false);
-              }}
+              selectedRole={selectedRole}
+              onChange={setSelectedRole}
             />
           </div>
           <div className="grow font-normal text-element-700">
@@ -320,7 +327,7 @@ export function EditInvitationModal({
                 await sendInvitations({
                   owner,
                   emails: [invitation.inviteEmail],
-                  invitationRole: invitation.initialRole,
+                  invitationRole: selectedRole,
                   sendNotification,
                   isNewInvitation: false,
                 });
@@ -344,7 +351,7 @@ export function EditInvitationModal({
           </div>
         </Page.Layout>
       </Page>
-    </Modal>
+    </ElementModal>
   );
 }
 
