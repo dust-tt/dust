@@ -1001,7 +1001,7 @@ impl Embedder for MistralEmbedder {
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
         if !(vec!["mistral-embed"].contains(&self.id.as_str())) {
             return Err(anyhow!(
-                "Unexpected embedder model id (`{}`) for provider `openai`",
+                "Unexpected embedder model id (`{}`) for provider `mistral`",
                 self.id
             ));
         }
