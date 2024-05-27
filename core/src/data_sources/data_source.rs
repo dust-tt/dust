@@ -403,11 +403,29 @@ pub struct DocumentVersion {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct DataSourceConfig {
+pub struct Embedder {
     pub provider_id: ProviderID,
     pub model_id: String,
-    pub extras: Option<Value>,
     pub splitter_id: SplitterID,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct EmbedderDataSourceConfig {
+    pub embedder: Embedder,
+    pub shadow_embedder: Option<Embedder>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct DataSourceConfig {
+    // TODO(2024-05-24 flav) Remove once migrated to embedder.
+    pub provider_id: ProviderID,
+    pub model_id: String,
+    pub splitter_id: SplitterID,
+
+    // Optional until we update api calls to pass this body.
+    pub embedder_config: Option<EmbedderDataSourceConfig>,
+
+    pub extras: Option<Value>,
     pub max_chunk_size: usize,
     pub qdrant_config: Option<QdrantDataSourceConfig>,
 }
@@ -632,6 +650,8 @@ impl DataSource {
             ..Default::default()
         };
 
+        // We should write in primary client before, right?
+        // Write in cluster and embedder?
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 match qdrant_client
@@ -811,6 +831,7 @@ impl DataSource {
         }
 
         // Split text in chunks.
+        // This needs to be duplicated per cluster/collection.
         let splits = splitter(self.config.splitter_id)
             .split(
                 credentials.clone(),
