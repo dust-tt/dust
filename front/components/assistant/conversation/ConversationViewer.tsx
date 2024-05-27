@@ -363,9 +363,9 @@ export default function ConversationViewer({
   return (
     <div
       className={classNames(
-        "pb-44 pt-4",
+        "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2 pb-44 pt-4",
         isFading ? "animate-fadeout" : "",
-        "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2"
+        isInModal ? "" : "sm:px-4"
       )}
     >
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
