@@ -500,7 +500,9 @@ async function updateInvitation({
     return;
   }
 
-  const successMessage = newRole ? `Invitation updated to ${newRole}` : "Invitation revoked";
+  const successMessage = newRole
+    ? `Invitation updated to ${newRole}`
+    : "Invitation revoked";
   sendNotification({
     type: "success",
     title: `${newRole ? `Role updated` : "Invitation Revoked"}`,
