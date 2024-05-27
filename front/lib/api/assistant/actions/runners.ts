@@ -2,8 +2,8 @@ import type {
   AgentAction,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  WebsearchConfigurationType,
 } from "@dust-tt/types";
-import type { WebsearchConfigurationType } from "@dust-tt/types/dist/front/assistant/actions/websearch";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";

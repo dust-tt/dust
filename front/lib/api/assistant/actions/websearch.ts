@@ -5,6 +5,8 @@ import type {
   ModelId,
   ModelMessageType,
   Result,
+  WebsearchActionOutputType,
+  WebsearchConfigurationType,
   WebsearchErrorEvent,
   WebsearchParamsEvent,
   WebsearchSuccessEvent,
@@ -15,10 +17,6 @@ import {
   DustProdActionRegistry,
   Ok,
 } from "@dust-tt/types";
-import type {
-  WebsearchActionOutputType,
-  WebsearchConfigurationType,
-} from "@dust-tt/types/dist/front/assistant/actions/websearch";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
