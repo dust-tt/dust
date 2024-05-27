@@ -362,14 +362,15 @@ impl DustQdrantClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils;
 
     #[test]
     fn test_balanced_shard_keys() {
         let keys = (0..(SHARD_KEY_COUNT * 192))
-            .map(|_| {
-                let interal_id = utils::new_id();
-                DustQdrantClient::shard_key_id_from_internal_id(&interal_id).unwrap()
+            .map(|i| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(format!("{}", i).as_bytes());
+                let internal_id = format!("{}", hasher.finalize().to_hex());
+                DustQdrantClient::shard_key_id_from_internal_id(&internal_id).unwrap()
             })
             .collect::<Vec<_>>();
         for i in 0..SHARD_KEY_COUNT {
