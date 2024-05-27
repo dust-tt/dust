@@ -10,9 +10,11 @@ import {
 export function WorkspaceInfoTable({
   owner,
   workspaceVerifiedDomain,
+  worspaceCreationDay,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomain: WorkspaceDomain | null;
+  worspaceCreationDay: string;
 }) {
   return (
     <div className="flex justify-between gap-3 pt-4">
@@ -22,6 +24,10 @@ export function WorkspaceInfoTable({
         </div>
         <PokeTable>
           <PokeTableBody>
+            <PokeTableRow>
+              <PokeTableCell>Workspace creation</PokeTableCell>
+              <PokeTableCell>{worspaceCreationDay}</PokeTableCell>
+            </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
               <PokeTableCell>{owner.ssoEnforced ? "✅" : "❌"}</PokeTableCell>
