@@ -17,7 +17,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
-import type { KeyedMutator } from "swr";
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -35,7 +34,6 @@ import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invit
 import { isProPlanCode } from "@app/lib/plans/plan_codes";
 import { isEmailValid } from "@app/lib/utils";
 import type {
-  GetWorkspaceInvitationsResponseBody,
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
@@ -261,12 +259,10 @@ export function EditInvitationModal({
   owner,
   invitation,
   onClose,
-  mutateInvitations,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   onClose: () => void;
-  mutateInvitations: KeyedMutator<GetWorkspaceInvitationsResponseBody>;
 }) {
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
     invitation.initialRole
@@ -289,7 +285,6 @@ export function EditInvitationModal({
           owner,
           invitation,
           newRole: selectedRole,
-          mutateInvitations,
           sendNotification,
           confirm,
         });
@@ -342,7 +337,6 @@ export function EditInvitationModal({
                 await updateInvitation({
                   invitation,
                   owner,
-                  mutateInvitations,
                   sendNotification,
                   confirm,
                 });
@@ -451,14 +445,12 @@ async function updateInvitation({
   owner,
   invitation,
   newRole,
-  mutateInvitations,
   sendNotification,
   confirm,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   newRole?: RoleType; // Optional parameter for role change
-  mutateInvitations: KeyedMutator<GetWorkspaceInvitationsResponseBody>;
   sendNotification: (notificationData: NotificationType) => void;
   confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
@@ -508,5 +500,5 @@ async function updateInvitation({
     title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
-  await mutateInvitations();
+  await mutate(`/api/w/${owner.sId}/invitations`);
 }

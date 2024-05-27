@@ -14,8 +14,6 @@ export function InvitationsList({
   searchText?: string;
 }) {
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
-  const { mutateInvitations } = useWorkspaceInvitations(owner);
-
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
 
@@ -33,7 +31,6 @@ export function InvitationsList({
         <EditInvitationModal
           invitation={selectedInvite}
           owner={owner}
-          mutateInvitations={mutateInvitations}
           onClose={() => setSelectedInvite(null)}
         />
       )}
