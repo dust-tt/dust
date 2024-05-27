@@ -53,7 +53,7 @@ jobs:
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-notion-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-webcrawler-deployment
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-google_drive-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-google-drive-deployment
 
       - name: Wait for rollout to complete
         run: |
@@ -66,4 +66,4 @@ jobs:
           echo "Waiting for rollout to complete (webcrawler worker)"
           kubectl rollout status deployment/connectors-worker-webcrawler-deployment --timeout=10m
           echo "Waiting for rollout to complete (google_drive worker)"
-          kubectl rollout status deployment/connectors-worker-google_drive-deployment --timeout=10m
+          kubectl rollout status deployment/connectors-worker-google-drive-deployment --timeout=10m
