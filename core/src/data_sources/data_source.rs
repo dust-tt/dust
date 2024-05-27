@@ -403,7 +403,7 @@ pub struct DocumentVersion {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Embedder {
+pub struct EmbedderConfig {
     pub provider_id: ProviderID,
     pub model_id: String,
     pub splitter_id: SplitterID,
@@ -411,8 +411,8 @@ pub struct Embedder {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct EmbedderDataSourceConfig {
-    pub embedder: Embedder,
-    pub shadow_embedder: Option<Embedder>,
+    pub embedder: EmbedderConfig,
+    pub shadow_embedder: Option<EmbedderConfig>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
