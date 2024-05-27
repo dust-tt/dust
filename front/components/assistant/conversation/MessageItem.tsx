@@ -1,13 +1,12 @@
 import type {
   ConversationMessageReactions,
-  MessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import React from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import type { MessageWithCitationsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 
 interface MessageItemProps {
@@ -16,13 +15,12 @@ interface MessageItemProps {
   isInModal: boolean;
   isLastMessage: boolean;
   latestMentions: string[];
-  message: MessageType;
+  message: MessageWithCitationsType;
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
   user: UserType;
 }
 
-// TODO: Fix message.type + citations.
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
@@ -38,7 +36,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }: MessageItemProps,
     ref
   ) {
-    const { sId, type, citations } = message;
+    const { sId, type } = message;
 
     const convoReactions = reactions.find((r) => r.messageId === sId);
     const messageReactions = convoReactions?.reactions || [];
@@ -60,11 +58,12 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={owner}
               reactions={messageReactions}
               user={user}
-              citations={citations}
+              citations={message.citations}
               size={isInModal ? "compact" : "normal"}
             />
           </div>
         );
+
       case "agent_message":
         return (
           <div key={`message-id-${sId}`} ref={ref}>
@@ -80,14 +79,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             />
           </div>
         );
-      // case "content_fragment":
-      //   return (
-      //     <div key={`message-id-${sId}`} ref={ref}>
-      //       <div className="mx-auto flex max-w-4xl flex-col gap-4 pt-8">
-      //         <ContentFragment message={message} />
-      //       </div>
-      //     </div>
-      //   );
+
       default:
         console.error("Unknown message type", message);
     }

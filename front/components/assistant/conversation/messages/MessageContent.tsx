@@ -1,19 +1,19 @@
 import type { ContentFragmentType } from "@dust-tt/types";
 
 import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
-import type { SizeType } from "@app/components/assistant/conversation/messages/MessageHeader";
+import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { classNames } from "@app/lib/utils";
 
 interface MessageContentProps {
   children: React.ReactNode;
   citations?: ContentFragmentType[];
-  size?: SizeType;
+  size: MessageSizeType;
 }
 
 export function MessageContent({
   children,
   citations,
-  size = "normal",
+  size,
 }: MessageContentProps) {
   return (
     <div
@@ -38,7 +38,6 @@ export function MessageContent({
           )}
         >
           {citations.map((c) => {
-            // TODO: key.
             return <ContentFragment message={c} key={c.id} />;
           })}
         </div>

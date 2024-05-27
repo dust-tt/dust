@@ -6,8 +6,8 @@ import type {
 import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
-import type { SizeType } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useAgentConfigurations } from "@app/lib/swr";
 
@@ -20,8 +20,8 @@ interface UserMessageProps {
   owner: WorkspaceType;
   reactions: MessageReactionType[];
   user: UserType;
-  citations: ContentFragmentType[];
-  size: SizeType;
+  citations?: ContentFragmentType[];
+  size: MessageSizeType;
 }
 
 export function UserMessage({

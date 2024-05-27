@@ -1,15 +1,14 @@
 import { Avatar } from "@dust-tt/sparkle";
 
+import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { classNames } from "@app/lib/utils";
-
-export type SizeType = "normal" | "compact";
 
 interface MessageHeaderProps {
   avatarUrl?: string | React.ReactNode;
   isBusy?: boolean;
   name?: string;
   renderName: (name: string | null) => React.ReactNode;
-  size: SizeType;
+  size: MessageSizeType;
 }
 
 export function MessageHeader({
@@ -21,7 +20,6 @@ export function MessageHeader({
 }: MessageHeaderProps) {
   return (
     <div className="flex items-center gap-2">
-      {/* // TODO: Handle avatar size based on media queries. */}
       <Avatar
         size={size === "compact" ? "xs" : "md"}
         name={name}

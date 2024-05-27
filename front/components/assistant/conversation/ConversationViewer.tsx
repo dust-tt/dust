@@ -1,6 +1,8 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
-  MessageWithRankType,
+  AgentMessageType,
+  ContentFragmentType,
+  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -30,6 +32,12 @@ import { classNames } from "@app/lib/utils";
 import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assistant/[cId]";
 
 const DEFAULT_PAGE_LIMIT = 50;
+
+export type MessageWithCitationsType =
+  | AgentMessageType
+  | (UserMessageType & {
+      citations?: ContentFragmentType[];
+    });
 
 function shouldProcessStreamEvent(
   messages: FetchConversationMessagesResponse[] | undefined,
@@ -341,34 +349,37 @@ export default function ConversationViewer({
   });
   const eventIds = useRef<string[]>([]);
 
-  // Building an array of arrays of messages grouped by message.type.
-  // Eg: [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
-  // This allows us to change the layout per consecutive messages of the same type.
-  // TODO: Update comment.
-  const groupedMessages: MessageWithRankType[][] = useMemo(() => {
-    const groups = messages
+  // TODO:
+  // Grouping messages into arrays based on their type, associating content_fragments with the closest following user_message.
+  // Example:
+  // Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
+  // Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
+  // This structure enables layout customization for consecutive messages of the same type
+  // and displays content_fragments within user_messages.
+  const groupedMessages: MessageWithCitationsType[][] = useMemo(() => {
+    const groups: MessageWithCitationsType[][] = [];
+    let tempContentFragments: ContentFragmentType[] = [];
+
+    messages
       .flatMap((page) => page.messages)
-      .reduce((acc: MessageWithRankType[][], message) => {
-        if (acc.length === 0) {
-          acc.push([message]); // Start with the first message if the accumulator is empty
+      .forEach((message) => {
+        if (message.type === "content_fragment") {
+          tempContentFragments.push(message); // Collect content fragments.
         } else {
-          const lastGroup = acc[acc.length - 1];
-          const lastMessage = lastGroup[lastGroup.length - 1];
-          if (lastMessage.type === message.type) {
-            lastGroup.push(message); // Add to the last group if it's the same type
-          } else if (
-            lastMessage.type === "content_fragment" &&
-            message.type === "user_message"
-          ) {
-            // Here, we attached the content_fragments to the right user message.
-            const messageWithCitations = { ...message, citations: lastGroup };
-            acc[acc.length - 1] = [messageWithCitations];
+          if (message.type === "user_message") {
+            // Attach collected content fragments to the user message.
+            const messageWithCitations: MessageWithCitationsType = {
+              ...message,
+              citations: tempContentFragments,
+            };
+            groups.push([messageWithCitations]);
+            tempContentFragments = []; // Reset the collected content fragments.
           } else {
-            acc.push([message]); // Start a new group if it's a different type
+            groups.push([message]); // Directly push agent_message or other types.
           }
         }
-        return acc;
-      }, []);
+      });
+
     return groups;
   }, [messages]);
 

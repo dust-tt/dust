@@ -36,10 +36,10 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
+import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import type { SizeType } from "@app/components/assistant/conversation/messages/MessageHeader";
 import {
   linkFromDocument,
   providerFromDocument,
@@ -62,7 +62,7 @@ interface AgentMessageProps {
   reactions: MessageReactionType[];
   isInModal?: boolean;
   hideReactions?: boolean;
-  size: SizeType;
+  size: MessageSizeType;
 }
 
 /**

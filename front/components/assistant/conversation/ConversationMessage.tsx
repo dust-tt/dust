@@ -1,88 +1,18 @@
-import { Button, DropdownMenu, EmojiPicker } from "@dust-tt/sparkle";
-import { ReactionIcon } from "@dust-tt/sparkle";
 import type {
   ContentFragmentType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { MessageReactionType } from "@dust-tt/types";
-// TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
-import type { Emoji, EmojiMartData } from "@emoji-mart/data";
 import type { ComponentType, MouseEventHandler } from "react";
-import { useRef } from "react";
 import React from "react";
 
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
 import { MessageActions } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageContent } from "@app/components/assistant/conversation/messages/MessageContent";
 import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { classNames } from "@app/lib/utils";
 
-export function EmojiSelector({
-  user,
-  reactions,
-  handleEmoji,
-  emojiData,
-  disabled = false,
-}: {
-  user: UserType;
-  reactions: MessageReactionType[];
-  handleEmoji: ({
-    emoji,
-    isToRemove,
-  }: {
-    emoji: string;
-    isToRemove: boolean;
-  }) => void;
-  emojiData: EmojiMartData | null;
-  disabled?: boolean;
-}) {
-  const buttonRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
-        <div ref={buttonRef}>
-          <Button
-            variant="tertiary"
-            size="xs"
-            icon={ReactionIcon}
-            labelVisible={false}
-            label="Reaction picker"
-            disabledTooltip
-            type="menu"
-            disabled={disabled}
-          />
-        </div>
-      </DropdownMenu.Button>
-      <DropdownMenu.Items
-        width={350}
-        origin="topRight"
-        overflow="visible"
-        variant="no-padding"
-      >
-        <EmojiPicker
-          theme="light"
-          previewPosition="none"
-          data={emojiData ?? undefined}
-          onEmojiSelect={(emojiData: Emoji) => {
-            const reaction = reactions.find((r) => r.emoji === emojiData.id);
-            const hasReacted =
-              (reaction &&
-                reaction.users.find((u) => u.userId === user.id) !==
-                  undefined) ||
-              false;
-            handleEmoji({
-              emoji: emojiData.id,
-              isToRemove: hasReacted,
-            });
-            buttonRef.current?.click();
-          }}
-        />
-      </DropdownMenu.Items>
-    </DropdownMenu>
-  );
-}
+export type MessageSizeType = "normal" | "compact";
 
 type MessageType = "user" | "agent" | "fragment";
 
@@ -136,7 +66,7 @@ export function ConversationMessage({
   enableEmojis?: boolean;
   renderName: (name: string | null) => React.ReactNode;
   type: MessageType;
-  size?: "normal" | "compact";
+  size?: MessageSizeType;
   citations?: ContentFragmentType[];
 }) {
   return (
@@ -171,31 +101,5 @@ export function ConversationMessage({
         />
       </div>
     </>
-  );
-}
-interface ButtonEmojiProps {
-  variant?: "selected" | "unselected";
-  count?: string;
-  emoji?: string;
-  onClick?: () => void;
-}
-
-export function ButtonEmoji({
-  variant,
-  emoji,
-  count,
-  onClick,
-}: ButtonEmojiProps) {
-  return (
-    <div
-      className={classNames(
-        variant === "selected" ? "text-action-500" : "text-element-800",
-        "flex cursor-pointer items-center gap-1.5 py-0.5 text-base font-medium transition-all duration-300 hover:text-action-400 active:text-action-600"
-      )}
-      onClick={onClick}
-    >
-      {emoji}
-      {count && <span className="text-xs">{count}</span>}
-    </div>
   );
 }
