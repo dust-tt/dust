@@ -650,8 +650,6 @@ impl DataSource {
             ..Default::default()
         };
 
-        // We should write in primary client before, right?
-        // Write in cluster and embedder?
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 match qdrant_client
@@ -831,7 +829,6 @@ impl DataSource {
         }
 
         // Split text in chunks.
-        // This needs to be duplicated per cluster/collection.
         let splits = splitter(self.config.splitter_id)
             .split(
                 credentials.clone(),
