@@ -18,8 +18,8 @@ export const acceptableTranscriptProvidersCodec = t.union([
 ]);
 
 export const PostLabsTranscriptsConfigurationBodySchema = t.type({
-  connectionId: t.union([t.string, t.null]),
-  provider: acceptableTranscriptProvidersCodec
+  connectionId: t.string,
+  provider: acceptableTranscriptProvidersCodec,
 });
 
 async function handler(
@@ -119,7 +119,7 @@ async function handler(
           userId,
           workspaceId: owner.id,
           provider,
-          connectionId
+          connectionId,
         });
 
       return res

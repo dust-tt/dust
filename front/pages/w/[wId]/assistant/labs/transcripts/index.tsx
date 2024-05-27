@@ -320,7 +320,7 @@ export default function LabsTranscriptsIndex({
         const defaultConfigurationRes = await response.json();
         const defaultConfiguration : LabsTranscriptsConfigurationResource = defaultConfigurationRes.configuration;
 
-        if (defaultConfiguration.provider != "gong") {
+        if (defaultConfiguration.provider !== "gong") {
           sendNotification({
             type: "error",
             title: "Failed to connect Gong",
