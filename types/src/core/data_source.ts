@@ -5,6 +5,7 @@ interface EmbedderType {
   provider_id: string;
   model_id: string;
   splitter_id: string;
+  max_chunk_size: number;
 }
 
 interface EmbedderConfigType {
@@ -16,11 +17,11 @@ export type CoreAPIDataSourceConfig = {
   provider_id: string;
   model_id: string;
   splitter_id: string;
+  max_chunk_size: number;
 
   embedder_config: EmbedderConfigType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  max_chunk_size: number;
   qdrant_config: {
     cluster: QdrantCluster;
     shadow_write_cluster: QdrantCluster | null;

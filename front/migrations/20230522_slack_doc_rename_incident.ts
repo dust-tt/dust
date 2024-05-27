@@ -64,8 +64,9 @@ async function main() {
 
             embedder_config: {
               embedder: {
-                provider_id: dataSourceProviderId,
+                max_chunk_size: dataSourceMaxChunkSize,
                 model_id: dataSourceModelId,
+                provider_id: dataSourceProviderId,
                 splitter_id: "base_v0",
               },
             },

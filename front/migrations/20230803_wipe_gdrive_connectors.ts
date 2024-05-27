@@ -52,8 +52,9 @@ async function main() {
 
         embedder_config: {
           embedder: {
-            provider_id: "openai",
+            max_chunk_size: 256,
             model_id: "text-embedding-ada-002",
+            provider_id: "openai",
             splitter_id: "base_v0",
           },
         },
