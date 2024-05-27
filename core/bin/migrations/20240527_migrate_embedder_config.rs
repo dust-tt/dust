@@ -26,6 +26,7 @@ async fn update_config_for_data_source(
             provider_id: config.provider_id.clone(),
             model_id: config.model_id.clone(),
             splitter_id: config.splitter_id.clone(),
+            max_chunk_size: config.max_chunk_size.clone(),
         },
         shadow_embedder: None,
     });

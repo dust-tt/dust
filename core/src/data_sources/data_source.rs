@@ -407,6 +407,7 @@ pub struct EmbedderConfig {
     pub provider_id: ProviderID,
     pub model_id: String,
     pub splitter_id: SplitterID,
+    pub max_chunk_size: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
