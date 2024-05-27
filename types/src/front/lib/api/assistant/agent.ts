@@ -20,6 +20,7 @@ import {
   AgentActionSpecification,
 } from "../../../assistant/agent";
 import { ProcessParamsEvent } from "./actions/process";
+import { WebsearchParamsEvent } from "./actions/websearch";
 
 // Event sent when an agent error occured before we have a agent message in the database.
 export type AgentMessageErrorEvent = {
@@ -51,7 +52,8 @@ export type AgentActionSpecificEvent =
   | DustAppRunBlockEvent
   | TablesQueryParamsEvent
   | TablesQueryOutputEvent
-  | ProcessParamsEvent;
+  | ProcessParamsEvent
+  | WebsearchParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

@@ -33,26 +33,15 @@ We will use a Data Source to automatically chunk, embed and index 4 IPCC reports
 [AR6-WG1](https://www.ipcc.ch/report/ar6/wg2/), [AR6-WG2](https://www.ipcc.ch/report/ar6/wg2/),
 [AR6-WG3](https://www.ipcc.ch/report/ar6/wg2/) and [AR6-SYR](https://www.ipcc.ch/report/ar6/syr/).
 
-You can create your first Data Source from your Dust home page by selecting the **Data Sources** tab
-and clicking on the **New DataSource** button. You'll need to provide a name and description as well
-as select OpenAI's embedding model `text-embedding-ada-002`. Finally, it is important to pick a
-`max_chunk_size` value. We decided to use `max_chunk_size=256` for this example (in tokens), to be
-able to insert 12 chunks in-context and leave 1024 tokens for generating an answer as we plan to use
-`gpt-3.5-turbo` which has a context size of 4096 tokens.
-
-Increasing the `max_chunk_size` would provide more context per chunk but would also reduce the
-number of chunks the model can attend to in-context. Reducing it would allow to consider more
-"sources" of information but would reduce the amount of information captured by each chunk. 256
-tokens appears like a good trade-off for here but the right value will depend on your
-use case and the model you use (as an example, `gpt-4` has 8192 tokens of context, so we could use a
-`max_chunk_size` of 512).
+You can create your first Data Source from your Dust home page by selecting the **Folders** tab
+and clicking on the **Add a new Folder** button. You'll simply need to provide a name and description.
 
 <Image
   src="/guide_document_qa_newdatasource.png"
   alt="Dust Data Source creation panel"
 >
-  _The Dust Data Source creation panel. The `name` should be short and
-  memorable, lowercase without spaces._
+  _The Dust Folder creation panel. The `name` should be short and memorable,
+  lowercase without spaces._
 </Image>
 
 ### Inserting documents

@@ -168,6 +168,8 @@ pub enum SupportedEmbedderModels {
     TextEmbeddingAda002,
     #[clap(name = "text-embedding-3-large-1536")]
     TextEmbedding3Large1536,
+    #[clap(name = "mistral-embed")]
+    MistralEmbed,
 }
 
 impl fmt::Display for SupportedEmbedderModels {
@@ -176,6 +178,9 @@ impl fmt::Display for SupportedEmbedderModels {
             SupportedEmbedderModels::TextEmbeddingAda002 => write!(f, "text-embedding-ada-002"),
             SupportedEmbedderModels::TextEmbedding3Large1536 => {
                 write!(f, "text-embedding-3-large-1536")
+            }
+            SupportedEmbedderModels::MistralEmbed => {
+                write!(f, "mistral-embed")
             }
         }
     }
@@ -191,6 +196,7 @@ impl EmbedderProvidersModelMap {
                 SupportedEmbedderModels::TextEmbeddingAda002,
                 SupportedEmbedderModels::TextEmbedding3Large1536,
             ]),
+            &ProviderID::Mistral => Ok(vec![SupportedEmbedderModels::MistralEmbed]),
             _ => Err(anyhow!("Provider not supported for embeddings.")),
         }
     }

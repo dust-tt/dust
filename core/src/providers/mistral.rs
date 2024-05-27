@@ -4,11 +4,9 @@ use super::sentencepiece::sentencepiece::{
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton, tokenize_async,
 };
-
-use crate::providers::embedder::Embedder;
+use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
-
 use crate::run::Credentials;
 use crate::utils::{self, now};
 use crate::utils::{new_id, ParseError};
@@ -236,7 +234,7 @@ struct MistralChatChoice {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct MistralUsage {
+pub struct MistralUsage {
     pub completion_tokens: Option<u64>,
     pub prompt_tokens: u64,
     pub total_tokens: u64,
@@ -749,29 +747,37 @@ impl MistralAILLM {
         let c: &[u8] = &b;
 
         let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: MistralAPIError = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 2,
-                            retries: 3,
+            Ok(c) => c,
+            Err(err) => {
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                match error {
+                    Ok(error) => match error.retryable() {
+                        true => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 2,
+                                retries: 3,
+                            }),
                         }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 1,
-                            retries: 1,
+                        false => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 1,
+                                retries: 1,
+                            }),
                         }),
-                    }),
-                }
+                    }?,
+                    Err(_) => Err(anyhow!(
+                        "MistralAIError: failed parsing completion from Mistral AI err={} data={}",
+                        err,
+                        String::from_utf8_lossy(c),
+                    ))?,
+                };
+                unreachable!()
             }
-        }?;
+        };
 
         // For all messages, edit the content and strip leading and trailing spaces and \n.
         for m in completion.choices.iter_mut() {
@@ -959,6 +965,175 @@ impl LLM for MistralAILLM {
         unimplemented!();
     }
 }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MistralEmbedding {
+    pub embedding: Vec<f64>,
+    pub index: u64,
+    pub object: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MistralEmbeddings {
+    pub model: String,
+    pub usage: MistralUsage,
+    pub object: String,
+    pub data: Vec<MistralEmbedding>,
+}
+
+pub struct MistralEmbedder {
+    id: String,
+    api_key: Option<String>,
+}
+
+impl MistralEmbedder {
+    pub fn new(id: String) -> Self {
+        MistralEmbedder { id, api_key: None }
+    }
+
+    fn uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.mistral.ai/v1/embeddings",).parse::<Uri>()?)
+    }
+
+    fn tokenizer(&self) -> Arc<RwLock<SentencePieceProcessor>> {
+        // Tokenizer for the `mistral-embed` model.
+        return mistral_tokenizer_model_v1_base_singleton();
+    }
+}
+
+#[async_trait]
+impl Embedder for MistralEmbedder {
+    fn id(&self) -> String {
+        self.id.clone()
+    }
+
+    async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
+        if !(vec!["mistral-embed"].contains(&self.id.as_str())) {
+            return Err(anyhow!(
+                "Unexpected embedder model id (`{}`) for provider `mistral`",
+                self.id
+            ));
+        }
+
+        match credentials.get("MISTRAL_API_KEY") {
+            Some(api_key) => {
+                self.api_key = Some(api_key.clone());
+            }
+            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
+                Ok(key) => {
+                    self.api_key = Some(key);
+                }
+                Err(_) => Err(anyhow!(
+                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
+                ))?,
+            },
+        }
+
+        Ok(())
+    }
+
+    fn context_size(&self) -> usize {
+        match self.id.as_str() {
+            "mistral-embed" => 8000,
+            _ => unimplemented!(),
+        }
+    }
+
+    fn embedding_size(&self) -> usize {
+        match self.id.as_str() {
+            "mistral-embed" => 1024,
+            _ => unimplemented!(),
+        }
+    }
+
+    async fn encode(&self, text: &str) -> Result<Vec<usize>> {
+        encode_async(self.tokenizer(), text).await
+    }
+
+    async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
+        decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let body = json!({
+            "input": text,
+            "encoding_format": "float",
+            "model": self.id,
+        });
+
+        let req = reqwest::Client::new()
+            .post(self.uri()?.to_string())
+            .header("Content-Type", "application/json")
+            .header(
+                "Authorization",
+                format!("Bearer {}", self.api_key.clone().unwrap()),
+            );
+
+        let req = req.json(&body);
+
+        let res = match timeout(Duration::new(60, 0), req.send()).await {
+            Ok(Ok(res)) => res,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout sending request to Mistral after 60s"))?,
+        };
+
+        let body = match timeout(Duration::new(60, 0), res.bytes()).await {
+            Ok(Ok(body)) => body,
+            Ok(Err(e)) => Err(e)?,
+            Err(_) => Err(anyhow!("Timeout reading response from Mistral after 60s"))?,
+        };
+
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
+
+        let embeddings: MistralEmbeddings = match serde_json::from_slice(c) {
+            Ok(c) => c,
+            Err(err) => {
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                match error {
+                    Ok(error) => match error.retryable() {
+                        true => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 2,
+                                retries: 3,
+                            }),
+                        }),
+                        false => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 1,
+                                retries: 1,
+                            }),
+                        }),
+                    }?,
+                    Err(_) => Err(anyhow!(
+                        "MistralAIError: failed parsing embeddings from Mistral AI err={} data={}",
+                        err,
+                        String::from_utf8_lossy(c),
+                    ))?,
+                };
+                unreachable!()
+            }
+        };
+
+        assert!(embeddings.data.len() > 0);
+
+        Ok(embeddings
+            .data
+            .into_iter()
+            .map(|v| EmbedderVector {
+                created: utils::now(),
+                provider: ProviderID::Mistral.to_string(),
+                model: self.id.clone(),
+                vector: v.embedding.clone(),
+            })
+            .collect::<Vec<_>>())
+    }
+}
+
 pub struct MistralProvider {}
 
 impl MistralProvider {
@@ -979,8 +1154,7 @@ impl Provider for MistralProvider {
         utils::info(
             "To use Mistral AI's models, you must set the environment variable `MISTRAL_API_KEY`.",
         );
-        // TODO(flav): Update the link.
-        // utils::info("Your API key can be found at `https://platform.openai.com/account/api-keys`.");
+        utils::info("Your API key can be found at `https://console.mistral.ai/api-keys/`.");
         utils::info("");
         utils::info("Once ready you can check your setup with `dust provider test mistral_ai`");
 
@@ -1024,7 +1198,7 @@ impl Provider for MistralProvider {
         Box::new(MistralAILLM::new(id))
     }
 
-    fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
-        unimplemented!()
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+        Box::new(MistralEmbedder::new(id))
     }
 }

@@ -1,6 +1,7 @@
 import {
   Button,
   ContentMessage,
+  ElementModal,
   Modal,
   MovingMailIcon,
   Page,
@@ -16,7 +17,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
-import { mutate, useSWRConfig } from "swr";
+import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -53,7 +54,7 @@ export function InviteEmailModal({
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const { mutate } = useSWRConfig();
+
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
@@ -184,7 +185,6 @@ export function InviteEmailModal({
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }
-
       await mutate(`/api/w/${owner.sId}/invitations`);
       onClose();
     }
@@ -258,28 +258,39 @@ export function InviteEmailModal({
 export function EditInvitationModal({
   owner,
   invitation,
-  isOpen,
-  setOpen,
+  onClose,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
-  isOpen: boolean;
-  setOpen: (open: boolean) => void;
+  onClose: () => void;
 }) {
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
+    invitation.initialRole
+  );
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
 
   return (
-    <Modal
-      title="Edit Invitation"
-      isOpen={isOpen}
+    <ElementModal
+      title="Edit invitation"
+      openOnElement={invitation}
       onClose={() => {
-        setOpen(false);
+        onClose();
+        setSelectedRole(invitation.initialRole);
       }}
-      saveLabel="Save"
-      savingLabel="Saving..."
-      hasChanged={false}
+      hasChanged={selectedRole !== invitation.initialRole}
       variant="side-sm"
+      onSave={async (closeModalFn) => {
+        await updateInvitation({
+          owner,
+          invitation,
+          newRole: selectedRole,
+          sendNotification,
+          confirm,
+        });
+        closeModalFn();
+      }}
+      saveLabel="Update role"
     >
       <Page variant="modal">
         <Page.Layout direction="vertical">
@@ -293,17 +304,8 @@ export function EditInvitationModal({
           <div className="flex items-center gap-2">
             <div className="font-semibold text-element-900">Role:</div>
             <RoleDropDown
-              selectedRole={invitation.initialRole}
-              onChange={async (invitationRole) => {
-                await updateInvitation({
-                  owner,
-                  invitation,
-                  mutate,
-                  sendNotification,
-                  newRole: invitationRole,
-                });
-                setOpen(false);
-              }}
+              selectedRole={selectedRole}
+              onChange={setSelectedRole}
             />
           </div>
           <div className="grow font-normal text-element-700">
@@ -320,7 +322,7 @@ export function EditInvitationModal({
                 await sendInvitations({
                   owner,
                   emails: [invitation.inviteEmail],
-                  invitationRole: invitation.initialRole,
+                  invitationRole: selectedRole,
                   sendNotification,
                   isNewInvitation: false,
                 });
@@ -335,7 +337,6 @@ export function EditInvitationModal({
                 await updateInvitation({
                   invitation,
                   owner,
-                  mutate,
                   sendNotification,
                   confirm,
                 });
@@ -344,7 +345,7 @@ export function EditInvitationModal({
           </div>
         </Page.Layout>
       </Page>
-    </Modal>
+    </ElementModal>
   );
 }
 
@@ -444,14 +445,12 @@ async function updateInvitation({
   owner,
   invitation,
   newRole,
-  mutate,
   sendNotification,
   confirm,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   newRole?: RoleType; // Optional parameter for role change
-  mutate: any;
   sendNotification: (notificationData: NotificationType) => void;
   confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
@@ -493,10 +492,12 @@ async function updateInvitation({
     return;
   }
 
-  const successMessage = newRole ? "Invitation updated" : "Invitation revoked";
+  const successMessage = newRole
+    ? `Invitation updated to ${newRole}`
+    : "Invitation revoked";
   sendNotification({
     type: "success",
-    title: `${newRole ? "Role Updated" : "Invitation Revoked"}`,
+    title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
   await mutate(`/api/w/${owner.sId}/invitations`);

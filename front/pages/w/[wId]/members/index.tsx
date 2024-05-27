@@ -380,15 +380,16 @@ function ChangeMemberModal({
     member?.workspaces[0].role !== "none",
     "Unreachable (typescript pleasing): member role cannot be none"
   );
-  const { mutate } = useSWRConfig();
-  const sendNotification = useContext(SendNotificationsContext);
-  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
   if (!member) {
     return null;
   }
+  const { mutate } = useSWRConfig();
+  const sendNotification = useContext(SendNotificationsContext);
+  const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
+    member.workspaces[0].role
+  );
+  const [isSaving, setIsSaving] = useState(false);
 
   return (
     <ElementModal

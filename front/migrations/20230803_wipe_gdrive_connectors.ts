@@ -58,6 +58,15 @@ async function main() {
           },
         },
         max_chunk_size: 256,
+
+        embedder_config: {
+          embedder: {
+            max_chunk_size: 256,
+            model_id: "text-embedding-ada-002",
+            provider_id: "openai",
+            splitter_id: "base_v0",
+          },
+        },
         qdrant_config: null,
       },
       credentials: dustManagedCredentials(),

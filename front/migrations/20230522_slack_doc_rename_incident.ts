@@ -70,6 +70,15 @@ async function main() {
               },
             },
             max_chunk_size: dataSourceMaxChunkSize,
+
+            embedder_config: {
+              embedder: {
+                max_chunk_size: dataSourceMaxChunkSize,
+                model_id: dataSourceModelId,
+                provider_id: dataSourceProviderId,
+                splitter_id: "base_v0",
+              },
+            },
             qdrant_config: null,
           },
           credentials,

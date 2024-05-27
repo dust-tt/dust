@@ -8,6 +8,7 @@ const {
   DUST_MANAGED_TEXTSYNTH_API_KEY = "",
   DUST_MANAGED_MISTRAL_API_KEY = "",
   DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY = "",
+  DUST_MANAGED_SERP_API_KEY = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -70,5 +71,6 @@ export const dustManagedCredentials = (): CredentialsType => {
     OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
+    SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
   };
 };

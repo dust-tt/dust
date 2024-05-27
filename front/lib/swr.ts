@@ -253,19 +253,23 @@ export function useDataSources(owner: WorkspaceType) {
 
 export function useMembers(owner: WorkspaceType) {
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error } = useSWR(`/api/w/${owner.sId}/members`, membersFetcher);
+  const { data, error, mutate } = useSWR(
+    `/api/w/${owner.sId}/members`,
+    membersFetcher
+  );
 
   return {
     members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
+    mutateMembers: mutate,
   };
 }
 
 export function useWorkspaceInvitations(owner: WorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
-  const { data, error } = useSWR(
+  const { data, error, mutate } = useSWR(
     `/api/w/${owner.sId}/invitations`,
     workspaceInvitationsFetcher
   );
@@ -274,6 +278,7 @@ export function useWorkspaceInvitations(owner: WorkspaceType) {
     invitations: useMemo(() => (data ? data.invitations : []), [data]),
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
+    mutateInvitations: mutate,
   };
 }
 
