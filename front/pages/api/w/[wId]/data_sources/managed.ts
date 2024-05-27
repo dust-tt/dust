@@ -290,14 +290,6 @@ async function handler(
           provider_id: EMBEDDING_CONFIG.provider_id,
           model_id: EMBEDDING_CONFIG.model_id,
           splitter_id: EMBEDDING_CONFIG.splitter_id,
-
-          embedder_config: {
-            embedder: {
-              provider_id: EMBEDDING_CONFIG.provider_id,
-              model_id: EMBEDDING_CONFIG.model_id,
-              splitter_id: EMBEDDING_CONFIG.splitter_id,
-            },
-          },
           max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
 
           embedder_config: {

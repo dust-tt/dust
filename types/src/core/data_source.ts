@@ -17,15 +17,12 @@ export type CoreAPIDataSourceConfig = {
   provider_id: string;
   model_id: string;
   splitter_id: string;
+  max_chunk_size: number;
 
   embedder_config: EmbedderConfigType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extras?: any | null;
-
-  max_chunk_size: number;
-
-  embedder_config: EmbedderConfigType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   qdrant_config: {
