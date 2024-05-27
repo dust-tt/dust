@@ -747,29 +747,37 @@ impl MistralAILLM {
         let c: &[u8] = &b;
 
         let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: MistralAPIError = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 2,
-                            retries: 3,
+            Ok(c) => c,
+            Err(err) => {
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                match error {
+                    Ok(error) => match error.retryable() {
+                        true => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 2,
+                                retries: 3,
+                            }),
                         }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 1,
-                            retries: 1,
+                        false => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 1,
+                                retries: 1,
+                            }),
                         }),
-                    }),
-                }
+                    }?,
+                    Err(_) => Err(anyhow!(
+                        "MistralAIError: failed parsing completion from Mistral AI err={} data={}",
+                        err,
+                        String::from_utf8_lossy(c),
+                    ))?,
+                };
+                unreachable!()
             }
-        }?;
+        };
 
         // For all messages, edit the content and strip leading and trailing spaces and \n.
         for m in completion.choices.iter_mut() {
@@ -1019,6 +1027,7 @@ impl Embedder for MistralEmbedder {
                 ))?,
             },
         }
+
         Ok(())
     }
 
@@ -1078,32 +1087,39 @@ impl Embedder for MistralEmbedder {
         let c: &[u8] = &b;
 
         let embeddings: MistralEmbeddings = match serde_json::from_slice(c) {
-            Ok(c) => Ok(c),
-            Err(_) => {
-                let error: MistralAPIError = serde_json::from_slice(c)?;
-                match error.retryable() {
-                    true => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 2,
-                            retries: 3,
+            Ok(c) => c,
+            Err(err) => {
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                match error {
+                    Ok(error) => match error.retryable() {
+                        true => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 2,
+                                retries: 3,
+                            }),
                         }),
-                    }),
-                    false => Err(ModelError {
-                        message: error.message(),
-                        retryable: Some(ModelErrorRetryOptions {
-                            sleep: Duration::from_millis(500),
-                            factor: 1,
-                            retries: 1,
+                        false => Err(ModelError {
+                            message: error.message(),
+                            retryable: Some(ModelErrorRetryOptions {
+                                sleep: Duration::from_millis(500),
+                                factor: 1,
+                                retries: 1,
+                            }),
                         }),
-                    }),
-                }
+                    }?,
+                    Err(_) => Err(anyhow!(
+                        "MistralAIError: failed parsing embeddings from Mistral AI err={} data={}",
+                        err,
+                        String::from_utf8_lossy(c),
+                    ))?,
+                };
+                unreachable!()
             }
-        }?;
+        };
 
         assert!(embeddings.data.len() > 0);
-        // println!("EMBEDDING: {:?}", e);
 
         Ok(embeddings
             .data
@@ -1182,7 +1198,7 @@ impl Provider for MistralProvider {
         Box::new(MistralAILLM::new(id))
     }
 
-    fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
-        unimplemented!()
+    fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {
+        Box::new(MistralEmbedder::new(id))
     }
 }
