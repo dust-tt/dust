@@ -42,6 +42,10 @@ import {
   ActionTablesQuery,
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
+import {
+  ActionWebsearch,
+  isActionWebsearchValid,
+} from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderDustAppConfiguration,
@@ -102,6 +106,13 @@ const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: TableStrokeIcon,
     flag: null,
   },
+  WEBSEARCH: {
+    label: "Web search",
+    description: "Perform a web search",
+    cardIcon: MagnifyingGlassStrokeIcon,
+    dropDownIcon: MagnifyingGlassIcon,
+    flag: "websearch_action",
+  },
 };
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
@@ -139,6 +150,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
+    case "WEBSEARCH":
+      return isActionWebsearchValid(action);
     default:
       assertNever(action);
   }
@@ -613,13 +626,17 @@ function ActionEditor({
                   setEdited={setEdited}
                 />
               );
+            case "WEBSEARCH":
+              return <ActionWebsearch />;
             default:
               assertNever(action);
           }
         })()}
       </ActionModeSection>
       <div className="flex flex-col gap-4 pt-8">
-        {DATA_SOURCES_ACTION_CATEGORIES.includes(action.type as any) ? (
+        {["TABLES_QUERY", "RETRIEVAL_EXHAUSTIVE", "RETRIEVAL_SEARCH"].includes(
+          action.type as any
+        ) ? (
           <div className="flex flex-col gap-2">
             <div className="font-semibold text-element-800">
               What's the data?

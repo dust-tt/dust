@@ -15,6 +15,7 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isWebsearchConfiguration,
 } from "@dust-tt/types";
 
 import type {
@@ -28,6 +29,7 @@ import {
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
+  getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
@@ -197,6 +199,8 @@ export async function buildInitialActions({
       processConfiguration.configuration.schema = action.schema;
 
       builderAction = processConfiguration;
+    } else if (isWebsearchConfiguration(action)) {
+      builderAction = getDefaultWebsearchActionConfiguration();
     } else {
       assertNever(action);
     }

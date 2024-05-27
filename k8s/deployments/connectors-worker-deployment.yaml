@@ -29,7 +29,6 @@ spec:
               "google_drive",
               "intercom",
               "slack",
-              "webcrawler",
             ]
           imagePullPolicy: Always
           envFrom:

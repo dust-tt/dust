@@ -1,13 +1,14 @@
-use crate::{providers::provider::provider, run::Credentials, utils::ParseError};
+use crate::{providers::provider::ProviderID, utils::ParseError};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
 use qdrant_client::{
     prelude::{Payload, QdrantClient, QdrantClientConfig},
-    qdrant,
+    qdrant::{self, shard_key},
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,37 +16,19 @@ use super::data_source::DataSource;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
 pub enum QdrantCluster {
-    #[serde(rename = "main-0")]
-    Main0,
-    #[serde(rename = "dedicated-0")]
-    Dedicated0,
-    #[serde(rename = "dedicated-1")]
-    Dedicated1,
-    #[serde(rename = "dedicated-2")]
-    Dedicated2,
+    #[serde(rename = "cluster-0")]
+    Cluster0,
 }
 
-pub enum QdrantClusterVersion {
-    // Legacy setup with one collection per data source.
-    V0,
-    // Future setup with a shared collection per embedder.
-    V1,
-}
+// See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
+pub const SHARD_KEY_COUNT: u64 = 24;
 
-static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[
-    QdrantCluster::Main0,
-    QdrantCluster::Dedicated0,
-    QdrantCluster::Dedicated1,
-    QdrantCluster::Dedicated2,
-];
+static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];
 
-impl ToString for QdrantCluster {
-    fn to_string(&self) -> String {
+impl fmt::Display for QdrantCluster {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            QdrantCluster::Main0 => String::from("main-0"),
-            QdrantCluster::Dedicated0 => String::from("dedicated-0"),
-            QdrantCluster::Dedicated1 => String::from("dedicated-1"),
-            QdrantCluster::Dedicated2 => String::from("dedicated-2"),
+            QdrantCluster::Cluster0 => write!(f, "cluster-0"),
         }
     }
 }
@@ -54,10 +37,7 @@ impl FromStr for QdrantCluster {
     type Err = ParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "main-0" => Ok(QdrantCluster::Main0),
-            "dedicated-0" => Ok(QdrantCluster::Dedicated0),
-            "dedicated-1" => Ok(QdrantCluster::Dedicated1),
-            "dedicated-2" => Ok(QdrantCluster::Dedicated2),
+            "cluster-0" => Ok(QdrantCluster::Cluster0),
             _ => Err(ParseError::with_message("Unknown QdrantCluster"))?,
         }
     }
@@ -65,19 +45,7 @@ impl FromStr for QdrantCluster {
 
 pub fn env_var_prefix_for_cluster(cluster: QdrantCluster) -> &'static str {
     match cluster {
-        QdrantCluster::Main0 => "QDRANT_MAIN_0",
-        QdrantCluster::Dedicated0 => "QDRANT_DEDICATED_0",
-        QdrantCluster::Dedicated1 => "QDRANT_DEDICATED_1",
-        QdrantCluster::Dedicated2 => "QDRANT_DEDICATED_2",
-    }
-}
-
-pub fn version_for_cluster(cluster: QdrantCluster) -> QdrantClusterVersion {
-    match cluster {
-        QdrantCluster::Main0 => QdrantClusterVersion::V0,
-        QdrantCluster::Dedicated0 => QdrantClusterVersion::V0,
-        QdrantCluster::Dedicated1 => QdrantClusterVersion::V0,
-        QdrantCluster::Dedicated2 => QdrantClusterVersion::V0,
+        QdrantCluster::Cluster0 => "QDRANT_CLUSTER_0",
     }
 }
 
@@ -145,7 +113,7 @@ impl QdrantClients {
     pub fn main_cluster(&self, config: &Option<QdrantDataSourceConfig>) -> QdrantCluster {
         match config {
             Some(config) => config.cluster,
-            None => QdrantCluster::Main0,
+            None => QdrantCluster::Cluster0,
         }
     }
 
@@ -187,128 +155,89 @@ pub struct DustQdrantClient {
 }
 
 impl DustQdrantClient {
-    // In v1 implementations, we'll be able:
-    // - we'll be able to retrieve the shared collection name from the data source config.
-    // - we'll be able to add a condition on the PointsSelector to match the
-    //   data_source.internal_id multi-tenancy filter.
+    pub fn collection_prefix(&self) -> String {
+        return String::from("c");
+    }
 
-    pub async fn create_data_source(
-        &self,
-        data_source: &DataSource,
-        credentials: Credentials,
-    ) -> Result<()> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                let mut embedder = provider(data_source.config().provider_id)
-                    .embedder(data_source.config().model_id.clone());
-                embedder.initialize(credentials).await?;
+    pub fn shard_key_prefix(&self) -> String {
+        return String::from("key");
+    }
 
-                self.client
-                    .create_collection(&qdrant::CreateCollection {
-                        collection_name: data_source.qdrant_collection(),
-                        vectors_config: Some(qdrant::VectorsConfig {
-                            config: Some(qdrant::vectors_config::Config::Params(
-                                qdrant::VectorParams {
-                                    size: embedder.embedding_size() as u64,
-                                    distance: qdrant::Distance::Cosine.into(),
-                                    on_disk: Some(true),
-                                    ..Default::default()
-                                },
-                            )),
-                        }),
-                        hnsw_config: Some(qdrant::HnswConfigDiff {
-                            m: Some(16),
-                            max_indexing_threads: Some(1),
-                            ..Default::default()
-                        }),
-                        optimizers_config: Some(qdrant::OptimizersConfigDiff {
-                            memmap_threshold: Some(8192),
-                            ..Default::default()
-                        }),
-                        quantization_config: Some(qdrant::QuantizationConfig {
-                            quantization: Some(qdrant::quantization_config::Quantization::Scalar(
-                                qdrant::ScalarQuantization {
-                                    r#type: qdrant::QuantizationType::Int8.into(),
-                                    quantile: Some(0.99),
-                                    always_ram: Some(true),
-                                },
-                            )),
-                        }),
-                        // We keep the entire payload on disk and index on document_id and tags.
-                        on_disk_payload: Some(true),
-                        ..Default::default()
-                    })
-                    .await?;
+    pub fn collection_name(&self, data_source: &DataSource) -> String {
+        // The collection name depends on the embedding model which is stored on the
+        // data source config. To allow migrations between embedders in the future we will
+        // add a notion of shadow_write embedding provider/model on the data source config
+        // that will have to be used here.
+        format!(
+            "{}_{}_{}",
+            self.collection_prefix(),
+            data_source.config().provider_id.to_string(),
+            data_source.config().model_id,
+        )
+    }
 
-                let _ = self
-                    .client
-                    .create_field_index(
-                        data_source.qdrant_collection(),
-                        "document_id_hash",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
+    fn shard_key_id_from_internal_id(internal_id: &str) -> Result<u64> {
+        // `internal_id` is the hexadecimal representation of a blake3 hash (massive number). We want
+        // to get a u64 out of it so we take the first 16 characters which will turn into a fully
+        // random u64. Taking the modulo SHARD_KEY_COUNT will give us a random shard key. 16=2^4 and
+        // 64/4=16 so u64 is represented by 16 hexadecimal characters.
+        let h: u64 = u64::from_str_radix(&internal_id[0..16], 16)?;
+        Ok(h % SHARD_KEY_COUNT)
+    }
 
-                let _ = self
-                    .client
-                    .create_field_index(
-                        data_source.qdrant_collection(),
-                        "tags",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                let _ = self
-                    .client
-                    .create_field_index(
-                        data_source.qdrant_collection(),
-                        "parents",
-                        qdrant::FieldType::Keyword,
-                        None,
-                        None,
-                    )
-                    .await?;
-
-                let _ = self
-                    .client
-                    .create_field_index(
-                        data_source.qdrant_collection(),
-                        "timestamp",
-                        qdrant::FieldType::Integer,
-                        None,
-                        None,
-                    )
-                    .await?;
+    fn shard_key(&self, data_source: &DataSource) -> Result<shard_key::Key> {
+        let key_id: u64 = match (
+            data_source.config().provider_id,
+            data_source.config().model_id.as_str(),
+        ) {
+            (ProviderID::OpenAI, "text-embedding-ada-002") => {
+                // The startegy below was a mistake as the last character is an hex encoding
+                // character so can only take values from 0-9 and a-f which does not cover the
+                // SHARD_KEY_COUNT range, leading to unbalanced shards:
+                //
+                // We use the last character of the internal_id to determine the key_id. This id is
+                // generated using new_id and is guaranteed random. Using the last character gives
+                // us a path to moving data sources across shard when needed.
+                data_source.internal_id().chars().last().unwrap() as u64 % SHARD_KEY_COUNT
             }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - nothing to do.
-                unimplemented!()
-            }
-        }
+            _ => Self::shard_key_id_from_internal_id(data_source.internal_id())?,
+        };
 
-        Ok(())
+        Ok(format!("{}_{}", self.shard_key_prefix(), key_id).into())
+    }
+
+    // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
+    // implementaiton ensure data separation of our users data. Modify with extreme caution.
+    fn apply_tenant_filter(&self, data_source: &DataSource, filter: &mut qdrant::Filter) -> () {
+        filter.must.push(
+            qdrant::FieldCondition {
+                key: "data_source_internal_id".to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                        data_source.internal_id().to_string(),
+                    )),
+                }),
+                ..Default::default()
+            }
+            .into(),
+        );
     }
 
     pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .delete_collection(data_source.qdrant_collection())
-                    .await?;
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - v1 implementation will delete points not collection.
-                unimplemented!()
-            }
-        }
+        // Create a default filter and ensure tenant separation to delete all the points
+        // associated with the data source.
+        let mut filter = qdrant::Filter::default();
+        self.apply_tenant_filter(data_source, &mut filter);
+
+        self.client
+            .delete_points(
+                self.collection_name(data_source),
+                Some(vec![self.shard_key(data_source)?]),
+                &filter.into(),
+                None,
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -316,38 +245,27 @@ impl DustQdrantClient {
         &self,
         data_source: &DataSource,
     ) -> Result<qdrant::GetCollectionInfoResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .collection_info(data_source.qdrant_collection())
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                unimplemented!()
-            }
-        }
+        self.client
+            .collection_info(self.collection_name(data_source))
+            .await
     }
 
     pub async fn delete_points(
         &self,
         data_source: &DataSource,
-        filter: qdrant::Filter,
+        mut filter: qdrant::Filter,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .delete_points(data_source.qdrant_collection(), None, &filter.into(), None)
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implemetation
-                // - Inject the `data_source_internal_id` filter
-                unimplemented!()
-            }
-        }
+        // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
+        self.apply_tenant_filter(data_source, &mut filter);
+
+        self.client
+            .delete_points(
+                self.collection_name(data_source),
+                Some(vec![self.shard_key(data_source)?]),
+                &filter.into(),
+                None,
+            )
+            .await
     }
 
     pub async fn scroll(
@@ -358,26 +276,21 @@ impl DustQdrantClient {
         offset: Option<qdrant::PointId>,
         with_vectors: Option<qdrant::WithVectorsSelector>,
     ) -> Result<qdrant::ScrollResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .scroll(&qdrant::ScrollPoints {
-                        collection_name: data_source.qdrant_collection(),
-                        with_vectors,
-                        limit,
-                        offset,
-                        filter,
-                        ..Default::default()
-                    })
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - Inject (or create) the `data_source_internal_id` filter
-                unimplemented!()
-            }
-        }
+        // If we don't have a filter create an empty one to ensure tenant separation.
+        let mut filter = filter.unwrap_or_default();
+        self.apply_tenant_filter(data_source, &mut filter);
+
+        self.client
+            .scroll(&qdrant::ScrollPoints {
+                collection_name: self.collection_name(data_source),
+                with_vectors,
+                limit,
+                offset,
+                filter: Some(filter),
+                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
+                ..Default::default()
+            })
+            .await
     }
 
     pub async fn search_points(
@@ -388,26 +301,21 @@ impl DustQdrantClient {
         limit: u64,
         with_payload: Option<qdrant::WithPayloadSelector>,
     ) -> Result<qdrant::SearchResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .search_points(&qdrant::SearchPoints {
-                        collection_name: data_source.qdrant_collection(),
-                        vector,
-                        filter,
-                        limit,
-                        with_payload,
-                        ..Default::default()
-                    })
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - Inject (or create) the `data_source_internal_id` filter
-                unimplemented!()
-            }
-        }
+        // If we don't have a filter create an empty one to ensure tenant separation.
+        let mut filter = filter.unwrap_or_default();
+        self.apply_tenant_filter(data_source, &mut filter);
+
+        self.client
+            .search_points(&qdrant::SearchPoints {
+                collection_name: self.collection_name(data_source),
+                vector,
+                filter: Some(filter),
+                limit,
+                with_payload,
+                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
+                ..Default::default()
+            })
+            .await
     }
 
     pub async fn upsert_points(
@@ -415,46 +323,60 @@ impl DustQdrantClient {
         data_source: &DataSource,
         points: Vec<qdrant::PointStruct>,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .upsert_points(data_source.qdrant_collection(), None, points, None)
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - make sure that `data_source_internal_id` is part of the payload.
-                unimplemented!()
-            }
-        }
+        self.client
+            .upsert_points(
+                self.collection_name(data_source),
+                Some(vec![self.shard_key(data_source)?]),
+                points,
+                None,
+            )
+            .await
     }
 
     pub async fn set_payload(
         &self,
         data_source: &DataSource,
-        filter: qdrant::Filter,
+        mut filter: qdrant::Filter,
         payload: Payload,
     ) -> Result<qdrant::PointsOperationResponse> {
-        match version_for_cluster(self.cluster) {
-            QdrantClusterVersion::V0 => {
-                // v0 implementation
-                self.client
-                    .set_payload(
-                        data_source.qdrant_collection(),
-                        None,
-                        &filter.into(),
-                        payload,
-                        None,
-                        None,
-                    )
-                    .await
-            }
-            QdrantClusterVersion::V1 => {
-                // TODO: v1 implementation
-                // - make sure that the filter includes the `data_source_internal_id` field.
-                unimplemented!()
-            }
+        // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
+        self.apply_tenant_filter(data_source, &mut filter);
+
+        self.client
+            .set_payload(
+                self.collection_name(data_source),
+                Some(vec![self.shard_key(data_source)?]),
+                &filter.into(),
+                payload,
+                None,
+                None,
+            )
+            .await
+    }
+
+    pub fn raw_client(&self) -> Arc<QdrantClient> {
+        return self.client.clone();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_balanced_shard_keys() {
+        let keys = (0..(SHARD_KEY_COUNT * 192))
+            .map(|i| {
+                let mut hasher = blake3::Hasher::new();
+                hasher.update(format!("{}", i).as_bytes());
+                let internal_id = format!("{}", hasher.finalize().to_hex());
+                DustQdrantClient::shard_key_id_from_internal_id(&internal_id).unwrap()
+            })
+            .collect::<Vec<_>>();
+        for i in 0..SHARD_KEY_COUNT {
+            // We test all keys have at least 128 points.
+            let key_count = keys.iter().filter(|&&x| x == i).count();
+            assert!(key_count >= 128);
         }
     }
 }

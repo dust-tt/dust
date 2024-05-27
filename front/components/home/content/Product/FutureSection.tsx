@@ -24,10 +24,9 @@ export function FutureSection() {
             your AI&nbsp;Strategy
           </H2>
           <P size="lg">
-            Continuously&nbsp;evolving to&nbsp;meet
-            your&nbsp;changing&nbsp;needs, Dust&nbsp;offers access to{" "}
-            the&nbsp;market's leading&nbsp;models and support for&nbsp;multiple
-            sources of&nbsp;data.
+            Integrates with your internal&nbsp;data. <br />
+            Automatically updated with the&nbsp;latest&nbsp;models
+            across&nbsp;all&nbsp;major&nbsp;AI&nbsp;providers.
           </P>
         </div>
         <div
@@ -99,9 +98,9 @@ export function FutureSection() {
             title={<>A modular, extensible&nbsp;platform.</>}
             content={
               <>
-                Developer- and tinkerer-friendly&nbsp;platform designed
-                to&nbsp;build custom actions and&nbsp;application orchestration
-                to&nbsp;fit your team’s&nbsp;exact&nbsp;needs.{" "}
+                Developer friendly&nbsp;platform designed to&nbsp;build custom
+                actions and&nbsp;application orchestration to&nbsp;fit your
+                team’s&nbsp;exact&nbsp;needs.{" "}
                 <Link href="/solutions/dust-platform" shallow={true}>
                   <A variant="primary">More about Dust's&nbsp;Platform</A>
                 </Link>

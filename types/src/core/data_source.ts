@@ -1,11 +1,5 @@
-export type QdrantCluster =
-  | "main-0"
-  | "dedicated-0"
-  | "dedicated-1"
-  | "dedicated-2";
-
-export const DEFAULT_FREE_QDRANT_CLUSTER: QdrantCluster = "main-0";
-export const DEFAULT_PAID_QDRANT_CLUSTER: QdrantCluster = "dedicated-2";
+export type QdrantCluster = "cluster-0";
+export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
 export type CoreAPIDataSourceConfig = {
   provider_id: string;
@@ -23,7 +17,7 @@ export type CoreAPIDataSourceConfig = {
 export type CoreAPIDataSource = {
   created: number;
   data_source_id: string;
-  qdrant_collection: string;
+  data_source_internal_id: string;
   config: CoreAPIDataSourceConfig;
 };
 

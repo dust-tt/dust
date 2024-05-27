@@ -52,16 +52,21 @@ export default function WebsiteConfiguration({
   gaTrackingId: string;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const [isEdited, setIsEdited] = useState(false);
-  const [isValid, setIsValid] = useState(true);
+  const [isValid, setIsValid] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [dataSourceUrl, setDataSourceUrl] = useState(
     webCrawlerConfiguration?.url || ""
   );
-  const [dataSourceUrlError, setDataSourceUrlError] = useState("");
+  const [dataSourceUrlError, setDataSourceUrlError] = useState<string | null>(
+    null
+  );
 
   const [dataSourceName, setDataSourceName] = useState(dataSource?.name || "");
-  const [dataSourceNameError, setDataSourceNameError] = useState("");
+  const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
+    null
+  );
+
   const [maxPages, setMaxPages] = useState<number | null>(
     webCrawlerConfiguration?.maxPageToCrawl || 50
   );
@@ -103,52 +108,54 @@ export default function WebsiteConfiguration({
   };
 
   useEffect(() => {
-    setDataSourceName(urlToDataSourceName(dataSourceUrl));
-  }, [dataSourceUrl]);
+    if (isUrlValid(dataSourceUrl) && !dataSourceName.length) {
+      setDataSourceName(urlToDataSourceName(dataSourceUrl));
+    }
+  }, [dataSourceUrl, dataSourceName.length]);
 
-  const formValidation = useCallback(() => {
-    let valid = true;
+  const validateForm = useCallback(() => {
+    let urlError = null;
+    let nameError = null;
 
-    if (isUrlValid(dataSourceUrl)) {
-      setDataSourceUrlError("");
-    } else {
-      if (dataSourceUrl.length > 0) {
-        setDataSourceUrlError(
-          "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))"
-        );
-      }
-      valid = false;
+    // Validate URL
+    if (!isUrlValid(dataSourceUrl)) {
+      urlError =
+        "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)).";
     }
 
-    let exists = false;
-    dataSources.forEach((d) => {
-      if (d.name == dataSourceName && d.id != dataSource?.id) {
-        exists = true;
-      }
-    });
+    // Validate Name
+    const nameExists = dataSources.some(
+      (d) => d.name === dataSourceName && d.id !== dataSource?.id
+    );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
-
-    if (exists) {
-      setDataSourceNameError("A Folder with the same name already exists");
-      valid = false;
+    if (nameExists) {
+      nameError = "A Folder with the same name already exists";
+    } else if (!dataSourceName.length) {
+      nameError = "Please provide a name.";
     } else if (dataSourceNameRes.isErr()) {
-      setDataSourceNameError(dataSourceNameRes.error);
-      valid = false;
-    } else {
-      setDataSourceNameError("");
-      valid = true;
+      nameError = dataSourceNameRes.error;
     }
-    setIsEdited(true);
-    setIsValid(valid);
+
+    setDataSourceUrlError(urlError);
+    setDataSourceNameError(nameError);
+    setIsValid(!urlError && !nameError);
   }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
 
   useEffect(() => {
-    formValidation();
-  }, [formValidation]);
+    if (isSubmitted) {
+      validateForm();
+    }
+  }, [dataSourceName, dataSourceUrl, isSubmitted, validateForm]);
 
   const router = useRouter();
 
   const handleCreate = async () => {
+    setIsSubmitted(true);
+    validateForm();
+    if (!isValid) {
+      return;
+    }
+
     setIsSaving(true);
     if (webCrawlerConfiguration === null) {
       const sanitizedDataSourceUrl = dataSourceUrl.trim();
@@ -257,7 +264,13 @@ export default function WebsiteConfiguration({
       titleChildren={
         <AppLayoutSimpleSaveCancelTitle
           title="Add a Website"
-          onSave={isValid && isEdited && !isSaving ? handleCreate : undefined}
+          onSave={() => {
+            setIsSubmitted(true);
+            validateForm();
+            if (isValid && !isSaving) {
+              void handleCreate();
+            }
+          }}
           onCancel={() => {
             void router.push(
               `/w/${owner.sId}/builder/data-sources/public-urls`
@@ -344,7 +357,7 @@ export default function WebsiteConfiguration({
               onChange={(value) => setDataSourceUrl(value)}
               error={dataSourceUrlError}
               name="dataSourceUrl"
-              showErrorLabel
+              showErrorLabel={true}
               className="text-sm"
             />
             <ContentMessage title="Ensure the website is public" variant="pink">

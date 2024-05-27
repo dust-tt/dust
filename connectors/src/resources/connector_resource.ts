@@ -162,4 +162,8 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   get isAuthTokenRevoked() {
     return this.errorType === "oauth_token_revoked";
   }
+
+  get isThirdPartyInternalError() {
+    return this.errorType === "third_party_internal_error";
+  }
 }

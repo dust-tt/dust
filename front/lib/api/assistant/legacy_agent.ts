@@ -25,24 +25,18 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isWebsearchConfiguration,
   Ok,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
-import {
-  generateProcessSpecification,
-  runProcess,
-} from "@app/lib/api/assistant/actions/process";
-import {
-  generateRetrievalSpecification,
+  deprecatedGenerateRetrievalSpecificationForSingleActionAgent,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
-  generateTablesQuerySpecification,
+  deprecatedGenerateTablesQuerySpecificationForSingleActionAgent,
   runTablesQuery,
 } from "@app/lib/api/assistant/actions/tables_query";
 import {
@@ -304,23 +298,19 @@ async function* runAction(
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
   if (isRetrievalConfiguration(action)) {
-    specRes = await generateRetrievalSpecification(auth, {
-      actionConfiguration: action,
-    });
-  } else if (isDustAppRunConfiguration(action)) {
-    specRes = await generateDustAppRunSpecification(auth, {
-      actionConfiguration: action,
-    });
+    specRes =
+      await deprecatedGenerateRetrievalSpecificationForSingleActionAgent(auth, {
+        actionConfiguration: action,
+      });
   } else if (isTablesQueryConfiguration(action)) {
-    specRes = await generateTablesQuerySpecification(auth);
-  } else if (isProcessConfiguration(action)) {
-    specRes = await generateProcessSpecification(auth, {
-      actionConfiguration: action,
-    });
+    specRes =
+      await deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
+        auth
+      );
   } else {
-    ((a: never) => {
-      throw new Error(`Unexpected action type: ${a}`);
-    })(action);
+    const runner = getRunnerforActionConfiguration(action);
+
+    specRes = await runner.buildSpecification(auth, {});
   }
 
   if (specRes.isErr()) {
@@ -439,16 +429,22 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration: action,
-      conversation,
-      agentMessage,
-      spec: specRes.value,
-      rawInputs,
-      functionCallId: null,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs,
+        functionCallId: null,
+        step,
+      },
+      {
+        spec: specRes.value,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
@@ -535,12 +531,13 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(action)) {
-    const eventStream = runProcess(auth, {
-      configuration,
-      actionConfiguration: action,
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
-      userMessage,
       agentMessage,
+      userMessage,
       rawInputs,
       functionCallId: null,
       step,
@@ -581,6 +578,40 @@ async function* runAction(
           assertNever(event);
       }
     }
+  } else if (isWebsearchConfiguration(action)) {
+    // Dummy implementation while in development (gated)
+    // TODO(pr,websearch) Implement this function
+    yield {
+      type: "agent_action_success",
+      created: now,
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      action: {
+        agentMessageId: agentMessage.id,
+        type: "websearch_action",
+        query: "testing it",
+        output: {
+          results: [{ title: "test", snippet: "sniptest", url: "http://lol" }],
+        },
+        functionCallId: null,
+        functionCallName: null,
+        step,
+        id: -1,
+        renderForFunctionCall: () => {
+          return { id: "Websearch", name: "Websearch", arguments: "None" };
+        },
+        renderForModel: () => {
+          return { role: "action", name: "Websearch", content: "None" };
+        },
+        renderForMultiActionsModel: () => {
+          return {
+            role: "function",
+            function_call_id: "websearch",
+            content: "None",
+          };
+        },
+      },
+    };
   } else {
     assertNever(action);
   }

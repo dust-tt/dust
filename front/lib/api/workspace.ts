@@ -59,6 +59,22 @@ export async function getWorkspaceVerifiedDomain(
   return null;
 }
 
+export async function getWorkspaceCreationDate(
+  workspaceId: string
+): Promise<Date> {
+  const workspace = await Workspace.findOne({
+    where: {
+      sId: workspaceId,
+    },
+  });
+
+  if (!workspace) {
+    throw new Error("Workspace not found.");
+  }
+
+  return workspace.createdAt;
+}
+
 export async function setInternalWorkspaceSegmentation(
   auth: Authenticator,
   segmentation: WorkspaceSegmentationType

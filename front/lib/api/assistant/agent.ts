@@ -26,22 +26,16 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
-  generateDustAppRunSpecification,
-  runDustApp,
-} from "@app/lib/api/assistant/actions/dust_app_run";
-import {
-  generateProcessSpecification,
-  runProcess,
-} from "@app/lib/api/assistant/actions/process";
-import {
   generateRetrievalSpecification,
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   generateTablesQuerySpecification,
   runTablesQuery,
@@ -314,23 +308,24 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
+    if (!a.name || !a.description) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "missing_name_or_description",
+          message: `Action ${a.name} is missing a name or description`,
+        },
+      } satisfies AgentErrorEvent;
+      return;
+    }
     if (isRetrievalConfiguration(a)) {
       const r = await generateRetrievalSpecification(auth, {
         actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isDustAppRunConfiguration(a)) {
-      const r = await generateDustAppRunSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        name: a.name,
+        description: a.description,
       });
 
       if (r.isErr()) {
@@ -340,20 +335,8 @@ export async function* runMultiActionsAgent(
       specifications.push(r.value);
     } else if (isTablesQueryConfiguration(a)) {
       const r = await generateTablesQuerySpecification(auth, {
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isProcessConfiguration(a)) {
-      const r = await generateProcessSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        name: a.name,
+        description: a.description,
       });
 
       if (r.isErr()) {
@@ -362,7 +345,18 @@ export async function* runMultiActionsAgent(
 
       specifications.push(r.value);
     } else {
-      assertNever(a);
+      const runner = getRunnerforActionConfiguration(a);
+
+      const res = await runner.buildSpecification(auth, {
+        name: a.name ?? undefined,
+        description: a.description ?? undefined,
+      });
+
+      if (res.isErr()) {
+        return res;
+      }
+
+      specifications.push(res.value);
     }
   }
   // not sure if the speicfications.push() is needed here TBD at review time.
@@ -702,16 +696,22 @@ async function* runAction(
       };
       return;
     }
-    const eventStream = runDustApp(auth, {
-      configuration,
-      actionConfiguration,
-      conversation,
-      agentMessage,
-      spec: specification,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId,
+        step,
+      },
+      {
+        spec: specification,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
@@ -798,9 +798,10 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = runProcess(auth, {
-      configuration,
-      actionConfiguration,
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
       userMessage,
       agentMessage,
@@ -844,6 +845,40 @@ async function* runAction(
           assertNever(event);
       }
     }
+  } else if (isWebsearchConfiguration(actionConfiguration)) {
+    // Dummy implementation while in development (gated)
+    // TODO(pr,websearch) Implement this function
+    yield {
+      type: "agent_action_success",
+      created: now,
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      action: {
+        agentMessageId: agentMessage.id,
+        type: "websearch_action",
+        query: "testing it",
+        output: {
+          results: [{ title: "test", snippet: "sniptest", url: "http://lol" }],
+        },
+        functionCallId: null,
+        functionCallName: null,
+        step,
+        id: -1,
+        renderForFunctionCall: () => {
+          return { id: "Websearch", name: "Websearch", arguments: "None" };
+        },
+        renderForModel: () => {
+          return { role: "action", name: "Websearch", content: "None" };
+        },
+        renderForMultiActionsModel: () => {
+          return {
+            role: "function",
+            function_call_id: "websearch",
+            content: "None",
+          };
+        },
+      },
+    };
   } else {
     assertNever(actionConfiguration);
   }

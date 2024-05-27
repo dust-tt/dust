@@ -163,7 +163,18 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           },
         });
         const extracted = new turndown()
-          .remove(["style", "script", "iframe"])
+          .remove([
+            "style",
+            "script",
+            "iframe",
+            "noscript",
+            "nav",
+            "footer",
+            "header",
+            "form",
+            "meta",
+            "img",
+          ])
           .turndown($.html());
 
         const pageTitle = $("title").text();

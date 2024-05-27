@@ -1,13 +1,12 @@
 import type {
   ConversationMessageReactions,
-  MessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import React from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 
 interface MessageItemProps {
@@ -16,7 +15,7 @@ interface MessageItemProps {
   isInModal: boolean;
   isLastMessage: boolean;
   latestMentions: string[];
-  message: MessageType;
+  message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
   user: UserType;
@@ -49,53 +48,38 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     switch (type) {
       case "user_message":
         return (
-          <div
-            key={`message-id-${sId}`}
-            className="bg-structure-50 px-2 py-8"
-            ref={ref}
-          >
-            <div className="mx-auto flex max-w-4xl flex-col gap-4">
-              <UserMessage
-                conversationId={conversationId}
-                hideReactions={hideReactions}
-                isLastMessage={isLastMessage}
-                latestMentions={latestMentions}
-                message={message}
-                owner={owner}
-                reactions={messageReactions}
-                user={user}
-              />
-            </div>
+          <div key={`message-id-${sId}`} ref={ref}>
+            <UserMessage
+              conversationId={conversationId}
+              hideReactions={hideReactions}
+              isLastMessage={isLastMessage}
+              latestMentions={latestMentions}
+              message={message}
+              owner={owner}
+              reactions={messageReactions}
+              user={user}
+              contentFragments={message.contenFragments}
+              size={isInModal ? "compact" : "normal"}
+            />
           </div>
         );
+
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} className="px-2 py-8" ref={ref}>
-            <div className="mx-auto flex max-w-4xl gap-4">
-              <AgentMessage
-                message={message}
-                owner={owner}
-                user={user}
-                conversationId={conversationId}
-                reactions={messageReactions}
-                isInModal={isInModal}
-                hideReactions={hideReactions}
-              />
-            </div>
+          <div key={`message-id-${sId}`} ref={ref}>
+            <AgentMessage
+              message={message}
+              owner={owner}
+              user={user}
+              conversationId={conversationId}
+              reactions={messageReactions}
+              isInModal={isInModal}
+              hideReactions={hideReactions}
+              size={isInModal ? "compact" : "normal"}
+            />
           </div>
         );
-      case "content_fragment":
-        return (
-          <div
-            key={`message-id-${sId}`}
-            className="items-center pt-8"
-            ref={ref}
-          >
-            <div className="mx-auto flex max-w-4xl flex-col gap-4">
-              <ContentFragment message={message} />
-            </div>
-          </div>
-        );
+
       default:
         console.error("Unknown message type", message);
     }
