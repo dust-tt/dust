@@ -49,6 +49,7 @@ async function main() {
         provider_id: "openai",
         model_id: "text-embedding-ada-002",
         splitter_id: "base_v0",
+        max_chunk_size: 256,
 
         embedder_config: {
           embedder: {
@@ -58,7 +59,6 @@ async function main() {
             splitter_id: "base_v0",
           },
         },
-        max_chunk_size: 256,
         qdrant_config: null,
       },
       credentials: dustManagedCredentials(),
