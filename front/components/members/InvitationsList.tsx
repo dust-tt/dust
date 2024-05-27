@@ -14,11 +14,8 @@ export function InvitationsList({
   searchText?: string;
 }) {
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
-
-  const [inviteEditionModalOpen, setInviteEditionModalOpen] = useState(false);
-  const [invitation, setInvitation] = useState<MembershipInvitationType | null>(
-    null
-  );
+  const [selectedInvite, setSelectedInvite] =
+    useState<MembershipInvitationType | null>(null);
 
   const filteredInvitations = invitations
     .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
@@ -30,51 +27,42 @@ export function InvitationsList({
     );
   return (
     <>
-      {invitation && (
+      {selectedInvite && (
         <EditInvitationModal
+          invitation={selectedInvite}
           owner={owner}
-          invitation={invitation}
-          isOpen={inviteEditionModalOpen}
-          setOpen={setInviteEditionModalOpen}
+          onClose={() => setSelectedInvite(null)}
         />
       )}
       <div className="s-w-full">
-        {filteredInvitations.map((invitation: MembershipInvitationType) => {
-          return (
-            <div
-              key={`invitation-${invitation.id}`}
-              className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-              onClick={() => {
-                setInviteEditionModalOpen(true);
-                setInvitation(invitation);
-              }}
-            >
-              <div className="hidden sm:block">
-                <Avatar size="sm" className={invitation.sId} />
+        {filteredInvitations.map((invitation: MembershipInvitationType) => (
+          <div
+            key={`invitation-${invitation.id}`}
+            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
+            onClick={() => setSelectedInvite(invitation)}
+          >
+            <div className="hidden sm:block">
+              <Avatar size="sm" className={invitation.sId} />
+            </div>
+            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+              <div className="grow font-normal text-element-700">
+                {invitation.inviteEmail}
               </div>
-              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="grow font-normal text-element-700">
-                  {invitation.inviteEmail}
-                </div>
-                <div>
-                  <Chip
-                    size="xs"
-                    color={ROLES_DATA[invitation.initialRole]["color"]}
-                    className="capitalize"
-                  >
-                    {displayRole(invitation.initialRole)}
-                  </Chip>
-                </div>
-                <div className="hidden sm:block">
-                  <Icon
-                    visual={ChevronRightIcon}
-                    className="text-element-600"
-                  />
-                </div>
+              <div>
+                <Chip
+                  size="xs"
+                  color={ROLES_DATA[invitation.initialRole]["color"]}
+                  className="capitalize"
+                >
+                  {displayRole(invitation.initialRole)}
+                </Chip>
+              </div>
+              <div className="hidden sm:block">
+                <Icon visual={ChevronRightIcon} className="text-element-600" />
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
         {isInvitationsLoading && (
           <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
             <div className="hidden sm:block">
