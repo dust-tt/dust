@@ -9,6 +9,7 @@ import type {
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import { DustProdActionRegistry, WHITELISTABLE_FEATURES } from "@dust-tt/types";
+import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -24,7 +25,10 @@ import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import {
+  getWorkspaceCreationDate,
+  getWorkspaceVerifiedDomain,
+} from "@app/lib/api/workspace";
 import {
   GLOBAL_AGENTS_SID,
   orderDatasourceByImportance,
@@ -44,6 +48,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
+  worspaceCreationDay: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -94,6 +99,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
 
   const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
 
   return {
     props: {
@@ -106,6 +112,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
       registry: DustProdActionRegistry,
       workspaceVerifiedDomain,
+      worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
     },
   };
 });
@@ -119,6 +126,7 @@ const WorkspacePage = ({
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomain,
+  worspaceCreationDay,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -239,6 +247,7 @@ const WorkspacePage = ({
                 <WorkspaceInfoTable
                   owner={owner}
                   workspaceVerifiedDomain={workspaceVerifiedDomain}
+                  worspaceCreationDay={worspaceCreationDay}
                 />
                 <div className="flex-grow">
                   <ActiveSubscriptionTable
