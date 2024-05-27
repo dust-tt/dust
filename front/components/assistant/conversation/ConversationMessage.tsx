@@ -12,19 +12,18 @@ import { MessageContent } from "@app/components/assistant/conversation/messages/
 import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
 import { classNames } from "@app/lib/utils";
 
-export type MessageSizeType = "normal" | "compact";
+export type MessageSizeType = "compact" | "normal";
 
-type MessageType = "user" | "agent" | "fragment";
+type MessageType = "agent" | "user";
 
-const messageSizeClasses = {
+const messageSizeClasses: Record<MessageSizeType, string> = {
   compact: "p-3",
   normal: "p-4",
 };
 
-const messageTypeClasses = {
+const messageTypeClasses: Record<MessageType, string> = {
   user: "bg-structure-50",
   agent: "",
-  fragment: "",
 };
 
 /**
