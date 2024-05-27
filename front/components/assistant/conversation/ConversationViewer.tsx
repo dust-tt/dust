@@ -2,7 +2,6 @@ import { Spinner } from "@dust-tt/sparkle";
 import type {
   AgentMessageType,
   ContentFragmentType,
-  MessageWithRankType,
   UserMessageType,
   UserType,
   WorkspaceType,
