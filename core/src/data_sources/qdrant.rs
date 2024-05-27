@@ -21,7 +21,7 @@ pub enum QdrantCluster {
 }
 
 // See: https://www.notion.so/dust-tt/Design-Doc-Qdrant-re-arch-d0ebdd6ae8244ff593cdf10f08988c27
-pub const SHARD_KEY_COUNT: u8 = 24;
+pub const SHARD_KEY_COUNT: u64 = 24;
 
 static QDRANT_CLUSTER_VARIANTS: &[QdrantCluster] = &[QdrantCluster::Cluster0];
 
@@ -176,8 +176,17 @@ impl DustQdrantClient {
         )
     }
 
+    fn shard_key_id_from_internal_id(internal_id: &str) -> Result<u64> {
+        // `internal_id` is the hexadecimal representation of a blake3 hash (massive number). We want
+        // to get a u64 out of it so we take the first 16 characters which will turn into a fully
+        // random u64. Taking the modulo SHARD_KEY_COUNT will give us a random shard key. 16=2^4 and
+        // 64/4=16 so u64 is represented by 16 hexadecimal characters.
+        let h: u64 = u64::from_str_radix(&internal_id[0..16], 16)?;
+        Ok(h % SHARD_KEY_COUNT)
+    }
+
     fn shard_key(&self, data_source: &DataSource) -> Result<shard_key::Key> {
-        let key_id: u8 = match (
+        let key_id: u64 = match (
             data_source.config().provider_id,
             data_source.config().model_id.as_str(),
         ) {
@@ -189,17 +198,9 @@ impl DustQdrantClient {
                 // We use the last character of the internal_id to determine the key_id. This id is
                 // generated using new_id and is guaranteed random. Using the last character gives
                 // us a path to moving data sources across shard when needed.
-                data_source.internal_id().chars().last().unwrap() as u8 % SHARD_KEY_COUNT
+                data_source.internal_id().chars().last().unwrap() as u64 % SHARD_KEY_COUNT
             }
-            _ => {
-                // `internal_id` is the hexadecimal representation of a blake3 hash (massive
-                // number). We want to get a u64 out of it so we take the first 16 characters which
-                // will turn into a fully random u64. Taking the modulo SHARD_KEY_COUNT will give
-                // us a random shard key. 16=2^4 and 64/4=16 so u64 is represented by 16
-                // hexadecimal characters.
-                let h: u64 = u64::from_str_radix(&data_source.internal_id()[0..16], 16)?;
-                (h % SHARD_KEY_COUNT as u64) as u8
-            }
+            _ => Self::shard_key_id_from_internal_id(data_source.internal_id())?,
         };
 
         Ok(format!("{}_{}", self.shard_key_prefix(), key_id).into())
@@ -355,5 +356,26 @@ impl DustQdrantClient {
 
     pub fn raw_client(&self) -> Arc<QdrantClient> {
         return self.client.clone();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils;
+
+    #[test]
+    fn test_balanced_shard_keys() {
+        let keys = (0..(SHARD_KEY_COUNT * 192))
+            .map(|_| {
+                let interal_id = utils::new_id();
+                DustQdrantClient::shard_key_id_from_internal_id(&interal_id).unwrap()
+            })
+            .collect::<Vec<_>>();
+        for i in 0..SHARD_KEY_COUNT {
+            // We test all keys have at least 128 points.
+            let key_count = keys.iter().filter(|&&x| x == i).count();
+            assert!(key_count >= 128);
+        }
     }
 }
