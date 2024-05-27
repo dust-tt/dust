@@ -17,7 +17,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
-import { mutate, useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -32,6 +31,7 @@ import {
 } from "@app/lib/client/subscription";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { isProPlanCode } from "@app/lib/plans/plan_codes";
+import { useMembers, useWorkspaceInvitations } from "@app/lib/swr";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   PostInvitationRequestBody,
@@ -54,7 +54,8 @@ export function InviteEmailModal({
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const { mutate } = useSWRConfig();
+  const { mutateInvitations } = useWorkspaceInvitations(owner);
+  const { mutateMembers } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
@@ -183,10 +184,10 @@ export function InviteEmailModal({
           role: invitationRole,
           sendNotification,
         });
-        await mutate(`/api/w/${owner.sId}/members`);
+        await mutateMembers();
       }
 
-      await mutate(`/api/w/${owner.sId}/invitations`);
+      await mutateInvitations();
       onClose();
     }
   }
@@ -260,10 +261,12 @@ export function EditInvitationModal({
   owner,
   invitation,
   onClose,
+  mutateInvitations,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   onClose: () => void;
+  mutateInvitations: any;
 }) {
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
     invitation.initialRole
@@ -282,11 +285,12 @@ export function EditInvitationModal({
       hasChanged={selectedRole !== invitation.initialRole}
       variant="side-sm"
       onSave={async (closeModalFn) => {
+        console.log(mutateInvitations);
         await updateInvitation({
           owner,
           invitation,
           newRole: selectedRole,
-          mutate,
+          mutateInvitations,
           sendNotification,
           confirm,
         });
@@ -336,10 +340,11 @@ export function EditInvitationModal({
               label="Revoke invitation"
               icon={XMarkIcon}
               onClick={async () => {
+                console.log(mutateInvitations);
                 await updateInvitation({
                   invitation,
                   owner,
-                  mutate,
+                  mutateInvitations,
                   sendNotification,
                   confirm,
                 });
@@ -448,14 +453,14 @@ async function updateInvitation({
   owner,
   invitation,
   newRole,
-  mutate,
+  mutateInvitations,
   sendNotification,
   confirm,
 }: {
   owner: WorkspaceType;
   invitation: MembershipInvitationType;
   newRole?: RoleType; // Optional parameter for role change
-  mutate: any;
+  mutateInvitations: any;
   sendNotification: (notificationData: NotificationType) => void;
   confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
@@ -505,5 +510,5 @@ async function updateInvitation({
     title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
     description: `${successMessage} for ${invitation.inviteEmail}.`,
   });
-  await mutate(`/api/w/${owner.sId}/invitations`);
+  await mutateInvitations();
 }

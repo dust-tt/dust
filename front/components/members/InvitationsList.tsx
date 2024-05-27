@@ -16,6 +16,7 @@ export function InvitationsList({
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
+  const { mutateInvitations } = useWorkspaceInvitations(owner);
 
   const filteredInvitations = invitations
     .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
@@ -31,6 +32,7 @@ export function InvitationsList({
         <EditInvitationModal
           invitation={selectedInvite}
           owner={owner}
+          mutateInvitations={mutateInvitations}
           onClose={() => setSelectedInvite(null)}
         />
       )}
