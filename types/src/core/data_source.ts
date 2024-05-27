@@ -22,9 +22,6 @@ export type CoreAPIDataSourceConfig = {
   embedder_config: EmbedderConfigType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  extras?: any | null;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   qdrant_config: {
     cluster: QdrantCluster;
     shadow_write_cluster: QdrantCluster | null;
