@@ -66,6 +66,7 @@ export function ConversationMessage({
   renderName: (name: string | null) => React.ReactNode;
   type: MessageType;
   size?: MessageSizeType;
+  // TODO(2024-05-27 flav) Change type to support AgentMessage citations.
   citations?: ContentFragmentType[];
 }) {
   return (

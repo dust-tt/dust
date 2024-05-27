@@ -448,6 +448,7 @@ export function AgentMessage({
       );
     }
 
+    // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
     return (
       <>
         {agentMessage.actions.map((action) => (

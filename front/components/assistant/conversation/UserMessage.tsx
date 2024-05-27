@@ -20,7 +20,7 @@ interface UserMessageProps {
   owner: WorkspaceType;
   reactions: MessageReactionType[];
   user: UserType;
-  citations?: ContentFragmentType[];
+  contentFragments?: ContentFragmentType[];
   size: MessageSizeType;
 }
 
@@ -33,7 +33,7 @@ export function UserMessage({
   owner,
   reactions,
   user,
-  citations,
+  contentFragments,
   size,
 }: UserMessageProps) {
   const { agentConfigurations } = useAgentConfigurations({
@@ -53,7 +53,7 @@ export function UserMessage({
       enableEmojis={!hideReactions}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
-      citations={citations}
+      citations={contentFragments}
       size={size}
     >
       <div className="flex flex-col gap-4">

@@ -6,7 +6,7 @@ import type {
 import React from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import type { MessageWithCitationsType } from "@app/components/assistant/conversation/ConversationViewer";
+import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 
 interface MessageItemProps {
@@ -15,7 +15,7 @@ interface MessageItemProps {
   isInModal: boolean;
   isLastMessage: boolean;
   latestMentions: string[];
-  message: MessageWithCitationsType;
+  message: MessageWithContentFragmentsType;
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
   user: UserType;
@@ -58,7 +58,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={owner}
               reactions={messageReactions}
               user={user}
-              citations={message.citations}
+              contentFragments={message.contenFragments}
               size={isInModal ? "compact" : "normal"}
             />
           </div>

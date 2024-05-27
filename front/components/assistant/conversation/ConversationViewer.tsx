@@ -33,10 +33,10 @@ import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assista
 
 const DEFAULT_PAGE_LIMIT = 50;
 
-export type MessageWithCitationsType =
+export type MessageWithContentFragmentsType =
   | AgentMessageType
   | (UserMessageType & {
-      citations?: ContentFragmentType[];
+      contenFragments?: ContentFragmentType[];
     });
 
 function shouldProcessStreamEvent(
@@ -413,8 +413,8 @@ export default function ConversationViewer({
 // and displays content_fragments within user_messages.
 const groupMessages = (
   messages: FetchConversationMessagesResponse[]
-): MessageWithCitationsType[][] => {
-  const groups: MessageWithCitationsType[][] = [];
+): MessageWithContentFragmentsType[][] => {
+  const groups: MessageWithContentFragmentsType[][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages
@@ -425,11 +425,11 @@ const groupMessages = (
       } else {
         if (message.type === "user_message") {
           // Attach collected content fragments to the user message.
-          const messageWithCitations: MessageWithCitationsType = {
+          const messageWithContentFragments: MessageWithContentFragmentsType = {
             ...message,
-            citations: tempContentFragments,
+            contenFragments: tempContentFragments,
           };
-          groups.push([messageWithCitations]);
+          groups.push([messageWithContentFragments]);
           tempContentFragments = []; // Reset the collected content fragments.
         } else {
           groups.push([message]); // Directly push agent_message or other types.
