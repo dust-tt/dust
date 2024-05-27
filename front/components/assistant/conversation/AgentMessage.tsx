@@ -36,6 +36,7 @@ import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
+import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
@@ -53,6 +54,17 @@ function cleanUpCitations(message: string): string {
   return message.replace(regex, "");
 }
 
+interface AgentMessageProps {
+  message: AgentMessageType;
+  owner: WorkspaceType;
+  user: UserType;
+  conversationId: string;
+  reactions: MessageReactionType[];
+  isInModal?: boolean;
+  hideReactions?: boolean;
+  size: MessageSizeType;
+}
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
@@ -67,15 +79,8 @@ export function AgentMessage({
   reactions,
   isInModal,
   hideReactions,
-}: {
-  message: AgentMessageType;
-  owner: WorkspaceType;
-  user: UserType;
-  conversationId: string;
-  reactions: MessageReactionType[];
-  isInModal?: boolean;
-  hideReactions?: boolean;
-}) {
+  size,
+}: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
@@ -396,6 +401,8 @@ export function AgentMessage({
           </div>
         );
       }}
+      type="agent"
+      size={size}
     >
       <div ref={messageRef}>
         {renderMessage(agentMessageToRender, references, shouldStream)}
@@ -441,6 +448,7 @@ export function AgentMessage({
       );
     }
 
+    // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
     return (
       <>
         {agentMessage.actions.map((action) => (

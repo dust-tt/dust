@@ -16,14 +16,12 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
       assertNever(message.contentType);
   }
   return (
-    <div className="items-center px-3">
-      <Citation
-        title={message.title}
-        size="xs"
-        type={logoType}
-        href={message.sourceUrl || undefined}
-        avatarUrl={message.context.profilePictureUrl ?? undefined}
-      />
-    </div>
+    <Citation
+      title={message.title}
+      size="xs"
+      type={logoType}
+      href={message.sourceUrl || undefined}
+      avatarUrl={message.context.profilePictureUrl ?? undefined}
+    />
   );
 }
