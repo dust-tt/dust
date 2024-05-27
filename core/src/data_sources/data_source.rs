@@ -403,12 +403,31 @@ pub struct DocumentVersion {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct DataSourceConfig {
+pub struct EmbedderConfig {
     pub provider_id: ProviderID,
     pub model_id: String,
-    pub extras: Option<Value>,
     pub splitter_id: SplitterID,
     pub max_chunk_size: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct EmbedderDataSourceConfig {
+    pub embedder: EmbedderConfig,
+    pub shadow_embedder: Option<EmbedderConfig>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct DataSourceConfig {
+    // TODO(2024-05-24 flav) Remove once migrated to embedder.
+    pub provider_id: ProviderID,
+    pub model_id: String,
+    pub splitter_id: SplitterID,
+    pub max_chunk_size: usize,
+
+    // Optional until we update api calls to pass this body.
+    pub embedder_config: Option<EmbedderDataSourceConfig>,
+
+    pub extras: Option<Value>,
     pub qdrant_config: Option<QdrantDataSourceConfig>,
 }
 

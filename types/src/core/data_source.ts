@@ -1,13 +1,27 @@
 export type QdrantCluster = "cluster-0";
 export const DEFAULT_QDRANT_CLUSTER: QdrantCluster = "cluster-0";
 
-export type CoreAPIDataSourceConfig = {
+interface EmbedderType {
   provider_id: string;
   model_id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  extras?: any | null;
   splitter_id: string;
   max_chunk_size: number;
+}
+
+interface EmbedderConfigType {
+  embedder: EmbedderType;
+}
+
+export type CoreAPIDataSourceConfig = {
+  // TODO(2024-05-27 flav) Remove once migrated to embedder.
+  provider_id: string;
+  model_id: string;
+  splitter_id: string;
+  max_chunk_size: number;
+
+  embedder_config: EmbedderConfigType;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   qdrant_config: {
     cluster: QdrantCluster;
     shadow_write_cluster: QdrantCluster | null;
