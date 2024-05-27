@@ -405,7 +405,7 @@ export default function ConversationViewer({
   );
 }
 
-// Grouping messages into arrays based on their type, associating content_fragments with the closest following user_message.
+// Grouping messages into arrays based on their type, associating content_fragments with the upcoming following user_message.
 // Example:
 // Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
 // Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
