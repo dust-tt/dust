@@ -282,9 +282,6 @@ export function EditInvitationModal({
       hasChanged={selectedRole !== invitation.initialRole}
       variant="side-sm"
       onSave={async (closeModalFn) => {
-        if (!selectedRole) {
-          return;
-        }
         await updateInvitation({
           owner,
           invitation,
