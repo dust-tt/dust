@@ -9,7 +9,6 @@ export async function retrieveGongTranscripts(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger
 ): Promise<string[]> {
-
   if (!transcriptsConfiguration) {
     localLogger.error(
       {},
@@ -80,10 +79,9 @@ export async function retrieveGongTranscripts(
       continue;
     }
 
-    const history =
-      await transcriptsConfiguration.fetchHistoryForFileId(
-        fileId
-      );
+    const history = await transcriptsConfiguration.fetchHistoryForFileId(
+      fileId
+    );
     if (history) {
       localLogger.info(
         { fileId },
@@ -110,10 +108,7 @@ export async function retrieveGongTranscriptContent(
     name: string;
   };
 
-  if (
-    !transcriptsConfiguration ||
-    !transcriptsConfiguration.connectionId
-  ) {
+  if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
     localLogger.error(
       {},
       "[processTranscriptActivity] No connectionId found. Skipping."

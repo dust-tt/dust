@@ -70,7 +70,7 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    }
+    },
   },
   {
     modelName: "labs_transcripts_configuration",

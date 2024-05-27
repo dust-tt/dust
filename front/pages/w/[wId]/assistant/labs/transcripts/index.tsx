@@ -250,7 +250,7 @@ export default function LabsTranscriptsIndex({
       },
       body: JSON.stringify({
         connectionId,
-        provider
+        provider,
       }),
     });
 
@@ -287,11 +287,10 @@ export default function LabsTranscriptsIndex({
       );
       const {
         connectionId: newConnectionId,
-      }: { providerConfigKey: string; connectionId: string } =
-        await nango.auth(
-          nangoDriveConnectorId,
-          nangoConnectionId
-        );
+      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
+        nangoDriveConnectorId,
+        nangoConnectionId
+      );
 
       await saveOauthConnection(
         newConnectionId,
@@ -318,7 +317,8 @@ export default function LabsTranscriptsIndex({
 
       if (response.ok) {
         const defaultConfigurationRes = await response.json();
-        const defaultConfiguration : LabsTranscriptsConfigurationResource = defaultConfigurationRes.configuration;
+        const defaultConfiguration: LabsTranscriptsConfigurationResource =
+          defaultConfigurationRes.configuration;
 
         if (defaultConfiguration.provider !== "gong") {
           sendNotification({
@@ -330,12 +330,15 @@ export default function LabsTranscriptsIndex({
           return;
         }
 
-        await saveOauthConnection(defaultConfiguration.connectionId, transcriptsConfigurationState.provider);
+        await saveOauthConnection(
+          defaultConfiguration.connectionId,
+          transcriptsConfigurationState.provider
+        );
 
         return;
       } else {
         const nango = new Nango({ publicKey: nangoPublicKey });
-        
+
         const nangoConnectionId = buildLabsConnectionId(
           `labs-transcripts-workspace-${owner.id}`,
           transcriptsConfigurationState.provider
@@ -343,10 +346,7 @@ export default function LabsTranscriptsIndex({
         const {
           connectionId: newConnectionId,
         }: { providerConfigKey: string; connectionId: string } =
-          await nango.auth(
-            nangoGongConnectorId,
-            nangoConnectionId
-          );
+          await nango.auth(nangoGongConnectorId, nangoConnectionId);
         await saveOauthConnection(
           newConnectionId,
           transcriptsConfigurationState.provider

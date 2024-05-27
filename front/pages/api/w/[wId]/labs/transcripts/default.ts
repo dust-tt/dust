@@ -1,5 +1,5 @@
-import type {WithAPIErrorReponse} from "@dust-tt/types";
-import { assertNever  } from "@dust-tt/types";
+import type { WithAPIErrorReponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
