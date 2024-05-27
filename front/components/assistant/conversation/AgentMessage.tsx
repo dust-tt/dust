@@ -131,13 +131,13 @@ export function AgentMessage({
     const eventPayload: {
       eventId: string;
       data:
-        | AgentErrorEvent
-        | AgentActionSpecificEvent
-        | AgentActionSuccessEvent
-        | GenerationTokensEvent
-        | AgentGenerationSuccessEvent
-        | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
+      | AgentErrorEvent
+      | AgentActionSpecificEvent
+      | AgentActionSuccessEvent
+      | GenerationTokensEvent
+      | AgentGenerationSuccessEvent
+      | AgentGenerationCancelledEvent
+      | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
@@ -236,26 +236,33 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  //
-  // Keeping a ref on the message's height, and accounting to the height
-  // difference when new parts of the message are generated, allows for the
-  // scroll to happen even if the newly generated parts are larger than 50px
-  // (e.g. citations)
-  const messageRef = useRef<HTMLDivElement>(null);
-  const messageHeight = useRef<number | null>(null);
+  const isAtBottom = useRef(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const previousHeight = messageHeight.current || 0;
-    messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isAtBottom.current = entry.isIntersecting;
+      },
+      { threshold: 1 }
+    );
+
+    if (bottomRef.current) {
+      observer.observe(bottomRef.current);
+    }
+
+    return () => {
+      if (bottomRef.current) {
+        observer.unobserve(bottomRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    if (mainTag && agentMessageToRender.status === "created") {
-      if (
-        mainTag.offsetHeight + mainTag.scrollTop >=
-        mainTag.scrollHeight - (50 + messageHeight.current - previousHeight)
-      ) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
+    if (mainTag && streamedAgentMessage.status === "created" && isAtBottom.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [
     agentMessageToRender.content,
@@ -297,24 +304,24 @@ export function AgentMessage({
     message.status === "failed"
       ? []
       : [
-          {
-            label: "Copy to clipboard",
-            icon: ClipboardIcon,
-            onClick: () => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
-              );
-            },
+        {
+          label: "Copy to clipboard",
+          icon: ClipboardIcon,
+          onClick: () => {
+            void navigator.clipboard.writeText(
+              cleanUpCitations(agentMessageToRender.content || "")
+            );
           },
-          {
-            label: "Retry",
-            icon: ArrowPathIcon,
-            onClick: () => {
-              void retryHandler(agentMessageToRender);
-            },
-            disabled: isRetryHandlerProcessing || shouldStream,
+        },
+        {
+          label: "Retry",
+          icon: ArrowPathIcon,
+          onClick: () => {
+            void retryHandler(agentMessageToRender);
           },
-        ];
+          disabled: isRetryHandlerProcessing || shouldStream,
+        },
+      ];
 
   function updateActiveReferences(
     document: RetrievalDocumentType,
@@ -397,9 +404,10 @@ export function AgentMessage({
         );
       }}
     >
-      <div ref={messageRef}>
+      <div>
         {renderMessage(agentMessageToRender, references, shouldStream)}
       </div>
+      <div ref={bottomRef} className="h-[5px]" />
     </ConversationMessage>
   );
 
@@ -510,7 +518,7 @@ function Citations({
   return (
     <div
       className="grid grid-cols-3 items-stretch gap-2 pb-4 pt-8 md:grid-cols-4"
-      // ref={citationContainer}
+    // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
         const provider = providerFromDocument(document);
