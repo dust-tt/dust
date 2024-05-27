@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: connectors-worker-google_drive-deployment
+  name: connectors-worker-google-drive-deployment
 spec:
   replicas: 1
   selector:
