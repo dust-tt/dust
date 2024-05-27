@@ -14,9 +14,10 @@ export function InvitationsList({
   searchText?: string;
 }) {
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
+  const { mutateInvitations } = useWorkspaceInvitations(owner);
+
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
-  const { mutateInvitations } = useWorkspaceInvitations(owner);
 
   const filteredInvitations = invitations
     .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
