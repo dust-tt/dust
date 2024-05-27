@@ -1,4 +1,4 @@
-import type { WebsearchActionOutputType } from "@dust-tt/types/dist/front/assistant/actions/websearch";
+import type { WebsearchActionOutputType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
