@@ -846,39 +846,53 @@ async function* runAction(
       }
     }
   } else if (isWebsearchConfiguration(actionConfiguration)) {
-    // Dummy implementation while in development (gated)
-    // TODO(pr,websearch) Implement this function
-    yield {
-      type: "agent_action_success",
-      created: now,
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      action: {
-        agentMessageId: agentMessage.id,
-        type: "websearch_action",
-        query: "testing it",
-        output: {
-          results: [{ title: "test", snippet: "sniptest", url: "http://lol" }],
-        },
-        functionCallId: null,
-        functionCallName: null,
-        step,
-        id: -1,
-        renderForFunctionCall: () => {
-          return { id: "Websearch", name: "Websearch", arguments: "None" };
-        },
-        renderForModel: () => {
-          return { role: "action", name: "Websearch", content: "None" };
-        },
-        renderForMultiActionsModel: () => {
-          return {
-            role: "function",
-            function_call_id: "websearch",
-            content: "None",
+    // TODO(pr) refactor the isXXX cases to avoid the duplication for process and websearch
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId: null,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "websearch_params":
+          yield event;
+          break;
+        case "websearch_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
           };
-        },
-      },
-    };
+          return;
+        case "websearch_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
   } else {
     assertNever(actionConfiguration);
   }

@@ -38,6 +38,7 @@ export * from "./front/lib/api/assistant/actions/index";
 export * from "./front/lib/api/assistant/actions/process";
 export * from "./front/lib/api/assistant/actions/retrieval";
 export * from "./front/lib/api/assistant/actions/tables_query";
+export * from "./front/lib/api/assistant/actions/websearch";
 export * from "./front/lib/api/assistant/agent";
 export * from "./front/lib/api/assistant/conversation";
 export * from "./front/lib/api/assistant/generation";
