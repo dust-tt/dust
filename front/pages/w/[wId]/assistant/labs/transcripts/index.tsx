@@ -404,10 +404,10 @@ export default function LabsTranscriptsIndex({
       <Dialog
         isOpen={isDeleteProviderDialogOpen}
         title="Disconnect transcripts provider"
-        onValidate={async () =>
-          (await handleDisconnectProvider()) &&
-          setIsDeleteProviderDialogOpen(false)
-        }
+        onValidate={async () => {
+          await handleDisconnectProvider();
+          setIsDeleteProviderDialogOpen(false);
+        }}
         onCancel={() => setIsDeleteProviderDialogOpen(false)}
       >
         <div>
