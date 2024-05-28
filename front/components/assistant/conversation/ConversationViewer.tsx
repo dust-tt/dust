@@ -270,10 +270,10 @@ export default function ConversationViewer({
       const eventPayload: {
         eventId: string;
         data:
-        | UserMessageNewEvent
-        | AgentMessageNewEvent
-        | AgentGenerationCancelledEvent
-        | ConversationTitleEvent;
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
+          | ConversationTitleEvent;
       } = JSON.parse(eventStr);
 
       const event = eventPayload.data;

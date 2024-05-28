@@ -131,13 +131,13 @@ export function AgentMessage({
     const eventPayload: {
       eventId: string;
       data:
-      | AgentErrorEvent
-      | AgentActionSpecificEvent
-      | AgentActionSuccessEvent
-      | GenerationTokensEvent
-      | AgentGenerationSuccessEvent
-      | AgentGenerationCancelledEvent
-      | AgentMessageSuccessEvent;
+        | AgentErrorEvent
+        | AgentActionSpecificEvent
+        | AgentActionSuccessEvent
+        | GenerationTokensEvent
+        | AgentGenerationSuccessEvent
+        | AgentGenerationCancelledEvent
+        | AgentMessageSuccessEvent;
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
@@ -246,13 +246,15 @@ export function AgentMessage({
       { threshold: 1 }
     );
 
-    if (bottomRef.current) {
-      observer.observe(bottomRef.current);
+    const currentBottomRef = bottomRef.current;
+
+    if (currentBottomRef) {
+      observer.observe(currentBottomRef);
     }
 
     return () => {
-      if (bottomRef.current) {
-        observer.unobserve(bottomRef.current);
+      if (currentBottomRef) {
+        observer.unobserve(currentBottomRef);
       }
     };
   }, []);
@@ -261,13 +263,18 @@ export function AgentMessage({
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    if (mainTag && streamedAgentMessage.status === "created" && isAtBottom.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (
+      mainTag &&
+      streamedAgentMessage.status === "created" &&
+      isAtBottom.current
+    ) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
     agentMessageToRender.actions.length,
+    streamedAgentMessage.status,
     activeReferences.length,
     isInModal,
   ]);
@@ -304,24 +311,24 @@ export function AgentMessage({
     message.status === "failed"
       ? []
       : [
-        {
-          label: "Copy to clipboard",
-          icon: ClipboardIcon,
-          onClick: () => {
-            void navigator.clipboard.writeText(
-              cleanUpCitations(agentMessageToRender.content || "")
-            );
+          {
+            label: "Copy to clipboard",
+            icon: ClipboardIcon,
+            onClick: () => {
+              void navigator.clipboard.writeText(
+                cleanUpCitations(agentMessageToRender.content || "")
+              );
+            },
           },
-        },
-        {
-          label: "Retry",
-          icon: ArrowPathIcon,
-          onClick: () => {
-            void retryHandler(agentMessageToRender);
+          {
+            label: "Retry",
+            icon: ArrowPathIcon,
+            onClick: () => {
+              void retryHandler(agentMessageToRender);
+            },
+            disabled: isRetryHandlerProcessing || shouldStream,
           },
-          disabled: isRetryHandlerProcessing || shouldStream,
-        },
-      ];
+        ];
 
   function updateActiveReferences(
     document: RetrievalDocumentType,
@@ -404,9 +411,7 @@ export function AgentMessage({
         );
       }}
     >
-      <div>
-        {renderMessage(agentMessageToRender, references, shouldStream)}
-      </div>
+      <div>{renderMessage(agentMessageToRender, references, shouldStream)}</div>
       <div ref={bottomRef} className="h-[5px]" />
     </ConversationMessage>
   );
@@ -518,7 +523,7 @@ function Citations({
   return (
     <div
       className="grid grid-cols-3 items-stretch gap-2 pb-4 pt-8 md:grid-cols-4"
-    // ref={citationContainer}
+      // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
         const provider = providerFromDocument(document);
