@@ -108,24 +108,28 @@ export async function retrieveGoogleTranscriptContent(
     fields: "name",
   });
 
-  const contentRes = await drive.files.export({
-    fileId: fileId,
-    mimeType: "text/plain",
-  });
+  try {
+    const contentRes = await drive.files.export({
+      fileId: fileId,
+      mimeType: "text/plain",
+    });
 
-  if (contentRes.status !== 200) {
-    localLogger.error(
-      { error: contentRes.statusText },
-      "Error exporting Google document."
-    );
+    if (contentRes.status !== 200) {
+      localLogger.error(
+        { error: contentRes.statusText },
+        "Error exporting Google document."
+      );
 
-    throw new Error(
-      `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
-    );
+      throw new Error(
+        `Error exporting Google document. status_code: ${contentRes.status}. status_text: ${contentRes.statusText}`
+      );
+    }
+    const transcriptTitle = metadataRes.data.name || "Untitled";
+    const transcriptContent = <string>contentRes.data;
+
+    return { transcriptTitle, transcriptContent };
+  } catch (error) {
+    localLogger.error({ fileId }, "Error exporting Google document. Skipping.");
+    return { transcriptTitle: "", transcriptContent: "" };
   }
-
-  const transcriptTitle = metadataRes.data.name || "Untitled";
-  const transcriptContent = <string>contentRes.data;
-
-  return { transcriptTitle, transcriptContent };
 }
