@@ -151,6 +151,15 @@ export async function syncFiles(
       connectorId: connectorId,
     },
   });
+
+  logger.info(
+    {
+      connectorId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    `[SyncFiles] Start sync.`
+  );
+
   const mimeTypesToSync = getMimeTypesToSync({
     pdfEnabled: config?.pdfEnabled || false,
   });
@@ -223,6 +232,16 @@ export async function syncFiles(
     .filter((file) => file.mimeType === "application/vnd.google-apps.folder")
     .map((f) => f.id);
 
+  logger.info(
+    {
+      connectorId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      folderId: driveFolderId,
+      count: filesToSync.length,
+    },
+    `[SyncFiles] Call syncOneFile.`
+  );
+
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
   const results = await Promise.all(
     filesToSync.map((file) => {
@@ -242,9 +261,22 @@ export async function syncFiles(
       });
     })
   );
+
+  const count = results.filter((r) => r).length;
+
+  logger.info(
+    {
+      connectorId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+      folderId: driveFolderId,
+      count,
+    },
+    `[SyncFiles] Successful sync.`
+  );
+
   return {
     nextPageToken: res.data.nextPageToken ? res.data.nextPageToken : null,
-    count: results.filter((r) => r).length,
+    count,
     subfolders: subfolders,
   };
 }
