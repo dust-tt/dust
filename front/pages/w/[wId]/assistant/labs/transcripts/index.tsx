@@ -83,7 +83,7 @@ export default function LabsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [isDeleteProviderDialogOpen, setIsDeleteProviderDialogOpen] =
+  const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
