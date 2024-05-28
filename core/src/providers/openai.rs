@@ -1419,7 +1419,6 @@ impl LLM for OpenAILLM {
         match std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY"){
             Ok(key) => {
                 self.api_key = Some(key);
-                println!("YEAHHHHHHHHH")
             }
             Err(_) => {
                 match credentials.get("OPENAI_API_KEY") {
