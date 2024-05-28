@@ -76,10 +76,7 @@ export type AssistantBuilderProcessConfiguration = {
 };
 
 // Websearch configuration
-
-export type AssistantBuilderWebsearchConfiguration = {
-  searchResults: 8; // not configurable at the time of writing, placeholder
-};
+export type AssistantBuilderWebsearchConfiguration = Record<string, never>; // no relevant params identified yet
 
 // Builder State
 
@@ -230,9 +227,7 @@ export function getDefaultProcessActionConfiguration() {
 export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "WEBSEARCH",
-    configuration: {
-      searchResults: 8,
-    },
+    configuration: {},
     name: "websearch",
     description: "Perform a web search.",
   };
