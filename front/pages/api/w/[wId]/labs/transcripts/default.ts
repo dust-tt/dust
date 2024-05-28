@@ -1,12 +1,19 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"];
+
+export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
+  provider: acceptableTranscriptProvidersCodec,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -45,9 +52,25 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const bodyValidation =
+        GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
+
+      if (isLeft(bodyValidation)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request.",
+          },
+        });
+      }
+
+      const { provider } = bodyValidation.right;
+
       const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.findByWorkspace({
+        await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
           auth,
+          provider,
         });
 
       if (!transcriptsConfiguration) {

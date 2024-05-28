@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { LabsConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -9,6 +9,8 @@ import type {
 import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import config from "@app/lib/labs/config";
+import { nangoDeleteConnection } from "@app/lib/labs/transcripts/utils/helpers";
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -78,10 +80,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  static async findByWorkspace({
+  static async findByWorkspaceAndProvider({
     auth,
+    provider,
   }: {
     auth: Authenticator;
+    provider: LabsConnectorProvider;
   }): Promise<LabsTranscriptsConfigurationResource | null> {
     const owner = auth.workspace();
 
@@ -92,6 +96,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
         workspaceId: owner.id,
+        provider,
       },
     });
 
@@ -139,14 +144,29 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
+      const count = await this.model.count({
+        where: {
+          workspaceId: this.workspaceId,
+          connectionId: this.connectionId,
+        },
+      });
+
+      // If this is the last configuration using this connection, delete the connection
+      if (count <= 1) {
+        await nangoDeleteConnection(
+          this.connectionId,
+          config.getNangoConnectorIdForProvider(this.provider)
+        );
+      }
+
+      await this.deleteHistory(transaction);
+
       await this.model.destroy({
         where: {
           id: this.id,
         },
         transaction,
       });
-
-      await this.deleteHistory(transaction);
 
       return new Ok(undefined);
     } catch (err) {

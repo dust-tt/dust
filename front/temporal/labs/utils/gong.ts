@@ -26,7 +26,7 @@ export async function retrieveGongTranscripts(
   }
 
   const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoGongConnectorId(),
+    config.getNangoConnectorIdForProvider("gong"),
     transcriptsConfiguration.connectionId
   );
 
@@ -113,7 +113,7 @@ export async function retrieveGongTranscriptContent(
   }
 
   const gongAccessToken = await getAccessTokenFromNango(
-    config.getNangoGongConnectorId(),
+    config.getNangoConnectorIdForProvider("gong"),
     transcriptsConfiguration.connectionId
   );
 
