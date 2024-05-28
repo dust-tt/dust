@@ -21,7 +21,7 @@ export async function launchRetrieveTranscriptsWorkflow(
       args: [transcriptsConfiguration.id],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "*/15 * * * *", // Every 15 minutes.
+      cronSchedule: "*/15 * * * *",
     });
     logger.info(
       {

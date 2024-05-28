@@ -4,3 +4,4 @@ export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 export type NangoConnectionId = string;
 export type NangoIntegrationId = string;
+export const minTranscriptsSize = 200;

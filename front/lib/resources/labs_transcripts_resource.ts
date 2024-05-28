@@ -9,6 +9,7 @@ import type {
 import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
@@ -77,6 +78,31 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  static async findByWorkspace({
+    auth,
+  }: {
+    auth: Authenticator;
+  }): Promise<LabsTranscriptsConfigurationResource | null> {
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return null;
+    }
+
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        workspaceId: owner.id,
+      },
+    });
+
+    return configuration
+      ? new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
+      : null;
+  }
+
   private async update(
     blob: Partial<Attributes<LabsTranscriptsConfigurationModel>>
   ): Promise<[affectedCount: number]> {
@@ -85,6 +111,10 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
         id: this.id,
       },
     });
+  }
+
+  async getUser(): Promise<User | null> {
+    return User.findByPk(this.userId);
   }
 
   async setAgentConfigurationId({

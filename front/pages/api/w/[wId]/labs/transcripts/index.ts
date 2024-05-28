@@ -59,13 +59,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfigurationGet =
+      const transcriptsConfiguration =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
           userId,
         });
 
-      if (!transcriptsConfigurationGet) {
+      if (!transcriptsConfiguration) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -76,7 +76,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        configuration: transcriptsConfigurationGet,
+        configuration: transcriptsConfiguration,
       });
 
     // Create.

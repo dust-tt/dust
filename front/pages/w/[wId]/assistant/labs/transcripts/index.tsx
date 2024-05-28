@@ -26,6 +26,7 @@ import apiConfig from "@app/lib/api/config";
 import { buildLabsConnectionId } from "@app/lib/connector_connection_id";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import config from "@app/lib/labs/config";
+import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import {
   useAgentConfigurations,
   useLabsTranscriptsConfiguration,
@@ -280,19 +281,19 @@ export default function LabsTranscriptsIndex({
         return;
       }
       const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildLabsConnectionId(
+      const nangoConnectionId = buildLabsConnectionId(
         `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
         transcriptsConfigurationState.provider
       );
       const {
-        connectionId: nangoConnectionId,
+        connectionId: newConnectionId,
       }: { providerConfigKey: string; connectionId: string } = await nango.auth(
         nangoDriveConnectorId,
-        newConnectionId
+        nangoConnectionId
       );
 
       await saveOauthConnection(
-        nangoConnectionId,
+        newConnectionId,
         transcriptsConfigurationState.provider
       );
     } catch (error) {
@@ -309,22 +310,48 @@ export default function LabsTranscriptsIndex({
       if (transcriptsConfigurationState.provider !== "gong") {
         return;
       }
-      const nango = new Nango({ publicKey: nangoPublicKey });
-      const newConnectionId = buildLabsConnectionId(
-        `labs-transcripts-workspace-${owner.id}-user-${user.id}`,
-        transcriptsConfigurationState.provider
-      );
-      const {
-        connectionId: nangoConnectionId,
-      }: { providerConfigKey: string; connectionId: string } = await nango.auth(
-        nangoGongConnectorId,
-        newConnectionId
+
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/transcripts/default`
       );
 
-      await saveOauthConnection(
-        nangoConnectionId,
-        transcriptsConfigurationState.provider
-      );
+      if (response.ok) {
+        const defaultConfigurationRes = await response.json();
+        const defaultConfiguration: LabsTranscriptsConfigurationResource =
+          defaultConfigurationRes.configuration;
+
+        if (defaultConfiguration.provider !== "gong") {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect Gong",
+            description:
+              "Your workspace is already connected to another provider",
+          });
+          return;
+        }
+
+        await saveOauthConnection(
+          defaultConfiguration.connectionId,
+          transcriptsConfigurationState.provider
+        );
+
+        return;
+      } else {
+        const nango = new Nango({ publicKey: nangoPublicKey });
+
+        const nangoConnectionId = buildLabsConnectionId(
+          `labs-transcripts-workspace-${owner.id}`,
+          transcriptsConfigurationState.provider
+        );
+        const {
+          connectionId: newConnectionId,
+        }: { providerConfigKey: string; connectionId: string } =
+          await nango.auth(nangoGongConnectorId, nangoConnectionId);
+        await saveOauthConnection(
+          newConnectionId,
+          transcriptsConfigurationState.provider
+        );
+      }
     } catch (error) {
       sendNotification({
         type: "error",

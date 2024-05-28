@@ -73,6 +73,7 @@ export type APIErrorType =
   | "key_not_found"
   // Labs:
   | "transcripts_configuration_not_found"
+  | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_already_exists";
 
 export type APIError = {
