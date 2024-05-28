@@ -21,10 +21,9 @@ export default function WebsearchAction({
 }) {
   const { query } = websearchAction;
 
-  const [resultsListVisible, setResultsListVisible] = useState(false);
+  const [isResultsListVisible, setIsResultsListVisible] = useState(false);
 
-  const { results } = websearchAction.output || { results: [] };
-  console;
+  const { results } = websearchAction.output ?? { results: [] };
 
   return (
     <>
@@ -56,7 +55,7 @@ export default function WebsearchAction({
         <div className="row-span-1 select-none">
           {websearchAction.output && (
             <div
-              onClick={() => setResultsListVisible(!resultsListVisible)}
+              onClick={() => setIsResultsListVisible(!isResultsListVisible)}
               className="cursor-pointer"
             >
               <Chip color="purple">
@@ -65,7 +64,7 @@ export default function WebsearchAction({
                   : "No results found"}
                 <Icon
                   visual={
-                    resultsListVisible ? ChevronDownIcon : ChevronRightIcon
+                    isResultsListVisible ? ChevronDownIcon : ChevronRightIcon
                   }
                   size="xs"
                 />
@@ -73,10 +72,10 @@ export default function WebsearchAction({
             </div>
           )}
         </div>
-        <div className="col-start-2 row-span-1">
+        <div className="col-start-2 row-span-1 overflow-hidden">
           {!!results.length && (
             <Transition
-              show={resultsListVisible}
+              show={isResultsListVisible}
               enter="transition ease-out duration-200 transform"
               enterFrom="opacity-0 scale-95"
               enterTo="opacity-100 scale-100"
@@ -108,7 +107,7 @@ export default function WebsearchAction({
                             size="xs"
                             className="mr-1 inline-block opacity-0"
                           />
-                          <div>{trimText(result.snippet, 80)}</div>
+                          <div className="truncate">{result.snippet}</div>
                         </div>
                       </Tooltip>
                     </li>
