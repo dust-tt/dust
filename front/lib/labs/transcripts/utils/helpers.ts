@@ -2,9 +2,9 @@ import type {
   ModelId,
   NangoConnectionId,
   NangoIntegrationId,
-  Result
+  Result,
 } from "@dust-tt/types";
-import { Err,Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";

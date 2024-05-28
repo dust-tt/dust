@@ -7,7 +7,8 @@ import {
   SliderToggle,
   Spinner,
   Tooltip,
-  XMarkIcon} from "@dust-tt/sparkle";
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type {
   LabsTranscriptsProviderType,
   UserType,
@@ -64,7 +65,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       user,
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
-      nangoDriveConnectorId: config.getNangoConnectorIdForProvider("google_drive"),
+      nangoDriveConnectorId:
+        config.getNangoConnectorIdForProvider("google_drive"),
       nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
       nangoPublicKey: config.getNangoPublicKey(),
     },
@@ -81,7 +83,8 @@ export default function LabsTranscriptsIndex({
   nangoPublicKey,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
-  const [isDeleteProviderDialogOpen, setIsDeleteProviderDialogOpen] = useState(false);
+  const [isDeleteProviderDialogOpen, setIsDeleteProviderDialogOpen] =
+    useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -364,8 +367,7 @@ export default function LabsTranscriptsIndex({
   };
 
   const handleDisconnectProvider = async () => {
-
-    if(!transcriptsConfiguration) {
+    if (!transcriptsConfiguration) {
       return;
     }
 
@@ -388,7 +390,7 @@ export default function LabsTranscriptsIndex({
     }
 
     return response;
-  }
+  };
 
   return (
     <AppLayout
@@ -399,9 +401,20 @@ export default function LabsTranscriptsIndex({
       pageTitle="Dust - Transcripts processing"
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
-       <Dialog isOpen={isDeleteProviderDialogOpen} title="Disconnect transcripts provider" onValidate={async () => await handleDisconnectProvider() && setIsDeleteProviderDialogOpen(false)} onCancel={() => setIsDeleteProviderDialogOpen(false)}>
-          <div>This will stop the processing of your meeting transcripts. You can reconnect anytime.</div>
-        </Dialog>
+      <Dialog
+        isOpen={isDeleteProviderDialogOpen}
+        title="Disconnect transcripts provider"
+        onValidate={async () =>
+          (await handleDisconnectProvider()) &&
+          setIsDeleteProviderDialogOpen(false)
+        }
+        onCancel={() => setIsDeleteProviderDialogOpen(false)}
+      >
+        <div>
+          This will stop the processing of your meeting transcripts. You can
+          reconnect anytime.
+        </div>
+      </Dialog>
       <Page>
         <Page.Header
           title="Transcripts processing"
@@ -460,33 +473,35 @@ export default function LabsTranscriptsIndex({
               {transcriptsConfigurationState.isGDriveConnected ? (
                 <Page.Layout direction="horizontal">
                   <Button
-                  label="Google connected"
-                  size="sm"
-                  icon={CloudArrowLeftRightIcon}
-                  disabled={true}
-                />
-                <Button label="Disconnect"
-                  icon={XMarkIcon}
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setIsDeleteProviderDialogOpen(true)} />
+                    label="Google connected"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    disabled={true}
+                  />
+                  <Button
+                    label="Disconnect"
+                    icon={XMarkIcon}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsDeleteProviderDialogOpen(true)}
+                  />
                 </Page.Layout>
               ) : (
                 <>
-              <Page.P>
-                Connect to Google Drive so Dust can access 'My Drive' where your
-                meeting transcripts are stored.
-              </Page.P>
-              <div>
-                <Button
-                  label="Connect Google"
-                  size="sm"
-                  icon={CloudArrowLeftRightIcon}
-                  onClick={async () => {
-                    await handleConnectGoogleTranscriptsSource();
-                  }}
-                />
-                </div>
+                  <Page.P>
+                    Connect to Google Drive so Dust can access 'My Drive' where
+                    your meeting transcripts are stored.
+                  </Page.P>
+                  <div>
+                    <Button
+                      label="Connect Google"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      onClick={async () => {
+                        await handleConnectGoogleTranscriptsSource();
+                      }}
+                    />
+                  </div>
                 </>
               )}
             </Page.Layout>
@@ -495,34 +510,36 @@ export default function LabsTranscriptsIndex({
             <Page.Layout direction="vertical">
               {transcriptsConfigurationState.isGongConnected ? (
                 <Page.Layout direction="horizontal">
-                <Button
-                label="Gong connected"
-                size="sm"
-                icon={CloudArrowLeftRightIcon}
-                disabled={true}
-              />
-              <Button label="Disconnect"
-                icon={XMarkIcon}
-                size="sm"
-                variant="secondary"
-                onClick={() => setIsDeleteProviderDialogOpen(true)} />
-              </Page.Layout>
+                  <Button
+                    label="Gong connected"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    disabled={true}
+                  />
+                  <Button
+                    label="Disconnect"
+                    icon={XMarkIcon}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setIsDeleteProviderDialogOpen(true)}
+                  />
+                </Page.Layout>
               ) : (
                 <>
-              <Page.P>
-                Connect to Gong so Dust can access your meeting transcripts.
-              </Page.P>
-              <div>
-                <Button
-                  label="Connect Gong"
-                  size="sm"
-                  icon={CloudArrowLeftRightIcon}
-                  onClick={async () => {
-                    await handleConnectGongTranscriptsSource();
-                  }}
-                />
-              </div>
-              </>
+                  <Page.P>
+                    Connect to Gong so Dust can access your meeting transcripts.
+                  </Page.P>
+                  <div>
+                    <Button
+                      label="Connect Gong"
+                      size="sm"
+                      icon={CloudArrowLeftRightIcon}
+                      onClick={async () => {
+                        await handleConnectGongTranscriptsSource();
+                      }}
+                    />
+                  </div>
+                </>
               )}
             </Page.Layout>
           )}

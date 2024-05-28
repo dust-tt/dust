@@ -1,4 +1,4 @@
-import type { LabsConnectorProvider,Result } from "@dust-tt/types";
+import type { LabsConnectorProvider, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -153,9 +153,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
       // If this is the last configuration using this connection, delete the connection
       if (count <= 1) {
-        await nangoDeleteConnection(this.connectionId, config.getNangoConnectorIdForProvider(this.provider))
+        await nangoDeleteConnection(
+          this.connectionId,
+          config.getNangoConnectorIdForProvider(this.provider)
+        );
       }
-      
+
       await this.deleteHistory(transaction);
 
       await this.model.destroy({

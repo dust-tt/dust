@@ -52,7 +52,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const bodyValidation = GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
+      const bodyValidation =
+        GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
 
       if (isLeft(bodyValidation)) {
         return apiError(req, res, {
@@ -64,12 +65,12 @@ async function handler(
         });
       }
 
-      const { provider } = bodyValidation.right
+      const { provider } = bodyValidation.right;
 
       const transcriptsConfiguration =
         await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
           auth,
-          provider
+          provider,
         });
 
       if (!transcriptsConfiguration) {
