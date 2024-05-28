@@ -5,13 +5,13 @@ import {
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@dust-tt/types";
-import { MAX_FILE_SIZE } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
@@ -392,7 +392,7 @@ export async function syncSpreadSheet(
   localLogger.info("[Spreadsheet] Syncing Google Spreadsheet.");
 
   // Avoid import attempts for sheets exceeding the max size due to Node constraints.
-  if (file.size && file.size > MAX_FILE_SIZE) {
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
     localLogger.info(
       "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
     );
