@@ -183,8 +183,8 @@ async function cleanupCustomerio(auth: Authenticator) {
     ? await subscriptionForWorkspaces(workspaceSids)
     : {};
 
-  // Process the workspace users in chunks of 16.
-  const chunks = _.chunk(users, 16);
+  // Process the workspace users in chunks of 4.
+  const chunks = _.chunk(users, 4);
 
   for (const c of chunks) {
     await Promise.all(
