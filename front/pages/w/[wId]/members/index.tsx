@@ -232,6 +232,7 @@ export default function WorkspaceAdmin({
             setInviteEmailModalOpen(false);
           }}
           owner={owner}
+          prefillText={searchText}
           members={members}
           plan={plan}
         />
