@@ -101,7 +101,6 @@ export function ActivityReport({
 }: ActivityReportProps) {
   return (
     <>
-      {" "}
       {!!monthOptions.length && (
         <div>
           <div className="flex flex-col">
