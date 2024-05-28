@@ -10,6 +10,8 @@ import {
   MagnifyingGlassStrokeIcon,
   Modal,
   Page,
+  PlanetIcon,
+  PlanetStrokeIcon,
   PlusIcon,
   RobotIcon,
   RobotStrokeIcon,
@@ -109,8 +111,8 @@ const ACTION_SPECIFICATIONS: Record<
   WEBSEARCH: {
     label: "Web search",
     description: "Perform a web search",
-    cardIcon: MagnifyingGlassStrokeIcon,
-    dropDownIcon: MagnifyingGlassIcon,
+    cardIcon: PlanetStrokeIcon,
+    dropDownIcon: PlanetIcon,
     flag: "websearch_action",
   },
 };
@@ -122,10 +124,13 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = [
-  "DUST_APP_RUN",
-  "WEBSEARCH",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
+const CAPABILITIES_ACTION_CATEGORIES = ["WEBSEARCH"] as const satisfies Array<
+  AssistantBuilderActionConfiguration["type"]
+>;
+
+const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
+  AssistantBuilderActionConfiguration["type"]
+>;
 
 function ActionModeSection({
   children,
@@ -315,6 +320,7 @@ export default function ActionsScreen({
               }
             >
               <AddAction
+                owner={owner}
                 builderState={builderState}
                 onAddAction={(action) => {
                   setPendingAction(action);
@@ -340,6 +346,7 @@ export default function ActionsScreen({
           {builderState.actions.length > 0 && (
             <div>
               <AddAction
+                owner={owner}
                 builderState={builderState}
                 onAddAction={(action) => {
                   setPendingAction(action);
@@ -739,9 +746,11 @@ function AdvancedSettings({
 }
 
 function AddAction({
+  owner,
   builderState,
   onAddAction,
 }: {
+  owner: WorkspaceType;
   builderState: AssistantBuilderState;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
 }) {
@@ -755,6 +764,11 @@ function AddAction({
     action.name = suffixedName();
     onAddAction(action);
   };
+
+  const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
+    const flag = ACTION_SPECIFICATIONS[key].flag;
+    return !flag || owner.flags.includes(flag);
+  });
 
   return (
     <DropdownMenu>
@@ -780,6 +794,27 @@ function AddAction({
             />
           );
         })}
+        {filteredCapabilities.length > 0 && (
+          <DropdownMenu.SectionHeader label="CAPABILITIES" />
+        )}
+        {filteredCapabilities.map((key) => {
+          const spec = ACTION_SPECIFICATIONS[key];
+          const defaultAction = getDefaultActionConfiguration(key);
+          if (!defaultAction) {
+            // Unreachable
+            return null;
+          }
+          return (
+            <DropdownMenu.Item
+              key={key}
+              label={spec.label}
+              icon={spec.dropDownIcon}
+              description={spec.description}
+              onClick={() => onAddLocal(defaultAction)}
+            />
+          );
+        })}
+
         <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
         {ADVANCED_ACTION_CATEGORIES.map((key) => {
           const spec = ACTION_SPECIFICATIONS[key];

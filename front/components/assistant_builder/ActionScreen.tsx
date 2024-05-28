@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   MagnifyingGlassIcon,
   Page,
+  PlanetIcon,
   ScanIcon,
   Square3Stack3DIcon,
   TableIcon,
@@ -86,7 +87,7 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
   },
   WEBSEARCH: {
     label: "Web search",
-    icon: MagnifyingGlassIcon,
+    icon: PlanetIcon,
     description: "Perform a web search",
     defaultActionType: "WEBSEARCH",
     flag: "websearch_action",
