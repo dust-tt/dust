@@ -16,6 +16,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
+import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -129,12 +130,14 @@ export async function batchRenderAgentMessages(
     agentMessages.map((m) => m.agentMessageId || null)
   );
 
+  // TODO(pr) refactor to loop on all actions rather than manually add new actions here
   const [
     agentConfigurations,
     agentRetrievalActions,
     agentDustAppRunActions,
     agentTablesQueryActions,
     agentProcessActions,
+    agentWebsearchActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -160,6 +163,7 @@ export async function batchRenderAgentMessages(
     (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -175,6 +179,7 @@ export async function batchRenderAgentMessages(
       agentDustAppRunActions,
       agentTablesQueryActions,
       agentProcessActions,
+      agentWebsearchActions,
     ]
       .flat()
       .filter((a) => a.agentMessageId === agentMessage.id)

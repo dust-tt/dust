@@ -11,11 +11,13 @@ export type WebsearchConfigurationType = {
 };
 
 export type WebsearchActionOutputType = {
-  results: {
-    title: string;
-    snippet: string;
-    url: string;
-  }[];
+  results: WebsearchResultType[];
+};
+
+export type WebsearchResultType = {
+  title: string;
+  snippet: string;
+  link: string;
 };
 
 export interface WebsearchActionType extends BaseAction {

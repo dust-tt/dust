@@ -6,6 +6,7 @@ import type {
   ModelMessageType,
   Result,
   WebsearchActionOutputType,
+  WebsearchActionType,
   WebsearchConfigurationType,
   WebsearchErrorEvent,
   WebsearchParamsEvent,
@@ -318,4 +319,33 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       }),
     };
   }
+}
+
+/**
+ * Action rendering.
+ */
+
+// Internal interface for the retrieval and rendering of a actions from AgentMessage ModelIds. This
+// should not be used outside of api/assistant. We allow a ModelId interface here because for
+// optimization purposes to avoid duplicating DB requests while having clear action specific code.
+export async function websearchActionTypesFromAgentMessageIds(
+  agentMessageIds: ModelId[]
+): Promise<WebsearchActionType[]> {
+  const models = await AgentWebsearchAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+    },
+  });
+
+  return models.map((action) => {
+    return new WebsearchAction({
+      id: action.id,
+      agentMessageId: action.agentMessageId,
+      query: action.query,
+      output: action.output,
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      step: action.step,
+    });
+  });
 }
