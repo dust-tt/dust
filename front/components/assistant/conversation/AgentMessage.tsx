@@ -242,31 +242,45 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  //
-  // Keeping a ref on the message's height, and accounting to the height
-  // difference when new parts of the message are generated, allows for the
-  // scroll to happen even if the newly generated parts are larger than 50px
-  // (e.g. citations)
-  const messageRef = useRef<HTMLDivElement>(null);
-  const messageHeight = useRef<number | null>(null);
+  const isAtBottom = useRef(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const previousHeight = messageHeight.current || 0;
-    messageHeight.current = messageRef.current?.scrollHeight || previousHeight;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isAtBottom.current = entry.isIntersecting;
+      },
+      { threshold: 1 }
+    );
+
+    const currentBottomRef = bottomRef.current;
+
+    if (currentBottomRef) {
+      observer.observe(currentBottomRef);
+    }
+
+    return () => {
+      if (currentBottomRef) {
+        observer.unobserve(currentBottomRef);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const mainTag = document.getElementById(
       CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
     );
-    if (mainTag && agentMessageToRender.status === "created") {
-      if (
-        mainTag.offsetHeight + mainTag.scrollTop >=
-        mainTag.scrollHeight - (50 + messageHeight.current - previousHeight)
-      ) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
+    if (
+      mainTag &&
+      streamedAgentMessage.status === "created" &&
+      isAtBottom.current
+    ) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [
     agentMessageToRender.content,
     agentMessageToRender.status,
     agentMessageToRender.actions.length,
+    streamedAgentMessage.status,
     activeReferences.length,
     isInModal,
   ]);
@@ -405,9 +419,9 @@ export function AgentMessage({
       type="agent"
       size={size}
     >
-      <div ref={messageRef}>
-        {renderMessage(agentMessageToRender, references, shouldStream)}
-      </div>
+      <div>{renderMessage(agentMessageToRender, references, shouldStream)}</div>
+      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
+      <div ref={bottomRef} className="h-1.5" />
     </ConversationMessage>
   );
 
