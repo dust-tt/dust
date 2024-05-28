@@ -15,6 +15,7 @@ import { syncSpreadSheet } from "@connectors/connectors/google_drive/temporal/sp
 import {
   getDocumentId,
   getDriveClient,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import {
   MAX_DOCUMENT_TXT_LEN,
@@ -94,6 +95,15 @@ export async function syncOneFile(
     return false;
   }
 
+  // If the file is too big to be downloaded, we skip it.
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+    localLogger.info(
+      "[Google Drive document] file size exceeded, skipping further processing."
+    );
+
+    return false;
+  }
+
   let skipReason: string | undefined = undefined;
 
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
@@ -154,6 +164,7 @@ export async function syncOneFile(
 
     let res;
     try {
+      // Be careful this will download the whole file in memory and can cause OOM.
       res = await drive.files.get(
         {
           fileId: file.id,

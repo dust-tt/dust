@@ -11,6 +11,7 @@ import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { OAuth2Client } from "googleapis-common";
 
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
@@ -22,7 +23,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 20000;
-const MAX_FILE_SIZE = 128 * 1024 * 1024; // 200 MB in bytes.
 
 type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;
@@ -392,7 +392,7 @@ export async function syncSpreadSheet(
   localLogger.info("[Spreadsheet] Syncing Google Spreadsheet.");
 
   // Avoid import attempts for sheets exceeding the max size due to Node constraints.
-  if (file.size && file.size > MAX_FILE_SIZE) {
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
     localLogger.info(
       "[Spreadsheet] Spreadsheet size exceeded, skipping further processing."
     );
