@@ -18,6 +18,10 @@ services:
       - "6333:6333"
     environment:
       QDRANT__CLUSTER__ENABLED: "true"
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
     command: ["./qdrant", "--uri", "http://qdrant_primary:6335"]
     healthcheck:
       test: ["CMD", "sleep", "5"] # Hack: `curl` not accessible in qdrant image, sleep for 5 seconds.
@@ -30,6 +34,10 @@ services:
       - dustvolume:/qdrant_secondary
     environment:
       QDRANT__CLUSTER__ENABLED: "true"
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
     command: ["./qdrant", "--bootstrap", "http://qdrant_primary:6335"]
     depends_on:
       qdrant_primary:
