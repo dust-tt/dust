@@ -70,6 +70,8 @@ export class ServerSideTracking {
           ...ws,
           planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
           seats: seatsByWorkspaceId[ws.sId].seats,
+          subscriptionStartAt: subscriptionByWorkspaceId[ws.sId].startDate,
+          requestCancelAt: subscriptionByWorkspaceId[ws.sId].requestCancelAt,
         }))
         .filter((ws) => ws.planCode !== FREE_TEST_PLAN_CODE);
       if (workspacesToTrackOnCustomerIo.length > 0) {
@@ -197,11 +199,13 @@ export class ServerSideTracking {
     workspace,
     planCode,
     workspaceSeats,
+    subscriptionStartAt,
   }: {
     userId: string;
     workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;
+    subscriptionStartAt: number;
   }) {
     return Promise.all([
       AmplitudeServerSideTracking.trackSubscriptionCreated({
@@ -211,9 +215,48 @@ export class ServerSideTracking {
         workspaceSeats,
       }),
       CustomerioServerSideTracking.identifyWorkspaces({
-        workspaces: [{ ...workspace, planCode, seats: workspaceSeats }],
+        workspaces: [
+          {
+            ...workspace,
+            planCode,
+            seats: workspaceSeats,
+            subscriptionStartAt,
+          },
+        ],
       }),
     ]);
+  }
+
+  static async trackSubscriptionRequestCancel({
+    workspace,
+    requestCancelAt,
+  }: {
+    workspace: LightWorkspaceType;
+    requestCancelAt: number;
+  }) {
+    return CustomerioServerSideTracking.identifyWorkspaces({
+      workspaces: [
+        {
+          ...workspace,
+          requestCancelAt,
+        },
+      ],
+    });
+  }
+
+  static async trackSubscriptionReactivated({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }) {
+    return CustomerioServerSideTracking.identifyWorkspaces({
+      workspaces: [
+        {
+          ...workspace,
+          requestCancelAt: null,
+        },
+      ],
+    });
   }
 
   static async trackCreateMembership({

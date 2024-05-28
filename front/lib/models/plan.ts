@@ -171,6 +171,10 @@ export class Subscription extends Model<
   declare plan: NonAttribute<Plan>;
 
   declare stripeSubscriptionId: string | null;
+
+  // not necessary for business logic, but helpful
+  // for analytics and business operations.
+  declare requestCancelAt: Date | null;
 }
 Subscription.init(
   {
@@ -219,6 +223,10 @@ Subscription.init(
     },
     stripeSubscriptionId: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    requestCancelAt: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
   },

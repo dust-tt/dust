@@ -70,6 +70,7 @@ export type SubscriptionType = {
   endDate: number | null;
   paymentFailingSince: number | null;
   plan: PlanType;
+  requestCancelAt: number | null;
 };
 
 export const CreatePlanFormSchema = t.type({
