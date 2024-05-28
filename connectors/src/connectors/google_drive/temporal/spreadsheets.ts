@@ -5,6 +5,7 @@ import {
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@dust-tt/types";
+import { MAX_FILE_SIZE } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import type { sheets_v4 } from "googleapis";
@@ -22,7 +23,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 20000;
-const MAX_FILE_SIZE = 128 * 1024 * 1024; // 200 MB in bytes.
 
 type Sheet = sheets_v4.Schema$ValueRange & {
   id: number;

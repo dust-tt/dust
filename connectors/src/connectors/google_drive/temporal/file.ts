@@ -1,4 +1,5 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
+import { MAX_FILE_SIZE } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
@@ -94,6 +95,15 @@ export async function syncOneFile(
     return false;
   }
 
+  // If the file is too big to be downloaded, we skip it.
+  if (file.size && file.size > MAX_FILE_SIZE) {
+    localLogger.info(
+      "[Google Drive document] file size exceeded, skipping further processing."
+    );
+
+    return false;
+  }
+
   let skipReason: string | undefined = undefined;
 
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
@@ -154,6 +164,7 @@ export async function syncOneFile(
 
     let res;
     try {
+      // Be careful this will download the whole file in memory and can cause OOM.
       res = await drive.files.get(
         {
           fileId: file.id,

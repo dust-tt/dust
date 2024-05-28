@@ -8,6 +8,7 @@ export * from "./connectors/content_nodes";
 export * from "./connectors/google_drive";
 export * from "./connectors/intercom";
 export * from "./connectors/notion";
+export * from "./connectors/utils";
 export * from "./connectors/webcrawler";
 export * from "./core/data_source";
 export * from "./front/api_handlers/internal/agent_configuration";
