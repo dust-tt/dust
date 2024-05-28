@@ -102,12 +102,6 @@ export async function retrieveGongTranscriptContent(
   fileId: string,
   localLogger: Logger
 ): Promise<{ transcriptTitle: string; transcriptContent: string } | null> {
-  type GongParticipant = {
-    userId: string;
-    speakerId: string;
-    name: string;
-  };
-
   if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
     localLogger.error(
       {},
@@ -194,7 +188,11 @@ export async function retrieveGongTranscriptContent(
   }
 
   const callData: {
-    parties: GongParticipant[];
+    parties: {
+      userId: string;
+      speakerId: string;
+      name: string;
+    }[];
     metaData: { title: string; started: string; duration: number };
   } = (await call.json()).calls[0];
 

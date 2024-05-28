@@ -6,6 +6,8 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
+const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"];
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
@@ -59,9 +61,8 @@ async function handler(
       }
 
       // Whitelist providers that allow workspace-wide configuration.
-      const providersWithWorkspaceConfiguration = ["gong"];
       if (
-        !providersWithWorkspaceConfiguration.includes(
+        !PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
           transcriptsConfiguration.provider
         )
       ) {
