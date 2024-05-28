@@ -57,12 +57,6 @@ async function main() {
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceId: dataSourceName,
           config: {
-            // TODO(2024-05-27 flav) Remove once migrated to embedder.
-            provider_id: dataSourceProviderId,
-            model_id: dataSourceModelId,
-            splitter_id: "base_v0",
-            max_chunk_size: dataSourceMaxChunkSize,
-
             embedder_config: {
               embedder: {
                 max_chunk_size: dataSourceMaxChunkSize,

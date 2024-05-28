@@ -13,12 +13,6 @@ interface EmbedderConfigType {
 }
 
 export type CoreAPIDataSourceConfig = {
-  // TODO(2024-05-27 flav) Remove once migrated to embedder.
-  provider_id: string;
-  model_id: string;
-  splitter_id: string;
-  max_chunk_size: number;
-
   embedder_config: EmbedderConfigType;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

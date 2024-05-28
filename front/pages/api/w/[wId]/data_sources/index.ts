@@ -142,12 +142,6 @@ async function handler(
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: req.body.name as string,
         config: {
-          // TODO(2024-05-27 flav) Remove once migrated to embedder.
-          provider_id: EMBEDDING_CONFIG.provider_id,
-          model_id: EMBEDDING_CONFIG.model_id,
-          splitter_id: EMBEDDING_CONFIG.splitter_id,
-          max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-
           qdrant_config: {
             cluster: DEFAULT_QDRANT_CLUSTER,
             shadow_write_cluster: null,

@@ -45,12 +45,6 @@ async function main() {
       projectId: d.dustAPIProjectId,
       dataSourceId: d.name,
       config: {
-        // TODO(2024-05-27 flav) Remove once migrated to embedder.
-        provider_id: "openai",
-        model_id: "text-embedding-ada-002",
-        splitter_id: "base_v0",
-        max_chunk_size: 256,
-
         embedder_config: {
           embedder: {
             max_chunk_size: 256,
