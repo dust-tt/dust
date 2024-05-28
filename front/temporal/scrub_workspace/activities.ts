@@ -16,7 +16,10 @@ import { Authenticator, subscriptionForWorkspaces } from "@app/lib/auth";
 import { destroyConversation } from "@app/lib/conversation";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { Conversation } from "@app/lib/models/assistant/conversation";
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_NO_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -202,7 +205,10 @@ async function cleanupCustomerio(auth: Authenticator) {
           workspacesOfUser.some((w) => {
             const subscription = subscriptionsByWorkspaceSid[w.sId];
             return (
-              subscription && subscription.plan.code !== FREE_TEST_PLAN_CODE
+              subscription &&
+              ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(
+                subscription.plan.code
+              )
             );
           })
         ) {
