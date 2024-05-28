@@ -418,14 +418,8 @@ pub struct EmbedderDataSourceConfig {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct DataSourceConfig {
-    // TODO(2024-05-24 flav) Remove once migrated to embedder.
-    pub provider_id: ProviderID,
-    pub model_id: String,
-    pub splitter_id: SplitterID,
-    pub max_chunk_size: usize,
-
     // Optional until we update api calls to pass this body.
-    pub embedder_config: Option<EmbedderDataSourceConfig>,
+    pub embedder_config: EmbedderDataSourceConfig,
 
     pub extras: Option<Value>,
     pub qdrant_config: Option<QdrantDataSourceConfig>,
@@ -535,6 +529,10 @@ impl DataSource {
 
     pub fn config(&self) -> &DataSourceConfig {
         &self.config
+    }
+
+    pub fn embedder_config(&self) -> &EmbedderConfig {
+        &self.config.embedder_config.embedder
     }
 
     pub async fn update_config(
@@ -830,12 +828,12 @@ impl DataSource {
         }
 
         // Split text in chunks.
-        let splits = splitter(self.config.splitter_id)
+        let splits = splitter(self.embedder_config().splitter_id)
             .split(
                 credentials.clone(),
-                self.config.provider_id,
-                &self.config.model_id,
-                self.config.max_chunk_size,
+                self.embedder_config().provider_id,
+                &self.embedder_config().model_id,
+                self.embedder_config().max_chunk_size,
                 text,
             )
             .await?;
@@ -911,8 +909,8 @@ impl DataSource {
                             EmbedderVector {
                                 created: document.created,
                                 vector: v.data.iter().map(|&v| v as f64).collect(),
-                                model: self.config.model_id.clone(),
-                                provider: self.config.provider_id.to_string(),
+                                model: self.embedder_config().model_id.clone(),
+                                provider: self.embedder_config().provider_id.to_string(),
                             },
                         );
                     }
@@ -949,8 +947,8 @@ impl DataSource {
         // Embed batched chunks sequentially.
         for chunk in chunked_splits {
             let r = EmbedderRequest::new(
-                self.config.provider_id.clone(),
-                &self.config.model_id,
+                self.embedder_config().provider_id.clone(),
+                &self.embedder_config().model_id,
                 chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
                 self.config.extras.clone(),
             );
@@ -1005,7 +1003,7 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
         document.chunk_count = document.chunks.len();
-        document.token_count = Some(document.chunks.len() * self.config.max_chunk_size);
+        document.token_count = Some(document.chunks.len() * self.embedder_config().max_chunk_size);
 
         let now = utils::now();
 
@@ -1222,8 +1220,8 @@ impl DataSource {
             }
             Some(q) => {
                 let r = EmbedderRequest::new(
-                    self.config.provider_id,
-                    &self.config.model_id,
+                    self.embedder_config().provider_id,
+                    &self.embedder_config().model_id,
                     vec![&q],
                     self.config.extras.clone(),
                 );
@@ -1360,7 +1358,7 @@ impl DataSource {
                             .map(|(_, c)| c.clone())
                             .collect::<Vec<Chunk>>();
                         let data_source = (*self).clone();
-                        let chunk_size = self.config.max_chunk_size;
+                        let chunk_size = self.embedder_config().max_chunk_size;
                         let qdrant_client = qdrant_client.clone();
                         let mut token_count = chunks.len() * chunk_size;
                         d.token_count = Some(token_count);
@@ -1530,7 +1528,7 @@ impl DataSource {
                         .filter(|(document_id, _)| document_id == &d.document_id)
                         .map(|(_, c)| c.clone())
                         .collect::<Vec<Chunk>>();
-                    d.token_count = Some(chunks.len() * self.config.max_chunk_size);
+                    d.token_count = Some(chunks.len() * self.embedder_config().max_chunk_size);
                     d.chunks = chunks;
                     d
                 })

@@ -171,8 +171,8 @@ impl DustQdrantClient {
         format!(
             "{}_{}_{}",
             self.collection_prefix(),
-            data_source.config().provider_id.to_string(),
-            data_source.config().model_id,
+            data_source.embedder_config().provider_id.to_string(),
+            data_source.embedder_config().model_id,
         )
     }
 
@@ -187,8 +187,8 @@ impl DustQdrantClient {
 
     fn shard_key(&self, data_source: &DataSource) -> Result<shard_key::Key> {
         let key_id: u64 = match (
-            data_source.config().provider_id,
-            data_source.config().model_id.as_str(),
+            data_source.embedder_config().provider_id,
+            data_source.embedder_config().model_id.as_str(),
         ) {
             (ProviderID::OpenAI, "text-embedding-ada-002") => {
                 // The startegy below was a mistake as the last character is an hex encoding
