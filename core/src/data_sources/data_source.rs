@@ -644,6 +644,7 @@ impl DataSource {
         field_value: impl Into<Value>,
     ) -> Result<()> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
 
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
@@ -660,17 +661,21 @@ impl DataSource {
             ..Default::default()
         };
 
+        // TODO:
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
-                match qdrant_client
-                    .set_payload(self, filter.clone(), payload.clone(), false)
+                let data_source_qdrant_shadow_write =
+                    qdrant_client.wrap_for_data_source(&self, false);
+
+                match data_source_qdrant_shadow_write
+                    .set_payload(filter.clone(), payload.clone())
                     .await
                 {
                     Ok(_) => {
                         info!(
                             data_source_internal_id = self.internal_id(),
                             cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = qdrant_client.collection_name(self, false),
+                            collection = data_source_qdrant_shadow_write.collection_name(),
                             "[SHADOW_WRITE_SUCCESS] Update payload"
                         );
                     }
@@ -678,7 +683,7 @@ impl DataSource {
                         error!(
                             data_source_internal_id = self.internal_id(),
                             cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                            collection = qdrant_client.collection_name(self, false),
+                            collection = data_source_qdrant_shadow_write.collection_name(),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Update payload"
                         );
@@ -689,8 +694,11 @@ impl DataSource {
         }
 
         if self.shadow_embedder_config().is_some() {
-            match qdrant_client
-                .set_payload(&self, filter.clone(), payload.clone(), true)
+            let data_source_qdrant_shadow_embedder =
+                qdrant_client.wrap_for_data_source(&self, true);
+
+            match data_source_qdrant_shadow_embedder
+                .set_payload(filter.clone(), payload.clone())
                 .await
             {
                 Ok(_) => {
@@ -709,9 +717,7 @@ impl DataSource {
             };
         }
 
-        qdrant_client
-            .set_payload(&self, filter, payload, false)
-            .await?;
+        ds_qdrant.set_payload(filter, payload).await?;
 
         Ok(())
     }
@@ -730,6 +736,7 @@ impl DataSource {
         preserve_system_tags: bool,
     ) -> Result<Document> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
 
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -890,9 +897,8 @@ impl DataSource {
         let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
         let mut page_offset: Option<PointId> = None;
         loop {
-            let scroll_results = qdrant_client
+            let scroll_results = ds_qdrant
                 .scroll(
-                    self,
                     Some(qdrant::Filter {
                         must_not: vec![],
                         should: vec![],
@@ -1052,32 +1058,36 @@ impl DataSource {
         };
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
-            Some(qdrant_client) => match qdrant_client
-                .delete_points(self, filter.clone(), false)
-                .await
-            {
-                Ok(_) => {
-                    info!(
-                        data_source_internal_id = self.internal_id(),
-                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = qdrant_client.collection_name(self, false),
-                        "[SHADOW_WRITE_SUCCESS] Delete points"
-                    );
+            Some(qdrant_client) => {
+                let qdrant_client_shadow_write = qdrant_client.wrap_for_data_source(self, false);
+
+                match qdrant_client_shadow_write
+                    .delete_points(filter.clone())
+                    .await
+                {
+                    Ok(_) => {
+                        info!(
+                            data_source_internal_id = self.internal_id(),
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = qdrant_client_shadow_write.collection_name(),
+                            "[SHADOW_WRITE_SUCCESS] Delete points"
+                        );
+                    }
+                    Err(e) => {
+                        error!(
+                            data_source_internal_id = self.internal_id(),
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = qdrant_client_shadow_write.collection_name(),
+                            error = %e,
+                            "[SHADOW_WRITE_FAIL] Delete points"
+                        );
+                    }
                 }
-                Err(e) => {
-                    error!(
-                        data_source_internal_id = self.internal_id(),
-                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = qdrant_client.collection_name(self, false),
-                        error = %e,
-                        "[SHADOW_WRITE_FAIL] Delete points"
-                    );
-                }
-            },
+            }
             None => (),
         }
 
-        qdrant_client.delete_points(self, filter, false).await?;
+        ds_qdrant.delete_points(filter).await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
@@ -1141,17 +1151,21 @@ impl DataSource {
                 let now = utils::now();
                 let chunk_len = chunk.len();
 
+                // TODO: We can build qdrant client only once!
                 match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
                     Some(qdrant_client) => {
-                        match qdrant_client
-                            .upsert_points(self, chunk.clone(), false)
+                        let qdrant_client_shadow_write =
+                            qdrant_client.wrap_for_data_source(self, false);
+
+                        match qdrant_client_shadow_write
+                            .upsert_points(chunk.clone())
                             .await
                         {
                             Ok(_) => {
                                 info!(
                                     data_source_internal_id = self.internal_id(),
                                     cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    collection = qdrant_client.collection_name(self, false),
+                                    collection = qdrant_client_shadow_write.collection_name(),
                                     "[SHADOW_WRITE_SUCCESS] Upsert points"
                                 )
                             }
@@ -1159,7 +1173,7 @@ impl DataSource {
                                 error!(
                                     data_source_internal_id = self.internal_id(),
                                     cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                                    collection = qdrant_client.collection_name(self, false),
+                                    collection = qdrant_client_shadow_write.collection_name(),
                                     error = %e,
                                     "[SHADOW_WRITE_FAIL] Upsert points"
                                 );
@@ -1169,7 +1183,7 @@ impl DataSource {
                     None => (),
                 }
 
-                qdrant_client.upsert_points(self, chunk, false).await?;
+                ds_qdrant.upsert_points(chunk).await?;
 
                 info!(
                     data_source_internal_id = self.internal_id(),
@@ -1239,6 +1253,8 @@ impl DataSource {
             .ok_or(anyhow!("No shadow embedder config"))?;
 
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+
+        let qdrant_client_shadow_embedder = qdrant_client.wrap_for_data_source(self, true);
 
         let full_text = text.full_text();
 
@@ -1374,7 +1390,7 @@ impl DataSource {
             min_should: None,
         };
 
-        qdrant_client.delete_points(self, filter, true).await?;
+        qdrant_client_shadow_embedder.delete_points(filter).await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
@@ -1438,7 +1454,7 @@ impl DataSource {
                 let now = utils::now();
                 let chunk_len = chunk.len();
 
-                qdrant_client.upsert_points(self, chunk, true).await?;
+                qdrant_client_shadow_embedder.upsert_points(chunk).await?;
 
                 info!(
                     data_source_internal_id = self.internal_id(),
@@ -1474,6 +1490,7 @@ impl DataSource {
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
 
         // We ensure that we have not left a `parents.is_in_map`` in the filter.
         match filter.as_ref() {
@@ -1535,9 +1552,8 @@ impl DataSource {
                 let f = build_qdrant_filter(&filter);
 
                 let time_search_start = utils::now();
-                let results = qdrant_client
+                let results = ds_qdrant
                     .search_points(
-                        self,
                         v[0].vector.iter().map(|v| *v as f32).collect::<Vec<f32>>(),
                         f,
                         top_k as u64,
@@ -1547,7 +1563,7 @@ impl DataSource {
 
                 info!(
                     data_source_internal_id = self.internal_id(),
-                    collection_name = qdrant_client.collection_name(self, false),
+                    collection_name = ds_qdrant.collection_name(),
                     duration = utils::now() - time_search_start,
                     results_count = results.result.len(),
                     "DSSTAT Finished searching Qdrant documents"
@@ -1566,7 +1582,7 @@ impl DataSource {
 
                 info!(
                     data_source_internal_id = self.internal_id(),
-                    collection_name = qdrant_client.collection_name(self, false),
+                    collection_name = ds_qdrant.collection_name(),
                     duration = utils::now() - time_chunk_start,
                     chunk_length = chunks.len(),
                     "DSSTAT Finished chunking documents"
@@ -1654,9 +1670,9 @@ impl DataSource {
                             .filter(|(document_id, _)| document_id == &d.document_id)
                             .map(|(_, c)| c.clone())
                             .collect::<Vec<Chunk>>();
-                        let data_source = (*self).clone();
                         let chunk_size = self.embedder_config().max_chunk_size;
-                        let qdrant_client = qdrant_client.clone();
+                        let qc = qdrant_client.clone();
+                        let ds_qdrant = qc.wrap_for_data_source(self, false);
                         let mut token_count = chunks.len() * chunk_size;
                         d.token_count = Some(token_count);
                         tokio::spawn(async move {
@@ -1721,14 +1737,8 @@ impl DataSource {
                                 ],
                                 ..Default::default()
                             };
-                            let results_expand = match qdrant_client
-                                .scroll(
-                                    &data_source,
-                                    Some(filter),
-                                    Some(new_offsets_count),
-                                    None,
-                                    None,
-                                )
+                            let results_expand = match ds_qdrant
+                                .scroll(Some(filter), Some(new_offsets_count), None, None)
                                 .await
                             {
                                 Ok(r) => r.result,
@@ -1877,6 +1887,8 @@ impl DataSource {
         top_k: usize,
         filter: &Option<SearchFilter>,
     ) -> Result<Vec<(String, Chunk)>> {
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+
         let store = store.clone();
 
         let (doc_ids, _) = store
@@ -1935,9 +1947,8 @@ impl DataSource {
             // of sorting.
             let mut page_count = 0;
             loop {
-                let mut r = qdrant_client
+                let mut r = ds_qdrant
                     .scroll(
-                        &self,
                         Some(qdrant_batch_filter.clone()),
                         Some(qdrant_page_size),
                         page_offset,
@@ -2065,6 +2076,8 @@ impl DataSource {
         document_id: &str,
     ) -> Result<()> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+
         let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
@@ -2089,34 +2102,40 @@ impl DataSource {
         };
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
-            Some(qdrant_client) => match qdrant_client
-                .delete_points(self, filter.clone(), false)
-                .await
-            {
-                Ok(_) => {
-                    info!(
-                        data_source_internal_id = self.internal_id(),
-                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = qdrant_client.collection_name(self, false),
-                        "[SHADOW_WRITE_SUCCESS] Delete points"
-                    );
+            Some(qdrant_client) => {
+                let qdrant_client_shadow_write = qdrant_client.wrap_for_data_source(self, false);
+
+                match qdrant_client_shadow_write
+                    .delete_points(filter.clone())
+                    .await
+                {
+                    Ok(_) => {
+                        info!(
+                            data_source_internal_id = self.internal_id(),
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = qdrant_client_shadow_write.collection_name(),
+                            "[SHADOW_WRITE_SUCCESS] Delete points"
+                        );
+                    }
+                    Err(e) => {
+                        error!(
+                            data_source_internal_id = self.internal_id(),
+                            cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
+                            collection = qdrant_client_shadow_write.collection_name(),
+                            error = %e,
+                            "[SHADOW_WRITE_FAIL] Delete points"
+                        );
+                    }
                 }
-                Err(e) => {
-                    error!(
-                        data_source_internal_id = self.internal_id(),
-                        cluster = ?qdrant_clients.shadow_write_cluster(&self.config.qdrant_config),
-                        collection = qdrant_client.collection_name(self, false),
-                        error = %e,
-                        "[SHADOW_WRITE_FAIL] Delete points"
-                    );
-                }
-            },
+            }
             None => (),
         }
 
         if self.shadow_embedder_config().is_some() {
-            match qdrant_client
-                .delete_points(self, filter.clone(), true)
+            let qdrant_client_shadow_embedder = qdrant_client.wrap_for_data_source(self, true);
+
+            match qdrant_client_shadow_embedder
+                .delete_points(filter.clone())
                 .await
             {
                 Ok(_) => {
@@ -2139,7 +2158,7 @@ impl DataSource {
             }
         }
 
-        qdrant_client.delete_points(self, filter, false).await?;
+        ds_qdrant.delete_points(filter).await?;
 
         // Delete document (SQL)
         store
@@ -2171,9 +2190,11 @@ impl DataSource {
         }
 
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
+        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+
         let store = store.clone();
 
-        qdrant_client.delete_data_source(self, false).await?;
+        ds_qdrant.delete_data_source().await?;
 
         info!(
             data_source_internal_id = self.internal_id(),
