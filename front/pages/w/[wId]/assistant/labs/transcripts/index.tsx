@@ -35,6 +35,14 @@ import {
 } from "@app/lib/swr";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
+const defaultTranscriptConfigurationState = {
+  provider: "",
+  isGDriveConnected: false,
+  isGongConnected: false,
+  assistantSelected: null,
+  isActive: false,
+};
+
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
@@ -105,13 +113,7 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-    }>({
-      provider: transcriptsConfiguration?.provider || "",
-      isGDriveConnected: false,
-      isGongConnected: false,
-      assistantSelected: null,
-      isActive: false,
-    });
+    }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
     if (transcriptsConfiguration) {
@@ -128,6 +130,10 @@ export default function LabsTranscriptsIndex({
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
         };
+      });
+    } else {
+      setTranscriptsConfigurationState(() => {
+        return defaultTranscriptConfigurationState;
       });
     }
   }, [transcriptsConfiguration, agentConfigurations]);
@@ -386,7 +392,14 @@ export default function LabsTranscriptsIndex({
           "Could not disconnect from your transcripts provider. Please try again.",
       });
     } else {
-      window.location.reload();
+      sendNotification({
+        type: "success",
+        title: "Provider disconnected",
+        description:
+          "Your transcripts provider has been disconnected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
     }
 
     return response;
@@ -402,13 +415,13 @@ export default function LabsTranscriptsIndex({
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Dialog
-        isOpen={isDeleteProviderDialogOpen}
+        isOpen={isDeleteProviderDialogOpened}
         title="Disconnect transcripts provider"
         onValidate={async () => {
           await handleDisconnectProvider();
-          setIsDeleteProviderDialogOpen(false);
+          setIsDeleteProviderDialogOpened(false);
         }}
-        onCancel={() => setIsDeleteProviderDialogOpen(false)}
+        onCancel={() => setIsDeleteProviderDialogOpened(false)}
       >
         <div>
           This will stop the processing of your meeting transcripts. You can
@@ -483,7 +496,7 @@ export default function LabsTranscriptsIndex({
                     icon={XMarkIcon}
                     size="sm"
                     variant="secondary"
-                    onClick={() => setIsDeleteProviderDialogOpen(true)}
+                    onClick={() => setIsDeleteProviderDialogOpened(true)}
                   />
                 </Page.Layout>
               ) : (
@@ -521,7 +534,7 @@ export default function LabsTranscriptsIndex({
                     icon={XMarkIcon}
                     size="sm"
                     variant="secondary"
-                    onClick={() => setIsDeleteProviderDialogOpen(true)}
+                    onClick={() => setIsDeleteProviderDialogOpened(true)}
                   />
                 </Page.Layout>
               ) : (
