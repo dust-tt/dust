@@ -504,7 +504,9 @@ export function ActionProcess({
         </div>
         <div>
           <Tooltip
-            label={"Automatically generate the schema based on Instructions"}
+            label={
+              "Automatically generate the extraction schema based on Instructions"
+            }
           >
             <Button
               label={
