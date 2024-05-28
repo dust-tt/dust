@@ -412,6 +412,7 @@ export function AgentMessage({
       }}
     >
       <div>{renderMessage(agentMessageToRender, references, shouldStream)}</div>
+      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-[5px]" />
     </ConversationMessage>
   );
