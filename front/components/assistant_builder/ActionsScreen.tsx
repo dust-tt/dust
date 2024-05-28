@@ -122,9 +122,10 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const ADVANCED_ACTION_CATEGORIES = [
+  "DUST_APP_RUN",
+  "WEBSEARCH",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 function ActionModeSection({
   children,
