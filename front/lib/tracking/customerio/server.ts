@@ -8,7 +8,7 @@ import * as _ from "lodash";
 
 import config from "@app/lib/api/config";
 import { subscriptionForWorkspace } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
+import { Workspace, WorkspaceMetadata } from "@app/lib/models/workspace";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -21,17 +21,32 @@ export class CustomerioServerSideTracking {
     return CustomerioServerSideTracking._identifyUser({ user });
   }
 
-  static identifyWorkspaces({
+  static async identifyWorkspaces({
     workspaces,
   }: {
     workspaces: Array<
       LightWorkspaceType & { planCode?: string; seats?: number }
     >;
   }) {
+    const metaByWorkspaceId = _.keyBy(
+      await WorkspaceMetadata.findAll({
+        where: {
+          workspaceId: workspaces.map((w) => w.id),
+        },
+      }),
+      (ws) => ws.id.toString()
+    );
     return Promise.all(
-      workspaces.map(async (ws) =>
-        CustomerioServerSideTracking._identifyWorkspace({ workspace: ws })
-      )
+      workspaces.map(async (ws) => {
+        const meta = metaByWorkspaceId[ws.id.toString()];
+        return CustomerioServerSideTracking._identifyWorkspace({
+          workspace: {
+            ...ws,
+            lastCancelAt: meta?.lastCancelAt ?? undefined,
+            lastReupgradeAt: meta?.lastReupgradeAt ?? undefined,
+          },
+        });
+      })
     );
   }
 
@@ -167,7 +182,12 @@ export class CustomerioServerSideTracking {
   static async _identifyWorkspace({
     workspace,
   }: {
-    workspace: LightWorkspaceType & { planCode?: string; seats?: number };
+    workspace: LightWorkspaceType & {
+      planCode?: string;
+      seats?: number;
+      lastCancelAt?: Date;
+      lastReupgradeAt?: Date;
+    };
   }) {
     if (!config.getCustomerIoEnabled()) {
       return;
@@ -205,6 +225,12 @@ export class CustomerioServerSideTracking {
           name: workspace.name,
           planCode: planCode,
           seats,
+          lastCancelAt: workspace.lastCancelAt
+            ? Math.floor(workspace.lastCancelAt.getTime() / 1000)
+            : null,
+          lastReupgradeAt: workspace.lastReupgradeAt
+            ? Math.floor(workspace.lastReupgradeAt.getTime() / 1000)
+            : null,
         },
       }),
     });

@@ -255,3 +255,58 @@ User.hasMany(DustAppSecret, {
   onDelete: "SET NULL",
 });
 DustAppSecret.belongsTo(User);
+
+// This table is used to store information that is not needed in the business logic but is useful for
+// analytics / business operations.
+// It's a 1:1 relationship with the workspace table.
+export class WorkspaceMetadata extends Model<
+  InferAttributes<WorkspaceMetadata>,
+  InferCreationAttributes<WorkspaceMetadata>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare lastCancelAt: Date | null;
+  declare lastReupgradeAt: Date | null;
+
+  declare workspaceId: ForeignKey<Workspace["id"]>;
+}
+WorkspaceMetadata.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastCancelAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastReupgradeAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    modelName: "workspace_metadata",
+    sequelize: frontSequelize,
+    indexes: [{ fields: ["workspaceId"], unique: true }],
+  }
+);
+
+Workspace.hasOne(WorkspaceMetadata, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
+WorkspaceMetadata.belongsTo(Workspace);

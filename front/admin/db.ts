@@ -53,6 +53,7 @@ import {
   MembershipInvitation,
   Workspace,
   WorkspaceHasDomain,
+  WorkspaceMetadata,
 } from "@app/lib/models/workspace";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -126,6 +127,8 @@ async function main() {
   await ConversationClassification.sync({ alter: true });
 
   await TemplateModel.sync({ alter: true });
+
+  await WorkspaceMetadata.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

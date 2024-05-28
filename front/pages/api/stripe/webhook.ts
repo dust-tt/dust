@@ -453,6 +453,29 @@ async function handler(
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
               await unpauseAllConnectorsAndCancelScrub(auth);
+              // We also track the reactivation
+              void ServerSideTracking.trackSubscriptionReupgrade({
+                workspace: renderLightWorkspaceType({
+                  workspace: subscription.workspace,
+                }),
+              }).catch((e) => {
+                logger.error(
+                  { panic: true, error: e },
+                  "Error tracking subscription reupgrade."
+                );
+              });
+            } else {
+              // Subscription is canceled, we track it
+              void ServerSideTracking.trackSubscriptionCancel({
+                workspace: renderLightWorkspaceType({
+                  workspace: subscription.workspace,
+                }),
+              }).catch((e) => {
+                logger.error(
+                  { panic: true, error: e },
+                  "Error tracking subscription cancel."
+                );
+              });
             }
             // then email admins
             const adminEmails = (

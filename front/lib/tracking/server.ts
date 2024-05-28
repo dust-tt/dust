@@ -16,6 +16,7 @@ import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { DatabaseServerSideTracking } from "@app/lib/tracking/database/server";
 import logger from "@app/logger/logger";
 
 export class ServerSideTracking {
@@ -295,5 +296,35 @@ export class ServerSideTracking {
         "Failed to track update membership role on Customer.io"
       );
     }
+  }
+
+  static async trackSubscriptionCancel({
+    workspace,
+    cancelAt,
+  }: {
+    workspace: LightWorkspaceType;
+    cancelAt?: Date;
+  }) {
+    const ts = cancelAt || new Date();
+
+    await DatabaseServerSideTracking.trackSubscriptionCancel({
+      workspace,
+      cancelAt: ts,
+    });
+  }
+
+  static async trackSubscriptionReupgrade({
+    workspace,
+    reupgradeAt,
+  }: {
+    workspace: LightWorkspaceType;
+    reupgradeAt?: Date;
+  }) {
+    const ts = reupgradeAt || new Date();
+
+    await DatabaseServerSideTracking.trackSubscriptionReupgrade({
+      workspace,
+      reupgradeAt: ts,
+    });
   }
 }
