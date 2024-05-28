@@ -16,7 +16,7 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -43,12 +43,14 @@ export function InviteEmailModal({
   onClose,
   owner,
   plan,
+  prefillText,
   members,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   plan: PlanType;
+  prefillText: string;
   members: UserTypeWithWorkspaces[];
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
@@ -189,6 +191,17 @@ export function InviteEmailModal({
       onClose();
     }
   }
+
+  useEffect(() => {
+    if (showModal && prefillText && isEmailValid(prefillText)) {
+      setInviteEmails((prev) => {
+        if (prev.includes(prefillText)) {
+          return prev;
+        }
+        return prev ? prev + ", " + prefillText : prefillText;
+      });
+    }
+  }, [prefillText, showModal]);
 
   return (
     <>
