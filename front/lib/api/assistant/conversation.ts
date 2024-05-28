@@ -36,6 +36,7 @@ import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   md5,
   rateLimiter,
+  removeNulls,
 } from "@dust-tt/types";
 import {
   isAgentMention,
@@ -518,6 +519,12 @@ export async function generateConversationTitle(
  * Conversation API
  */
 
+/**
+ * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
+ * SQL query outside of the transaction `t` that is holding the lock.
+ * Otherwise, the other query will be competing for a connection in the database connection pool,
+ * resulting in a potential deadlock when the pool is fully occupied.
+ */
 async function getConversationRankVersionLock(
   conversation: ConversationType,
   t: Transaction
@@ -606,9 +613,19 @@ export async function* postUserMessage(
     return;
   }
 
+  const agentConfigurations = removeNulls(
+    await Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getAgentConfiguration(auth, mention.configurationId);
+      })
+    )
+  );
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await frontSequelize.transaction(async (t) => {
+      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
+      // this transaction, otherwise this other query will be competing for a connection in the database
+      // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
       let nextMessageRank =
@@ -701,9 +718,8 @@ export async function* postUserMessage(
             return (async () => {
               // `getAgentConfiguration` checks that we're only pulling a configuration from the
               // same workspace or a global one.
-              const configuration = await getAgentConfiguration(
-                auth,
-                mention.configurationId
+              const configuration = agentConfigurations.find(
+                (ac) => ac.sId === mention.configurationId
               );
               if (!configuration) {
                 return null;
@@ -1019,9 +1035,20 @@ export async function* editUserMessage(
   let userMessage: UserMessageWithRankType | null = null;
   let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
+  const agentConfigurations = removeNulls(
+    await Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getAgentConfiguration(auth, mention.configurationId);
+      })
+    )
+  );
+
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
     const result = await frontSequelize.transaction(async (t) => {
+      // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
+      // this transaction, otherwise this other query will be competing for a connection in the database
+      // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
       const messageRow = await Message.findOne({
@@ -1036,6 +1063,7 @@ export async function* editUserMessage(
             required: true,
           },
         ],
+        transaction: t,
       });
       if (!messageRow || !messageRow.userMessage) {
         throw new Error(
@@ -1048,6 +1076,7 @@ export async function* editUserMessage(
           conversationId: conversation.id,
           version: messageRow.version + 1,
         },
+        transaction: t,
       });
       if (newerMessage) {
         throw new UserMessageError(
@@ -1147,9 +1176,8 @@ export async function* editUserMessage(
           return (async () => {
             // `getAgentConfiguration` checks that we're only pulling a configuration from the
             // same workspace or a global one.
-            const configuration = await getAgentConfiguration(
-              auth,
-              mention.configurationId
+            const configuration = agentConfigurations.find(
+              (ac) => ac.sId === mention.configurationId
             );
             if (!configuration) {
               return null;
@@ -1377,6 +1405,7 @@ export async function* retryAgentMessage(
           conversationId: conversation.id,
           version: messageRow.version + 1,
         },
+        transaction: t,
       });
       if (newerMessage) {
         throw new AgentMessageError(
