@@ -27,8 +27,6 @@ export class LabsTranscriptsConfigurationModel extends Model<
   declare provider: LabsTranscriptsProviderType;
   declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
   declare isActive: boolean;
-
-  declare user: NonAttribute<User>;
 }
 
 LabsTranscriptsConfigurationModel.init(
