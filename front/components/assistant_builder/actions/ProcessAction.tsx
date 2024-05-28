@@ -9,6 +9,7 @@ import {
   Spinner,
   Tooltip,
   XCircleIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { Result, TimeframeUnit } from "@dust-tt/types";
 import type {
@@ -131,7 +132,26 @@ function PropertiesFields({
           }}
         />
       ) : (
-        <div className="grid grid-cols-12 grid-cols-12 gap-x-4 gap-y-4">
+        <div className="mt-4 grid grid-cols-12 grid-cols-12 gap-x-2 gap-y-2">
+          <React.Fragment>
+            <div className="col-span-2">
+              <label className="block text-sm uppercase text-element-700">
+                Property
+              </label>
+            </div>
+            <div className="col-span-7">
+              <label className="block text-sm uppercase text-element-700">
+                Description
+              </label>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm uppercase text-element-700">
+                Type
+              </label>
+            </div>
+            <div className="col-span-1"></div>
+          </React.Fragment>
+
           {properties.map(
             (
               prop: { name: string; type: string; description: string },
@@ -143,7 +163,6 @@ function PropertiesFields({
                     placeholder="Name"
                     size="sm"
                     name={`name-${index}`}
-                    label={index === 0 ? "Property" : undefined}
                     value={prop["name"]}
                     onChange={(v) => {
                       handlePropertyChange(index, "name", v);
@@ -161,24 +180,32 @@ function PropertiesFields({
                   />
                 </div>
 
+                <div className="col-span-7">
+                  <Input
+                    placeholder="Description"
+                    size="sm"
+                    name={`description-${index}`}
+                    value={prop["description"]}
+                    onChange={(v) => {
+                      handlePropertyChange(index, "description", v);
+                    }}
+                    disabled={readOnly}
+                    error={
+                      prop["description"].length === 0
+                        ? "Description is required"
+                        : undefined
+                    }
+                  />
+                </div>
+
                 <div className="col-span-2">
-                  {index === 0 && (
-                    <div className="flex justify-between">
-                      <label
-                        htmlFor={`type-${index}`}
-                        className="block pb-1 pt-[1px] text-sm text-element-800"
-                      >
-                        Type
-                      </label>
-                    </div>
-                  )}
                   <DropdownMenu>
                     <DropdownMenu.Button tooltipPosition="above">
                       <Button
                         type="select"
                         labelVisible={true}
                         label={prop["type"]}
-                        variant="secondary"
+                        variant="tertiary"
                         size="sm"
                       />
                     </DropdownMenu.Button>
@@ -199,34 +226,14 @@ function PropertiesFields({
                   </DropdownMenu>
                 </div>
 
-                <div className="col-span-7">
-                  <Input
-                    placeholder="Description"
-                    size="sm"
-                    name={`description-${index}`}
-                    label={index === 0 ? "Description" : undefined}
-                    value={prop["description"]}
-                    onChange={(v) => {
-                      handlePropertyChange(index, "description", v);
-                    }}
-                    disabled={readOnly}
-                    error={
-                      prop["description"].length === 0
-                        ? "Description is required"
-                        : undefined
-                    }
-                  />
-                </div>
-
-                <div className="col-span-1 flex items-end pb-2">
+                <div className="col-span-1 flex flex-row items-end pb-2">
                   <IconButton
-                    icon={XCircleIcon}
+                    icon={XMarkIcon}
                     tooltip="Remove Property"
                     variant="tertiary"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
-                    className="ml-1"
                   />
                 </div>
               </React.Fragment>
@@ -561,7 +568,7 @@ export function ActionProcess({
           <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
             Schema
           </div>
-          {actionConfiguration.schema.length > 0 && (
+          {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
             <div>
               <Tooltip
                 label={
@@ -569,11 +576,7 @@ export function ActionProcess({
                 }
               >
                 <Button
-                  label={
-                    isGeneratingSchema
-                      ? "Generating..."
-                      : "Re-generate from Instructions"
-                  }
+                  label={"Re-generate from Instructions"}
                   variant="tertiary"
                   icon={SparklesIcon}
                   size="xs"
@@ -585,7 +588,9 @@ export function ActionProcess({
           )}
         </div>
         {isGeneratingSchema ? (
-          <Spinner size="md" />
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="lg" />
+          </div>
         ) : (
           <PropertiesFields
             properties={actionConfiguration.schema}
