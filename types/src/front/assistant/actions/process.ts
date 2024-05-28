@@ -71,8 +71,9 @@ export type ProcessActionOutputsType = {
   skip_tokens: number;
 };
 
-// Use top_k of 512 which is already a large number. We might want to bump to 1024.
-export const PROCESS_ACTION_TOP_K = 512;
+// Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the
+// future based on user feedback.
+export const PROCESS_ACTION_TOP_K = 768;
 
 export interface ProcessActionType extends BaseAction {
   id: ModelId; // AgentProcessAction

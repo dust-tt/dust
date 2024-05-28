@@ -314,10 +314,10 @@ export function ActionProcess({
       />
 
       <div className="text-sm text-element-700">
-        The assistant will process the data sources over the specified time
-        frame and attempt to extract structured information based on the schema
-        provided. This action can process up to 500k tokens (the equivalent of
-        1000 pages book). Learn more about this feature in the{" "}
+        This action scans selected data sources within the specified time frame,
+        extracting information based on a predefined schema. It can process the
+        equivalent to a 1,000-page book (500k tokens). More in the
+        documentation. Learn more about this feature in the{" "}
         <Hoverable
           onClick={() => {
             window.open(
@@ -504,7 +504,9 @@ export function ActionProcess({
         </div>
         <div>
           <Tooltip
-            label={"Automatically generate the schema based on Instructions"}
+            label={
+              "Automatically generate the extraction schema based on Instructions"
+            }
           >
             <Button
               label={
