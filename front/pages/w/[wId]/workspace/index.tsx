@@ -1,12 +1,4 @@
-import {
-  Button,
-  CloudArrowDownIcon,
-  DropdownMenu,
-  Input,
-  Modal,
-  Page,
-  PlanetIcon,
-} from "@dust-tt/sparkle";
+import { Button, Input, Page, PlanetIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -14,8 +6,11 @@ import { useCallback, useEffect, useState } from "react";
 
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
+import {
+  ActivityReport,
+  QuickInsights,
+} from "@app/components/workspace/Analytics";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceAnalytics } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -54,8 +49,6 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [showMetricsModal, setShowMetricsModal] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -218,13 +211,6 @@ export default function WorkspaceAdmin({
 
   return (
     <>
-      <WorkspaceMetricsModal
-        show={showMetricsModal}
-        onClose={() => {
-          setShowMetricsModal(false);
-        }}
-        workspaceId={owner.sId}
-      />
       <AppLayout
         subscription={subscription}
         owner={owner}
@@ -232,18 +218,30 @@ export default function WorkspaceAdmin({
         topNavigationCurrent="admin"
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
-        <Page.Vertical align="stretch" gap="xl">
+        <Page.Vertical align="stretch" gap="md">
           <Page.Header
-            title="Workspace Settings"
+            title="Workspace"
             icon={PlanetIcon}
-            description="Manage your workspace settings."
+            description="Manage your workspace"
           />
+          <Page.SectionHeader title="Analytics" />
+          <div className="grid grid-cols-2 gap-3 pb-2">
+            <QuickInsights owner={owner} />
+            <ActivityReport
+              monthOptions={monthOptions}
+              selectedMonth={selectedMonth}
+              handleSelectedMonth={handleSelectMonth}
+              isLoading={isLoading}
+              handleDownload={handleDownload}
+            />
+          </div>
+          <Page.SectionHeader title="Settings" />
           <Page.SectionHeader
             title="Workspace name"
             description="Think GitHub repository names, short and memorable."
           />
-          <Page.Horizontal>
-            <div className="flex-grow">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-row gap-1">
               <Input
                 name="name"
                 placeholder="Workspace name"
@@ -251,140 +249,19 @@ export default function WorkspaceAdmin({
                 onChange={(x) => setWorkspaceName(x)}
                 error={workspaceNameError}
                 showErrorLabel={true}
+                className="flex-1"
+              />
+              <Button
+                variant="primary"
+                disabled={disable || updating}
+                onClick={handleUpdateWorkspace}
+                label={updating ? "Updating..." : "Update"}
+                className="grow-0"
               />
             </div>
-            <Button
-              variant="secondary"
-              disabled={disable || updating}
-              onClick={handleUpdateWorkspace}
-              label={updating ? "Updating..." : "Update"}
-            />
-          </Page.Horizontal>
-
-          {!!monthOptions.length && (
-            <>
-              <Page.SectionHeader
-                title="Workspace Activity"
-                description="Download workspace activity details."
-              />
-              <div className="align-center flex flex-row gap-2">
-                <DropdownMenu>
-                  <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label={selectedMonth || ""}
-                      variant="secondary"
-                      size="sm"
-                    />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items origin="topLeft">
-                    {monthOptions.map((month) => (
-                      <DropdownMenu.Item
-                        key={month}
-                        label={month}
-                        onClick={() => handleSelectMonth(month)}
-                      />
-                    ))}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
-                <Button
-                  label={isLoading ? "Loading..." : "Download activity data"}
-                  icon={CloudArrowDownIcon}
-                  variant="secondary"
-                  disabled={isLoading}
-                  onClick={() => {
-                    void handleDownload(selectedMonth);
-                  }}
-                />
-              </div>
-              {owner.flags.includes("workspace_analytics") && (
-                <div className="align-center flex flex-col gap-6">
-                  <Page.SectionHeader
-                    title="Workspace Analytics"
-                    description="View some metrics about your workspace overall."
-                  />
-                  <div>
-                    <Button
-                      label="View Metrics"
-                      onClick={() => {
-                        setShowMetricsModal(true);
-                      }}
-                      size="sm"
-                      variant="secondary"
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+          </div>
         </Page.Vertical>
       </AppLayout>
     </>
-  );
-}
-
-function WorkspaceMetricsModal({
-  show,
-  onClose,
-  workspaceId,
-}: {
-  show: boolean;
-  onClose: () => void;
-  workspaceId: string;
-}) {
-  const { analytics } = useWorkspaceAnalytics({ workspaceId, disabled: !show });
-  if (!analytics) {
-    return null;
-  }
-
-  return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Workspace Analytics"
-    >
-      <div className="mt-8 divide-y divide-gray-200">
-        <div className="grid grid-cols-2 items-center gap-x-4 pb-4">
-          <span className="text-left font-bold text-element-900">
-            # Members:
-          </span>
-          <span className="font-semibold text-element-700">
-            {analytics.memberCount}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 items-center gap-x-4 py-4">
-          <span className="text-left font-bold text-element-900">
-            Last 7 days Active Users:
-          </span>
-          <span className="font-semibold text-element-700">
-            {analytics.weeklyActiveUsers.count} (
-            {analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""}
-            {analytics.weeklyActiveUsers.growth}% WoW)
-          </span>
-        </div>
-        <div className="grid grid-cols-2 items-center gap-x-4 pt-4">
-          <span className="text-left font-bold text-element-900">
-            Last 30 days Active Users:
-          </span>
-          <span className="font-semibold text-element-700">
-            {analytics.monthlyActiveUsers.count} (
-            {analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""}
-            {analytics.monthlyActiveUsers.growth}% MoM)
-          </span>
-        </div>
-        <div className="grid grid-cols-2 items-center gap-x-4 pt-4">
-          <span className="text-left font-bold text-element-900">
-            Last 7 days Average Daily Active Users:
-          </span>
-          <span className="font-semibold text-element-700">
-            {analytics.averageWeeklyDailyActiveUsers.count} (
-            {analytics.averageWeeklyDailyActiveUsers.growth >= 0 ? "+" : ""}
-            {analytics.averageWeeklyDailyActiveUsers.growth}% WoW)
-          </span>
-        </div>
-      </div>
-    </Modal>
   );
 }
