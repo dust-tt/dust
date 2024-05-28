@@ -801,21 +801,21 @@ impl LLM for MistralAILLM {
             Ok(key) => {
                 self.api_key = Some(key);
             }
-            Err(_) => {
-                match credentials.get("MISTRAL_API_KEY") {
-                    Some(api_key) => {
-                        self.api_key = Some(api_key.clone());
-                    }
-                    None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
+            Err(_) => match credentials.get("MISTRAL_API_KEY") {
+                Some(api_key) => {
+                    self.api_key = Some(api_key.clone());
+                }
+                None => {
+                    match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
                         Ok(key) => {
                             self.api_key = Some(key);
                         }
                         Err(_) => Err(anyhow!(
                             "Credentials or environment variable `MISTRAL_API_KEY` is not set."
                         ))?,
-                    },
+                    }
                 }
-            }
+            },
         }
         Ok(())
     }
