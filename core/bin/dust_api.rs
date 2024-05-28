@@ -1182,7 +1182,7 @@ async fn data_sources_tokenize(
                 None,
             ),
             Some(ds) => {
-                let embedder_config = ds.default_embedder_config().clone();
+                let embedder_config = ds.embedder_config().clone();
                 let llm = provider(embedder_config.provider_id).llm(embedder_config.model_id);
                 match llm.tokenize(&payload.text).await {
                     Err(e) => error_response(
