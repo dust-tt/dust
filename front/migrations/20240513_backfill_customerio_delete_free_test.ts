@@ -67,7 +67,7 @@ const backfillCustomerIo = async (execute: boolean) => {
 
         if (execute) {
           promises.push(
-            CustomerioServerSideTracking._deleteUser({
+            CustomerioServerSideTracking.deleteUser({
               user: u,
             }).catch((err) => {
               logger.error(
@@ -91,7 +91,7 @@ const backfillCustomerIo = async (execute: boolean) => {
           );
           if (execute) {
             promises.push(
-              CustomerioServerSideTracking._deleteWorkspace({
+              CustomerioServerSideTracking.deleteWorkspace({
                 workspace: renderLightWorkspaceType({ workspace: ws }),
               }).catch((err) => {
                 logger.error(

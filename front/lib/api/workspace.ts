@@ -222,3 +222,18 @@ export async function evaluateWorkspaceSeatAvailability(
 
   return activeMembersCount < maxUsers;
 }
+
+export async function unsafeGetWorkspacesByModelId(
+  modelIds: number[]
+): Promise<LightWorkspaceType[]> {
+  if (modelIds.length === 0) {
+    return [];
+  }
+  return (
+    await Workspace.findAll({
+      where: {
+        id: modelIds,
+      },
+    })
+  ).map((w) => renderLightWorkspaceType({ workspace: w }));
+}

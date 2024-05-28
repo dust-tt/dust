@@ -280,7 +280,7 @@ export class CustomerioServerSideTracking {
     }
   }
 
-  static async _deleteUser({ user }: { user: UserType }) {
+  static async deleteUser({ user }: { user: UserType }) {
     if (!config.getCustomerIoEnabled()) {
       return;
     }
@@ -303,7 +303,7 @@ export class CustomerioServerSideTracking {
     }
   }
 
-  static async _deleteWorkspace({
+  static async deleteWorkspace({
     workspace,
   }: {
     workspace: LightWorkspaceType;
