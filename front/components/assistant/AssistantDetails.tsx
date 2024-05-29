@@ -25,6 +25,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  assertNever,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -276,7 +277,7 @@ export function AssistantDetails({
               </div>
             </div>
           ) : (
-            <div key={`action-${index}`}>Unknown action type</div>
+            assertNever(action)
           )
         )}
       </>
