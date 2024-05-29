@@ -184,7 +184,7 @@ export class CustomerioServerSideTracking {
     }
     const planCode =
       workspace.planCode ??
-      (await subscriptionForWorkspace(workspace.sId)).plan.code;
+      (await subscriptionForWorkspace(workspace)).plan.code;
     const seats =
       workspace.seats ??
       (await countActiveSeatsInWorkspaceCached(workspace.sId));

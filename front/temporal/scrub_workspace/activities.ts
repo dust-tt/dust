@@ -181,10 +181,9 @@ async function cleanupCustomerio(auth: Authenticator) {
   );
 
   // Finally, fetch all the subscriptions for the workspaces.
-  const workspaceSids = Object.values(workspaceById).map((ws) => ws.sId);
-  const subscriptionsByWorkspaceSid = workspaceSids.length
-    ? await subscriptionForWorkspaces(workspaceSids)
-    : {};
+  const subscriptionsByWorkspaceSid = await subscriptionForWorkspaces(
+    Object.values(workspaceById)
+  );
 
   // Process the workspace users in chunks of 4.
   const chunks = _.chunk(users, 4);

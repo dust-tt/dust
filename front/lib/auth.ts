@@ -135,7 +135,7 @@ export class Authenticator {
           user: renderUserType(user),
           workspace: renderLightWorkspaceType({ workspace }),
         }).then((m) => m?.role ?? "none"),
-        subscriptionForWorkspace(workspace.sId),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         FeatureFlag.findAll({
           where: {
             workspaceId: workspace.id,
@@ -195,7 +195,7 @@ export class Authenticator {
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
-        subscriptionForWorkspace(workspace.sId),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         (async () => {
           return (
             await FeatureFlag.findAll({
@@ -261,7 +261,7 @@ export class Authenticator {
 
     if (workspace) {
       [subscription, flags] = await Promise.all([
-        subscriptionForWorkspace(workspace.sId),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
         (async () => {
           return (
             await FeatureFlag.findAll({
@@ -307,7 +307,7 @@ export class Authenticator {
     let flags: WhitelistableFeature[] = [];
 
     [subscription, flags] = await Promise.all([
-      subscriptionForWorkspace(workspace.sId),
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       (async () => {
         return (
           await FeatureFlag.findAll({
@@ -344,7 +344,7 @@ export class Authenticator {
     let flags: WhitelistableFeature[] = [];
 
     [subscription, flags] = await Promise.all([
-      subscriptionForWorkspace(workspace.sId),
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
       (async () => {
         return (
           await FeatureFlag.findAll({
@@ -563,13 +563,15 @@ export async function getAPIKey(
  * @returns SubscriptionType
  */
 export async function subscriptionForWorkspace(
-  workspaceId: string
+  workspace: LightWorkspaceType
 ): Promise<SubscriptionType> {
-  const res = await subscriptionForWorkspaces([workspaceId]);
+  const res = await subscriptionForWorkspaces([workspace]);
 
-  const subscription = res[workspaceId];
+  const subscription = res[workspace.sId];
   if (!subscription) {
-    throw new Error(`Could not find subscription for workspace ${workspaceId}`);
+    throw new Error(
+      `Could not find subscription for workspace ${workspace.sId}`
+    );
   }
 
   return subscription;
@@ -581,22 +583,9 @@ export async function subscriptionForWorkspace(
  * @returns SubscriptionType
  */
 export async function subscriptionForWorkspaces(
-  workspaceIds: string[]
+  workspaces: LightWorkspaceType[]
 ): Promise<{ [key: string]: SubscriptionType }> {
-  const workspaceModelBySid = _.keyBy(
-    await Workspace.findAll({
-      where: {
-        sId: workspaceIds,
-      },
-    }),
-    "sId"
-  );
-
-  for (const sId of workspaceIds) {
-    if (!workspaceModelBySid[sId]) {
-      throw new Error(`Could not find workspace with sId ${sId}`);
-    }
-  }
+  const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
   const activeSubscriptionByWorkspaceId = _.keyBy(
     await Subscription.findAll({
