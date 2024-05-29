@@ -1284,10 +1284,10 @@ pub async fn chat_completion(
 /// AzureOpenAILLM).
 ///
 
-fn remove_dimension_suffix_from_model_id(model_id: &str) -> &str {
-    match model_id.starts_with("text-embedding-3-large") {
-        true => model_id.trim_end_matches(|c: char| c.is_digit(10) || c == '-'),
-        false => model_id,
+fn get_model_id_from_internal_embeddings_id(model_id: &str) -> &str {
+    match model_id {
+        "text-embedding-3-large-1536" => "text-embedding-3-large",
+        _ => model_id,
     }
 }
 
@@ -1307,7 +1307,7 @@ pub async fn embed(
     }
     match model_id {
         Some(model_id) => {
-            body["model"] = json!(remove_dimension_suffix_from_model_id(&model_id));
+            body["model"] = json!(get_model_id_from_internal_embeddings_id(&model_id));
             match model_id.as_str() {
                 "text-embedding-3-large-1536" => {
                     body["dimensions"] = json!(1536);
