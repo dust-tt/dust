@@ -241,6 +241,7 @@ async function handler(
                 workspace: renderLightWorkspaceType({ workspace }),
                 planCode,
                 workspaceSeats,
+                subscriptionStartAt: now.getTime(),
               });
             }
             await unpauseAllConnectorsAndCancelScrub(
@@ -446,14 +447,49 @@ async function handler(
                 },
               });
             }
-            await subscription.update({ endDate });
+            await subscription.update({
+              endDate,
+              // If the subscription is canceled, we set the requestCancelAt date to now.
+              // If the subscription is reactivated, we unset the requestCancelAt date.
+              requestCancelAt: endDate ? now : null,
+            });
             const auth = await Authenticator.internalBuilderForWorkspace(
               subscription.workspace.sId
             );
             if (!endDate) {
               // Subscription is re-activated, so we need to unpause the connectors in case they were paused.
               await unpauseAllConnectorsAndCancelScrub(auth);
+
+              ServerSideTracking.trackSubscriptionReactivated({
+                workspace: renderLightWorkspaceType({
+                  workspace: subscription.workspace,
+                }),
+              }).catch((e) => {
+                logger.error(
+                  {
+                    error: e,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "Error tracking subscription reactivated."
+                );
+              });
+            } else {
+              ServerSideTracking.trackSubscriptionRequestCancel({
+                workspace: renderLightWorkspaceType({
+                  workspace: subscription.workspace,
+                }),
+                requestCancelAt: now.getTime(),
+              }).catch((e) => {
+                logger.error(
+                  {
+                    error: e,
+                    workspaceId: subscription.workspace.sId,
+                  },
+                  "Error tracking subscription request cancel."
+                );
+              });
             }
+
             // then email admins
             const adminEmails = (
               await getMembers(auth, { roles: ["admin"] })

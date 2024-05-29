@@ -25,7 +25,12 @@ export class CustomerioServerSideTracking {
     workspaces,
   }: {
     workspaces: Array<
-      LightWorkspaceType & { planCode?: string; seats?: number }
+      LightWorkspaceType & {
+        planCode?: string;
+        seats?: number;
+        subscriptionStartAt?: number | null;
+        requestCancelAt?: number | null;
+      }
     >;
   }) {
     return Promise.all(
@@ -167,7 +172,12 @@ export class CustomerioServerSideTracking {
   static async _identifyWorkspace({
     workspace,
   }: {
-    workspace: LightWorkspaceType & { planCode?: string; seats?: number };
+    workspace: LightWorkspaceType & {
+      planCode?: string;
+      seats?: number;
+      subscriptionStartAt?: number | null;
+      requestCancelAt?: number | null;
+    };
   }) {
     if (!config.getCustomerIoEnabled()) {
       return;
@@ -176,7 +186,8 @@ export class CustomerioServerSideTracking {
       workspace.planCode ??
       (await subscriptionForWorkspace(workspace.sId)).plan.code;
     const seats =
-      workspace.seats ?? countActiveSeatsInWorkspaceCached(workspace.sId);
+      workspace.seats ??
+      (await countActiveSeatsInWorkspaceCached(workspace.sId));
 
     // Unless the info changes, we only identify a given workspace once per day.
     const rateLimiterKey = `customerio_workspace:${workspace.sId}:${workspace.name}:${planCode}:${seats}`;
@@ -191,6 +202,19 @@ export class CustomerioServerSideTracking {
       return;
     }
 
+    const attributes: Record<string, string | number | null> = {
+      name: workspace.name,
+      planCode,
+      seats,
+    };
+
+    if (workspace.subscriptionStartAt !== undefined) {
+      attributes.subscriptionStartAt = workspace.subscriptionStartAt;
+    }
+    if (workspace.requestCancelAt !== undefined) {
+      attributes.requestCancelAt = workspace.requestCancelAt;
+    }
+
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
@@ -201,11 +225,7 @@ export class CustomerioServerSideTracking {
         },
         type: "object",
         action: "identify",
-        attributes: {
-          name: workspace.name,
-          planCode: planCode,
-          seats,
-        },
+        attributes,
       }),
     });
 
