@@ -36,10 +36,6 @@ import {
 } from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
-  deprecatedGenerateTablesQuerySpecificationForSingleActionAgent,
-  runTablesQuery,
-} from "@app/lib/api/assistant/actions/tables_query";
-import {
   constructPrompt,
   renderConversationForModel,
   runGeneration,
@@ -302,15 +298,12 @@ async function* runAction(
       await deprecatedGenerateRetrievalSpecificationForSingleActionAgent(auth, {
         actionConfiguration: action,
       });
-  } else if (isTablesQueryConfiguration(action)) {
-    specRes =
-      await deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
-        auth
-      );
   } else {
     const runner = getRunnerforActionConfiguration(action);
 
-    specRes = await runner.buildSpecification(auth, {});
+    specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(
+      auth
+    );
   }
 
   if (specRes.isErr()) {
@@ -485,9 +478,10 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(action)) {
-    const eventStream = runTablesQuery(auth, {
-      configuration,
-      actionConfiguration: action,
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
       agentMessage,
       rawInputs,

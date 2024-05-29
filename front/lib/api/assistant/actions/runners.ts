@@ -2,11 +2,13 @@ import type {
   AgentAction,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  TablesQueryConfigurationType,
   WebsearchConfigurationType,
 } from "@dust-tt/types";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
+import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
   BaseActionConfigurationServerRunner,
   BaseActionConfigurationServerRunnerConstructor,
@@ -17,6 +19,7 @@ import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actio
 interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
+  tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
   // Add other configurations once migrated to classes.
 }
@@ -24,6 +27,7 @@ interface ActionToConfigTypeMap {
 interface ActionTypeToClassMap {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
+  tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
 }
 
@@ -65,6 +69,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
 } = {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
+  tables_query_configuration: TablesQueryConfigurationServerRunner,
   websearch_configuration: WebsearchConfigurationServerRunner,
 } as const;
 

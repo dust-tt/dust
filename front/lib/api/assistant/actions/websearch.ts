@@ -127,6 +127,12 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     });
   }
 
+  async deprecatedBuildSpecificationForSingleActionAgent(
+    auth: Authenticator
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    return this.buildSpecification(auth, {});
+  }
+
   // This method is in charge of running the websearch and creating an AgentWebsearchAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentWebsearchAction to be stored (once the query params are infered) but for its execution
@@ -190,7 +196,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     yield {
       type: "websearch_params",
       created: Date.now(),
-      configurationId: agentConfiguration.sId,
+      configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
       action: new WebsearchAction({
         id: action.id,

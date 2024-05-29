@@ -36,10 +36,6 @@ import {
   runRetrieval,
 } from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
-import {
-  generateTablesQuerySpecification,
-  runTablesQuery,
-} from "@app/lib/api/assistant/actions/tables_query";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
@@ -324,17 +320,6 @@ export async function* runMultiActionsAgent(
     if (isRetrievalConfiguration(a)) {
       const r = await generateRetrievalSpecification(auth, {
         actionConfiguration: a,
-        name: a.name,
-        description: a.description,
-      });
-
-      if (r.isErr()) {
-        return r;
-      }
-
-      specifications.push(r.value);
-    } else if (isTablesQueryConfiguration(a)) {
-      const r = await generateTablesQuerySpecification(auth, {
         name: a.name,
         description: a.description,
       });
@@ -752,9 +737,10 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const eventStream = runTablesQuery(auth, {
-      configuration,
-      actionConfiguration,
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
       conversation,
       agentMessage,
       rawInputs: inputs,
