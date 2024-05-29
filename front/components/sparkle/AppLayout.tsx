@@ -1,4 +1,11 @@
-import { Banner, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Banner,
+  CollapseButton,
+  Item,
+  Logo,
+  Tab,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
@@ -7,7 +14,14 @@ import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import React, { Fragment, useContext, useEffect, useState } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type {
@@ -25,6 +39,37 @@ import { classNames } from "@app/lib/utils";
  * IncidentBanner component at bottom of the page)
  */
 const SHOW_INCIDENT_BANNER = false;
+
+function ToggleSideBarButton({
+  isNavigationBarOpened,
+  toggleNavigationBarVisibility,
+}: {
+  isNavigationBarOpened: boolean;
+  toggleNavigationBarVisibility: (isOpened: boolean) => void;
+}) {
+  const buttonRef = useRef<HTMLDivElement>(null);
+  const [direction, setDirection] = useState<"left" | "right">("left");
+
+  const handleClick = useCallback(() => {
+    toggleNavigationBarVisibility(!isNavigationBarOpened);
+    setDirection((prevDirection) =>
+      prevDirection === "left" ? "right" : "left"
+    );
+  }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
+
+  return (
+    <div
+      ref={buttonRef}
+      onClick={handleClick}
+      className={classNames(
+        "hidden lg:fixed lg:top-1/2 lg:flex lg:w-5",
+        isNavigationBarOpened ? "lg:left-80" : "lg:left-0"
+      )}
+    >
+      <CollapseButton direction={direction} />
+    </div>
+  );
+}
 
 function NavigationBar({
   owner,
@@ -191,7 +236,6 @@ export const appLayoutBack = async (
 export default function AppLayout({
   owner,
   subscription,
-  isWideMode = false,
   hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
@@ -214,6 +258,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const [isNavigationBarOpened, setNavigationBarOpened] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -355,7 +400,7 @@ export default function AppLayout({
           </Transition.Root>
         )}
 
-        {!hideSidebar && (
+        {!hideSidebar && isNavigationBarOpened && (
           <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             {loaded && (
               <NavigationBar
@@ -373,7 +418,7 @@ export default function AppLayout({
         <div
           className={classNames(
             "mt-0 h-full flex-1",
-            !hideSidebar ? "lg:pl-80" : ""
+            !hideSidebar ? (isNavigationBarOpened ? "lg:pl-80" : "lg:pl-0") : ""
           )}
         >
           <div
@@ -394,8 +439,9 @@ export default function AppLayout({
             className={classNames(
               "fixed left-0 right-0 top-0 z-30 flex flex-col pl-12 lg:pl-0",
               !hideSidebar
-                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur lg:left-80"
+                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
                 : "",
+              isNavigationBarOpened ? "lg:left-80" : "",
               titleChildren ? "fixed" : "lg:hidden"
             )}
           >
@@ -417,15 +463,17 @@ export default function AppLayout({
               titleChildren ? "" : "lg:pt-8"
             )}
           >
-            <div
-              className={classNames(
-                "mx-auto h-full",
-                isWideMode ? "w-full" : "max-w-4xl px-6"
-              )}
-            >
-              {loaded && children}
-            </div>
+            <div className="mx-auto h-full max-w-4xl">{loaded && children}</div>
           </main>
+        </div>
+
+        <div>
+          <ToggleSideBarButton
+            isNavigationBarOpened={isNavigationBarOpened}
+            toggleNavigationBarVisibility={(isVisible) =>
+              setNavigationBarOpened(isVisible)
+            }
+          />
         </div>
       </div>
       <>

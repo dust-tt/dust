@@ -242,7 +242,7 @@ export default function AssistantNew({
           onClose={() => setConversationHelperModal(null)}
         />
       )}
-      <div className="flex h-full items-center pb-20">
+      <div className="flex h-full items-center px-6 pb-20">
         <div className="flex text-sm font-normal text-element-800">
           <Page.Vertical gap="md" align="left">
             {/* FEATURED AGENTS */}
