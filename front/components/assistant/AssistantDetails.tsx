@@ -5,10 +5,8 @@ import {
   ContentMessage,
   ElementModal,
   ExternalLinkIcon,
-  Icon,
   IconButton,
   Page,
-  PlanetIcon,
   ServerIcon,
   Spinner,
   Tree,
@@ -29,7 +27,6 @@ import {
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -265,19 +262,7 @@ export function AssistantDetails({
                 dataSourceConfigurations={action.dataSources}
               />
             </div>
-          ) : isWebsearchConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Web search
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon visual={PlanetIcon} size="xs" />
-                <div>assitant will use top results of web search to answer</div>
-              </div>
-            </div>
-          ) : (
-            <div key={`action-${index}`}>Unknown action type</div>
-          )
+          ) : null
         )}
       </>
     );
