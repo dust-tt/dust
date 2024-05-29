@@ -467,7 +467,6 @@ async function handler(
               }).catch((e) => {
                 logger.error(
                   {
-                    panic: true,
                     error: e,
                     workspaceId: subscription.workspace.sId,
                   },
@@ -483,7 +482,6 @@ async function handler(
               }).catch((e) => {
                 logger.error(
                   {
-                    panic: true,
                     error: e,
                     workspaceId: subscription.workspace.sId,
                   },
