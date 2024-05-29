@@ -133,6 +133,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             depth: currentRequestDepth + 1,
           },
           transformRequestFunction: (req) => {
+            try {
+              if (
+                new URL(req.url).protocol !== "http:" &&
+                new URL(req.url).protocol !== "https:"
+              ) {
+                return false;
+              }
+            } catch (e) {
+              return false;
+            }
             if (webCrawlerConfig.crawlMode === "child") {
               // We only want to crawl children of the original url
               if (
