@@ -1,0 +1,1 @@
+UPDATE subscriptions SET "requestCancelAt" = "endDate" WHERE "endDate" IS NOT NULL AND "requestCancelAt" IS NULL;
