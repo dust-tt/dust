@@ -540,6 +540,11 @@ function ActionEditor({
   dustApps: AppType[];
   builderState: AssistantBuilderState;
 }) {
+  const isDataSourceAction = [
+    "TABLES_QUERY",
+    "RETRIEVAL_EXHAUSTIVE",
+    "RETRIEVAL_SEARCH",
+  ].includes(action.type as any);
   return (
     <div>
       <ActionModeSection show={true}>
@@ -649,9 +654,7 @@ function ActionEditor({
         })()}
       </ActionModeSection>
       <div className="flex flex-col gap-4 pt-8">
-        {["TABLES_QUERY", "RETRIEVAL_EXHAUSTIVE", "RETRIEVAL_SEARCH"].includes(
-          action.type as any
-        ) ? (
+        {isDataSourceAction ? (
           <div className="flex flex-col gap-2">
             <div className="font-semibold text-element-800">
               What's the data?
@@ -667,7 +670,11 @@ function ActionEditor({
           </div>
         )}
         <TextArea
-          placeholder="My action description.."
+          placeholder={
+            isDataSourceAction
+              ? "This data contains...."
+              : "My action description.."
+          }
           value={action.description}
           onChange={(v) => {
             updateAction({
