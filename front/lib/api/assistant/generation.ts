@@ -289,15 +289,11 @@ export async function renderConversationForModelMultiActions({
 
       for (const action of actions) {
         const stepIndex = action.step;
-        if (isBaseActionClass(action)) {
-          steps[stepIndex] = steps[stepIndex] || [];
-          steps[stepIndex].push({
-            call: action.renderForFunctionCall(),
-            result: action.renderForMultiActionsModel(),
-          });
-        } else {
-          assertNever(action);
-        }
+        steps[stepIndex] = steps[stepIndex] || [];
+        steps[stepIndex].push({
+          call: action.renderForFunctionCall(),
+          result: action.renderForMultiActionsModel(),
+        });
       }
 
       for (const step of steps) {
