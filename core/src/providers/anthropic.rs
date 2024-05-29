@@ -519,7 +519,7 @@ impl AnthropicLLM {
         headers.insert("anthropic-version", "2023-06-01".parse()?);
 
         if !tools.is_empty() {
-            headers.insert("anthropic-beta", "tools-2024-04-04".parse()?);
+            headers.insert("anthropic-beta", "tools-2024-05-16".parse()?);
         }
 
         let res = reqwest::Client::new()
@@ -566,13 +566,6 @@ impl AnthropicLLM {
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
 
-        // Streaming (stream=true) is not yet supported on tools.
-        if !tools.is_empty() {
-            return Err(anyhow!(
-                "Anthropic does not support chat functions in stream mode."
-            ));
-        }
-
         let mut body = json!({
             "model": self.id.clone(),
             "messages": messages,
@@ -588,6 +581,10 @@ impl AnthropicLLM {
 
         if system.is_some() {
             body["system"] = json!(system);
+        }
+
+        if !tools.is_empty() {
+            body["tools"] = json!(tools);
         }
 
         let https = HttpsConnector::new();
@@ -613,6 +610,10 @@ impl AnthropicLLM {
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
         builder = match builder.header("anthropic-version", "2023-06-01") {
+            Ok(builder) => builder,
+            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
+        };
+        builder = match builder.header("anthropic-beta", "tools-2024-05-16") {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
