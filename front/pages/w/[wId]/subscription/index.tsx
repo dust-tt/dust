@@ -35,7 +35,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { getSubscriptionPricingIfPerSeatOrNull } from "@app/lib/plans/subscription";
+import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 
@@ -79,9 +79,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await getSubscriptionPricingIfPerSeatOrNull(
-    subscription
-  );
+  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
 
   return {
     props: {

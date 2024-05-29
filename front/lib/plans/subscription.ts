@@ -436,7 +436,7 @@ export async function isSubscriptionOnProPlan(
   return isStripeSubscriptionOnProPlan(stripeSubscription);
 }
 
-export async function getSubscriptionPricingIfPerSeatOrNull(
+export async function getPerSeatSubscriptionPricing(
   subscription: SubscriptionType
 ): Promise<{
   seatPrice: number;
@@ -465,21 +465,21 @@ export async function getSubscriptionPricingIfPerSeatOrNull(
     return null;
   }
 
-  const { unit_amount, currency, recurring } = item.price;
+  const { unit_amount: unitAmount, currency, recurring } = item.price;
 
-  const isPricedPerSeat = unit_amount !== null;
+  const isPricedPerSeat = unitAmount !== null;
   if (!isPricedPerSeat) {
     return null;
   }
 
-  if (!item.quantity) {
+  if (!item.quantity || !recurring) {
     return null;
   }
 
   return {
-    seatPrice: unit_amount,
+    seatPrice: unitAmount,
     seatCurrency: currency,
-    billingPeriod: recurring?.interval === "year" ? "yearly" : "monthly",
+    billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
     quantity: item.quantity,
   };
 }

@@ -48,7 +48,7 @@ import {
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getSubscriptionPricingIfPerSeatOrNull } from "@app/lib/plans/subscription";
+import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { useMembers } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -86,9 +86,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       strategy: "okta",
     };
 
-  const perSeatPricing = await getSubscriptionPricingIfPerSeatOrNull(
-    subscription
-  );
+  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
 
   return {
     props: {
