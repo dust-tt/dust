@@ -7,8 +7,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleIcon,
+  Dialog,
   IconButton,
   MagicIcon,
+  Page,
   SquareIcon,
   Tab,
   TriangleIcon,
@@ -248,6 +250,10 @@ export default function AssistantBuilder({
   const [template, setTemplate] =
     useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
 
+  const [
+    showEnableMultiActionsConfirmation,
+    setShowEnableMultiActionsConfirmation,
+  ] = useState(false);
   const [multiActionsMode, setMultiActionsMode] = useState(multiActionsEnabled);
 
   const resetTemplate = async () => {
@@ -542,6 +548,14 @@ export default function AssistantBuilder({
 
   return (
     <>
+      <MultActionsConfirmationModal
+        show={showEnableMultiActionsConfirmation}
+        onClose={() => setShowEnableMultiActionsConfirmation(false)}
+        onConfirm={() => {
+          setMultiActionsMode(true);
+          setEdited(true);
+        }}
+      />
       <AppLayout
         subscription={subscription}
         hideSidebar
@@ -584,7 +598,11 @@ export default function AssistantBuilder({
                       icon={!multiActionsMode ? XMarkIcon : CheckIcon}
                       label={`Multi Actions ${multiActionsMode ? "On" : "Off"}`}
                       onClick={() => {
-                        setMultiActionsMode((mode) => !mode);
+                        if (!multiActionsMode) {
+                          setShowEnableMultiActionsConfirmation(true);
+                          return;
+                        }
+                        setMultiActionsMode(false);
                         setEdited(true);
                       }}
                       variant={!multiActionsMode ? "tertiary" : "primary"}
@@ -1032,5 +1050,43 @@ export function BuilderLayout({
         </div>
       </div>
     </>
+  );
+}
+
+export function MultActionsConfirmationModal({
+  show,
+  onClose,
+  onConfirm,
+}: {
+  show: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog
+      isOpen={show}
+      onCancel={() => onClose()}
+      onValidate={() => {
+        onConfirm();
+        onClose();
+      }}
+      title="Enable Multi Actions"
+    >
+      <Page.Vertical>
+        <div className="flex flex-col gap-y-2">
+          <div className="text-md grow font-medium text-warning-600">
+            Important
+          </div>
+          <div className="text-md font-normal text-element-700">
+            Multi Actions is an experimental feature that allows an assistant to
+            run multiple actions in a single run.
+          </div>
+          <div className="text-md font-normal text-element-700">
+            This feature is still in development and may not work as expected.
+            We may break or delete any assistant that uses this feature.
+          </div>
+        </div>
+      </Page.Vertical>
+    </Dialog>
   );
 }
