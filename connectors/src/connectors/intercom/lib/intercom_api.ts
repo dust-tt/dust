@@ -6,6 +6,7 @@ import type {
   IntercomHelpCenterType,
   IntercomTeamType,
 } from "@connectors/connectors/intercom/lib/types";
+import type { WorkflowError } from "@connectors/lib/error";
 import { ExternalOauthTokenError } from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import logger from "@connectors/logger/logger";
@@ -90,12 +91,21 @@ async function queryIntercomAPI({
 
     return response;
   } catch (e) {
-    logger.info(
-      { path, response: text, status: rawResponse.status },
-      "Failed to parse Intercom JSON response."
-    );
-
-    throw e;
+    if (rawResponse.status === 405) {
+      const isCaptchaError = text.includes("captcha-container");
+      const workflowError: WorkflowError = {
+        type: "transient_upstream_activity_error",
+        message: `Intercom 405: ${isCaptchaError ? "Captcha error" : text}`,
+        __is_dust_error: true,
+      };
+      throw workflowError;
+    } else {
+      logger.info(
+        { path, response: text, status: rawResponse.status },
+        "Failed to parse Intercom JSON response."
+      );
+      throw e;
+    }
   }
 }
 
