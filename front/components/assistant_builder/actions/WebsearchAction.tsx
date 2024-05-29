@@ -4,7 +4,8 @@ export function isActionWebsearchValid(
   action: AssistantBuilderActionConfiguration
 ) {
   return (
-    action.type === "WEBSEARCH" && Object.keys(action.configuration).length > 0
+    action.type === "WEBSEARCH" &&
+    Object.keys(action.configuration).length === 0
   );
 }
 
