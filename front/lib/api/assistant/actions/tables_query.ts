@@ -1,8 +1,5 @@
 import type {
   AgentActionSpecification,
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
   DustAppParameters,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -24,6 +21,8 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
@@ -156,291 +155,285 @@ async function tablesQueryActionSpecification({
   };
 }
 
-// Generates the action specification for generation of rawInputs passed to `runTablesQuery`.
-export async function deprecatedGenerateTablesQuerySpecificationForSingleActionAgent(
-  auth: Authenticator
-): Promise<Result<AgentActionSpecification, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
-  }
-
-  const actionDescription =
-    "Query data tables specified by the user by executing a generated SQL query from a" +
-    " natural language question.";
-
-  const spec = await tablesQueryActionSpecification({
-    name: "query_tables",
-    description: actionDescription,
-  });
-  return new Ok(spec);
-}
-
-export async function generateTablesQuerySpecification(
-  auth: Authenticator,
-  { name, description }: { name: string; description: string }
-): Promise<Result<AgentActionSpecification, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
-  }
-
-  const actionDescription =
-    "Query data tables specificied by the user by executing a generated SQL query from a" +
-    " natural language question.\n" +
-    `Description of the data tables:\n${description}`;
-
-  const spec = await tablesQueryActionSpecification({
-    name,
-    description: actionDescription,
-  });
-  return new Ok(spec);
-}
-
 /**
  * Action execution.
  */
 
-export async function* runTablesQuery(
-  auth: Authenticator,
-  {
-    configuration,
-    actionConfiguration,
-    conversation,
-    agentMessage,
-    rawInputs,
-    functionCallId,
-    step,
-  }: {
-    configuration: AgentConfigurationType;
-    actionConfiguration: TablesQueryConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
-    rawInputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
-    step: number;
-  }
-): AsyncGenerator<
-  | TablesQueryErrorEvent
-  | TablesQuerySuccessEvent
-  | TablesQueryParamsEvent
-  | TablesQueryOutputEvent
-> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runQueryTables`");
-  }
-
-  if (!rawInputs.question || typeof rawInputs.question !== "string") {
-    yield {
-      type: "tables_query_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "tables_query_parameters_generation_error",
-        message: `Error generating parameters for tables query: failed to generate a valid question.`,
-      },
-    };
-    return;
-  }
-
-  const question = rawInputs.question as string;
-
-  let output: Record<string, string | boolean | number> = {};
-
-  // Creating action
-  const action = await AgentTablesQueryAction.create({
-    tablesQueryConfigurationId: configuration.sId,
-    params: rawInputs,
-    output,
-    functionCallId,
-    agentMessageId: agentMessage.agentMessageId,
-    step: step,
-  });
-
-  yield {
-    type: "tables_query_params",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: agentMessage.sId,
-    action: new TablesQueryAction({
-      id: action.id,
-      params: action.params as DustAppParameters,
-      output: action.output as Record<string, string | number | boolean>,
-      functionCallId: action.functionCallId,
-      functionCallName: action.functionCallName,
-      agentMessageId: action.agentMessageId,
-      step: action.step,
-    }),
-  };
-
-  // Generating configuration
-  const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-query-tables"].config
-  );
-  const tables = actionConfiguration.tables.map((t) => ({
-    workspace_id: t.workspaceId,
-    table_id: t.tableId,
-    data_source_id: t.dataSourceId,
-  }));
-  config.DATABASE_SCHEMA = {
-    type: "database_schema",
-    tables,
-  };
-  config.DATABASE = {
-    type: "database",
-    tables,
-  };
-  config.DATABASE_TABLE_HEAD = {
-    type: "database",
-    tables,
-  };
-
-  // Running the app
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-query-tables",
-    config,
-    [
-      {
-        question,
-        instructions: configuration.instructions,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      agentMessageId: agentMessage.sId,
+export class TablesQueryConfigurationServerRunner extends BaseActionConfigurationServerRunner<TablesQueryConfigurationType> {
+  async buildSpecification(
+    auth: Authenticator,
+    { name, description }: { name: string; description: string }
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected unauthenticated call to `runQueryTables`");
     }
-  );
 
-  if (res.isErr()) {
-    yield {
-      type: "tables_query_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "tables_query_error",
-        message: `Error running TablesQuery app: ${res.error.message}`,
-      },
-    };
-    return;
+    const actionDescription =
+      "Query data tables specificied by the user by executing a generated SQL query from a" +
+      " natural language question.\n" +
+      `Description of the data tables:\n${description}`;
+
+    const spec = await tablesQueryActionSpecification({
+      name,
+      description: actionDescription,
+    });
+    return new Ok(spec);
   }
 
-  const { eventStream } = res.value;
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      logger.error(
-        {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          error: event.content.message,
-        },
-        "Error running query_tables app"
-      );
+  async deprecatedBuildSpecificationForSingleActionAgent(
+    auth: Authenticator
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected unauthenticated call to `runQueryTables`");
+    }
+
+    const actionDescription =
+      "Query data tables specified by the user by executing a generated SQL query from a" +
+      " natural language question.";
+
+    const spec = await tablesQueryActionSpecification({
+      name: "query_tables",
+      description: actionDescription,
+    });
+    return new Ok(spec);
+  }
+
+  async *run(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      conversation,
+      agentMessage,
+      rawInputs,
+      functionCallId,
+      step,
+    }: BaseActionRunParams
+  ): AsyncGenerator<
+    | TablesQueryErrorEvent
+    | TablesQuerySuccessEvent
+    | TablesQueryParamsEvent
+    | TablesQueryOutputEvent
+  > {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected unauthenticated call to `runQueryTables`");
+    }
+
+    const { actionConfiguration } = this;
+
+    if (!rawInputs.question || typeof rawInputs.question !== "string") {
       yield {
         type: "tables_query_error",
         created: Date.now(),
-        configurationId: configuration.sId,
+        configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "tables_query_error",
-          message: `Error running TablesQuery app: ${event.content.message}`,
+          code: "tables_query_parameters_generation_error",
+          message: `Error generating parameters for tables query: failed to generate a valid question.`,
         },
       };
       return;
     }
 
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
+    const question = rawInputs.question as string;
 
-      if (e.error) {
+    let output: Record<string, string | boolean | number> = {};
+
+    // Creating action
+    const action = await AgentTablesQueryAction.create({
+      tablesQueryConfigurationId: actionConfiguration.sId,
+      params: rawInputs,
+      output,
+      functionCallId,
+      agentMessageId: agentMessage.agentMessageId,
+      step: step,
+    });
+
+    yield {
+      type: "tables_query_params",
+      created: Date.now(),
+      configurationId: actionConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new TablesQueryAction({
+        id: action.id,
+        params: action.params as DustAppParameters,
+        output: action.output as Record<string, string | number | boolean>,
+        functionCallId: action.functionCallId,
+        functionCallName: action.functionCallName,
+        agentMessageId: action.agentMessageId,
+        step: action.step,
+      }),
+    };
+
+    // Generating configuration
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["assistant-v2-query-tables"].config
+    );
+    const tables = actionConfiguration.tables.map((t) => ({
+      workspace_id: t.workspaceId,
+      table_id: t.tableId,
+      data_source_id: t.dataSourceId,
+    }));
+    config.DATABASE_SCHEMA = {
+      type: "database_schema",
+      tables,
+    };
+    config.DATABASE = {
+      type: "database",
+      tables,
+    };
+    config.DATABASE_TABLE_HEAD = {
+      type: "database",
+      tables,
+    };
+
+    // Running the app
+    const res = await runActionStreamed(
+      auth,
+      "assistant-v2-query-tables",
+      config,
+      [
+        {
+          question,
+          instructions: agentConfiguration.instructions,
+        },
+      ],
+      {
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+        agentMessageId: agentMessage.sId,
+      }
+    );
+
+    if (res.isErr()) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message: `Error running TablesQuery app: ${res.error.message}`,
+        },
+      };
+      return;
+    }
+
+    const { eventStream } = res.value;
+    for await (const event of eventStream) {
+      if (event.type === "error") {
         logger.error(
           {
             workspaceId: owner.id,
             conversationId: conversation.id,
-            error: e.error,
+            error: event.content.message,
           },
           "Error running query_tables app"
         );
-
-        const error =
-          e.error === "too_many_result_rows"
-            ? {
-                code: "too_many_result_rows" as const,
-                message: `The query returned too many rows. Please refine your query.`,
-              }
-            : {
-                code: "tables_query_error" as const,
-                message: `Error running TablesQuery app: ${e.error}`,
-              };
-
         yield {
           type: "tables_query_error",
           created: Date.now(),
-          configurationId: configuration.sId,
+          configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
-          error,
+          error: {
+            code: "tables_query_error",
+            message: `Error running TablesQuery app: ${event.content.message}`,
+          },
         };
         return;
       }
 
-      if (event.content.block_name === "SQL") {
-        let tmpOutput = null;
-        if (e.value) {
-          const sql = e.value as string;
-          tmpOutput = { query: sql };
-        } else {
-          tmpOutput = { no_query: true };
+      if (event.type === "block_execution") {
+        const e = event.content.execution[0][0];
+
+        if (e.error) {
+          logger.error(
+            {
+              workspaceId: owner.id,
+              conversationId: conversation.id,
+              error: e.error,
+            },
+            "Error running query_tables app"
+          );
+
+          const error =
+            e.error === "too_many_result_rows"
+              ? {
+                  code: "too_many_result_rows" as const,
+                  message: `The query returned too many rows. Please refine your query.`,
+                }
+              : {
+                  code: "tables_query_error" as const,
+                  message: `Error running TablesQuery app: ${e.error}`,
+                };
+
+          yield {
+            type: "tables_query_error",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error,
+          };
+          return;
         }
 
-        yield {
-          type: "tables_query_output",
-          created: Date.now(),
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          action: new TablesQueryAction({
-            id: action.id,
-            params: action.params as DustAppParameters,
-            output: tmpOutput as Record<string, string | number | boolean>,
-            functionCallId: action.functionCallId,
-            functionCallName: action.functionCallName,
-            agentMessageId: agentMessage.id,
-            step: action.step,
-          }),
-        };
-      }
+        if (event.content.block_name === "SQL") {
+          let tmpOutput = null;
+          if (e.value) {
+            const sql = e.value as string;
+            tmpOutput = { query: sql };
+          } else {
+            tmpOutput = { no_query: true };
+          }
 
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        output = JSON.parse(e.value as string);
-        if (!output.query) {
-          output.no_query = true;
+          yield {
+            type: "tables_query_output",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: new TablesQueryAction({
+              id: action.id,
+              params: action.params as DustAppParameters,
+              output: tmpOutput as Record<string, string | number | boolean>,
+              functionCallId: action.functionCallId,
+              functionCallName: action.functionCallName,
+              agentMessageId: agentMessage.id,
+              step: action.step,
+            }),
+          };
+        }
+
+        if (event.content.block_name === "OUTPUT" && e.value) {
+          output = JSON.parse(e.value as string);
+          if (!output.query) {
+            output.no_query = true;
+          }
         }
       }
     }
+
+    // Updating action
+    await action.update({
+      output,
+    });
+
+    yield {
+      type: "tables_query_success",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new TablesQueryAction({
+        id: action.id,
+        params: action.params as DustAppParameters,
+        output: action.output as Record<string, string | number | boolean>,
+        functionCallId: action.functionCallId,
+        functionCallName: action.functionCallName,
+        agentMessageId: action.agentMessageId,
+        step: action.step,
+      }),
+    };
+    return;
   }
-
-  // Updating action
-  await action.update({
-    output,
-  });
-
-  yield {
-    type: "tables_query_success",
-    created: Date.now(),
-    configurationId: configuration.sId,
-    messageId: agentMessage.sId,
-    action: new TablesQueryAction({
-      id: action.id,
-      params: action.params as DustAppParameters,
-      output: action.output as Record<string, string | number | boolean>,
-      functionCallId: action.functionCallId,
-      functionCallName: action.functionCallName,
-      agentMessageId: action.agentMessageId,
-      step: action.step,
-    }),
-  };
-  return;
 }

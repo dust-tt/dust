@@ -183,6 +183,12 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     });
   }
 
+  async deprecatedBuildSpecificationForSingleActionAgent(
+    auth: Authenticator
+  ): Promise<Result<AgentActionSpecification, Error>> {
+    return this.buildSpecification(auth, {});
+  }
+
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run
