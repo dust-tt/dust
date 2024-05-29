@@ -438,8 +438,9 @@ export default function AppLayout({
             className={classNames(
               "fixed left-0 right-0 top-0 z-30 flex flex-col pl-12 lg:pl-0",
               !hideSidebar
-                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur lg:left-80"
+                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
                 : "",
+              navigationBarOpen ? "lg:left-80" : "",
               titleChildren ? "fixed" : "lg:hidden"
             )}
           >
