@@ -41,29 +41,30 @@ import { classNames } from "@app/lib/utils";
 const SHOW_INCIDENT_BANNER = false;
 
 function ToggleSideBarButton({
-  navigationBarOpen,
+  isNavigationBarOpened,
   toggleNavigationBarVisibility,
 }: {
-  navigationBarOpen: boolean;
+  isNavigationBarOpened: boolean;
   toggleNavigationBarVisibility: (isOpened: boolean) => void;
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState<"left" | "right">("left");
 
   const handleClick = useCallback(() => {
-    toggleNavigationBarVisibility(!navigationBarOpen);
+    toggleNavigationBarVisibility(!isNavigationBarOpened);
     setDirection((prevDirection) =>
       prevDirection === "left" ? "right" : "left"
     );
-  }, [navigationBarOpen, toggleNavigationBarVisibility]);
+  }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
 
   return (
     <div
       ref={buttonRef}
       onClick={handleClick}
-      className={`hidden lg:fixed lg:top-1/2 lg:flex lg:w-5 ${
-        navigationBarOpen ? "lg:left-80" : "lg:left-0"
-      }`}
+      className={classNames(
+        "hidden lg:fixed lg:top-1/2 lg:flex lg:w-5",
+        isNavigationBarOpened ? "lg:left-80" : "lg:left-0"
+      )}
     >
       <CollapseButton direction={direction} />
     </div>
@@ -468,7 +469,7 @@ export default function AppLayout({
 
         <div>
           <ToggleSideBarButton
-            navigationBarOpen={isNavigationBarOpened}
+            isNavigationBarOpened={isNavigationBarOpened}
             toggleNavigationBarVisibility={(isVisible) =>
               setNavigationBarOpened(isVisible)
             }
