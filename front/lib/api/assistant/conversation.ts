@@ -620,6 +620,29 @@ export async function* postUserMessage(
       })
     )
   );
+
+  async function createOrUpdateParticipation() {
+    if (user) {
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user.id,
+        },
+      });
+      if (participant) {
+        return participant.update({
+          action: "posted",
+        });
+      } else {
+        return ConversationParticipant.create({
+          conversationId: conversation.id,
+          userId: user.id,
+          action: "posted",
+        });
+      }
+    }
+  }
+  await createOrUpdateParticipation();
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await frontSequelize.transaction(async (t) => {
@@ -663,40 +686,8 @@ export async function* postUserMessage(
           }
         );
       }
-      async function createOrUpdateParticipation() {
-        if (user) {
-          const participant = await ConversationParticipant.findOne({
-            where: {
-              conversationId: conversation.id,
-              userId: user.id,
-            },
-            transaction: t,
-          });
-          if (participant) {
-            return participant.update(
-              {
-                action: "posted",
-              },
-              { transaction: t }
-            );
-          } else {
-            return ConversationParticipant.create(
-              {
-                conversationId: conversation.id,
-                userId: user.id,
-                action: "posted",
-              },
-              { transaction: t }
-            );
-          }
-        }
-      }
-      const result = await Promise.all([
-        createMessageAndUserMessage(),
-        createOrUpdateParticipation(),
-      ]);
 
-      const m = result[0];
+      const m = await createMessageAndUserMessage();
       const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
@@ -1043,6 +1034,26 @@ export async function* editUserMessage(
     )
   );
 
+  async function createOrUpdateParticipation() {
+    if (user) {
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user.id,
+        },
+      });
+      if (participant) {
+        return participant.update({
+          action: "posted",
+        });
+      } else {
+        throw new Error("Unreachable: edited message implies participation");
+      }
+    }
+  }
+
+  await createOrUpdateParticipation();
+
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
     const result = await frontSequelize.transaction(async (t) => {
@@ -1114,35 +1125,9 @@ export async function* editUserMessage(
           }
         );
       }
-      async function createOrUpdateParticipation() {
-        if (user) {
-          const participant = await ConversationParticipant.findOne({
-            where: {
-              conversationId: conversation.id,
-              userId: user.id,
-            },
-            transaction: t,
-          });
-          if (participant) {
-            return participant.update(
-              {
-                action: "posted",
-              },
-              { transaction: t }
-            );
-          } else {
-            throw new Error(
-              "Unreachable: edited message implies participation"
-            );
-          }
-        }
-      }
-      const result = await Promise.all([
-        createMessageAndUserMessage(messageRow),
-        createOrUpdateParticipation(),
-      ]);
 
-      const m = result[0];
+      const m = await createMessageAndUserMessage(messageRow);
+
       const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
