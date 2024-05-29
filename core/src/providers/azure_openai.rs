@@ -1,15 +1,16 @@
-use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::providers::embedder::{Embedder, EmbedderVector};
+use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
-    to_openai_messages, OpenAITool, OpenAIToolChoice,
+    to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
 };
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
+use crate::providers::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::run::Credentials;
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -24,8 +25,6 @@ use std::io::prelude::*;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
-
-use super::llm::ChatFunction;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIScaleSettings {
@@ -223,34 +222,7 @@ impl LLM for AzureOpenAILLM {
 
     fn context_size(&self) -> usize {
         match self.model_id.as_ref() {
-            Some(model_id) => {
-                // Reference: https://platform.openai.com/docs/models
-
-                // gpt-3.5-*
-                if model_id.starts_with("gpt-3.5") {
-                    if model_id.starts_with("gpt-3.5-turbo-instruct") {
-                        return 4096;
-                    }
-                    if model_id == "gpt-3.5-turbo-0613" {
-                        return 4096;
-                    }
-                    return 16385;
-                }
-
-                // gpt-4*
-                if model_id.starts_with("gpt-4") {
-                    if model_id.starts_with("gpt-4-32k") {
-                        return 32768;
-                    }
-                    if model_id == "gpt-4" || model_id == "gpt-4-0613" {
-                        return 8192;
-                    }
-                    return 128000;
-                }
-
-                // By default return 128000
-                return 128000;
-            }
+            Some(model_id) => OpenAILLM::openai_context_size(model_id),
             None => 128000,
         }
     }
