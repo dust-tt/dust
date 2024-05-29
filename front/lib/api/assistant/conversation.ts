@@ -613,14 +613,6 @@ export async function* postUserMessage(
     return;
   }
 
-  const agentConfigurations = removeNulls(
-    await Promise.all(
-      mentions.filter(isAgentMention).map((mention) => {
-        return getLightAgentConfiguration(auth, mention.configurationId);
-      })
-    )
-  );
-
   async function createOrUpdateParticipation() {
     if (user) {
       const participant = await ConversationParticipant.findOne({
@@ -642,7 +634,19 @@ export async function* postUserMessage(
       }
     }
   }
-  await createOrUpdateParticipation();
+
+  const results = await Promise.all([
+    removeNulls(
+      await Promise.all(
+        mentions.filter(isAgentMention).map((mention) => {
+          return getLightAgentConfiguration(auth, mention.configurationId);
+        })
+      )
+    ),
+    await createOrUpdateParticipation(),
+  ]);
+  const agentConfigurations = results[0];
+
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await frontSequelize.transaction(async (t) => {
@@ -1026,13 +1030,6 @@ export async function* editUserMessage(
   let userMessage: UserMessageWithRankType | null = null;
   let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
-  const agentConfigurations = removeNulls(
-    await Promise.all(
-      mentions.filter(isAgentMention).map((mention) => {
-        return getLightAgentConfiguration(auth, mention.configurationId);
-      })
-    )
-  );
 
   async function createOrUpdateParticipation() {
     if (user) {
@@ -1052,7 +1049,19 @@ export async function* editUserMessage(
     }
   }
 
-  await createOrUpdateParticipation();
+  const results = await Promise.all([
+    removeNulls(
+      await Promise.all(
+        mentions.filter(isAgentMention).map((mention) => {
+          return getLightAgentConfiguration(auth, mention.configurationId);
+        })
+      )
+    ),
+
+    createOrUpdateParticipation(),
+  ]);
+
+  const agentConfigurations = results[0];
 
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
