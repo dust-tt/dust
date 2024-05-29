@@ -258,7 +258,7 @@ impl SearchFilter {
 /// Section prefixes are repeated in all chunks generated from the section (and its children). We do
 /// not insert any separators the separators are the responsibility of the caller (\n at end of
 /// sections, ...)
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Section {
     pub prefix: Option<String>,
     pub content: Option<String>,
@@ -894,8 +894,7 @@ impl DataSource {
                 &document_id_hash,
                 document.clone(),
                 &document_hash,
-                // TODO: Reconsider cloning here.
-                text.clone(),
+                &text,
                 true, /* Use cache for main collection */
             )
             .await?;
@@ -911,7 +910,7 @@ impl DataSource {
                 &document_id_hash,
                 document,
                 &document_hash,
-                text,
+                &text,
                 false, /* We don't use cache when writing in shadow collection */
             )
             .await?;
@@ -930,7 +929,7 @@ impl DataSource {
         document_id_hash: &str,
         mut document: Document,
         document_hash: &str,
-        text: Section,
+        text: &Section,
         use_cache: bool,
     ) -> Result<Document> {
         let qdrant_client = self.main_qdrant_client(qdrant_clients);
@@ -1200,7 +1199,7 @@ impl DataSource {
                 payload.insert("data_source_id", self.data_source_id.clone());
                 payload.insert("data_source_internal_id", self.internal_id.clone());
                 payload.insert("document_id", document.document_id.clone());
-                payload.insert("document_id_hash", document_id_hash.clone());
+                payload.insert("document_id_hash", document_id_hash);
                 payload.insert("text", c.text.clone());
 
                 qdrant::PointStruct::new(
