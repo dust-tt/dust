@@ -3,6 +3,8 @@ import type {
   AgentMessageType,
   ContentFragmentMessageTypeModel,
   ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
   GenerationCancelEvent,
   GenerationErrorEvent,
   GenerationSuccessEvent,
@@ -274,39 +276,56 @@ export async function renderConversationForModelMultiActions({
 
   // Render loop.
   // Render all messages and all actions.
-  for (let i = conversation.content.length - 1; i >= 0; i--) {
-    const versions = conversation.content[i];
+  for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
     if (isAgentMessageType(m)) {
-      if (m.content) {
-        messages.unshift({
-          role: "assistant" as const,
-          name: m.configuration.name,
-          content: m.content,
-        });
-      }
-
       const actions = removeNulls(m.actions);
-      const function_calls = [];
-      const function_messages = [];
+
+      // This array is 2D, because we can have multiple calls per agent message (parallel calls).
+      const steps = [] as Array<
+        Array<{ call: FunctionCallType; result: FunctionMessageTypeModel }>
+      >;
 
       for (const action of actions) {
+        const stepIndex = action.step;
         if (isBaseActionClass(action)) {
-          function_messages.unshift(action.renderForMultiActionsModel());
-          function_calls.unshift(action.renderForFunctionCall());
+          steps[stepIndex] = steps[stepIndex] || [];
+          steps[stepIndex].push({
+            call: action.renderForFunctionCall(),
+            result: action.renderForMultiActionsModel(),
+          });
         } else {
           assertNever(action);
         }
       }
 
-      if (function_messages.length > 0) {
-        messages.unshift(...function_messages);
-      }
-      if (function_calls.length > 0) {
-        messages.unshift({
+      for (const step of steps) {
+        if (!step?.length) {
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              agentMessageId: m.sId,
+            },
+            "Unexpected state, agent message step with no actions"
+          );
+          continue;
+        }
+        messages.push({
           role: "assistant",
-          function_calls,
+          function_calls: step.map((s) => s.call),
+        });
+        for (const { result } of step) {
+          messages.push(result);
+        }
+      }
+
+      if (m.content) {
+        messages.push({
+          role: "assistant" as const,
+          name: m.configuration.name,
+          content: m.content,
         });
       }
     } else if (isUserMessageType(m)) {
@@ -317,7 +336,7 @@ export async function renderConversationForModelMultiActions({
           return `@${name}`;
         }
       );
-      messages.unshift({
+      messages.push({
         role: "user" as const,
         name: m.context.fullName || m.context.username,
         content,
@@ -329,7 +348,7 @@ export async function renderConversationForModelMultiActions({
           conversationId: conversation.sId,
           messageId: m.sId,
         });
-        messages.unshift({
+        messages.push({
           role: "content_fragment",
           name: `inject_${m.contentType}`,
           // The closing </attachment> tag will be added in the merging loop because we might
