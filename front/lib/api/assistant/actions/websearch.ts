@@ -196,7 +196,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     yield {
       type: "websearch_params",
       created: Date.now(),
-      configurationId: agentConfiguration.sId,
+      configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
       action: new WebsearchAction({
         id: action.id,
