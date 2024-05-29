@@ -424,7 +424,7 @@ export default function LabsTranscriptsIndex({
         onCancel={() => setIsDeleteProviderDialogOpened(false)}
       >
         <div>
-          This will stop the processing of your meeting transcripts. You can
+          This will stop the processing of your meeting transcripts and delete all history. You can
           reconnect anytime.
         </div>
       </Dialog>
