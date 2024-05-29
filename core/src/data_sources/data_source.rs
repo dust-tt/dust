@@ -644,7 +644,7 @@ impl DataSource {
         field_value: impl Into<Value>,
     ) -> Result<()> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
@@ -664,8 +664,7 @@ impl DataSource {
         // TODO:
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
-                let data_source_qdrant_shadow_write =
-                    qdrant_client.wrap_for_data_source(&self, false);
+                let data_source_qdrant_shadow_write = qdrant_client.for_data_source(&self);
 
                 match data_source_qdrant_shadow_write
                     .set_payload(filter.clone(), payload.clone())
@@ -694,8 +693,7 @@ impl DataSource {
         }
 
         if self.shadow_embedder_config().is_some() {
-            let data_source_qdrant_shadow_embedder =
-                qdrant_client.wrap_for_data_source(&self, true);
+            let data_source_qdrant_shadow_embedder = qdrant_client.for_data_source(&self);
 
             match data_source_qdrant_shadow_embedder
                 .set_payload(filter.clone(), payload.clone())
@@ -736,7 +734,7 @@ impl DataSource {
         preserve_system_tags: bool,
     ) -> Result<Document> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -1059,7 +1057,7 @@ impl DataSource {
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
-                let qdrant_client_shadow_write = qdrant_client.wrap_for_data_source(self, false);
+                let qdrant_client_shadow_write = qdrant_client.for_data_source(self);
 
                 match qdrant_client_shadow_write
                     .delete_points(filter.clone())
@@ -1154,8 +1152,7 @@ impl DataSource {
                 // TODO: We can build qdrant client only once!
                 match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
                     Some(qdrant_client) => {
-                        let qdrant_client_shadow_write =
-                            qdrant_client.wrap_for_data_source(self, false);
+                        let qdrant_client_shadow_write = qdrant_client.for_data_source(self);
 
                         match qdrant_client_shadow_write
                             .upsert_points(chunk.clone())
@@ -1254,7 +1251,7 @@ impl DataSource {
 
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
 
-        let qdrant_client_shadow_embedder = qdrant_client.wrap_for_data_source(self, true);
+        let qdrant_client_shadow_embedder = qdrant_client.for_data_source(self);
 
         let full_text = text.full_text();
 
@@ -1490,7 +1487,7 @@ impl DataSource {
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         // We ensure that we have not left a `parents.is_in_map`` in the filter.
         match filter.as_ref() {
@@ -1671,8 +1668,7 @@ impl DataSource {
                             .map(|(_, c)| c.clone())
                             .collect::<Vec<Chunk>>();
                         let chunk_size = self.embedder_config().max_chunk_size;
-                        let qc = qdrant_client.clone();
-                        let ds_qdrant = qc.wrap_for_data_source(self, false);
+                        let ds_qdrant = ds_qdrant.clone();
                         let mut token_count = chunks.len() * chunk_size;
                         d.token_count = Some(token_count);
                         tokio::spawn(async move {
@@ -1887,7 +1883,7 @@ impl DataSource {
         top_k: usize,
         filter: &Option<SearchFilter>,
     ) -> Result<Vec<(String, Chunk)>> {
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         let store = store.clone();
 
@@ -2076,7 +2072,7 @@ impl DataSource {
         document_id: &str,
     ) -> Result<()> {
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         let store = store.clone();
 
@@ -2103,7 +2099,7 @@ impl DataSource {
 
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
-                let qdrant_client_shadow_write = qdrant_client.wrap_for_data_source(self, false);
+                let qdrant_client_shadow_write = qdrant_client.for_data_source(self);
 
                 match qdrant_client_shadow_write
                     .delete_points(filter.clone())
@@ -2132,7 +2128,7 @@ impl DataSource {
         }
 
         if self.shadow_embedder_config().is_some() {
-            let qdrant_client_shadow_embedder = qdrant_client.wrap_for_data_source(self, true);
+            let qdrant_client_shadow_embedder = qdrant_client.for_data_source(self);
 
             match qdrant_client_shadow_embedder
                 .delete_points(filter.clone())
@@ -2190,7 +2186,7 @@ impl DataSource {
         }
 
         let qdrant_client = qdrant_clients.main_client(&self.config.qdrant_config);
-        let ds_qdrant = qdrant_client.wrap_for_data_source(self, false);
+        let ds_qdrant = qdrant_client.for_data_source(self);
 
         let store = store.clone();
 

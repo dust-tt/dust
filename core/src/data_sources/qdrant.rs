@@ -1,7 +1,4 @@
-use crate::{
-    providers::{embedder, provider::ProviderID},
-    utils::ParseError,
-};
+use crate::{providers::provider::ProviderID, utils::ParseError};
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fmt;
@@ -153,13 +150,13 @@ impl QdrantClients {
 
 // TODO: Name.
 #[derive(Clone)]
-pub struct DustQdrantClientForDataSource<'a> {
-    client: &'a DustQdrantClient,
-    data_source: &'a DataSource,
-    embedder_config: &'a EmbedderConfig,
+pub struct DustQdrantClientForDataSource {
+    client: DustQdrantClient,
+    data_source: DataSource,
+    embedder_config: EmbedderConfig,
 }
 
-impl<'a> DustQdrantClientForDataSource<'a> {
+impl DustQdrantClientForDataSource {
     pub fn collection_name(&self) -> String {
         // The collection name depends on the embedding model which is stored on the
         // data source config. To allow migrations between embedders in the future we will
@@ -195,7 +192,6 @@ impl<'a> DustQdrantClientForDataSource<'a> {
         self.client.shard_key(key_id)
     }
 
-    // TODO:
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
     // implementaiton ensure data separation of our users data. Modify with extreme caution.
     fn apply_tenant_filter(&self, filter: &mut qdrant::Filter) -> () {
@@ -350,26 +346,26 @@ pub struct DustQdrantClient {
     pub cluster: QdrantCluster,
 }
 
-fn get_embedder_config(data_source: &DataSource, use_shadow: bool) -> Result<&EmbedderConfig> {
-    match use_shadow {
-        true => data_source
-            .shadow_embedder_config()
-            .ok_or(anyhow!("No shadow embedder config found")),
-        _ => Ok(data_source.embedder_config()),
-    }
-}
-
 impl DustQdrantClient {
-    pub fn wrap_for_data_source(
+    pub fn for_data_source(&self, data_source: &DataSource) -> DustQdrantClientForDataSource {
+        DustQdrantClientForDataSource {
+            client: self.clone(),
+            data_source: data_source.clone(),
+            embedder_config: data_source.embedder_config().clone(),
+        }
+    }
+
+    pub fn for_data_source_with_shadow_embedder(
         &self,
         data_source: &DataSource,
-        use_shadow: bool,
-    ) -> DustQdrantClientForDataSource {
-        // TODO: use_shadow.
-        DustQdrantClientForDataSource {
-            client: self,
-            data_source,
-            embedder_config: data_source.embedder_config(),
+    ) -> Option<DustQdrantClientForDataSource> {
+        match data_source.shadow_embedder_config() {
+            Some(shadow_embedder_config) => Some(DustQdrantClientForDataSource {
+                client: self.clone(),
+                data_source: data_source.clone(),
+                embedder_config: shadow_embedder_config.clone(),
+            }),
+            None => None,
         }
     }
 
