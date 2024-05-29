@@ -130,7 +130,7 @@ const SEARCH_MODE_SPECIFICATIONS: Record<
     icon: ScanIcon,
     label: "Extract data",
     description: "Structured extraction",
-    flag: "process_action",
+    flag: null,
   },
 };
 

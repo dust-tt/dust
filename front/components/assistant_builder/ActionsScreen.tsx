@@ -92,7 +92,7 @@ const ACTION_SPECIFICATIONS: Record<
     description: "Structured extraction",
     cardIcon: RobotStrokeIcon,
     dropDownIcon: RobotIcon,
-    flag: "process_action",
+    flag: null,
   },
   DUST_APP_RUN: {
     label: "Run a Dust App",
