@@ -1424,16 +1424,14 @@ impl LLM for OpenAILLM {
                 Some(api_key) => {
                     self.api_key = Some(api_key.clone());
                 }
-                None => {
-                    match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                        Ok(key) => {
-                            self.api_key = Some(key);
-                        }
-                        Err(_) => Err(anyhow!(
-                            "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                        ))?,
+                None => match std::env::var("OPENAI_API_KEY") {
+                    Ok(key) => {
+                        self.api_key = Some(key);
                     }
-                }
+                    Err(_) => Err(anyhow!(
+                        "Credentials or environment variable `OPENAI_API_KEY` is not set."
+                    ))?,
+                },
             },
         }
         Ok(())
