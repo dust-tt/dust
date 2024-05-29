@@ -604,7 +604,15 @@ export async function garbageCollector(
           selectedFolders,
           lastSeenTs
         );
-        if (isInFolder === false || driveFile.trashed) {
+
+        const isRoot = !!(await GoogleDriveFolders.findOne({
+          where: {
+            connectorId: connectorId,
+            folderId: driveFile.id,
+          },
+        }));
+
+        if ((isInFolder === false && isRoot === false) || driveFile.trashed) {
           await deleteOneFile(connectorId, driveFile);
         } else {
           await file.update({
