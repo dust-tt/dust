@@ -1275,6 +1275,7 @@ impl DataSource {
                     data_source_internal_id = self.internal_id(),
                     points_count = chunk_len,
                     duration = utils::now() - now,
+                    collection = qdrant_client.collection_name(embedder_config),
                     "Success upserting chunk in Qdrant"
                 );
             }
@@ -1285,6 +1286,7 @@ impl DataSource {
             document_id = document_id,
             points_count = points_len,
             duration = utils::now() - start,
+            collection = qdrant_client.collection_name(embedder_config),
             "Inserted vectors in Qdrant"
         );
 
