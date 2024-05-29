@@ -133,15 +133,30 @@ enum AnthropicResponseContent {
     ToolUse(ToolUse),
 }
 
-impl TryFrom<AnthropicStreamContent> for AnthropicResponseContent {
+impl TryFrom<StreamContent> for AnthropicResponseContent {
     type Error = anyhow::Error;
 
-    fn try_from(value: AnthropicStreamContent) -> Result<Self, Self::Error> {
-        match value.r#type.as_str() {
-            "text" => Ok(AnthropicResponseContent::Text {
-                text: value.text.to_string(),
-            }),
-            _ => Err(anyhow!("Type not supported in streaming.")),
+    fn try_from(value: StreamContent) -> Result<Self, Self::Error> {
+        match value {
+            StreamContent::AnthropicStreamContent(content) => {
+                Ok(AnthropicResponseContent::Text { text: content.text })
+            }
+            StreamContent::AnthropicStreamToolUse(tool_use) => {
+                // Attempt to parse the input as JSON if it's a string.
+                let input_json = if let Value::String(ref json_string) = tool_use.input {
+                    serde_json::from_str(json_string).map_err(|e| {
+                        anyhow::anyhow!("Failed to parse Anthropic tool inputs JSON: {}", e)
+                    })?
+                } else {
+                    tool_use.input.clone()
+                };
+
+                Ok(AnthropicResponseContent::ToolUse(ToolUse {
+                    id: tool_use.id,
+                    name: tool_use.name,
+                    input: input_json,
+                }))
+            }
         }
     }
 }
@@ -281,18 +296,12 @@ pub struct Usage {
     pub output_tokens: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct AnthropicStreamContent {
-    pub r#type: String,
-    pub text: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct StreamChatResponse {
+struct StreamChatResponse {
     pub id: String,
     pub model: String,
     pub role: AnthropicChatMessageRole,
-    pub content: Vec<AnthropicStreamContent>,
+    pub content: Vec<StreamContent>,
     pub stop_reason: Option<StopReason>,
     pub usage: Usage,
 }
@@ -414,14 +423,46 @@ struct StreamMessageStart {
 struct StreamContentBlockStart {
     pub r#type: String,
     pub index: u64,
-    pub content_block: AnthropicStreamContent,
+    pub content_block: StreamContent,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamContent {
+    pub r#type: String,
+    pub text: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AnthropicStreamToolUse {
+    r#type: String,
+    name: String,
+    input: Value,
+    id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum StreamContent {
+    AnthropicStreamContent(AnthropicStreamContent),
+    AnthropicStreamToolUse(AnthropicStreamToolUse),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct AnthropicStreamToolInputDelta {
+    partial_json: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum StreamContentDelta {
+    AnthropicStreamContent(AnthropicStreamContent),
+    AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct StreamContentBlockDelta {
     pub r#type: String,
     pub index: u64,
-    pub delta: AnthropicStreamContent,
+    pub delta: StreamContentDelta,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -635,193 +676,220 @@ impl AnthropicLLM {
         let mut final_response: Option<StreamChatResponse> = None;
         'stream: loop {
             match stream.try_next().await {
-                Ok(stream_next) => match stream_next {
-                    Some(es::SSE::Comment(comment)) => {
-                        println!("UNEXPECTED COMMENT {}", comment);
-                    }
-                    Some(es::SSE::Event(event)) => match event.event_type.as_str() {
-                        "message_start" => {
-                            let event: StreamMessageStart =
-                                match serde_json::from_str(event.data.as_str()) {
-                                    Ok(event) => event,
-                                    Err(error) => {
-                                        Err(anyhow!(
-                                            "Error parsing response from Anthropic: {:?} {:?}",
-                                            error,
-                                            event.data
-                                        ))?;
-                                        break 'stream;
-                                    }
-                                };
-
-                            final_response = Some(event.message.clone());
+                Ok(stream_next) => {
+                    match stream_next {
+                        Some(es::SSE::Comment(comment)) => {
+                            println!("UNEXPECTED COMMENT {}", comment);
                         }
-                        "content_block_start" => {
-                            let event: StreamContentBlockStart =
-                                match serde_json::from_str(event.data.as_str()) {
-                                    Ok(event) => event,
-                                    Err(error) => {
-                                        Err(anyhow!(
-                                            "Error parsing response from Anthropic: {:?} {:?}",
-                                            error,
-                                            event.data
-                                        ))?;
-                                        break 'stream;
-                                    }
-                                };
-
-                            match final_response.as_mut() {
-                                None => {
-                                    Err(anyhow!(
-                                        "Error streaming from Anthropic: \
-                                                missing `message_start`"
-                                    ))?;
-                                    break 'stream;
-                                }
-                                Some(response) => {
-                                    response.content.push(event.content_block.clone());
-                                    if event.content_block.text.len() > 0 {
-                                        let _ = event_sender.send(json!({
-                                            "type": "tokens",
-                                            "content": {
-                                              "text": event.content_block.text,
+                        Some(es::SSE::Event(event)) => {
+                            match event.event_type.as_str() {
+                                "message_start" => {
+                                    let event: StreamMessageStart =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(error) => {
+                                                Err(anyhow!(
+                                                "Error parsing response from Anthropic: {:?} {:?}",
+                                                error,
+                                                event.data
+                                            ))?;
+                                                break 'stream;
                                             }
+                                        };
 
-                                        }));
-                                    }
+                                    final_response = Some(event.message.clone());
                                 }
-                            }
-                        }
-                        "content_block_delta" => {
-                            let event: StreamContentBlockDelta =
-                                match serde_json::from_str(event.data.as_str()) {
-                                    Ok(event) => event,
-                                    Err(error) => {
-                                        Err(anyhow!(
-                                            "Error parsing response from Anthropic: {:?} {:?}",
-                                            error,
-                                            event.data
-                                        ))?;
-                                        break 'stream;
-                                    }
-                                };
+                                "content_block_start" => {
+                                    let event: StreamContentBlockStart =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(error) => {
+                                                Err(anyhow!(
+                                                "Error parsing response from Anthropic: {:?} {:?}",
+                                                error,
+                                                event.data
+                                            ))?;
+                                                break 'stream;
+                                            }
+                                        };
 
-                            match event.delta.r#type.as_str() {
-                                "text_delta" => (),
-                                _ => {
-                                    Err(anyhow!(
-                                        "Error streaming from Anthropic: \
-                                             unexpected delta type: {:?}",
-                                        event.delta.r#type
-                                    ))?;
-                                    break 'stream;
-                                }
-                            }
-
-                            match final_response.as_mut() {
-                                None => {
-                                    Err(anyhow!(
-                                        "Error streaming from Anthropic: \
+                                    match final_response.as_mut() {
+                                        None => {
+                                            Err(anyhow!(
+                                                "Error streaming from Anthropic: \
                                                 missing `message_start`"
-                                    ))?;
-                                    break 'stream;
+                                            ))?;
+                                            break 'stream;
+                                        }
+                                        Some(response) => {
+                                            response.content.push(event.content_block.clone());
+
+                                            match event.content_block {
+                                                StreamContent::AnthropicStreamContent(
+                                                    content_block,
+                                                ) => {
+                                                    if content_block.text.len() > 0 {
+                                                        let _ = event_sender.send(json!({
+                                                            "type": "tokens",
+                                                            "content": {
+                                                              "text": content_block.text,
+                                                            }
+
+                                                        }));
+                                                    }
+                                                }
+                                                StreamContent::AnthropicStreamToolUse(tool_use) => {
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "function_call",
+                                                        "content": {
+                                                            "name": tool_use.name,
+                                                        },
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                                Some(response) => match response.content.get_mut(0) {
+                                "content_block_delta" => {
+                                    let event: StreamContentBlockDelta =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(error) => {
+                                                Err(anyhow!(
+                                                "Error parsing response from Anthropic: {:?} {:?}",
+                                                error,
+                                                event.data
+                                            ))?;
+                                                break 'stream;
+                                            }
+                                        };
+
+                                    match final_response.as_mut() {
                                     None => {
                                         Err(anyhow!(
                                             "Error streaming from Anthropic: \
-                                                    missing `content_block_start`"
+                                                    missing `message_start`"
                                         ))?;
                                         break 'stream;
                                     }
-                                    Some(content) => {
-                                        content.text.push_str(event.delta.text.as_str());
-                                        if event.delta.text.len() > 0 {
-                                            let _ = event_sender.send(json!({
-                                                "type": "tokens",
-                                                "content": {
-                                                  "text": event.delta.text,
+                                    Some(response) => match response.content.last_mut() {
+                                        None => {
+                                            Err(anyhow!(
+                                                "Error streaming from Anthropic: \
+                                                        missing `content_block_start`"
+                                            ))?;
+                                            break 'stream;
+                                        }
+                                        Some(content) => match (event.delta, content) {
+                                            (StreamContentDelta::AnthropicStreamContent(delta), StreamContent::AnthropicStreamContent(content)) => {
+                                                content.text.push_str(delta.text.as_str());
+                                                if delta.text.len() > 0 {
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                        "text": delta.text,
+                                                        }
+
+                                                    }));
+                                                }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamToolInputDelta(
+                                                input_json_delta,
+                                            ), StreamContent::AnthropicStreamToolUse(tool_use)) => {
+                                                // The `content_block_start` for `tool_use` initializes `input` as an empty object.
+                                                // To append input chunks, we need to convert `input` to a string.
+                                                if tool_use.input.is_object() {
+                                                    tool_use.input = Value::String("".to_string());
                                                 }
 
-                                            }));
+                                                if let Value::String(ref mut input) = tool_use.input {
+                                                    input.push_str(&input_json_delta.partial_json);
+                                                }
+                                            },
+                                            _ => {
+                                                Err(anyhow!("Error parsing input chunks from Anthropic response"))?;
+                                            }
+                                        },
+                                    },
+                                }
+                                }
+                                "content_block_stop" => {
+                                    let _: StreamContentBlockStop =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(error) => {
+                                                Err(anyhow!(
+                                                "Error parsing response from Anthropic: {:?} {:?}",
+                                                error,
+                                                event.data
+                                            ))?;
+                                                break 'stream;
+                                            }
+                                        };
+                                }
+                                "message_delta" => {
+                                    let event: StreamMessageDelta =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(error) => {
+                                                Err(anyhow!(
+                                                "Error parsing response from Anthropic: {:?} {:?}",
+                                                error,
+                                                event.data
+                                            ))?;
+                                                break 'stream;
+                                            }
+                                        };
+
+                                    match final_response.as_mut() {
+                                        None => {
+                                            Err(anyhow!(
+                                                "Error streaming from Anthropic: \
+                                                missing `message_start`"
+                                            ))?;
+                                            break 'stream;
+                                        }
+                                        Some(response) => {
+                                            response.stop_reason = event.delta.stop_reason;
+                                            response.usage.output_tokens =
+                                                event.usage.output_tokens;
                                         }
                                     }
-                                },
-                            }
-                        }
-                        "content_block_stop" => {
-                            let _: StreamContentBlockStop =
-                                match serde_json::from_str(event.data.as_str()) {
-                                    Ok(event) => event,
-                                    Err(error) => {
-                                        Err(anyhow!(
-                                            "Error parsing response from Anthropic: {:?} {:?}",
-                                            error,
-                                            event.data
-                                        ))?;
-                                        break 'stream;
-                                    }
-                                };
-                        }
-                        "message_delta" => {
-                            let event: StreamMessageDelta =
-                                match serde_json::from_str(event.data.as_str()) {
-                                    Ok(event) => event,
-                                    Err(error) => {
-                                        Err(anyhow!(
-                                            "Error parsing response from Anthropic: {:?} {:?}",
-                                            error,
-                                            event.data
-                                        ))?;
-                                        break 'stream;
-                                    }
-                                };
-
-                            match final_response.as_mut() {
-                                None => {
-                                    Err(anyhow!(
-                                        "Error streaming from Anthropic: \
-                                                missing `message_start`"
-                                    ))?;
+                                }
+                                "message_stop" => {
                                     break 'stream;
                                 }
-                                Some(response) => {
-                                    response.stop_reason = event.delta.stop_reason;
-                                    response.usage.output_tokens = event.usage.output_tokens;
-                                }
-                            }
-                        }
-                        "message_stop" => {
-                            break 'stream;
-                        }
-                        "error" => {
-                            let event: Error = match serde_json::from_str(event.data.as_str()) {
-                                Ok(event) => event,
-                                Err(_) => {
-                                    Err(anyhow!(
-                                        "Streaming error from Anthropic: {:?}",
-                                        event.data
-                                    ))?;
+                                "error" => {
+                                    let event: Error =
+                                        match serde_json::from_str(event.data.as_str()) {
+                                            Ok(event) => event,
+                                            Err(_) => {
+                                                Err(anyhow!(
+                                                    "Streaming error from Anthropic: {:?}",
+                                                    event.data
+                                                ))?;
+                                                break 'stream;
+                                            }
+                                        };
+
+                                    Err(ModelError {
+                                        message: format!(
+                                            "Anthropic API Error: {}",
+                                            event.error.to_string()
+                                        ),
+                                        retryable: None,
+                                    })?;
                                     break 'stream;
                                 }
-                            };
-
-                            Err(ModelError {
-                                message: format!(
-                                    "Anthropic API Error: {}",
-                                    event.error.to_string()
-                                ),
-                                retryable: None,
-                            })?;
+                                _ => (),
+                            }
+                        }
+                        None => {
+                            println!("UNEXPECTED NONE");
                             break 'stream;
                         }
-                        _ => (),
-                    },
-                    None => {
-                        println!("UNEXPECTED NONE");
-                        break 'stream;
                     }
-                },
+                }
                 Err(error) => {
                     Err(anyhow!(
                         "Error streaming tokens from Anthropic: {:?}",
