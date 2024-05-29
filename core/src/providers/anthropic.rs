@@ -1427,6 +1427,10 @@ impl Embedder for AnthropicEmbedder {
         decode_async(anthropic_base_singleton(), tokens).await
     }
 
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(anthropic_base_singleton(), text).await
+    }
+
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         Err(anyhow!("Embeddings not available for provider `anthropic`"))
     }

@@ -452,7 +452,6 @@ impl MistralAILLM {
 
     fn tokenizer(&self) -> Arc<RwLock<SentencePieceProcessor>> {
         if self.id.starts_with("mistral-tiny")
-            || self.id.starts_with("mistral-embed")
             || self.id.starts_with("open-mistral-7b")
             || self.id.starts_with("open-mixtral-8x7b")
         {
@@ -1105,6 +1104,10 @@ impl Embedder for MistralEmbedder {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(self.tokenizer(), text).await
     }
 
     async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
