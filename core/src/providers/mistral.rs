@@ -189,10 +189,6 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 None => None,
             },
             tool_call_id: cm.function_call_id.clone(),
-            // tool_calls: match cm.function_calls.as_ref() {
-            //     Some(fc) => Some(vec![MistralToolCall::try_from(fc)?]),
-            //     None => None,
-            // },
         })
     }
 }
@@ -592,8 +588,8 @@ impl MistralAILLM {
                             match event_sender.as_ref() {
                                 Some(sender) => {
                                     if chunk.choices.len() == 1 {
-                                        // We ignore the role for generating events.
-                                        // If we get `content` in the delta object we stream "tokens".
+                                        // We ignore the role for generating events. If we get
+                                        // `content` in the delta object we stream "tokens".
                                         match chunk.choices[0].delta.get("content") {
                                             None => (),
                                             Some(content) => match content.as_str() {
@@ -610,6 +606,30 @@ impl MistralAILLM {
                                                 }
                                             },
                                         };
+
+                                        // Emit a `function_call` event per tool_call.
+                                        if let Some(tool_calls) = chunk.choices[0]
+                                            .delta
+                                            .get("tool_calls")
+                                            .and_then(|v| v.as_array())
+                                        {
+                                            tool_calls.iter().for_each(|tool_call| match tool_call
+                                                .get("function")
+                                            {
+                                                Some(f) => {
+                                                    if let Some(Value::String(name)) = f.get("name")
+                                                    {
+                                                        let _ = sender.send(json!({
+                                                            "type": "function_call",
+                                                            "content": {
+                                                                "name": name,
+                                                            },
+                                                        }));
+                                                    }
+                                                }
+                                                _ => (),
+                                            });
+                                        }
                                     }
                                 }
                                 None => (),
@@ -618,7 +638,7 @@ impl MistralAILLM {
                         }
                     },
                     None => {
-                        println!("UNEXPECED NONE");
+                        println!("UNEXPECTED NONE");
                         break 'stream;
                     }
                 },
@@ -753,11 +773,6 @@ impl MistralAILLM {
             body["tools"] = json!(tools);
         }
 
-        // println!(
-        //     "MistralAI request: {}",
-        //     serde_json::to_string_pretty(&body).unwrap()
-        // );
-
         let req = reqwest::Client::new()
             .post(uri.to_string())
             .header("Content-Type", "application/json")
@@ -780,8 +795,6 @@ impl MistralAILLM {
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
-
-        // println!("MistralAI response: {}", String::from_utf8_lossy(c));
 
         let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
             Ok(c) => c,
