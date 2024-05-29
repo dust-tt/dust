@@ -847,6 +847,15 @@ async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
   }
+  const folder = await GoogleDriveFolders.findOne({
+    where: {
+      connectorId: connectorId,
+      folderId: googleDriveFile.driveFileId,
+    },
+  });
+  if (folder) {
+    await folder.destroy();
+  }
   await googleDriveFile.destroy();
 }
 
