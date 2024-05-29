@@ -662,7 +662,7 @@ impl DataSource {
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
 
-        // First, update the main collection.
+        // Update the document in the main embedder collection.
         self.update_document_payload_for_embedder(
             &qdrant_clients,
             self.embedder_config(),
@@ -671,14 +671,14 @@ impl DataSource {
         )
         .await?;
 
-        // Update the shadow collection if any.
+        // Update the document in the shadow embedder collection, if set.
         match self.shadow_embedder_config() {
             Some(shadow_embedder_config) => {
                 self.update_document_payload_for_embedder(
                     &qdrant_clients,
                     shadow_embedder_config,
                     &document_id_hash,
-                    payload.clone(),
+                    payload,
                 )
                 .await
             }
@@ -883,7 +883,7 @@ impl DataSource {
             "Created document blob"
         );
 
-        // First, we upsert for the main collection.
+        // Upsert the document in the main embedder collection.
         let main_collection_document = self
             .upsert_for_embedder(
                 self.embedder_config(),
@@ -895,11 +895,12 @@ impl DataSource {
                 document.clone(),
                 &document_hash,
                 &text,
-                true, /* Use cache for main collection */
+                // Cache is used for the main collection.
+                true,
             )
             .await?;
 
-        // Then, we upsert for the shadow collection if any.
+        // Upsert the document in the shadow embedder collection, if set.
         if let Some(shadow_embedder_config) = self.shadow_embedder_config() {
             self.upsert_for_embedder(
                 shadow_embedder_config,
@@ -911,7 +912,8 @@ impl DataSource {
                 document,
                 &document_hash,
                 &text,
-                false, /* We don't use cache when writing in shadow collection */
+                // Cache is not used when writing to the shadow collection.
+                false,
             )
             .await?;
         }
@@ -1905,7 +1907,7 @@ impl DataSource {
         qdrant_clients: QdrantClients,
         document_id: &str,
     ) -> Result<()> {
-        // First, delete from the main collection.
+        // Delete the document in the main embedder collection.
         self.delete_document_for_embedder(
             self.embedder_config(),
             store.clone(),
@@ -1914,7 +1916,7 @@ impl DataSource {
         )
         .await?;
 
-        // Then delete from the shadow collection if any.
+        // Delete the document in the shadow embedder collection, if set.
         match self.shadow_embedder_config() {
             Some(shadow_embedder_config) => {
                 self.delete_document_for_embedder(
