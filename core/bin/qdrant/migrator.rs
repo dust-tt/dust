@@ -74,7 +74,7 @@ async fn show(
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -108,7 +108,7 @@ async fn show(
                         data_source_shadow_write_qdrant.collection_name(),
                         info.status.to_string(),
                         info.points_count,
-                        match ds.shadow_write_cluster() {
+                        match ds.shadow_write_qdrant_cluster() {
                             Some(cluster) => cluster.to_string(),
                             None => "none".to_string(),
                         },
@@ -156,7 +156,7 @@ async fn set_shadow_write(
         "Created data source on shadow_write_cluster: \
             collection={} shadow_write_cluster={}",
         data_source_shadow_write_qdrant.collection_name(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -171,7 +171,7 @@ async fn set_shadow_write(
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster().to_string(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -206,7 +206,7 @@ async fn clear_shadow_write(
                 shadow_write_cluster data source? \
                 (this is definitive) collection={} shadow_write_cluster={}",
             data_source_shadow_write_qdrant.collection_name(),
-            match ds.shadow_write_cluster() {
+            match ds.shadow_write_qdrant_cluster() {
                 Some(cluster) => cluster.to_string(),
                 None => "none".to_string(),
             }
@@ -224,7 +224,7 @@ async fn clear_shadow_write(
         "Deleted qdrant shadow_write_cluster data source: \
             collection={} shadow_write_cluster={}",
         data_source_shadow_write_qdrant.collection_name(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -246,7 +246,7 @@ async fn clear_shadow_write(
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster().to_string(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -273,7 +273,7 @@ async fn migrate_shadow_write(
         Err(_) => 256,
     };
 
-    let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
+    let data_source_qdrant_client = ds.main_qdrant_client(&qdrant_clients);
 
     // Delete collection on shadow_write_cluster.
     let data_source_shadow_write_qdrant = match ds.shadow_write_client(&qdrant_clients) {
@@ -292,7 +292,7 @@ async fn migrate_shadow_write(
     let mut iterations: usize = 0;
     loop {
         let now = utils::now();
-        let scroll_results = match data_source_shadow_write_qdrant
+        let scroll_results = match data_source_qdrant_client
             .scroll(
                 None, // the v1 data_source.internal_id is injected by the client.
                 Some(points_per_request as u32),
@@ -405,7 +405,7 @@ async fn commit_shadow_write(
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster().to_string(),
-        match ds.shadow_write_cluster() {
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }

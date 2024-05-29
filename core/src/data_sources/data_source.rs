@@ -542,16 +542,16 @@ impl DataSource {
         self.config.qdrant_config.cluster
     }
 
+    pub fn shadow_write_qdrant_cluster(&self) -> Option<QdrantCluster> {
+        self.config.qdrant_config.shadow_write_cluster
+    }
+
     pub fn embedder_config(&self) -> &EmbedderConfig {
         &self.config.embedder_config.embedder
     }
 
     pub fn shadow_embedder_config(&self) -> Option<&EmbedderConfig> {
         self.config.embedder_config.shadow_embedder.as_ref()
-    }
-
-    pub fn shadow_write_cluster(&self) -> Option<QdrantCluster> {
-        self.config.qdrant_config.shadow_write_cluster
     }
 
     pub async fn update_config(
@@ -677,7 +677,7 @@ impl DataSource {
                     Ok(_) => {
                         info!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_qdrant_shadow_write.collection_name(),
                             "[SHADOW_WRITE_SUCCESS] Update payload"
                         );
@@ -685,7 +685,7 @@ impl DataSource {
                     Err(e) => {
                         error!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_qdrant_shadow_write.collection_name(),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Update payload"
@@ -1044,7 +1044,7 @@ impl DataSource {
                     Ok(_) => {
                         info!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_shadow_write_qdrant.collection_name(),
                             "[SHADOW_WRITE_SUCCESS] Delete points"
                         );
@@ -1052,7 +1052,7 @@ impl DataSource {
                     Err(e) => {
                         error!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_shadow_write_qdrant.collection_name(),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Delete points"
@@ -1136,7 +1136,7 @@ impl DataSource {
                             Ok(_) => {
                                 info!(
                                     data_source_internal_id = self.internal_id(),
-                                    cluster = ?self.shadow_write_cluster(),
+                                    cluster = ?self.shadow_write_qdrant_cluster(),
                                     collection = data_source_shadow_write_qdrant.collection_name(),
                                     "[SHADOW_WRITE_SUCCESS] Upsert points"
                                 )
@@ -1144,7 +1144,7 @@ impl DataSource {
                             Err(e) => {
                                 error!(
                                     data_source_internal_id = self.internal_id(),
-                                    cluster = ?self.shadow_write_cluster(),
+                                    cluster = ?self.shadow_write_qdrant_cluster(),
                                     collection = data_source_shadow_write_qdrant.collection_name(),
                                     error = %e,
                                     "[SHADOW_WRITE_FAIL] Upsert points"
@@ -1811,7 +1811,7 @@ impl DataSource {
                     Ok(_) => {
                         info!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_shadow_write_qdrant.collection_name(),
                             "[SHADOW_WRITE_SUCCESS] Delete points"
                         );
@@ -1819,7 +1819,7 @@ impl DataSource {
                     Err(e) => {
                         error!(
                             data_source_internal_id = self.internal_id(),
-                            cluster = ?self.shadow_write_cluster(),
+                            cluster = ?self.shadow_write_qdrant_cluster(),
                             collection = data_source_shadow_write_qdrant.collection_name(),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Delete points"
@@ -1846,7 +1846,7 @@ impl DataSource {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
     ) -> Result<()> {
-        if self.shadow_write_cluster().is_some() {
+        if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
                 "Cannot delete data source with a shadow_write_cluster set"
             ))?;
@@ -1904,7 +1904,7 @@ impl DataSource {
         &self,
         qdrant_clients: &QdrantClients,
     ) -> Option<WrappedQdrantClient> {
-        match self.shadow_write_cluster() {
+        match self.shadow_write_qdrant_cluster() {
             Some(cluster) => Some(qdrant_clients.client(cluster).for_data_source(self)),
             None => None,
         }
@@ -1912,7 +1912,7 @@ impl DataSource {
 
     pub fn main_qdrant_client(&self, qdrant_clients: &QdrantClients) -> WrappedQdrantClient {
         qdrant_clients
-            .client(self.config.qdrant_config.cluster)
+            .client(self.main_qdrant_cluster())
             .for_data_source(self)
     }
 }
