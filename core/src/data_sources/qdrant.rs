@@ -174,7 +174,7 @@ impl DustQdrantClient {
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
-    // implementaiton ensure data separation of our users data.
+    // implementation ensures data separation of our users' data.
     // /!\ Modify with extreme caution.
     fn apply_tenant_filter(&self, internal_id: &String, filter: &mut qdrant::Filter) -> () {
         filter.must.push(
