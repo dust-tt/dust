@@ -1,4 +1,3 @@
-use crate::blocks::input;
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
     ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
@@ -151,9 +150,6 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
                 } else {
                     tool_use.input.clone()
                 };
-
-                println!("INPUT: {:?}", tool_use.input);
-                println!("INPUT_JSON: {:?}", input_json);
 
                 Ok(AnthropicResponseContent::ToolUse(ToolUse {
                     id: tool_use.id,
@@ -455,7 +451,6 @@ struct AnthropicStreamToolInputDelta {
     partial_json: String,
 }
 
-// TODO:
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum StreamContentDelta {
