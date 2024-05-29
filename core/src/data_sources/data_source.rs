@@ -661,7 +661,6 @@ impl DataSource {
             ..Default::default()
         };
 
-        // TODO:
         match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
             Some(qdrant_client) => {
                 let data_source_qdrant_shadow_write = qdrant_client.for_data_source(&self);
@@ -1150,7 +1149,6 @@ impl DataSource {
                 let now = utils::now();
                 let chunk_len = chunk.len();
 
-                // TODO: We can build qdrant client only once!
                 match qdrant_clients.shadow_write_client(&self.config.qdrant_config) {
                     Some(qdrant_client) => {
                         let data_source_shadow_write_qdrant = qdrant_client.for_data_source(self);
