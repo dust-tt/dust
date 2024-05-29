@@ -12,7 +12,7 @@ use qdrant_client::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::data_source::DataSource;
+use super::data_source::EmbedderConfig;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize, Eq, Hash)]
 pub enum QdrantCluster {
@@ -109,43 +109,6 @@ impl QdrantClients {
             None => panic!("No qdrant_client for cluster {:?}", cluster),
         }
     }
-
-    pub fn main_cluster(&self, config: &Option<QdrantDataSourceConfig>) -> QdrantCluster {
-        match config {
-            Some(config) => config.cluster,
-            None => QdrantCluster::Cluster0,
-        }
-    }
-
-    // Returns the client for the cluster specified in the config or the main-0 cluster if no config
-    // is provided.
-    pub fn main_client(&self, config: &Option<QdrantDataSourceConfig>) -> DustQdrantClient {
-        self.client(self.main_cluster(config))
-    }
-
-    pub fn shadow_write_cluster(
-        &self,
-        config: &Option<QdrantDataSourceConfig>,
-    ) -> Option<QdrantCluster> {
-        match config {
-            Some(c) => c.shadow_write_cluster,
-            None => None,
-        }
-    }
-
-    // Returns the shadow write client if the config specifies a shadow write cluster.
-    pub fn shadow_write_client(
-        &self,
-        config: &Option<QdrantDataSourceConfig>,
-    ) -> Option<DustQdrantClient> {
-        match config {
-            Some(c) => match c.shadow_write_cluster {
-                Some(cluster) => Some(self.client(cluster)),
-                None => None,
-            },
-            None => None,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -163,16 +126,16 @@ impl DustQdrantClient {
         return String::from("key");
     }
 
-    pub fn collection_name(&self, data_source: &DataSource) -> String {
-        // The collection name depends on the embedding model which is stored on the
-        // data source config. To allow migrations between embedders in the future we will
+    pub fn collection_name(&self, embedder_config: &EmbedderConfig) -> String {
+        // The collection name depends on the embedding model.
+        // To allow migrations between embedders in the future we will
         // add a notion of shadow_write embedding provider/model on the data source config
         // that will have to be used here.
         format!(
             "{}_{}_{}",
             self.collection_prefix(),
-            data_source.embedder_config().provider_id.to_string(),
-            data_source.embedder_config().model_id,
+            embedder_config.provider_id.to_string(),
+            embedder_config.model_id,
         )
     }
 
@@ -185,10 +148,14 @@ impl DustQdrantClient {
         Ok(h % SHARD_KEY_COUNT)
     }
 
-    fn shard_key(&self, data_source: &DataSource) -> Result<shard_key::Key> {
+    fn shard_key(
+        &self,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
+    ) -> Result<shard_key::Key> {
         let key_id: u64 = match (
-            data_source.embedder_config().provider_id,
-            data_source.embedder_config().model_id.as_str(),
+            embedder_config.provider_id,
+            embedder_config.model_id.as_str(),
         ) {
             (ProviderID::OpenAI, "text-embedding-ada-002") => {
                 // The startegy below was a mistake as the last character is an hex encoding
@@ -198,23 +165,24 @@ impl DustQdrantClient {
                 // We use the last character of the internal_id to determine the key_id. This id is
                 // generated using new_id and is guaranteed random. Using the last character gives
                 // us a path to moving data sources across shard when needed.
-                data_source.internal_id().chars().last().unwrap() as u64 % SHARD_KEY_COUNT
+                internal_id.chars().last().unwrap() as u64 % SHARD_KEY_COUNT
             }
-            _ => Self::shard_key_id_from_internal_id(data_source.internal_id())?,
+            _ => Self::shard_key_id_from_internal_id(internal_id)?,
         };
 
         Ok(format!("{}_{}", self.shard_key_prefix(), key_id).into())
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
-    // implementaiton ensure data separation of our users data. Modify with extreme caution.
-    fn apply_tenant_filter(&self, data_source: &DataSource, filter: &mut qdrant::Filter) -> () {
+    // implementation ensures data separation of our users' data.
+    // /!\ Modify with extreme caution.
+    fn apply_tenant_filter(&self, internal_id: &String, filter: &mut qdrant::Filter) -> () {
         filter.must.push(
             qdrant::FieldCondition {
                 key: "data_source_internal_id".to_string(),
                 r#match: Some(qdrant::Match {
                     match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                        data_source.internal_id().to_string(),
+                        internal_id.to_string(),
                     )),
                 }),
                 ..Default::default()
@@ -223,16 +191,20 @@ impl DustQdrantClient {
         );
     }
 
-    pub async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
+    pub async fn delete_all_points_for_internal_id(
+        &self,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
+    ) -> Result<()> {
         // Create a default filter and ensure tenant separation to delete all the points
         // associated with the data source.
         let mut filter = qdrant::Filter::default();
-        self.apply_tenant_filter(data_source, &mut filter);
+        self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
             .delete_points(
-                self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)?]),
+                self.collection_name(embedder_config),
+                Some(vec![self.shard_key(embedder_config, internal_id)?]),
                 &filter.into(),
                 None,
             )
@@ -243,25 +215,26 @@ impl DustQdrantClient {
 
     pub async fn collection_info(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
     ) -> Result<qdrant::GetCollectionInfoResponse> {
         self.client
-            .collection_info(self.collection_name(data_source))
+            .collection_info(self.collection_name(embedder_config))
             .await
     }
 
     pub async fn delete_points(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
         mut filter: qdrant::Filter,
     ) -> Result<qdrant::PointsOperationResponse> {
         // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
-        self.apply_tenant_filter(data_source, &mut filter);
+        self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
             .delete_points(
-                self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)?]),
+                self.collection_name(embedder_config),
+                Some(vec![self.shard_key(embedder_config, internal_id)?]),
                 &filter.into(),
                 None,
             )
@@ -270,7 +243,8 @@ impl DustQdrantClient {
 
     pub async fn scroll(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
         filter: Option<qdrant::Filter>,
         limit: Option<u32>,
         offset: Option<qdrant::PointId>,
@@ -278,16 +252,18 @@ impl DustQdrantClient {
     ) -> Result<qdrant::ScrollResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
-        self.apply_tenant_filter(data_source, &mut filter);
+        self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
             .scroll(&qdrant::ScrollPoints {
-                collection_name: self.collection_name(data_source),
+                collection_name: self.collection_name(embedder_config),
                 with_vectors,
                 limit,
                 offset,
                 filter: Some(filter),
-                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
+                shard_key_selector: Some(
+                    vec![self.shard_key(embedder_config, internal_id)?].into(),
+                ),
                 ..Default::default()
             })
             .await
@@ -295,7 +271,8 @@ impl DustQdrantClient {
 
     pub async fn search_points(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
         vector: Vec<f32>,
         filter: Option<qdrant::Filter>,
         limit: u64,
@@ -303,16 +280,18 @@ impl DustQdrantClient {
     ) -> Result<qdrant::SearchResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
-        self.apply_tenant_filter(data_source, &mut filter);
+        self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
             .search_points(&qdrant::SearchPoints {
-                collection_name: self.collection_name(data_source),
+                collection_name: self.collection_name(embedder_config),
                 vector,
                 filter: Some(filter),
                 limit,
                 with_payload,
-                shard_key_selector: Some(vec![self.shard_key(data_source)?].into()),
+                shard_key_selector: Some(
+                    vec![self.shard_key(embedder_config, internal_id)?].into(),
+                ),
                 ..Default::default()
             })
             .await
@@ -320,13 +299,14 @@ impl DustQdrantClient {
 
     pub async fn upsert_points(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
         points: Vec<qdrant::PointStruct>,
     ) -> Result<qdrant::PointsOperationResponse> {
         self.client
             .upsert_points(
-                self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)?]),
+                self.collection_name(embedder_config),
+                Some(vec![self.shard_key(embedder_config, internal_id)?]),
                 points,
                 None,
             )
@@ -335,17 +315,18 @@ impl DustQdrantClient {
 
     pub async fn set_payload(
         &self,
-        data_source: &DataSource,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
         mut filter: qdrant::Filter,
         payload: Payload,
     ) -> Result<qdrant::PointsOperationResponse> {
-        // Inject the `data_source_internal_id` to the filter to ensure tenant separation.
-        self.apply_tenant_filter(data_source, &mut filter);
+        // Inject the `internal_id` to the filter to ensure tenant separation.
+        self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
             .set_payload(
-                self.collection_name(data_source),
-                Some(vec![self.shard_key(data_source)?]),
+                self.collection_name(embedder_config),
+                Some(vec![self.shard_key(embedder_config, internal_id)?]),
                 &filter.into(),
                 payload,
                 None,

@@ -73,38 +73,37 @@ async fn show(
             data_source_internal_id={}  data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
         ds.data_source_id(),
-        qdrant_clients
-            .main_cluster(&ds.config().qdrant_config)
-            .to_string(),
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+        ds.main_qdrant_cluster().to_string(),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
     ));
 
-    let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
-    match qdrant_client.collection_info(&ds).await?.result {
+    let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
+    match qdrant_client
+        .collection_info(&ds.embedder_config())
+        .await?
+        .result
+    {
         Some(info) => {
             utils::info(&format!(
                 "[MAIN] Qdrant collection: collection={} status={} points_count={:?} cluster={}",
-                qdrant_client.collection_name(&ds),
+                qdrant_client.collection_name(&ds.embedder_config()),
                 info.status.to_string(),
                 info.points_count,
-                qdrant_clients
-                    .main_cluster(&ds.config().qdrant_config)
-                    .to_string(),
+                ds.main_qdrant_cluster().to_string(),
             ));
         }
         None => Err(anyhow!("Qdrant collection not found"))?,
     }
 
-    match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+    match ds.shadow_write_qdrant_cluster() {
         Some(shadow_write_cluster) => {
-            let shadow_write_qdrant_client = qdrant_clients
-                .shadow_write_client(&ds.config().qdrant_config)
-                .unwrap();
+            let shadow_write_qdrant_client =
+                ds.shadow_write_qdrant_client(&qdrant_clients).unwrap();
             match shadow_write_qdrant_client
-                .collection_info(&ds)
+                .collection_info(&ds.embedder_config())
                 .await?
                 .result
             {
@@ -112,7 +111,7 @@ async fn show(
                     utils::info(&format!(
                         "[SHADOW] Qdrant collection: collection={} status={} \
                             points_count={:?} cluster={}",
-                        shadow_write_qdrant_client.collection_name(&ds),
+                        shadow_write_qdrant_client.collection_name(&ds.embedder_config()),
                         info.status.to_string(),
                         info.points_count,
                         shadow_write_cluster.to_string(),
@@ -143,20 +142,13 @@ async fn set_shadow_write(
 
     let mut config = ds.config().clone();
 
-    config.qdrant_config = match config.qdrant_config {
-        Some(c) => Some(QdrantDataSourceConfig {
-            cluster: c.cluster,
-            shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
-        }),
-        None => Some(QdrantDataSourceConfig {
-            cluster: QdrantCluster::Cluster0,
-            shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
-        }),
+    config.qdrant_config = QdrantDataSourceConfig {
+        cluster: config.qdrant_config.cluster,
+        shadow_write_cluster: Some(QdrantCluster::from_str(cluster.as_str())?),
     };
 
     // Create collection on shadow_write_cluster.
-    let shadow_write_qdrant_client = match qdrant_clients.shadow_write_client(&config.qdrant_config)
-    {
+    let shadow_write_qdrant_client = match ds.shadow_write_qdrant_client(&qdrant_clients) {
         Some(client) => client,
         None => unreachable!(),
     };
@@ -164,8 +156,8 @@ async fn set_shadow_write(
     utils::done(&format!(
         "Created data source on shadow_write_cluster: \
             collection={} shadow_write_cluster={}",
-        shadow_write_qdrant_client.collection_name(&ds),
-        match qdrant_clients.shadow_write_cluster(&config.qdrant_config) {
+        shadow_write_qdrant_client.collection_name(&ds.embedder_config()),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -179,10 +171,8 @@ async fn set_shadow_write(
             data_source_internal_id={} data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
         ds.data_source_id(),
-        qdrant_clients
-            .main_cluster(&ds.config().qdrant_config)
-            .to_string(),
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+        ds.main_qdrant_cluster().to_string(),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -205,11 +195,10 @@ async fn clear_shadow_write(
         None => Err(anyhow!("Data source not found"))?,
     };
 
-    let shadow_write_qdrant_client =
-        match qdrant_clients.shadow_write_client(&ds.config().qdrant_config) {
-            Some(client) => client,
-            None => Err(anyhow!("No shadow write cluster to clear"))?,
-        };
+    let shadow_write_qdrant_client = match ds.shadow_write_qdrant_client(&qdrant_clients) {
+        Some(client) => client,
+        None => Err(anyhow!("No shadow write cluster to clear"))?,
+    };
 
     if ask_confirmation {
         // confirm
@@ -217,8 +206,8 @@ async fn clear_shadow_write(
             "[DANGER] Are you sure you want to delete this qdrant \
                 shadow_write_cluster data source? \
                 (this is definitive) collection={} shadow_write_cluster={}",
-            shadow_write_qdrant_client.collection_name(&ds),
-            match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+            shadow_write_qdrant_client.collection_name(&ds.embedder_config()),
+            match ds.shadow_write_qdrant_cluster() {
                 Some(cluster) => cluster.to_string(),
                 None => "none".to_string(),
             }
@@ -230,13 +219,15 @@ async fn clear_shadow_write(
     }
 
     // Delete collection on shadow_write_cluster.
-    shadow_write_qdrant_client.delete_data_source(&ds).await?;
+    shadow_write_qdrant_client
+        .delete_all_points_for_internal_id(&ds.embedder_config(), &ds.internal_id().to_string())
+        .await?;
 
     utils::done(&format!(
         "Deleted qdrant shadow_write_cluster data source: \
             collection={} shadow_write_cluster={}",
-        shadow_write_qdrant_client.collection_name(&ds),
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+        shadow_write_qdrant_client.collection_name(&ds.embedder_config()),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -245,15 +236,9 @@ async fn clear_shadow_write(
     // Remove shadow_write_cluster from config.
     let mut config = ds.config().clone();
 
-    config.qdrant_config = match config.qdrant_config {
-        Some(c) => Some(QdrantDataSourceConfig {
-            cluster: c.cluster,
-            shadow_write_cluster: None,
-        }),
-        None => Some(QdrantDataSourceConfig {
-            cluster: QdrantCluster::Cluster0,
-            shadow_write_cluster: None,
-        }),
+    config.qdrant_config = QdrantDataSourceConfig {
+        cluster: config.qdrant_config.cluster,
+        shadow_write_cluster: None,
     };
 
     ds.update_config(store, &config).await?;
@@ -263,10 +248,8 @@ async fn clear_shadow_write(
             data_source_internal_id={} data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
         ds.data_source_id(),
-        qdrant_clients
-            .main_cluster(&ds.config().qdrant_config)
-            .to_string(),
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+        ds.main_qdrant_cluster().to_string(),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -293,14 +276,13 @@ async fn migrate_shadow_write(
         Err(_) => 256,
     };
 
-    let qdrant_client = qdrant_clients.main_client(&ds.config().qdrant_config);
+    let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
 
     // Delete collection on shadow_write_cluster.
-    let shadow_write_qdrant_client =
-        match qdrant_clients.shadow_write_client(&ds.config().qdrant_config) {
-            Some(client) => client,
-            None => Err(anyhow!("No shadow write cluster to migrate to"))?,
-        };
+    let shadow_write_qdrant_client = match ds.shadow_write_qdrant_client(&qdrant_clients) {
+        Some(client) => client,
+        None => Err(anyhow!("No shadow write cluster to migrate to"))?,
+    };
 
     utils::info(&format!(
         "Migrating points: points_per_request={}",
@@ -315,7 +297,8 @@ async fn migrate_shadow_write(
         let now = utils::now();
         let scroll_results = match qdrant_client
             .scroll(
-                &ds,
+                &ds.embedder_config(),
+                &ds.internal_id().to_string(),
                 None, // the v1 data_source.internal_id is injected by the client.
                 Some(points_per_request as u32),
                 page_offset.clone(),
@@ -355,7 +338,10 @@ async fn migrate_shadow_write(
 
         // Empty upserts trigger errors.
         if count > 0 {
-            match shadow_write_qdrant_client.upsert_points(&ds, points).await {
+            match shadow_write_qdrant_client
+                .upsert_points(&ds.embedder_config(), &ds.internal_id().to_string(), points)
+                .await
+            {
                 Ok(_) => (),
                 Err(e) => {
                     if retry < 3 {
@@ -411,13 +397,10 @@ async fn commit_shadow_write(
 
     let mut config = ds.config().clone();
 
-    config.qdrant_config = match config.qdrant_config {
-        Some(c) => match c.shadow_write_cluster {
-            Some(cluster) => Some(QdrantDataSourceConfig {
-                cluster,
-                shadow_write_cluster: Some(c.cluster),
-            }),
-            None => Err(anyhow!("No shadow write cluster to commit"))?,
+    config.qdrant_config = match config.qdrant_config.shadow_write_cluster {
+        Some(cluster) => QdrantDataSourceConfig {
+            cluster,
+            shadow_write_cluster: Some(config.qdrant_config.cluster),
         },
         None => Err(anyhow!("No shadow write cluster to commit"))?,
     };
@@ -429,10 +412,8 @@ async fn commit_shadow_write(
             data_source_internal_id={}  data_source_id={} cluster={} shadow_write_cluster={}",
         ds.internal_id(),
         ds.data_source_id(),
-        qdrant_clients
-            .main_cluster(&ds.config().qdrant_config)
-            .to_string(),
-        match qdrant_clients.shadow_write_cluster(&ds.config().qdrant_config) {
+        ds.main_qdrant_cluster().to_string(),
+        match ds.shadow_write_qdrant_cluster() {
             Some(cluster) => cluster.to_string(),
             None => "none".to_string(),
         }
@@ -461,9 +442,7 @@ async fn migrate(
         target_cluster
     ));
 
-    let from_cluster = qdrant_clients
-        .main_cluster(&ds.config().qdrant_config)
-        .to_string();
+    let from_cluster = ds.main_qdrant_cluster().to_string();
 
     // First show the current state.
     show(
