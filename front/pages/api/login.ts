@@ -226,7 +226,7 @@ async function handleRegularSignupFlow(
     }
 
     const workspaceSubscription = await subscriptionForWorkspace(
-      existingWorkspace.sId
+      renderLightWorkspaceType({ workspace: existingWorkspace })
     );
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
