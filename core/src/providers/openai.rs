@@ -630,7 +630,7 @@ pub async fn streamed_completion(
                     }
                 },
                 None => {
-                    println!("UNEXPECED NONE");
+                    println!("UNEXPECTED NONE");
                     break 'stream;
                 }
             },
@@ -981,26 +981,28 @@ pub async fn streamed_chat_completion(
                                         },
                                     };
 
-                                    // If we have exactly one `tool_call.function.name` in the delta object, stream a "function_call" event.
+                                    // Emit a `function_call` event per tool_call.
                                     if let Some(tool_calls) = chunk.choices[0]
                                         .delta
                                         .get("tool_calls")
                                         .and_then(|v| v.as_array())
                                     {
-                                        if tool_calls.len() == 1 {
-                                            if let Some(f) = tool_calls[0].get("function") {
-                                                if let Some(Value::String(name)) = f.get("name") {
-                                                    let _ = sender.send(json!({
-                                                        "type": "function_call",
-                                                        "content": {
-                                                            "name": name,
-                                                        },
-                                                    }));
+                                        tool_calls.iter().for_each(|tool_call| {
+                                            match tool_call.get("function") {
+                                                Some(f) => {
+                                                    if let Some(Value::String(name)) = f.get("name")
+                                                    {
+                                                        let _ = sender.send(json!({
+                                                            "type": "function_call",
+                                                            "content": {
+                                                                "name": name,
+                                                            },
+                                                        }));
+                                                    }
                                                 }
+                                                _ => (),
                                             }
-                                        } else {
-                                            return Err(anyhow!("More than one tool call found"));
-                                        }
+                                        });
                                     }
                                 }
                             }

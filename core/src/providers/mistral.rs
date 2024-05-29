@@ -93,6 +93,7 @@ struct MistralToolCallFunction {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 struct MistralToolCall {
+    pub id: String,
     pub function: MistralToolCallFunction,
 }
 
@@ -104,6 +105,8 @@ struct MistralChatMessage {
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<MistralToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 impl TryFrom<&ChatFunctionCall> for MistralToolCall {
@@ -111,6 +114,7 @@ impl TryFrom<&ChatFunctionCall> for MistralToolCall {
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(MistralToolCall {
+            id: cf.id.clone(),
             function: MistralToolCallFunction {
                 name: cf.name.clone(),
                 arguments: cf.arguments.clone(),
@@ -124,7 +128,7 @@ impl TryFrom<&MistralToolCall> for ChatFunctionCall {
 
     fn try_from(tc: &MistralToolCall) -> Result<Self, Self::Error> {
         Ok(ChatFunctionCall {
-            id: format!("fc_{}", new_id()),
+            id: tc.id.clone(),
             name: tc.function.name.clone(),
             arguments: tc.function.arguments.clone(),
         })
@@ -176,10 +180,15 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 _ => None,
             },
             role: mistral_role,
-            tool_calls: match cm.function_call.as_ref() {
-                Some(fc) => Some(vec![MistralToolCall::try_from(fc)?]),
+            tool_calls: match cm.function_calls.as_ref() {
+                Some(fc) => Some(
+                    fc.iter()
+                        .map(|f| MistralToolCall::try_from(f))
+                        .collect::<Result<Vec<_>>>()?,
+                ),
                 None => None,
             },
+            tool_call_id: cm.function_call_id.clone(),
         })
     }
 }
@@ -387,30 +396,46 @@ impl MistralAILLM {
             .map(|m| MistralChatMessage::try_from(m))
             .collect::<Result<Vec<_>>>()?;
 
-        // Mistral AI requires a tool call to be followed by a tool message. We therefore inject a
-        // tool call message before the tool message if missing.
+        // Mistral AI requires a tool call assistant message to be followed by a tool message. We
+        // therefore inject a tool call assistant message before the tool message if it is missing.
+        // Note that we can have multiple tool messages in a row which is valid. They just need to
+        // be preceded by a tool call assistant message.
+        //
+        // We do a best effort here for the case where we have only one function call in the
+        // assistant message. If we had no assistant message and multiple function messages mistral
+        // will compain that there is a mismatch. In practice, Dust (legacy_agent) relies on
+        // cases with one function call only.
         let mistral_messages = mistral_messages.iter().fold(
             vec![],
             |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
                 match acc.last_mut() {
                     Some(last)
                         if cm.role == MistralChatMessageRole::Tool
-                            && last.role != MistralChatMessageRole::Assistant =>
+                            && (last.role != MistralChatMessageRole::Assistant
+                                && last.role != MistralChatMessageRole::Tool) =>
                     {
-                        let name = match cm.name.as_ref() {
-                            Some(name) => name.clone(),
-                            None => String::from("unknown_tool"),
-                        };
                         acc.push(MistralChatMessage {
                             role: MistralChatMessageRole::Assistant,
                             name: None,
                             content: None,
                             tool_calls: Some(vec![MistralToolCall {
+                                // If we have a tool_call in the agent message we use it, otherwise
+                                // we generate a new fake one following Mistral format (9 chars, we
+                                // use an hex representation where Mistral uses any char, but
+                                // that's fine).
+                                id: cm
+                                    .tool_call_id
+                                    .clone()
+                                    .unwrap_or_else(|| new_id()[0..9].to_string()),
                                 function: MistralToolCallFunction {
-                                    name,
+                                    name: cm
+                                        .name
+                                        .clone()
+                                        .unwrap_or_else(|| String::from("unknown_tool")),
                                     arguments: String::from("{}"),
                                 },
                             }]),
+                            tool_call_id: None,
                         });
                         acc.push(cm.clone());
                     }
@@ -563,8 +588,8 @@ impl MistralAILLM {
                             match event_sender.as_ref() {
                                 Some(sender) => {
                                     if chunk.choices.len() == 1 {
-                                        // We ignore the role for generating events.
-                                        // If we get `content` in the delta object we stream "tokens".
+                                        // We ignore the role for generating events. If we get
+                                        // `content` in the delta object we stream "tokens".
                                         match chunk.choices[0].delta.get("content") {
                                             None => (),
                                             Some(content) => match content.as_str() {
@@ -581,6 +606,30 @@ impl MistralAILLM {
                                                 }
                                             },
                                         };
+
+                                        // Emit a `function_call` event per tool_call.
+                                        if let Some(tool_calls) = chunk.choices[0]
+                                            .delta
+                                            .get("tool_calls")
+                                            .and_then(|v| v.as_array())
+                                        {
+                                            tool_calls.iter().for_each(|tool_call| match tool_call
+                                                .get("function")
+                                            {
+                                                Some(f) => {
+                                                    if let Some(Value::String(name)) = f.get("name")
+                                                    {
+                                                        let _ = sender.send(json!({
+                                                            "type": "function_call",
+                                                            "content": {
+                                                                "name": name,
+                                                            },
+                                                        }));
+                                                    }
+                                                }
+                                                _ => (),
+                                            });
+                                        }
                                     }
                                 }
                                 None => (),
@@ -589,7 +638,7 @@ impl MistralAILLM {
                         }
                     },
                     None => {
-                        println!("UNEXPECED NONE");
+                        println!("UNEXPECTED NONE");
                         break 'stream;
                     }
                 },
@@ -616,6 +665,7 @@ impl MistralAILLM {
                             name: None,
                             role: MistralChatMessageRole::Assistant,
                             tool_calls: None,
+                            tool_call_id: None,
                         },
                         index: c.index,
                         finish_reason: None,
