@@ -27,7 +27,7 @@ const variantClasses = {
   primary:
     "s-bg-structure-100 s-border s-border-structure-200 hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-200 active:s-border-structure-300",
   secondary:
-    "s-bg-structure-0 s-border s-border-structure-100 hover:s-bg-structure-100 hover:s-border-structure-200 active:s-bg-structure-200 active:s-border-structure-300",
+    "s-bg-structure-0 s-border s-border-structure-100 hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300",
   tertiary:
     "s-border-structure-100/0 s-border s-border-structure-0 hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200",
 };
@@ -57,7 +57,7 @@ export function CardButton({
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
   const commonClasses = classNames(
-    "s-flex s-cursor-pointer s-transition s-duration-200",
+    "s-flex s-group s-cursor-pointer s-transition s-duration-200",
     variantClasses[variant],
     sizeClasses[size],
     className
