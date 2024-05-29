@@ -284,8 +284,14 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         pageCount++;
         await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
       },
-      failedRequestHandler: async (context, err) => {
-        childLogger.error({ error: err }, "webcrawler failedRequestHandler");
+      failedRequestHandler: async (context, error) => {
+        childLogger.error(
+          {
+            url: context.request.url,
+            error,
+          },
+          "webcrawler failedRequestHandler"
+        );
         crawlingError++;
       },
       errorHandler: () => {
