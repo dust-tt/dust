@@ -51,7 +51,7 @@ import { Op } from "sequelize";
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
   batchRenderAgentMessages,
@@ -616,7 +616,7 @@ export async function* postUserMessage(
   const agentConfigurations = removeNulls(
     await Promise.all(
       mentions.filter(isAgentMention).map((mention) => {
-        return getAgentConfiguration(auth, mention.configurationId);
+        return getLightAgentConfiguration(auth, mention.configurationId);
       })
     )
   );
@@ -1038,7 +1038,7 @@ export async function* editUserMessage(
   const agentConfigurations = removeNulls(
     await Promise.all(
       mentions.filter(isAgentMention).map((mention) => {
-        return getAgentConfiguration(auth, mention.configurationId);
+        return getLightAgentConfiguration(auth, mention.configurationId);
       })
     )
   );

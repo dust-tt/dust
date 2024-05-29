@@ -114,6 +114,18 @@ function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   };
 }
 
+export async function getLightAgentConfiguration(
+  auth: Authenticator,
+  agentId: string
+): Promise<LightAgentConfigurationType | null> {
+  const res = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentId },
+    variant: "light",
+  });
+  return res[0] || null;
+}
+
 // Global agent configurations.
 
 function determineGlobalAgentIdsToFetch(
