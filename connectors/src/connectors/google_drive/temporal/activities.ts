@@ -40,6 +40,7 @@ import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
@@ -847,7 +848,19 @@ async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
   }
-  await googleDriveFile.destroy();
+  const folder = await GoogleDriveFolders.findOne({
+    where: {
+      connectorId: connectorId,
+      folderId: googleDriveFile.driveFileId,
+    },
+  });
+
+  await sequelizeConnection.transaction(async (t) => {
+    if (folder) {
+      await folder.destroy({ transaction: t });
+    }
+    await googleDriveFile.destroy({ transaction: t });
+  });
 }
 
 export async function markFolderAsVisited(
