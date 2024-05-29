@@ -31,7 +31,7 @@ export function EmptyCallToAction({
   return (
     <div
       className={classNames(
-        "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
+        "flex items-center justify-center rounded-xl border border-structure-200 bg-structure-50 py-16"
       )}
     >
       {href ? <Link href={href}>{button}</Link> : button}

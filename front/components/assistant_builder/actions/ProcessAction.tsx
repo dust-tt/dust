@@ -9,6 +9,7 @@ import {
   Spinner,
   Tooltip,
   XCircleIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { Result, TimeframeUnit } from "@dust-tt/types";
 import type {
@@ -26,6 +27,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
+import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
@@ -77,10 +79,12 @@ function PropertiesFields({
   properties,
   readOnly,
   onSetProperties,
+  onGenerateFromInstructions,
 }: {
   properties: ProcessSchemaPropertyType[];
   readOnly?: boolean;
   onSetProperties: (properties: ProcessSchemaPropertyType[]) => void;
+  onGenerateFromInstructions: () => void;
 }) {
   function handlePropertyChange(
     index: number,
@@ -118,111 +122,129 @@ function PropertiesFields({
   }
 
   return (
-    <div className="mb-12 grid grid-cols-12 grid-cols-12 gap-x-4 gap-y-4">
-      {properties.map(
-        (
-          prop: { name: string; type: string; description: string },
-          index: number
-        ) => (
-          <React.Fragment key={index}>
+    <div className="flex flex-col gap-y-4">
+      {properties.length === 0 ? (
+        <EmptyCallToAction
+          icon={SparklesIcon}
+          label={"Generate from instructions"}
+          onClick={() => {
+            onGenerateFromInstructions();
+          }}
+        />
+      ) : (
+        <div className="mt-4 grid grid-cols-12 grid-cols-12 gap-x-2 gap-y-2">
+          <React.Fragment>
             <div className="col-span-2">
-              <Input
-                placeholder="Name"
-                size="sm"
-                name={`name-${index}`}
-                label={index === 0 ? "Property" : undefined}
-                value={prop["name"]}
-                onChange={(v) => {
-                  handlePropertyChange(index, "name", v);
-                }}
-                disabled={readOnly}
-                error={
-                  prop["name"].length === 0
-                    ? "Name is required"
-                    : properties.find(
-                        (p, i) => p.name === prop.name && i !== index
-                      )
-                    ? "Name must be unique"
-                    : undefined
-                }
-              />
+              <label className="block text-sm uppercase text-element-700">
+                Property
+              </label>
             </div>
-
-            <div className="col-span-2">
-              {index === 0 && (
-                <div className="flex justify-between">
-                  <label
-                    htmlFor={`type-${index}`}
-                    className="block pb-1 pt-[1px] text-sm text-element-800"
-                  >
-                    Type
-                  </label>
-                </div>
-              )}
-              <DropdownMenu>
-                <DropdownMenu.Button tooltipPosition="above">
-                  <Button
-                    type="select"
-                    labelVisible={true}
-                    label={prop["type"]}
-                    variant="secondary"
-                    size="sm"
-                  />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="bottomLeft">
-                  {["string", "number", "boolean"].map((value, i) => (
-                    <DropdownMenu.Item
-                      key={`${value}-${i}`}
-                      label={value}
-                      onClick={() => {
-                        handleTypeChange(
-                          index,
-                          value as "string" | "number" | "boolean"
-                        );
-                      }}
-                    />
-                  ))}
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            </div>
-
             <div className="col-span-7">
-              <Input
-                placeholder="Description"
-                size="sm"
-                name={`description-${index}`}
-                label={index === 0 ? "Description" : undefined}
-                value={prop["description"]}
-                onChange={(v) => {
-                  handlePropertyChange(index, "description", v);
-                }}
-                disabled={readOnly}
-                error={
-                  prop["description"].length === 0
-                    ? "Description is required"
-                    : undefined
-                }
-              />
+              <label className="block text-sm uppercase text-element-700">
+                Description
+              </label>
             </div>
-
-            <div className="col-span-1 flex items-end pb-2">
-              <IconButton
-                icon={XCircleIcon}
-                tooltip="Remove Property"
-                variant="tertiary"
-                onClick={async () => {
-                  handleRemoveProperty(index);
-                }}
-                className="ml-1"
-              />
+            <div className="col-span-2">
+              <label className="block text-sm uppercase text-element-700">
+                Type
+              </label>
             </div>
+            <div className="col-span-1"></div>
           </React.Fragment>
-        )
+
+          {properties.map(
+            (
+              prop: { name: string; type: string; description: string },
+              index: number
+            ) => (
+              <React.Fragment key={index}>
+                <div className="col-span-2">
+                  <Input
+                    placeholder="Name"
+                    size="sm"
+                    name={`name-${index}`}
+                    value={prop["name"]}
+                    onChange={(v) => {
+                      handlePropertyChange(index, "name", v);
+                    }}
+                    disabled={readOnly}
+                    error={
+                      prop["name"].length === 0
+                        ? "Name is required"
+                        : properties.find(
+                            (p, i) => p.name === prop.name && i !== index
+                          )
+                        ? "Name must be unique"
+                        : undefined
+                    }
+                  />
+                </div>
+
+                <div className="col-span-7">
+                  <Input
+                    placeholder="Description"
+                    size="sm"
+                    name={`description-${index}`}
+                    value={prop["description"]}
+                    onChange={(v) => {
+                      handlePropertyChange(index, "description", v);
+                    }}
+                    disabled={readOnly}
+                    error={
+                      prop["description"].length === 0
+                        ? "Description is required"
+                        : undefined
+                    }
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <DropdownMenu>
+                    <DropdownMenu.Button tooltipPosition="above">
+                      <Button
+                        type="select"
+                        labelVisible={true}
+                        label={prop["type"]}
+                        variant="tertiary"
+                        size="sm"
+                      />
+                    </DropdownMenu.Button>
+                    <DropdownMenu.Items origin="bottomLeft">
+                      {["string", "number", "boolean"].map((value, i) => (
+                        <DropdownMenu.Item
+                          key={`${value}-${i}`}
+                          label={value}
+                          onClick={() => {
+                            handleTypeChange(
+                              index,
+                              value as "string" | "number" | "boolean"
+                            );
+                          }}
+                        />
+                      ))}
+                    </DropdownMenu.Items>
+                  </DropdownMenu>
+                </div>
+
+                <div className="col-span-1 flex flex-row items-end pb-2">
+                  <IconButton
+                    icon={XMarkIcon}
+                    tooltip="Remove Property"
+                    variant="tertiary"
+                    onClick={async () => {
+                      handleRemoveProperty(index);
+                    }}
+                  />
+                </div>
+              </React.Fragment>
+            )
+          )}
+        </div>
       )}
       <div className="col-span-12">
         <Button
-          label={"Add property"}
-          size="xs"
+          label={"Add a field"}
+          size="sm"
           variant="secondary"
           icon={PlusIcon}
           onClick={handleAddProperty}
@@ -291,6 +313,49 @@ export function ActionProcess({
         actionConfiguration.dataSourceConfigurations[k].dataSource
           .connectorProvider === null
     ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
+
+  const generateSchemaFromInstructions = async () => {
+    setEdited(true);
+
+    if (instructions !== null) {
+      setIsGeneratingSchema(true);
+      try {
+        const res = await generateSchema({ owner, instructions });
+
+        if (res.isOk()) {
+          updateAction((previousAction) => ({
+            ...previousAction,
+            schema: res.value,
+          }));
+        } else {
+          sendNotification({
+            title: "Failed to generate schema.",
+            type: "error",
+            description: `An error occured while generating the schema: ${res.error.message}`,
+          });
+        }
+      } catch (e) {
+        sendNotification({
+          title: "Failed to generate schema.",
+          type: "error",
+          description: `An error occured while generating the schema. Please contact us if the error persists.`,
+        });
+      } finally {
+        setIsGeneratingSchema(false);
+      }
+    } else {
+      updateAction((previousAction) => ({
+        ...previousAction,
+        schema: [
+          {
+            name: "data",
+            type: "string" as const,
+            description: "Required data to follow instructions",
+          },
+        ],
+      }));
+    }
+  };
 
   return (
     <>
@@ -498,87 +563,49 @@ export function ActionProcess({
         </DropdownMenu>
       </div>
 
-      <div className="flex flex-row items-start">
-        <div className="flex-grow text-sm font-semibold text-element-900">
-          Extraction schema
-        </div>
-        <div>
-          <Tooltip
-            label={
-              "Automatically generate the extraction schema based on Instructions"
-            }
-          >
-            <Button
-              label={
-                isGeneratingSchema
-                  ? "Generating..."
-                  : "Generate from Instructions"
-              }
-              variant="primary"
-              icon={SparklesIcon}
-              size="sm"
-              disabled={isGeneratingSchema}
-              onClick={async () => {
-                setEdited(true);
-
-                if (instructions !== null) {
-                  setIsGeneratingSchema(true);
-                  try {
-                    const res = await generateSchema({ owner, instructions });
-
-                    if (res.isOk()) {
-                      updateAction((previousAction) => ({
-                        ...previousAction,
-                        schema: res.value,
-                      }));
-                    } else {
-                      sendNotification({
-                        title: "Failed to generate schema.",
-                        type: "error",
-                        description: `An error occured while generating the schema: ${res.error.message}`,
-                      });
-                    }
-                  } catch (e) {
-                    sendNotification({
-                      title: "Failed to generate schema.",
-                      type: "error",
-                      description: `An error occured while generating the schema. Please contact us if the error persists.`,
-                    });
-                  } finally {
-                    setIsGeneratingSchema(false);
-                  }
-                } else {
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    schema: [
-                      {
-                        name: "data",
-                        type: "string" as const,
-                        description: "Required data to follow instructions",
-                      },
-                    ],
-                  }));
+      <div className="flex flex-col">
+        <div className="flex flex-row items-start">
+          <div className="flex-grow pb-2 text-sm font-semibold text-element-900">
+            Schema
+          </div>
+          {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (
+            <div>
+              <Tooltip
+                label={
+                  "Automatically re-generate the extraction schema based on Instructions"
                 }
-              }}
-            />
-          </Tooltip>
+              >
+                <Button
+                  label={"Re-generate from Instructions"}
+                  variant="tertiary"
+                  icon={SparklesIcon}
+                  size="xs"
+                  disabled={isGeneratingSchema}
+                  onClick={generateSchemaFromInstructions}
+                />
+              </Tooltip>
+            </div>
+          )}
         </div>
+        {isGeneratingSchema ? (
+          <div className="flex items-center justify-center py-8">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <PropertiesFields
+            properties={actionConfiguration.schema}
+            onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
+              setEdited(true);
+              updateAction((previousAction) => ({
+                ...previousAction,
+                schema,
+              }));
+            }}
+            readOnly={false}
+            onGenerateFromInstructions={generateSchemaFromInstructions}
+          />
+        )}
       </div>
-      {isGeneratingSchema ? (
-        <Spinner size="md" />
-      ) : (
-        <PropertiesFields
-          properties={actionConfiguration.schema}
-          onSetProperties={(schema: ProcessSchemaPropertyType[]) => {
-            setEdited(true);
-            updateAction((previousAction) => ({
-              ...previousAction,
-              schema,
-            }));
-          }}
-          readOnly={false}
-        />
-      )}
     </>
   );
 }
