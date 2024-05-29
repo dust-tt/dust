@@ -149,13 +149,13 @@ impl QdrantClients {
 }
 
 #[derive(Clone)]
-pub struct DustQdrantClientWithDataSource {
+pub struct DataSourceQdrantClient {
     client: DustQdrantClient,
     data_source: DataSource,
     embedder_config: EmbedderConfig,
 }
 
-impl DustQdrantClientWithDataSource {
+impl DataSourceQdrantClient {
     pub fn collection_name(&self) -> String {
         // The collection name depends on the embedding model which is stored on the
         // data source config. To allow migrations between embedders in the future we will
@@ -346,8 +346,8 @@ pub struct DustQdrantClient {
 }
 
 impl DustQdrantClient {
-    pub fn for_data_source(&self, data_source: &DataSource) -> DustQdrantClientWithDataSource {
-        DustQdrantClientWithDataSource {
+    pub fn for_data_source(&self, data_source: &DataSource) -> DataSourceQdrantClient {
+        DataSourceQdrantClient {
             client: self.clone(),
             data_source: data_source.clone(),
             embedder_config: data_source.embedder_config().clone(),
@@ -357,9 +357,9 @@ impl DustQdrantClient {
     pub fn for_data_source_with_shadow_embedder(
         &self,
         data_source: &DataSource,
-    ) -> Option<DustQdrantClientWithDataSource> {
+    ) -> Option<DataSourceQdrantClient> {
         match data_source.shadow_embedder_config() {
-            Some(shadow_embedder_config) => Some(DustQdrantClientWithDataSource {
+            Some(shadow_embedder_config) => Some(DataSourceQdrantClient {
                 client: self.clone(),
                 data_source: data_source.clone(),
                 embedder_config: shadow_embedder_config.clone(),
