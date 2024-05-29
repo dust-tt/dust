@@ -45,7 +45,7 @@ function ToggleSideBarButton({
   toggleNavigationBarVisibility,
 }: {
   navigationBarOpen: boolean;
-  toggleNavigationBarVisibility: (open: boolean) => void;
+  toggleNavigationBarVisibility: (isOpened: boolean) => void;
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [direction, setDirection] = useState<"left" | "right">("left");
@@ -61,8 +61,8 @@ function ToggleSideBarButton({
     <div
       ref={buttonRef}
       onClick={handleClick}
-      className={`hidden lg:fixed lg:top-1/2 lg:flex lg:h-10 lg:w-5 ${
-        navigationBarOpen ? "lg:left-80" : "lg:left-2"
+      className={`hidden lg:fixed lg:top-1/2 lg:flex lg:w-5 ${
+        navigationBarOpen ? "lg:left-80" : "lg:left-0"
       }`}
     >
       <CollapseButton direction={direction} />
@@ -257,7 +257,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
+  const [isNavigationBarOpened, setNavigationBarOpened] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -399,7 +399,7 @@ export default function AppLayout({
           </Transition.Root>
         )}
 
-        {!hideSidebar && navigationBarOpen && (
+        {!hideSidebar && isNavigationBarOpened && (
           <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             {loaded && (
               <NavigationBar
@@ -417,7 +417,7 @@ export default function AppLayout({
         <div
           className={classNames(
             "mt-0 h-full flex-1",
-            !hideSidebar ? (navigationBarOpen ? "lg:pl-80" : "lg:pl-0") : ""
+            !hideSidebar ? (isNavigationBarOpened ? "lg:pl-80" : "lg:pl-0") : ""
           )}
         >
           <div
@@ -440,7 +440,7 @@ export default function AppLayout({
               !hideSidebar
                 ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
                 : "",
-              navigationBarOpen ? "lg:left-80" : "",
+              isNavigationBarOpened ? "lg:left-80" : "",
               titleChildren ? "fixed" : "lg:hidden"
             )}
           >
@@ -468,9 +468,9 @@ export default function AppLayout({
 
         <div>
           <ToggleSideBarButton
-            navigationBarOpen={navigationBarOpen}
+            navigationBarOpen={isNavigationBarOpened}
             toggleNavigationBarVisibility={(isVisible) =>
-              setNavigationBarOpen(isVisible)
+              setNavigationBarOpened(isVisible)
             }
           />
         </div>
