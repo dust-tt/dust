@@ -14,7 +14,6 @@ use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
-use qdrant_client::client::QdrantClient;
 use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
@@ -26,7 +25,7 @@ use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use super::qdrant::{DustQdrantClient, QdrantCluster, WrappedQdrantClient};
+use super::qdrant::{QdrantCluster, WrappedQdrantClient};
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
 /// one tag in `is_in` and none of the tags in `is_not`.
