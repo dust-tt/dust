@@ -1,10 +1,12 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
+use crate::providers::llm::{ChatFunction, ChatFunctionCall};
 use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
 };
+use crate::providers::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 use crate::run::Credentials;
 use crate::utils;
 use crate::utils::ParseError;
@@ -26,9 +28,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-
-use super::llm::{ChatFunction, ChatFunctionCall};
-use super::tiktoken::tiktoken::{decode_async, encode_async, tokenize_async};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -1399,6 +1398,35 @@ impl OpenAILLM {
             },
         }
     }
+
+    pub fn openai_context_size(model_id: &str) -> usize {
+        // Reference: https://platform.openai.com/docs/models
+
+        // gpt-3.5-*
+        if model_id.starts_with("gpt-3.5") {
+            if model_id.starts_with("gpt-3.5-turbo-instruct") {
+                return 4096;
+            }
+            if model_id == "gpt-3.5-turbo-0613" {
+                return 4096;
+            }
+            return 16385;
+        }
+
+        // gpt-4*
+        if model_id.starts_with("gpt-4") {
+            if model_id.starts_with("gpt-4-32k") {
+                return 32768;
+            }
+            if model_id == "gpt-4" || model_id == "gpt-4-0613" {
+                return 8192;
+            }
+            return 128000;
+        }
+
+        // By default return 128000
+        return 128000;
+    }
 }
 
 pub fn to_openai_messages(
@@ -1440,24 +1468,7 @@ impl LLM for OpenAILLM {
     }
 
     fn context_size(&self) -> usize {
-        if self.id.starts_with("gpt-3.5-turbo") {
-            return 4096;
-        }
-        if self.id.starts_with("gpt-4-32k") {
-            return 32768;
-        }
-        if self.id.starts_with("gpt-4-1106-preview") {
-            return 128000;
-        }
-        if self.id.starts_with("gpt-4") {
-            return 8192;
-        }
-        match self.id.as_str() {
-            "code-davinci-002" => 8000,
-            "text-davinci-002" => 4000,
-            "text-davinci-003" => 4000,
-            _ => 2048,
-        }
+        Self::openai_context_size(self.id.as_str())
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
@@ -1902,6 +1913,10 @@ impl Embedder for OpenAIEmbedder {
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
         decode_async(self.tokenizer(), tokens).await
+    }
+
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        tokenize_async(self.tokenizer(), text).await
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
