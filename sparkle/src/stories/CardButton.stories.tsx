@@ -79,12 +79,26 @@ const cardData: CardData[] = [
 export const ActionCard: React.FC = () => (
   <div className="s-grid s-grid-cols-3 s-gap-3">
     {cardData.map((card, index) => (
-      <CardButton key={index} variant="secondary">
+      <CardButton
+        key={index}
+        variant="secondary"
+        onClick={() => {
+          alert(`You clicked on ${card.title}`);
+        }}
+      >
         <div className="s-flex s-w-full s-flex-col s-gap-2 s-text-sm">
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
             <Icon visual={card.icon} size="sm" className="s-text-element-900" />
             <div className="s-w-full">{card.title}</div>
-            <IconButton icon={XMarkIcon} variant="tertiary" size="sm" />
+            <IconButton
+              icon={XMarkIcon}
+              variant="tertiary"
+              size="sm"
+              onClick={(e) => {
+                alert(`You clicked on close button of ${card.title}`);
+                e.stopPropagation();
+              }}
+            />
           </div>
           <div className="s-w-full s-truncate s-text-base s-text-element-700">
             {card.description}
