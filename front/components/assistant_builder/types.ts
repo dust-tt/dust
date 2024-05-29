@@ -168,7 +168,7 @@ export function getDefaultRetrievalSearchActionConfiguration() {
       },
     } as AssistantBuilderRetrievalConfiguration,
     name: "search_data_sources",
-    description: "Search in the user's data sources.",
+    description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
@@ -183,7 +183,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
       },
     } as AssistantBuilderRetrievalConfiguration,
     name: "recent_data_sources",
-    description: "Retrieve the most recent data from the user's data sources.",
+    description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
@@ -203,7 +203,7 @@ export function getDefaultTablesQueryActionConfiguration() {
     type: "TABLES_QUERY",
     configuration: {} as AssistantBuilderTablesQueryConfiguration,
     name: "query_tables",
-    description: "Query structured tables via SQL.",
+    description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
