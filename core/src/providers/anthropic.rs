@@ -519,7 +519,7 @@ impl AnthropicLLM {
         headers.insert("anthropic-version", "2023-06-01".parse()?);
 
         if !tools.is_empty() {
-            headers.insert("anthropic-beta", "tools-2024-04-04".parse()?);
+            headers.insert("anthropic-beta", "tools-2024-05-16".parse()?);
         }
 
         let res = reqwest::Client::new()
@@ -613,7 +613,7 @@ impl AnthropicLLM {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
-        builder = match builder.header("anthropic-beta", "tools-2024-04-04") {
+        builder = match builder.header("anthropic-beta", "tools-2024-05-16") {
             Ok(builder) => builder,
             Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
         };
