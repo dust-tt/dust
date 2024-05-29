@@ -144,29 +144,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
-      const count = await this.model.count({
-        where: {
-          workspaceId: this.workspaceId,
-          connectionId: this.connectionId,
-        },
-      });
-
-      // If this is the last configuration using this connection, delete the connection
-      if (count <= 1) {
-        await nangoDeleteConnection(
-          this.connectionId,
-          config.getNangoConnectorIdForProvider(this.provider)
-        );
-      }
-
       await this.deleteHistory(transaction);
-
       await this.model.destroy({
         where: {
           id: this.id,
         },
         transaction,
       });
+
+      // If this was the last configuration using this connection, delete the connection
+      const count = await this.model.count({
+        where: {
+          workspaceId: this.workspaceId,
+          connectionId: this.connectionId,
+        },
+      });
+      if (count === 0) {
+        await nangoDeleteConnection(
+          this.connectionId,
+          config.getNangoConnectorIdForProvider(this.provider)
+        );
+      }
 
       return new Ok(undefined);
     } catch (err) {
@@ -226,7 +224,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
-          id: this.id,
+          configurationId: this.id,
         },
         transaction,
       });
