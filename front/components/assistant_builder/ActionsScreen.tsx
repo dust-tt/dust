@@ -1,10 +1,11 @@
 import {
   Button,
+  CardButton,
   CommandLineIcon,
   CommandLineStrokeIcon,
   DropdownMenu,
-  Hoverable,
   Icon,
+  IconButton,
   Input,
   MagnifyingGlassIcon,
   MagnifyingGlassStrokeIcon,
@@ -19,6 +20,7 @@ import {
   TextArea,
   TimeIcon,
   TimeStrokeIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AppType,
@@ -281,7 +283,6 @@ export default function ActionsScreen({
         setEdited={setEdited}
         dataSources={dataSources}
         dustApps={dustApps}
-        deleteAction={deleteAction}
       />
 
       <div className="flex flex-col gap-8 text-sm text-element-700">
@@ -329,7 +330,7 @@ export default function ActionsScreen({
               />
             </div>
           )}
-          <div className="mx-auto grid w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <div className="mx-auto grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
             {builderState.actions.map((a) => (
               <div className="flex w-full" key={a.name}>
                 <ActionCard
@@ -338,6 +339,9 @@ export default function ActionsScreen({
                   editAction={() => {
                     setActionToEdit(a);
                     setNewActionModalOpen(true);
+                  }}
+                  deleteAction={() => {
+                    deleteAction(a.name);
                   }}
                 />
               </div>
@@ -372,7 +376,6 @@ function NewActionModal({
   dataSources,
   dustApps,
   builderState,
-  deleteAction,
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
@@ -390,7 +393,6 @@ function NewActionModal({
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
   dustApps: AppType[];
-  deleteAction: (name: string) => void;
 }) {
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
@@ -463,18 +465,6 @@ function NewActionModal({
               descriptionValid={descriptionValid}
             />
           )}
-          {initialAction && (
-            <div className="pt-8">
-              <Button
-                variant="primaryWarning"
-                label="Delete Action"
-                onClick={() => {
-                  deleteAction(initialAction.name);
-                  onCloseLocal();
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
     </Modal>
@@ -484,9 +474,11 @@ function NewActionModal({
 function ActionCard({
   action,
   editAction,
+  deleteAction,
 }: {
   action: AssistantBuilderActionConfiguration;
   editAction: () => void;
+  deleteAction: () => void;
 }) {
   const spec = ACTION_SPECIFICATIONS[action.type];
   if (!spec) {
@@ -494,15 +486,30 @@ function ActionCard({
     return null;
   }
   return (
-    <Hoverable onClick={editAction}>
-      <div className="mx-auto inline-block flex w-72 flex-col gap-4 rounded-lg border border-structure-200 px-4 pb-4 pt-2 drop-shadow-md">
-        <div className="flex flex-row gap-2 font-semibold text-element-800">
-          <Icon visual={spec.cardIcon} />
-          <div className="truncate">{action.name}</div>
+    <CardButton
+      variant="secondary"
+      onClick={editAction}
+      className="mx-auto inline-block w-72"
+    >
+      <div className="flex w-full flex-col gap-2 text-sm">
+        <div className="flex w-full gap-1 font-medium text-element-900">
+          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
+          <div className="w-full truncate">{spec.label}</div>
+          <IconButton
+            icon={XMarkIcon}
+            variant="tertiary"
+            size="sm"
+            onClick={(e) => {
+              deleteAction();
+              e.stopPropagation();
+            }}
+          />
         </div>
-        <div>{action.description}</div>
+        <div className="w-full truncate text-base text-element-700">
+          {action.description}
+        </div>
       </div>
-    </Hoverable>
+    </CardButton>
   );
 }
 
