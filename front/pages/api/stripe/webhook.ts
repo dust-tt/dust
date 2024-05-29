@@ -449,8 +449,8 @@ async function handler(
             }
             await subscription.update({
               endDate,
-              // if the subscription is canceled, we set the requestCancelAt date to now.
-              // if the subscription is reactivated, we unset the requestCancelAt date.
+              // If the subscription is canceled, we set the requestCancelAt date to now.
+              // If the subscription is reactivated, we unset the requestCancelAt date.
               requestCancelAt: endDate ? now : null,
             });
             const auth = await Authenticator.internalBuilderForWorkspace(
