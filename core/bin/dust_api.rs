@@ -1183,8 +1183,9 @@ async fn data_sources_tokenize(
             ),
             Some(ds) => {
                 let embedder_config = ds.embedder_config().clone();
-                let llm = provider(embedder_config.provider_id).llm(embedder_config.model_id);
-                match llm.tokenize(&payload.text).await {
+                let embedder =
+                    provider(embedder_config.provider_id).embedder(embedder_config.model_id);
+                match embedder.tokenize(&payload.text).await {
                     Err(e) => error_response(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         "internal_server_error",

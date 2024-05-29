@@ -533,6 +533,16 @@ impl Embedder for CohereEmbedder {
         api_decode(self.api_key.as_ref().unwrap(), tokens).await
     }
 
+    // We return empty string in tokenize to partially support the endpoint.
+    async fn tokenize(&self, text: &str) -> Result<Vec<(usize, String)>> {
+        assert!(self.api_key.is_some());
+        let tokens = api_encode(self.api_key.as_ref().unwrap(), text).await?;
+        Ok(tokens
+            .iter()
+            .map(|t| (*t, "".to_string()))
+            .collect::<Vec<_>>())
+    }
+
     async fn embed(&self, text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         assert!(self.api_key.is_some());
 

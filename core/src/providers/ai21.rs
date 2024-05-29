@@ -387,6 +387,10 @@ impl Embedder for AI21Embedder {
         Err(anyhow!("Encode/Decode not implemented for provider `ai21`"))
     }
 
+    async fn tokenize(&self, _text: &str) -> Result<Vec<(usize, String)>> {
+        Err(anyhow!("Tokenize not implemented for provider `ai21`"))
+    }
+
     async fn embed(&self, _text: Vec<&str>, _extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
         Err(anyhow!("Embeddings not available for provider `ai21`"))
     }
