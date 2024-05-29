@@ -436,6 +436,54 @@ export async function isSubscriptionOnProPlan(
   return isStripeSubscriptionOnProPlan(stripeSubscription);
 }
 
+export async function getPerSeatSubscriptionPricing(
+  subscription: SubscriptionType
+): Promise<{
+  seatPrice: number;
+  seatCurrency: string;
+  billingPeriod: "monthly" | "yearly";
+  quantity: number;
+} | null> {
+  if (!subscription.stripeSubscriptionId) {
+    return null;
+  }
+
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+  if (!stripeSubscription) {
+    return null;
+  }
+
+  const { items } = stripeSubscription;
+  if (!items) {
+    return null;
+  }
+
+  const [item] = items.data;
+  if (!item || !item.price) {
+    return null;
+  }
+
+  const { unit_amount: unitAmount, currency, recurring } = item.price;
+
+  const isPricedPerSeat = unitAmount !== null;
+  if (!isPricedPerSeat) {
+    return null;
+  }
+
+  if (!item.quantity || !recurring) {
+    return null;
+  }
+
+  return {
+    seatPrice: unitAmount,
+    seatCurrency: currency,
+    billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
+    quantity: item.quantity,
+  };
+}
+
 /**
  * Proactively cancel inactive trials.
  */

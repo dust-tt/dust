@@ -73,6 +73,13 @@ export type SubscriptionType = {
   requestCancelAt: number | null;
 };
 
+export type SubscriptionPerSeatPricing = {
+  seatPrice: number;
+  seatCurrency: string;
+  billingPeriod: "monthly" | "yearly";
+  quantity: number;
+};
+
 export const CreatePlanFormSchema = t.type({
   code: NonEmptyString,
   name: NonEmptyString,
