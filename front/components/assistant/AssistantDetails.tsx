@@ -131,7 +131,8 @@ export function AssistantDetails({
   const editedSentence =
     agentConfiguration.versionCreatedAt &&
     `Last edited ${timeAgoFrom(
-      Date.parse(agentConfiguration.versionCreatedAt)
+      Date.parse(agentConfiguration.versionCreatedAt),
+      { useLongFormat: true }
     )} ago`;
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
