@@ -182,6 +182,8 @@ export async function splitThreadContent(
     } else {
       if (line.startsWith("On ") && line.includes(" wrote:")) {
         foundUserMessage = true;
+      } else if (line.startsWith("---------- Forwarded message ---------")) {
+        foundUserMessage = true;
       } else {
         userMessage += line + "\n";
       }
