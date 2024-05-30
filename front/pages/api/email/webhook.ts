@@ -38,6 +38,7 @@ const parseSendgridWebhookContent = async (
   try {
     const subject = fields["subject"] ? fields["subject"][0] : null;
     const text = fields["text"] ? fields["text"][0] : null;
+    const full = fields["from"] ? fields["from"][0] : null;
     const SPF = fields["SPF"] ? fields["SPF"][0] : null;
     const dkim = fields["dkim"] ? fields["dkim"][0] : null;
     const envelope = fields["envelope"]
@@ -53,6 +54,9 @@ const parseSendgridWebhookContent = async (
     if (!from || typeof from !== "string") {
       return new Err(new Error("Failed to parse envelope.from"));
     }
+    if (!full || typeof full !== "string") {
+      return new Err(new Error("Failed to parse from"));
+    }
 
     return new Ok({
       subject: subject || "(no subject)",
@@ -63,6 +67,7 @@ const parseSendgridWebhookContent = async (
         cc: envelope.cc || [],
         bcc: envelope.bcc || [],
         from,
+        full,
       },
     });
   } catch (e) {
@@ -214,7 +219,9 @@ async function handler(
           return;
         }
 
-        const { conversation, htmlAnswers } = answerRes.value;
+        const { conversation, answers } = answerRes.value;
+
+        console.log(answers);
 
         void replyToEmail({
           email,
@@ -224,7 +231,7 @@ async function handler(
           }/assistant/${
             conversation.sId
           }">Open this conversation in Dust</a><br/><br/>${
-            htmlAnswers[0]
+            answers[0].html
           }<br/><br/> ${
             agentConfiguration.name
           } at <a href="https://dust.tt">Dust.tt</a>`,

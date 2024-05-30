@@ -38,6 +38,7 @@ export type InboundEmail = {
     cc: string[];
     bcc: string[];
     from: string;
+    full: string;
   };
 };
 
@@ -205,7 +206,14 @@ export async function emailAnswer({
   threadContent: string;
 }): Promise<
   Result<
-    { conversation: ConversationType; htmlAnswers: Record<string, string> },
+    {
+      conversation: ConversationType;
+      answers: {
+        agentConfiguration: LightAgentConfigurationType;
+        agentMessage: AgentMessageType;
+        html: string;
+      }[];
+    },
     EmailAnswerError
   >
 > {
@@ -220,11 +228,14 @@ export async function emailAnswer({
   }
 
   const initialConversation = await createConversation(auth, {
-    title: `Email thread: ${threadTitle}`,
+    title: `Email: ${threadTitle}`,
     visibility: "unlisted",
   });
 
   const { userMessage, restOfThread } = await splitThreadContent(threadContent);
+
+  console.log("USER_MESSAGE", userMessage);
+  console.log("REST_OF_THREAD", restOfThread);
 
   await postNewContentFragment(auth, {
     conversation: initialConversation,
@@ -296,31 +307,32 @@ export async function emailAnswer({
     "[email] Created conversation."
   );
 
-  // Last version of messages
+  // Last versions of each agent messages.
   const agentMessages = agentConfigurations.map((ac) => {
-    return [ac.sId, (<AgentMessageType[]>conversation.content.find(
-        (innerArray) => {
-          const item = innerArray[-1];
-          return isAgentMessageType(item) && item.configuration.sId === ac.sId;
-        }
-      ))[-1]?.content ?? ""];
+    const agentMessages = conversation.content.find((versions) => {
+      const item = versions[versions.length - 1];
+      return (
+        item && isAgentMessageType(item) && item.configuration.sId === ac.sId
+      );
+    }) as AgentMessageType[];
+    const last = agentMessages[agentMessages.length - 1];
+    return { agentConfiguration: ac, agentMessage: last };
   });
 
-  const htmlAnswers = Object.fromEntries(
-    await Promise.all(
-      agentMessages.map(async ([ac, am]) => {
-        return [
-          ac,
-          sanitizeHtml(await marked.parse(am), {
-            // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
-            allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-          }),
-        ];
-      })
-    )
+  const answers = await Promise.all(
+    agentMessages.map(async ({ agentConfiguration, agentMessage }) => {
+      return {
+        agentConfiguration,
+        agentMessage,
+        html: sanitizeHtml(await marked.parse(agentMessage.content || ""), {
+          // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+          allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+        }),
+      };
+    })
   );
 
-  return new Ok({ conversation, htmlAnswers });
+  return new Ok({ conversation, answers });
 }
 
 export async function replyToEmail({
@@ -336,7 +348,7 @@ export async function replyToEmail({
     ? `Dust Assistant (${agentConfiguration.name})`
     : "Dust Assistant";
   const sender = agentConfiguration
-    ? `a+${name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
+    ? `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `a@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   // subject: if Re: is there, we don't add it.
@@ -347,16 +359,26 @@ export async function replyToEmail({
     ? email.subject
     : `Re: ${email.subject}`;
 
+  const quote = email.text
+    .replaceAll(">", "&gt;")
+    .replaceAll("<", "&lt;")
+    .split("\n")
+    .join("<br/>\n");
+
   const html =
+    "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} <${email.envelope.from}> wrote:<br/>` +
-    `<blockquote>${email.text}</blockquote>`;
+    `On ${new Date().toUTCString()} ${email.envelope.full} wrote:<br/>\n` +
+    `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
+    `${quote}` +
+    `</blockquote>\n` +
+    "<div>\n";
 
   const msg = {
     from: {
       name,
-      sender,
+      email: sender,
     },
     reply_to: sender,
     subject,
