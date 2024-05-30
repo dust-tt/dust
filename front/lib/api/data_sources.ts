@@ -1,8 +1,11 @@
 import type {
   APIError,
   ConnectorProvider,
+  CoreAPIDataSourceDocumentSection,
+  CredentialsType,
   DataSourceType,
   Result,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
   ConnectorsAPI,
@@ -12,6 +15,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 
+import { dataSourceSearchUpsert } from "@app/lib/api/data_sources_search";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { sendGithubDeletionEmail } from "@app/lib/email";
@@ -291,4 +295,95 @@ async function warnPostDeletion(
     default:
       break;
   }
+}
+
+export async function upsertToDataSource({
+  owner,
+  dataSource,
+  projectId,
+  dataSourceName,
+  documentId,
+  timestamp,
+  tags,
+  parents,
+  sourceUrl,
+  section,
+  credentials,
+  lightDocumentOutput = false,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  projectId: string;
+  dataSourceName: string;
+  documentId: string;
+  timestamp?: number | null;
+  tags: string[];
+  parents: string[];
+  sourceUrl?: string | null;
+  section: CoreAPIDataSourceDocumentSection;
+  credentials: CredentialsType;
+  lightDocumentOutput?: boolean;
+}) {
+  const coreAPI = new CoreAPI(logger);
+  const upsertRes = await coreAPI.upsertDataSourceDocument({
+    projectId: projectId,
+    dataSourceName: dataSourceName,
+    documentId: documentId,
+    tags: tags,
+    parents: parents,
+    sourceUrl,
+    timestamp: timestamp,
+    section,
+    credentials,
+    lightDocumentOutput: lightDocumentOutput,
+  });
+  if (upsertRes.isErr()) {
+    return upsertRes;
+  }
+
+  // We are not waiting for the search index to be updated before returning the response.
+  async function upsertToSearchIndex() {
+    const coreDocument = await coreAPI.getDataSourceDocument({
+      projectId: projectId,
+      dataSourceName: dataSource.name,
+      documentId: documentId,
+    });
+    if (coreDocument.isErr()) {
+      return coreDocument;
+    }
+
+    const content = coreDocument.value.document.text;
+
+    if (content) {
+      dataSourceSearchUpsert({
+        owner,
+        dataSource,
+        documentId,
+        title:
+          tags.find((t) => t.startsWith("$title"))?.split(":")[1] ||
+          content.substring(0, 100),
+        content,
+      }).catch((error) =>
+        logger.error(
+          { error: error, workspaceId: owner.sId, documentId },
+          "Error upserting to search index"
+        )
+      );
+    }
+  }
+  upsertToSearchIndex()
+    .then(() => {
+      logger.info(
+        { workspaceId: owner.sId, documentId, dataSourceName: dataSource.name },
+        "Upserted to search index"
+      );
+    })
+    .catch((error) => {
+      logger.error(
+        { error: error, workspaceId: owner.sId, documentId },
+        "Error upserting to search index"
+      );
+    });
+
+  return upsertRes;
 }

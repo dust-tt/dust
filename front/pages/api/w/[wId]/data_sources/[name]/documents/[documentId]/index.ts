@@ -10,7 +10,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSource } from "@app/lib/api/data_sources";
+import { getDataSource, upsertToDataSource } from "@app/lib/api/data_sources";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -216,7 +216,9 @@ async function handler(
       const credentials = dustManagedCredentials();
 
       // Create document with the Dust internal API.
-      const upsertRes = await coreAPI.upsertDataSourceDocument({
+      const upsertRes = await upsertToDataSource({
+        owner,
+        dataSource,
         projectId: dataSource.dustAPIProjectId,
         dataSourceName: dataSource.name,
         documentId: req.query.documentId as string,

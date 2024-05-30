@@ -63,6 +63,7 @@ async function _upsertToDatasource({
   upsertContext,
   async,
 }: UpsertToDataSourceParams) {
+  async = false;
   const localLogger = logger.child({
     ...loggerArgs,
     documentId,

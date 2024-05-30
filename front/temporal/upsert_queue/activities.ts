@@ -1,9 +1,9 @@
-import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
+import { dustManagedCredentials } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
-import { getDataSource } from "@app/lib/api/data_sources";
+import { getDataSource, upsertToDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
@@ -56,6 +56,16 @@ export async function upsertDocumentActivity(
   const auth = await Authenticator.internalBuilderForWorkspace(
     upsertQueueItem.workspaceId
   );
+  const owner = auth.workspace();
+  if (!owner) {
+    logger.error(
+      {
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Giving up: Workspace not found"
+    );
+    return;
+  }
 
   const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceName);
 
@@ -79,12 +89,12 @@ export async function upsertDocumentActivity(
   // Dust managed credentials: all data sources.
   const credentials = dustManagedCredentials();
 
-  const coreAPI = new CoreAPI(logger);
-
   const upsertTimestamp = Date.now();
 
   // Create document with the Dust internal API.
-  const upsertRes = await coreAPI.upsertDataSourceDocument({
+  const upsertRes = upsertToDataSource({
+    owner: owner,
+    dataSource,
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
     documentId: upsertQueueItem.documentId,
