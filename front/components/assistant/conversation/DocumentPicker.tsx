@@ -132,6 +132,7 @@ export function DocumentPicker({
                   <DropdownMenu.Item
                     key={`document-picker-${d.documentId}`}
                     label={d.documentTitle}
+                    description={d.highlightedText}
                     icon={
                       d.connectorProvider
                         ? CONNECTOR_CONFIGURATIONS[d.connectorProvider]

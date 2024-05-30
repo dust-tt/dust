@@ -95,17 +95,19 @@ export async function dataSourceSearch({
     .initIndex(SEARCH_INDEX_NAME)
     .search(query, {
       filters: `workspaceId:${workspaceId}`,
+      attributesToSnippet: ["content:10"],
     });
 
-  console.log("search result", res);
+  console.log("search result", JSON.stringify(res, null, 2));
   return res.hits.map((hit): DataSourceSearchResultType => {
     const doc = hit as DataSourceSearchDocument;
+    const snippet = hit._snippetResult?.content?.value;
     return {
       documentId: doc.documentId,
       dataSourceName: doc.dataSourceName,
       documentTitle: doc.title,
       connectorProvider: doc.connectorProvider,
-      highlightedText: "FAKE HIGHLIGHTED",
+      highlightedText: snippet,
       updatedAt: new Date().getTime(),
     };
   });

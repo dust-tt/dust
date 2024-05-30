@@ -355,13 +355,14 @@ export async function upsertToDataSource({
     const content = coreDocument.value.document.text;
 
     if (content) {
+      const title =
+        tags.find((t) => t.startsWith("title"))?.split(":")[1] ||
+        content.substring(0, 50) + "...";
       dataSourceSearchUpsert({
         owner,
         dataSource,
         documentId,
-        title:
-          tags.find((t) => t.startsWith("$title"))?.split(":")[1] ||
-          content.substring(0, 100),
+        title: title,
         content,
       }).catch((error) =>
         logger.error(

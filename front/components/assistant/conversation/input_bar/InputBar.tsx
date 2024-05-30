@@ -345,7 +345,7 @@ export function AssistantInputBar({
                   {dataSourceDocuments.map((cf, i) => (
                     <Citation
                       key={`ds-document-${i}`}
-                      title={cf.title}
+                      title={cf.highlightedText}
                       size="xs"
                       description={cf.highlightedText?.substring(0, 100)}
                       onClose={() => {
