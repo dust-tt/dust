@@ -39,7 +39,7 @@ export function DocumentPicker({
       setLoading(true);
       try {
         const res = await fetch(
-          `/api/w/${owner.sId}/search?text=${searchText}`
+          `/api/w/${owner.sId}/search?text=${encodeURIComponent(searchText)}`
         );
         if (res.ok) {
           const documents: DataSourceSearchResultType[] = (await res.json())
