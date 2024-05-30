@@ -159,7 +159,7 @@ export async function emailAssistantMatcher({
     sort: undefined,
   });
 
-  const agentPrefix = targetEmail.split("@")[0].split("+")[1];
+  const agentPrefix = targetEmail.split("@")[0];
 
   const matchingAgents = filterAndSortAgents(agentConfigurations, agentPrefix);
   if (matchingAgents.length === 0) {
@@ -196,7 +196,7 @@ export async function splitThreadContent(
     }
   }
 
-  return { userMessage, restOfThread };
+  return { userMessage: userMessage.trim(), restOfThread: restOfThread.trim() };
 }
 
 export async function emailAnswer({
@@ -240,25 +240,27 @@ export async function emailAnswer({
   const { userMessage, restOfThread } = await splitThreadContent(threadContent);
 
   // console.log("USER_MESSAGE", userMessage);
-  // console.log("REST_OF_THREAD", restOfThread);
+  // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
-  await postNewContentFragment(auth, {
-    conversation,
-    title: `Email thread: ${threadTitle}`,
-    content: restOfThread,
-    url: null,
-    contentType: "file_attachment",
-    context: {
-      username: user.username,
-      fullName: user.fullName,
-      email: user.email,
-      profilePictureUrl: user.image,
-    },
-  });
+  if (restOfThread.length > 0) {
+    await postNewContentFragment(auth, {
+      conversation,
+      title: `Email thread: ${threadTitle}`,
+      content: restOfThread,
+      url: null,
+      contentType: "file_attachment",
+      context: {
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        profilePictureUrl: user.image,
+      },
+    });
 
-  let updatedConversation = await getConversation(auth, conversation.sId);
-  if (updatedConversation) {
-    conversation = updatedConversation;
+    const updatedConversation = await getConversation(auth, conversation.sId);
+    if (updatedConversation) {
+      conversation = updatedConversation;
+    }
   }
 
   const content =
@@ -300,7 +302,7 @@ export async function emailAnswer({
     });
   }
 
-  updatedConversation = await getConversation(auth, conversation.sId);
+  const updatedConversation = await getConversation(auth, conversation.sId);
   if (updatedConversation) {
     conversation = updatedConversation;
   }
@@ -357,8 +359,8 @@ export async function replyToEmail({
     ? `Dust Assistant (${agentConfiguration.name})`
     : "Dust Assistant";
   const sender = agentConfiguration
-    ? `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
-    : `a@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+    ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
+    : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   // subject: if Re: is there, we don't add it.
   const subject = email.subject
