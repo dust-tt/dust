@@ -2,13 +2,17 @@ import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { emailMatcher } from "@app/lib/api/assistant/email_answer";
+import {
+  emailAnswer,
+  emailAssistantMatcher,
+  userAndWorkspaceFromEmail,
+} from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
-const ASSISTANT_EMAIL_SUBDOMAIN = "a.dust.tt";
+const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
 export type GetResponseBody = {
   success: boolean;
@@ -58,6 +62,7 @@ async function handler(
       const form = new IncomingForm();
       const [fields] = await form.parse(req);
 
+      let subject: string | null = null;
       let text: string | null = null;
       let SPF: string | null = null;
       let dkim: string | null = null;
@@ -67,6 +72,7 @@ async function handler(
       let from: string | null = null;
 
       try {
+        subject = fields["subject"] ? fields["subject"][0] : null;
         text = fields["text"] ? fields["text"][0] : null;
         SPF = fields["SPF"] ? fields["SPF"][0] : null;
         dkim = fields["dkim"] ? fields["dkim"][0] : null;
@@ -101,29 +107,37 @@ async function handler(
       }
 
       // Check SPF is pass.
-      if (SPF !== "pass") {
+      if (SPF !== "pass" || dkim !== `{@${from.split("@")[1]} : pass}`) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: "SPF validation failed",
+            message: "SPF/dkim validation failed",
           },
         });
       }
 
-      // Check dkim is pass.
-      if (dkim !== `{@${from.split("@")[1]} : pass}`) {
+      const userRes = await userAndWorkspaceFromEmail({
+        email: from,
+      });
+      if (userRes.isErr()) {
+        // TODO send email to explain problem
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: "dkim validation failed",
+            message: `Failed to retrieve user from email: ${userRes.error.type}}`,
           },
         });
       }
 
-      // find target email in [...to, ...cc, ...bcc], that is email whose domain
-      // is ASSISTANT_EMAIL_SUBDOMAIN
+      const auth = await Authenticator.internalUserForWorkspace({
+        user: userRes.value.user,
+        workspace: userRes.value.workspace,
+      });
+
+      // find target email in [...to, ...cc, ...bcc], that is email whose domain is
+      // ASSISTANT_EMAIL_SUBDOMAIN.
       const targetEmails = [
         ...(to ?? []),
         ...(cc ?? []),
@@ -150,37 +164,28 @@ async function handler(
         });
       }
 
-      const matchRes = await emailMatcher({
-        senderEmail: from,
+      const matchRes = await emailAssistantMatcher({
+        auth,
         targetEmail: targetEmails[0],
       });
       if (matchRes.isErr()) {
+        // TODO send email to explain problem
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: `Failed to retrieve user from email: ${matchRes.error.message}}`,
-          },
-        });
-      }
-
-      const auth = await Authenticator.internalUserForWorkspace({
-        user: matchRes.value.user,
-        workspace: matchRes.value.workspace,
-      });
-
-      const owner = auth.workspace();
-      if (!owner) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "The workspace was not found.",
+            message: `Failed to retrieve user from email: ${matchRes.error.type}}`,
           },
         });
       }
 
       console.log({ text, SPF, dkim, to, from, cc });
+      void emailAnswer({
+        auth,
+        agentConfiguration: matchRes.value.agentConfiguration,
+        threadTitle: subject || "Email thread",
+        threadContent: text || "",
+      });
 
       return res.status(200).json({ success: true });
 

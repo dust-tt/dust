@@ -17,7 +17,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { renderUserType } from "@app/lib/api/user";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -26,62 +26,66 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-export async function emailMatcher({
-  senderEmail,
-  targetEmail,
+export async function userAndWorkspaceFromEmail({
+  email,
 }: {
-  senderEmail: string;
-  targetEmail: string;
+  email: string;
 }): Promise<
   Result<
     {
       workspace: LightWorkspaceType;
       user: UserType;
-      agentConfiguration: LightAgentConfigurationType;
     },
-    Error
+    {
+      type: "user_not_found" | "workspace_not_found";
+    }
   >
 > {
-  // grab user
-  const userModel = await User.findOne({
-    where: { email: senderEmail },
+  const user = await User.findOne({
+    where: { email: email },
   });
 
-  if (!userModel) {
-    logger.error(
-      { senderEmail },
-      "[emailMatcher] No user found with this email."
-    );
-    return new Err(new Error("No user found with this email."));
+  if (!user) {
+    logger.error({ email }, "[email] No user found with this email.");
+    return new Err({ type: "user_not_found" });
   }
 
-  const user = renderUserType(userModel);
-
-  // grab workspace
-  const workspaceModel = await Workspace.findOne({
+  const workspace = await Workspace.findOne({
     include: [
       {
         model: MembershipModel,
-        where: { userId: userModel.id },
+        where: { userId: user.id },
       },
     ],
   });
 
-  if (!workspaceModel) {
-    logger.error(
-      { senderEmail },
-      "[emailMatcher] No workspace found for this user."
-    );
-    return new Err(new Error("No workspace found for this user."));
+  if (!workspace) {
+    logger.error({ email }, "[email] No workspace found for this user.");
+    return new Err({ type: "workspace_not_found" });
   }
 
-  const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
-
-  const auth = await Authenticator.internalUserForWorkspace({
-    user,
-    workspace,
+  return new Ok({
+    workspace: renderLightWorkspaceType({ workspace }),
+    user: renderUserType(user),
   });
+}
 
+export async function emailAssistantMatcher({
+  auth,
+  targetEmail,
+}: {
+  auth: Authenticator;
+  targetEmail: string;
+}): Promise<
+  Result<
+    {
+      agentConfiguration: LightAgentConfigurationType;
+    },
+    {
+      type: "agent_not_found";
+    }
+  >
+> {
   const agentConfigurations = await getAgentConfigurations({
     auth,
     agentsGetView: "list",
@@ -89,8 +93,6 @@ export async function emailMatcher({
     limit: undefined,
     sort: undefined,
   });
-
-  // grab agent configuration
 
   const agentPrefix = targetEmail.split("@")[0];
 
@@ -100,13 +102,11 @@ export async function emailMatcher({
       { agentPrefix },
       "[emailMatcher] No agent configuration found for this email."
     );
-    return new Err(new Error("No agent configuration found for this email."));
+    return new Err({ type: "agent_not_found" });
   }
   const agentConfiguration = matchingAgents[0];
 
   return new Ok({
-    workspace,
-    user,
     agentConfiguration,
   });
 }
