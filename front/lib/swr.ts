@@ -1030,11 +1030,7 @@ export function useWorkspaceEnterpriseConnection({
 }
 
 // Hackathon - Scheduled Agents
-export function useScheduledAgents({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
+export function useScheduledAgents({ workspaceId }: { workspaceId: string }) {
   const scheduledAgentsFetcher: Fetcher<ListScheduledAgentsResponseBody> =
     fetcher;
 

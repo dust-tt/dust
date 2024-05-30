@@ -14,14 +14,15 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
-import { useContext,useState } from "react";
+import { useContext, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useAgentConfigurations } from "@app/lib/swr";
+import { isEmailValid } from "@app/lib/utils";
 
 import { SendNotificationsContext } from "./sparkle/Notification";
 
-interface NewScheduleModalProps {
+interface EditScheduleModalProps {
   isOpened: boolean;
   onClose: () => void;
   owner: WorkspaceType;
@@ -37,11 +38,11 @@ const daysOfTheWeek = [
   { label: "Sunday", value: 0 },
 ];
 
-export function NewScheduleModal({
+export function EditScheduleModal({
   isOpened,
   onClose,
   owner,
-}: NewScheduleModalProps) {
+}: EditScheduleModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -114,27 +115,35 @@ export function NewScheduleModal({
   };
 
   const handleSave = async () => {
+    if (schedule.emails.some((email) => !isEmailValid(email))) {
+      sendNotification({
+        type: "error",
+        title: "Invalid email",
+        description: `One or more emails are invalid.`,
+      });
+      return;
+    }
 
     const scheduleToSend = {
-     ...schedule
-    }
+      ...schedule,
+    };
 
-    if(schedule.scheduleType === "monthly") {
+    if (schedule.scheduleType === "monthly") {
       delete scheduleToSend.weeklyDaysOfWeek;
     }
-    if(schedule.scheduleType === "weekly") {
+    if (schedule.scheduleType === "weekly") {
       delete scheduleToSend.monthlyDayOfWeek;
       delete scheduleToSend.monthlyFirstLast;
       delete scheduleToSend.monthlyNthDayOfWeek;
     }
 
-  const res = await fetch(`/api/w/${owner.sId}/scheduled_agents`, {
-  method: "POST",
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(scheduleToSend),
-});
+    const res = await fetch(`/api/w/${owner.sId}/scheduled_agents`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(scheduleToSend),
+    });
 
     if (!res.ok) {
       sendNotification({
@@ -148,11 +157,11 @@ export function NewScheduleModal({
     sendNotification({
       type: "success",
       title: "Schedule saved",
-      description: `The schedule ${schedule.name} has been saved.`
+      description: `The schedule ${schedule.name} has been saved.`,
     });
 
     onClose();
-  }
+  };
 
   return (
     <Modal
