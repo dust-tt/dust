@@ -23,7 +23,7 @@ export async function createWorkspace(session: SessionWithUser) {
   });
 
   sendUserOperationMessage({
-    message: `<:@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
+    message: `<@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
     logger,
     channel: "C075LJ6PUFQ",
   }).catch((err) => {
