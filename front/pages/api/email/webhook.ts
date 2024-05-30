@@ -197,6 +197,14 @@ async function handler(
 
       if (answerRes.isErr()) {
         // TODO send email to explain problem
+        void replyWithContent({
+          user,
+          agentConfiguration,
+          htmlContent: `Error running ${agentConfiguration.name}: failed to retrieve answer. <br/><br/> Message: ${answerRes.error.type}`,
+          threadTitle,
+          threadContent,
+        });
+
         return apiError(req, res, {
           status_code: 401,
           api_error: {
