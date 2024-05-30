@@ -241,8 +241,8 @@ async function replyWithContent({
     htmlContent + `<br /><br /> <blockquote>${threadContent}</blockquote>`;
   const msg = {
     from: {
-      name: `Dust (${agentConfiguration.name})`,
-      email: `a@${ASSISTANT_EMAIL_SUBDOMAIN}`,
+      name: `Dust Assistant (${agentConfiguration.name})`,
+      email: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
       reply_to: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
     },
     subject,
