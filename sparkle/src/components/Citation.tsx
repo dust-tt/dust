@@ -68,7 +68,7 @@ export function Citation({
     <>
       {type === "image" && imgSrc && (
         <div
-          className="s-absolute s-left-0 s-top-0 s-transition s-duration-200  s-ease-out hover:s-brightness-110 hover:s-filter active:s-brightness-90 group-hover:s-brightness-110 group-hover:s-filter group-active:s-brightness-90"
+          className="s-absolute s-left-0 s-top-0 s-brightness-90 s-filter s-transition s-duration-200 s-ease-out hover:s-brightness-110 active:s-brightness-100 group-hover:s-brightness-110 group-hover:s-filter group-active:s-brightness-100"
           style={{
             backgroundImage: `url(${imgSrc})`,
             backgroundSize: "cover",
@@ -78,7 +78,12 @@ export function Citation({
           }}
         />
       )}
-      <div className="s-flex s-items-center s-gap-2">
+      <div
+        className={classNames(
+          "s-flex s-items-center s-gap-2",
+          type === "image" ? "s-min-h-7" : ""
+        )}
+      >
         {avatarSrc && <Avatar visual={avatarSrc} size="xs" />}
         {index && (
           <div
