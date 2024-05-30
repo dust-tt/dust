@@ -1,9 +1,7 @@
 import {
   Checkbox,
-  ClockIcon,
   DropdownMenu,
   Hoverable,
-  Icon,
   Input,
   Modal,
   Page,
