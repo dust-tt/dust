@@ -7,7 +7,8 @@ import {
   IconButton,
 } from "@dust-tt/sparkle";
 import type {
-  AgentMention, DataSourceSearchResultType,
+  AgentMention,
+  DataSourceSearchResultType,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -27,7 +28,9 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onDocumentSearchSelected: (document: DataSourceSearchResultType) => Promise<void>;
+  onDocumentSearchSelected: (
+    document: DataSourceSearchResultType
+  ) => Promise<void>;
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;

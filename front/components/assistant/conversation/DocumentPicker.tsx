@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
-import type { DataSourceSearchResultType} from "@dust-tt/types";
+import type { DataSourceSearchResultType } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -128,7 +128,8 @@ export function DocumentPicker({
                     label={d.documentTitle}
                     icon={
                       d.connectorProvider
-                        ? CONNECTOR_CONFIGURATIONS[d.connectorProvider].logoComponent
+                        ? CONNECTOR_CONFIGURATIONS[d.connectorProvider]
+                            .logoComponent
                         : DocumentTextIcon
                     }
                     onClick={() => {

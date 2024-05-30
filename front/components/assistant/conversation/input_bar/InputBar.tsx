@@ -370,14 +370,15 @@ export function AssistantInputBar({
                 onInputFileChange={onInputFileChange}
                 disableSendButton={isProcessingContentFragment}
                 onDocumentSearchSelected={async (document) => {
-                  setDataSourceDocuments((prev) => prev.concat([
+                  setDataSourceDocuments((prev) =>
+                    prev.concat([
                       {
                         title: document.documentTitle,
                         dataSourceName: document.dataSourceName,
                         documentId: document.documentId,
                         highlightedText: document.highlightedText,
                       },
-                    ]),
+                    ])
                   );
                 }}
               />
