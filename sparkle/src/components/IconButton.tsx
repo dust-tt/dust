@@ -6,7 +6,7 @@ import { Icon, IconProps } from "./Icon";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
 type IconButtonProps = {
-  variant?: "primary" | "warning" | "secondary" | "tertiary";
+  variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
@@ -66,6 +66,18 @@ const iconClasses = {
       hover: "dark:hover:s-text-action-500-dark",
       active: "dark:active:s-text-action-600-dark",
       disabled: "dark:s-text-element-500-dark",
+    },
+  },
+  white: {
+    base: "s-text-white",
+    hover: "hover:s-text-slate-100",
+    active: "active:s-text-slate-200",
+    disabled: "s-text-white/50",
+    dark: {
+      base: "s-text-white",
+      hover: "hover:s-text-slate-100",
+      active: "active:s-text-slate-200",
+      disabled: "s-text-white/50",
     },
   },
 };

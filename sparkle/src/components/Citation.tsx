@@ -68,7 +68,7 @@ export function Citation({
     <>
       {type === "image" && imgSrc && (
         <div
-          className="s-absolute s-left-0 s-top-0"
+          className="s-absolute s-left-0 s-top-0 s-transition s-duration-200  s-ease-out hover:s-brightness-110 hover:s-filter active:s-brightness-90 group-hover:s-brightness-110 group-hover:s-filter group-active:s-brightness-90"
           style={{
             backgroundImage: `url(${imgSrc})`,
             backgroundSize: "cover",
@@ -93,12 +93,17 @@ export function Citation({
         <Icon visual={typeIcons[type]} className="s-text-element-700" />
         <div className="s-flex-grow s-text-xs" />
         {onClose && (
-          <div className="s-z-50 s-h-5 s-w-5 s-rounded-full s-bg-white">
+          <div
+            className={classNames(
+              type === "image"
+                ? "s-z-50 s-h-5 s-w-5 s-rounded-full s-bg-slate-950/30"
+                : ""
+            )}
+          >
             <IconButton
               icon={XCircleIcon}
-              variant="tertiary"
+              variant={type === "image" ? "white" : "tertiary"}
               onClick={onClose}
-              className="s-z-50"
             />
           </div>
         )}
