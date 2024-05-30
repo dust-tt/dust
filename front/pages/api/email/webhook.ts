@@ -193,7 +193,7 @@ async function handler(
           type: "invalid_email_error",
           message:
             `Failed to match any valid assistant email. ` +
-            `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+            `Expected assistant email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
         });
       }
 
