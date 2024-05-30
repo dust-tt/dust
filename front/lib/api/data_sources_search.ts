@@ -101,6 +101,7 @@ export async function dataSourceSearch({
 
   return res.hits.map((hit): DataSourceSearchResultType => {
     const doc = hit as DataSourceSearchDocument;
+    // @ts-expect-error _snippetResult.content is not in the type
     const snippet = hit._snippetResult?.content?.value;
     return {
       documentId: doc.documentId,

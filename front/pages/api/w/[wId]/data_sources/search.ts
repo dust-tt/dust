@@ -49,7 +49,6 @@ async function handler(
 
       const searchRes = await dataSourceSearch({
         workspaceId: owner.sId,
-        dataSourceNames: [],
         query: query,
       });
 

@@ -92,7 +92,7 @@ export async function upsertDocumentActivity(
   const upsertTimestamp = Date.now();
 
   // Create document with the Dust internal API.
-  const upsertRes = upsertToDataSource({
+  const upsertRes = await upsertToDataSource({
     owner: owner,
     dataSource,
     projectId: dataSource.dustAPIProjectId,
