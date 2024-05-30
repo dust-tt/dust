@@ -12,6 +12,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
 import { EditScheduleModal } from "@app/components/EditScheduleModal";
+import type { ScheduledAgentType } from "@app/components/EditScheduleModal.tsx";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import apiConfig from "@app/lib/api/config";
@@ -53,6 +54,10 @@ export default function SchedulesIndex({
   const { scheduledAgents, isScheduledAgentsLoading, mutateScheduledAgents } =
     useScheduledAgents({ workspaceId: owner.sId });
 
+  const [editSchedule, setEditSchedule] = useState<ScheduledAgentType | null>(
+    null
+  );
+
   return (
     <AppLayout
       subscription={subscription}
@@ -66,9 +71,11 @@ export default function SchedulesIndex({
       })}
     >
       <EditScheduleModal
-        isOpened={isFairUseModalOpened}
+        isOpened={isFairUseModalOpened || !!editSchedule}
+        editSchedule={editSchedule}
         onClose={async () => {
           await mutateScheduledAgents();
+          setEditSchedule(null);
           setIsFairUseModalOpened(false);
         }}
         owner={owner}
@@ -93,14 +100,14 @@ export default function SchedulesIndex({
         {scheduledAgents &&
           scheduledAgents.length > 0 &&
           !isScheduledAgentsLoading && (
-            <Page.Layout direction="vertical">
+            <ContextItem.List>
               {scheduledAgents.map((scheduledAgent) => (
                 <ContextItem
                   key={scheduledAgent.sId}
                   title={scheduledAgent.name}
                   subElement={scheduledAgent.scheduleType}
                   visual={<Icon visual={RobotIcon} size="lg" />}
-                  onClick={() => console.log(scheduledAgent.sId)}
+                  onClick={() => setEditSchedule(scheduledAgent)}
                 >
                   <ContextItem.Description>
                     <div className="line-clamp-2 text-element-700">
@@ -109,7 +116,7 @@ export default function SchedulesIndex({
                   </ContextItem.Description>
                 </ContextItem>
               ))}
-            </Page.Layout>
+            </ContextItem.List>
           )}
       </Page>
     </AppLayout>
