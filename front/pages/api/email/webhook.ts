@@ -3,6 +3,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { InboundEmail } from "@app/lib/api/assistant/email_answer";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
@@ -28,22 +29,7 @@ export const config = {
 // Parses the Sendgid webhook form data and validates it.
 const parseSendgridWebhookContent = async (
   req: NextApiRequest
-): Promise<
-  Result<
-    {
-      subject: string;
-      text: string;
-      auth: { SPF: string; dkim: string };
-      envelope: {
-        to: string[];
-        cc: string[];
-        bcc: string[];
-        from: string;
-      };
-    },
-    Error
-  >
-> => {
+): Promise<Result<InboundEmail, Error>> => {
   const form = new IncomingForm();
   const [fields] = await form.parse(req);
 
