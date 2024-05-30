@@ -26,6 +26,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { Op } from "sequelize";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
@@ -97,12 +98,16 @@ export async function userAndWorkspacesFromEmail({
         `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
     });
   }
-
   const workspaces = await Workspace.findAll({
     include: [
       {
         model: MembershipModel,
-        where: { userId: user.id },
+        where: {
+          userId: user.id,
+          endAt: {
+            [Op.or]: [{ [Op.is]: null }, { [Op.gte]: new Date() }],
+          },
+        },
       },
     ],
   });
