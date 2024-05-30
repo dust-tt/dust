@@ -145,8 +145,8 @@ export async function emailAnswer({
 
   const msg = {
     from: {
-      name: "Dust team",
-      email: "team@dust.tt",
+      name: `${agentConfiguration.name} (Dust)`,
+      email: `${agentConfiguration.name}@a.dust.tt`,
     },
     subject: threadTitle,
     html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
