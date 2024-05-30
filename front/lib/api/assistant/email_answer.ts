@@ -53,15 +53,33 @@ export type EmailAnswerError = {
   message: string;
 };
 
-export async function userAndWorkspaceFromEmail({
+export function getTargetEmailsForWorkspace({
+  allTargetEmails,
+  workspace,
+  isDefault,
+}: {
+  allTargetEmails: string[];
+  workspace: LightWorkspaceType;
+  isDefault: boolean;
+}) {
+  return allTargetEmails.filter(
+    (email) =>
+      email.split("@")[0].endsWith(`[${workspace.sId}]`) ||
+      // calls with no brackets go to default workspace
+      (!email.split("@")[0].endsWith("]") && isDefault)
+  );
+}
+
+export async function userAndWorkspacesFromEmail({
   email,
 }: {
   email: string;
 }): Promise<
   Result<
     {
-      workspace: LightWorkspaceType;
+      workspaces: LightWorkspaceType[];
       user: UserType;
+      defaultWorkspace: LightWorkspaceType;
     },
     EmailAnswerError
   >
@@ -79,7 +97,7 @@ export async function userAndWorkspaceFromEmail({
     });
   }
 
-  const workspace = await Workspace.findOne({
+  const workspaces = await Workspace.findAll({
     include: [
       {
         model: MembershipModel,
@@ -88,7 +106,7 @@ export async function userAndWorkspaceFromEmail({
     ],
   });
 
-  if (!workspace) {
+  if (!workspaces) {
     return new Err({
       type: "workspace_not_found",
       message:
@@ -97,9 +115,19 @@ export async function userAndWorkspaceFromEmail({
     });
   }
 
+  // TODO: implement good default logic
+  // a. most members?
+  // b. most recent activity?
+  const defaultWorkspace = renderLightWorkspaceType({
+    workspace: workspaces[0],
+  });
+
   return new Ok({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspaces: workspaces.map((workspace) =>
+      renderLightWorkspaceType({ workspace })
+    ),
     user: renderUserType(user),
+    defaultWorkspace,
   });
 }
 

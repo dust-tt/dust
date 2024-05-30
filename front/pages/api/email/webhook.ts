@@ -11,8 +11,9 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
   emailAssistantMatcher,
+  getTargetEmailsForWorkspace,
   replyToEmail,
-  userAndWorkspaceFromEmail,
+  userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -151,7 +152,7 @@ async function handler(
         return;
       }
 
-      const userRes = await userAndWorkspaceFromEmail({
+      const userRes = await userAndWorkspacesFromEmail({
         email: email.envelope.from,
       });
       if (userRes.isErr()) {
@@ -159,69 +160,76 @@ async function handler(
         return;
       }
 
-      const { user, workspace } = userRes.value;
+      const { user, workspaces, defaultWorkspace } = userRes.value;
 
-      const auth = await Authenticator.internalUserForWorkspace({
-        user,
-        workspace,
-      });
+      for (const workspace of workspaces) {
+        const auth = await Authenticator.internalUserForWorkspace({
+          user,
+          workspace,
+        });
 
-      // find target email in [...to, ...cc, ...bcc], that is email whose domain is
-      // ASSISTANT_EMAIL_SUBDOMAIN.
-      const targetEmails = [
-        ...(email.envelope.to ?? []),
-        ...(email.envelope.cc ?? []),
-        ...(email.envelope.bcc ?? []),
-      ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+        // find target email in [...to, ...cc, ...bcc], that is email whose domain is
+        // ASSISTANT_EMAIL_SUBDOMAIN.
+        const allTargetEmails = [
+          ...(email.envelope.to ?? []),
+          ...(email.envelope.cc ?? []),
+          ...(email.envelope.bcc ?? []),
+        ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
-      if (targetEmails.length === 0) {
-        await replyToError(email, {
-          type: "invalid_email_error",
-          message:
-            `Failed to match any valid assistant email. ` +
-            `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+        const targetEmails = getTargetEmailsForWorkspace({
+          allTargetEmails,
+          workspace,
+          isDefault: workspace.sId === defaultWorkspace.sId,
+        });
+
+        if (targetEmails.length === 0) {
+          await replyToError(email, {
+            type: "invalid_email_error",
+            message:
+              `Failed to match any valid assistant email. ` +
+              `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+          });
+        }
+
+        const matchRes = await emailAssistantMatcher({
+          auth,
+          targetEmail: targetEmails[0],
+        });
+        if (matchRes.isErr()) {
+          await replyToError(email, matchRes.error);
+          return;
+        }
+
+        const { agentConfiguration } = matchRes.value;
+
+        const answerRes = await emailAnswer({
+          auth,
+          agentConfigurations: [matchRes.value.agentConfiguration],
+          threadTitle: email.subject,
+          threadContent: email.text,
+        });
+
+        if (answerRes.isErr()) {
+          await replyToError(email, answerRes.error);
+          return;
+        }
+
+        const { conversation, htmlAnswers } = answerRes.value;
+
+        void replyToEmail({
+          email,
+          agentConfiguration,
+          htmlContent: `<a href="https://dust.tt/w/${
+            auth.workspace()?.sId
+          }/assistant/${
+            conversation.sId
+          }">Open this conversation in Dust</a><br/><br/>${
+            htmlAnswers[0]
+          }<br/><br/> ${
+            agentConfiguration.name
+          } at <a href="https://dust.tt">Dust.tt</a>`,
         });
       }
-
-      const matchRes = await emailAssistantMatcher({
-        auth,
-        targetEmail: targetEmails[0],
-      });
-      if (matchRes.isErr()) {
-        await replyToError(email, matchRes.error);
-        return;
-      }
-
-      const { agentConfiguration } = matchRes.value;
-
-      const answerRes = await emailAnswer({
-        auth,
-        agentConfigurations: [matchRes.value.agentConfiguration],
-        threadTitle: email.subject,
-        threadContent: email.text,
-      });
-
-      if (answerRes.isErr()) {
-        await replyToError(email, answerRes.error);
-        return;
-      }
-
-      const { conversation, htmlAnswers } = answerRes.value;
-
-      void replyToEmail({
-        email,
-        agentConfiguration,
-        htmlContent: `<a href="https://dust.tt/w/${
-          auth.workspace()?.sId
-        }/assistant/${
-          conversation.sId
-        }">Open this conversation in Dust</a><br/><br/>${
-          htmlAnswers[0]
-        }<br/><br/> ${
-          agentConfiguration.name
-        } at <a href="https://dust.tt">Dust.tt</a>`,
-      });
-
       return;
 
     default:
