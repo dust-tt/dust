@@ -226,15 +226,11 @@ async function handler(
         void replyToEmail({
           email,
           agentConfiguration,
-          htmlContent: `<a href="https://dust.tt/w/${
-            auth.workspace()?.sId
-          }/assistant/${
-            conversation.sId
-          }">Open this conversation in Dust</a><br/><br/>${
+          htmlContent: `<div><div>${
             answers[0].html
-          }<br/><br/> ${
-            agentConfiguration.name
-          } at <a href="https://dust.tt">Dust.tt</a>`,
+          }</div><br/><a href="https://dust.tt/w/${
+            auth.workspace()?.sId
+          }/assistant/${conversation.sId}">Open in Dust</a></div>`,
         });
       }
       return;
