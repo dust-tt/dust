@@ -191,6 +191,8 @@ export function AssistantInputBar({
             }
             const res = await handleFileUploadToText(file);
 
+            console.log(">> res:", res);
+
             if (res.isErr()) {
               sendNotification({
                 type: "error",

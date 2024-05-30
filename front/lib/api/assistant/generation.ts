@@ -688,6 +688,11 @@ export async function* runGeneration(
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
 
+  console.log(
+    ">> conversation:",
+    JSON.stringify(modelConversationRes, null, 2)
+  );
+
   if (modelConversationRes.isErr()) {
     yield {
       type: "generation_error",

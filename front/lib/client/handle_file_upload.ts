@@ -24,6 +24,7 @@ export async function handleFileUploadToText(
         );
       }
     };
+
     const handleFileLoadedPDF = async (e: ProgressEvent<FileReader>) => {
       try {
         const arrayBuffer = e.target?.result;
@@ -77,7 +78,29 @@ export async function handleFileUploadToText(
         const fileData = new FileReader();
         fileData.onloadend = handleFileLoadedText;
         fileData.readAsText(file);
+      } else if (file.type.startsWith("image/")) {
+        console.log("> file.type:", file.type);
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+          // TODO: shrink image.
+          console.log(">> reader.result:", reader.result);
+          const { result } = reader;
+
+          if (typeof result === "string") {
+            return resolve(new Ok({ title: file.name, content: result }));
+          }
+
+          return resolve(
+            new Err(
+              new Error("Failed extracting text from image. Unexpected error")
+            )
+          );
+        };
+
+        reader.readAsDataURL(file);
       } else {
+        // TODO: Handle file image.
         return resolve(
           new Err(
             new Error(
