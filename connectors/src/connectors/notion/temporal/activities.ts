@@ -1704,6 +1704,9 @@ export async function renderAndUpsertPageFromCache({
   }
 
   if (notionPageInDb?.parentType === "database" && notionPageInDb.parentId) {
+    localLogger.info(
+      "notionRenderAndUpsertPageFromCache: Retrieving parent database from connectors DB."
+    );
     const parentDb = await NotionDatabase.findOne({
       where: {
         connectorId: connector.id,
@@ -1714,6 +1717,9 @@ export async function renderAndUpsertPageFromCache({
     if (parentDb) {
       // Only do structured data incremental sync if the DB has already been synced as structured data.
       if (parentDb.structuredDataUpsertedTs) {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Upserting page in structured data."
+        );
         const { tableId, tableName, tableDescription } =
           getTableInfoFromDatabase(parentDb);
         const rowId = `notion-${pageId}`;
@@ -1738,6 +1744,10 @@ export async function renderAndUpsertPageFromCache({
           // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
           truncate: false,
         });
+      } else {
+        localLogger.info(
+          "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
+        );
       }
     }
   }
