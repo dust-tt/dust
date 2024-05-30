@@ -1,7 +1,10 @@
+import { sendUserOperationMessage } from "@dust-tt/types";
+
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { generateModelSId } from "@app/lib/utils";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
+import logger from "@app/logger/logger";
 
 export async function createWorkspace(session: SessionWithUser) {
   const { user: externalUser } = session;
@@ -17,6 +20,17 @@ export async function createWorkspace(session: SessionWithUser) {
   const workspace = await Workspace.create({
     sId: generateModelSId(),
     name: externalUser.nickname,
+  });
+
+  sendUserOperationMessage({
+    message: `<:@U055XEGPR4L> +signupRadar User ${externalUser.email} has created a new workspace.`,
+    logger,
+    channel: "C075LJ6PUFQ",
+  }).catch((err) => {
+    logger.error(
+      { error: err },
+      "Failed to send user operation message to Slack (signup)."
+    );
   });
 
   if (verifiedDomain) {
