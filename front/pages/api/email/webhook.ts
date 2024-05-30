@@ -4,17 +4,17 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type {
-  EmailAnswerError,
+  EmailTriggerError,
   InboundEmail,
-} from "@app/lib/api/assistant/email_answer";
+} from "@app/lib/api/assistant/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
-  emailAnswer,
   emailAssistantMatcher,
   getTargetEmailsForWorkspace,
   replyToEmail,
+  triggerFromEmail,
   userAndWorkspacesFromEmail,
-} from "@app/lib/api/assistant/email_answer";
+} from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -77,7 +77,7 @@ const parseSendgridWebhookContent = async (
 
 const replyToError = async (
   email: InboundEmail,
-  error: EmailAnswerError
+  error: EmailTriggerError
 ): Promise<void> => {
   logger.error(
     { error, envelope: email.envelope },
@@ -214,11 +214,10 @@ async function handler(
 
         const { agentConfiguration } = matchRes.value;
 
-        const answerRes = await emailAnswer({
+        const answerRes = await triggerFromEmail({
           auth,
           agentConfigurations: [matchRes.value.agentConfiguration],
-          threadTitle: email.subject,
-          threadContent: email.text,
+          email,
         });
 
         if (answerRes.isErr()) {
