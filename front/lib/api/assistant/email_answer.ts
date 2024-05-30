@@ -204,19 +204,83 @@ export async function emailAnswer({
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
   });
 
+  await replyWithContent({
+    user,
+    agentConfiguration,
+    htmlContent: `<a href="https://dust.tt/w/${
+      auth.workspace()?.sId
+    }/assistant/${
+      conversation.sId
+    }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
+      agentConfiguration.name
+    } at <a href="https://dust.tt">Dust.tt</a>`,
+    threadTitle,
+    threadContent,
+  });
+}
+
+async function replyWithContent({
+  user,
+  agentConfiguration,
+  htmlContent,
+  threadTitle,
+  threadContent,
+}: {
+  user: UserType;
+  agentConfiguration: LightAgentConfigurationType;
+  htmlContent: string;
+  threadTitle: string;
+  threadContent: string;
+}) {
+  // subject: if Re: is there, we don't add it.
+  const subject = threadTitle.startsWith("Re:")
+    ? threadTitle
+    : `Re: ${threadTitle}`;
+
+  const html =
+    htmlContent + `<br /><br /> <blockquote>${threadContent}</blockquote>`;
   const msg = {
     from: {
       name: `Dust (${agentConfiguration.name})`,
       email: `a@${ASSISTANT_EMAIL_SUBDOMAIN}`,
       reply_to: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
     },
-    subject: `Re: ${threadTitle}`,
-    html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${
-      conversation.sId
-    }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
-      agentConfiguration.name
-    } at <a href="https://dust.tt">Dust.tt</a>`,
+    subject,
+    html,
   };
 
-  await sendEmail(user.email, msg);
+  return await sendEmail(user.email, msg);
 }
+
+async function send() {
+  const msg = {
+    from: {
+      name: `test1`,
+      email: `a@run.dust.help`,
+    },
+    subject: "Trying normal",
+    html: `This is a test email to see if we spoof`,
+  };
+
+  await sendEmail("test@a.dust.tt", msg);
+
+  const msg2 = {
+    from: {
+      name: `withtheplus`,
+      email: `a@run.dust.help`,
+    },
+    reply_to: "a+toto@dust.help",
+    subject: "Trying the plus",
+    html: `This is a test email to see if we spoof`,
+  };
+
+  await sendEmail("test@a.dust.tt", msg2);
+}
+
+send()
+  .then(() => {
+    console.log("Email sent");
+  })
+  .catch((err) => {
+    console.log("Error sending email", err);
+  });
