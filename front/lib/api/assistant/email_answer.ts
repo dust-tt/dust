@@ -251,36 +251,3 @@ async function replyWithContent({
 
   return await sendEmail(user.email, msg);
 }
-
-async function send() {
-  const msg = {
-    from: {
-      name: `test1`,
-      email: `a@run.dust.help`,
-    },
-    subject: "Trying normal",
-    html: `This is a test email to see if we spoof`,
-  };
-
-  await sendEmail("test@a.dust.tt", msg);
-
-  const msg2 = {
-    from: {
-      name: `withtheplus`,
-      email: `a@run.dust.help`,
-    },
-    reply_to: "a+toto@dust.help",
-    subject: "Trying the plus",
-    html: `This is a test email to see if we spoof`,
-  };
-
-  await sendEmail("test@a.dust.tt", msg2);
-}
-
-send()
-  .then(() => {
-    console.log("Email sent");
-  })
-  .catch((err) => {
-    console.log("Error sending email", err);
-  });
