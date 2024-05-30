@@ -226,7 +226,7 @@ export async function emailAnswer({
   return new Ok({ conversation, htmlAnswer });
 }
 
-export async function replyWithContent({
+export async function sendEmailAnswerOrError({
   user,
   agentConfiguration,
   htmlContent,
@@ -234,11 +234,18 @@ export async function replyWithContent({
   threadContent,
 }: {
   user: UserType;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
   threadTitle?: string;
   threadContent?: string;
 }) {
+  const name = agentConfiguration
+    ? `Dust Assistant (${agentConfiguration.name})`
+    : "Dust Assistant";
+  const email = agentConfiguration
+    ? `a+${name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
+    : `a@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+
   // subject: if Re: is there, we don't add it.
   const subject = threadTitle
     ? threadTitle.startsWith("Re:")
@@ -252,10 +259,10 @@ export async function replyWithContent({
       : "";
   const msg = {
     from: {
-      name: `Dust Assistant (${agentConfiguration.name})`,
-      email: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
-      reply_to: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
+      name,
+      email,
     },
+    reply_to: email,
     subject,
     html,
   };
