@@ -311,6 +311,7 @@ const InputBarContainer = ({
               console.log(">> file:", file);
               // event?.target as HTMLInputElement)?.files
 
+              // TODO: Hack.
               await onInputFileChange(event);
               // fileInputRef.current?.click();
             }}

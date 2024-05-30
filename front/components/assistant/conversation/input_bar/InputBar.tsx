@@ -43,6 +43,144 @@ function AgentMention({
   );
 }
 
+function getImageAsBase64(
+  file: File
+): Promise<{ content: string; contentType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      // TODO: shrink image.
+      console.log(">> reader.result:", reader.result);
+      const { result } = reader;
+
+      if (typeof result === "string") {
+        return resolve({
+          content: result,
+          contentType: file.type,
+        });
+      }
+
+      return reject(
+        new Error("Failed extracting text from image. Unexpected error")
+      );
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+const CitationNodes = ({
+  contentFragmentData,
+  onRemoveContentFragment,
+}: {
+  contentFragmentData: {
+    title: string;
+    content: string;
+    file: File;
+    contentType: string;
+  }[];
+  onRemoveContentFragment: (idx: number) => void;
+}) => {
+  const [contentFragmentNodes, setContentFragmentNodes] = useState<
+    React.ReactNode[]
+  >([]);
+
+  useEffect(() => {
+    const processContentFragments = async () => {
+      const nodes: React.ReactNode[] = [];
+      for (const [idx, cf] of contentFragmentData.entries()) {
+        if (cf.contentType.startsWith("image/")) {
+          const imgDetails = await getImageAsBase64(cf.file);
+
+          console.log(">> imgDetails.content:", imgDetails.content);
+
+          nodes.push(
+            <Citation
+              key={`cf-${idx}`}
+              title={cf.title}
+              type="image"
+              size="xs"
+              // description={cf.content?.substring(0, 100)}
+              imgSrc={imgDetails.content}
+              onClose={() => {
+                onRemoveContentFragment(idx);
+              }}
+            />
+          );
+        } else {
+          nodes.push(
+            <Citation
+              key={`cf-${idx}`}
+              title={cf.title}
+              size="xs"
+              description={cf.content?.substring(0, 100)}
+              onClose={() => {
+                onRemoveContentFragment(idx);
+              }}
+            />
+          );
+        }
+      }
+      setContentFragmentNodes(nodes);
+    };
+
+    void processContentFragments();
+  }, [contentFragmentData, onRemoveContentFragment]);
+
+  if (contentFragmentData.length === 0) {
+    return;
+  }
+
+  return (
+    <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+      {contentFragmentNodes}
+    </div>
+  );
+};
+
+// {
+//   contentFragmentData.length > 0 && (
+//     <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+//       {contentFragmentData.map((cf, i) => {
+//         if (cf.contentType.startsWith("image/")) {
+//           console.log(">>>>>> cf:", cf);
+
+//           const imgSrc = await getImageAsBase64(cf.file);
+//           // return (
+//           //   <Citation
+//           //     key={`cf-${i}`}
+//           //     title={cf.title}
+//           //     size="xs"
+//           //     description={cf.content?.substring(0, 100)}
+//           //     imgSrc={cf}
+//           //     onClose={() => {
+//           //       setContentFragmentData((prev) => {
+//           //         return prev.filter((_, index) => index !== i);
+//           //       });
+//           //     }}
+//           //   />
+//           // );
+//         }
+
+//         return (
+//           <Citation
+//             key={`cf-${i}`}
+//             title={cf.title}
+//             size="xs"
+//             description={cf.content?.substring(0, 100)}
+//             onClose={() => {
+//               setContentFragmentData((prev) => {
+//                 return prev.filter((_, index) => index !== i);
+//               });
+//             }}
+//           />
+//         );
+//       })}
+//     </div>
+//   );
+// }
+
 /**
  *
  * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
@@ -319,23 +457,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col ">
-              {contentFragmentData.length > 0 && (
-                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
-                  {contentFragmentData.map((cf, i) => (
-                    <Citation
-                      key={`cf-${i}`}
-                      title={cf.title}
-                      size="xs"
-                      description={cf.content?.substring(0, 100)}
-                      onClose={() => {
-                        setContentFragmentData((prev) => {
-                          return prev.filter((_, index) => index !== i);
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+              <CitationNodes
+                contentFragmentData={contentFragmentData}
+                onRemoveContentFragment={(idx: number) => {
+                  setContentFragmentData((prev) => {
+                    return prev.filter((_, index) => index !== idx);
+                  });
+                }}
+              />
 
               <InputBarContainer
                 hideQuickActions={hideQuickActions}

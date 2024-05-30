@@ -1,10 +1,19 @@
-import { Avatar, Citation, Icon, MagnifyingGlassIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Citation,
+  Icon,
+  IconButton,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+  XMarkStrokeIcon,
+} from "@dust-tt/sparkle";
 import type { ContentFragmentType } from "@dust-tt/types";
 import { chromemanagement } from "googleapis/build/src/apis/chromemanagement";
 import { useState } from "react";
 
 import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
+import { ButtonEmoji } from "@app/components/assistant/conversation/messages/MessageActions";
 import { classNames } from "@app/lib/utils";
 
 interface MessageContentProps {
@@ -68,7 +77,17 @@ interface MessageContentProps {
 //   );
 // };
 
-const ZoomImage = ({ src, alt }: { src: string; alt: string }) => {
+export const ZoomImage = ({
+  src,
+  alt,
+  title,
+  onClose,
+}: {
+  src: string;
+  title: string;
+  alt: string;
+  onClose?: () => void;
+}) => {
   const [isZoomed, setIsZoomed] = useState(false);
 
   const handleZoom = () => {
@@ -78,28 +97,35 @@ const ZoomImage = ({ src, alt }: { src: string; alt: string }) => {
   console.log(">> isZoomed:", isZoomed);
 
   return (
-    <div>
-      <div
-        onClick={handleZoom}
-        className="group relative flex items-center justify-center"
-      >
-        <img
-          src={src}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <Icon
+    <div className="relative">
+      <div onClick={handleZoom} className="min-h-76 group h-full">
+        {/* <Avatar visual={src} size="xxl" /> */}
+        {/* <Icon
           visual={MagnifyingGlassIcon}
           size="xl"
-          className="hidden group-hover:block"
+          className="absolute hidden group-hover:block"
+        /> */}
+        {/* <img src={src} /> */}
+        <Citation
+          title={title}
+          size="xs"
+          type="image"
+          // href={src || undefined}
+          imgSrc={src}
+          onClose={onClose}
         />
       </div>
-
       {isZoomed && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
+          className="fixed inset-0 z-50 flex max-w-[100%] items-center justify-center bg-black bg-opacity-75"
           onClick={handleZoom}
         >
-          <img src={src} alt={alt} className="max-w-80 max-h-80" />
+          <div className="relative flex h-3/4 w-3/4 flex-col items-center gap-4">
+            <div className="cursor-pointer self-end text-white">
+              <IconButton icon={XMarkIcon} onClick={handleZoom} />
+            </div>
+            <img src={src} alt={alt} />
+          </div>
         </div>
       )}
     </div>
