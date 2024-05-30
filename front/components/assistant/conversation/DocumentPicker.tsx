@@ -35,29 +35,35 @@ export function DocumentPicker({
   >([]);
 
   useEffect(() => {
-    const executeSearch = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/w/${owner.sId}/search?text=${encodeURIComponent(searchText)}`
-        );
-        if (res.ok) {
-          const documents: DataSourceSearchResultType[] = (await res.json())
-            .documents;
-          setSearchedDocuments(documents);
+    const timeout = setTimeout(() => {
+      const executeSearch = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(
+            `/api/w/${owner.sId}/data_sources/search?query=${encodeURIComponent(
+              searchText
+            )}`
+          );
+          if (res.ok) {
+            const documents: DataSourceSearchResultType[] = (await res.json())
+              .documents;
+            setSearchedDocuments(documents);
+          }
+        } catch (error) {
+          console.error("Error fetching documents:", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Error fetching documents:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    if (searchText.length >= MIN_CHARACTERS_TO_SEARCH) {
-      void executeSearch();
-    } else if (searchText.length === 0) {
-      setSearchedDocuments([]);
-    }
+      if (searchText.length >= MIN_CHARACTERS_TO_SEARCH) {
+        void executeSearch();
+      } else if (searchText.length === 0) {
+        setSearchedDocuments([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
   }, [searchText, owner.sId]);
 
   return (
@@ -80,7 +86,7 @@ export function DocumentPicker({
           </div>
           <DropdownMenu.Items
             origin="auto"
-            width={280}
+            width={500}
             topBar={
               <>
                 <div className="flex flex-grow flex-row border-b border-structure-50 p-2">

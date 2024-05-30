@@ -41,7 +41,11 @@ function _getClient() {
   if (CLIENT) {
     return CLIENT;
   }
-  CLIENT = algoliasearch("2WLQ3OWTO8", "70a7a36ab1f871db3805fcf80822fdc1");
+  const { ALGOLIA_APP_ID, ALGOLIA_ADMIN_PRIVATE_KEY } = process.env;
+  if (!ALGOLIA_APP_ID || !ALGOLIA_ADMIN_PRIVATE_KEY) {
+    throw new Error("Missing ALGOLIA_APP_ID or ALGOLIA_ADMIN_PRIVATE_KEY");
+  }
+  CLIENT = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_PRIVATE_KEY);
 
   return CLIENT;
 }
@@ -93,6 +97,7 @@ export async function dataSourceSearch({
       filters: `workspaceId:${workspaceId}`,
     });
 
+  console.log("search result", res);
   return res.hits.map((hit): DataSourceSearchResultType => {
     const doc = hit as DataSourceSearchDocument;
     return {
