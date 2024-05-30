@@ -7,7 +7,7 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
   emailAssistantMatcher,
-  replyWithContent,
+  sendEmailAnswerOrError,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
@@ -200,7 +200,10 @@ async function handler(
         targetEmail: targetEmails[0],
       });
       if (matchRes.isErr()) {
-        // TODO send email to explain problem
+        void sendEmailAnswerOrError({
+          user,
+          htmlContent: `Error running assistant by email: could not find assistant. <br/><br/> Message: ${matchRes.error.type}`,
+        });
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -220,12 +223,10 @@ async function handler(
       });
 
       if (answerRes.isErr()) {
-        void replyWithContent({
+        void sendEmailAnswerOrError({
           user,
           agentConfiguration,
           htmlContent: `Error running ${agentConfiguration.name}: failed to retrieve answer. <br/><br/> Message: ${answerRes.error.type}`,
-          threadTitle: email.subject,
-          threadContent: email.text,
         });
 
         return apiError(req, res, {
@@ -242,7 +243,7 @@ async function handler(
 
       const { conversation, htmlAnswer } = answerRes.value;
 
-      await replyWithContent({
+      void sendEmailAnswerOrError({
         user,
         agentConfiguration,
         htmlContent: `<a href="https://dust.tt/w/${
