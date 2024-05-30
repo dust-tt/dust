@@ -74,7 +74,9 @@ export type APIErrorType =
   // Labs:
   | "transcripts_configuration_not_found"
   | "transcripts_configuration_default_not_allowed"
-  | "transcripts_configuration_already_exists";
+  | "transcripts_configuration_already_exists"
+  // ScheduledAgent:
+  | "scheduled_agent_not_found";
 
 export type APIError = {
   type: APIErrorType;
