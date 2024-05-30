@@ -138,7 +138,8 @@ export type ContentFragmentContextType = {
 
 export type ContentFragmentContentType =
   | "slack_thread_content"
-  | "file_attachment";
+  | "file_attachment"
+  | "image_attachment";
 
 export type ContentFragmentType = {
   id: ModelId;

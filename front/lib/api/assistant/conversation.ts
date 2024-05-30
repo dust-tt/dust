@@ -1570,15 +1570,16 @@ export async function postNewContentFragment(
 
   const messageId = generateModelSId();
 
-  const sourceUrl =
-    contentType === "file_attachment"
-      ? fileAttachmentLocation({
-          workspaceId: owner.sId,
-          conversationId: conversation.sId,
-          messageId,
-          contentFormat: "raw",
-        }).downloadUrl
-      : url;
+  const sourceUrl = ["file_attachment", "image_attachment"].includes(
+    contentType
+  )
+    ? fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId: conversation.sId,
+        messageId,
+        contentFormat: "raw",
+      }).downloadUrl
+    : url;
 
   const textBytes = await storeContentFragmentText({
     workspaceId: owner.sId,

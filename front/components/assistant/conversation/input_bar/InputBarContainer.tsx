@@ -2,6 +2,7 @@ import {
   ArrowUpIcon,
   AttachmentIcon,
   Button,
+  EyeIcon,
   FullscreenExitIcon,
   FullscreenIcon,
   IconButton,
@@ -21,6 +22,150 @@ import useCustomEditor from "@app/components/assistant/conversation/input_bar/ed
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
+
+const ScreenshotButton = () => {
+  const [screenshotSrc, setScreenshotSrc] = useState("");
+
+  const takeScreenshot = async () => {
+    try {
+      const displayMediaOptions = {
+        video: {
+          displaySurface: "browser",
+        },
+        preferCurrentTab: false,
+        selfBrowserSurface: "exclude",
+        systemAudio: "include",
+        surfaceSwitching: "include",
+        monitorTypeSurfaces: "include",
+      };
+
+      const stream = await navigator.mediaDevices.getDisplayMedia(
+        displayMediaOptions
+      );
+      const video = document.createElement("video");
+      video.srcObject = stream;
+
+      video.onloadedmetadata = async () => {
+        console.log(">> onloadedmetadata <<");
+        await video.play();
+        // Create a canvas to capture the screenshot
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Get the screenshot URL
+        const screenshotUrl = canvas.toDataURL("image/png");
+        console.log(screenshotUrl); // Example: log the screenshot URL
+
+        setScreenshotSrc(screenshotUrl);
+
+        // Stop the stream
+        stream.getTracks().forEach((track) => track.stop());
+      };
+    } catch (error) {
+      console.error("Error taking screenshot:", error);
+    }
+  };
+
+  console.log(">> screenshotSrc:", screenshotSrc);
+  return (
+    <div>
+      {screenshotSrc ? <img src={screenshotSrc} /> : <></>}
+      <button onClick={takeScreenshot}>Take Screenshot</button>
+    </div>
+  );
+};
+
+async function captureScreen(): Promise<string | null> {
+  try {
+    const displayMediaOptions = {
+      video: {
+        displaySurface: "browser",
+      },
+      preferCurrentTab: false,
+      selfBrowserSurface: "exclude",
+      systemAudio: "include",
+      surfaceSwitching: "include",
+      monitorTypeSurfaces: "include",
+    };
+
+    const stream = await navigator.mediaDevices.getDisplayMedia(
+      displayMediaOptions
+    );
+    const video = document.createElement("video");
+    video.srcObject = stream;
+
+    return await new Promise((resolve, reject) => {
+      video.onloadedmetadata = async () => {
+        console.log(">> onloadedmetadata <<");
+        await video.play();
+
+        // Create a canvas to capture the screenshot
+        const originalWidth = video.videoWidth;
+        const originalHeight = video.videoHeight;
+
+        // Calculate the scaling factor
+        // const maxDimension = 512;
+        // Apply a 50% ratio.
+        const maxDimension = Math.max(originalHeight, originalWidth) / 2;
+        let newWidth = originalWidth;
+        let newHeight = originalHeight;
+
+        if (originalWidth > originalHeight && originalWidth > maxDimension) {
+          newWidth = maxDimension;
+          newHeight = (originalHeight * maxDimension) / originalWidth;
+        } else if (
+          originalHeight > originalWidth &&
+          originalHeight > maxDimension
+        ) {
+          newHeight = maxDimension;
+          newWidth = (originalWidth * maxDimension) / originalHeight;
+        } else if (
+          originalWidth === originalHeight &&
+          originalWidth > maxDimension
+        ) {
+          newWidth = maxDimension;
+          newHeight = maxDimension;
+        }
+
+        console.log(
+          `Rescaling screenshot from (${originalWidth}px*${originalHeight}px) to (${newWidth}px*${newHeight}px)`
+        );
+
+        // Create a canvas to capture the screenshot.
+        const canvas = document.createElement("canvas");
+
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+
+        // canvas.width = video.videoWidth;
+        // canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Get the screenshot URL.
+        const screenshotUrl = canvas.toDataURL("image/png");
+
+        console.log(">> screenshotUrl:", screenshotUrl);
+
+        // Stop the stream.
+        stream.getTracks().forEach((track) => track.stop());
+
+        return resolve(screenshotUrl);
+      };
+
+      video.onerror = (error) => {
+        stream.getTracks().forEach((track) => track.stop());
+        reject(error);
+      };
+    });
+  } catch (error) {
+    console.error("Error taking screenshot:", error);
+    return Promise.reject(error);
+  }
+}
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -133,6 +278,41 @@ const InputBarContainer = ({
             className="flex"
             onClick={() => {
               fileInputRef.current?.click();
+            }}
+          />
+          <IconButton
+            variant={"tertiary"}
+            icon={EyeIcon}
+            size="sm"
+            tooltip="Add a document to the conversation (only .txt, .pdf, .md, .csv)."
+            tooltipPosition="above"
+            className="flex"
+            onClick={async () => {
+              const screenshotUrl = await captureScreen();
+
+              console.log(">> got url:", screenshotUrl);
+
+              if (!screenshotUrl) {
+                // TODO: Notification!
+                return;
+              }
+
+              const blob = await (await fetch(screenshotUrl)).blob(); // Convert data URL to blob
+              const file = new File([blob], "screenshot.png", {
+                type: "image/png",
+              });
+
+              const event = {
+                target: {
+                  files: [file],
+                },
+              };
+
+              console.log(">> file:", file);
+              // event?.target as HTMLInputElement)?.files
+
+              await onInputFileChange(event);
+              // fileInputRef.current?.click();
             }}
           />
           {!hideQuickActions && (

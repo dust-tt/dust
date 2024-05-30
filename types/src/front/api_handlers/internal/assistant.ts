@@ -16,6 +16,7 @@ export const InternalPostContentFragmentRequestBodySchema = t.type({
   contentType: t.union([
     t.literal("slack_thread_content"),
     t.literal("file_attachment"),
+    t.literal("image_attachment"),
   ]),
   context: t.type({
     profilePictureUrl: t.union([t.string, t.null]),

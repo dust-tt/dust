@@ -75,7 +75,7 @@ export function AssistantInputBar({
   const { mutate } = useSWRConfig();
 
   const [contentFragmentData, setContentFragmentData] = useState<
-    { title: string; content: string; file: File }[]
+    { title: string; content: string; file: File; contentType: string }[]
   >([]);
 
   const { agentConfigurations: baseAgentConfigurations } =
@@ -161,6 +161,7 @@ export function AssistantInputBar({
           title: cf.title,
           content: cf.content,
           file: cf.file,
+          contentType: cf.contentType,
         };
       })
     );
@@ -218,6 +219,7 @@ export function AssistantInputBar({
                   title: res.value.title,
                   content: res.value.content,
                   file,
+                  contentType: res.value.contentType,
                 },
               ]);
             });

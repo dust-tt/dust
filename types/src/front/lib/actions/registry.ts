@@ -85,10 +85,10 @@ export const DustProdActionRegistry = createActionRegistry({
   },
   "assistant-v2-generator": {
     app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "6a27050429",
+      workspaceId: "a171d1f222", // PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "3f78688962",
       appHash:
-        "e0b00417afae51adc7e23c1365850fab154d9b945364c47074ef907915cf8c2c",
+        "231084840966466eea31f277481f65f1dabcac23ab882a3586d5ff8dd502af0f",
     },
     config: {
       MODEL: {

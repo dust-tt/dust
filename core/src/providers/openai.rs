@@ -321,17 +321,7 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
         };
 
         Ok(ChatMessage {
-            content: match content {
-                Some(c) => Some(
-                    c.into_iter()
-                        .map(|co| match co {
-                            ContentBlock::TextContent(u) => u.text,
-                            ContentBlock::ImageContent(u) => u.image_url.url,
-                        })
-                        .collect(),
-                ),
-                None => None,
-            },
+            content,
             role,
             name,
             function_call,
@@ -369,7 +359,7 @@ enum ContentBlock {
     ImageContent(ImageContent),
 }
 
-impl TryFrom<&ChatMessage> for OpenAIChatMessage {
+impl TryFrom<&ChatMessage> for RawOpenAIChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
@@ -396,15 +386,23 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                         url: format!("data:image/jpeg;base64,{}", content.to_string()),
                     },
                 })]),
-                false => Some(vec![ContentBlock::TextContent(TextContent {
-                    r#type: "text".to_string(),
-                    text: content.to_string(),
-                })]),
+                false => match content.starts_with("https://") {
+                    true => Some(vec![ContentBlock::ImageContent(ImageContent {
+                        r#type: "image_url".to_string(),
+                        image_url: ImageUrlContent {
+                            url: content.to_string(),
+                        },
+                    })]),
+                    false => Some(vec![ContentBlock::TextContent(TextContent {
+                        r#type: "text".to_string(),
+                        text: content.to_string(),
+                    })]),
+                },
             },
             None => None,
         };
 
-        Ok(OpenAIChatMessage {
+        Ok(RawOpenAIChatMessage {
             content: content,
             name: cm.name.clone(),
             role,
@@ -577,7 +575,7 @@ pub async fn streamed_completion(
         body["model"] = json!(model_id);
     }
 
-    // println!("BODY: {}", body.to_string());
+    println!("BODY: {}", body.to_string());
 
     let client = builder
         .body(body.to_string())
@@ -873,7 +871,7 @@ pub async fn streamed_chat_completion(
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
-    messages: &Vec<OpenAIChatMessage>,
+    messages: &Vec<RawOpenAIChatMessage>,
     tools: Vec<OpenAITool>,
     tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
@@ -920,15 +918,19 @@ pub async fn streamed_chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
-        "max_tokens": max_tokens,
+        // TODO:
+        // "stop": match stop.len() {
+        //     0 => None,
+        //     _ => Some(stop),
+        // },
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
         "stream": true,
     });
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+
     if user.is_some() {
         body["user"] = json!(user);
     }
@@ -946,6 +948,8 @@ pub async fn streamed_chat_completion(
             "type": response_format.unwrap(),
         });
     }
+
+    println!("BODY: {:?}", body);
 
     let client = builder
         .body(body.to_string())
@@ -1108,12 +1112,7 @@ pub async fn streamed_chat_completion(
                 .iter()
                 .map(|c| OpenAIChatChoice {
                     message: OpenAIChatMessage {
-                        content: Some(vec![
-                        //     TextContent {
-                        //     r#type: "text".to_string(),
-                        //     text: "".to_string(),
-                        // }
-                        ]),
+                        content: Some("".to_string()),
                         name: None,
                         role: OpenAIChatMessageRole::System,
                         tool_calls: None,
@@ -1151,42 +1150,15 @@ pub async fn streamed_chat_completion(
                     Some(content) => match content.as_str() {
                         None => (),
                         Some(s) => {
-                            if let Some(ref mut message_content) = c.choices[j].message.content {
-                                match message_content.last_mut() {
-                                    Some(last_content) => match last_content {
-                                        ContentBlock::TextContent(txt_content) => {
-                                            let ref mut existing_text = txt_content.text;
-
-                                            *existing_text = format!("{}{}", existing_text, s);
-                                        }
-                                        _ => {
-                                            Err(anyhow!("Error paring Open AI streaming chunk"))?;
-                                        }
-                                    },
-                                    None => {
-                                        c.choices[j].message.content =
-                                            Some(vec![ContentBlock::TextContent(TextContent {
-                                                r#type: "text".to_string(),
-                                                text: s.to_string(),
-                                            })]);
-                                    }
-                                }
-                            } else {
-                                c.choices[j].message.content =
-                                    Some(vec![ContentBlock::TextContent(TextContent {
-                                        r#type: "text".to_string(),
-                                        text: s.to_string(),
-                                    })]);
-                            }
-                            // c.choices[j].message.content = Some(format!(
-                            //     "{}{}",
-                            //     c.choices[j]
-                            //         .message
-                            //         .content
-                            //         .as_ref()
-                            //         .unwrap_or(&String::new()),
-                            //     s
-                            // ));
+                            c.choices[j].message.content = Some(format!(
+                                "{}{}",
+                                c.choices[j]
+                                    .message
+                                    .content
+                                    .as_ref()
+                                    .unwrap_or(&String::new()),
+                                s
+                            ));
                         }
                     },
                 };
@@ -1259,21 +1231,7 @@ pub async fn streamed_chat_completion(
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
             None => None,
-            Some(c) => Some(
-                c.into_iter()
-                    .map(|a| match a {
-                        ContentBlock::TextContent(t) => ContentBlock::TextContent(TextContent {
-                            r#type: t.r#type.clone(),
-                            text: t.text.trim().to_string(),
-                        }),
-                        // TODO:
-                        ContentBlock::ImageContent(i) => ContentBlock::TextContent(TextContent {
-                            r#type: i.r#type.clone(),
-                            text: i.image_url.url.trim().to_string(),
-                        }),
-                    })
-                    .collect(),
-            ),
+            Some(c) => Some(c.trim().to_string()),
         };
     }
 
@@ -1285,7 +1243,7 @@ pub async fn chat_completion(
     api_key: String,
     organization_id: Option<String>,
     model_id: Option<String>,
-    messages: &Vec<OpenAIChatMessage>,
+    messages: &Vec<RawOpenAIChatMessage>,
     tools: Vec<OpenAITool>,
     tool_choice: Option<OpenAIToolChoice>,
     temperature: f32,
@@ -1303,16 +1261,16 @@ pub async fn chat_completion(
         "temperature": temperature,
         "top_p": top_p,
         "n": n,
-        "stop": match stop.len() {
-            0 => None,
-            _ => Some(stop),
-        },
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
     });
     if let Some(mt) = max_tokens {
         body["max_tokens"] = mt.into();
     }
+    // TODO: Add stop.
+    // if stop.len() > 0 {
+    //     body["stop"] = stop.into();
+    // }
 
     if user.is_some() {
         body["user"] = json!(user);
@@ -1397,21 +1355,7 @@ pub async fn chat_completion(
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
             None => None,
-            Some(c) => Some(
-                c.into_iter()
-                    .map(|a| match a {
-                        ContentBlock::TextContent(t) => ContentBlock::TextContent(TextContent {
-                            r#type: t.r#type.clone(),
-                            text: t.text.trim().to_string(),
-                        }),
-                        // TODO:
-                        ContentBlock::ImageContent(i) => ContentBlock::TextContent(TextContent {
-                            r#type: i.r#type.clone(),
-                            text: i.image_url.url.trim().to_string(),
-                        }),
-                    })
-                    .collect(),
-            ),
+            Some(c) => Some(c.trim().to_string()),
         };
     }
 
@@ -1576,10 +1520,10 @@ impl OpenAILLM {
 
 pub fn to_openai_messages(
     messages: &Vec<ChatMessage>,
-) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
+) -> Result<Vec<RawOpenAIChatMessage>, anyhow::Error> {
     messages
         .iter()
-        .map(|m| OpenAIChatMessage::try_from(m))
+        .map(|m| RawOpenAIChatMessage::try_from(m))
         .collect::<Result<Vec<_>>>()
 }
 

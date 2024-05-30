@@ -37,6 +37,7 @@ export type ContentFragmentInput = {
   title: string;
   content: string;
   file: File;
+  contentType: string;
 };
 
 export function createPlaceholderUserMessage({
@@ -107,7 +108,9 @@ export async function submitMessage({
               title: contentFragment.title,
               content: contentFragment.content,
               url: null,
-              contentType: "file_attachment",
+              contentType: contentFragment.contentType.startsWith("image/")
+                ? "image_attachment"
+                : "file_attachment",
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -235,7 +238,9 @@ export async function createConversationWithMessage({
       content: cf.content,
       title: cf.title,
       url: null, // sourceUrl will be set on raw content upload success
-      contentType: "file_attachment",
+      contentType: cf.contentType.startsWith("image/")
+        ? "image_attachment"
+        : "file_attachment",
       context: {
         profilePictureUrl: user.image,
       },

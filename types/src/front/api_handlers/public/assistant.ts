@@ -23,6 +23,7 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
   url: t.union([t.string, t.null]),
   contentType: t.union([
     t.literal("slack_thread_content"),
+    t.literal("image_attachment"),
     t.literal("file_attachment"),
   ]),
   context: t.union([

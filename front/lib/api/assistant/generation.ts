@@ -43,7 +43,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
-import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
+import {
+  getContentFragmentText,
+  getSignedUrlForContentFragment,
+} from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 
@@ -125,22 +128,39 @@ export async function renderConversationForModel({
         content,
       });
     } else if (isContentFragmentType(m)) {
+      // TODO: Hack file_attachment.
+      console.log(">> m.contentType:", m.contentType, m.type);
       try {
         const content = await getContentFragmentText({
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
           messageId: m.sId,
         });
-        messages.unshift({
-          role: "content_fragment",
-          name: `inject_${m.contentType}`,
-          content:
-            `TITLE: ${m.title}\n` +
-            `TYPE: ${m.contentType}${
-              m.contentType === "file_attachment" ? " (user provided)" : ""
-            }\n` +
-            `CONTENT:\n${content}`,
-        });
+
+        if (m.contentType === "image_attachment") {
+          const signedUrl = await getSignedUrlForContentFragment({
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: m.sId,
+          });
+
+          messages.unshift({
+            role: "content_fragment",
+            name: `inject_${m.contentType}`,
+            content: signedUrl,
+          });
+        } else {
+          messages.unshift({
+            role: "content_fragment",
+            name: `inject_${m.contentType}`,
+            content:
+              `TITLE: ${m.title}\n` +
+              `TYPE: ${m.contentType}${
+                m.contentType === "file_attachment" ? " (user provided)" : ""
+              }\n` +
+              `CONTENT:\n${content}`,
+          });
+        }
       } catch (error) {
         logger.error(
           {
@@ -747,7 +767,8 @@ export async function* runGeneration(
       conversationId: conversation.sId,
       userMessageId: userMessage.sId,
       workspaceId: conversation.owner.sId,
-    }
+    },
+    true /* Use local. */
   );
 
   if (res.isErr()) {

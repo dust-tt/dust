@@ -11,6 +11,9 @@ export function ContentFragment({ message }: { message: ContentFragmentType }) {
     case "file_attachment":
       logoType = "document";
       break;
+    case "image_attachment":
+      logoType = "document";
+      break;
 
     default:
       assertNever(message.contentType);

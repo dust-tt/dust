@@ -73,6 +73,17 @@ class FileStorage {
     return metadata.contentType;
   }
 
+  async getSignedUrl(filename: string): Promise<string> {
+    const gcsFile = this.file(filename);
+
+    const signedUrl = await gcsFile.getSignedUrl({
+      action: "read",
+      expires: new Date().getTime() + 15 * 60 * 1000, // 15 minutes.
+    });
+
+    return signedUrl.toString();
+  }
+
   file(filename: string) {
     return this.bucket.file(filename);
   }

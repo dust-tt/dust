@@ -49,7 +49,8 @@ export async function runActionStreamed(
   actionName: DustRegistryActionName,
   config: DustAppConfigType,
   inputs: Array<unknown>,
-  tracingRecords: Record<string, string>
+  tracingRecords: Record<string, string>,
+  useLocal: boolean = false
 ) {
   const owner = auth.workspace();
   if (!owner) {
@@ -84,8 +85,10 @@ export async function runActionStreamed(
   statsDClient.increment("use_actions.count", 1, tags);
   const now = new Date();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
+  const prodCredentials = await prodAPICredentialsForOwner(owner, {
+    useLocalInDev: useLocal,
+  });
+  const api = new DustAPI(prodCredentials, logger, { useLocalInDev: useLocal });
 
   const res = await api.runAppStreamed(action.app, config, inputs);
   if (res.isErr()) {

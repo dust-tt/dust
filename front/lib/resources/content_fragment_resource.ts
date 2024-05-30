@@ -201,6 +201,25 @@ export function fileAttachmentLocation({
   };
 }
 
+export async function getSignedUrlForContentFragment({
+  workspaceId,
+  conversationId,
+  messageId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+}) {
+  const fileLocation = fileAttachmentLocation({
+    workspaceId,
+    conversationId,
+    messageId,
+    contentFormat: "raw",
+  });
+
+  return privateUploadGcs.getSignedUrl(fileLocation.filePath);
+}
+
 export async function storeContentFragmentText({
   workspaceId,
   conversationId,
@@ -225,6 +244,7 @@ export async function storeContentFragmentText({
 
   await privateUploadGcs.uploadRawContentToBucket({
     content,
+    // Use content type.
     contentType: "text/plain",
     filePath,
   });

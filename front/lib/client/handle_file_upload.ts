@@ -8,12 +8,16 @@ const supportedFileExtensions = [".txt", ".pdf", ".md", ".csv", ".tsv"];
 
 export async function handleFileUploadToText(
   file: File
-): Promise<Result<{ title: string; content: string }, Error>> {
+): Promise<
+  Result<{ title: string; content: string; contentType: string }, Error>
+> {
   return new Promise((resolve) => {
     const handleFileLoadedText = (e: ProgressEvent<FileReader>) => {
       const content = e.target?.result;
       if (content && typeof content === "string") {
-        return resolve(new Ok({ title: file.name, content }));
+        return resolve(
+          new Ok({ title: file.name, content, contentType: file.type })
+        );
       } else {
         return resolve(
           new Err(
@@ -53,7 +57,13 @@ export async function handleFileUploadToText(
           });
           text += `Page: ${pageNum}/${pdf.numPages}\n${strings.join(" ")}\n\n`;
         }
-        return resolve(new Ok({ title: file.name, content: text }));
+        return resolve(
+          new Ok({
+            title: file.name,
+            content: text,
+            contentType: file.type,
+          })
+        );
       } catch (e) {
         console.error("Failed extracting text from PDF", e);
         const errorMessage =
@@ -88,7 +98,14 @@ export async function handleFileUploadToText(
           const { result } = reader;
 
           if (typeof result === "string") {
-            return resolve(new Ok({ title: file.name, content: result }));
+            return resolve(
+              new Ok({
+                title: file.name,
+                // content: result,
+                content: "<image>",
+                contentType: file.type,
+              })
+            );
           }
 
           return resolve(
@@ -99,6 +116,14 @@ export async function handleFileUploadToText(
         };
 
         reader.readAsDataURL(file);
+        // reader.read(file);
+        // return resolve(
+        //   new Ok({
+        //     title: file.name,
+        //     content: "<image>",
+        //     contentType: file.type,
+        //   })
+        // );
       } else {
         // TODO: Handle file image.
         return resolve(
