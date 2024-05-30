@@ -288,6 +288,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       type: "database",
       tables,
     };
+    const { model } = agentConfiguration;
+    config.MODEL.provider_id = model.providerId;
+    config.MODEL.model_id = model.modelId;
 
     // Running the app
     const res = await runActionStreamed(
