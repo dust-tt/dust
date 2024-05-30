@@ -10,7 +10,7 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
 import { renderUserType } from "@app/lib/api/user";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
@@ -18,6 +18,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 
 export async function emailMatcher({
   senderEmail,
@@ -70,16 +71,20 @@ export async function emailMatcher({
 
   const workspace = renderLightWorkspaceType({ workspace: workspaceModel });
 
+  const auth = await Authenticator.internalUserForWorkspace({
+    user,
+    workspace,
+  });
+
+  const agentConfigurations = await getAgentConfigurations({
+    auth,
+    agentsGetView: "list",
+    variant: "light",
+    limit: undefined,
+    sort: undefined,
+  });
+
   // grab agent configuration
-  const prodCredentials = await prodAPICredentialsForOwner(workspace);
-
-  const dustAPI = new DustAPI(prodCredentials, logger);
-
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
-  if (agentConfigurationsRes.isErr()) {
-    return new Err(new Error(agentConfigurationsRes.error.message));
-  }
-  const agentConfigurations = agentConfigurationsRes.value;
 
   const agentPrefix = targetEmail.split("@")[0];
 
@@ -101,24 +106,19 @@ export async function emailMatcher({
 }
 
 export async function emailAnswer({
-  owner,
+  auth,
   user,
   agentConfiguration,
   threadTitle,
   threadContent,
 }: {
-  owner: LightWorkspaceType;
+  auth: Authenticator;
   user: UserType;
   agentConfiguration: LightAgentConfigurationType;
   threadTitle: string;
   threadContent: string;
 }) {
   const localLogger = logger.child({});
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-
-  const dustAPI = new DustAPI(prodCredentials, localLogger, {
-    useLocalInDev: true,
-  });
 
   const convRes = await dustAPI.createConversation({
     title: `Email thread: ${threadTitle}`,
