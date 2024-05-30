@@ -6,6 +6,7 @@ export const WHITELISTABLE_FEATURES = [
   "labs_transcripts_gong",
   "multi_actions",
   "websearch_action",
+  "scheduler",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
