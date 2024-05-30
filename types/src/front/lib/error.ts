@@ -10,6 +10,7 @@ export type APIErrorType =
   | "not_authenticated"
   | "missing_authorization_header_error"
   | "malformed_authorization_header_error"
+  | "invalid_basic_authorization_error"
   | "invalid_api_key_error"
   | "internal_server_error"
   | "invalid_request_error"
