@@ -227,7 +227,7 @@ export async function emailAnswer({
     });
   }
 
-  const initialConversation = await createConversation(auth, {
+  let conversation = await createConversation(auth, {
     title: `Email: ${threadTitle}`,
     visibility: "unlisted",
   });
@@ -238,7 +238,7 @@ export async function emailAnswer({
   // console.log("REST_OF_THREAD", restOfThread);
 
   await postNewContentFragment(auth, {
-    conversation: initialConversation,
+    conversation,
     title: `Email thread: ${threadTitle}`,
     content: restOfThread,
     url: null,
@@ -251,12 +251,19 @@ export async function emailAnswer({
     },
   });
 
+  let updatedConversation = await getConversation(auth, conversation.sId);
+  if (updatedConversation) {
+    conversation = updatedConversation;
+  }
+
   const content =
     agentConfigurations
       .map((agent) => {
         return `:mention[${agent.name}]{sId=${agent.sId}}`;
       })
-      .join(" ") + userMessage;
+      .join(" ") +
+    " " +
+    userMessage;
 
   const mentions = agentConfigurations.map((agent) => {
     return { configurationId: agent.sId };
@@ -265,7 +272,7 @@ export async function emailAnswer({
   const messageRes = await postUserMessageWithPubSub(
     auth,
     {
-      conversation: initialConversation,
+      conversation,
       content,
       mentions,
       context: {
@@ -288,14 +295,9 @@ export async function emailAnswer({
     });
   }
 
-  const conversation = await getConversation(auth, initialConversation.sId);
-
-  if (!conversation) {
-    return new Err({
-      type: "unexpected_error",
-      message:
-        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
-    });
+  updatedConversation = await getConversation(auth, conversation.sId);
+  if (updatedConversation) {
+    conversation = updatedConversation;
   }
 
   localLogger.info(
@@ -306,6 +308,8 @@ export async function emailAnswer({
     },
     "[email] Created conversation."
   );
+
+  // console.log(conversation.content);
 
   // Last versions of each agent messages.
   const agentMessages = agentConfigurations.map((ac) => {

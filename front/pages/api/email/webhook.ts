@@ -19,7 +19,7 @@ import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
-const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
+const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -228,7 +228,7 @@ async function handler(
           agentConfiguration,
           htmlContent: `<div><div>${
             answers[0].html
-          }</div><br/><a href="https://dust.tt/w/${
+          }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
             auth.workspace()?.sId
           }/assistant/${conversation.sId}">Open in Dust</a></div>`,
         });
