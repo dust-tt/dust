@@ -80,7 +80,6 @@ export async function dataSourceSearchUpsert({
       content,
     } satisfies DataSourceSearchDocument);
 
-  console.log("saved object to search index", res.objectID);
   return new Ok(res.objectID);
 }
 

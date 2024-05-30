@@ -352,12 +352,18 @@ export async function upsertToDataSource({
       return coreDocument;
     }
 
-    const content = coreDocument.value.document.text;
+    let content = coreDocument.value.document.text;
 
     if (content) {
       const title =
         tags.find((t) => t.startsWith("title"))?.split(":")[1] ||
         content.substring(0, 50) + "...";
+
+      content = content
+        .split("\n")
+        .filter((line) => !line.startsWith("$"))
+        .join("\n");
+
       dataSourceSearchUpsert({
         owner,
         dataSource,

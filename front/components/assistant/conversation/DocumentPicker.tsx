@@ -89,6 +89,12 @@ export function DocumentPicker({
             )}
           </div>
           <DropdownMenu.Items
+            onKeyDown={(e) => {
+              if (e.key === " ") {
+                setSearchText((prev) => prev + " ");
+                e.preventDefault();
+              }
+            }}
             origin="auto"
             width={700} // Adjust width as needed
             topBar={
@@ -104,8 +110,6 @@ export function DocumentPicker({
                       if (e.key === "Enter" && searchedDocuments.length > 0) {
                         onItemClick(searchedDocuments[0]);
                         setSearchText("");
-                      } else if (e.key === "Space") {
-                        e.preventDefault();
                       }
                     }}
                   />
