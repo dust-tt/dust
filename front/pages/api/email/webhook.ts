@@ -3,30 +3,31 @@ import { Err, Ok } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { InboundEmail } from "@app/lib/api/assistant/email_answer";
+import type {
+  EmailAnswerError,
+  InboundEmail,
+} from "@app/lib/api/assistant/email_answer";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
   emailAssistantMatcher,
-  sendEmailAnswerOrError,
+  replyToEmail,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
-export type PostResponseBody = {
-  success: boolean;
-};
-
+// Disabling Next.js's body parser as formidable has its own
 export const config = {
   api: {
-    bodyParser: false, // Disabling Next.js's body parser as formidable has its own
+    bodyParser: false,
   },
 };
 
-// Parses the Sendgid webhook form data and validates it.
+// Parses the Sendgid webhook form data and validates it returning a fully formed InboundEmail.
 const parseSendgridWebhookContent = async (
   req: NextApiRequest
 ): Promise<Result<InboundEmail, Error>> => {
@@ -66,6 +67,24 @@ const parseSendgridWebhookContent = async (
   } catch (e) {
     return new Err(new Error("Failed to parse email content"));
   }
+};
+
+const replyToError = async (
+  email: InboundEmail,
+  error: EmailAnswerError
+): Promise<void> => {
+  logger.error(
+    { error, envelope: email.envelope },
+    "[email] Error handling email."
+  );
+  const htmlContent =
+    `<p>Error running assistant:</p>\n` +
+    `<p>(${error.type}) ${error.message}</p>\n`;
+  await replyToEmail({ email, htmlContent });
+};
+
+export type PostResponseBody = {
+  success: boolean;
 };
 
 async function handler(
@@ -115,35 +134,29 @@ async function handler(
 
       const email = emailRes.value;
 
-      console.log("TEXT:\n```\n", email.text, "\n```");
-      console.log("SUBJECT:\n```\n", email.subject, "\n```");
+      // At this stage we have a valid email in we can respond 200 to the webhook, no more apiError
+      // possible below this point, errors should be reported to the sender.
+      res.status(200).json({ success: true });
 
       // Check SPF is pass.
       if (
         email.auth.SPF !== "pass" ||
         email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
       ) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "SPF/dkim validation failed",
-          },
+        await replyToError(email, {
+          type: "unauthenticated_error",
+          message:
+            "Failed to authenticate your email (SPF/dkim validation failed).",
         });
+        return;
       }
 
       const userRes = await userAndWorkspaceFromEmail({
         email: email.envelope.from,
       });
       if (userRes.isErr()) {
-        // TODO send email to explain problem
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Failed to retrieve user from email: ${userRes.error.type}}`,
-          },
-        });
+        await replyToError(email, userRes.error);
+        return;
       }
 
       const { user, workspace } = userRes.value;
@@ -162,22 +175,11 @@ async function handler(
       ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
       if (targetEmails.length === 0) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "No target email found",
-          },
-        });
-      }
-
-      if (targetEmails.length > 1) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Multiple target emails found",
-          },
+        await replyToError(email, {
+          type: "invalid_email_error",
+          message:
+            `Failed to match any valid assistant email. ` +
+            `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
         });
       }
 
@@ -186,61 +188,38 @@ async function handler(
         targetEmail: targetEmails[0],
       });
       if (matchRes.isErr()) {
-        void sendEmailAnswerOrError({
-          user,
-          htmlContent: `Error running assistant by email: could not find assistant. <br/><br/> Message: ${matchRes.error.type}`,
-        });
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Failed to retrieve asssistant from email: ${matchRes.error.type}`,
-          },
-        });
+        await replyToError(email, matchRes.error);
+        return;
       }
 
       const { agentConfiguration } = matchRes.value;
 
       const answerRes = await emailAnswer({
         auth,
-        agentConfiguration: matchRes.value.agentConfiguration,
+        agentConfigurations: [matchRes.value.agentConfiguration],
         threadTitle: email.subject,
         threadContent: email.text,
       });
 
       if (answerRes.isErr()) {
-        void sendEmailAnswerOrError({
-          user,
-          agentConfiguration,
-          htmlContent: `Error running ${agentConfiguration.name}: failed to retrieve answer. <br/><br/> Message: ${answerRes.error.type}`,
-        });
-
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Failed to retrieve answer: ${answerRes.error.type}`,
-          },
-        });
+        await replyToError(email, answerRes.error);
+        return;
       }
 
-      // At this stage we can reply to the webhook.
-      res.status(200).json({ success: true });
+      const { conversation, htmlAnswers } = answerRes.value;
 
-      const { conversation, htmlAnswer } = answerRes.value;
-
-      void sendEmailAnswerOrError({
-        user,
+      void replyToEmail({
+        email,
         agentConfiguration,
         htmlContent: `<a href="https://dust.tt/w/${
           auth.workspace()?.sId
         }/assistant/${
           conversation.sId
-        }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
+        }">Open this conversation in Dust</a><br/><br/>${
+          htmlAnswers[0]
+        }<br/><br/> ${
           agentConfiguration.name
         } at <a href="https://dust.tt">Dust.tt</a>`,
-        threadTitle: email.subject,
-        threadContent: email.text,
       });
 
       return;

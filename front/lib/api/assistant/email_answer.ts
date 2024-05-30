@@ -6,7 +6,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok, isAgentMessageType } from "@dust-tt/types";
+import { Err, isAgentMessageType, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -44,11 +44,13 @@ export type InboundEmail = {
 export type EmailAnswerError = {
   type:
     | "unexpected_error"
+    | "unauthenticated_error"
     | "user_not_found"
     | "workspace_not_found"
-    | "agent_not_found"
+    | "invalid_email_error"
+    | "assistant_not_found"
     | "message_creation_error";
-  message?: string;
+  message: string;
 };
 
 export async function userAndWorkspaceFromEmail({
@@ -65,12 +67,16 @@ export async function userAndWorkspaceFromEmail({
   >
 > {
   const user = await User.findOne({
-    where: { email: email },
+    where: { email },
   });
 
   if (!user) {
-    logger.error({ email }, "[email] No user found with this email.");
-    return new Err({ type: "user_not_found" });
+    return new Err({
+      type: "user_not_found",
+      message:
+        `Failed to match a valid Dust user for email: ${email}. ` +
+        `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
+    });
   }
 
   const workspace = await Workspace.findOne({
@@ -83,8 +89,12 @@ export async function userAndWorkspaceFromEmail({
   });
 
   if (!workspace) {
-    logger.error({ email }, "[email] No workspace found for this user.");
-    return new Err({ type: "workspace_not_found" });
+    return new Err({
+      type: "workspace_not_found",
+      message:
+        `Failed to match a valid Dust workspace associated with email: ${email}. ` +
+        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
+    });
   }
 
   return new Ok({
@@ -117,16 +127,12 @@ export async function emailAssistantMatcher({
 
   const agentPrefix = targetEmail.split("@")[0].split("+")[1];
 
-  console.log("TARGET EMAIL", targetEmail);
-  console.log("AGENT PREFIX", agentPrefix);
-
   const matchingAgents = filterAndSortAgents(agentConfigurations, agentPrefix);
   if (matchingAgents.length === 0) {
-    logger.error(
-      { agentPrefix },
-      "[emailMatcher] No agent configuration found for this email."
-    );
-    return new Err({ type: "agent_not_found" });
+    return new Err({
+      type: "assistant_not_found",
+      message: `Failed to match a valid assistant with name prefix: '${agentPrefix}'.`,
+    });
   }
   const agentConfiguration = matchingAgents[0];
 
@@ -176,10 +182,10 @@ export async function emailAnswer({
   const localLogger = logger.child({});
   const user = auth.user();
   if (!user) {
-    // unreachable
     return new Err({
       type: "unexpected_error",
-      message: "No user on authenticator.",
+      message:
+        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
     });
   }
 
@@ -233,17 +239,21 @@ export async function emailAnswer({
   );
 
   if (messageRes.isErr()) {
-    return new Err({ type: "message_creation_error" });
+    return new Err({
+      type: "message_creation_error",
+      message:
+        `Error interacting with assistant: ` +
+        messageRes.error.api_error.message,
+    });
   }
 
   const conversation = await getConversation(auth, initialConversation.sId);
 
   if (!conversation) {
-    localLogger.error("[emailAnswer] No conversation found. Stopping.");
-    // TODO send email to notify of problem
     return new Err({
       type: "unexpected_error",
-      message: "Conversation just created, not found",
+      message:
+        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
     });
   }
 
@@ -253,10 +263,10 @@ export async function emailAnswer({
         sId: conversation.sId,
       },
     },
-    "[emailAnswer] Created conversation."
+    "[email] Created conversation."
   );
 
-  // last version of messages
+  // Last version of messages
   const agentMessages = agentConfigurations.map((ac) => {
     return [ac.sId, (<AgentMessageType[]>conversation.content.find(
         (innerArray) => {
@@ -283,50 +293,45 @@ export async function emailAnswer({
   return new Ok({ conversation, htmlAnswers });
 }
 
-export async function sendEmailAnswerOrError({
-  user,
+export async function replyToEmail({
+  email,
   agentConfiguration,
   htmlContent,
-  threadTitle,
-  threadContent,
 }: {
-  user: UserType;
+  email: InboundEmail;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
-  threadTitle: string;
-  threadContent: string;
 }) {
   const name = agentConfiguration
     ? `Dust Assistant (${agentConfiguration.name})`
     : "Dust Assistant";
-  const email = agentConfiguration
+  const sender = agentConfiguration
     ? `a+${name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
     : `a@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 
   // subject: if Re: is there, we don't add it.
-  const subject = threadTitle
+  const subject = email.subject
     .toLowerCase()
     .replaceAll(" ", "")
     .startsWith("re:")
-    ? threadTitle
-    : `Re: ${threadTitle}`;
+    ? email.subject
+    : `Re: ${email.subject}`;
 
   const html =
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${user.firstName} ${user.lastName} <${
-      user.email
-    }> wrote:<br/>` +
-    `<blockquote>${threadContent}</blockquote>`;
+    `On ${new Date().toUTCString()} <${email.envelope.from}> wrote:<br/>` +
+    `<blockquote>${email.text}</blockquote>`;
+
   const msg = {
     from: {
       name,
-      email,
+      sender,
     },
-    reply_to: email,
+    reply_to: sender,
     subject,
     html,
   };
 
-  await sendEmail(user.email, msg);
+  await sendEmail(email.envelope.from, msg);
 }
