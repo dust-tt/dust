@@ -292,7 +292,6 @@ export function NewScheduleModal({
               setSchedule({ ...schedule, emails: e.split(",").map((e) => e) })
             }
           />
-          
         </Page.Layout>
       </Page.Layout>
     </Modal>
