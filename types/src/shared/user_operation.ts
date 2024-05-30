@@ -3,9 +3,11 @@ import { LoggerInterface } from "./logger";
 export async function sendUserOperationMessage({
   message,
   logger,
+  channel,
 }: {
   message: string;
   logger: LoggerInterface;
+  channel?: string;
 }) {
   const { SLACK_USER_OPERATION_BOT_TOKEN, SLACK_USER_OPERATION_CHANNEL_ID } =
     process.env;
@@ -26,7 +28,7 @@ export async function sendUserOperationMessage({
         Authorization: `Bearer ${SLACK_USER_OPERATION_BOT_TOKEN}`,
       },
       body: JSON.stringify({
-        channel: SLACK_USER_OPERATION_CHANNEL_ID,
+        channel: channel ?? SLACK_USER_OPERATION_CHANNEL_ID,
         text: message,
       }),
     });
