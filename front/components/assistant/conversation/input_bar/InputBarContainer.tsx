@@ -15,6 +15,7 @@ import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { DocumentPicker } from "@app/components/assistant/conversation/DocumentPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
@@ -26,6 +27,7 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
+  onExistingDocumentSelected: (documentId: string) => Promise<void>;
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
@@ -40,6 +42,7 @@ const InputBarContainer = ({
   agentConfigurations,
   onEnterKeyDown,
   onInputFileChange,
+  onExistingDocumentSelected,
   owner,
   selectedAssistant,
   stickyMentions,
@@ -134,6 +137,12 @@ const InputBarContainer = ({
             onClick={() => {
               fileInputRef.current?.click();
             }}
+          />
+          <DocumentPicker
+            owner={owner}
+            size="sm"
+            onItemClick={(d) => onExistingDocumentSelected(d.document_id)}
+            showFooterButtons={true}
           />
           {!hideQuickActions && (
             <>
