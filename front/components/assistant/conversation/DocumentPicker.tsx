@@ -1,11 +1,12 @@
 import {
   Button,
   DocumentPlusIcon,
-  DocumentTextIcon,
   DropdownMenu,
+  Markdown,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
+import { ContextItem } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { DataSourceSearchResultType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
@@ -89,12 +90,6 @@ export function DocumentPicker({
             )}
           </div>
           <DropdownMenu.Items
-            onKeyDown={(e) => {
-              if (e.key === " ") {
-                setSearchText((prev) => prev + " ");
-                e.preventDefault();
-              }
-            }}
             origin="auto"
             width={700} // Adjust width as needed
             topBar={
@@ -120,41 +115,49 @@ export function DocumentPicker({
             {loading ? (
               <Spinner variant="color" size="lg" />
             ) : searchedDocuments.length > 0 ? (
-              searchedDocuments.map((d) => (
-                <div
-                  key={`document-picker-container-${d.documentId}`}
-                  className="flex flex-row items-center justify-between pr-4" // Increase padding
-                >
-                  <DropdownMenu.Item
+              <ContextItem.List>
+                {searchedDocuments.map((d) => (
+                  <ContextItem
                     key={`document-picker-${d.documentId}`}
-                    label={
+                    title={
                       d.documentTitle.length > 60
                         ? `${d.documentTitle.slice(0, 60)} ...`
                         : d.documentTitle
                     }
-                    description={d.highlightedText}
-                    icon={
-                      d.connectorProvider
-                        ? CONNECTOR_CONFIGURATIONS[d.connectorProvider]
+                    visual={
+                    d.connectorProvider ?
+                      <ContextItem.Visual
+                        visual={
+                          CONNECTOR_CONFIGURATIONS[d.connectorProvider]
                             .logoComponent
-                        : DocumentTextIcon
+                        }
+                      /> : <></>
                     }
                     onClick={() => {
                       onItemClick(d);
                       setSearchText("");
                     }}
-                  />
-                  <Button
-                    label="Add"
-                    className="ml-2 rounded bg-blue-500 px-2 py-1 text-white disabled:cursor-not-allowed disabled:bg-gray-300"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent the dropdown from closing
-                      handleAddClick(d);
-                    }}
-                    disabled={clickedDocuments.has(d.documentId)}
-                  />
-                </div>
-              ))
+                    action={
+                      <div className="flex w-full justify-center">
+                        <Button
+                          label="Add"
+                          className="rounded bg-blue-500 px-2 py-1 text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent the dropdown from closing
+                            handleAddClick(d);
+                          }}
+                          disabled={clickedDocuments.has(d.documentId)}
+                        />
+                      </div>
+                    }
+                  >
+                    <ContextItem.Description>
+                      <Markdown content={d.highlightedText} />
+                      {/*<div dangerouslySetInnerHTML={{ __html: d.highlightedText}}></div>*/}
+                    </ContextItem.Description>
+                  </ContextItem>
+                ))}
+              </ContextItem.List>
             ) : searchText.length < MIN_CHARACTERS_TO_SEARCH ? (
               <div className="text-sm text-element-600">
                 Type at least {MIN_CHARACTERS_TO_SEARCH} characters to search in

@@ -94,10 +94,11 @@ export async function dataSourceSearch({
     .initIndex(SEARCH_INDEX_NAME)
     .search(query, {
       filters: `workspaceId:${workspaceId}`,
-      attributesToSnippet: ["content:10"],
+      attributesToSnippet: ["content:50"],
+      highlightPreTag: "**",
+      highlightPostTag: "**",
     });
 
-  console.log("search result", JSON.stringify(res, null, 2));
   return res.hits.map((hit): DataSourceSearchResultType => {
     const doc = hit as DataSourceSearchDocument;
     const snippet = hit._snippetResult?.content?.value;

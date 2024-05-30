@@ -145,7 +145,6 @@ const InputBarContainer = ({
             owner={owner}
             size="sm"
             onItemClick={onDocumentSearchSelected}
-            showFooterButtons={true}
           />
           {!hideQuickActions && (
             <>
