@@ -1,5 +1,5 @@
 import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -203,20 +203,30 @@ async function handler(
           workspace,
         });
 
-        const matchRes = await emailAssistantMatcher({
-          auth,
-          targetEmail: targetEmails[0],
-        });
-        if (matchRes.isErr()) {
-          await replyToError(email, matchRes.error);
+        const agentConfigurations = removeNulls(
+          await Promise.all(
+            targetEmails.map(async (targetEmail) => {
+              const matchRes = await emailAssistantMatcher({
+                auth,
+                targetEmail,
+              });
+              if (matchRes.isErr()) {
+                await replyToError(email, matchRes.error);
+                return null;
+              }
+
+              return matchRes.value.agentConfiguration;
+            })
+          )
+        );
+
+        if (agentConfigurations.length === 0) {
           return;
         }
 
-        const { agentConfiguration } = matchRes.value;
-
         const answerRes = await triggerFromEmail({
           auth,
-          agentConfigurations: [matchRes.value.agentConfiguration],
+          agentConfigurations,
           email,
         });
 
