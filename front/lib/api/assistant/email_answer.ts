@@ -19,6 +19,12 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import {
+  createConversation,
+  getConversation,
+  postNewContentFragment,
+} from "@app/lib/api/assistant/conversation";
+import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 
 export async function emailMatcher({
   senderEmail,
@@ -120,10 +126,29 @@ export async function emailAnswer({
 }) {
   const localLogger = logger.child({});
 
-  const convRes = await dustAPI.createConversation({
+  const initialConversation = await createConversation(auth, {
     title: `Email thread: ${threadTitle}`,
     visibility: "unlisted",
-    message: {
+  });
+
+  await postNewContentFragment(auth, {
+    conversation: initialConversation,
+    title: `Email thread: ${threadTitle}`,
+    content: threadContent,
+    url: null,
+    contentType: "file_attachment",
+    context: {
+      username: user.username,
+      fullName: user.fullName,
+      email: user.email,
+      profilePictureUrl: user.image,
+    },
+  });
+
+  const messageRes = await postUserMessageWithPubSub(
+    auth,
+    {
+      conversation: initialConversation,
       content: `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}}`,
       mentions: [{ configurationId: agentConfiguration.sId }],
       context: {
@@ -134,30 +159,15 @@ export async function emailAnswer({
         profilePictureUrl: user.image,
       },
     },
-    contentFragment: {
-      title: `Email thread: ${threadTitle}`,
-      content: threadContent,
-      url: null,
-      contentType: "file_attachment",
-      context: {
-        username: user.username,
-        fullName: user.fullName,
-        email: user.email,
-        profilePictureUrl: user.image,
-      },
-    },
-    blocking: true,
-  });
+    { resolveAfterFullGeneration: true }
+  );
 
-  if (convRes.isErr()) {
-    localLogger.error(
-      { error: convRes.error },
-      "[emailAnswer] Error creating conversation."
-    );
-    return new Err(new Error(convRes.error.message));
+  if (messageRes.isErr()) {
+    return new Err(new Error(messageRes.error.api_error.message));
   }
 
-  const { conversation } = convRes.value;
+  const conversation = await getConversation(auth, initialConversation.sId);
+
   if (!conversation) {
     localLogger.error("[emailAnswer] No conversation found. Stopping.");
     return;
@@ -191,7 +201,11 @@ export async function emailAnswer({
       email: `noreply@dust.tt`,
     },
     subject: threadTitle,
-    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${agentConfiguration.name} at <a href="https://dust.tt">Dust.tt</a>`,
+    html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${
+      conversation.sId
+    }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
+      agentConfiguration.name
+    } at <a href="https://dust.tt">Dust.tt</a>`,
   };
 
   await sendEmail(user.email, msg);
