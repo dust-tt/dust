@@ -236,8 +236,8 @@ export async function sendEmailAnswerOrError({
   user: UserType;
   agentConfiguration?: LightAgentConfigurationType;
   htmlContent: string;
-  threadTitle?: string;
-  threadContent?: string;
+  threadTitle: string;
+  threadContent: string;
 }) {
   const name = agentConfiguration
     ? `Dust Assistant (${agentConfiguration.name})`
@@ -248,15 +248,19 @@ export async function sendEmailAnswerOrError({
 
   // subject: if Re: is there, we don't add it.
   const subject = threadTitle
-    ? threadTitle.startsWith("Re:")
-      ? threadTitle
-      : `Re: ${threadTitle}`
-    : "[DUST] Error running assistant";
+    .toLowerCase()
+    .replaceAll(" ", "")
+    .startsWith("re:")
+    ? threadTitle
+    : `Re: ${threadTitle}`;
 
   const html =
-    htmlContent + threadContent
-      ? `<br /><br /> <blockquote>${threadContent}</blockquote>`
-      : "";
+    htmlContent +
+    `<br/><br/>` +
+    `On ${new Date().toUTCString()} ${user.firstName} ${user.lastName} <${
+      user.email
+    }> wrote:<br/>` +
+    `<blockquote>${threadContent}</blockquote>`;
   const msg = {
     from: {
       name,
