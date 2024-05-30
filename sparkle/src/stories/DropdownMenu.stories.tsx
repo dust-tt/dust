@@ -497,6 +497,20 @@ export const DropdownExample = () => {
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+
+      <div className="s-flex s-gap-6">
+        <div className="s-text-sm">Don't close on escape or space</div>
+        <DropdownMenu>
+          <DropdownMenu.Button icon={RobotIcon} />
+          <DropdownMenu.Items
+            origin="topRight"
+            onKeyDown={(e) => e.preventDefault()}
+          >
+            <DropdownMenu.Item label="@gpt4" />
+            <DropdownMenu.Item label="@slack" />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
     </>
   );
 };
