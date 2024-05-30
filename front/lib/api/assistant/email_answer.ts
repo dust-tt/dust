@@ -236,16 +236,20 @@ export async function replyWithContent({
   user: UserType;
   agentConfiguration: LightAgentConfigurationType;
   htmlContent: string;
-  threadTitle: string;
-  threadContent: string;
+  threadTitle?: string;
+  threadContent?: string;
 }) {
   // subject: if Re: is there, we don't add it.
-  const subject = threadTitle.startsWith("Re:")
-    ? threadTitle
-    : `Re: ${threadTitle}`;
+  const subject = threadTitle
+    ? threadTitle.startsWith("Re:")
+      ? threadTitle
+      : `Re: ${threadTitle}`
+    : "[DUST] Error running assistant";
 
   const html =
-    htmlContent + `<br /><br /> <blockquote>${threadContent}</blockquote>`;
+    htmlContent + threadContent
+      ? `<br /><br /> <blockquote>${threadContent}</blockquote>`
+      : "";
   const msg = {
     from: {
       name: `Dust Assistant (${agentConfiguration.name})`,
