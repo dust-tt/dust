@@ -1,15 +1,13 @@
 import {
   addDays,
   addMonths,
-  addWeeks,
   eachDayOfInterval,
   endOfMonth,
-  getDay,
-  getISODay,
   set,
   startOfMonth,
   startOfToday,
 } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 import { ScheduledAgentResource } from "@app/lib/resources/scheduled_agent_resource";
 
@@ -60,48 +58,50 @@ function getNextWeeklyOccurrence(
   const scheduleTime = schedule.timeOfDay.split(":").map(Number);
 
   // Initialize next occurrence to today's date with the scheduled time.
-  let nextOccurrence = set(today, {
-    hours: scheduleTime[0],
-    minutes: scheduleTime[1],
-    seconds: scheduleTime[2],
-  });
+  let nextOccurrence = fromZonedTime(
+    set(today, {
+      hours: scheduleTime[0],
+      minutes: scheduleTime[1],
+      seconds: scheduleTime[2],
+    }),
+    schedule.timeZone
+  );
 
   // Ensure days of the week are sorted.
   const daysOfWeek = weeklyDaysOfWeek.sort((a, b) => a - b);
+  const currDayInTz = getDayOfWeekInTimezone(today, schedule.timeZone);
 
   // Find the closest day of week that is greater or equal to the current day of week.
-  let closestDay = daysOfWeek.find((day) => day >= getISODay(today));
+  const closestDay = daysOfWeek.find((day) => day >= currDayInTz);
 
   // If the closest day is today, and time has passed, skip to next day.
-  if (closestDay === getISODay(today) && nextOccurrence <= new Date()) {
+  if (closestDay === currDayInTz && nextOccurrence <= new Date()) {
     const nextDayIndex = daysOfWeek.indexOf(closestDay) + 1;
-    if (nextDayIndex < daysOfWeek.length) {
-      closestDay = daysOfWeek[nextDayIndex];
-      const daysDelta = (closestDay - getISODay(today) + 7) % 7;
-      nextOccurrence = addDays(nextOccurrence, daysDelta);
-    } else {
-      // If no more days are left in the current week, move to the first day of the next week.
-      closestDay = daysOfWeek[0];
-      nextOccurrence = addWeeks(nextOccurrence, 1);
-      const daysDelta = (closestDay - getISODay(today) + 7) % 7;
-      nextOccurrence = addDays(nextOccurrence, daysDelta);
+    const targetDayOfWeek = daysOfWeek[nextDayIndex % daysOfWeek.length];
+    while (
+      getDayOfWeekInTimezone(nextOccurrence, schedule.timeZone) !==
+      targetDayOfWeek
+    ) {
+      nextOccurrence = addDays(nextOccurrence, 1);
     }
+    return nextOccurrence;
   } else if (closestDay === undefined) {
-    // No days of week are greater than the current day of week.
-    // We use the first scheduled day of the next week.
-    closestDay = daysOfWeek[0];
-    nextOccurrence = addWeeks(nextOccurrence, 1);
+    const targetDayOfWeek = daysOfWeek[0];
+    while (
+      getDayOfWeekInTimezone(nextOccurrence, schedule.timeZone) !==
+      targetDayOfWeek
+    ) {
+      nextOccurrence = addDays(nextOccurrence, 1);
+    }
   }
-  // Compute the number of days to add to the next occurrence.
-  const daysDelta = (closestDay - getISODay(today) + 7) % 7;
-  nextOccurrence = addDays(nextOccurrence, daysDelta);
-  // return zonedTimeToUtc(nextOccurrence, schedule.timeZone);
+
   return nextOccurrence;
 }
 
 // Calculate the next occurrence for monthly schedules with timezone support
 function getNextMonthlyOccurrence(
-  schedule: ISchedule & { scheduleType: "monthly" }
+  schedule: ISchedule & { scheduleType: "monthly" },
+  monthsOffset = 0
 ): Date {
   const { timeOfDay, monthlyFirstLast, monthlyDayOfWeek } = schedule;
 
@@ -111,17 +111,21 @@ function getNextMonthlyOccurrence(
 
   const scheduleTime = timeOfDay.split(":").map(Number);
   // Start from the next month
-  const occurrenceMonth = startOfMonth(addMonths(new Date(), 1));
+
+  const { startOfMonthUtc, endOfMonthUtc } = getBeginningAndEndOfMonth(
+    schedule.timeZone,
+    monthsOffset
+  );
 
   // List all days in the next month
   const daysInMonth = eachDayOfInterval({
-    start: occurrenceMonth,
-    end: endOfMonth(occurrenceMonth),
+    start: startOfMonthUtc,
+    end: endOfMonthUtc,
   });
 
   // Filter days that match the specified day of the week
   const validDays = daysInMonth.filter(
-    (day) => getDay(day) === monthlyDayOfWeek
+    (day) => getDayOfWeekInTimezone(day, schedule.timeZone) === monthlyDayOfWeek
   );
 
   // Select the first or last valid day based on the schedule configuration
@@ -131,11 +135,17 @@ function getNextMonthlyOccurrence(
       : validDays[validDays.length - 1];
 
   // Set the time for the valid day
-  return set(validDay, {
+  const dayWithTime = set(validDay, {
     hours: scheduleTime[0],
     minutes: scheduleTime[1],
     seconds: scheduleTime[2],
   });
+
+  if (dayWithTime <= new Date()) {
+    return getNextMonthlyOccurrence(schedule, monthsOffset + 1);
+  }
+
+  return dayWithTime;
 }
 
 // Calculate milliseconds until the next schedule with timezone support
@@ -148,13 +158,28 @@ function calculateMillisecondsUntilNextSchedule(schedule: ISchedule): number {
   return nextOccurrence.getTime() - new Date().getTime();
 }
 
-const ms = calculateMillisecondsUntilNextSchedule({
-  timeOfDay: "15:00:00",
-  timeZone: "Europe/Paris",
-  scheduleType: "weekly",
-  weeklyDaysOfWeek: [5, 1, 3], // Monday, Wednesday, Friday (unsorted input)
-});
-console.log(`Milliseconds until next schedule: ${ms}`);
-const occurrence = new Date(Date.now() + ms);
-// Display the next occurrence with timezone support
-console.log(`Next occurrence: ${occurrence}`);
+function getDayOfWeekInTimezone(d: Date, timeZone: string) {
+  const options: Intl.DateTimeFormatOptions = { timeZone, weekday: "short" };
+  const dateTimeFormat = new Intl.DateTimeFormat("en-US", options);
+  const formattedDate = dateTimeFormat.format(d);
+
+  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return daysOfWeek.indexOf(formattedDate);
+}
+
+function getBeginningAndEndOfMonth(timeZone: string, monthsOffset = 0) {
+  let now = new Date();
+  if (monthsOffset !== 0) {
+    now = addMonths(now, monthsOffset);
+  }
+
+  // Get the start and end of the month in the local timezone
+  const startOfMonthDate = startOfMonth(toZonedTime(now, timeZone));
+  const endOfMonthDate = endOfMonth(toZonedTime(now, timeZone));
+
+  // Convert the start and end of the month to UTC
+  const startOfMonthUtc = fromZonedTime(startOfMonthDate, timeZone);
+  const endOfMonthUtc = fromZonedTime(endOfMonthDate, timeZone);
+
+  return { startOfMonthUtc, endOfMonthUtc };
+}
