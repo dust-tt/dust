@@ -3,7 +3,7 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { emailMatcher } from "./answer";
+import { emailMatcher } from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
