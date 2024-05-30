@@ -79,6 +79,7 @@ export default function ConversationLayout({
         <AppLayout
           subscription={subscription}
           owner={owner}
+          isWideMode={!!conversation}
           pageTitle={
             conversation?.title
               ? `Dust - ${conversation?.title}`
