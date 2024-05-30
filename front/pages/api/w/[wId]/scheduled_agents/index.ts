@@ -99,7 +99,7 @@ async function handler(
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        console.error('Validation errors:', pathError);
+        console.error("Validation errors:", pathError);
 
         return apiError(req, res, {
           status_code: 404,
