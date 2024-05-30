@@ -8,6 +8,7 @@ import {
   startOfMonth,
 } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import showdown from "showdown";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -88,6 +89,8 @@ export async function runAgent(scheduledAgentId: string): Promise<void> {
     }
   }
 
+  const html = new showdown.Converter().makeHtml(res);
+
   if (scheduledAgent.emails) {
     for (const e of scheduledAgent.emails) {
       const message = {
@@ -96,7 +99,7 @@ export async function runAgent(scheduledAgentId: string): Promise<void> {
           email: "team@dust.tt",
         },
         subject: `[Dust] ${agentConfiguration.name} has sent you a message.`,
-        html: `<p>${res}</p>`,
+        html,
       };
       await sendEmail(e, message);
     }
@@ -271,14 +274,3 @@ function getBeginningOfToday(timezone: string) {
   const now = new Date();
   return startOfDay(toZonedTime(now, timezone));
 }
-
-const s = {
-  timeOfDay: "15:51:00",
-  timeZone: "Europe/Paris",
-  scheduleType: "weekly",
-  weeklyDaysOfWeek: [4],
-} satisfies ISchedule;
-
-const occ = getNextWeeklyOccurrence(s);
-
-console.log(`Next occurrence: ${occ}`);
