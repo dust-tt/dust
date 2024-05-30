@@ -67,3 +67,7 @@ main {
     transform: translate3d(8px, 3px, 0);
   }
 }
+
+.document-picker-markdown strong {
+  background-color: yellow;
+}

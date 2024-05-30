@@ -94,7 +94,7 @@ export async function dataSourceSearch({
     .initIndex(SEARCH_INDEX_NAME)
     .search(query, {
       filters: `workspaceId:${workspaceId}`,
-      attributesToSnippet: ["content:50"],
+      attributesToSnippet: ["content:25"],
       highlightPreTag: "**",
       highlightPostTag: "**",
     });

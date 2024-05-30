@@ -90,6 +90,12 @@ export function DocumentPicker({
             )}
           </div>
           <DropdownMenu.Items
+            onKeyDown={(e) => {
+              if (e.key === " ") {
+                setSearchText((prev) => prev + " ");
+                e.preventDefault();
+              }
+            }}
             origin="auto"
             width={700} // Adjust width as needed
             topBar={
@@ -125,18 +131,17 @@ export function DocumentPicker({
                         : d.documentTitle
                     }
                     visual={
-                    d.connectorProvider ?
-                      <ContextItem.Visual
-                        visual={
-                          CONNECTOR_CONFIGURATIONS[d.connectorProvider]
-                            .logoComponent
-                        }
-                      /> : <></>
+                      d.connectorProvider ? (
+                        <ContextItem.Visual
+                          visual={
+                            CONNECTOR_CONFIGURATIONS[d.connectorProvider]
+                              .logoComponent
+                          }
+                        />
+                      ) : (
+                        <></>
+                      )
                     }
-                    onClick={() => {
-                      onItemClick(d);
-                      setSearchText("");
-                    }}
                     action={
                       <div className="flex w-full justify-center">
                         <Button
@@ -152,7 +157,9 @@ export function DocumentPicker({
                     }
                   >
                     <ContextItem.Description>
-                      <Markdown content={d.highlightedText} />
+                      <div className="document-picker-markdown">
+                        <Markdown content={d.highlightedText} />
+                      </div>
                       {/*<div dangerouslySetInnerHTML={{ __html: d.highlightedText}}></div>*/}
                     </ContextItem.Description>
                   </ContextItem>
