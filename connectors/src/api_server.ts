@@ -151,11 +151,6 @@ export function startServer(port: number) {
     bodyParser.raw({ type: "application/json" }),
     webhookIntercomUninstallAPIHandler
   );
-  app.post(
-    "/webhooks/:webhooks_secret/email",
-    bodyParser.raw({ type: "application/json" }),
-    webhookEmailAPIHandler
-  );
 
   // /configuration/ is the new configration method, replacing the old /config/ method
   app.patch(
