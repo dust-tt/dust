@@ -27,6 +27,10 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import {
+  Conversation,
+  ConversationParticipant,
+} from "@app/lib/models/assistant/conversation";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
@@ -121,11 +125,34 @@ export async function userAndWorkspacesFromEmail({
     });
   }
 
+  // get latest conversation participation from user
+  const latestParticipation = await ConversationParticipant.findOne({
+    where: {
+      userId: user.id,
+    },
+    include: [
+      {
+        model: Conversation,
+      },
+    ],
+    order: [["createdAt", "DESC"]],
+  });
+
   // TODO: implement good default logic
   // a. most members?
   // b. most recent activity?
+  const workspace = workspaces.find(
+    (w) => w.id === latestParticipation?.conversation?.workspaceId
+  );
+  if (!workspace) {
+    return new Err({
+      type: "unexpected_error",
+      message: "Failed to find a valid default workspace for user.",
+    });
+  }
+
   const defaultWorkspace = renderLightWorkspaceType({
-    workspace: workspaces[0],
+    workspace,
   });
 
   return new Ok({
