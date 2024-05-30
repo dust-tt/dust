@@ -1,6 +1,6 @@
 import React, { ReactNode } from "react";
 
-import { DocumentText } from "@sparkle/icons/stroke";
+import { DocumentText, Image } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
 import {
   Confluence,
@@ -21,7 +21,8 @@ interface CitationProps {
     | "github"
     | "notion"
     | "intercom"
-    | "document";
+    | "document"
+    | "image";
   title: string;
   description?: string;
   index?: ReactNode;
@@ -30,7 +31,8 @@ interface CitationProps {
   size?: "xs" | "sm";
   sizing?: "fixed" | "fluid";
   onClose?: () => void;
-  avatarUrl?: string;
+  avatarSrc?: string;
+  imgSrc?: string;
 }
 
 const typeIcons = {
@@ -41,6 +43,7 @@ const typeIcons = {
   intercom: Intercom,
   notion: Notion,
   slack: Slack,
+  image: Image,
 };
 
 const typeSizing = {
@@ -58,13 +61,25 @@ export function Citation({
   href,
   onClose,
   isBlinking = false,
-  avatarUrl,
+  avatarSrc,
+  imgSrc,
 }: CitationProps) {
-  // Content of the card as a reusable variable to avoid duplication
   const cardContent = (
     <>
+      {type === "image" && imgSrc && (
+        <div
+          className="s-absolute s-left-0 s-top-0"
+          style={{
+            backgroundImage: `url(${imgSrc})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            height: "100%",
+            width: "100%",
+          }}
+        />
+      )}
       <div className="s-flex s-items-center s-gap-2">
-        {avatarUrl && <Avatar visual={avatarUrl} size="xs" />}
+        {avatarSrc && <Avatar visual={avatarSrc} size="xs" />}
         {index && (
           <div
             className={classNames(
@@ -78,7 +93,14 @@ export function Citation({
         <Icon visual={typeIcons[type]} className="s-text-element-700" />
         <div className="s-flex-grow s-text-xs" />
         {onClose && (
-          <IconButton icon={XCircleIcon} variant="tertiary" onClick={onClose} />
+          <div className="s-z-50 s-h-5 s-w-5 s-rounded-full s-bg-white">
+            <IconButton
+              icon={XCircleIcon}
+              variant="tertiary"
+              onClick={onClose}
+              className="s-z-50"
+            />
+          </div>
         )}
       </div>
       <Tooltip label={title} position="above">
@@ -107,7 +129,7 @@ export function Citation({
         target="_blank"
         rel="noopener noreferrer"
         className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
           isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
@@ -122,7 +144,7 @@ export function Citation({
         variant="secondary"
         size="sm"
         className={classNames(
-          "s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+          "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
           isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
