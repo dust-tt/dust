@@ -187,8 +187,8 @@ export async function emailAnswer({
 
   const msg = {
     from: {
-      name: `${agentConfiguration.name} (Dust)`,
-      email: `${agentConfiguration.name}@a.dust.tt`,
+      name: `${agentConfiguration.name} (No reply - Dust)`,
+      email: `noreply@dust.tt`,
     },
     subject: threadTitle,
     html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${agentConfiguration.name} at <a href="https://dust.tt">Dust.tt</a>`,
@@ -196,35 +196,3 @@ export async function emailAnswer({
 
   await sendEmail(user.email, msg);
 }
-
-async function send() {
-  const msg = {
-    from: {
-      name: `TheInternalSpoofer`,
-      email: `pr@dust.tt`,
-    },
-    subject: "Trying to spoof",
-    html: `This is a test email to see if we spoof`,
-  };
-
-  await sendEmail("test@a.dust.tt", msg);
-
-  const msg2 = {
-    from: {
-      name: `TheInternalSpoofer`,
-      email: `spolu@proton.com`,
-    },
-    subject: "Trying to spoof",
-    html: `This is a test email to see if we spoof`,
-  };
-
-  await sendEmail("test@a.dust.tt", msg2);
-}
-
-send()
-  .then(() => {
-    console.log("Email sent");
-  })
-  .catch((err) => {
-    console.log("Error sending email", err);
-  });
