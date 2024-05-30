@@ -8,6 +8,8 @@ import { Authenticator } from "@app/lib/auth";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
+const ASSISTANT_EMAIL_SUBDOMAIN = "a.dust.tt";
+
 export type GetResponseBody = {
   success: boolean;
   message?: string;
@@ -61,6 +63,7 @@ async function handler(
       let dkim: string | null = null;
       let to: string[] | null = null;
       let cc: string[] | null = null;
+      let bcc: string[] | null = null;
       let from: string | null = null;
 
       try {
@@ -72,8 +75,9 @@ async function handler(
           : null;
 
         if (envelope) {
-          to = envelope.to || null;
+          to = envelope.to || [];
           cc = envelope.cc || [];
+          bcc = envelope.bcc || [];
           from = envelope.from || [];
         }
       } catch (e) {
@@ -118,7 +122,38 @@ async function handler(
         });
       }
 
-      const matchRes = await emailMatcher({ senderEmail: from });
+      // find target email in [...to, ...cc, ...bcc], that is email whose domain
+      // is ASSISTANT_EMAIL_SUBDOMAIN
+      const targetEmails = [
+        ...(to ?? []),
+        ...(cc ?? []),
+        ...(bcc ?? []),
+      ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+
+      if (targetEmails.length === 0) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message: "No target email found",
+          },
+        });
+      }
+
+      if (targetEmails.length > 1) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Multiple target emails found",
+          },
+        });
+      }
+
+      const matchRes = await emailMatcher({
+        senderEmail: from,
+        targetEmail: targetEmails[0],
+      });
       if (matchRes.isErr()) {
         return apiError(req, res, {
           status_code: 401,
@@ -144,7 +179,6 @@ async function handler(
           },
         });
       }
-
 
       console.log({ text, SPF, dkim, to, from, cc });
 
