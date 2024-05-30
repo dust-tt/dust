@@ -179,11 +179,10 @@ async function handler(
         });
       }
 
-      console.log({ text, SPF, dkim, to, from, cc });
       void emailAnswer({
         auth,
         agentConfiguration: matchRes.value.agentConfiguration,
-        threadTitle: subject || "Email thread",
+        threadTitle: subject || "(no subject)",
         threadContent: text || "",
       });
 

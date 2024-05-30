@@ -125,8 +125,7 @@ export async function emailAnswer({
   const localLogger = logger.child({});
   const user = auth.user();
   if (!user) {
-    localLogger.error("[emailAnswer] No user found. Stopping.");
-    return;
+    throw new Error("No user on authenticator.");
   }
 
   const initialConversation = await createConversation(auth, {
@@ -173,6 +172,7 @@ export async function emailAnswer({
 
   if (!conversation) {
     localLogger.error("[emailAnswer] No conversation found. Stopping.");
+    // TODO send email to notify of problem
     return;
   }
 
@@ -185,7 +185,7 @@ export async function emailAnswer({
     "[emailAnswer] Created conversation."
   );
 
-  // Get first from array with type='agent_message' in conversation.content;
+  // Get first from array with type='agent_message' in conversation.content.
   const agentMessage = <AgentMessageType[]>conversation.content.find(
     (innerArray) => {
       return innerArray.find((item) => item.type === "agent_message");
@@ -195,13 +195,14 @@ export async function emailAnswer({
   const markDownAnswer =
     agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
   const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]), // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+    // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
   });
 
   const msg = {
     from: {
-      name: `${agentConfiguration.name} (No reply - Dust)`,
-      email: `noreply@dust.tt`,
+      name: `[Dust] Assistant Runner (${agentConfiguration.name})`,
+      email: `a+${agentConfiguration.name}@run.dust.help`,
     },
     subject: threadTitle,
     html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${
