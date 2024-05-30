@@ -9,6 +9,7 @@ import type {
 import { Err, isAgentMessageType, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
+import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
@@ -26,7 +27,6 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { Op } from "sequelize";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
@@ -63,7 +63,7 @@ export function getTargetEmailsForWorkspace({
   allTargetEmails: string[];
   workspace: LightWorkspaceType;
   isDefault: boolean;
-}) {
+}): string[] {
   return allTargetEmails.filter(
     (email) =>
       email.split("@")[0].endsWith(`[${workspace.sId}]`) ||

@@ -167,34 +167,41 @@ async function handler(
 
       const { user, workspaces, defaultWorkspace } = userRes.value;
 
-      for (const workspace of workspaces) {
+      // find target email in [...to, ...cc, ...bcc], that is email whose domain is
+      // ASSISTANT_EMAIL_SUBDOMAIN.
+      const allTargetEmails = [
+        ...(email.envelope.to ?? []),
+        ...(email.envelope.cc ?? []),
+        ...(email.envelope.bcc ?? []),
+      ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+
+      const workspacesAndEmails = workspaces
+        .map((workspace) => {
+          return {
+            workspace,
+            targetEmails: getTargetEmailsForWorkspace({
+              allTargetEmails,
+              workspace,
+              isDefault: workspace.sId === defaultWorkspace.sId,
+            }),
+          };
+        })
+        .filter(({ targetEmails }) => (targetEmails as string[]).length > 0);
+
+      if (workspacesAndEmails.length === 0) {
+        await replyToError(email, {
+          type: "invalid_email_error",
+          message:
+            `Failed to match any valid assistant email. ` +
+            `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+        });
+      }
+
+      for (const { workspace, targetEmails } of workspacesAndEmails) {
         const auth = await Authenticator.internalUserForWorkspace({
           user,
           workspace,
         });
-
-        // find target email in [...to, ...cc, ...bcc], that is email whose domain is
-        // ASSISTANT_EMAIL_SUBDOMAIN.
-        const allTargetEmails = [
-          ...(email.envelope.to ?? []),
-          ...(email.envelope.cc ?? []),
-          ...(email.envelope.bcc ?? []),
-        ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
-
-        const targetEmails = getTargetEmailsForWorkspace({
-          allTargetEmails,
-          workspace,
-          isDefault: workspace.sId === defaultWorkspace.sId,
-        });
-
-        if (targetEmails.length === 0) {
-          await replyToError(email, {
-            type: "invalid_email_error",
-            message:
-              `Failed to match any valid assistant email in workspace ${workspace.name} (${workspace.sId}). ` +
-              `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
-          });
-        }
 
         const matchRes = await emailAssistantMatcher({
           auth,
