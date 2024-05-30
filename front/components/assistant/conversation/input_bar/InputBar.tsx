@@ -369,6 +369,17 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 onInputFileChange={onInputFileChange}
                 disableSendButton={isProcessingContentFragment}
+                onDocumentSearchSelected={async (document) => {
+                  setDataSourceDocuments((prev) => prev.concat([
+                      {
+                        title: document.documentTitle,
+                        dataSourceName: document.dataSourceName,
+                        documentId: document.documentId,
+                        highlightedText: document.highlightedText,
+                      },
+                    ]),
+                  );
+                }}
               />
             </div>
           </div>

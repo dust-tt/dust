@@ -7,7 +7,7 @@ import {
   IconButton,
 } from "@dust-tt/sparkle";
 import type {
-  AgentMention,
+  AgentMention, DataSourceSearchResultType,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -27,7 +27,7 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onExistingDocumentSelected: (documentId: string) => Promise<void>;
+  onDocumentSearchSelected: (document: DataSourceSearchResultType) => Promise<void>;
   onInputFileChange: (e: React.ChangeEvent) => Promise<void>;
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
@@ -42,7 +42,7 @@ const InputBarContainer = ({
   agentConfigurations,
   onEnterKeyDown,
   onInputFileChange,
-  onExistingDocumentSelected,
+  onDocumentSearchSelected,
   owner,
   selectedAssistant,
   stickyMentions,
@@ -141,7 +141,7 @@ const InputBarContainer = ({
           <DocumentPicker
             owner={owner}
             size="sm"
-            onItemClick={(d) => onExistingDocumentSelected(d.document_id)}
+            onItemClick={onDocumentSearchSelected}
             showFooterButtons={true}
           />
           {!hideQuickActions && (
