@@ -1,5 +1,6 @@
 import type {
   AgentMessageType,
+  ConversationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   Result,
@@ -28,6 +29,16 @@ import logger from "@app/logger/logger";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
+export type EmailAnswerError = {
+  type:
+    | "unexpected_error"
+    | "user_not_found"
+    | "workspace_not_found"
+    | "agent_not_found"
+    | "message_creation_error";
+  message?: string;
+};
+
 export async function userAndWorkspaceFromEmail({
   email,
 }: {
@@ -38,9 +49,7 @@ export async function userAndWorkspaceFromEmail({
       workspace: LightWorkspaceType;
       user: UserType;
     },
-    {
-      type: "user_not_found" | "workspace_not_found";
-    }
+    EmailAnswerError
   >
 > {
   const user = await User.findOne({
@@ -83,9 +92,7 @@ export async function emailAssistantMatcher({
     {
       agentConfiguration: LightAgentConfigurationType;
     },
-    {
-      type: "agent_not_found";
-    }
+    EmailAnswerError
   >
 > {
   const agentConfigurations = await getAgentConfigurations({
@@ -126,11 +133,20 @@ export async function emailAnswer({
   agentConfiguration: LightAgentConfigurationType;
   threadTitle: string;
   threadContent: string;
-}) {
+}): Promise<
+  Result<
+    { conversation: ConversationType; htmlAnswer: string },
+    EmailAnswerError
+  >
+> {
   const localLogger = logger.child({});
   const user = auth.user();
   if (!user) {
-    throw new Error("No user on authenticator.");
+    // unreachable
+    return new Err({
+      type: "unexpected_error",
+      message: "No user on authenticator.",
+    });
   }
 
   const initialConversation = await createConversation(auth, {
@@ -170,7 +186,7 @@ export async function emailAnswer({
   );
 
   if (messageRes.isErr()) {
-    return new Err(new Error(messageRes.error.api_error.message));
+    return new Err({ type: "message_creation_error" });
   }
 
   const conversation = await getConversation(auth, initialConversation.sId);
@@ -178,7 +194,10 @@ export async function emailAnswer({
   if (!conversation) {
     localLogger.error("[emailAnswer] No conversation found. Stopping.");
     // TODO send email to notify of problem
-    return;
+    return new Err({
+      type: "unexpected_error",
+      message: "Conversation just created, not found",
+    });
   }
 
   localLogger.info(
@@ -204,22 +223,10 @@ export async function emailAnswer({
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
   });
 
-  await replyWithContent({
-    user,
-    agentConfiguration,
-    htmlContent: `<a href="https://dust.tt/w/${
-      auth.workspace()?.sId
-    }/assistant/${
-      conversation.sId
-    }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
-      agentConfiguration.name
-    } at <a href="https://dust.tt">Dust.tt</a>`,
-    threadTitle,
-    threadContent,
-  });
+  return new Ok({ conversation, htmlAnswer });
 }
 
-async function replyWithContent({
+export async function replyWithContent({
   user,
   agentConfiguration,
   htmlContent,

@@ -6,6 +6,7 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
   emailAssistantMatcher,
+  replyWithContent,
   userAndWorkspaceFromEmail,
 } from "@app/lib/api/assistant/email_answer";
 import { Authenticator } from "@app/lib/auth";
@@ -133,9 +134,11 @@ async function handler(
         });
       }
 
+      const { user, workspace } = userRes.value;
+
       const auth = await Authenticator.internalUserForWorkspace({
-        user: userRes.value.user,
-        workspace: userRes.value.workspace,
+        user,
+        workspace,
       });
 
       // find target email in [...to, ...cc, ...bcc], that is email whose domain is
@@ -181,11 +184,42 @@ async function handler(
         });
       }
 
-      void emailAnswer({
+      const { agentConfiguration } = matchRes.value;
+
+      const threadTitle = subject || "(no subject)";
+      const threadContent = text || "";
+      const answerRes = await emailAnswer({
         auth,
         agentConfiguration: matchRes.value.agentConfiguration,
-        threadTitle: subject || "(no subject)",
-        threadContent: text || "",
+        threadTitle,
+        threadContent,
+      });
+
+      if (answerRes.isErr()) {
+        // TODO send email to explain problem
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Failed to retrieve answer: ${answerRes.error.type}`,
+          },
+        });
+      }
+
+      const { conversation, htmlAnswer } = answerRes.value;
+
+      void replyWithContent({
+        user,
+        agentConfiguration,
+        htmlContent: `<a href="https://dust.tt/w/${
+          auth.workspace()?.sId
+        }/assistant/${
+          conversation.sId
+        }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
+          agentConfiguration.name
+        } at <a href="https://dust.tt">Dust.tt</a>`,
+        threadTitle,
+        threadContent,
       });
 
       return res.status(200).json({ success: true });
