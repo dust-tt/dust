@@ -6,7 +6,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, Ok, isAgentMessageType } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -159,17 +159,17 @@ export async function splitThreadContent(
 
 export async function emailAnswer({
   auth,
-  agentConfiguration,
+  agentConfigurations,
   threadTitle,
   threadContent,
 }: {
   auth: Authenticator;
-  agentConfiguration: LightAgentConfigurationType;
+  agentConfigurations: LightAgentConfigurationType[];
   threadTitle: string;
   threadContent: string;
 }): Promise<
   Result<
-    { conversation: ConversationType; htmlAnswer: string },
+    { conversation: ConversationType; htmlAnswers: Record<string, string> },
     EmailAnswerError
   >
 > {
@@ -204,12 +204,23 @@ export async function emailAnswer({
     },
   });
 
+  const content =
+    agentConfigurations
+      .map((agent) => {
+        return `:mention[${agent.name}]{sId=${agent.sId}}`;
+      })
+      .join(" ") + userMessage;
+
+  const mentions = agentConfigurations.map((agent) => {
+    return { configurationId: agent.sId };
+  });
+
   const messageRes = await postUserMessageWithPubSub(
     auth,
     {
       conversation: initialConversation,
-      content: `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${userMessage}`,
-      mentions: [{ configurationId: agentConfiguration.sId }],
+      content,
+      mentions,
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
         username: user.username,
@@ -245,21 +256,31 @@ export async function emailAnswer({
     "[emailAnswer] Created conversation."
   );
 
-  // Get first from array with type='agent_message' in conversation.content.
-  const agentMessage = <AgentMessageType[]>conversation.content.find(
-    (innerArray) => {
-      return innerArray.find((item) => item.type === "agent_message");
-    }
-  );
-
-  const markDownAnswer =
-    agentMessage && agentMessage[0].content ? agentMessage[0].content : "";
-  const htmlAnswer = sanitizeHtml(await marked.parse(markDownAnswer), {
-    // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+  // last version of messages
+  const agentMessages = agentConfigurations.map((ac) => {
+    return [ac.sId, (<AgentMessageType[]>conversation.content.find(
+        (innerArray) => {
+          const item = innerArray[-1];
+          return isAgentMessageType(item) && item.configuration.sId === ac.sId;
+        }
+      ))[-1]?.content ?? ""];
   });
 
-  return new Ok({ conversation, htmlAnswer });
+  const htmlAnswers = Object.fromEntries(
+    await Promise.all(
+      agentMessages.map(async ([ac, am]) => {
+        return [
+          ac,
+          sanitizeHtml(await marked.parse(am), {
+            // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
+            allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
+          }),
+        ];
+      })
+    )
+  );
+
+  return new Ok({ conversation, htmlAnswers });
 }
 
 export async function sendEmailAnswerOrError({
