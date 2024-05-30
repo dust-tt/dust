@@ -1,5 +1,6 @@
 import {
   ChatBubbleLeftRightIcon,
+  ClockIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -33,7 +34,8 @@ export type SubNavigationAssistantsId =
   | "workspace_assistants"
   | "personal_assistants"
   | "data_sources_url"
-  | "developers";
+  | "developers"
+  | "schedule";
 
 export type SubNavigationAdminId = "subscription" | "workspace" | "members";
 
@@ -195,6 +197,15 @@ export const subNavigationBuild = ({
         current: current === "developers",
         subMenuLabel: current === "developers" ? subMenuLabel : undefined,
         subMenu: current === "developers" ? subMenu : undefined,
+      },
+      {
+        id: "schedule",
+        label: "Schedule",
+        icon: ClockIcon,
+        href: `/w/${owner.sId}/builder/schedules`,
+        current: current === "schedule",
+        subMenuLabel: current === "schedule" ? subMenuLabel : undefined,
+        subMenu: current === "schedule" ? subMenu : undefined,
       },
     ],
   });
