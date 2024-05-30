@@ -26,6 +26,8 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
+export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
+
 export async function userAndWorkspaceFromEmail({
   email,
 }: {
@@ -205,7 +207,8 @@ export async function emailAnswer({
   const msg = {
     from: {
       name: `[Dust] Assistant Runner (${agentConfiguration.name})`,
-      email: `a@run.dust.help`,
+      email: `a@${ASSISTANT_EMAIL_SUBDOMAIN}`,
+      reply_to: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
     },
     subject: threadTitle,
     html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${

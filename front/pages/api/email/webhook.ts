@@ -3,6 +3,7 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
+  ASSISTANT_EMAIL_SUBDOMAIN,
   emailAnswer,
   emailAssistantMatcher,
   userAndWorkspaceFromEmail,
@@ -11,8 +12,6 @@ import { Authenticator } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
-
-const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
 export type GetResponseBody = {
   success: boolean;
