@@ -77,6 +77,14 @@ export function AssistantInputBar({
   const [contentFragmentData, setContentFragmentData] = useState<
     { title: string; content: string; file: File }[]
   >([]);
+  const [dataSourceDocuments, setDataSourceDocuments] = useState<
+    {
+      title: string;
+      dataSourceName: string;
+      documentId: string;
+      highlightedText: string;
+    }[]
+  >([]);
 
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
@@ -325,6 +333,23 @@ export function AssistantInputBar({
                       description={cf.content?.substring(0, 100)}
                       onClose={() => {
                         setContentFragmentData((prev) => {
+                          return prev.filter((_, index) => index !== i);
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {dataSourceDocuments.length > 0 && (
+                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
+                  {dataSourceDocuments.map((cf, i) => (
+                    <Citation
+                      key={`ds-document-${i}`}
+                      title={cf.title}
+                      size="xs"
+                      description={cf.highlightedText?.substring(0, 100)}
+                      onClose={() => {
+                        setDataSourceDocuments((prev) => {
                           return prev.filter((_, index) => index !== i);
                         });
                       }}
