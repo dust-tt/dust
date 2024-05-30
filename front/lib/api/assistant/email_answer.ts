@@ -234,8 +234,8 @@ export async function emailAnswer({
 
   const { userMessage, restOfThread } = await splitThreadContent(threadContent);
 
-  console.log("USER_MESSAGE", userMessage);
-  console.log("REST_OF_THREAD", restOfThread);
+  // console.log("USER_MESSAGE", userMessage);
+  // console.log("REST_OF_THREAD", restOfThread);
 
   await postNewContentFragment(auth, {
     conversation: initialConversation,

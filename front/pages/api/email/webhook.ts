@@ -221,7 +221,7 @@ async function handler(
 
         const { conversation, answers } = answerRes.value;
 
-        console.log(answers);
+        // console.log(answers);
 
         void replyToEmail({
           email,
