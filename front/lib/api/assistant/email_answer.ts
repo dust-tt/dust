@@ -135,6 +135,28 @@ export async function emailAssistantMatcher({
   });
 }
 
+export async function splitThreadContent(
+  threadContent: string
+): Promise<{ userMessage: string; restOfThread: string }> {
+  const lines = threadContent.split("\n");
+  let userMessage = "";
+  let restOfThread = "";
+  let foundUserMessage = false;
+  for (const line of lines) {
+    if (foundUserMessage) {
+      restOfThread += line + "\n";
+    } else {
+      if (line.startsWith("On ") && line.includes(" wrote:")) {
+        foundUserMessage = true;
+      } else {
+        userMessage += line + "\n";
+      }
+    }
+  }
+
+  return { userMessage, restOfThread };
+}
+
 export async function emailAnswer({
   auth,
   agentConfiguration,
@@ -166,10 +188,12 @@ export async function emailAnswer({
     visibility: "unlisted",
   });
 
+  const { userMessage, restOfThread } = await splitThreadContent(threadContent);
+
   await postNewContentFragment(auth, {
     conversation: initialConversation,
     title: `Email thread: ${threadTitle}`,
-    content: threadContent,
+    content: restOfThread,
     url: null,
     contentType: "file_attachment",
     context: {
@@ -184,7 +208,7 @@ export async function emailAnswer({
     auth,
     {
       conversation: initialConversation,
-      content: `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}}`,
+      content: `:mention[${agentConfiguration.name}]{sId=${agentConfiguration.sId}} ${userMessage}`,
       mentions: [{ configurationId: agentConfiguration.sId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
