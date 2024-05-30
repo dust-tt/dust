@@ -256,5 +256,5 @@ export async function replyWithContent({
     html,
   };
 
-  return await sendEmail(user.email, msg);
+  await sendEmail(user.email, msg);
 }

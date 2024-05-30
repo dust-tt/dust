@@ -1,4 +1,5 @@
-import type { WithAPIErrorReponse } from "@dust-tt/types";
+import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -14,9 +15,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
-export type GetResponseBody = {
+export type PostResponseBody = {
   success: boolean;
-  message?: string;
 };
 
 export const config = {
@@ -25,9 +25,66 @@ export const config = {
   },
 };
 
+// Parses the Sendgid webhook form data and validates it.
+const parseSendgridWebhookContent = async (
+  req: NextApiRequest
+): Promise<
+  Result<
+    {
+      subject: string;
+      text: string;
+      auth: { SPF: string; dkim: string };
+      envelope: {
+        to: string[];
+        cc: string[];
+        bcc: string[];
+        from: string;
+      };
+    },
+    Error
+  >
+> => {
+  const form = new IncomingForm();
+  const [fields] = await form.parse(req);
+
+  try {
+    const subject = fields["subject"] ? fields["subject"][0] : null;
+    const text = fields["text"] ? fields["text"][0] : null;
+    const SPF = fields["SPF"] ? fields["SPF"][0] : null;
+    const dkim = fields["dkim"] ? fields["dkim"][0] : null;
+    const envelope = fields["envelope"]
+      ? JSON.parse(fields["envelope"][0])
+      : null;
+
+    if (!envelope) {
+      return new Err(new Error("Failed to parse envelope"));
+    }
+
+    const from = envelope.from;
+
+    if (!from || typeof from !== "string") {
+      return new Err(new Error("Failed to parse envelope.from"));
+    }
+
+    return new Ok({
+      subject: subject || "(no subject)",
+      text: text || "",
+      auth: { SPF: SPF || "", dkim: dkim || "" },
+      envelope: {
+        to: envelope.to || [],
+        cc: envelope.cc || [],
+        bcc: envelope.bcc || [],
+        from,
+      },
+    });
+  } catch (e) {
+    return new Err(new Error("Failed to parse email content"));
+  }
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<GetResponseBody>>
+  res: NextApiResponse<WithAPIErrorReponse<PostResponseBody>>
 ): Promise<void> {
   switch (req.method) {
     case "POST":
@@ -59,58 +116,27 @@ async function handler(
         });
       }
 
-      const form = new IncomingForm();
-      const [fields] = await form.parse(req);
-
-      let subject: string | null = null;
-      let text: string | null = null;
-      let SPF: string | null = null;
-      let dkim: string | null = null;
-      let to: string[] | null = null;
-      let cc: string[] | null = null;
-      let bcc: string[] | null = null;
-      let from: string | null = null;
-
-      try {
-        subject = fields["subject"] ? fields["subject"][0] : null;
-        text = fields["text"] ? fields["text"][0] : null;
-        SPF = fields["SPF"] ? fields["SPF"][0] : null;
-        dkim = fields["dkim"] ? fields["dkim"][0] : null;
-        const envelope = fields["envelope"]
-          ? JSON.parse(fields["envelope"][0])
-          : null;
-
-        if (envelope) {
-          to = envelope.to || [];
-          cc = envelope.cc || [];
-          bcc = envelope.bcc || [];
-          from = envelope.from || [];
-        }
-      } catch (e) {
+      const emailRes = await parseSendgridWebhookContent(req);
+      if (emailRes.isErr()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: "Failed to parse email content",
+            message: emailRes.error.message,
           },
         });
       }
 
-      console.log("TEXT:\n```\n", text, "\n```");
-      console.log("SUBJECT:\n```\n", subject, "\n```");
+      const email = emailRes.value;
 
-      if (!text || !SPF || !dkim || !from) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Missing required email fields",
-          },
-        });
-      }
+      console.log("TEXT:\n```\n", email.text, "\n```");
+      console.log("SUBJECT:\n```\n", email.subject, "\n```");
 
       // Check SPF is pass.
-      if (SPF !== "pass" || dkim !== `{@${from.split("@")[1]} : pass}`) {
+      if (
+        email.auth.SPF !== "pass" ||
+        email.auth.dkim !== `{@${email.envelope.from.split("@")[1]} : pass}`
+      ) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -121,7 +147,7 @@ async function handler(
       }
 
       const userRes = await userAndWorkspaceFromEmail({
-        email: from,
+        email: email.envelope.from,
       });
       if (userRes.isErr()) {
         // TODO send email to explain problem
@@ -144,9 +170,9 @@ async function handler(
       // find target email in [...to, ...cc, ...bcc], that is email whose domain is
       // ASSISTANT_EMAIL_SUBDOMAIN.
       const targetEmails = [
-        ...(to ?? []),
-        ...(cc ?? []),
-        ...(bcc ?? []),
+        ...(email.envelope.to ?? []),
+        ...(email.envelope.cc ?? []),
+        ...(email.envelope.bcc ?? []),
       ].filter((email) => email.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
 
       if (targetEmails.length === 0) {
@@ -186,23 +212,20 @@ async function handler(
 
       const { agentConfiguration } = matchRes.value;
 
-      const threadTitle = subject || "(no subject)";
-      const threadContent = text || "";
       const answerRes = await emailAnswer({
         auth,
         agentConfiguration: matchRes.value.agentConfiguration,
-        threadTitle,
-        threadContent,
+        threadTitle: email.subject,
+        threadContent: email.text,
       });
 
       if (answerRes.isErr()) {
-        // TODO send email to explain problem
         void replyWithContent({
           user,
           agentConfiguration,
           htmlContent: `Error running ${agentConfiguration.name}: failed to retrieve answer. <br/><br/> Message: ${answerRes.error.type}`,
-          threadTitle,
-          threadContent,
+          threadTitle: email.subject,
+          threadContent: email.text,
         });
 
         return apiError(req, res, {
@@ -214,9 +237,12 @@ async function handler(
         });
       }
 
+      // At this stage we can reply to the webhook.
+      res.status(200).json({ success: true });
+
       const { conversation, htmlAnswer } = answerRes.value;
 
-      void replyWithContent({
+      await replyWithContent({
         user,
         agentConfiguration,
         htmlContent: `<a href="https://dust.tt/w/${
@@ -226,11 +252,11 @@ async function handler(
         }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
           agentConfiguration.name
         } at <a href="https://dust.tt">Dust.tt</a>`,
-        threadTitle,
-        threadContent,
+        threadTitle: email.subject,
+        threadContent: email.text,
       });
 
-      return res.status(200).json({ success: true });
+      return;
 
     default:
       return apiError(req, res, {
