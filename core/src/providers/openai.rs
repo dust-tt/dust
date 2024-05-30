@@ -12,6 +12,7 @@ use crate::utils;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use base64::decode;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
@@ -251,6 +252,18 @@ pub struct OpenAIChatMessage {
     pub tool_call_id: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct RawOpenAIChatMessage {
+    pub role: OpenAIChatMessageRole,
+    pub content: Option<Vec<ContentBlock>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<OpenAIToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenAIChatChoice {
     pub message: OpenAIChatMessage,
@@ -308,7 +321,17 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
         };
 
         Ok(ChatMessage {
-            content,
+            content: match content {
+                Some(c) => Some(
+                    c.into_iter()
+                        .map(|co| match co {
+                            ContentBlock::TextContent(u) => u.text,
+                            ContentBlock::ImageContent(u) => u.image_url.url,
+                        })
+                        .collect(),
+                ),
+                None => None,
+            },
             role,
             name,
             function_call,
@@ -316,6 +339,34 @@ impl TryFrom<&OpenAIChatMessage> for ChatMessage {
             function_call_id: None,
         })
     }
+}
+
+fn is_base64(s: &str) -> bool {
+    decode(s).is_ok()
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct TextContent {
+    pub r#type: String,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ImageUrlContent {
+    url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ImageContent {
+    pub r#type: String,
+    pub image_url: ImageUrlContent,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[serde(untagged)]
+enum ContentBlock {
+    TextContent(TextContent),
+    ImageContent(ImageContent),
 }
 
 impl TryFrom<&ChatMessage> for OpenAIChatMessage {
@@ -336,8 +387,25 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             _ => Ok((OpenAIChatMessageRole::from(&cm.role), None)),
         }?;
 
+        // Check if content is base 64 encode.
+        let content = match &cm.content {
+            Some(content) => match is_base64(content) {
+                true => Some(vec![ContentBlock::ImageContent(ImageContent {
+                    r#type: "image_url".to_string(),
+                    image_url: ImageUrlContent {
+                        url: format!("data:image/jpeg;base64,{}", content.to_string()),
+                    },
+                })]),
+                false => Some(vec![ContentBlock::TextContent(TextContent {
+                    r#type: "text".to_string(),
+                    text: content.to_string(),
+                })]),
+            },
+            None => None,
+        };
+
         Ok(OpenAIChatMessage {
-            content: cm.content.clone(),
+            content: content,
             name: cm.name.clone(),
             role,
             tool_call_id,
@@ -485,7 +553,6 @@ pub async fn streamed_completion(
 
     let mut body = json!({
         "prompt": prompt,
-        "max_tokens": max_tokens,
         "temperature": temperature,
         "n": n,
         "logprobs": logprobs,
@@ -499,6 +566,10 @@ pub async fn streamed_completion(
         "top_p": top_p,
         "stream": true,
     });
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+
     if user.is_some() {
         body["user"] = json!(user);
     }
@@ -1037,7 +1108,12 @@ pub async fn streamed_chat_completion(
                 .iter()
                 .map(|c| OpenAIChatChoice {
                     message: OpenAIChatMessage {
-                        content: Some("".to_string()),
+                        content: Some(vec![
+                        //     TextContent {
+                        //     r#type: "text".to_string(),
+                        //     text: "".to_string(),
+                        // }
+                        ]),
                         name: None,
                         role: OpenAIChatMessageRole::System,
                         tool_calls: None,
@@ -1075,15 +1151,42 @@ pub async fn streamed_chat_completion(
                     Some(content) => match content.as_str() {
                         None => (),
                         Some(s) => {
-                            c.choices[j].message.content = Some(format!(
-                                "{}{}",
-                                c.choices[j]
-                                    .message
-                                    .content
-                                    .as_ref()
-                                    .unwrap_or(&String::new()),
-                                s
-                            ));
+                            if let Some(ref mut message_content) = c.choices[j].message.content {
+                                match message_content.last_mut() {
+                                    Some(last_content) => match last_content {
+                                        ContentBlock::TextContent(txt_content) => {
+                                            let ref mut existing_text = txt_content.text;
+
+                                            *existing_text = format!("{}{}", existing_text, s);
+                                        }
+                                        _ => {
+                                            Err(anyhow!("Error paring Open AI streaming chunk"))?;
+                                        }
+                                    },
+                                    None => {
+                                        c.choices[j].message.content =
+                                            Some(vec![ContentBlock::TextContent(TextContent {
+                                                r#type: "text".to_string(),
+                                                text: s.to_string(),
+                                            })]);
+                                    }
+                                }
+                            } else {
+                                c.choices[j].message.content =
+                                    Some(vec![ContentBlock::TextContent(TextContent {
+                                        r#type: "text".to_string(),
+                                        text: s.to_string(),
+                                    })]);
+                            }
+                            // c.choices[j].message.content = Some(format!(
+                            //     "{}{}",
+                            //     c.choices[j]
+                            //         .message
+                            //         .content
+                            //         .as_ref()
+                            //         .unwrap_or(&String::new()),
+                            //     s
+                            // ));
                         }
                     },
                 };
@@ -1156,7 +1259,21 @@ pub async fn streamed_chat_completion(
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
             None => None,
-            Some(c) => Some(c.trim().to_string()),
+            Some(c) => Some(
+                c.into_iter()
+                    .map(|a| match a {
+                        ContentBlock::TextContent(t) => ContentBlock::TextContent(TextContent {
+                            r#type: t.r#type.clone(),
+                            text: t.text.trim().to_string(),
+                        }),
+                        // TODO:
+                        ContentBlock::ImageContent(i) => ContentBlock::TextContent(TextContent {
+                            r#type: i.r#type.clone(),
+                            text: i.image_url.url.trim().to_string(),
+                        }),
+                    })
+                    .collect(),
+            ),
         };
     }
 
@@ -1190,10 +1307,13 @@ pub async fn chat_completion(
             0 => None,
             _ => Some(stop),
         },
-        "max_tokens": max_tokens,
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
     });
+    if let Some(mt) = max_tokens {
+        body["max_tokens"] = mt.into();
+    }
+
     if user.is_some() {
         body["user"] = json!(user);
     }
@@ -1227,6 +1347,8 @@ pub async fn chat_completion(
         );
     }
 
+    println!("BODY: {:?}", body);
+
     let req = req.json(&body);
 
     let res = match timeout(Duration::new(180, 0), req.send()).await {
@@ -1243,6 +1365,8 @@ pub async fn chat_completion(
     let mut b: Vec<u8> = vec![];
     body.reader().read_to_end(&mut b)?;
     let c: &[u8] = &b;
+
+    println!("Raw content: {}", String::from_utf8_lossy(c));
 
     let mut completion: OpenAIChatCompletion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
@@ -1273,7 +1397,21 @@ pub async fn chat_completion(
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
             None => None,
-            Some(c) => Some(c.trim().to_string()),
+            Some(c) => Some(
+                c.into_iter()
+                    .map(|a| match a {
+                        ContentBlock::TextContent(t) => ContentBlock::TextContent(TextContent {
+                            r#type: t.r#type.clone(),
+                            text: t.text.trim().to_string(),
+                        }),
+                        // TODO:
+                        ContentBlock::ImageContent(i) => ContentBlock::TextContent(TextContent {
+                            r#type: i.r#type.clone(),
+                            text: i.image_url.url.trim().to_string(),
+                        }),
+                    })
+                    .collect(),
+            ),
         };
     }
 
