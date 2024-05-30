@@ -186,7 +186,7 @@ async function handler(
           await replyToError(email, {
             type: "invalid_email_error",
             message:
-              `Failed to match any valid assistant email. ` +
+              `Failed to match any valid assistant email in workspace ${workspace.name} (${workspace.sId}). ` +
               `Expected assistant email format: a+{ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
           });
         }
