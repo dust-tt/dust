@@ -1,17 +1,62 @@
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
-import {
+import type {
   AgentConfigurationType,
   AgentMessageType,
-  DustAPI,
-  Err,
+  LightWorkspaceType,
+  Result,
   UserType,
-  WorkspaceType,
 } from "@dust-tt/types";
+import { DustAPI, Err, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
+
+import { renderUserType } from "@app/lib/api/user";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { sendEmail } from "@app/lib/email";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
+
+export async function emailMatcher({
+  senderEmail,
+}: {
+  senderEmail: string;
+}): Promise<Result<{ workspace: LightWorkspaceType; user: UserType }, Error>> {
+  const userModel = await User.findOne({
+    where: { email: senderEmail },
+  });
+
+  if (!userModel) {
+    logger.error(
+      { senderEmail },
+      "[emailMatcher] No user found with this email."
+    );
+    return new Err(new Error("No user found with this email."));
+  }
+
+  const workspaceModel = await Workspace.findOne({
+    include: [
+      {
+        model: MembershipModel,
+        where: { userId: userModel.id },
+      },
+    ],
+  });
+
+  if (!workspaceModel) {
+    logger.error(
+      { senderEmail },
+      "[emailMatcher] No workspace found for this user."
+    );
+    return new Err(new Error("No workspace found for this user."));
+  }
+
+  return new Ok({
+    workspace: renderLightWorkspaceType({ workspace: workspaceModel }),
+    user: renderUserType(userModel),
+  });
+}
 
 export async function emailAnswer({
   owner,
@@ -20,16 +65,14 @@ export async function emailAnswer({
   threadTitle,
   threadContent,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   user: UserType;
   agentConfiguration: AgentConfigurationType;
   threadTitle: string;
   threadContent: string;
 }) {
   const localLogger = logger.child({});
-  const prodCredentials = await prodAPICredentialsForOwner(
-    renderLightWorkspaceType({ workspace: owner })
-  );
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
 
   const dustAPI = new DustAPI(prodCredentials, localLogger, {
     useLocalInDev: true,
