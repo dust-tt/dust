@@ -206,11 +206,11 @@ export async function emailAnswer({
 
   const msg = {
     from: {
-      name: `[Dust] Assistant Runner (${agentConfiguration.name})`,
+      name: `Dust (${agentConfiguration.name})`,
       email: `a@${ASSISTANT_EMAIL_SUBDOMAIN}`,
       reply_to: `a+${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`,
     },
-    subject: threadTitle,
+    subject: `Re: ${threadTitle}`,
     html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${
       conversation.sId
     }">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br /> ${
