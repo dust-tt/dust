@@ -237,16 +237,16 @@ async function handler(
 
         const { conversation, answers } = answerRes.value;
 
-        // console.log(answers);
-
-        void replyToEmail({
-          email,
-          agentConfiguration,
-          htmlContent: `<div><div>${
-            answers[0].html
-          }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
-            auth.workspace()?.sId
-          }/assistant/${conversation.sId}">Open in Dust</a></div>`,
+        answers.forEach(async (answer) => {
+          void replyToEmail({
+            email,
+            agentConfiguration: answer.agentConfiguration,
+            htmlContent: `<div><div>${
+              answer.html
+            }</div><br/><a href="${DUST_CLIENT_FACING_URL}/w/${
+              auth.workspace()?.sId
+            }/assistant/${conversation.sId}">Open in Dust</a></div>`,
+          });
         });
       }
       return;
