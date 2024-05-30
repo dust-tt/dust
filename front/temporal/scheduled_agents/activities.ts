@@ -4,11 +4,18 @@ import {
   eachDayOfInterval,
   endOfMonth,
   set,
+  startOfDay,
   startOfMonth,
-  startOfToday,
 } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  createConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import { Authenticator } from "@app/lib/auth";
+import { sendEmail } from "@app/lib/email";
 import { ScheduledAgentResource } from "@app/lib/resources/scheduled_agent_resource";
 
 // Returns the number of milliseconds to wait before running the scheduled agent.
@@ -34,6 +41,68 @@ export async function computeWaitTime(
   return calculateMillisecondsUntilNextSchedule(schedule);
 }
 
+export async function runAgent(scheduledAgentId: string): Promise<void> {
+  const scheduledAgent = await ScheduledAgentResource.getBySid(
+    scheduledAgentId
+  );
+  if (!scheduledAgent) {
+    throw new Error(`Scheduled agent not found.`);
+  }
+  const workspace = await scheduledAgent.getWorkspace();
+  if (!workspace) {
+    throw new Error(`Workspace not found.`);
+  }
+  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+
+  const agentConfiguration = await getAgentConfiguration(
+    auth,
+    scheduledAgent.agentConfigurationId
+  );
+  if (!agentConfiguration) {
+    throw new Error(`Agent configuration not found.`);
+  }
+
+  // Create conversation.
+  const timezone = scheduledAgent.timeZone;
+
+  const conversation = await createConversation(auth, {
+    title: `scheduledAgent.name`,
+    visibility: "unlisted",
+  });
+  const es = await postUserMessage(auth, {
+    conversation,
+    content: scheduledAgent.prompt ?? "",
+    mentions: [{ configurationId: agentConfiguration.sId }],
+    context: {
+      username: auth.user()?.username ?? "",
+      timezone: timezone,
+      fullName: auth.user()?.fullName ?? "",
+      email: auth.user()?.email ?? "",
+      profilePictureUrl: auth.user()?.image ?? "",
+    },
+  });
+  let res = "";
+  for await (const e of es) {
+    if (e.type === "agent_message_success") {
+      res = e.message.content ?? "";
+    }
+  }
+
+  if (scheduledAgent.emails) {
+    for (const e of scheduledAgent.emails) {
+      const message = {
+        from: {
+          name: agentConfiguration.name,
+          email: "team@dust.tt",
+        },
+        subject: `[Dust] ${agentConfiguration.name} has sent you a message.`,
+        html: `<p>${res}</p>`,
+      };
+      await sendEmail(e, message);
+    }
+  }
+}
+
 // Define the schedule interface
 interface ISchedule {
   timeOfDay: string; // Format: "HH:MM:SS"
@@ -54,7 +123,8 @@ function getNextWeeklyOccurrence(
     throw new Error("weeklyDaysOfWeek is required for weekly schedules");
   }
 
-  const today = startOfToday();
+  const today = getBeginningOfToday(schedule.timeZone);
+
   const scheduleTime = schedule.timeOfDay.split(":").map(Number);
 
   // Initialize next occurrence to today's date with the scheduled time.
@@ -76,6 +146,7 @@ function getNextWeeklyOccurrence(
 
   // If the closest day is today, and time has passed, skip to next day.
   if (closestDay === currDayInTz && nextOccurrence <= new Date()) {
+    nextOccurrence = addDays(nextOccurrence, 1);
     const nextDayIndex = daysOfWeek.indexOf(closestDay) + 1;
     const targetDayOfWeek = daysOfWeek[nextDayIndex % daysOfWeek.length];
     while (
@@ -196,11 +267,16 @@ function getBeginningAndEndOfMonth(timeZone: string, monthsOffset = 0) {
   return { startOfMonthUtc, endOfMonthUtc };
 }
 
+function getBeginningOfToday(timezone: string) {
+  const now = new Date();
+  return startOfDay(toZonedTime(now, timezone));
+}
+
 const s = {
-  timeOfDay: "15:24:00",
+  timeOfDay: "15:51:00",
   timeZone: "Europe/Paris",
   scheduleType: "weekly",
-  weeklyDaysOfWeek: [5],
+  weeklyDaysOfWeek: [4],
 } satisfies ISchedule;
 
 const occ = getNextWeeklyOccurrence(s);

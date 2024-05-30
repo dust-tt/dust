@@ -6,6 +6,10 @@ const { computeWaitTime } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minutes",
 });
 
+const { runAgent } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
+
 export async function scheduleAgentWorkflow({
   scheduledAgentId,
 }: {
@@ -14,5 +18,6 @@ export async function scheduleAgentWorkflow({
   for (;;) {
     const waitTime = await computeWaitTime(scheduledAgentId);
     await sleep(waitTime);
+    await runAgent(scheduledAgentId);
   }
 }
