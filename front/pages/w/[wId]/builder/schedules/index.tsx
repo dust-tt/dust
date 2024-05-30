@@ -9,16 +9,15 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import apiConfig from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import config from "@app/lib/labs/config";
-
+import type { ScheduledAgentResource } from "@app/lib/resources/scheduled_agent_resource";
+import {
+  useScheduledAgents,
+} from "@app/lib/swr";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   user: UserType;
   subscription: SubscriptionType;
   gaTrackingId: string;
-  nangoDriveConnectorId: string;
-  nangoGongConnectorId: string;
-  nangoPublicKey: string;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -41,20 +40,22 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       user,
       subscription,
       gaTrackingId: apiConfig.getGaTrackingId(),
-      nangoDriveConnectorId:
-        config.getNangoConnectorIdForProvider("google_drive"),
-      nangoGongConnectorId: config.getNangoConnectorIdForProvider("gong"),
-      nangoPublicKey: config.getNangoPublicKey(),
     },
   };
 });
 
-export default function LabsTranscriptsIndex({
+export default function SchedulesIndex({
   owner,
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
+
+  const {
+    scheduledAgents,
+    isScheduledAgentsLoading,
+    mutateScheduledAgents,
+  } = useScheduledAgents({ workspaceId: owner.sId });
 
   return (
     <AppLayout
@@ -70,7 +71,10 @@ export default function LabsTranscriptsIndex({
     >
       <NewScheduleModal
         isOpened={isFairUseModalOpened}
-        onClose={() => setIsFairUseModalOpened(false)}
+        onClose={async () => { 
+          await mutateScheduledAgents();
+          setIsFairUseModalOpened(false)
+        }}
         owner={owner}
       />
       <Page>
@@ -90,7 +94,15 @@ export default function LabsTranscriptsIndex({
             onClick: () => setIsFairUseModalOpened(true),
           }}
         />
-        <Page.Layout direction="vertical">Schedules here</Page.Layout>
+        {scheduledAgents && scheduledAgents.length > 0 && !isScheduledAgentsLoading && (
+        <Page.Layout direction="vertical">
+          {scheduledAgents.map((scheduledAgent) => (
+            <div key={scheduledAgent.sId}>
+              <div>{scheduledAgent.name}</div>
+            </div>
+          ))}
+        </Page.Layout>
+        )}
       </Page>
     </AppLayout>
   );

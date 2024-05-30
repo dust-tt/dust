@@ -46,6 +46,7 @@ import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { ListScheduledAgentsResponseBody } from "@app/pages/api/w/[wId]/scheduled_agents";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
@@ -1025,6 +1026,28 @@ export function useWorkspaceEnterpriseConnection({
     isEnterpriseConnectionLoading: !error && !data,
     isEnterpriseConnectionError: error,
     mutateEnterpriseConnection: mutate,
+  };
+}
+
+// Hackathon - Scheduled Agents
+export function useScheduledAgents({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const scheduledAgentsFetcher: Fetcher<ListScheduledAgentsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    `/api/w/${workspaceId}/scheduled_agents`,
+    scheduledAgentsFetcher
+  );
+
+  return {
+    scheduledAgents: data ? data.scheduledAgents : null,
+    isScheduledAgentsLoading: !error && !data,
+    isScheduledAgentsError: error,
+    mutateScheduledAgents: mutate,
   };
 }
 
