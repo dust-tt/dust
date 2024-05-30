@@ -5,19 +5,10 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { DustAPI, Err, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
-import { renderUserType } from "@app/lib/api/user";
-import { Authenticator, prodAPICredentialsForOwner } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
-import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { filterAndSortAgents } from "@app/lib/utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
@@ -25,6 +16,15 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { renderUserType } from "@app/lib/api/user";
+import { Authenticator } from "@app/lib/auth";
+import { sendEmail } from "@app/lib/email";
+import { User } from "@app/lib/models/user";
+import { Workspace } from "@app/lib/models/workspace";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { filterAndSortAgents } from "@app/lib/utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 
 export async function emailMatcher({
   senderEmail,
@@ -113,18 +113,21 @@ export async function emailMatcher({
 
 export async function emailAnswer({
   auth,
-  user,
   agentConfiguration,
   threadTitle,
   threadContent,
 }: {
   auth: Authenticator;
-  user: UserType;
   agentConfiguration: LightAgentConfigurationType;
   threadTitle: string;
   threadContent: string;
 }) {
   const localLogger = logger.child({});
+  const user = auth.user();
+  if (!user) {
+    localLogger.error("[emailAnswer] No user found. Stopping.");
+    return;
+  }
 
   const initialConversation = await createConversation(auth, {
     title: `Email thread: ${threadTitle}`,
