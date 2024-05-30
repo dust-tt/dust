@@ -29,6 +29,18 @@ import logger from "@app/logger/logger";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
+export type InboundEmail = {
+  subject: string;
+  text: string;
+  auth: { SPF: string; dkim: string };
+  envelope: {
+    to: string[];
+    cc: string[];
+    bcc: string[];
+    from: string;
+  };
+};
+
 export type EmailAnswerError = {
   type:
     | "unexpected_error"
