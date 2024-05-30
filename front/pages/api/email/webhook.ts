@@ -96,6 +96,9 @@ async function handler(
         });
       }
 
+      console.log("TEXT:\n```\n", text, "\n```");
+      console.log("SUBJECT:\n```\n", subject, "\n```");
+
       if (!text || !SPF || !dkim || !from) {
         return apiError(req, res, {
           status_code: 401,
@@ -174,7 +177,7 @@ async function handler(
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: `Failed to retrieve user from email: ${matchRes.error.type}}`,
+            message: `Failed to retrieve asssistant from email: ${matchRes.error.type}`,
           },
         });
       }
