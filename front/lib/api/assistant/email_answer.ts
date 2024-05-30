@@ -94,7 +94,10 @@ export async function emailAssistantMatcher({
     sort: undefined,
   });
 
-  const agentPrefix = targetEmail.split("@")[0];
+  const agentPrefix = targetEmail.split("@")[0].split("+")[1];
+
+  console.log("TARGET EMAIL", targetEmail);
+  console.log("AGENT PREFIX", agentPrefix);
 
   const matchingAgents = filterAndSortAgents(agentConfigurations, agentPrefix);
   if (matchingAgents.length === 0) {
@@ -202,7 +205,7 @@ export async function emailAnswer({
   const msg = {
     from: {
       name: `[Dust] Assistant Runner (${agentConfiguration.name})`,
-      email: `a+${agentConfiguration.name}@run.dust.help`,
+      email: `a@run.dust.help`,
     },
     subject: threadTitle,
     html: `<a href="https://dust.tt/w/${auth.workspace()?.sId}/assistant/${
