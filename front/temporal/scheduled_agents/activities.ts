@@ -93,6 +93,12 @@ function getNextWeeklyOccurrence(
     ) {
       nextOccurrence = addDays(nextOccurrence, 1);
     }
+  } else {
+    while (
+      getDayOfWeekInTimezone(nextOccurrence, schedule.timeZone) !== closestDay
+    ) {
+      nextOccurrence = addDays(nextOccurrence, 1);
+    }
   }
 
   return nextOccurrence;
@@ -155,6 +161,12 @@ function calculateMillisecondsUntilNextSchedule(schedule: ISchedule): number {
       ? getNextWeeklyOccurrence({ ...schedule, scheduleType: "weekly" })
       : getNextMonthlyOccurrence({ ...schedule, scheduleType: "monthly" });
 
+  console.log(
+    "\n\n\n------------\n\n\n",
+    nextOccurrence,
+    "\n\n\n------------\n\n\n"
+  );
+
   return nextOccurrence.getTime() - new Date().getTime();
 }
 
@@ -183,3 +195,14 @@ function getBeginningAndEndOfMonth(timeZone: string, monthsOffset = 0) {
 
   return { startOfMonthUtc, endOfMonthUtc };
 }
+
+const s = {
+  timeOfDay: "15:24:00",
+  timeZone: "Europe/Paris",
+  scheduleType: "weekly",
+  weeklyDaysOfWeek: [5],
+} satisfies ISchedule;
+
+const occ = getNextWeeklyOccurrence(s);
+
+console.log(`Next occurrence: ${occ}`);

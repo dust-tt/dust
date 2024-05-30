@@ -4,8 +4,8 @@ import { Worker } from "@temporalio/worker";
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import * as activities from "@app/temporal/scheduled_agents/activities";
 import { QUEUE_NAME } from "@app/temporal/scheduled_agents/config";
-import * as activities from "@app/temporal/scrub_workspace/activities";
 
 export async function runScheduledAgentsQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();

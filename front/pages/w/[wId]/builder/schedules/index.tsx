@@ -27,12 +27,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  if (
-    !owner ||
-    !owner.flags.includes("labs_transcripts") ||
-    !subscription ||
-    !user
-  ) {
+  if (!owner || !owner.flags.includes("scheduler") || !subscription || !user) {
     return {
       notFound: true,
     };
