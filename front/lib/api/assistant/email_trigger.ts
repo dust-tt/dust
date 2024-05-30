@@ -43,7 +43,7 @@ export type InboundEmail = {
   };
 };
 
-export type EmailAnswerError = {
+export type EmailTriggerError = {
   type:
     | "unexpected_error"
     | "unauthenticated_error"
@@ -83,7 +83,7 @@ export async function userAndWorkspacesFromEmail({
       user: UserType;
       defaultWorkspace: LightWorkspaceType;
     },
-    EmailAnswerError
+    EmailTriggerError
   >
 > {
   const user = await User.findOne({
@@ -148,7 +148,7 @@ export async function emailAssistantMatcher({
     {
       agentConfiguration: LightAgentConfigurationType;
     },
-    EmailAnswerError
+    EmailTriggerError
   >
 > {
   const agentConfigurations = await getAgentConfigurations({
@@ -199,16 +199,14 @@ export async function splitThreadContent(
   return { userMessage: userMessage.trim(), restOfThread: restOfThread.trim() };
 }
 
-export async function emailAnswer({
+export async function triggerFromEmail({
   auth,
   agentConfigurations,
-  threadTitle,
-  threadContent,
+  email,
 }: {
   auth: Authenticator;
   agentConfigurations: LightAgentConfigurationType[];
-  threadTitle: string;
-  threadContent: string;
+  email: InboundEmail;
 }): Promise<
   Result<
     {
@@ -219,7 +217,7 @@ export async function emailAnswer({
         html: string;
       }[];
     },
-    EmailAnswerError
+    EmailTriggerError
   >
 > {
   const localLogger = logger.child({});
@@ -233,11 +231,11 @@ export async function emailAnswer({
   }
 
   let conversation = await createConversation(auth, {
-    title: `Email: ${threadTitle}`,
+    title: `Email: ${email.subject}`,
     visibility: "unlisted",
   });
 
-  const { userMessage, restOfThread } = await splitThreadContent(threadContent);
+  const { userMessage, restOfThread } = await splitThreadContent(email.text);
 
   // console.log("USER_MESSAGE", userMessage);
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
@@ -245,7 +243,7 @@ export async function emailAnswer({
   if (restOfThread.length > 0) {
     await postNewContentFragment(auth, {
       conversation,
-      title: `Email thread: ${threadTitle}`,
+      title: `Email thread: ${email.subject}`,
       content: restOfThread,
       url: null,
       contentType: "file_attachment",
