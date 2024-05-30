@@ -78,12 +78,7 @@ export function Citation({
           }}
         />
       )}
-      <div
-        className={classNames(
-          "s-flex s-items-center s-gap-2",
-          type === "image" ? "s-min-h-7" : ""
-        )}
-      >
+      <div className="s-flex s-items-center s-gap-2">
         {avatarSrc && <Avatar visual={avatarSrc} size="xs" />}
         {index && (
           <div
@@ -142,7 +137,8 @@ export function Citation({
           "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+          type === "image" ? "s-min-h-20" : ""
         )}
       >
         {cardContent}
@@ -157,7 +153,8 @@ export function Citation({
           "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
           sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
           size === "sm" ? "sm:s-w-64" : "",
-          isBlinking ? "s-animate-[bgblink_500ms_3]" : ""
+          isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
+          type === "image" ? "s-min-h-20" : ""
         )}
       >
         {cardContent}

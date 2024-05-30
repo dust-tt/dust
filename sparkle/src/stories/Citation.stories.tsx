@@ -39,6 +39,14 @@ export const CitationsExample = () => (
         isBlinking={true}
         imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
       />
+      <div>
+        <Citation
+          title=""
+          size="xs"
+          type="image"
+          imgSrc="https://dust.tt/static/droidavatar/Droid_Black_4.jpg"
+        />
+      </div>
     </div>
     <h3>In Grid</h3>
     <div className="s-w-full">
