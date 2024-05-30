@@ -62,37 +62,33 @@ export function NewScheduleModal({
   };
 
   type Schedule = {
-    sId: string | null;
     name: string;
     timeOfDay: string;
-    timezone: string;
-    daysOfTheWeek: number[];
+    timeZone: string;
     agentConfigurationId: string;
     prompt: string;
     scheduleType: ScheduleType;
-    weeklyDaysOfWeek: number[];
-    monthlyNthDayOfWeek: number;
-    monthlyDayOfWeek: number;
-    monthlyFirstLast: string;
+    weeklyDaysOfWeek: number[] | null | undefined;
+    monthlyNthDayOfWeek: number | null | undefined;
+    monthlyDayOfWeek: number | null | undefined;
+    monthlyFirstLast: string | null | undefined;
     emails: string[];
-    slackChannelIds: string[];
+    slackChannelId: string | null;
   };
 
   const initialSchedule: Schedule = {
-    sId: null,
     name: "",
     timeOfDay: "00:00",
-    timezone: "UTC",
-    daysOfTheWeek: [1],
+    timeZone: "UTC",
     agentConfigurationId: "",
     prompt: "",
     scheduleType: "weekly",
-    weeklyDaysOfWeek: [1],
-    monthlyNthDayOfWeek: 1,
-    monthlyDayOfWeek: 1,
+    weeklyDaysOfWeek: [],
+    monthlyNthDayOfWeek: null,
+    monthlyDayOfWeek: null,
     monthlyFirstLast: "last",
     emails: [],
-    slackChannelIds: [],
+    slackChannelId: null,
   };
 
   const [schedule, setSchedule] = useState(initialSchedule);
@@ -118,10 +114,27 @@ export function NewScheduleModal({
   };
 
   const handleSave = async () => {
-    const res = await fetch(`/api/w/${owner.sId}/scheduled_agents`, {
-      method: "POST",
-      body: JSON.stringify(schedule),
-    });
+
+    const scheduleToSend = {
+     ...schedule
+    }
+
+    if(schedule.scheduleType === "monthly") {
+      delete scheduleToSend.weeklyDaysOfWeek;
+    }
+    if(schedule.scheduleType === "weekly") {
+      delete scheduleToSend.monthlyDayOfWeek;
+      delete scheduleToSend.monthlyFirstLast;
+      delete scheduleToSend.monthlyNthDayOfWeek;
+    }
+
+  const res = await fetch(`/api/w/${owner.sId}/scheduled_agents`, {
+  method: "POST",
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(scheduleToSend),
+});
 
     if (!res.ok) {
       sendNotification({
@@ -150,7 +163,7 @@ export function NewScheduleModal({
         await handleSave();
       }}
       variant="full-screen"
-      title={`${schedule.sId ? "Edit" : "New"} schedule`}
+      title={"Edit schedule"}
     >
       <Page.Layout direction="vertical" gap="lg">
         <div className="mt-4">
@@ -305,14 +318,14 @@ export function NewScheduleModal({
               <DropdownMenu>
                 <DropdownMenu.Button
                   type="select"
-                  label={schedule.timezone ? schedule.timezone : "Timezone"}
+                  label={schedule.timeZone ? schedule.timeZone : "Timezone"}
                 />
                 <DropdownMenu.Items origin="topLeft" width={300}>
                   {moment.tz.names().map((tz) => (
                     <DropdownMenu.Item
                       key={tz}
                       label={tz}
-                      onClick={() => setSchedule({ ...schedule, timezone: tz })}
+                      onClick={() => setSchedule({ ...schedule, timeZone: tz })}
                     />
                   ))}
                 </DropdownMenu.Items>

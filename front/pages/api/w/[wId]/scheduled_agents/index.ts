@@ -1,6 +1,7 @@
 import type { WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -95,7 +96,11 @@ async function handler(
       const bodyValidation = ScheduledAssistantPostOrPatchBodySchema.decode(
         req.body
       );
+
       if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        console.error('Validation errors:', pathError);
+
         return apiError(req, res, {
           status_code: 404,
           api_error: {
