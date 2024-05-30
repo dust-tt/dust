@@ -3,6 +3,8 @@ import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError, withLogging } from "@app/logger/withlogging";
+import { emailMatcher } from "./answer";
+import { Authenticator } from "@app/lib/auth";
 
 const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
@@ -115,6 +117,34 @@ async function handler(
           },
         });
       }
+
+      const matchRes = await emailMatcher({ senderEmail: from });
+      if (matchRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Failed to retrieve user from email: ${matchRes.error.message}}`,
+          },
+        });
+      }
+
+      const auth = await Authenticator.internalUserForWorkspace({
+        user: matchRes.value.user,
+        workspace: matchRes.value.workspace,
+      });
+
+      const owner = auth.workspace();
+      if (!owner) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "workspace_not_found",
+            message: "The workspace was not found.",
+          },
+        });
+      }
+
 
       console.log({ text, SPF, dkim, to, from, cc });
 

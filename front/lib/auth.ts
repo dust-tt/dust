@@ -365,6 +365,63 @@ export class Authenticator {
   }
 
   /**
+   * Creates an Authenticator for a given workspace and user. Used for internal use as a user.
+   * @param user UserType
+   * @param workspace LightWorkspaceType
+   */
+  static async internalUserForWorkspace({
+    user,
+    workspace,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+  }): Promise<Authenticator> {
+    const [w, u] = await Promise.all([
+      (async () => {
+        return Workspace.findOne({
+          where: {
+            sId: workspace.sId,
+          },
+        });
+      })(),
+      (async () => {
+        return User.findOne({
+          where: {
+            id: user.id,
+          },
+        });
+      })(),
+    ]);
+
+    let role = "none" as RoleType;
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (u && w) {
+      [role, subscription, flags] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: renderUserType(u),
+          workspace: renderLightWorkspaceType({ workspace: w }),
+        }).then((m) => m?.role ?? "none"),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace: w })),
+        FeatureFlag.findAll({
+          where: {
+            workspaceId: w.id,
+          },
+        }).then((flags) => flags.map((flag) => flag.name)),
+      ]);
+    }
+
+    return new Authenticator({
+      workspace: w,
+      user: u,
+      role,
+      subscription,
+      flags,
+    });
+  }
+
+  /**
    * Exchanges an Authenticator associated with a system key for one associated with a user.
    *
    * /!\ This function should only be used with Authenticators that are associated with a system key.
