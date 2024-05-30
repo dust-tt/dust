@@ -55,3 +55,12 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
+
+export type DataSourceSearchResultType = {
+  documentId: string;
+  dataSourceName: string;
+  documentTitle: string;
+  connectorProvider: ConnectorProvider | null;
+  highlightedText: string;
+  updatedAt: number;
+};
