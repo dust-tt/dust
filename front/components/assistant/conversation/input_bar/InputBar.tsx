@@ -75,15 +75,7 @@ export function AssistantInputBar({
   const { mutate } = useSWRConfig();
 
   const [contentFragmentData, setContentFragmentData] = useState<
-    { title: string; content: string; file: File }[]
-  >([]);
-  const [dataSourceDocuments, setDataSourceDocuments] = useState<
-    {
-      title: string;
-      dataSourceName: string;
-      documentId: string;
-      highlightedText: string;
-    }[]
+    { title: string; content: string; file: File | null }[]
   >([]);
 
   const { agentConfigurations: baseAgentConfigurations } =
@@ -161,17 +153,16 @@ export function AssistantInputBar({
       });
     }
 
-    onSubmit(
-      text,
-      mentions,
+    const contentFragmentInputs: ContentFragmentInput[] =
       contentFragmentData.map((cf) => {
         return {
           title: cf.title,
           content: cf.content,
           file: cf.file,
         };
-      })
-    );
+      });
+
+    onSubmit(text, mentions, contentFragmentInputs);
     resetEditorText();
     setContentFragmentData([]);
   };
@@ -340,23 +331,6 @@ export function AssistantInputBar({
                   ))}
                 </div>
               )}
-              {dataSourceDocuments.length > 0 && (
-                <div className="mr-4 flex gap-2 overflow-auto border-b border-structure-300/50 pb-3 pt-4">
-                  {dataSourceDocuments.map((cf, i) => (
-                    <Citation
-                      key={`ds-document-${i}`}
-                      title={cf.highlightedText}
-                      size="xs"
-                      description={cf.highlightedText?.substring(0, 100)}
-                      onClose={() => {
-                        setDataSourceDocuments((prev) => {
-                          return prev.filter((_, index) => index !== i);
-                        });
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
 
               <InputBarContainer
                 hideQuickActions={hideQuickActions}
@@ -370,16 +344,15 @@ export function AssistantInputBar({
                 onInputFileChange={onInputFileChange}
                 disableSendButton={isProcessingContentFragment}
                 onDocumentSearchSelected={async (document) => {
-                  setDataSourceDocuments((prev) =>
-                    prev.concat([
+                  setContentFragmentData((prev) => {
+                    return prev.concat([
                       {
                         title: document.documentTitle,
-                        dataSourceName: document.dataSourceName,
-                        documentId: document.documentId,
-                        highlightedText: document.highlightedText,
+                        content: document.documentContent,
+                        file: null,
                       },
-                    ])
-                  );
+                    ]);
+                  });
                 }}
               />
             </div>

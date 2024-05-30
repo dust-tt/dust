@@ -107,6 +107,7 @@ export async function dataSourceSearch({
       documentId: doc.documentId,
       dataSourceName: doc.dataSourceName,
       documentTitle: doc.title,
+      documentContent: doc.content,
       connectorProvider: doc.connectorProvider,
       highlightedText: snippet,
       updatedAt: new Date().getTime(),

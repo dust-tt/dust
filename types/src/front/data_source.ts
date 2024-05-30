@@ -60,6 +60,7 @@ export type DataSourceSearchResultType = {
   documentId: string;
   dataSourceName: string;
   documentTitle: string;
+  documentContent: string;
   connectorProvider: ConnectorProvider | null;
   highlightedText: string;
   updatedAt: number;

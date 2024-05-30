@@ -36,7 +36,7 @@ export type ConversationErrorType = {
 export type ContentFragmentInput = {
   title: string;
   content: string;
-  file: File;
+  file: File | null;
 };
 
 export function createPlaceholderUserMessage({
@@ -131,12 +131,15 @@ export async function submitMessage({
       }
       const cfData = (await mcfRes.json())
         .contentFragment as ContentFragmentType;
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId,
-        contentFragmentId: cfData.sId,
-        file: contentFragments[i].file,
-      });
+      const fileBrowserObject = contentFragments[i].file;
+      if (fileBrowserObject) {
+        uploadRawContentFragment({
+          workspaceId: owner.sId,
+          conversationId,
+          contentFragmentId: cfData.sId,
+          file: fileBrowserObject,
+        });
+      }
     }
   }
 
@@ -267,12 +270,15 @@ export async function createConversationWithMessage({
 
   if (conversationData.contentFragments.length > 0) {
     for (const [i, cf] of conversationData.contentFragments.entries()) {
-      uploadRawContentFragment({
-        workspaceId: owner.sId,
-        conversationId: conversationData.conversation.sId,
-        contentFragmentId: cf.sId,
-        file: contentFragments[i].file,
-      });
+      const fileBrowserObject = contentFragments[i].file;
+      if (fileBrowserObject) {
+        uploadRawContentFragment({
+          workspaceId: owner.sId,
+          conversationId: conversationData.conversation.sId,
+          contentFragmentId: cf.sId,
+          file: fileBrowserObject,
+        });
+      }
     }
   }
 
