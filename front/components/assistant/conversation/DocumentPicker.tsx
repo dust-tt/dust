@@ -1,6 +1,5 @@
 import {
   Button,
-  CloudArrowLeftRightIcon,
   DocumentPlusIcon,
   DocumentTextIcon,
   DropdownMenu,
@@ -9,7 +8,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { DataSourceSearchResultType } from "@dust-tt/types";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -18,13 +16,11 @@ export function DocumentPicker({
   owner,
   onItemClick,
   pickerButton,
-  showFooterButtons = true,
   size = "md",
 }: {
   owner: WorkspaceType;
   onItemClick: (document: DataSourceSearchResultType) => void;
   pickerButton?: React.ReactNode;
-  showFooterButtons?: boolean;
   size?: "sm" | "md";
 }) {
   const MIN_CHARACTERS_TO_SEARCH = 3;
@@ -33,6 +29,9 @@ export function DocumentPicker({
   const [searchedDocuments, setSearchedDocuments] = useState<
     DataSourceSearchResultType[]
   >([]);
+  const [clickedDocuments, setClickedDocuments] = useState<Set<string>>(
+    new Set()
+  );
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -66,6 +65,11 @@ export function DocumentPicker({
     return () => clearTimeout(timeout);
   }, [searchText, owner.sId]);
 
+  const handleAddClick = (document: DataSourceSearchResultType) => {
+    setClickedDocuments((prev) => new Set(prev).add(document.documentId));
+    onItemClick(document);
+  };
+
   return (
     <DropdownMenu>
       {() => (
@@ -79,46 +83,34 @@ export function DocumentPicker({
               <DropdownMenu.Button
                 icon={DocumentPlusIcon}
                 size={size}
-                tooltip="Pick an document"
+                tooltip="Pick a document"
                 tooltipPosition="above"
               />
             )}
           </div>
           <DropdownMenu.Items
             origin="auto"
-            width={500}
+            width={700} // Adjust width as needed
             topBar={
               <>
-                <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
+                <div className="flex flex-grow flex-row border-b border-structure-50 p-3">
                   <Searchbar
                     placeholder="Search"
                     name="input"
-                    size="xs"
+                    size="sm" // Increase search bar size
                     value={searchText}
                     onChange={setSearchText}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && searchedDocuments.length > 0) {
                         onItemClick(searchedDocuments[0]);
                         setSearchText("");
+                      } else if (e.key === "Space") {
+                        e.preventDefault();
                       }
                     }}
                   />
                 </div>
               </>
-            }
-            bottomBar={
-              showFooterButtons && (
-                <div className="flex border-t border-structure-50 p-2">
-                  <Link href={`/w/${owner.sId}/builder/data-sources/managed`}>
-                    <Button
-                      label="Manage data source"
-                      size="xs"
-                      variant="primary"
-                      icon={CloudArrowLeftRightIcon}
-                    />
-                  </Link>
-                </div>
-              )
             }
           >
             {loading ? (
@@ -127,11 +119,15 @@ export function DocumentPicker({
               searchedDocuments.map((d) => (
                 <div
                   key={`document-picker-container-${d.documentId}`}
-                  className="flex flex-row items-center justify-between pr-2"
+                  className="flex flex-row items-center justify-between pr-4" // Increase padding
                 >
                   <DropdownMenu.Item
                     key={`document-picker-${d.documentId}`}
-                    label={d.documentTitle}
+                    label={
+                      d.documentTitle.length > 60
+                        ? `${d.documentTitle.slice(0, 60)} ...`
+                        : d.documentTitle
+                    }
                     description={d.highlightedText}
                     icon={
                       d.connectorProvider
@@ -144,6 +140,15 @@ export function DocumentPicker({
                       setSearchText("");
                     }}
                   />
+                  <Button
+                    label="Add"
+                    className="ml-2 rounded bg-blue-500 px-2 py-1 text-white disabled:cursor-not-allowed disabled:bg-gray-300"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent the dropdown from closing
+                      handleAddClick(d);
+                    }}
+                    disabled={clickedDocuments.has(d.documentId)}
+                  />
                 </div>
               ))
             ) : searchText.length < MIN_CHARACTERS_TO_SEARCH ? (
@@ -153,7 +158,7 @@ export function DocumentPicker({
               </div>
             ) : (
               <div className="text-sm text-element-600">
-                No titles matches <b>"{searchText}"</b>.
+                No titles match <b>"{searchText}"</b>.
               </div>
             )}
           </DropdownMenu.Items>
