@@ -187,12 +187,6 @@ export function EditScheduleModal({
     >
       <Page>
         <Page.Layout direction="vertical" gap="lg">
-          <Page.Layout direction="horizontal" gap="md">
-            <Icon visual={ClockIcon} size="lg" className="text-emerald-500" />
-            Run an assistant regularly and send its results to a destination of
-            your choice.
-          </Page.Layout>
-
           <Page.H variant="h6">Name your schedule</Page.H>
           <Input
             name="scheduleName"
