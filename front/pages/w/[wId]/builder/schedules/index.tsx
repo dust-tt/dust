@@ -11,8 +11,8 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
+import type { ScheduledAgentType } from "@app/components/EditScheduleModal";
 import { EditScheduleModal } from "@app/components/EditScheduleModal";
-import type { ScheduledAgentType } from "@app/components/EditScheduleModal.tsx";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import apiConfig from "@app/lib/api/config";
@@ -74,9 +74,9 @@ export default function SchedulesIndex({
         isOpened={isFairUseModalOpened || !!editSchedule}
         editSchedule={editSchedule}
         onClose={async () => {
+          setIsFairUseModalOpened(false);
           await mutateScheduledAgents();
           setEditSchedule(null);
-          setIsFairUseModalOpened(false);
         }}
         owner={owner}
       />

@@ -1,9 +1,7 @@
 import {
   Checkbox,
-  ClockIcon,
   DropdownMenu,
   Hoverable,
-  Icon,
   Input,
   Modal,
   Page,
@@ -13,10 +11,12 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { Channel } from "@slack/web-api";
 import moment from "moment-timezone";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { getSlackClient } from "@app/lib/scheduled_agents/slack";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { isEmailValid } from "@app/lib/utils";
 
@@ -98,6 +98,21 @@ export function EditScheduleModal({
     setSchedule({ ...schedule, agentConfigurationId: assistant.sId });
   };
 
+  const getAvailableSlackChannels = useCallback(async () => {
+    const slackClient = await getSlackClient(owner.sId);
+    try {
+      const result = await slackClient.conversations.list();
+      const channels = result.channels;
+      return channels;
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      return [];
+    }
+  }, [owner.sId]);
+  const [availableSlackChannels, setAvailableSlackChannels] = useState<
+    Channel[] | null
+  >(null);
+
   const isScheduleValid = () => {
     if (!schedule.name) {
       return false;
@@ -172,8 +187,16 @@ export function EditScheduleModal({
 
   useEffect(() => {
     setSchedule(editSchedule || initialScheduleRef.current);
-  }, [editSchedule]);
+  }, [editSchedule, getAvailableSlackChannels]);
 
+  useEffect(() => {
+    const fetchSlackChannels = async () => {
+      const channels = await getAvailableSlackChannels();
+      setAvailableSlackChannels(channels || null);
+    };
+
+    void fetchSlackChannels();
+  }, []);
   return (
     <Modal
       isOpen={isOpened}
@@ -386,6 +409,39 @@ export function EditScheduleModal({
                 setSchedule({ ...schedule, emails: e.split(",").map((e) => e) })
               }
             />
+
+            {!!availableSlackChannels &&
+              availableSlackChannels.map((channel) => (
+                <Hoverable
+                  key={day.value}
+                  onClick={() =>
+                    setSchedule({
+                      ...schedule,
+                      weeklyDaysOfWeek: schedule.weeklyDaysOfWeek?.includes(
+                        day.value
+                      )
+                        ? schedule.weeklyDaysOfWeek.filter(
+                            (d) => d !== day.value
+                          )
+                        : [...(schedule.weeklyDaysOfWeek ?? []), day.value],
+                    })
+                  }
+                  className="my-1 flex w-full items-center"
+                >
+                  <Checkbox
+                    variant="checkable"
+                    className="ml-auto"
+                    checked={
+                      schedule.weeklyDaysOfWeek?.includes(day.value) || false
+                    }
+                    partialChecked={false}
+                    onChange={() => {}}
+                  />
+                  <div className="ml-2">
+                    <Page.P>{day.label}</Page.P>
+                  </div>
+                </Hoverable>
+              ))}
           </Page.Layout>
         </Page.Layout>
       </Page>
