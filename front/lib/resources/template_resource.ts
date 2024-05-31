@@ -145,6 +145,8 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       helpInstructions: this.helpInstructions,
       pictureUrl: this.pictureUrl,
       presetAction: this.presetAction,
+      timeFrameDuration: this.timeFrameDuration,
+      timeFrameUnit: this.timeFrameUnit,
       presetDescription: this.presetDescription,
       presetInstructions: this.presetInstructions,
       presetModelId: this.presetModelId,

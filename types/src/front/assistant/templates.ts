@@ -6,7 +6,11 @@ import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
-import { RetrievalConfigurationType } from "./actions/retrieval";
+import type { TimeframeUnit } from "./actions/retrieval";
+import {
+  RetrievalConfigurationType,
+  TimeframeUnitCodec,
+} from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
@@ -99,7 +103,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   dust_app_run_configuration: "Run Dust app",
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
-  process_configuration: "Process data sources",
+  process_configuration: "Extract data",
   websearch_configuration: "Web search",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
@@ -107,7 +111,6 @@ export const ActionPresetCodec = ioTsEnum<ActionPreset>(
   Object.keys(ACTION_PRESETS),
   "ActionPreset"
 );
-
 export const TEMPLATE_VISIBILITIES = [
   "draft",
   "published",
@@ -128,6 +131,8 @@ export const CreateTemplateFormSchema = t.type({
   description: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
+  timeFrameDuration: t.union([t.string, t.undefined]),
+  timeFrameUnit: t.union([TimeframeUnitCodec, t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
   presetAction: ActionPresetCodec,
@@ -141,7 +146,9 @@ export const CreateTemplateFormSchema = t.type({
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
 
 export function getAgentActionConfigurationType(
-  action: ActionPreset
+  action: ActionPreset,
+  timeFrameDuration?: number | null,
+  timeFrameUnit?: TimeframeUnit | null
 ): AgentActionConfigurationType | null {
   switch (action) {
     case "reply":
@@ -189,7 +196,10 @@ export function getAgentActionConfigurationType(
         dataSources: [],
         id: -1,
         tagsFilter: null,
-        relativeTimeFrame: "auto",
+        relativeTimeFrame: {
+          duration: timeFrameDuration || 1,
+          unit: timeFrameUnit || "day",
+        },
         sId: "template",
         schema: [],
         type: "process_configuration",

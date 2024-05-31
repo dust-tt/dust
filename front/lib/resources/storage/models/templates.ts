@@ -5,6 +5,7 @@ import type {
   ModelProviderIdType,
   TemplateTagCodeType,
   TemplateVisibility,
+  TimeframeUnit,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -38,6 +39,9 @@ export class TemplateModel extends Model<
   declare presetProviderId: ModelProviderIdType;
   declare presetModelId: ModelIdType;
   declare presetAction: ActionPreset;
+
+  declare timeFrameDuration: number | null;
+  declare timeFrameUnit: TimeframeUnit | null;
 
   declare helpInstructions: string | null;
   declare helpActions: string | null;
@@ -106,6 +110,14 @@ TemplateModel.init(
     presetAction: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    timeFrameDuration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    timeFrameUnit: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     helpInstructions: {
       type: DataTypes.TEXT,

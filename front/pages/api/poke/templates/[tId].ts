@@ -129,6 +129,10 @@ async function handler(
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
         presetAction: body.presetAction,
+        timeFrameDuration: body.timeFrameDuration
+          ? parseInt(body.timeFrameDuration)
+          : null,
+        timeFrameUnit: body.timeFrameUnit ?? null,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
