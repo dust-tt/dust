@@ -453,7 +453,7 @@ pub trait Splitter {
         provider_id: ProviderID,
         model_id: &str,
         max_chunk_size: usize,
-        sections: Section,
+        sections: &Section,
     ) -> Result<Vec<String>>;
 }
 
@@ -483,7 +483,7 @@ impl Splitter for BaseV0Splitter {
         provider_id: ProviderID,
         model_id: &str,
         max_chunk_size: usize,
-        section: Section,
+        section: &Section,
     ) -> Result<Vec<String>> {
         let mut embedder = provider(provider_id).embedder(model_id.to_string());
         embedder.initialize(credentials).await?;
@@ -491,7 +491,7 @@ impl Splitter for BaseV0Splitter {
         let mut now = utils::now();
 
         let tokenized_section =
-            TokenizedSection::from(&embedder, max_chunk_size, vec![], &section, None).await?;
+            TokenizedSection::from(&embedder, max_chunk_size, vec![], section, None).await?;
 
         info!(
             tokenized_section_tree_size = tokenized_section.size(),
@@ -537,18 +537,14 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let text = input;
+        let section = Section {
+            prefix: None,
+            content: Some(text.to_string()),
+            sections: vec![],
+        };
+
         let splitted = splitter(SplitterID::BaseV0)
-            .split(
-                credentials,
-                provider_id,
-                model_id,
-                max_chunk_size,
-                Section {
-                    prefix: None,
-                    content: Some(text.to_string()),
-                    sections: vec![],
-                },
-            )
+            .split(credentials, provider_id, model_id, max_chunk_size, &section)
             .await?;
 
         assert_eq!(&splitted.join(""), input);
@@ -616,7 +612,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 18, section)
+            .split(credentials, provider_id, model_id, 18, &section)
             .await
             .unwrap();
 
@@ -669,7 +665,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, section)
+            .split(credentials, provider_id, model_id, 12, &section)
             .await
             .unwrap();
 
@@ -724,7 +720,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, section)
+            .split(credentials, provider_id, model_id, 12, &section)
             .await
             .unwrap();
 
@@ -822,7 +818,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, section)
+            .split(credentials, provider_id, model_id, 12, &section)
             .await
             .unwrap();
 
@@ -880,7 +876,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 12, section)
+            .split(credentials, provider_id, model_id, 12, &section)
             .await
             .unwrap();
 
@@ -911,7 +907,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 8, section)
+            .split(credentials, provider_id, model_id, 8, &section)
             .await
             .unwrap();
 
@@ -957,7 +953,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 256, section)
+            .split(credentials, provider_id, model_id, 256, &section)
             .await
             .unwrap();
 
@@ -1005,7 +1001,7 @@ mod tests {
 
         // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
         splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 256, section)
+            .split(credentials, provider_id, model_id, 256, &section)
             .await
             .unwrap();
     }
@@ -1025,7 +1021,7 @@ mod tests {
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         splitter(SplitterID::BaseV0)
-            .split(credentials, provider_id, model_id, 256, section)
+            .split(credentials, provider_id, model_id, 256, &section)
             .await
             .unwrap();
     }

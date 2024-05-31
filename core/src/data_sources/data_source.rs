@@ -659,16 +659,49 @@ impl DataSource {
         field_name: &str,
         field_value: impl Into<Value>,
     ) -> Result<()> {
-        let qdrant_client = self.main_qdrant_client(&qdrant_clients);
-
         let mut payload = Payload::new();
         payload.insert(field_name, field_value.into());
+
+        // Update the document in the main embedder collection.
+        self.update_document_payload_for_embedder(
+            &qdrant_clients,
+            self.embedder_config(),
+            &document_id_hash,
+            payload.clone(),
+        )
+        .await?;
+
+        // Update the document in the shadow embedder collection, if set.
+        match self.shadow_embedder_config() {
+            Some(shadow_embedder_config) => {
+                self.update_document_payload_for_embedder(
+                    &qdrant_clients,
+                    shadow_embedder_config,
+                    &document_id_hash,
+                    payload,
+                )
+                .await
+            }
+            None => Ok(()),
+        }
+    }
+
+    async fn update_document_payload_for_embedder(
+        &self,
+        qdrant_clients: &QdrantClients,
+        embedder_config: &EmbedderConfig,
+        document_id_hash: &String,
+        payload: Payload,
+    ) -> Result<()> {
+        let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
         let filter = qdrant::Filter {
             must: vec![qdrant::FieldCondition {
                 key: "document_id_hash".to_string(),
                 r#match: Some(qdrant::Match {
-                    match_value: Some(qdrant::r#match::MatchValue::Keyword(document_id_hash)),
+                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                        document_id_hash.to_string(),
+                    )),
                 }),
                 ..Default::default()
             }
@@ -680,7 +713,7 @@ impl DataSource {
             Some(qdrant_client) => {
                 match qdrant_client
                     .set_payload(
-                        self.embedder_config(),
+                        embedder_config,
                         &self.internal_id,
                         filter.clone(),
                         payload.clone(),
@@ -691,7 +724,7 @@ impl DataSource {
                         info!(
                             data_source_internal_id = self.internal_id(),
                             cluster = ?self.shadow_write_qdrant_cluster(),
-                            collection = qdrant_client.collection_name(self.embedder_config()),
+                            collection = qdrant_client.collection_name(embedder_config),
                             "[SHADOW_WRITE_SUCCESS] Update payload"
                         );
                     }
@@ -699,7 +732,7 @@ impl DataSource {
                         error!(
                             data_source_internal_id = self.internal_id(),
                             cluster = ?self.shadow_write_qdrant_cluster(),
-                            collection = qdrant_client.collection_name(self.embedder_config()),
+                            collection = qdrant_client.collection_name(embedder_config),
                             error = %e,
                             "[SHADOW_WRITE_FAIL] Update payload"
                         );
@@ -710,7 +743,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .set_payload(&self.embedder_config(), &self.internal_id, filter, payload)
+            .set_payload(embedder_config, &self.internal_id, filter, payload)
             .await?;
 
         Ok(())
@@ -729,8 +762,6 @@ impl DataSource {
         text: Section,
         preserve_system_tags: bool,
     ) -> Result<Document> {
-        let qdrant_client = self.main_qdrant_client(&qdrant_clients);
-
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
         // tag prefix prevents having duplicate system tags or have users accidentally add system
@@ -801,7 +832,7 @@ impl DataSource {
         hasher.update(document_id.as_bytes());
         let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
-        let mut document = Document::new(
+        let document = Document::new(
             &self.data_source_id,
             document_id,
             timestamp,
@@ -852,6 +883,65 @@ impl DataSource {
             "Created document blob"
         );
 
+        // Upsert the document in the main embedder collection.
+        let main_collection_document = self
+            .upsert_for_embedder(
+                self.embedder_config(),
+                &credentials,
+                &qdrant_clients,
+                &document_id,
+                &document_id_hash,
+                document.clone(),
+                &document_hash,
+                &text,
+                // Cache is used for the main collection.
+                true,
+            )
+            .await?;
+
+        // Upsert the document in the shadow embedder collection, if set.
+        if let Some(shadow_embedder_config) = self.shadow_embedder_config() {
+            self.upsert_for_embedder(
+                shadow_embedder_config,
+                &credentials,
+                &qdrant_clients,
+                &document_id,
+                &document_id_hash,
+                document,
+                &document_hash,
+                &text,
+                // Cache is not used when writing to the shadow collection.
+                false,
+            )
+            .await?;
+        }
+
+        // Upsert document (SQL)
+        store
+            .upsert_data_source_document(
+                &self.project,
+                &self.data_source_id,
+                &main_collection_document,
+            )
+            .await?;
+
+        Ok(main_collection_document)
+    }
+
+    async fn upsert_for_embedder(
+        &self,
+        embedder_config: &EmbedderConfig,
+        credentials: &Credentials,
+        qdrant_clients: &QdrantClients,
+        document_id: &str,
+        document_id_hash: &str,
+        mut document: Document,
+        document_hash: &str,
+        text: &Section,
+        use_cache: bool,
+    ) -> Result<Document> {
+        let qdrant_client = self.main_qdrant_client(qdrant_clients);
+
         let now = utils::now();
 
         // ChunkInfo is used to store the chunk text and associated hash to avoid recomputing the
@@ -862,12 +952,12 @@ impl DataSource {
         }
 
         // Split text in chunks.
-        let splits = splitter(self.embedder_config().splitter_id)
+        let splits = splitter(embedder_config.splitter_id)
             .split(
                 credentials.clone(),
-                self.embedder_config().provider_id,
-                &self.embedder_config().model_id,
-                self.embedder_config().max_chunk_size,
+                embedder_config.provider_id,
+                &embedder_config.model_id,
+                embedder_config.max_chunk_size,
                 text,
             )
             .await?;
@@ -890,81 +980,86 @@ impl DataSource {
             document_id = document_id,
             split_counts = splits.len(),
             duration = utils::now() - now,
+            collection = qdrant_client.collection_name(embedder_config),
             "Splitted document"
         );
 
         let now = utils::now();
         let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
-        let mut page_offset: Option<PointId> = None;
-        loop {
-            let scroll_results = qdrant_client
-                .scroll(
-                    self.embedder_config(),
-                    &self.internal_id,
-                    Some(qdrant::Filter {
-                        must_not: vec![],
-                        should: vec![],
-                        must: vec![qdrant::FieldCondition {
-                            key: "document_id_hash".to_string(),
-                            r#match: Some(qdrant::Match {
-                                match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                                    document_id_hash.clone(),
-                                )),
-                            }),
-                            ..Default::default()
-                        }
-                        .into()],
-                        min_should: None,
-                    }),
-                    Some(1024),
-                    page_offset,
-                    Some(true.into()),
-                )
-                .await?;
 
-            for result in &scroll_results.result {
-                if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
-                    result.payload.get("text").and_then(|t| t.kind.as_ref())
-                {
-                    if let Some(VectorsOptions::Vector(v)) = result
-                        .vectors
-                        .as_ref()
-                        .and_then(|v| v.vectors_options.as_ref())
+        if use_cache {
+            let mut page_offset: Option<PointId> = None;
+            loop {
+                let scroll_results = qdrant_client
+                    .scroll(
+                        embedder_config,
+                        &self.internal_id,
+                        Some(qdrant::Filter {
+                            must_not: vec![],
+                            should: vec![],
+                            must: vec![qdrant::FieldCondition {
+                                key: "document_id_hash".to_string(),
+                                r#match: Some(qdrant::Match {
+                                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                                        document_id_hash.to_string(),
+                                    )),
+                                }),
+                                ..Default::default()
+                            }
+                            .into()],
+                            min_should: None,
+                        }),
+                        Some(1024),
+                        page_offset,
+                        Some(true.into()),
+                    )
+                    .await?;
+
+                for result in &scroll_results.result {
+                    if let Some(qdrant::value::Kind::StringValue(chunk_text)) =
+                        result.payload.get("text").and_then(|t| t.kind.as_ref())
                     {
-                        let text_hash = format!(
-                            "{}",
-                            blake3::Hasher::new()
-                                .update(chunk_text.as_bytes())
-                                .finalize()
-                                .to_hex()
-                        );
+                        if let Some(VectorsOptions::Vector(v)) = result
+                            .vectors
+                            .as_ref()
+                            .and_then(|v| v.vectors_options.as_ref())
+                        {
+                            let text_hash = format!(
+                                "{}",
+                                blake3::Hasher::new()
+                                    .update(chunk_text.as_bytes())
+                                    .finalize()
+                                    .to_hex()
+                            );
 
-                        embeddings.insert(
-                            text_hash,
-                            EmbedderVector {
-                                created: document.created,
-                                vector: v.data.iter().map(|&v| v as f64).collect(),
-                                model: self.embedder_config().model_id.clone(),
-                                provider: self.embedder_config().provider_id.to_string(),
-                            },
-                        );
+                            embeddings.insert(
+                                text_hash,
+                                EmbedderVector {
+                                    created: document.created,
+                                    vector: v.data.iter().map(|&v| v as f64).collect(),
+                                    model: embedder_config.model_id.clone(),
+                                    provider: embedder_config.provider_id.to_string(),
+                                },
+                            );
+                        }
                     }
                 }
-            }
 
-            page_offset = scroll_results.next_page_offset;
-            if page_offset.is_none() {
-                break;
+                page_offset = scroll_results.next_page_offset;
+                if page_offset.is_none() {
+                    info!(
+                        data_source_internal_id = self.internal_id(),
+                        document_id = document_id,
+                        chunk_count = embeddings.len(),
+                        duration = utils::now() - now,
+                        collection = qdrant_client.collection_name(embedder_config),
+                        "Finished retrieving cache from Qdrant"
+                    );
+
+                    break;
+                }
             }
         }
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            chunk_count = embeddings.len(),
-            duration = utils::now() - now,
-            "Finished retrieving cache from Qdrant"
-        );
 
         let now = utils::now();
 
@@ -982,8 +1077,8 @@ impl DataSource {
         // Embed batched chunks sequentially.
         for chunk in chunked_splits {
             let r = EmbedderRequest::new(
-                self.embedder_config().provider_id.clone(),
-                &self.embedder_config().model_id,
+                embedder_config.provider_id.clone(),
+                &embedder_config.model_id,
                 chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
                 self.config.extras.clone(),
             );
@@ -1003,6 +1098,7 @@ impl DataSource {
             document_id = document_id,
             chunk_count = splits_to_embbed.len(),
             duration = utils::now() - now,
+            collection = qdrant_client.collection_name(embedder_config),
             "Finished embedding chunks"
         );
 
@@ -1038,7 +1134,7 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
         document.chunk_count = document.chunks.len();
-        document.token_count = Some(document.chunks.len() * self.embedder_config().max_chunk_size);
+        document.token_count = Some(document.chunks.len() * embedder_config.max_chunk_size);
 
         let now = utils::now();
 
@@ -1050,7 +1146,7 @@ impl DataSource {
                 key: "document_id_hash".to_string(),
                 r#match: Some(qdrant::Match {
                     match_value: Some(qdrant::r#match::MatchValue::Keyword(
-                        document_id_hash.clone(),
+                        document_id_hash.to_string().clone(),
                     )),
                 }),
                 ..Default::default()
@@ -1061,14 +1157,14 @@ impl DataSource {
 
         match self.shadow_write_qdrant_client(&qdrant_clients) {
             Some(qdrant_client) => match qdrant_client
-                .delete_points(self.embedder_config(), &self.internal_id, filter.clone())
+                .delete_points(embedder_config, &self.internal_id, filter.clone())
                 .await
             {
                 Ok(_) => {
                     info!(
                         data_source_internal_id = self.internal_id(),
                         cluster = ?self.shadow_write_qdrant_cluster(),
-                        collection = qdrant_client.collection_name(self.embedder_config()),
+                        collection = qdrant_client.collection_name(embedder_config),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
                     );
                 }
@@ -1076,7 +1172,7 @@ impl DataSource {
                     error!(
                         data_source_internal_id = self.internal_id(),
                         cluster = ?self.shadow_write_qdrant_cluster(),
-                        collection = qdrant_client.collection_name(self.embedder_config()),
+                        collection = qdrant_client.collection_name(embedder_config),
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
@@ -1086,7 +1182,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .delete_points(self.embedder_config(), &self.internal_id, filter)
+            .delete_points(embedder_config, &self.internal_id, filter)
             .await?;
 
         info!(
@@ -1111,7 +1207,7 @@ impl DataSource {
                 payload.insert("data_source_id", self.data_source_id.clone());
                 payload.insert("data_source_internal_id", self.internal_id.clone());
                 payload.insert("document_id", document.document_id.clone());
-                payload.insert("document_id_hash", document_id_hash.clone());
+                payload.insert("document_id_hash", document_id_hash);
                 payload.insert("text", c.text.clone());
 
                 qdrant::PointStruct::new(
@@ -1154,14 +1250,14 @@ impl DataSource {
                 match self.shadow_write_qdrant_client(&qdrant_clients) {
                     Some(qdrant_client) => {
                         match qdrant_client
-                            .upsert_points(self.embedder_config(), &self.internal_id, chunk.clone())
+                            .upsert_points(embedder_config, &self.internal_id, chunk.clone())
                             .await
                         {
                             Ok(_) => {
                                 info!(
                                     data_source_internal_id = self.internal_id(),
                                     cluster = ?self.shadow_write_qdrant_cluster(),
-                                    collection = qdrant_client.collection_name(self.embedder_config()),
+                                    collection = qdrant_client.collection_name(embedder_config),
                                     "[SHADOW_WRITE_SUCCESS] Upsert points"
                                 )
                             }
@@ -1169,7 +1265,7 @@ impl DataSource {
                                 error!(
                                     data_source_internal_id = self.internal_id(),
                                     cluster = ?self.shadow_write_qdrant_cluster(),
-                                    collection = qdrant_client.collection_name(self.embedder_config()),
+                                    collection = qdrant_client.collection_name(embedder_config),
                                     error = %e,
                                     "[SHADOW_WRITE_FAIL] Upsert points"
                                 );
@@ -1180,13 +1276,14 @@ impl DataSource {
                 }
 
                 qdrant_client
-                    .upsert_points(self.embedder_config(), &self.internal_id, chunk)
+                    .upsert_points(embedder_config, &self.internal_id, chunk)
                     .await?;
 
                 info!(
                     data_source_internal_id = self.internal_id(),
                     points_count = chunk_len,
                     duration = utils::now() - now,
+                    collection = qdrant_client.collection_name(embedder_config),
                     "Success upserting chunk in Qdrant"
                 );
             }
@@ -1197,13 +1294,9 @@ impl DataSource {
             document_id = document_id,
             points_count = points_len,
             duration = utils::now() - start,
+            collection = qdrant_client.collection_name(embedder_config),
             "Inserted vectors in Qdrant"
         );
-
-        // Upsert document (SQL)
-        store
-            .upsert_data_source_document(&self.project, &self.data_source_id, &document)
-            .await?;
 
         Ok(document)
     }
@@ -1815,8 +1908,36 @@ impl DataSource {
         qdrant_clients: QdrantClients,
         document_id: &str,
     ) -> Result<()> {
+        // Delete the document in the main embedder collection.
+        self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
+            .await?;
+
+        // Delete the document in the shadow embedder collection, if set.
+        match self.shadow_embedder_config() {
+            Some(shadow_embedder_config) => {
+                self.delete_document_for_embedder(
+                    shadow_embedder_config,
+                    &qdrant_clients,
+                    document_id,
+                )
+                .await
+            }
+            None => Ok(()),
+        }?;
+
+        // Delete document (SQL)
+        store
+            .delete_data_source_document(&self.project, &self.data_source_id, document_id)
+            .await
+    }
+
+    async fn delete_document_for_embedder(
+        &self,
+        embedder_config: &EmbedderConfig,
+        qdrant_clients: &QdrantClients,
+        document_id: &str,
+    ) -> Result<()> {
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
-        let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
@@ -1841,14 +1962,14 @@ impl DataSource {
 
         match self.shadow_write_qdrant_client(&qdrant_clients) {
             Some(qdrant_client) => match qdrant_client
-                .delete_points(self.embedder_config(), &self.internal_id, filter.clone())
+                .delete_points(embedder_config, &self.internal_id, filter.clone())
                 .await
             {
                 Ok(_) => {
                     info!(
                         data_source_internal_id = self.internal_id(),
                         cluster = ?self.shadow_write_qdrant_cluster(),
-                        collection = qdrant_client.collection_name(self.embedder_config()),
+                        collection = qdrant_client.collection_name(embedder_config),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
                     );
                 }
@@ -1856,7 +1977,7 @@ impl DataSource {
                     error!(
                         data_source_internal_id = self.internal_id(),
                         cluster = ?self.shadow_write_qdrant_cluster(),
-                        collection = qdrant_client.collection_name(self.embedder_config()),
+                        collection = qdrant_client.collection_name(embedder_config),
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
@@ -1866,12 +1987,7 @@ impl DataSource {
         }
 
         qdrant_client
-            .delete_points(self.embedder_config(), &self.internal_id, filter)
-            .await?;
-
-        // Delete document (SQL)
-        store
-            .delete_data_source_document(&self.project, &self.data_source_id, document_id)
+            .delete_points(embedder_config, &self.internal_id, filter)
             .await?;
 
         Ok(())
@@ -1886,6 +2002,12 @@ impl DataSource {
         if self.shadow_write_qdrant_cluster().is_some() {
             Err(anyhow!(
                 "Cannot delete data source with a shadow_write_cluster set"
+            ))?;
+        }
+
+        if self.shadow_embedder_config().is_some() {
+            Err(anyhow!(
+                "Cannot delete data source with a shadow_embedder_config set"
             ))?;
         }
 
