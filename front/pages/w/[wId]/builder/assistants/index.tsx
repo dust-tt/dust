@@ -11,7 +11,7 @@ import {
   RobotSharedIcon,
   Searchbar,
   SliderToggle,
-  Tab
+  Tab,
 } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, SubscriptionType } from "@dust-tt/types";
 import type {
@@ -22,7 +22,7 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import {  useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -170,8 +170,8 @@ export default function WorkspaceAssistants({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent ) => {
-      if (event.key === '/') {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "/") {
         event.preventDefault();
         if (searchBarRef.current) {
           searchBarRef.current.focus();
@@ -179,9 +179,9 @@ export default function WorkspaceAssistants({
       }
     };
 
-    window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener("keydown", handleKeyPress);
     return () => {
-      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener("keydown", handleKeyPress);
     };
   }, []);
 
