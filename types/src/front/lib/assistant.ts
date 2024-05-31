@@ -216,7 +216,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
-  supportsMultiActions: false,
+  supportsMultiActions: true,
 };
 export const MISTRAL_SMALL_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -257,6 +257,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  MISTRAL_SMALL_LEGACY_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ];
 
