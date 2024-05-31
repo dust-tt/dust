@@ -1,5 +1,4 @@
 import {
-  Button,
   ColorPicker,
   DropdownMenu,
   EmojiPicker,
@@ -85,11 +84,13 @@ function InputField({
   name,
   title,
   placeholder,
+  type = "text",
 }: {
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   title?: string;
   placeholder?: string;
+  type?: string;
 }) {
   return (
     <PokeFormField
@@ -99,7 +100,7 @@ function InputField({
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
-            <PokeInput placeholder={placeholder ?? name} {...field} />
+            <PokeInput placeholder={placeholder ?? name} type={type} {...field} />
           </PokeFormControl>
           <PokeFormMessage />
         </PokeFormItem>
@@ -444,6 +445,9 @@ function TemplatesPage({
     },
   });
 
+  const presetAction = form.watch('presetAction');
+
+
   useEffect(() => {
     if (assistantTemplate) {
       // Override default values of the form with existing template.
@@ -542,6 +546,7 @@ function TemplatesPage({
                     display: v,
                   }))}
                 />
+                {presetAction === 'process_configuration' && (
                 <div className={"flex flex-row items-center gap-4 pb-4"}>
                   <div className="text-sm font-semibold text-element-900">
                     From the last
@@ -550,6 +555,7 @@ function TemplatesPage({
                     control={form.control}
                     name="timeFrameDuration"
                     placeholder="1"
+                    type="number"
                   />
                   <SelectField
                     control={form.control}
@@ -563,6 +569,7 @@ function TemplatesPage({
                     )}
                   />
                 </div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
