@@ -523,12 +523,12 @@ export async function upsertTableFromCsv({
         config: { ...e.config, data: undefined },
       };
       localLogger.error(
-        { error: sanitizedError },
-        "Error uploading structured data to Dust."
+        { error: sanitizedError, payload: dustRequestPayload },
+        "Axios error uploading structured data to Dust."
       );
     } else if (e instanceof Error) {
       localLogger.error(
-        { error: e.message },
+        { error: e.message, payload: dustRequestPayload },
         "Error uploading structured data to Dust."
       );
     } else {
