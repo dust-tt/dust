@@ -99,6 +99,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       templateId,
       flow
     );
+
     if (agentConfigRes.isErr()) {
       return {
         notFound: true,

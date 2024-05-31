@@ -25,7 +25,11 @@ export async function generateMockAgentConfigurationFromTemplate(
 
   return new Ok({
     actions: removeNulls([
-      getAgentActionConfigurationType(template.presetAction),
+      getAgentActionConfigurationType(
+        template.presetAction,
+        template.timeFrameDuration,
+        template.timeFrameUnit
+      ),
     ]),
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",

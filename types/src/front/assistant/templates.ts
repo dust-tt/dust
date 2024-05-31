@@ -7,8 +7,7 @@ import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
 import type { TimeframeUnit } from "./actions/retrieval"
-import { TIME_FRAME_UNITS } from "./actions/retrieval"
-import { RetrievalConfigurationType } from "./actions/retrieval";
+import { RetrievalConfigurationType, TimeframeUnitCodec } from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
@@ -109,10 +108,6 @@ export const ActionPresetCodec = ioTsEnum<ActionPreset>(
   Object.keys(ACTION_PRESETS),
   "ActionPreset"
 );
-export const TimeframeUnitCodec = ioTsEnum<TimeframeUnit>(
-  TIME_FRAME_UNITS,
-  "TimeframeUnit"
-);
 export const TEMPLATE_VISIBILITIES = [
   "draft",
   "published",
@@ -148,7 +143,9 @@ export const CreateTemplateFormSchema = t.type({
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
 
 export function getAgentActionConfigurationType(
-  action: ActionPreset
+  action: ActionPreset, 
+  timeFrameDuration?: string | undefined,
+  timeFrameUnit?: TimeframeUnit | undefined
 ): AgentActionConfigurationType | null {
   switch (action) {
     case "reply":
@@ -196,7 +193,10 @@ export function getAgentActionConfigurationType(
         dataSources: [],
         id: -1,
         tagsFilter: null,
-        relativeTimeFrame: "auto",
+        relativeTimeFrame: {
+          duration: timeFrameDuration ? parseInt(timeFrameDuration) : 1,
+          unit: timeFrameUnit || "week",
+        },
         sId: "template",
         schema: [],
         type: "process_configuration",

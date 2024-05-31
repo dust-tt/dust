@@ -5,7 +5,7 @@ import type {
   ModelProviderIdType,
   TemplateTagCodeType,
   TemplateVisibility,
-  TimeframeUnit
+  TimeframeUnit,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -113,11 +113,11 @@ TemplateModel.init(
     },
     timeFrameDuration: {
       type: DataTypes.INTEGER,
-      allowNull: true
+      allowNull: true,
     },
     timeFrameUnit: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
     helpInstructions: {
       type: DataTypes.TEXT,

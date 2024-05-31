@@ -100,7 +100,11 @@ function InputField({
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
-            <PokeInput placeholder={placeholder ?? name} type={type} {...field} />
+            <PokeInput
+              placeholder={placeholder ?? name}
+              type={type}
+              {...field}
+            />
           </PokeFormControl>
           <PokeFormMessage />
         </PokeFormItem>
@@ -445,8 +449,7 @@ function TemplatesPage({
     },
   });
 
-  const presetAction = form.watch('presetAction');
-
+  const presetAction = form.watch("presetAction");
 
   useEffect(() => {
     if (assistantTemplate) {
@@ -546,29 +549,29 @@ function TemplatesPage({
                     display: v,
                   }))}
                 />
-                {presetAction === 'process_configuration' && (
-                <div className={"flex flex-row items-center gap-4 pb-4"}>
-                  <div className="text-sm font-semibold text-element-900">
-                    From the last
+                {presetAction === "process_configuration" && (
+                  <div className={"flex flex-row items-center gap-4 pb-4"}>
+                    <div className="text-sm font-semibold text-element-900">
+                      From the last
+                    </div>
+                    <InputField
+                      control={form.control}
+                      name="timeFrameDuration"
+                      placeholder="1"
+                      type="number"
+                    />
+                    <SelectField
+                      control={form.control}
+                      name="timeFrameUnit"
+                      title={"Unit"}
+                      options={Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                        (v) => ({
+                          value: v[0],
+                          display: v[1],
+                        })
+                      )}
+                    />
                   </div>
-                  <InputField
-                    control={form.control}
-                    name="timeFrameDuration"
-                    placeholder="1"
-                    type="number"
-                  />
-                  <SelectField
-                    control={form.control}
-                    name="timeFrameUnit"
-                    title={"Unit"}
-                    options={Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
-                      (v) => ({
-                        value: v[0],
-                        display: v[1],
-                      })
-                    )}
-                  />
-                </div>
                 )}
               </div>
             </div>
