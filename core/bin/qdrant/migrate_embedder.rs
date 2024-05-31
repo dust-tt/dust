@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use dust::{
     data_sources::{
         data_source::{EmbedderConfig, EmbedderDataSourceConfig},
-        qdrant::{QdrantClients, QdrantCluster, QdrantDataSourceConfig},
+        qdrant::QdrantClients,
     },
     providers::{
         embedder::{EmbedderRequest, EmbedderVector, SupportedEmbedderModels},
@@ -17,7 +17,7 @@ use futures::StreamExt;
 use futures::TryStreamExt;
 use qdrant_client::{
     prelude::Payload,
-    qdrant::{self, point_id, PointId},
+    qdrant::{self, point_id, value, PointId},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File};
@@ -56,18 +56,24 @@ enum Commands {
     CommitShadowEmbedder { data_source_internal_id: String },
 
     #[command(arg_required_else_help = true)]
-    #[command(about = "Automatically migrate a collection to a new cluster \
-                       (!!! creates, shadow writes, migrates, \
-                        and deletes collection from original cluster)", long_about = None)]
+    #[command(about = "Automatically migrate a data source to a new collection \
+                       (!!! creates, shadow embedder, migrates, \
+                        and deletes points from original collection)", long_about = None)]
     Migrate {
         data_source_internal_id: String,
-        cluster: String,
+        provider_id: ProviderID,
+        model_id: SupportedEmbedderModels,
     },
+
     #[command(arg_required_else_help = true)]
-    #[command(about = "Migrate a set of collections from a JSONL file to a new cluster \
-                       (!!! creates, shadow writes, migrates, \
-                        and deletes collection from original cluster)", long_about = None)]
-    MigrateFile { json_path: String, cluster: String },
+    #[command(about = "Migrate a set of data sources from a JSONL file to a new collection \
+                       (!!! creates, shadow embedder, migrates, \
+                        and deletes points from original collection)", long_about = None)]
+    MigrateFile {
+        json_path: String,
+        provider_id: ProviderID,
+        model_id: SupportedEmbedderModels,
+    },
 }
 
 async fn load_credentials_from_env() -> Credentials {
@@ -297,7 +303,7 @@ async fn clear_shadow_embedder(
 
     utils::done(&format!(
         "Updated data source: \
-            data_source_internal_id={} data_source_id={} cluster={} embedder={} embedder_config={}",
+            data_source_internal_id={} data_source_id={} cluster={} embedder_config={} shadow_embedder_config={}",
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster().to_string(),
@@ -311,7 +317,7 @@ async fn clear_shadow_embedder(
     Ok(())
 }
 
-pub fn get_qdrant_point_id_as_string(point_id: &PointId) -> Option<String> {
+fn get_qdrant_point_id_as_string(point_id: &PointId) -> Option<String> {
     match &point_id.point_id_options {
         Some(point_id::PointIdOptions::Uuid(id)) => Some(id.clone()),
         Some(point_id::PointIdOptions::Num(id)) => Some(id.to_string()),
@@ -355,24 +361,23 @@ async fn migrate_shadow_embedder(
 
     let credentials = load_credentials_from_env().await;
 
-    // TODO:
     // Delete all data points on shadow embedder collection.
-    // let shadow_write_qdrant_client = match ds.shadow_write_qdrant_client(&qdrant_clients) {
-    //     Some(client) => client,
-    //     None => Err(anyhow!("No shadow write cluster to migrate to"))?,
-    // };
+    qdrant_client
+        .delete_all_points_for_internal_id(shadow_embedder_config, &ds.internal_id().to_string())
+        .await?;
 
     utils::info(&format!(
         "Migrating points: points_per_request={}",
         points_per_request
     ));
 
+    // TODO: We need to record the time of the shadow embedder enabled. So we can update the chunk_count afterward!!
+    // Outside of this function.
+
     let mut page_offset: Option<PointId> = None;
     let mut total: usize = 0;
     let mut retry: usize = 0;
     let mut iterations: usize = 0;
-
-    // TODO: We need to record the time of the shadow write enabled. So we can update the chunk_count afterward!!
 
     loop {
         let now = utils::now();
@@ -420,15 +425,7 @@ async fn migrate_shadow_embedder(
 
         // Empty upserts trigger errors.
         if count > 0 {
-            points.iter().for_each(|p| {
-                println!("POINTS: {:#?}", p);
-                println!("ID: {:?}", p.id);
-                println!("PAYLOAD: {:#?}", p.payload);
-            });
-
-            // TODO: Preserve order.
-
-            let splits_with_hash: Vec<ChunkInfoFromPoints> = points
+            let chunks_with_hash: Vec<ChunkInfoFromPoints> = points
                 .iter()
                 .filter_map(|p| {
                     // Check if the "text" key exists in the payload.
@@ -436,15 +433,16 @@ async fn migrate_shadow_embedder(
                     match &p.id {
                         Some(pid) => {
                             match (get_qdrant_point_id_as_string(pid), p.payload.get("text")) {
-                                (Some(id), Some(text)) => {
-                                    println!("TEXT: {:?}", text);
-
-                                    Some(ChunkInfoFromPoints {
-                                        hash: id,
-                                        text: text.to_string(),
-                                        payload: p.payload.clone(),
-                                    })
-                                }
+                                (Some(id), Some(value)) => match &value.kind {
+                                    Some(value::Kind::StringValue(s)) => {
+                                        Some(ChunkInfoFromPoints {
+                                            hash: id,
+                                            text: s.clone(),
+                                            payload: p.payload.clone(),
+                                        })
+                                    }
+                                    _ => None,
+                                },
                                 // If it doesn't exist, filter out the point.
                                 (_, _) => None,
                             }
@@ -454,19 +452,15 @@ async fn migrate_shadow_embedder(
                 })
                 .collect();
 
-            splits_with_hash.iter().for_each(|s| {
-                println!("SPLIT: {:#?}", s);
-            });
-
-            // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>)
-            let chunked_splits = splits_with_hash
+            // Chunk splits into a vectors of 8 chunks (Vec<Vec<String>>).
+            let chunk_batches = chunks_with_hash
                 .chunks(8)
                 .map(|chunk| chunk.to_vec())
                 .collect::<Vec<_>>();
 
             let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
 
-            for chunk in chunked_splits {
+            for chunk in chunk_batches {
                 let r = EmbedderRequest::new(
                     shadow_embedder_config.provider_id.clone(),
                     &shadow_embedder_config.model_id.to_string(),
@@ -484,8 +478,6 @@ async fn migrate_shadow_embedder(
                 }
             }
 
-            println!("EMBEDDINGS: {:#?}", embeddings);
-
             utils::info(&format!(
                 "Finished embedding chunks for data_source={} chunk_count={} total={} latency_ms={}",
                 data_source_internal_id,
@@ -494,7 +486,7 @@ async fn migrate_shadow_embedder(
                 utils::now() - now
             ));
 
-            let points_to_upsert = splits_with_hash
+            let points_to_upsert = chunks_with_hash
                 .iter()
                 .map(|ci| match embeddings.get(&ci.hash) {
                     Some(v) => {
@@ -514,12 +506,6 @@ async fn migrate_shadow_embedder(
                     None => Err(anyhow!("DataSource embedding error: Missin chunk")),
                 })
                 .collect::<Result<Vec<_>>>()?;
-
-            points_to_upsert.iter().for_each(|p| {
-                println!("POINTS: {:#?}", p);
-                println!("ID: {:?}", p.id);
-                println!("PAYLOAD: {:#?}", p.payload);
-            });
 
             match qdrant_client
                 .upsert_points(
@@ -596,7 +582,7 @@ async fn commit_shadow_embedder(
 
     utils::info(&format!(
         "Updated data source: \
-            data_source_internal_id={}  data_source_id={} cluster={} embedder={} shadow_embedder={}",
+            data_source_internal_id={}  data_source_id={} cluster={} embedder_config={} shadow_embedder_config={}",
         ds.internal_id(),
         ds.data_source_id(),
         ds.main_qdrant_cluster().to_string(),
@@ -613,8 +599,8 @@ async fn migrate(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
     data_source_internal_id: String,
-    model_id: SupportedEmbedderModels,
     provider_id: ProviderID,
+    model_id: SupportedEmbedderModels,
     ask_confirmation: bool,
 ) -> Result<()> {
     let ds = match store
@@ -638,91 +624,96 @@ async fn migrate(
         }
     ));
 
-    // let from_cluster = ds.main_qdrant_cluster().to_string();
+    let from_embedder = ds.embedder_config();
+    let to_embedder = EmbedderConfig {
+        max_chunk_size: ds.embedder_config().max_chunk_size,
+        model_id: model_id.to_string(),
+        provider_id,
+        splitter_id: ds.embedder_config().splitter_id,
+    };
 
-    // // First show the current state.
-    // show(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    // )
-    // .await?;
+    // First show the current state.
+    show(
+        store.clone(),
+        qdrant_clients.clone(),
+        data_source_internal_id.clone(),
+    )
+    .await?;
 
-    // if ask_confirmation {
-    //     // Confirm this is the migration we want.
-    //     match utils::confirm(&format!(
-    //         "Do you confirm `set_shadow_write` + `migrate_shadow_write`: \
-    //             data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
-    //         ds.internal_id(),
-    //         ds.data_source_id(),
-    //         from_cluster,
-    //         target_cluster,
-    //     ))? {
-    //         true => (),
-    //         false => Err(anyhow!("Aborted"))?,
-    //     }
-    // }
+    if ask_confirmation {
+        // Confirm this is the migration we want.
+        match utils::confirm(&format!(
+            "Do you confirm `set_shadow_embedder` + `migrate_shadow_embedder`: \
+                data_source_internal_id={} data_source_id={} cluster={} from_embedder={} to_embedder={}?",
+            ds.internal_id(),
+            ds.data_source_id(),
+            ds.main_qdrant_cluster(),
+            from_embedder,
+            to_embedder,
+        ))? {
+            true => (),
+            false => Err(anyhow!("Aborted"))?,
+        }
+    }
 
-    // set_shadow_embedder(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    //     target_cluster.clone(),
-    // )
-    // .await?;
+    set_shadow_embedder(
+        store.clone(),
+        qdrant_clients.clone(),
+        data_source_internal_id.clone(),
+        provider_id.clone(),
+        model_id.clone(),
+    )
+    .await?;
 
-    // migrate_shadow_write(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    // )
-    // .await?;
+    migrate_shadow_embedder(
+        store.clone(),
+        qdrant_clients.clone(),
+        data_source_internal_id.clone(),
+    )
+    .await?;
 
-    // if ask_confirmation {
-    //     // Confirm we're ready to commit.
-    //     match utils::confirm(&format!(
-    //         "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
-    //            data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
-    //         ds.internal_id(),
-    //         ds.data_source_id(),
-    //         from_cluster,
-    //         target_cluster,
-    //     ))? {
-    //         true => (),
-    //         false => Err(anyhow!("Aborted"))?,
-    //     }
-    // }
+    if ask_confirmation {
+        // Confirm we're ready to commit.
+        match utils::confirm(&format!(
+            "Do you confirm `commit_shadow_write` + `clear_shadow_write`: \
+               data_source_internal_id={} data_source_id={} cluster={} from_embedder={} to_embedder={}?",
+            ds.internal_id(),
+            ds.data_source_id(),
+            ds.main_qdrant_cluster(),
+            from_embedder,
+            to_embedder
+        ))? {
+            true => (),
+            false => Err(anyhow!("Aborted"))?,
+        }
+    }
 
-    // commit_shadow_write(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    // )
-    // .await?;
+    commit_shadow_embedder(store.clone(), data_source_internal_id.clone()).await?;
 
-    // clear_shadow_write(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    //     ask_confirmation,
-    // )
-    // .await?;
+    clear_shadow_embedder(
+        store.clone(),
+        qdrant_clients.clone(),
+        data_source_internal_id.clone(),
+        ask_confirmation,
+    )
+    .await?;
 
-    // utils::done(&format!(
-    //     "Data source migrated: \
-    //        data_source_internal_id={} data_source_id={} from_cluster={} target_cluster={}?",
-    //     ds.data_source_id(),
-    //     ds.internal_id(),
-    //     from_cluster,
-    //     target_cluster,
-    // ));
+    utils::done(&format!(
+        "Data source migrated: \
+           data_source_internal_id={} data_source_id={} cluster={} from_embedder={} to_embedder={}?",
+        ds.data_source_id(),
+        ds.internal_id(),
+        ds.main_qdrant_cluster(),
+        from_embedder,
+        to_embedder
+    ));
 
-    // show(
-    //     store.clone(),
-    //     qdrant_clients.clone(),
-    //     data_source_internal_id.clone(),
-    // )
-    // .await?;
+    show(
+        store.clone(),
+        qdrant_clients.clone(),
+        data_source_internal_id.clone(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -737,47 +728,51 @@ async fn migrate_file(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
     json_path: String,
-    target_cluster: String,
+    provider_id: ProviderID,
+    model_id: SupportedEmbedderModels,
 ) -> Result<()> {
-    // let file = File::open(json_path)?;
-    // let reader = BufReader::new(file);
-    // let records = reader
-    //     .lines()
-    //     .map(|line| {
-    //         // Each line is a JSON
-    //         let line = line?;
-    //         serde_json::from_str(&line).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-    //     })
-    //     .collect::<Result<Vec<MigrationRecord>, std::io::Error>>()?;
+    let file = File::open(json_path)?;
+    let reader = BufReader::new(file);
+    let records = reader
+        .lines()
+        .map(|line| {
+            // Each line is a JSON
+            let line = line?;
+            serde_json::from_str(&line).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        })
+        .collect::<Result<Vec<MigrationRecord>, std::io::Error>>()?;
 
-    // match utils::confirm(&format!(
-    //     "Do you confirm you want to migrate {} collections: \
-    //         target_cluster={}?",
-    //     records.len(),
-    //     target_cluster,
-    // ))? {
-    //     true => (),
-    //     false => Err(anyhow!("Aborted"))?,
-    // }
+    match utils::confirm(&format!(
+        "Do you confirm you want to migrate {} data sources to provider_id={} model_id={}?",
+        records.len(),
+        provider_id,
+        model_id
+    ))? {
+        true => (),
+        false => Err(anyhow!("Aborted"))?,
+    }
 
-    // stream::iter(records.into_iter().map(|record| {
-    //     let store = store.clone();
-    //     let target_cluster = target_cluster.clone();
-    //     let qdrant_clients = qdrant_clients.clone();
-    //     async move {
-    //         migrate(
-    //             store,
-    //             qdrant_clients,
-    //             record.internal_id,
-    //             target_cluster,
-    //             false,
-    //         )
-    //         .await
-    //     }
-    // }))
-    // .buffer_unordered(1)
-    // .try_collect::<Vec<_>>()
-    // .await?;
+    stream::iter(records.into_iter().map(|record| {
+        let store = store.clone();
+        let qdrant_clients = qdrant_clients.clone();
+        let model_id = model_id.clone();
+        let provider_id = provider_id.clone();
+
+        async move {
+            migrate(
+                store,
+                qdrant_clients,
+                record.internal_id,
+                provider_id,
+                model_id,
+                false,
+            )
+            .await
+        }
+    }))
+    .buffer_unordered(1)
+    .try_collect::<Vec<_>>()
+    .await?;
 
     Ok(())
 }
@@ -822,8 +817,8 @@ fn main() -> Result<()> {
 
             Commands::SetShadowEmbedder {
                 data_source_internal_id,
-                model_id,
                 provider_id,
+                model_id,
             } => {
                 set_shadow_embedder(
                     store,
@@ -853,22 +848,25 @@ fn main() -> Result<()> {
 
             Commands::Migrate {
                 data_source_internal_id,
-                cluster,
+                provider_id,
+                model_id,
             } => {
-                // migrate(
-                //     store,
-                //     qdrant_clients,
-                //     data_source_internal_id,
-                //     cluster,
-                //     true,
-                // )
-                // .await
-                todo!();
+                migrate(
+                    store,
+                    qdrant_clients,
+                    data_source_internal_id,
+                    provider_id,
+                    model_id,
+                    true,
+                )
+                .await
             }
 
-            Commands::MigrateFile { json_path, cluster } => {
-                migrate_file(store, qdrant_clients, json_path, cluster).await
-            }
+            Commands::MigrateFile {
+                json_path,
+                provider_id,
+                model_id,
+            } => migrate_file(store, qdrant_clients, json_path, provider_id, model_id).await,
         }
     });
 
