@@ -50,7 +50,7 @@ async function handler(
     });
   }
 
-  const owner = await auth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
