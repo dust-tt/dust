@@ -6,8 +6,11 @@ import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
-import type { TimeframeUnit } from "./actions/retrieval"
-import { RetrievalConfigurationType, TimeframeUnitCodec } from "./actions/retrieval";
+import type { TimeframeUnit } from "./actions/retrieval";
+import {
+  RetrievalConfigurationType,
+  TimeframeUnitCodec,
+} from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
@@ -143,7 +146,7 @@ export const CreateTemplateFormSchema = t.type({
 export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
 
 export function getAgentActionConfigurationType(
-  action: ActionPreset, 
+  action: ActionPreset,
   timeFrameDuration?: number | null,
   timeFrameUnit?: TimeframeUnit | null
 ): AgentActionConfigurationType | null {
