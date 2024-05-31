@@ -198,7 +198,7 @@ export function getAgentActionConfigurationType(
         tagsFilter: null,
         relativeTimeFrame: {
           duration: timeFrameDuration || 1,
-          unit: timeFrameUnit || "week",
+          unit: timeFrameUnit || "day",
         },
         sId: "template",
         schema: [],
