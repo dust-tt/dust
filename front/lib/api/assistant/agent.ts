@@ -19,7 +19,6 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   cloneBaseConfig,
   DustProdActionRegistry,
   isDustAppRunConfiguration,
@@ -280,13 +279,28 @@ export async function* runMultiActionsAgent(
     "You are a conversational assistant with access to function calling."
   );
 
-  const model =
-    SUPPORTED_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === agentConfiguration.model.modelId &&
-        m.providerId === agentConfiguration.model.providerId &&
-        m.supportsMultiActions
-    ) ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === agentConfiguration.model.modelId &&
+      m.providerId === agentConfiguration.model.providerId &&
+      m.supportsMultiActions
+  );
+
+  if (!model) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "model_does_not_support_multi_actions",
+        message:
+          `The model you selected (${agentConfiguration.model.modelId}) ` +
+          `does not support multi-actions.`,
+      },
+    };
+    return;
+  }
 
   const MIN_GENERATION_TOKENS = 2048;
 

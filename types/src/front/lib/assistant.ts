@@ -36,7 +36,8 @@ export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
 export const CLAUDE_INSTANT_1_2_MODEL_ID = "claude-instant-1.2" as const;
 export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
-export const MISTRAL_SMALL_MODEL_ID = "mistral-small" as const;
+export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
+export const MISTRAL_SMALL_LEGACY_MODEL_ID = "mistral-small" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 
 export const MODEL_IDS = [
@@ -51,6 +52,7 @@ export const MODEL_IDS = [
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
+  MISTRAL_SMALL_LEGACY_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
@@ -214,6 +216,18 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description: "Mistral's latest model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's fast model.",
+  supportsMultiActions: true,
+};
+export const MISTRAL_SMALL_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "mistral",
+  modelId: MISTRAL_SMALL_LEGACY_MODEL_ID,
+  displayName: "Mistral Small",
+  contextSize: 32_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 56, // 28_672
+  largeModel: false,
+  description: "Mistral's latest model (8x7B Instruct, 32k context).",
+  shortDescription: "Mistral's fast model.",
   supportsMultiActions: false,
 };
 
@@ -243,6 +257,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  MISTRAL_SMALL_LEGACY_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ];
 
