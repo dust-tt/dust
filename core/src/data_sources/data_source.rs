@@ -400,9 +400,8 @@ impl Document {
 pub fn make_qdrant_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());
-    let document_id_hash = format!("{}", hasher.finalize().to_hex());
 
-    document_id_hash
+    format!("{}", hasher.finalize().to_hex())
 }
 
 #[derive(Debug, Serialize, Clone)]

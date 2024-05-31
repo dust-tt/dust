@@ -335,6 +335,31 @@ struct ChunkInfoFromPoints {
     payload: HashMap<String, qdrant_client::prelude::Value>,
 }
 
+async fn execute_embedder_with_retry(
+    credentials: &Credentials,
+    r: &EmbedderRequest,
+) -> Result<Vec<EmbedderVector>, anyhow::Error> {
+    let mut retry = 0;
+
+    loop {
+        match r.execute(credentials.clone()).await {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                if retry < 3 {
+                    retry += 1;
+                    utils::error(&format!(
+                        "DataSource chunk embedding error: retry={} error={:?}",
+                        retry, e
+                    ));
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                } else {
+                    return Err(e.into());
+                }
+            }
+        }
+    }
+}
+
 async fn migrate_shadow_embedder(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
@@ -468,10 +493,7 @@ async fn migrate_shadow_embedder(
                     ds.config().extras.clone(),
                 );
 
-                let v = match r.execute(credentials.clone()).await {
-                    Ok(v) => v,
-                    Err(e) => Err(anyhow!("DataSource chunk embedding error: {}", e))?,
-                };
+                let v = execute_embedder_with_retry(&credentials, &r).await?;
 
                 for (ci, v) in chunk.into_iter().zip(v.into_iter()) {
                     embeddings.insert(ci.hash.clone(), v);
@@ -490,10 +512,7 @@ async fn migrate_shadow_embedder(
                 .iter()
                 .map(|ci| match embeddings.get(&ci.hash) {
                     Some(v) => {
-                        let mut payload = Payload::new();
-                        for (key, value) in ci.payload.iter() {
-                            payload.insert(key.clone(), value.clone());
-                        }
+                        let payload = Payload::new_from_hashmap(ci.payload.clone());
 
                         let ps = qdrant::PointStruct::new(
                             ci.hash.to_string(),
