@@ -20,6 +20,7 @@ use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt;
 use tokio::try_join;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
@@ -408,6 +409,16 @@ pub struct EmbedderConfig {
     pub model_id: String,
     pub splitter_id: SplitterID,
     pub max_chunk_size: usize,
+}
+
+impl fmt::Display for EmbedderConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "EmbedderConfig {{ provider_id: {}, model_id: {}, splitter_id: {:?}, max_chunk_size: {} }}",
+            self.provider_id, self.model_id, self.splitter_id, self.max_chunk_size
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

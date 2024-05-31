@@ -12,6 +12,10 @@ name = "qdrant_migrator"
 path = "bin/qdrant/migrator.rs"
 
 [[bin]]
+name = "qdrant_migrate_embedder"
+path = "bin/qdrant/migrate_embedder.rs"
+
+[[bin]]
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
