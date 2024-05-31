@@ -112,6 +112,11 @@ impl AI21LLM {
             .send()
             .await?;
 
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
         let status = res.status();
         let body = res.bytes().await?;
 
@@ -129,6 +134,7 @@ impl AI21LLM {
                     detail: "Too many requests".to_string(),
                 });
                 Err(ModelError {
+                    request_id,
                     message: format!("Ai21APIError: {}", error.detail),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -140,6 +146,7 @@ impl AI21LLM {
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
+                    request_id,
                     message: format!("Ai21APIError: {}", error.detail),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),

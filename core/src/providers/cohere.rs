@@ -40,6 +40,11 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
         .send()
         .await?;
     let status = res.status();
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(v) => Some(v.to_str()?.to_string()),
+        None => None,
+    };
     let body = res.bytes().await?;
 
     let mut b: Vec<u8> = vec![];
@@ -56,6 +61,7 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
                 message: "Too many requests".to_string(),
             });
             Err(ModelError {
+                request_id,
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
                     sleep: Duration::from_millis(500),
@@ -67,6 +73,7 @@ async fn api_encode(api_key: &str, text: &str) -> Result<Vec<usize>> {
         _ => {
             let error: Error = serde_json::from_slice(c)?;
             Err(ModelError {
+                request_id,
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
                     sleep: Duration::from_millis(500),
@@ -91,6 +98,11 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
         .await?;
 
     let status = res.status();
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(v) => Some(v.to_str()?.to_string()),
+        None => None,
+    };
     let body = res.bytes().await?;
 
     let mut b: Vec<u8> = vec![];
@@ -107,6 +119,7 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
                 message: "Too many requests".to_string(),
             });
             Err(ModelError {
+                request_id,
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
                     sleep: Duration::from_millis(500),
@@ -118,6 +131,7 @@ async fn api_decode(api_key: &str, tokens: Vec<usize>) -> Result<String> {
         _ => {
             let error: Error = serde_json::from_slice(c)?;
             Err(ModelError {
+                request_id,
                 message: format!("CohereAPIError: {}", error.message),
                 retryable: Some(ModelErrorRetryOptions {
                     sleep: Duration::from_millis(500),
@@ -217,6 +231,11 @@ impl CohereLLM {
             .await?;
 
         let status = res.status();
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
         let body = res.bytes().await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
@@ -232,6 +251,7 @@ impl CohereLLM {
                     message: "Too many requests".to_string(),
                 });
                 Err(ModelError {
+                    request_id,
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -243,6 +263,7 @@ impl CohereLLM {
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
+                    request_id,
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: None,
                 })
@@ -441,6 +462,11 @@ impl CohereEmbedder {
             .send()
             .await?;
         let status = res.status();
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
         let body = res.bytes().await?;
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
@@ -456,6 +482,7 @@ impl CohereEmbedder {
                     message: "Too many requests".to_string(),
                 });
                 Err(ModelError {
+                    request_id,
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -467,6 +494,7 @@ impl CohereEmbedder {
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
+                    request_id,
                     message: format!("CohereAPIError: {}", error.message),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),

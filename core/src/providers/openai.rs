@@ -548,6 +548,7 @@ pub async fn streamed_completion(
                                     Ok(error) => {
                                         match error.retryable_streamed() && index == 0 {
                                             true => Err(ModelError {
+                                                request_id: None,
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -556,6 +557,7 @@ pub async fn streamed_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
+                                                request_id: None,
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -759,6 +761,11 @@ pub async fn completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
     let body = match timeout(Duration::new(180, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -775,6 +782,7 @@ pub async fn completion(
             let error: Error = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -783,6 +791,7 @@ pub async fn completion(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -928,6 +937,7 @@ pub async fn streamed_chat_completion(
                                         Ok(error) => {
                                             match error.retryable_streamed() && index == 0 {
                                                 true => Err(ModelError {
+                                                    request_id: None,
                                                     message: error.message(),
                                                     retryable: Some(ModelErrorRetryOptions {
                                                         sleep: Duration::from_millis(500),
@@ -936,6 +946,7 @@ pub async fn streamed_chat_completion(
                                                     }),
                                                 })?,
                                                 false => Err(ModelError {
+                                                    request_id: None,
                                                     message: error.message(),
                                                     retryable: None,
                                                 })?,
@@ -1234,6 +1245,13 @@ pub async fn chat_completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
+
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
+
     let body = match timeout(Duration::new(180, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -1250,6 +1268,7 @@ pub async fn chat_completion(
             let error: Error = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1258,6 +1277,7 @@ pub async fn chat_completion(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1339,6 +1359,12 @@ pub async fn embed(
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
     };
 
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
+
     let body = match timeout(Duration::new(60, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -1355,6 +1381,7 @@ pub async fn embed(
             let error: Error = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1363,6 +1390,7 @@ pub async fn embed(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),

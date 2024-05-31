@@ -76,14 +76,16 @@ pub struct ModelErrorRetryOptions {
 pub struct ModelError {
     pub message: String,
     pub retryable: Option<ModelErrorRetryOptions>,
+    pub request_id: Option<String>,
 }
 
 impl std::fmt::Display for ModelError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "[model_error(retryable={})] {}",
+            "[model_error(retryable={},request_id={})] {}",
             self.retryable.is_some(),
+            self.request_id.as_ref().unwrap_or(&String::from("None")),
             self.message
         )
     }
