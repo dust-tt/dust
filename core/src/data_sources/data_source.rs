@@ -888,7 +888,6 @@ impl DataSource {
             .upsert_for_embedder(
                 self.embedder_config(),
                 &credentials,
-                store.clone(),
                 &qdrant_clients,
                 &document_id,
                 &document_id_hash,
@@ -905,7 +904,6 @@ impl DataSource {
             self.upsert_for_embedder(
                 shadow_embedder_config,
                 &credentials,
-                store,
                 &qdrant_clients,
                 &document_id,
                 &document_id_hash,
@@ -918,6 +916,15 @@ impl DataSource {
             .await?;
         }
 
+        // Upsert document (SQL)
+        store
+            .upsert_data_source_document(
+                &self.project,
+                &self.data_source_id,
+                &main_collection_document,
+            )
+            .await?;
+
         Ok(main_collection_document)
     }
 
@@ -925,7 +932,6 @@ impl DataSource {
         &self,
         embedder_config: &EmbedderConfig,
         credentials: &Credentials,
-        store: Box<dyn Store + Sync + Send>,
         qdrant_clients: &QdrantClients,
         document_id: &str,
         document_id_hash: &str,
@@ -1291,11 +1297,6 @@ impl DataSource {
             collection = qdrant_client.collection_name(embedder_config),
             "Inserted vectors in Qdrant"
         );
-
-        // Upsert document (SQL)
-        store
-            .upsert_data_source_document(&self.project, &self.data_source_id, &document)
-            .await?;
 
         Ok(document)
     }
@@ -1908,38 +1909,35 @@ impl DataSource {
         document_id: &str,
     ) -> Result<()> {
         // Delete the document in the main embedder collection.
-        self.delete_document_for_embedder(
-            self.embedder_config(),
-            store.clone(),
-            &qdrant_clients,
-            document_id,
-        )
-        .await?;
+        self.delete_document_for_embedder(self.embedder_config(), &qdrant_clients, document_id)
+            .await?;
 
         // Delete the document in the shadow embedder collection, if set.
         match self.shadow_embedder_config() {
             Some(shadow_embedder_config) => {
                 self.delete_document_for_embedder(
                     shadow_embedder_config,
-                    store,
                     &qdrant_clients,
                     document_id,
                 )
                 .await
             }
             None => Ok(()),
-        }
+        }?;
+
+        // Delete document (SQL)
+        store
+            .delete_data_source_document(&self.project, &self.data_source_id, document_id)
+            .await
     }
 
     async fn delete_document_for_embedder(
         &self,
         embedder_config: &EmbedderConfig,
-        store: Box<dyn Store + Sync + Send>,
         qdrant_clients: &QdrantClients,
         document_id: &str,
     ) -> Result<()> {
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
-        let store = store.clone();
 
         let mut hasher = blake3::Hasher::new();
         hasher.update(document_id.as_bytes());
@@ -1990,11 +1988,6 @@ impl DataSource {
 
         qdrant_client
             .delete_points(embedder_config, &self.internal_id, filter)
-            .await?;
-
-        // Delete document (SQL)
-        store
-            .delete_data_source_document(&self.project, &self.data_source_id, document_id)
             .await?;
 
         Ok(())
