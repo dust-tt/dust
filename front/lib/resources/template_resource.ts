@@ -1,4 +1,4 @@
-import type { Result, TemplateVisibility } from "@dust-tt/types";
+import type { Result, TemplateVisibility, TimeFrame } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -136,6 +136,13 @@ export class TemplateResource extends BaseResource<TemplateModel> {
   }
 
   toJSON() {
+    // const relativeTimeFrame : TimeFrame | null = this.timeFrameDuration && this.timeFrameUnit ? {
+    //   duration: this.timeFrameDuration ?? 0,
+    //   unit: this.timeFrameUnit,
+    // } : null;
+
+    // console.log("RELATIVE TIME FRAME: ", relativeTimeFrame)
+
     return {
       backgroundColor: this.backgroundColor,
       description: this.description,
@@ -147,6 +154,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       presetAction: this.presetAction,
       timeFrameDuration: this.timeFrameDuration,
       timeFrameUnit: this.timeFrameUnit,
+      // relativeTimeFrame: relativeTimeFrame,
       presetDescription: this.presetDescription,
       presetInstructions: this.presetInstructions,
       presetModelId: this.presetModelId,
