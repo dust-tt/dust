@@ -28,7 +28,8 @@ export type ConversationErrorType = {
   type:
     | "attachment_upload_error"
     | "message_send_error"
-    | "plan_limit_reached_error";
+    | "plan_limit_reached_error"
+    | "content_too_large";
   title: string;
   message: string;
 };
@@ -160,6 +161,13 @@ export async function submitMessage({
   );
 
   if (!mRes.ok) {
+    if (mRes.status === 413) {
+      return new Err({
+        type: "content_too_large",
+        title: "Your message is too long to be sent.",
+        message: "Please try again with a shorter message.",
+      });
+    }
     const data = await mRes.json();
     return new Err({
       type:
