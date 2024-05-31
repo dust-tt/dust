@@ -1296,6 +1296,43 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn update_data_source_document_chunk_count(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        chunk_count: u64,
+    ) -> Result<()> {
+        let document_id = document_id.to_string();
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+
+        let r = c
+            .query(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+                &[&project_id, &data_source_id],
+            )
+            .await?;
+
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        c.execute(
+            "UPDATE data_sources_documents SET chunk_count = $1 \
+            WHERE data_source = $2 AND document_id = $3 AND status = 'latest'",
+            &[&(chunk_count as i64), &data_source_row_id, &document_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
     async fn update_data_source_document_tags(
         &self,
         project: &Project,

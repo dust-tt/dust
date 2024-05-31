@@ -141,6 +141,13 @@ pub trait Store {
         document_id: &str,
         parents: &Vec<String>,
     ) -> Result<()>;
+    async fn update_data_source_document_chunk_count(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        chunk_count: u64,
+    ) -> Result<()>;
     async fn list_data_source_document_versions(
         &self,
         project: &Project,

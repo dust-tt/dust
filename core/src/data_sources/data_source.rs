@@ -397,6 +397,14 @@ impl Document {
     }
 }
 
+pub fn make_qdrant_document_id_hash(document_id: String) -> String {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(document_id.as_bytes());
+    let document_id_hash = format!("{}", hasher.finalize().to_hex());
+
+    document_id_hash
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DocumentVersion {
     pub created: u64,
@@ -528,6 +536,10 @@ impl DataSource {
 
     pub fn created(&self) -> u64 {
         self.created
+    }
+
+    pub fn project(&self) -> &Project {
+        &self.project
     }
 
     pub fn data_source_id(&self) -> &str {

@@ -2,7 +2,10 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use dust::{
     data_sources::{
-        data_source::{EmbedderConfig, EmbedderDataSourceConfig},
+        data_source::{
+            make_qdrant_document_id_hash, DataSource, EmbedderConfig, EmbedderDataSourceConfig,
+            SearchFilter, TimestampFilter,
+        },
         qdrant::QdrantClients,
     },
     providers::{
@@ -371,9 +374,6 @@ async fn migrate_shadow_embedder(
         points_per_request
     ));
 
-    // TODO: We need to record the time of the shadow embedder enabled. So we can update the chunk_count afterward!!
-    // Outside of this function.
-
     let mut page_offset: Option<PointId> = None;
     let mut total: usize = 0;
     let mut retry: usize = 0;
@@ -595,6 +595,95 @@ async fn commit_shadow_embedder(
     Ok(())
 }
 
+async fn refresh_chunk_count_for_updated_documents(
+    store: Box<dyn Store + Sync + Send>,
+    qdrant_clients: &QdrantClients,
+    ds: &DataSource,
+    from_timestamp: u64,
+) -> Result<()> {
+    let now = utils::now();
+
+    let filter = SearchFilter {
+        timestamp: Some(TimestampFilter {
+            gt: Some(from_timestamp),
+            lt: Some(now),
+        }),
+        tags: None,
+        parents: None,
+    };
+
+    let mut offset = 0;
+    let batch_size = 50;
+    let mut total = 0;
+    let qdrant_client = ds.main_qdrant_client(qdrant_clients);
+
+    loop {
+        // Fetch document IDs to update.
+        let (doc_ids, _) = store
+            .find_data_source_document_ids(
+                ds.project(),
+                ds.data_source_id(),
+                &Some(filter.clone()),
+                Some((batch_size, offset)),
+            )
+            .await?;
+
+        // If no more documents are returned, break the loop.
+        if doc_ids.is_empty() {
+            break;
+        }
+
+        // Process the chunk count for those document IDs.
+        for doc_id in doc_ids.clone() {
+            let f = qdrant::Filter {
+                must: vec![qdrant::Condition::matches(
+                    "document_id_hash",
+                    make_qdrant_document_id_hash(doc_id.clone()),
+                )],
+                ..Default::default()
+            };
+
+            let count_res = qdrant_client
+                .count_points(
+                    ds.embedder_config(),
+                    &ds.internal_id().to_string(),
+                    Some(f),
+                    true, /* exact count */
+                )
+                .await?;
+
+            if let Some(chunk_count) = count_res.result {
+                store
+                    .update_data_source_document_chunk_count(
+                        ds.project(),
+                        ds.data_source_id(),
+                        &doc_id,
+                        chunk_count.count,
+                    )
+                    .await?;
+            }
+        }
+
+        offset += batch_size;
+        total += doc_ids.len();
+    }
+
+    utils::info(&format!(
+        "Refreshed chunk count for data source: data_source_internal_id={} data_source_id={} cluster={} current_embedder={} target_embedder={} updated={}",
+        ds.internal_id(),
+        ds.data_source_id(),
+        ds.main_qdrant_cluster(),
+        ds.embedder_config(),
+        match ds.shadow_embedder_config() {
+            Some(sec) => sec.to_string(),
+            None => "none".to_string()
+        },
+        total
+    ));
+
+    Ok(())
+}
+
 async fn migrate(
     store: Box<dyn Store + Sync + Send>,
     qdrant_clients: QdrantClients,
@@ -656,6 +745,8 @@ async fn migrate(
         }
     }
 
+    let shadow_embedder_enabled_at = utils::now();
+
     set_shadow_embedder(
         store.clone(),
         qdrant_clients.clone(),
@@ -695,6 +786,15 @@ async fn migrate(
         qdrant_clients.clone(),
         data_source_internal_id.clone(),
         ask_confirmation,
+    )
+    .await?;
+
+    // Refresh chunk_count on documents updated while the shadow embedder was active.
+    refresh_chunk_count_for_updated_documents(
+        store.clone(),
+        &qdrant_clients,
+        &ds,
+        shadow_embedder_enabled_at,
     )
     .await?;
 
