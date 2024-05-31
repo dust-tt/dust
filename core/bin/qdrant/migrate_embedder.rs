@@ -718,19 +718,6 @@ async fn migrate(
         Some(ds) => ds,
         None => Err(anyhow!("Data source not found"))?,
     };
-    utils::info(&format!(
-        "Migrating data source: data_source_internal_id={} data_source_id={} cluster={} current_embedder={} target_embedder={}",
-        ds.internal_id(),
-        ds.data_source_id(),
-        ds.main_qdrant_cluster(),
-        ds.embedder_config(),
-        EmbedderConfig {
-            max_chunk_size: ds.embedder_config().max_chunk_size,
-            model_id: model_id.to_string(),
-            provider_id,
-            splitter_id: ds.embedder_config().splitter_id,
-        }
-    ));
 
     let from_embedder = ds.embedder_config();
     let to_embedder = EmbedderConfig {
@@ -739,6 +726,31 @@ async fn migrate(
         provider_id,
         splitter_id: ds.embedder_config().splitter_id,
     };
+
+    // If from_embedder.model_id and provider_id is equal to to_embedder, return.
+    if from_embedder.model_id == to_embedder.model_id
+        && from_embedder.provider_id == to_embedder.provider_id
+    {
+        utils::info(&format!(
+            "Migration aborted, data source already using target embedder: data_source_internal_id={} data_source_id={} cluster={} current_embedder={} target_embedder={}",
+            ds.internal_id(),
+            ds.data_source_id(),
+            ds.main_qdrant_cluster(),
+            from_embedder,
+            to_embedder
+        ));
+
+        return Ok(());
+    }
+
+    utils::info(&format!(
+        "Migrating data source: data_source_internal_id={} data_source_id={} cluster={} current_embedder={} target_embedder={}",
+        ds.internal_id(),
+        ds.data_source_id(),
+        ds.main_qdrant_cluster(),
+        from_embedder,
+        to_embedder
+    ));
 
     // First show the current state.
     show(
