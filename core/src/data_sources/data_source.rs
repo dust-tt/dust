@@ -397,7 +397,7 @@ impl Document {
     }
 }
 
-pub fn make_qdrant_document_id_hash(document_id: String) -> String {
+pub fn make_qdrant_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());
     let document_id_hash = format!("{}", hasher.finalize().to_hex());
@@ -639,9 +639,7 @@ impl DataSource {
             )
             .await?;
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(document_id.as_bytes());
-        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+        let document_id_hash = make_qdrant_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
@@ -666,9 +664,7 @@ impl DataSource {
             )
             .await?;
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(document_id.as_bytes());
-        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+        let document_id_hash = make_qdrant_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "tags", new_tags.clone())
             .await?;
@@ -851,9 +847,7 @@ impl DataSource {
         });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(document_id.as_bytes());
-        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+        let document_id_hash = make_qdrant_document_id_hash(document_id);
 
         let document = Document::new(
             &self.data_source_id,
@@ -1473,9 +1467,7 @@ impl DataSource {
                     };
 
                     if full_text {
-                        let mut hasher = blake3::Hasher::new();
-                        hasher.update(document_id.as_bytes());
-                        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+                        let document_id_hash = make_qdrant_document_id_hash(&document_id);
 
                         let bucket_path = format!(
                             "{}/{}/{}",
@@ -1552,9 +1544,8 @@ impl DataSource {
                                 return Ok(d);
                             }
 
-                            let mut hasher = blake3::Hasher::new();
-                            hasher.update(d.document_id.as_bytes());
-                            let document_id_hash = format!("{}", hasher.finalize().to_hex());
+                            let document_id_hash = make_qdrant_document_id_hash(&d.document_id);
+
                             let filter = qdrant::Filter {
                                 must: vec![
                                     qdrant::FieldCondition {
@@ -1900,9 +1891,7 @@ impl DataSource {
             d.tags
         };
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(document_id.as_bytes());
-        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+        let document_id_hash = make_qdrant_document_id_hash(document_id);
 
         // GCP retrieve raw text and document_id.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
@@ -1962,9 +1951,7 @@ impl DataSource {
     ) -> Result<()> {
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(document_id.as_bytes());
-        let document_id_hash = format!("{}", hasher.finalize().to_hex());
+        let document_id_hash = make_qdrant_document_id_hash(document_id);
 
         // Clean-up document chunks (vector search db).
         let filter = qdrant::Filter {

@@ -638,7 +638,7 @@ async fn refresh_chunk_count_for_updated_documents(
             let f = qdrant::Filter {
                 must: vec![qdrant::Condition::matches(
                     "document_id_hash",
-                    make_qdrant_document_id_hash(doc_id.clone()),
+                    make_qdrant_document_id_hash(&doc_id),
                 )],
                 ..Default::default()
             };
