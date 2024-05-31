@@ -99,7 +99,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   dust_app_run_configuration: "Run Dust app",
   retrieval_configuration: "Search data sources",
   tables_query_configuration: "Query tables",
-  process_configuration: "Process data sources",
+  process_configuration: "Extract data",
   websearch_configuration: "Web search",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
@@ -128,6 +128,8 @@ export const CreateTemplateFormSchema = t.type({
   description: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
+  timeFrameDuration: t.union([t.number, t.undefined]),
+  timeFrameUnit: t.union([t.string, t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
   presetAction: ActionPresetCodec,

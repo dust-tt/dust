@@ -1,4 +1,5 @@
 import {
+  Button,
   ColorPicker,
   DropdownMenu,
   EmojiPicker,
@@ -30,6 +31,7 @@ import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
+import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
@@ -530,15 +532,38 @@ function TemplatesPage({
                   value: acl,
                 }))}
               />
-              <SelectField
-                control={form.control}
-                name="presetAction"
-                title="Preset Action"
-                options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
-                  value: k,
-                  display: v,
-                }))}
-              />
+              <div>
+                <SelectField
+                  control={form.control}
+                  name="presetAction"
+                  title="Preset Action"
+                  options={Object.entries(ACTION_PRESETS).map(([k, v]) => ({
+                    value: k,
+                    display: v,
+                  }))}
+                />
+                <div className={"flex flex-row items-center gap-4 pb-4"}>
+                  <div className="text-sm font-semibold text-element-900">
+                    From the last
+                  </div>
+                  <InputField
+                    control={form.control}
+                    name="timeFrameDuration"
+                    placeholder="1"
+                  />
+                  <SelectField
+                    control={form.control}
+                    name="timeFrameUnit"
+                    title={"Unit"}
+                    options={Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
+                      (v) => ({
+                        value: v[0],
+                        display: v[1],
+                      })
+                    )}
+                  />
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <PickerInputField
