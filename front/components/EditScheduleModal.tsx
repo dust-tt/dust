@@ -1,9 +1,7 @@
 import {
   Checkbox,
-  ClockIcon,
   DropdownMenu,
   Hoverable,
-  Icon,
   Input,
   Modal,
   Page,
@@ -35,13 +33,12 @@ export type ScheduledAgentType = {
   timeOfDay: string;
   timeZone: string;
   agentConfigurationId: string;
-  prompt: string;
+  prompt: string | null;
   scheduleType: ScheduleType;
   weeklyDaysOfWeek: number[] | null | undefined;
-  monthlyNthDayOfWeek: number | null | undefined;
   monthlyDayOfWeek: number | null | undefined;
   monthlyFirstLast: string | null | undefined;
-  emails: string[];
+  emails: string[] | null;
   slackChannelId: string | null;
 };
 
@@ -84,7 +81,6 @@ export function EditScheduleModal({
     prompt: "",
     scheduleType: "weekly",
     weeklyDaysOfWeek: [],
-    monthlyNthDayOfWeek: null,
     monthlyDayOfWeek: null,
     monthlyFirstLast: "last",
     emails: [],
@@ -107,7 +103,7 @@ export function EditScheduleModal({
       return false;
     }
 
-    if (!schedule.emails.length) {
+    if (!schedule.emails || !schedule.emails.length) {
       return false;
     }
 
@@ -115,7 +111,10 @@ export function EditScheduleModal({
   };
 
   const handleSave = async () => {
-    if (schedule.emails.some((email) => !isEmailValid(email))) {
+    if (
+      !schedule.emails ||
+      schedule.emails.some((email) => !isEmailValid(email))
+    ) {
       sendNotification({
         type: "error",
         title: "Invalid email",
@@ -136,7 +135,6 @@ export function EditScheduleModal({
     if (schedule.scheduleType === "weekly") {
       delete scheduleToSend.monthlyDayOfWeek;
       delete scheduleToSend.monthlyFirstLast;
-      delete scheduleToSend.monthlyNthDayOfWeek;
     }
 
     const fetchUrl = schedule.sId
@@ -381,7 +379,7 @@ export function EditScheduleModal({
             <Input
               name="emails"
               placeholder="Emails"
-              value={schedule.emails.join(",")}
+              value={schedule.emails ? schedule.emails.join(",") : ""}
               onChange={(e) =>
                 setSchedule({ ...schedule, emails: e.split(",").map((e) => e) })
               }

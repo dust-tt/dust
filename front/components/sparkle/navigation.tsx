@@ -184,30 +184,35 @@ export const subNavigationBuild = ({
     variant: "secondary",
     menus: dataSourceItems,
   });
+  const menus: SparkleAppLayoutNavigation[] = [
+    {
+      id: "developers",
+      label: "Developer Tools",
+      icon: CommandLineIcon,
+      href: `/w/${owner.sId}/a`,
+      current: current === "developers",
+      subMenuLabel: current === "developers" ? subMenuLabel : undefined,
+      subMenu: current === "developers" ? subMenu : undefined,
+    },
+  ];
+
+  if (owner.flags && owner.flags.includes("scheduler")) {
+    menus.push({
+      id: "schedule",
+      label: "Scheduled assistants",
+      icon: ClockIcon,
+      href: `/w/${owner.sId}/builder/schedules`,
+      current: current === "schedule",
+      subMenuLabel: current === "schedule" ? subMenuLabel : undefined,
+      subMenu: current === "schedule" ? subMenu : undefined,
+    });
+  }
+
   nav.push({
     id: "developers",
     label: "Developers",
     variant: "secondary",
-    menus: [
-      {
-        id: "developers",
-        label: "Developer Tools",
-        icon: CommandLineIcon,
-        href: `/w/${owner.sId}/a`,
-        current: current === "developers",
-        subMenuLabel: current === "developers" ? subMenuLabel : undefined,
-        subMenu: current === "developers" ? subMenu : undefined,
-      },
-      {
-        id: "schedule",
-        label: "Schedule",
-        icon: ClockIcon,
-        href: `/w/${owner.sId}/builder/schedules`,
-        current: current === "schedule",
-        subMenuLabel: current === "schedule" ? subMenuLabel : undefined,
-        subMenu: current === "schedule" ? subMenu : undefined,
-      },
-    ],
+    menus: menus,
   });
 
   return nav;
