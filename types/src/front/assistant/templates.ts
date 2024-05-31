@@ -144,8 +144,8 @@ export type CreateTemplateFormType = t.TypeOf<typeof CreateTemplateFormSchema>;
 
 export function getAgentActionConfigurationType(
   action: ActionPreset, 
-  timeFrameDuration?: string | undefined,
-  timeFrameUnit?: TimeframeUnit | undefined
+  timeFrameDuration?: number | null,
+  timeFrameUnit?: TimeframeUnit | null
 ): AgentActionConfigurationType | null {
   switch (action) {
     case "reply":
@@ -194,7 +194,7 @@ export function getAgentActionConfigurationType(
         id: -1,
         tagsFilter: null,
         relativeTimeFrame: {
-          duration: timeFrameDuration ? parseInt(timeFrameDuration) : 1,
+          duration: timeFrameDuration || 1,
           unit: timeFrameUnit || "week",
         },
         sId: "template",
