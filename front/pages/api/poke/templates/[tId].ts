@@ -132,7 +132,7 @@ async function handler(
         timeFrameDuration: body.timeFrameDuration
           ? parseInt(body.timeFrameDuration)
           : null,
-        timeFrameUnit: body.timeFrameUnit ?? null,
+        timeFrameUnit: body.timeFrameUnit || null,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
