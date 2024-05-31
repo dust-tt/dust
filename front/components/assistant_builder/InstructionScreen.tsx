@@ -213,6 +213,8 @@ export function InstructionScreen({
   );
 }
 
+export default InstructionScreen;
+
 function AdvancedSettings({
   plan,
   generationSettings,
