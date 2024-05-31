@@ -6,6 +6,8 @@ import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
+import type { TimeframeUnit } from "./actions/retrieval"
+import { TIME_FRAME_UNITS } from "./actions/retrieval"
 import { RetrievalConfigurationType } from "./actions/retrieval";
 import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
@@ -107,7 +109,10 @@ export const ActionPresetCodec = ioTsEnum<ActionPreset>(
   Object.keys(ACTION_PRESETS),
   "ActionPreset"
 );
-
+export const TimeframeUnitCodec = ioTsEnum<TimeframeUnit>(
+  TIME_FRAME_UNITS,
+  "TimeframeUnit"
+);
 export const TEMPLATE_VISIBILITIES = [
   "draft",
   "published",
@@ -128,8 +133,8 @@ export const CreateTemplateFormSchema = t.type({
   description: t.union([t.string, t.undefined]),
   emoji: NonEmptyString,
   handle: NonEmptyString,
-  timeFrameDuration: t.union([t.number, t.undefined]),
-  timeFrameUnit: t.union([t.string, t.undefined]),
+  timeFrameDuration: t.union([t.string, t.undefined]),
+  timeFrameUnit: t.union([TimeframeUnitCodec, t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
   presetAction: ActionPresetCodec,
