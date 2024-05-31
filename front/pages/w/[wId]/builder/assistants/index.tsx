@@ -22,7 +22,8 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { SCOPE_INFO } from "@app/components/assistant/Sharing";
@@ -166,6 +167,24 @@ export default function WorkspaceAssistants({
   const disabledTablineClass =
     "!border-element-500 !text-element-500 !cursor-default";
 
+  const searchBarRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "/") {
+        event.preventDefault();
+        if (searchBarRef.current) {
+          searchBarRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
+    };
+  }, []);
+
   return (
     <AppLayout
       subscription={subscription}
@@ -188,6 +207,7 @@ export default function WorkspaceAssistants({
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <Searchbar
+              ref={searchBarRef}
               name="search"
               placeholder="Search (Name)"
               value={assistantSearch}
