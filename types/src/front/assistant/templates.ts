@@ -132,7 +132,7 @@ export const CreateTemplateFormSchema = t.type({
   emoji: NonEmptyString,
   handle: NonEmptyString,
   timeFrameDuration: t.union([t.string, t.undefined]),
-  timeFrameUnit: t.union([TimeframeUnitCodec, t.undefined]),
+  timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
   presetAction: ActionPresetCodec,
