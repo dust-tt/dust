@@ -21,16 +21,16 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { sendEmail } from "@app/lib/email";
+import {
+  Conversation,
+  ConversationParticipant,
+} from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import {
-  Conversation,
-  ConversationParticipant,
-} from "@app/lib/models/assistant/conversation";
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
