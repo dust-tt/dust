@@ -164,8 +164,8 @@ export async function submitMessage({
     if (mRes.status === 413) {
       return new Err({
         type: "content_too_large",
-        title: "Your message could not be sent.",
-        message: "Please try again with a shorter message",
+        title: "Your message is too long to be sent.",
+        message: "Please try again with a shorter message.",
       });
     }
     const data = await mRes.json();
