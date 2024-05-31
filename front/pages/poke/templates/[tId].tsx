@@ -551,19 +551,17 @@ function TemplatesPage({
                 />
                 {presetAction === "process_configuration" && (
                   <div className={"flex flex-row items-center gap-4 pb-4"}>
-                    <div className="text-sm font-semibold text-element-900">
-                      From the last
-                    </div>
                     <InputField
                       control={form.control}
                       name="timeFrameDuration"
+                      title="From the last"
                       placeholder="1"
                       type="number"
                     />
                     <SelectField
                       control={form.control}
                       name="timeFrameUnit"
-                      title={"Unit"}
+                      title="Unit"
                       options={Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(
                         (v) => ({
                           value: v[0],
