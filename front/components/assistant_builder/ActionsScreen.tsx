@@ -29,6 +29,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
+import _ from "lodash";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -506,7 +507,7 @@ function ActionCard({
           />
         </div>
         <div className="w-full truncate text-base text-element-700">
-          {action.description}
+          {_.capitalize(_.toLower(action.name).replace(/_/g, " "))}
         </div>
       </div>
     </CardButton>
