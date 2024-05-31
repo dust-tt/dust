@@ -17,7 +17,9 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
+  WebsearchActionOutputSchema,
 } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -290,7 +292,29 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         }
 
         if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          output = { results: e.value } as WebsearchActionOutputType;
+          const outputValidation = WebsearchActionOutputSchema.decode(e.value);
+          if (isLeft(outputValidation)) {
+            logger.error(
+              {
+                workspaceId: owner.id,
+                conversationId: conversation.id,
+                error: outputValidation.left,
+              },
+              "Error running websearch action"
+            );
+            yield {
+              type: "websearch_error",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: "websearch_execution_error",
+                message: `Invalid output from websearch action: ${outputValidation.left}`,
+              },
+            };
+            return;
+          }
+          output = outputValidation.right;
         }
       }
     }
