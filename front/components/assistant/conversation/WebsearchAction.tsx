@@ -3,6 +3,7 @@ import {
   ChevronRightIcon,
   Chip,
   Icon,
+  InformationCircleIcon,
   MagnifyingGlassStrokeIcon,
   Spinner,
   Tooltip,
@@ -24,6 +25,19 @@ export default function WebsearchAction({
   const [isResultsListVisible, setIsResultsListVisible] = useState(false);
 
   const { results } = websearchAction.output ?? { results: [] };
+
+  const rawError =
+    websearchAction.output && "error" in websearchAction.output
+      ? // typescript can't narrow despite the check above
+        (websearchAction.output as { error: string }).error
+      : null;
+
+  // no results is not an error per se so we won't display it with a red chip
+  // but serpApi returns an error so we have to prevent it from being considered
+  // as such
+  const error = rawError?.includes("Google hasn't returned any results")
+    ? null
+    : rawError;
 
   return (
     <>
@@ -55,20 +69,33 @@ export default function WebsearchAction({
         <div className="row-span-1 select-none">
           {websearchAction.output && (
             <div
-              onClick={() => setIsResultsListVisible(!isResultsListVisible)}
+              onClick={() =>
+                results.length > 0 &&
+                setIsResultsListVisible(!isResultsListVisible)
+              }
               className="cursor-pointer"
             >
               <Chip color="purple">
                 {results.length > 0
                   ? SearchResultsInfo(results)
                   : "No results found"}
-                <Icon
-                  visual={
-                    isResultsListVisible ? ChevronDownIcon : ChevronRightIcon
-                  }
-                  size="xs"
-                />
+                {results.length > 0 && (
+                  <Icon
+                    visual={
+                      isResultsListVisible ? ChevronDownIcon : ChevronRightIcon
+                    }
+                    size="xs"
+                  />
+                )}
               </Chip>
+              {error && (
+                <Tooltip label={`Error message: ${error}`}>
+                  <Chip color="red">
+                    <Icon visual={InformationCircleIcon} size="xs" />
+                    Error searching the web
+                  </Chip>
+                </Tooltip>
+              )}
             </div>
           )}
         </div>
