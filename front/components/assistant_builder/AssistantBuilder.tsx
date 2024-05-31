@@ -1021,8 +1021,8 @@ export function BuilderLayout({
 }) {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <div className="flex h-full w-full max-w-[900px] grow items-center justify-center gap-5 px-5">
-        <div className="h-full w-full max-w-[900px]">{leftPanel}</div>
+      <div className="flex h-full w-full grow items-center justify-center gap-5 px-5">
+        <div className="h-full w-full max-w-[900px] grow">{leftPanel}</div>
         <div className="hidden h-full items-center gap-4 lg:flex">
           {buttonsRightPanel}
           <div
