@@ -23,51 +23,48 @@ path = "bin/sqlite_worker.rs"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["rc", "derive"] }
 serde_json = "1.0"
-pest = "2.0"
-pest_derive = "2.0"
+pest = "2.7"
+pest_derive = "2.7"
 shellexpand = "2.1"
 blake3 = "1.3"
 async-trait = "0.1"
-hyper = { version = "1.2.0", features = ["full"] }
-tokio = { version = "1.33", features = ["full"] }
+tokio = { version = "1.38", features = ["full"] }
 tokio-stream = "0.1"
-hyper-tls = "0.5"
+hyper = { version = "1.3.1", features = ["full"] }
 itertools = "0.10"
-async-fs = "1.6"
 futures = "0.3"
 async-std = "1.12"
 lazy_static = "1.4"
-regex = "1.8.3"
+regex = "1.10"
 rand = "0.8"
-uuid = { version = "1.1", features = ["v4"] }
+uuid = { version = "1.8", features = ["v4"] }
 parking_lot = "0.12"
 axum = "0.7.4"
-rusqlite = { version = "0.29", features = ["bundled"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 tokio-postgres = "0.7"
 bb8 = "0.8"
 bb8-postgres = "0.8"
 urlencoding = "2.1"
-url = "2.3"
+url = "2.5"
 dns-lookup = "1.0"
 async-stream = "0.3"
 eventsource-client = "0.12"
-tera = "1.17"
-fancy-regex = "0.11"
+tera = "1.20"
+fancy-regex = "0.13"
 rustc-hash = "1.1"
-bstr = "1.5"
-base64 = "0.21"
+bstr = "1.9"
+base64 = "0.22"
 cloud-storage = { version = "0.11", features = ["global-client"] }
 qdrant-client = "1.9"
-tower-http = {version = "0.5.2", features = ["full"]}
+tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 deno_core = "0.200"
-rayon = "1.8.0"
-clap = { version = "4.4", features = ["derive"] }
-async-recursion = "1.0"
-chrono = "0.4.31"
-yup-oauth2 = "8.3.0"
+rayon = "1.10"
+clap = { version = "4.5", features = ["derive"] }
+async-recursion = "1.1"
+chrono = "0.4"
 datadog-formatting-layer = "1.1"
 thiserror = "1.0.57"
-reqwest = "0.11.24"
-sentencepiece = { version = "0.11.2", features = ["static"] }
+sentencepiece = { version = "0.11", features = ["static"] }
+reqwest = { version = "0.12", features = ["json"] }
