@@ -12,7 +12,6 @@ use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use hyper::{body::Buf, Uri};
-use hyper_tls::HttpsConnector;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt::{self, Display};
@@ -628,7 +627,6 @@ impl AnthropicLLM {
             body["tools"] = json!(tools);
         }
 
-        let https = HttpsConnector::new();
         let url = self.messages_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -669,7 +667,7 @@ impl AnthropicLLM {
                     .delay_max(Duration::from_secs(8))
                     .build(),
             )
-            .build_with_conn(https);
+            .build();
 
         let mut stream = client.stream();
 
@@ -922,7 +920,6 @@ impl AnthropicLLM {
     ) -> Result<CompletionResponse> {
         assert!(self.api_key.is_some());
 
-        let https = HttpsConnector::new();
         let url = self.completions_uri()?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -973,7 +970,7 @@ impl AnthropicLLM {
                     .delay_max(Duration::from_secs(8))
                     .build(),
             )
-            .build_with_conn(https);
+            .build();
 
         let mut stream = client.stream();
 

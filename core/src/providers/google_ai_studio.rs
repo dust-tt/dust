@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
-use hyper_tls::HttpsConnector;
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -492,7 +491,6 @@ pub async fn streamed_chat_completion(
     event_sender: Option<UnboundedSender<Value>>,
     use_header_auth: bool,
 ) -> Result<Completion> {
-    let https = HttpsConnector::new();
     let url = match use_header_auth {
         true => uri.to_string(),
         false => format!("{}&key={}", uri, api_key),
@@ -623,7 +621,7 @@ pub async fn streamed_chat_completion(
                 .delay_max(Duration::from_secs(8))
                 .build(),
         )
-        .build_with_conn(https);
+        .build();
 
     let mut stream = client.stream();
 

@@ -28,10 +28,9 @@ pest_derive = "2.0"
 shellexpand = "2.1"
 blake3 = "1.3"
 async-trait = "0.1"
-hyper = { version = "1.2.0", features = ["full"] }
-tokio = { version = "1.33", features = ["full"] }
+tokio = { version = "1.38", features = ["full"] }
 tokio-stream = "0.1"
-hyper-tls = "0.5"
+hyper = { version = "1.3.1", features = ["full"] }
 itertools = "0.10"
 async-fs = "1.6"
 futures = "0.3"
