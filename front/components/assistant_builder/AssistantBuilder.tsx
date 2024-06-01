@@ -559,7 +559,6 @@ export default function AssistantBuilder({
       <AppLayout
         subscription={subscription}
         hideSidebar
-        isWideMode
         owner={owner}
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
