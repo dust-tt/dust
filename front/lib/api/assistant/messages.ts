@@ -373,6 +373,7 @@ export async function fetchConversationMessages(
     where: {
       sId: conversationId,
       workspaceId: owner.id,
+      visibility: { [Op.ne]: "deleted" },
     },
   });
   if (!conversation) {
