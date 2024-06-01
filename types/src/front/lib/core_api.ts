@@ -24,7 +24,7 @@ import { Err, Ok, Result } from "../../shared/result";
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
 export const EMBEDDING_CONFIG = {
-  model_id: "text-embedding-ada-002",
+  model_id: "text-embedding-3-large-1536",
   provider_id: "openai",
   splitter_id: "base_v0",
   max_chunk_size: 512,
