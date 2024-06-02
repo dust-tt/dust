@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use parking_lot::{Mutex, RwLock};
 use sentencepiece::SentencePieceProcessor;
@@ -368,8 +369,9 @@ impl MistralAPIError {
         }
     }
 
-    pub fn retryable_streamed(&self) -> bool {
-        false
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        // We retry on 5xx errors (which means the streaming didn't start).
+        return status.is_server_error();
     }
 }
 
@@ -554,7 +556,9 @@ impl MistralAILLM {
                                             serde_json::from_str(e.data.as_str());
                                         match error {
                                             Ok(error) => {
-                                                match error.retryable_streamed() && index == 0 {
+                                                match error.retryable_streamed(StatusCode::OK)
+                                                    && index == 0
+                                                {
                                                     true => Err(ModelError {
                                                         message: error.message(),
                                                         retryable: Some(ModelErrorRetryOptions {
@@ -642,7 +646,41 @@ impl MistralAILLM {
                     }
                 },
                 Err(e) => {
-                    Err(anyhow!("Error streaming tokens from Mistral AI: {:?}", e))?;
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+
+                            let b = r.body_bytes().await?;
+                            let c: &[u8] = &b;
+
+                            let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                            match error {
+                                Ok(error) => match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Mistral AI: \
+                                        status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(c)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Mistral AI: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
