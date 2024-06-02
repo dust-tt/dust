@@ -140,6 +140,17 @@ async function handler(
 
       const email = emailRes.value;
 
+      // temporary gating: only dust.tt emails are allowed to trigger the assistant
+      if (!email.envelope.from.endsWith("@dust.tt")) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Only dust.tt emails are allowed to trigger the assistant",
+          },
+        });
+      }
+
       // At this stage we have a valid email in we can respond 200 to the webhook, no more apiError
       // possible below this point, errors should be reported to the sender.
       res.status(200).json({ success: true });
