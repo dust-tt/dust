@@ -651,9 +651,8 @@ impl MistralAILLM {
                             let status = StatusCode::from_u16(r.status())?;
 
                             let b = r.body_bytes().await?;
-                            let c: &[u8] = &b;
 
-                            let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                            let error: Result<MistralAPIError, _> = serde_json::from_slice(&b);
                             match error {
                                 Ok(error) => match error.retryable_streamed(status) {
                                     true => Err(ModelError {
@@ -673,7 +672,7 @@ impl MistralAILLM {
                                     "Error streaming tokens from Mistral AI: \
                                         status={} data={}",
                                     status,
-                                    String::from_utf8_lossy(c)
+                                    String::from_utf8_lossy(&b)
                                 ))?,
                             }
                         }
@@ -831,12 +830,11 @@ impl MistralAILLM {
 
         let mut b: Vec<u8> = vec![];
         body.reader().read_to_end(&mut b)?;
-        let c: &[u8] = &b;
 
-        let mut completion: MistralChatCompletion = match serde_json::from_slice(c) {
+        let mut completion: MistralChatCompletion = match serde_json::from_slice(&b) {
             Ok(c) => c,
             Err(err) => {
-                let error: Result<MistralAPIError, _> = serde_json::from_slice(c);
+                let error: Result<MistralAPIError, _> = serde_json::from_slice(&b);
                 match error {
                     Ok(error) => match error.retryable() {
                         true => Err(ModelError {
@@ -859,7 +857,7 @@ impl MistralAILLM {
                     Err(_) => Err(anyhow!(
                         "MistralAIError: failed parsing completion from Mistral AI err={} data={}",
                         err,
-                        String::from_utf8_lossy(c),
+                        String::from_utf8_lossy(&b),
                     ))?,
                 };
                 unreachable!()
