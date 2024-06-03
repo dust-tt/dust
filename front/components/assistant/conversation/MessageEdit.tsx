@@ -36,7 +36,6 @@ export function MessageEdit({
 
   const { submit: handleEditMessage, isSubmitting } = useSubmitFunction(
     async (
-      isEmpty: boolean,
       textAndMentions: { mentions: EditorMention[]; text: string }
     ) => {
       const { mentions: rawMentions, text } = textAndMentions;
@@ -119,7 +118,6 @@ export function MessageEdit({
           disabled={isSubmitting}
           onClick={() =>
             handleEditMessage(
-              editorService.isEmpty(),
               editorService.getTextAndMentions()
             )
           }
