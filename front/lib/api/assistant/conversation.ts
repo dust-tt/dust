@@ -1004,7 +1004,8 @@ export async function* editUserMessage(
   );
   if (
     !userMessages[userMessages.length - 1].some(
-      (m: UserMessageType) => m.sId === message.sId
+      (m: UserMessageType | AgentMessageType | ContentFragmentType) =>
+        m.sId === message.sId
     )
   ) {
     yield {
