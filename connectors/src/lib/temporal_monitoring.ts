@@ -8,7 +8,6 @@ import type {
 import tracer from "dd-trace";
 
 import type { Logger } from "@connectors/logger/logger";
-import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
@@ -78,6 +77,14 @@ export class ActivityInboundLogInterceptor
       );
     }, this.context.info.startToCloseTimeoutMs);
 
+    // We already trigger a monitor after 20 attempts, but when the pod carshed (eg: OOM or segfault), the attempt never get logged.
+    // So we add a monitor the attempt count before the activity starts.
+    if (this.context.info.attempt > 25) {
+      this.logger.error(
+        { panic: true },
+        "Activity has been attempted more than 25 times"
+      );
+    }
     try {
       return await tracer.trace(
         `${this.context.info.workflowType}-${this.context.info.activityType}`,
