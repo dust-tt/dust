@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
+use tracing::error;
 
 use super::google_ai_studio::GoogleAiStudioProvider;
 
@@ -76,6 +77,7 @@ pub struct ModelErrorRetryOptions {
 pub struct ModelError {
     pub message: String,
     pub retryable: Option<ModelErrorRetryOptions>,
+    pub request_id: Option<String>,
 }
 
 impl std::fmt::Display for ModelError {
@@ -114,6 +116,13 @@ where
                             log_retry(&err.message, sleep.as_ref().unwrap(), attempts);
                             tokio::time::sleep(sleep.unwrap()).await;
                             if attempts > retry.retries {
+                                if let Some(request_id) = &err.request_id {
+                                    error!(
+                                        request_id = request_id,
+                                        error = err.message,
+                                        "Failed to query model",
+                                    );
+                                }
                                 break Err(anyhow!(
                                     "Too many retries ({}): {}",
                                     retry.retries,

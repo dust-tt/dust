@@ -570,6 +570,11 @@ impl AnthropicLLM {
             .await?;
 
         let status = res.status();
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
         let body = res.bytes().await?;
 
         let mut b: Vec<u8> = vec![];
@@ -580,6 +585,7 @@ impl AnthropicLLM {
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
+                    request_id,
                     message: format!("Anthropic API Error: {}", error.to_string()),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -871,6 +877,7 @@ impl AnthropicLLM {
                                         };
 
                                     Err(ModelError {
+                                        request_id: None,
                                         message: format!(
                                             "Anthropic API Error: {}",
                                             event.error.to_string()
@@ -1095,6 +1102,7 @@ impl AnthropicLLM {
             _ => {
                 let error: Error = serde_json::from_slice(c)?;
                 Err(ModelError {
+                    request_id: None,
                     message: format!("Anthropic API Error: {}", error.to_string()),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),

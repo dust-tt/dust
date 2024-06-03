@@ -560,6 +560,7 @@ impl MistralAILLM {
                                                     && index == 0
                                                 {
                                                     true => Err(ModelError {
+                                                        request_id: None,
                                                         message: error.message(),
                                                         retryable: Some(ModelErrorRetryOptions {
                                                             sleep: Duration::from_millis(500),
@@ -568,6 +569,7 @@ impl MistralAILLM {
                                                         }),
                                                     })?,
                                                     false => Err(ModelError {
+                                                        request_id: None,
                                                         message: error.message(),
                                                         retryable: None,
                                                     })?,
@@ -820,6 +822,13 @@ impl MistralAILLM {
             Ok(Err(e)) => Err(e)?,
             Err(_) => Err(anyhow!("Timeout sending request to Mistral AI after 180s"))?,
         };
+
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = match timeout(Duration::new(180, 0), res.bytes()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
@@ -838,6 +847,7 @@ impl MistralAILLM {
                 match error {
                     Ok(error) => match error.retryable() {
                         true => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -846,6 +856,7 @@ impl MistralAILLM {
                             }),
                         }),
                         false => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -1169,6 +1180,12 @@ impl Embedder for MistralEmbedder {
             Err(_) => Err(anyhow!("Timeout sending request to Mistral after 60s"))?,
         };
 
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("x-request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
+
         let body = match timeout(Duration::new(60, 0), res.bytes()).await {
             Ok(Ok(body)) => body,
             Ok(Err(e)) => Err(e)?,
@@ -1186,6 +1203,7 @@ impl Embedder for MistralEmbedder {
                 match error {
                     Ok(error) => match error.retryable() {
                         true => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
@@ -1194,6 +1212,7 @@ impl Embedder for MistralEmbedder {
                             }),
                         }),
                         false => Err(ModelError {
+                            request_id,
                             message: error.message(),
                             retryable: Some(ModelErrorRetryOptions {
                                 sleep: Duration::from_millis(500),
