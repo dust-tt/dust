@@ -25,7 +25,7 @@ interface CardButtonProps {
 
 const variantClasses = {
   primary:
-    "s-bg-structure-100 s-border s-border-structure-200 hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-200 active:s-border-structure-300",
+    "s-bg-structure-50 s-border s-border-structure-200 hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200",
   secondary:
     "s-bg-structure-0 s-border s-border-structure-100 hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300",
   tertiary:

@@ -286,8 +286,8 @@ export default function ActionsScreen({
         dustApps={dustApps}
       />
 
-      <div className="flex flex-col gap-8 text-sm text-element-700">
-        <div className="flex flex-col sm:flex-row">
+      <div className="flex min-h-96 flex-col gap-8 text-sm text-element-700">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Actions & Data sources" />
             <Page.P>
@@ -299,8 +299,20 @@ export default function ActionsScreen({
               </span>
             </Page.P>
           </div>
-          <div className="flex-grow" />
-          <div className="self-end">
+          <div className="flex flex-row">
+            {builderState.actions.length > 0 && (
+              <div>
+                <AddAction
+                  owner={owner}
+                  builderState={builderState}
+                  onAddAction={(action) => {
+                    setPendingAction(action);
+                    setNewActionModalOpen(true);
+                  }}
+                />
+              </div>
+            )}
+            <div className="flex-grow" />
             <AdvancedSettings
               maxToolsUsePerRun={builderState.maxToolsUsePerRun}
               setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
@@ -314,11 +326,11 @@ export default function ActionsScreen({
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex h-full min-h-40 flex-col gap-4">
           {builderState.actions.length === 0 && (
             <div
               className={
-                "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
+                "flex h-full items-center justify-center rounded-lg border border-structure-100 bg-structure-50"
               }
             >
               <AddAction
@@ -348,18 +360,6 @@ export default function ActionsScreen({
               </div>
             ))}
           </div>
-          {builderState.actions.length > 0 && (
-            <div>
-              <AddAction
-                owner={owner}
-                builderState={builderState}
-                onAddAction={(action) => {
-                  setPendingAction(action);
-                  setNewActionModalOpen(true);
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
     </>
@@ -426,7 +426,7 @@ function NewActionModal({
       onClose={onCloseLocal}
       hasChanged={true}
       variant="side-md"
-      title="Add Action"
+      title=" "
       onSave={
         newAction && titleValid && descriptionValid && isActionValid(newAction)
           ? () => {
@@ -438,8 +438,14 @@ function NewActionModal({
           : undefined
       }
     >
-      <div className="w-full pl-4 pt-12">
+      <div className="w-full pt-8">
         <div className="flex flex-col gap-4">
+          <div>
+            <Icon className="text-brand" visual={CommandLineIcon} size="lg" />
+            <div className="text-2xl font-semibold text-element-900">
+              Action Type
+            </div>
+          </div>
           {newAction && (
             <ActionEditor
               action={newAction}
@@ -488,7 +494,7 @@ function ActionCard({
   }
   return (
     <CardButton
-      variant="secondary"
+      variant="primary"
       onClick={editAction}
       className="mx-auto inline-block w-72"
     >
