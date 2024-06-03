@@ -81,7 +81,7 @@ export function MessageEdit({
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
-    onEnterKeyDown: handleEditMessage,
+    onEnterKeyDown: (_, textAndMentions) => handleEditMessage(textAndMentions),
     resetEditorContainerSize: () => {
       // Do nothing
     },
