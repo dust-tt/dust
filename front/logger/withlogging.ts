@@ -1,3 +1,4 @@
+import { getSession } from "@auth0/nextjs-auth0";
 import type {
   APIErrorWithStatusCode,
   WithAPIErrorReponse,
@@ -32,10 +33,14 @@ export function withLogging<T>(
     }
     const now = new Date();
 
+    const session = await getSession(req, res);
+    const sessionId = session?.user?.sub || "unknown";
+
     logger.info(
       {
         method: req.method,
         url: req.url,
+        sessionId,
       },
       "Begin Request Processing."
     );
@@ -63,6 +68,7 @@ export function withLogging<T>(
           durationMs: elapsed,
           streaming,
           error: err,
+          sessionId,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
         },
@@ -107,6 +113,7 @@ export function withLogging<T>(
         route,
         statusCode: res.statusCode,
         durationMs: elapsed,
+        sessionId,
         streaming,
       },
       "Processed request"
