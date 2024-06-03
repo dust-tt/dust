@@ -5,6 +5,7 @@ import {
   getAuthObject,
   getDocumentId,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 import {
   GoogleDriveFiles,
   GoogleDriveFolders,
@@ -12,7 +13,6 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
 
 const { LIVE } = process.env;
 
@@ -61,7 +61,7 @@ async function main() {
 
     const authCredentials = await (async () => {
       try {
-        return getAuthObject(connector.connectionId);
+        return await getAuthObject(connector.connectionId);
       } catch (e) {
         if (e instanceof ExternalOauthTokenError) {
           logger.info(
