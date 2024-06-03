@@ -552,13 +552,14 @@ function ActionEditor({
                     title={ACTION_SPECIFICATIONS[action.type].label}
                     icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
                   />
-                <ActionDustAppRun
-                  owner={owner}
-                  action={action}
-                  dustApps={dustApps}
-                  updateAction={updateAction}
-                  setEdited={setEdited}
-                /></>
+                  <ActionDustAppRun
+                    owner={owner}
+                    action={action}
+                    dustApps={dustApps}
+                    updateAction={updateAction}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "RETRIEVAL_SEARCH":
               return (
