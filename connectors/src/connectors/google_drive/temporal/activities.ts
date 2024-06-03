@@ -628,11 +628,12 @@ export async function garbageCollector(
 
 export async function renewWebhooks(pageSize: number): Promise<number> {
   // Find webhook that are about to expire in the next hour.
+  const renewWebhookStartingTime = new Date().getTime();
   const webhooks = await GoogleDriveWebhook.findAll({
     where: {
       renewAt: {
         [Op.lt]: new Date(
-          new Date().getTime() + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+          renewWebhookStartingTime + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
         ),
       },
 
@@ -655,7 +656,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       );
       continue;
     }
-    if (wh.expiresAt < new Date()) {
+    if (wh.expiresAt < new Date(renewWebhookStartingTime)) {
       logger.error(
         {
           webhook: {
