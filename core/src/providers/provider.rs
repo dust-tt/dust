@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
-use tracing::error;
 
 use super::google_ai_studio::GoogleAiStudioProvider;
 
@@ -96,6 +95,7 @@ impl std::error::Error for ModelError {}
 pub async fn with_retryable_back_off<F, O>(
     mut f: impl FnMut() -> F,
     log_retry: impl Fn(&str, &Duration, usize) -> (),
+    log_model_error: impl Fn(&ModelError) -> (),
 ) -> Result<O>
 where
     F: Future<Output = Result<O, anyhow::Error>>,
@@ -106,6 +106,7 @@ where
         match f().await {
             Err(e) => match e.downcast::<ModelError>() {
                 Ok(err) => {
+                    log_model_error(&err);
                     match err.retryable.clone() {
                         Some(retry) => {
                             attempts += 1;
@@ -116,13 +117,6 @@ where
                             log_retry(&err.message, sleep.as_ref().unwrap(), attempts);
                             tokio::time::sleep(sleep.unwrap()).await;
                             if attempts > retry.retries {
-                                if let Some(request_id) = &err.request_id {
-                                    error!(
-                                        request_id = request_id,
-                                        error = err.message,
-                                        "Failed to query model",
-                                    );
-                                }
                                 break Err(anyhow!(
                                     "Too many retries ({}): {}",
                                     retry.retries,

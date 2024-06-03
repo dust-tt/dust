@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EmbedderVector {
@@ -105,6 +105,15 @@ impl EmbedderRequest {
                     sleep = sleep.as_millis(),
                     err_msg = err_msg,
                     "Retry querying"
+                );
+            },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    "EmbedderRequest model error",
                 );
             },
         )

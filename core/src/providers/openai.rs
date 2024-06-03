@@ -15,6 +15,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
 use parking_lot::{Mutex, RwLock};
@@ -421,7 +422,13 @@ impl Error {
         }
     }
 
-    pub fn retryable_streamed(&self) -> bool {
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        if status.is_server_error() {
+            return true;
+        }
         match self.error._type.as_str() {
             "server_error" => match self.error.internal_message {
                 Some(_) => true,
@@ -546,7 +553,8 @@ pub async fn streamed_completion(
                                 let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
                                 match error {
                                     Ok(error) => {
-                                        match error.retryable_streamed() && index == 0 {
+                                        match error.retryable_streamed(StatusCode::OK) && index == 0
+                                        {
                                             true => Err(ModelError {
                                                 request_id: None,
                                                 message: error.message(),
@@ -636,7 +644,47 @@ pub async fn streamed_completion(
                 }
             },
             Err(e) => {
-                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                match e {
+                    es::Error::UnexpectedResponse(r) => {
+                        let status = StatusCode::from_u16(r.status())?;
+                        let headers = r.headers()?;
+                        let request_id = match headers.get("x-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                        let b = r.body_bytes().await?;
+
+                        let error: Result<Error, _> = serde_json::from_slice(&b);
+                        match error {
+                            Ok(error) => {
+                                match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }
+                            }?,
+                            Err(_) => Err(anyhow!(
+                                "Error streaming tokens from OpenAI: status={} data={}",
+                                status,
+                                String::from_utf8_lossy(&b)
+                            ))?,
+                        }
+                    }
+                    _ => {
+                        Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    }
+                }
                 break 'stream;
             }
         }
@@ -935,7 +983,9 @@ pub async fn streamed_chat_completion(
                                         serde_json::from_str(e.data.as_str());
                                     match error {
                                         Ok(error) => {
-                                            match error.retryable_streamed() && index == 0 {
+                                            match error.retryable_streamed(StatusCode::OK)
+                                                && index == 0
+                                            {
                                                 true => Err(ModelError {
                                                     request_id: None,
                                                     message: error.message(),
@@ -1027,7 +1077,47 @@ pub async fn streamed_chat_completion(
                 }
             },
             Err(e) => {
-                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                match e {
+                    es::Error::UnexpectedResponse(r) => {
+                        let status = StatusCode::from_u16(r.status())?;
+                        let headers = r.headers()?;
+                        let request_id = match headers.get("x-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                        let b = r.body_bytes().await?;
+
+                        let error: Result<Error, _> = serde_json::from_slice(&b);
+                        match error {
+                            Ok(error) => {
+                                match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }
+                            }?,
+                            Err(_) => Err(anyhow!(
+                                "Error streaming tokens from OpenAI: status={} data={}",
+                                status,
+                                String::from_utf8_lossy(&b)
+                            ))?,
+                        }
+                    }
+                    _ => {
+                        Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    }
+                }
                 break 'stream;
             }
         }
