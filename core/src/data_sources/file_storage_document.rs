@@ -3,7 +3,6 @@ use cloud_storage::Object;
 use serde::{Deserialize, Serialize};
 use tokio::try_join;
 use tracing::info;
-use tracing_subscriber::fmt::format;
 
 use crate::utils;
 

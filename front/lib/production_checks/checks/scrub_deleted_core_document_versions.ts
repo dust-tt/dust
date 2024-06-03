@@ -1,6 +1,5 @@
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
-import type { Logger } from "ajv";
 import { createHash } from "blake3";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";

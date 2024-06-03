@@ -596,7 +596,6 @@ impl DataSource {
         Ok(())
     }
 
-    // What is this used for?
     pub async fn setup(&self) -> Result<()> {
         // GCP store created data to test GCP.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
