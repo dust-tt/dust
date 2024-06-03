@@ -821,10 +821,10 @@ export const google_drive = async ({
           `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
         );
       }
-
+      const maxRenewalTime = new Date().getTime();
       const res = await registerWebhooksForAllDrives({
         connector,
-        marginMs: 0,
+        maxRenewalTime,
       });
       if (res.isErr()) {
         throw res.error;
@@ -841,9 +841,10 @@ export const google_drive = async ({
           );
           continue;
         }
+        const maxRenewalTime = new Date().getTime();
         const res = await registerWebhooksForAllDrives({
           connector,
-          marginMs: 0,
+          maxRenewalTime,
         });
         if (res.isErr()) {
           // error registering for this webhook, but we need to keep going
