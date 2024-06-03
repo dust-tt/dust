@@ -56,13 +56,13 @@ const _webhookGoogleDriveAPIHandler = async (
   }
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        message: "Connector not found",
-        type: "invalid_request_error",
+    logger.info(
+      {
+        connectorId,
       },
-    });
+      "Received Gdrive webhook for a deleted connector."
+    );
+    return res.status(200).end();
   }
   if (connector.isPaused()) {
     logger.info(
@@ -70,7 +70,7 @@ const _webhookGoogleDriveAPIHandler = async (
         connectorId: connectorId,
         webhookId: webhookId,
       },
-      "Did not signal a Gdrive webhook to the incremenal sync workflow because the connector is paused"
+      "Did not signal a Gdrive webhook to the incremental sync workflow because the connector is paused"
     );
     return res.status(200).end();
   }
@@ -86,7 +86,7 @@ const _webhookGoogleDriveAPIHandler = async (
           connectorId: connectorId,
           webhookId: webhookId,
         },
-        "Did not signal a Gdrive webhook to the incremenal sync workflow because of rate limit"
+        "Did not signal a Gdrive webhook to the incremental sync workflow because of rate limit"
       );
       return res.status(200).end();
     }
