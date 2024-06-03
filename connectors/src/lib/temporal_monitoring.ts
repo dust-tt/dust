@@ -87,7 +87,7 @@ export class ActivityInboundLogInterceptor
           workflow_name: this.context.info.workflowType,
           attempt: this.context.info.attempt,
         },
-        "Activity has been attempted more than 25 times. Make sure it's not crashing the pod before investigating."
+        "Activity has been attempted more than 25 times. Make sure it's not crashing the pod."
       );
     }
     try {
