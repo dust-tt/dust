@@ -12,6 +12,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import { ExternalOauthTokenError } from "@connectors/lib/error";
 
 const { LIVE } = process.env;
 
@@ -58,7 +59,28 @@ async function main() {
       continue;
     }
 
-    const authCredentials = await getAuthObject(connector.connectionId);
+    const authCredentials = await (async () => {
+      try {
+        return getAuthObject(connector.connectionId);
+      } catch (e) {
+        if (e instanceof ExternalOauthTokenError) {
+          logger.info(
+            { connectorId, folderId },
+            `Auth revoked, deleting folder (live: ${LIVE})`
+          );
+          if (LIVE) {
+            await GoogleDriveFolders.destroy({
+              where: { connectorId, folderId },
+            });
+          }
+        }
+      }
+    })();
+
+    if (!authCredentials) {
+      continue;
+    }
+
     const file = await getGoogleDriveObject(authCredentials, folderId);
 
     if (!file) {

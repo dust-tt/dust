@@ -281,19 +281,24 @@ export async function syncFiles(
   };
 }
 
-export async function objectIsInFolders(
+export async function objectIsInFolderSelection(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
   foldersIds: string[],
   startSyncTs: number
 ): Promise<boolean> {
+  if (foldersIds.includes(driveFile.id)) {
+    return true;
+  }
+
   const parents = await getFileParentsMemoized(
     connectorId,
     authCredentials,
     driveFile,
     startSyncTs
   );
+
   for (const parent of parents) {
     if (foldersIds.includes(parent.id)) {
       return true;
@@ -393,7 +398,7 @@ export async function incrementalSync(
       }
       const file = await driveObjectToDustType(change.file, authCredentials);
       if (
-        !(await objectIsInFolders(
+        !(await objectIsInFolderSelection(
           connectorId,
           authCredentials,
           file,
@@ -597,7 +602,7 @@ export async function garbageCollector(
           await deleteFile(file);
           return null;
         }
-        const isInFolder = await objectIsInFolders(
+        const isInFolderSelection = await objectIsInFolderSelection(
           connectorId,
           authCredentials,
           driveFile,
@@ -605,14 +610,7 @@ export async function garbageCollector(
           lastSeenTs
         );
 
-        const isRoot = !!(await GoogleDriveFolders.findOne({
-          where: {
-            connectorId: connectorId,
-            folderId: driveFile.id,
-          },
-        }));
-
-        if ((isInFolder === false && isRoot === false) || driveFile.trashed) {
+        if (isInFolderSelection === false || driveFile.trashed) {
           await deleteOneFile(connectorId, driveFile);
         } else {
           await file.update({
