@@ -2,24 +2,19 @@ import {
   Button,
   CardButton,
   CommandLineIcon,
-  CommandLineStrokeIcon,
   DropdownMenu,
   Icon,
   IconButton,
   Input,
   MagnifyingGlassIcon,
-  MagnifyingGlassStrokeIcon,
   Modal,
   Page,
   PlanetIcon,
-  PlanetStrokeIcon,
   PlusIcon,
-  RobotIcon,
-  RobotStrokeIcon,
-  TableStrokeIcon,
+  ScanIcon,
+  TableIcon,
   TextArea,
   TimeIcon,
-  TimeStrokeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -79,42 +74,42 @@ const ACTION_SPECIFICATIONS: Record<
   RETRIEVAL_EXHAUSTIVE: {
     label: "Most recent data",
     description: "Include as much data as possible",
-    cardIcon: TimeStrokeIcon,
+    cardIcon: TimeIcon,
     dropDownIcon: TimeIcon,
     flag: null,
   },
   RETRIEVAL_SEARCH: {
     label: "Search",
     description: "Search through selected Data sources",
-    cardIcon: MagnifyingGlassStrokeIcon,
+    cardIcon: MagnifyingGlassIcon,
     dropDownIcon: MagnifyingGlassIcon,
     flag: null,
   },
   PROCESS: {
     label: "Extract data",
     description: "Structured extraction",
-    cardIcon: RobotStrokeIcon,
-    dropDownIcon: RobotIcon,
+    cardIcon: ScanIcon,
+    dropDownIcon: ScanIcon,
     flag: null,
   },
   DUST_APP_RUN: {
     label: "Run a Dust App",
     description: "Run a Dust app, then reply",
-    cardIcon: CommandLineStrokeIcon,
+    cardIcon: CommandLineIcon,
     dropDownIcon: CommandLineIcon,
     flag: null,
   },
   TABLES_QUERY: {
     label: "Query Tables",
     description: "Tables, Spreadsheets, Notion DBs (quantitative)",
-    cardIcon: TableStrokeIcon,
-    dropDownIcon: TableStrokeIcon,
+    cardIcon: TableIcon,
+    dropDownIcon: TableIcon,
     flag: null,
   },
   WEBSEARCH: {
     label: "Web search",
     description: "Perform a web search",
-    cardIcon: PlanetStrokeIcon,
+    cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
     flag: "websearch_action",
   },
@@ -440,12 +435,6 @@ function NewActionModal({
     >
       <div className="w-full pt-8">
         <div className="flex flex-col gap-4">
-          <div>
-            <Icon className="text-brand" visual={CommandLineIcon} size="lg" />
-            <div className="text-2xl font-semibold text-element-900">
-              Action Type
-            </div>
-          </div>
           {newAction && (
             <ActionEditor
               action={newAction}
@@ -553,108 +542,146 @@ function ActionEditor({
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
   return (
-    <div>
+    <>
       <ActionModeSection show={true}>
         {(() => {
           switch (action.type) {
             case "DUST_APP_RUN":
               return (
-                <ActionDustAppRun
-                  owner={owner}
-                  actionConfigration={action.configuration}
-                  dustApps={dustApps}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderDustAppConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionDustAppRun
+                    owner={owner}
+                    actionConfigration={action.configuration}
+                    dustApps={dustApps}
+                    updateAction={(setNewAction) => {
+                      updateAction({
+                        actionName: action.name,
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) =>
+                          setNewAction(
+                            old as AssistantBuilderDustAppConfiguration
+                          ),
+                      });
+                    }}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "RETRIEVAL_SEARCH":
               return (
-                <ActionRetrievalSearch
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderRetrievalConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionRetrievalSearch
+                    owner={owner}
+                    actionConfiguration={action.configuration}
+                    dataSources={dataSources}
+                    updateAction={(setNewAction) => {
+                      updateAction({
+                        actionName: action.name,
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) =>
+                          setNewAction(
+                            old as AssistantBuilderRetrievalConfiguration
+                          ),
+                      });
+                    }}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "RETRIEVAL_EXHAUSTIVE":
               return (
-                <ActionRetrievalExhaustive
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderRetrievalConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionRetrievalExhaustive
+                    owner={owner}
+                    actionConfiguration={action.configuration}
+                    dataSources={dataSources}
+                    updateAction={(setNewAction) => {
+                      updateAction({
+                        actionName: action.name,
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) =>
+                          setNewAction(
+                            old as AssistantBuilderRetrievalConfiguration
+                          ),
+                      });
+                    }}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "PROCESS":
               return (
-                <ActionProcess
-                  owner={owner}
-                  instructions={builderState.instructions}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderProcessConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionProcess
+                    owner={owner}
+                    instructions={builderState.instructions}
+                    actionConfiguration={action.configuration}
+                    dataSources={dataSources}
+                    updateAction={(setNewAction) => {
+                      updateAction({
+                        actionName: action.name,
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) =>
+                          setNewAction(
+                            old as AssistantBuilderProcessConfiguration
+                          ),
+                      });
+                    }}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "TABLES_QUERY":
               return (
-                <ActionTablesQuery
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderTablesQueryConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionTablesQuery
+                    owner={owner}
+                    actionConfiguration={action.configuration}
+                    dataSources={dataSources}
+                    updateAction={(setNewAction) => {
+                      updateAction({
+                        actionName: action.name,
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) =>
+                          setNewAction(
+                            old as AssistantBuilderTablesQueryConfiguration
+                          ),
+                      });
+                    }}
+                    setEdited={setEdited}
+                  />
+                </>
               );
             case "WEBSEARCH":
-              return <ActionWebsearch />;
+              return (
+                <>
+                  <Page.Header
+                    title={ACTION_SPECIFICATIONS[action.type].label}
+                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                  />
+                  <ActionWebsearch />
+                </>
+              );
             default:
               assertNever(action);
           }
@@ -708,7 +735,7 @@ function ActionEditor({
           className="text-sm"
         />
       </div>
-    </div>
+    </>
   );
 }
 
