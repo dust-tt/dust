@@ -651,13 +651,18 @@ impl MistralAILLM {
                     match e {
                         es::Error::UnexpectedResponse(r) => {
                             let status = StatusCode::from_u16(r.status())?;
-
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("x-request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
                             let b = r.body_bytes().await?;
 
                             let error: Result<MistralAPIError, _> = serde_json::from_slice(&b);
                             match error {
                                 Ok(error) => match error.retryable_streamed(status) {
                                     true => Err(ModelError {
+                                        request_id: request_id,
                                         message: error.message(),
                                         retryable: Some(ModelErrorRetryOptions {
                                             sleep: Duration::from_millis(500),
@@ -666,6 +671,7 @@ impl MistralAILLM {
                                         }),
                                     }),
                                     false => Err(ModelError {
+                                        request_id: request_id,
                                         message: error.message(),
                                         retryable: None,
                                     }),
