@@ -11,7 +11,7 @@ CREATE INDEX CONCURRENTLY "agent_tables_query_configurations_agent_configuration
 
 CREATE INDEX CONCURRENTLY "agent_tables_query_configurations_force_use_at_iteration" ON "agent_tables_query_configurations" ("forceUseAtIteration");
 
-CREATE INDEX "agent_process_configurations_force_use_at_iteration" ON "agent_process_configurations" ("forceUseAtIteration");
+CREATE INDEX CONCURRENTLY "agent_process_configurations_force_use_at_iteration" ON "agent_process_configurations" ("forceUseAtIteration");
 
 CREATE UNIQUE INDEX CONCURRENTLY "agent_process_configurations_s_id" ON "agent_process_configurations" ("sId");
 

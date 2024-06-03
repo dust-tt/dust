@@ -109,6 +109,7 @@ AgentProcessConfiguration.init(
       },
       {
         fields: ["forceUseAtIteration"],
+        concurrently: true,
       },
     ],
     sequelize: frontSequelize,
