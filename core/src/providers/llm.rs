@@ -11,7 +11,9 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use tracing::{error, info};
+
+use super::provider::ModelError;
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -293,12 +295,26 @@ impl LLMRequest {
                 );
                 Ok(c)
             }
-            Err(e) => Err(anyhow!(
-                "Error querying `{}:{}`: error={}",
-                self.provider_id.to_string(),
-                self.model_id,
-                e.to_string(),
-            )),
+            Err(e) => {
+                let string_error = e.to_string();
+                if let Ok(e) = e.downcast::<ModelError>() {
+                    //  Log the request_id if it exists.
+                    if let Some(request_id) = e.request_id {
+                        error!(
+                            provider_id = self.provider_id.to_string(),
+                            model_id = self.model_id,
+                            request_id = request_id,
+                            "Too many retries: error=ModelError"
+                        );
+                    }
+                }
+                return Err(anyhow!(
+                    "Error querying `{}:{}`: error={}",
+                    self.provider_id.to_string(),
+                    self.model_id,
+                    string_error,
+                ));
+            }
         }
     }
 
@@ -493,12 +509,26 @@ impl LLMChatRequest {
                 );
                 Ok(c)
             }
-            Err(e) => Err(anyhow!(
-                "Error querying `{}:{}`: error={}",
-                self.provider_id.to_string(),
-                self.model_id,
-                e.to_string(),
-            )),
+            Err(e) => {
+                let string_error = e.to_string();
+                if let Ok(e) = e.downcast::<ModelError>() {
+                    //  Log the request_id if it exists.
+                    if let Some(request_id) = e.request_id {
+                        error!(
+                            provider_id = self.provider_id.to_string(),
+                            model_id = self.model_id,
+                            request_id = request_id,
+                            "Too many retries: error=ModelError"
+                        );
+                    }
+                }
+                return Err(anyhow!(
+                    "Error querying `{}:{}`: error={}",
+                    self.provider_id.to_string(),
+                    self.model_id,
+                    string_error,
+                ));
+            }
         }
     }
 
