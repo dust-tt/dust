@@ -53,7 +53,6 @@ import {
 } from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderDustAppConfiguration,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
@@ -555,18 +554,9 @@ function ActionEditor({
               return (
                 <ActionDustAppRun
                   owner={owner}
-                  actionConfigration={action.configuration}
+                  action={action}
                   dustApps={dustApps}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderDustAppConfiguration
-                        ),
-                    });
-                  }}
+                  updateAction={updateAction}
                   setEdited={setEdited}
                 />
               );
