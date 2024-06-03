@@ -686,7 +686,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       const res = await ensureWebhookForDriveId(
         connector,
         wh.driveId,
-        GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+        renewWebhookStartingTime
       );
       if (res.isErr()) {
         // Throwing here to centralize error handling in the catch block

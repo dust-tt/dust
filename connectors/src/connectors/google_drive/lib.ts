@@ -35,15 +35,19 @@ const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
 
 export async function registerWebhooksForAllDrives({
   connector,
-  marginMs,
+  renewWebhookStartingTime,
 }: {
   connector: ConnectorResource;
-  marginMs: number;
+  renewWebhookStartingTime: number;
 }): Promise<Result<undefined, Error[]>> {
   const drivesToSync = await getDrivesToSync(connector.id);
   const allRes = await Promise.all(
     drivesToSync.map((drive) => {
-      return ensureWebhookForDriveId(connector, drive.id, marginMs);
+      return ensureWebhookForDriveId(
+        connector,
+        drive.id,
+        renewWebhookStartingTime
+      );
     })
   );
 
@@ -58,14 +62,14 @@ export async function registerWebhooksForAllDrives({
 export async function ensureWebhookForDriveId(
   connector: ConnectorResource,
   driveId: string,
-  marginMs: number
+  renewWebhookStartingTime: number
 ): Promise<Result<string | undefined, Error>> {
   const webhook = await GoogleDriveWebhook.findOne({
     where: {
       connectorId: connector.id,
       driveId: driveId,
       expiresAt: {
-        [Op.gt]: new Date(new Date().getTime() + marginMs),
+        [Op.gt]: new Date(renewWebhookStartingTime),
       },
     },
   });
