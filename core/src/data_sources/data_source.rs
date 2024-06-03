@@ -862,9 +862,8 @@ impl DataSource {
 
         FileStorageDocument::save_document_in_file_storage(
             &self,
-            document_id,
+            &document,
             &document_id_hash,
-            &document_hash,
             &full_text,
             text.clone(),
         )
@@ -1906,9 +1905,6 @@ impl DataSource {
             }
             None => Ok(()),
         }?;
-
-        // Delete document from file storage.
-        FileStorageDocument::delete(&self, &make_document_id_hash(document_id)).await?;
 
         // Delete document (SQL)
         store
