@@ -204,8 +204,10 @@ async function scrubDocument({
     dataSourceId: dataSource.id,
   });
 
-  await deleteAllFilesFromFolder(localLogger, bucket, seen, path);
+  // Always delete legacy files first!
   await deleteAllFilesFromFolder(localLogger, bucket, seen, legacyPath);
+
+  await deleteAllFilesFromFolder(localLogger, bucket, seen, path);
 
   await core_sequelize.query(
     `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,

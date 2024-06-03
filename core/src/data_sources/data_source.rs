@@ -596,32 +596,6 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn setup(&self) -> Result<()> {
-        // GCP store created data to test GCP.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
-        let data_source_created_path = format!("{}/created.txt", bucket_path);
-
-        Object::create(
-            &bucket,
-            format!("{}", self.created).as_bytes().to_vec(),
-            &data_source_created_path,
-            "application/text",
-        )
-        .await?;
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            "Created GCP bucket for data_source"
-        );
-
-        Ok(())
-    }
-
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
