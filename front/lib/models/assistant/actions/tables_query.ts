@@ -69,6 +69,14 @@ AgentTablesQueryConfiguration.init(
         fields: ["sId"],
         name: "agent_tables_query_configuration_s_id",
       },
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["forceUseAtIteration"],
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }

@@ -69,6 +69,14 @@ AgentWebsearchConfiguration.init(
         unique: true,
         fields: ["sId"],
       },
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["forceUseAtIteration"],
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
   }
