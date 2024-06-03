@@ -994,37 +994,25 @@ export async function* editUserMessage(
     return;
   }
 
-  // Todo these checks are for adding mention, should be ok to edit a message
-  // if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-  //   yield {
-  //     type: "user_message_error",
-  //     created: Date.now(),
-  //     error: {
-  //       code: "not_allowed",
-  //       message:
-  //         "Editing a message that already has agent mentions is not yet supported",
-  //     },
-  //   };
-  //   return;
-  // }
-  //
-  // if (
-  //   !conversation.content[conversation.content.length - 1].some(
-  //     (m) => m.sId === message.sId
-  //   ) &&
-  //   mentions.filter((m) => isAgentMention(m)).length > 0
-  // ) {
-  //   yield {
-  //     type: "user_message_error",
-  //     created: Date.now(),
-  //     error: {
-  //       code: "edition_unsupported",
-  //       message:
-  //         "Adding agent mentions when editing is only supported for the last message of the conversation",
-  //     },
-  //   };
-  //   return;
-  // }
+  // Only the last message of the conversation can be edited. In that case, a new version of the message will be created.
+  // Agent messages answering previous versions of the message will be kept but will not be displayed - only agent message
+  // having a visible parent will be shown.
+  const userMessages = conversation.content.filter((messages) =>
+    messages.some((message) => message.type === "user_message")
+  );
+  if (
+    !userMessages[userMessages.length - 1].some((m) => m.sId === message.sId)
+  ) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "edition_unsupported",
+        message: "Only the last user message of the conversation can be edited",
+      },
+    };
+    return;
+  }
 
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
