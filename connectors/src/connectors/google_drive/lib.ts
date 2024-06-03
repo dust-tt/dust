@@ -65,7 +65,7 @@ export async function ensureWebhookForDriveId(
       connectorId: connector.id,
       driveId: driveId,
       expiresAt: {
-        [Op.lt]: new Date(maxRenewalTime),
+        [Op.gt]: new Date(maxRenewalTime),
       },
     },
   });
@@ -94,7 +94,6 @@ export async function ensureWebhookForDriveId(
       { webhookId: webhook.webhookId, connectorId: connector.id },
       "Webhook created"
     );
-
     return new Ok(webhook.webhookId);
   }
   return new Ok(undefined);
