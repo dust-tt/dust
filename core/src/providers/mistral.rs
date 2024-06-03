@@ -370,6 +370,9 @@ impl MistralAPIError {
     }
 
     pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
         // We retry on 5xx errors (which means the streaming didn't start).
         return status.is_server_error();
     }
@@ -662,7 +665,7 @@ impl MistralAILLM {
                             match error {
                                 Ok(error) => match error.retryable_streamed(status) {
                                     true => Err(ModelError {
-                                        request_id: request_id,
+                                        request_id,
                                         message: error.message(),
                                         retryable: Some(ModelErrorRetryOptions {
                                             sleep: Duration::from_millis(500),
@@ -671,14 +674,13 @@ impl MistralAILLM {
                                         }),
                                     }),
                                     false => Err(ModelError {
-                                        request_id: request_id,
+                                        request_id,
                                         message: error.message(),
                                         retryable: None,
                                     }),
                                 }?,
                                 Err(_) => Err(anyhow!(
-                                    "Error streaming tokens from Mistral AI: \
-                                        status={} data={}",
+                                    "Error streaming tokens from Mistral AI: status={} data={}",
                                     status,
                                     String::from_utf8_lossy(&b)
                                 ))?,

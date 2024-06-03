@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -268,6 +268,15 @@ impl LLMRequest {
                     "Retry querying"
                 );
             },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    "LLMRequest model error",
+                );
+            },
         )
         .await;
 
@@ -466,6 +475,15 @@ impl LLMChatRequest {
                     sleep = sleep.as_millis(),
                     err_msg = err_msg,
                     "Retry querying"
+                );
+            },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    "LLMChatRequest model error",
                 );
             },
         )
