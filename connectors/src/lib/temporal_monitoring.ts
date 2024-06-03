@@ -8,6 +8,7 @@ import type {
 import tracer from "dd-trace";
 
 import type { Logger } from "@connectors/logger/logger";
+import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
 import { ExternalOauthTokenError } from "./error";
