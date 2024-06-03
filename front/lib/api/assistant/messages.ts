@@ -272,6 +272,24 @@ async function getMaxRankMessages(
     };
   }
 
+  // First get the list of all visible user messages, so that we can filter agent messages answering them.
+  // Limit by the desired page size, that is the maximum number of user messages that can be displayed on a page.
+  const userMessages = await Message.findAll({
+    attributes: [
+      [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+      [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+    ],
+    where: {
+      ...where,
+      userMessageId: {
+        [Op.not]: null,
+      },
+    },
+    group: ["rank"],
+    order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
+    limit: limit,
+  });
+
   // Retrieve the latest version and corresponding Id of each message for the current page,
   // grouped by rank and limited to the desired page size plus one to detect the presence of a next page.
   const messages = await Message.findAll({
@@ -279,7 +297,13 @@ async function getMaxRankMessages(
       [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
       [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
     ],
-    where,
+    where: {
+      ...where,
+      [Op.or]: [
+        { parentId: null },
+        { parentId: { [Op.in]: [...userMessages.map((m) => m.id)] } },
+      ],
+    },
     group: ["rank"],
     order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
     limit: limit + 1,

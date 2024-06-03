@@ -997,11 +997,15 @@ export async function* editUserMessage(
   // Only the last message of the conversation can be edited. In that case, a new version of the message will be created.
   // Agent messages answering previous versions of the message will be kept but will not be displayed - only agent message
   // having a visible parent will be shown.
-  const userMessages = conversation.content.filter((messages) =>
-    messages.some((message) => message.type === "user_message")
+  const userMessages = conversation.content.filter(
+    (
+      messages: UserMessageType[] | AgentMessageType[] | ContentFragmentType[]
+    ) => messages.some((message) => message.type === "user_message")
   );
   if (
-    !userMessages[userMessages.length - 1].some((m) => m.sId === message.sId)
+    !userMessages[userMessages.length - 1].some(
+      (m: UserMessageType) => m.sId === message.sId
+    )
   ) {
     yield {
       type: "user_message_error",

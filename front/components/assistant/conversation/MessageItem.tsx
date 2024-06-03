@@ -69,20 +69,18 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          message.parentMessageId && (
-            <div key={`message-id-${sId}`} ref={ref}>
-              <AgentMessage
-                message={message}
-                owner={owner}
-                user={user}
-                conversationId={conversationId}
-                reactions={messageReactions}
-                isInModal={isInModal}
-                hideReactions={hideReactions}
-                size={isInModal ? "compact" : "normal"}
-              />
-            </div>
-          )
+          <div key={`message-id-${sId}`} ref={ref}>
+            <AgentMessage
+              message={message}
+              owner={owner}
+              user={user}
+              conversationId={conversationId}
+              reactions={messageReactions}
+              isInModal={isInModal}
+              hideReactions={hideReactions}
+              size={isInModal ? "compact" : "normal"}
+            />
+          </div>
         );
 
       default:

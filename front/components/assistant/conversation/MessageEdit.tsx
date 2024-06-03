@@ -35,9 +35,7 @@ export function MessageEdit({
   const sendNotification = useContext(SendNotificationsContext);
 
   const { submit: handleEditMessage, isSubmitting } = useSubmitFunction(
-    async (
-      textAndMentions: { mentions: EditorMention[]; text: string }
-    ) => {
+    async (textAndMentions: { mentions: EditorMention[]; text: string }) => {
       const { mentions: rawMentions, text } = textAndMentions;
       const mentions: MentionType[] = rawMentions.map((m) => ({
         configurationId: m.id,
@@ -116,11 +114,7 @@ export function MessageEdit({
           label="Save"
           size="sm"
           disabled={isSubmitting}
-          onClick={() =>
-            handleEditMessage(
-              editorService.getTextAndMentions()
-            )
-          }
+          onClick={() => handleEditMessage(editorService.getTextAndMentions())}
         />
       </div>
     </div>
