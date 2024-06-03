@@ -48,7 +48,6 @@ import {
 } from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderDustAppConfiguration,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
@@ -553,23 +552,13 @@ function ActionEditor({
                     title={ACTION_SPECIFICATIONS[action.type].label}
                     icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
                   />
-                  <ActionDustAppRun
-                    owner={owner}
-                    actionConfigration={action.configuration}
-                    dustApps={dustApps}
-                    updateAction={(setNewAction) => {
-                      updateAction({
-                        actionName: action.name,
-                        actionDescription: action.description,
-                        getNewActionConfig: (old) =>
-                          setNewAction(
-                            old as AssistantBuilderDustAppConfiguration
-                          ),
-                      });
-                    }}
-                    setEdited={setEdited}
-                  />
-                </>
+                <ActionDustAppRun
+                  owner={owner}
+                  action={action}
+                  dustApps={dustApps}
+                  updateAction={updateAction}
+                  setEdited={setEdited}
+                /></>
               );
             case "RETRIEVAL_SEARCH":
               return (

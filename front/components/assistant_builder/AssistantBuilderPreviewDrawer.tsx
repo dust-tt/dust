@@ -7,6 +7,7 @@ import {
   Markdown,
   MoreIcon,
   Page,
+  Spinner,
   Tab,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -78,7 +79,11 @@ export default function AssistantBuilderRightPanel({
     shouldAnimate: shouldAnimatePreviewDrawer,
     draftAssistant,
     isFading,
-  } = usePreviewAssistant({ owner, builderState });
+  } = usePreviewAssistant({
+    owner,
+    builderState,
+    isPreviewOpened: rightPanelStatus.tab === "Preview",
+  });
 
   const { user } = useUser();
   const {
@@ -119,39 +124,45 @@ export default function AssistantBuilderRightPanel({
             : ""
         )}
       >
-        {rightPanelStatus.tab === "Preview" && user && draftAssistant && (
+        {rightPanelStatus.tab === "Preview" && user && (
           <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
-            <GenerationContextProvider>
-              <div
-                className="flex-grow overflow-y-auto"
-                id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
-              >
-                {conversation && (
-                  <ConversationViewer
+            {draftAssistant ? (
+              <GenerationContextProvider>
+                <div
+                  className="flex-grow overflow-y-auto"
+                  id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
+                >
+                  {conversation && (
+                    <ConversationViewer
+                      owner={owner}
+                      user={user}
+                      conversationId={conversation.sId}
+                      onStickyMentionsChange={setStickyMentions}
+                      isInModal
+                      hideReactions
+                      isFading={isFading}
+                      key={conversation.sId}
+                    />
+                  )}
+                </div>
+                <div className="shrink-0">
+                  <AssistantInputBar
                     owner={owner}
-                    user={user}
-                    conversationId={conversation.sId}
-                    onStickyMentionsChange={setStickyMentions}
-                    isInModal
-                    hideReactions
-                    isFading={isFading}
-                    key={conversation.sId}
+                    onSubmit={handleSubmit}
+                    stickyMentions={stickyMentions}
+                    conversationId={conversation?.sId || null}
+                    additionalAgentConfiguration={draftAssistant}
+                    hideQuickActions
+                    disableAutoFocus
+                    isFloating={false}
                   />
-                )}
+                </div>
+              </GenerationContextProvider>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Spinner />
               </div>
-              <div className="shrink-0">
-                <AssistantInputBar
-                  owner={owner}
-                  onSubmit={handleSubmit}
-                  stickyMentions={stickyMentions}
-                  conversationId={conversation?.sId || null}
-                  additionalAgentConfiguration={draftAssistant}
-                  hideQuickActions
-                  disableAutoFocus
-                  isFloating={false}
-                />
-              </div>
-            </GenerationContextProvider>
+            )}
           </div>
         )}
         {rightPanelStatus.tab === "Template" && (
