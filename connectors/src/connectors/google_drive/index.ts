@@ -553,10 +553,10 @@ export async function setGoogleDriveConnectorPermissions(
       );
     }
   }
-  const renewWebhookStartingTime = new Date().getTime();
+  const maxRenewalTime = new Date().getTime();
   const webhooksRes = await registerWebhooksForAllDrives({
     connector,
-    renewWebhookStartingTime,
+    maxRenewalTime,
   });
   if (webhooksRes.isErr()) {
     const firstError = webhooksRes.error[0];
