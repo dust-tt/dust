@@ -21,11 +21,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
-use tokio::try_join;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
 
+use super::file_storage_document::FileStorageDocument;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
@@ -259,7 +259,7 @@ impl SearchFilter {
 /// Section prefixes are repeated in all chunks generated from the section (and its children). We do
 /// not insert any separators the separators are the responsibility of the caller (\n at end of
 /// sections, ...)
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Section {
     pub prefix: Option<String>,
     pub content: Option<String>,
@@ -397,7 +397,7 @@ impl Document {
     }
 }
 
-pub fn make_qdrant_document_id_hash(document_id: &str) -> String {
+pub fn make_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());
 
@@ -596,32 +596,6 @@ impl DataSource {
         Ok(())
     }
 
-    pub async fn setup(&self) -> Result<()> {
-        // GCP store created data to test GCP.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        let bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id);
-        let data_source_created_path = format!("{}/created.txt", bucket_path);
-
-        Object::create(
-            &bucket,
-            format!("{}", self.created).as_bytes().to_vec(),
-            &data_source_created_path,
-            "application/text",
-        )
-        .await?;
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            "Created GCP bucket for data_source"
-        );
-
-        Ok(())
-    }
-
     pub async fn update_parents(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -638,7 +612,7 @@ impl DataSource {
             )
             .await?;
 
-        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+        let document_id_hash = make_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
@@ -663,7 +637,7 @@ impl DataSource {
             )
             .await?;
 
-        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+        let document_id_hash = make_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "tags", new_tags.clone())
             .await?;
@@ -846,7 +820,7 @@ impl DataSource {
         });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         let document = Document::new(
             &self.data_source_id,
@@ -859,45 +833,14 @@ impl DataSource {
             full_text.len() as u64,
         )?;
 
-        // GCP store raw text and document_id.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        let bucket_path = format!(
-            "{}/{}/{}",
-            self.project.project_id(),
-            self.internal_id,
-            document_id_hash
-        );
-
-        let document_id_path = format!("{}/document_id.txt", bucket_path);
-        let content_path = format!("{}/{}/content.txt", bucket_path, document_hash);
-
-        let now = utils::now();
-        let _ = try_join!(
-            Object::create(
-                &bucket,
-                document_id.as_bytes().to_vec(),
-                &document_id_path,
-                "application/text",
-            ),
-            Object::create(
-                &bucket,
-                full_text.as_bytes().to_vec(),
-                &content_path,
-                "application/text",
-            ),
-        )?;
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            duration = utils::now() - now,
-            blob_url = format!("gs://{}/{}", bucket, content_path),
-            "Created document blob"
-        );
+        FileStorageDocument::save_document_in_file_storage(
+            &self,
+            &document,
+            &document_id_hash,
+            &full_text,
+            text.clone(),
+        )
+        .await?;
 
         // Upsert the document in the main embedder collection.
         let main_collection_document = self
@@ -1466,7 +1409,7 @@ impl DataSource {
                     };
 
                     if full_text {
-                        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+                        let document_id_hash = make_document_id_hash(&document_id);
 
                         let bucket_path = format!(
                             "{}/{}/{}",
@@ -1543,7 +1486,7 @@ impl DataSource {
                                 return Ok(d);
                             }
 
-                            let document_id_hash = make_qdrant_document_id_hash(&d.document_id);
+                            let document_id_hash = make_document_id_hash(&d.document_id);
 
                             let filter = qdrant::Filter {
                                 must: vec![
@@ -1890,7 +1833,7 @@ impl DataSource {
             d.tags
         };
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         // GCP retrieve raw text and document_id.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
@@ -1950,7 +1893,7 @@ impl DataSource {
     ) -> Result<()> {
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         // Clean-up document chunks (vector search db).
         let filter = qdrant::Filter {

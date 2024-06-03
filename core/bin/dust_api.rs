@@ -1121,35 +1121,27 @@ async fn data_sources_register(
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
-    match ds.setup().await {
+    match state.store.register_data_source(&project, &ds).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to register data source",
             Some(e),
         ),
-        Ok(()) => match state.store.register_data_source(&project, &ds).await {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to register data source",
-                Some(e),
-            ),
-            Ok(()) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "data_source": {
-                            "created": ds.created(),
-                            "data_source_id": ds.data_source_id(),
-                            "data_source_internal_id": ds.internal_id(),
-                            "config": ds.config(),
-                        },
-                    })),
-                }),
-            ),
-        },
+        Ok(()) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "data_source": {
+                        "created": ds.created(),
+                        "data_source_id": ds.data_source_id(),
+                        "data_source_internal_id": ds.internal_id(),
+                        "config": ds.config(),
+                    },
+                })),
+            }),
+        ),
     }
 }
 
