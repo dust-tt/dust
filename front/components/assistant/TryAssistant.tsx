@@ -8,6 +8,7 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
+import { isEqual } from "lodash";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -180,9 +181,11 @@ export function TryAssistant({
 export function usePreviewAssistant({
   owner,
   builderState,
+  isPreviewOpened,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
+  isPreviewOpened: boolean;
 }): {
   shouldAnimate: boolean;
   isFading: boolean; // Add isFading to the return type
@@ -198,6 +201,10 @@ export function usePreviewAssistant({
 
   const action = useDeprecatedDefaultSingleAction(builderState);
 
+  // Some state to keep track of the previous builderState
+  const previousBuilderState = useRef<AssistantBuilderState>(builderState);
+  const [hasChanged, setHasChanged] = useState(false);
+
   const animate = () => {
     if (drawerAnimationTimeoutRef.current) {
       clearTimeout(drawerAnimationTimeoutRef.current);
@@ -211,7 +218,22 @@ export function usePreviewAssistant({
     }, animationLength);
   };
 
+  useEffect(() => {
+    if (!isEqual(previousBuilderState.current, builderState)) {
+      setHasChanged(true);
+      previousBuilderState.current = builderState;
+    }
+  }, [builderState]);
+
   const submit = useCallback(async () => {
+    if (!isPreviewOpened) {
+      // Preview is not opened, no need to submit
+      return;
+    }
+    if (draftAssistant && !hasChanged) {
+      // No changes since the last submission
+      return;
+    }
     const a = await submitAssistantBuilderForm({
       owner,
       builderState: {
@@ -239,10 +261,14 @@ export function usePreviewAssistant({
     // Use setTimeout to delay the execution of setDraftAssistant by 500 milliseconds
     setTimeout(() => {
       setDraftAssistant(a);
+      setHasChanged(false);
     }, animationLength / 2);
   }, [
     owner,
+    draftAssistant,
     action,
+    isPreviewOpened,
+    hasChanged,
     builderState.handle,
     builderState.instructions,
     builderState.avatarUrl,
