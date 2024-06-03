@@ -104,6 +104,15 @@ AgentRetrievalConfiguration.init(
         fields: ["agentConfigurationId"],
         concurrently: true,
       },
+      {
+        unique: true,
+        fields: ["sId"],
+        concurrently: true,
+      },
+      {
+        fields: ["forceUseAtIteration"],
+        concurrently: true,
+      },
     ],
     hooks: {
       beforeValidate: (retrieval: AgentRetrievalConfiguration) => {

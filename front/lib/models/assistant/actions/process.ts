@@ -97,6 +97,20 @@ AgentProcessConfiguration.init(
   },
   {
     modelName: "agent_process_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+        concurrently: true,
+      },
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+      {
+        fields: ["forceUseAtIteration"],
+      },
+    ],
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (p: AgentProcessConfiguration) => {
