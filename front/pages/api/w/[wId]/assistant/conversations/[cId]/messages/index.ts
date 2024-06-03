@@ -131,7 +131,6 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      // TODO(2024-06-01 flav) Do we need conversation with content here?
       const conversation = await getConversation(auth, conversationId);
       if (!conversation) {
         return apiError(req, res, {
