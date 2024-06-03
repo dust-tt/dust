@@ -21,11 +21,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
-use tokio::try_join;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
 
+use super::file_storage_document::FileStorageDocument;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 
 /// A filter to apply to the search query based on `tags`. All documents returned must have at least
@@ -397,7 +397,7 @@ impl Document {
     }
 }
 
-pub fn make_qdrant_document_id_hash(document_id: &str) -> String {
+pub fn make_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());
 
@@ -504,13 +504,6 @@ fn target_document_tokens_offsets(
         }
     }
     results
-}
-
-#[derive(Serialize, Deserialize)]
-struct FileStorageDocument {
-    document_id: String,
-    full_text: String,
-    sections: Section,
 }
 
 impl DataSource {
@@ -646,7 +639,7 @@ impl DataSource {
             )
             .await?;
 
-        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+        let document_id_hash = make_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "parents", parents)
             .await?;
@@ -671,7 +664,7 @@ impl DataSource {
             )
             .await?;
 
-        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+        let document_id_hash = make_document_id_hash(&document_id);
 
         self.update_document_payload(qdrant_clients, document_id_hash, "tags", new_tags.clone())
             .await?;
@@ -775,80 +768,6 @@ impl DataSource {
         Ok(())
     }
 
-    async fn save_document_in_file_storage(
-        &self,
-        document_id: &str,
-        document_id_hash: &str,
-        document_hash: &str,
-        full_text: &str,
-        text: Section,
-    ) -> Result<()> {
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
-
-        // TODO(2024-06-03 flav) Delete once fully migrated to new format.
-        // Legacy.
-        let legacy_bucket_path = format!(
-            "{}/{}/{}",
-            self.project.project_id(),
-            self.internal_id,
-            document_id_hash
-        );
-
-        let document_id_path = format!("{}/document_id.txt", legacy_bucket_path);
-        let content_path = format!("{}/{}/content.txt", legacy_bucket_path, document_hash);
-
-        // New.
-        let ds_bucket_path = format!("{}/{}", self.project.project_id(), self.internal_id,);
-        let document_file_path = format!("{}/{}.txt", ds_bucket_path, document_hash);
-        let file_storage_document = FileStorageDocument {
-            document_id: document_id.to_string(),
-            full_text: full_text.to_string(),
-            sections: text,
-        };
-        let serialized_document = serde_json::to_vec(&file_storage_document)?;
-
-        let now = utils::now();
-        let _ = try_join!(
-            // TODO(2024-06-03 flav) Delete once fully migrated to new format.
-            // Legacy.
-            Object::create(
-                &bucket,
-                document_id.as_bytes().to_vec(),
-                &document_id_path,
-                "application/text",
-            ),
-            Object::create(
-                &bucket,
-                full_text.as_bytes().to_vec(),
-                &content_path,
-                "application/text",
-            ),
-            // New logic.
-            Object::create(
-                &bucket,
-                serialized_document,
-                &document_file_path,
-                "application/json",
-            ),
-        )?;
-
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            duration = utils::now() - now,
-            // Legacy.
-            legacy_blob_url = format!("gs://{}/{}", bucket, content_path),
-            // New.
-            blob_url = format!("gs://{}/{}", bucket, document_file_path),
-            "Created document blob"
-        );
-
-        Ok(())
-    }
-
     pub async fn upsert(
         &self,
         credentials: Credentials,
@@ -928,7 +847,7 @@ impl DataSource {
         });
         let document_hash = format!("{}", hasher.finalize().to_hex());
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         let document = Document::new(
             &self.data_source_id,
@@ -941,7 +860,8 @@ impl DataSource {
             full_text.len() as u64,
         )?;
 
-        self.save_document_in_file_storage(
+        FileStorageDocument::save_document_in_file_storage(
+            &self,
             document_id,
             &document_id_hash,
             &document_hash,
@@ -1517,7 +1437,7 @@ impl DataSource {
                     };
 
                     if full_text {
-                        let document_id_hash = make_qdrant_document_id_hash(&document_id);
+                        let document_id_hash = make_document_id_hash(&document_id);
 
                         let bucket_path = format!(
                             "{}/{}/{}",
@@ -1594,7 +1514,7 @@ impl DataSource {
                                 return Ok(d);
                             }
 
-                            let document_id_hash = make_qdrant_document_id_hash(&d.document_id);
+                            let document_id_hash = make_document_id_hash(&d.document_id);
 
                             let filter = qdrant::Filter {
                                 must: vec![
@@ -1941,7 +1861,7 @@ impl DataSource {
             d.tags
         };
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         // GCP retrieve raw text and document_id.
         let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
@@ -1987,6 +1907,9 @@ impl DataSource {
             None => Ok(()),
         }?;
 
+        // Delete document from file storage.
+        FileStorageDocument::delete(&self, &make_document_id_hash(document_id)).await?;
+
         // Delete document (SQL)
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
@@ -2001,7 +1924,7 @@ impl DataSource {
     ) -> Result<()> {
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
-        let document_id_hash = make_qdrant_document_id_hash(document_id);
+        let document_id_hash = make_document_id_hash(document_id);
 
         // Clean-up document chunks (vector search db).
         let filter = qdrant::Filter {
