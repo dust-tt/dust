@@ -81,7 +81,11 @@ export class ActivityInboundLogInterceptor
     // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
     if (this.context.info.attempt > 25) {
       this.logger.error(
-        { panic: true },
+        {
+          activity_name: this.context.info.activityType,
+          workflow_name: this.context.info.workflowType,
+          attempt: this.context.info.attempt,
+        },
         "Activity has been attempted more than 25 times. Make sure it's not crashing the pod before investigating."
       );
     }
