@@ -1,4 +1,3 @@
-import { getSession } from "@auth0/nextjs-auth0";
 import type {
   APIErrorWithStatusCode,
   WithAPIErrorReponse,
@@ -7,6 +6,7 @@ import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getSession } from "@app/lib/auth";
 import type {
   CustomGetServerSideProps,
   UserPrivilege,
@@ -34,7 +34,7 @@ export function withLogging<T>(
     const now = new Date();
 
     const session = await getSession(req, res);
-    const sessionId = session?.user?.sub || "unknown";
+    const sessionId = session?.user.sid || "unknown";
 
     logger.info(
       {
