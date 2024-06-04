@@ -326,8 +326,8 @@ export function PricePlans({
           <Tab.List
             className={classNames(
               "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "s-border-structure-300/30 s-bg-white/80",
-              "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+              "border-structure-300/30 bg-white/80",
+              "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
             )}
           >
             <Tab
@@ -338,7 +338,7 @@ export function PricePlans({
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
                 )
               }
             >
@@ -352,7 +352,7 @@ export function PricePlans({
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
                 )
               }
             >
@@ -414,13 +414,13 @@ export function ProPricePlans({
   setBillingPeriod: (billingPeriod: "monthly" | "yearly") => void;
 }) {
   return (
-    <div className={classNames("w-full  sm:px-0", className)}>
+    <div className={classNames("w-full sm:px-0", className)}>
       <Tab.Group>
         <Tab.List
           className={classNames(
             "flex space-x-1 rounded-full border p-1 backdrop-blur",
-            "s-border-structure-300/30 s-bg-white/80",
-            "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+            "border-structure-300/30 bg-white/80",
+            "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
           )}
         >
           <Tab
@@ -431,7 +431,7 @@ export function ProPricePlans({
                 "ring-0 focus:outline-none",
                 selected
                   ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                  : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-element-900"
+                  : "text-element-700 hover:bg-white/20 hover:text-element-900 dark:text-element-700-dark"
               )
             }
             onClick={() => setBillingPeriod("monthly")}
@@ -446,7 +446,7 @@ export function ProPricePlans({
                 "ring-0 focus:outline-none",
                 selected
                   ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                  : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-element-900"
+                  : "text-element-700 hover:bg-white/20 hover:text-element-900 dark:text-element-700-dark"
               )
             }
             onClick={() => setBillingPeriod("yearly")}
