@@ -584,31 +584,6 @@ export async function* postUserMessage(
   const subscription = auth.subscription();
   const plan = subscription?.plan;
 
-  const activeUsers = await countActiveSeatsInWorkspaceCached(
-    conversation.owner.sId
-  );
-  const maxPerTimeframe = 10 * activeUsers;
-
-  // Add rate limiting check here
-  const remaining = await rateLimiter({
-    key: `postUserMessage:${conversation.owner.sId}`,
-    maxPerTimeframe,
-    timeframeSeconds: 60,
-    logger,
-  });
-
-  if (remaining < 0) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "rate_limit_error",
-        message: "You have reached the rate limit for posting messages.",
-      },
-    };
-    return;
-  }
-
   if (!owner || owner.id !== conversation.owner.id || !subscription || !plan) {
     yield {
       type: "user_message_error",
