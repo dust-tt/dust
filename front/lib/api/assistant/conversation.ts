@@ -599,19 +599,13 @@ export async function* postUserMessage(
     owner,
     plan,
   });
-  if (
-    isAboveMessageLimit === "plan_message_limit_exceeded" ||
-    isAboveMessageLimit === "rate_limit_error"
-  ) {
+  if (isAboveMessageLimit) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: isAboveMessageLimit,
-        message:
-          isAboveMessageLimit === "plan_message_limit_exceeded"
-            ? "The message limit for this plan has been exceeded."
-            : "The rate limit for this workspace has been exceeded.",
+        code: "rate_limit_error",
+        message: "The rate limit for this workspace has been exceeded.",
       },
     };
     return;
@@ -1736,11 +1730,9 @@ async function isMessagesLimitReached({
 }: {
   owner: WorkspaceType;
   plan: PlanType;
-}): Promise<
-  "plan_message_limit_exceeded" | "rate_limit_error" | "limit_not_reached"
-> {
+}): Promise<boolean> {
   if (plan.limits.assistant.maxMessages === -1) {
-    return "plan_message_limit_exceeded";
+    return false;
   }
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
@@ -1752,7 +1744,7 @@ async function isMessagesLimitReached({
     logger,
   });
   if (remaining > 0) {
-    return "limit_not_reached";
+    return false;
   }
-  return "rate_limit_error";
+  return true;
 }
