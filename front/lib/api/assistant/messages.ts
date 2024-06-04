@@ -281,9 +281,7 @@ async function getMaxRankMessages(
     ],
     where: {
       ...where,
-      userMessageId: {
-        [Op.not]: null,
-      },
+      parentId: null,
     },
     group: ["rank"],
     order: [[orderColumn, orderDirection === "desc" ? "DESC" : "ASC"]],
