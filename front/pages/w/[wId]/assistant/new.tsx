@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentsGetViewType,
+  ConversationType,
   LightAgentConfigurationType,
   MentionType,
   PlanType,
@@ -231,7 +232,7 @@ export default function AssistantNew({
       [owner, user, router, sendNotification]
     )
   );
-  
+
   const {
     metadata: quickGuideSeen,
     isMetadataError: isQuickGuideSeenError,
@@ -247,7 +248,6 @@ export default function AssistantNew({
       setShowQuickGuide(true);
     }
   }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
-
 
   const { submit: handleOpenHelpConversation } = useSubmitFunction(
     async (content: string) => {
@@ -276,7 +276,7 @@ export default function AssistantNew({
         setConversationHelperModal(conversationRes.value);
       }
     }
-  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
+  );
 
   const [greeting, setGreeting] = useState<string>("");
   const { animate, setAnimate } = useContext(InputBarContext);
@@ -489,3 +489,7 @@ AssistantNew.getLayout = (
 ) => {
   return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
 };
+
+function setConversationHelperModal(value: ConversationType) {
+  throw new Error("Function not implemented.");
+}
