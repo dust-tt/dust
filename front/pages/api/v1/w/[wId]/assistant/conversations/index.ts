@@ -70,7 +70,7 @@ async function handler(
       const maxPerTimeframe = 10 * activeUsers;
 
       const remaining = await rateLimiter({
-        key: `createConversation:${auth.workspace()?.sId}`,
+        key: `createConversation:${owner.sId}`,
         maxPerTimeframe,
         timeframeSeconds: 60,
         logger,
