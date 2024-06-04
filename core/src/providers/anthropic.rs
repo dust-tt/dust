@@ -571,7 +571,7 @@ impl AnthropicLLM {
 
         let status = res.status();
         let res_headers = res.headers();
-        let request_id = match res_headers.get("x-request-id") {
+        let request_id = match res_headers.get("request-id") {
             Some(v) => Some(v.to_str()?.to_string()),
             None => None,
         };
