@@ -41,6 +41,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
+  multiActionsMode,
 }: {
   template: FetchAssistantTemplateResponse | null;
   resetTemplate: () => Promise<void>;
@@ -50,6 +51,7 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
+  multiActionsMode: boolean;
 }) {
   const confirm = useContext(ConfirmContext);
 
@@ -83,6 +85,7 @@ export default function AssistantBuilderRightPanel({
     owner,
     builderState,
     isPreviewOpened: rightPanelStatus.tab === "Preview",
+    multiActionsMode,
   });
 
   const { user } = useUser();

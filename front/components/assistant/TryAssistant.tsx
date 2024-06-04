@@ -7,7 +7,6 @@ import type {
   MentionType,
   UserType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -26,7 +25,6 @@ import {
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/AssistantBuilder";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useDeprecatedDefaultSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { useUser } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
@@ -182,10 +180,12 @@ export function usePreviewAssistant({
   owner,
   builderState,
   isPreviewOpened,
+  multiActionsMode,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   isPreviewOpened: boolean;
+  multiActionsMode: boolean;
 }): {
   shouldAnimate: boolean;
   isFading: boolean; // Add isFading to the return type
@@ -198,8 +198,6 @@ export function usePreviewAssistant({
   const [isFading, setIsFading] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  const action = useDeprecatedDefaultSingleAction(builderState);
 
   // Some state to keep track of the previous builderState
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
@@ -243,17 +241,16 @@ export function usePreviewAssistant({
         avatarUrl: builderState.avatarUrl,
         scope: "private",
         generationSettings: builderState.generationSettings,
-        actions: removeNulls([action]),
+        actions: builderState.actions,
         maxToolsUsePerRun: builderState.maxToolsUsePerRun,
       },
-
       agentConfigurationId: null,
       slackData: {
         selectedSlackChannels: [],
         slackChannelsLinkedWithAgent: [],
       },
       isDraft: true,
-      useMultiActions: false,
+      useMultiActions: multiActionsMode,
     });
 
     animate();
@@ -266,7 +263,6 @@ export function usePreviewAssistant({
   }, [
     owner,
     draftAssistant,
-    action,
     isPreviewOpened,
     hasChanged,
     builderState.handle,
@@ -274,6 +270,8 @@ export function usePreviewAssistant({
     builderState.avatarUrl,
     builderState.generationSettings,
     builderState.maxToolsUsePerRun,
+    builderState.actions,
+    multiActionsMode,
   ]);
 
   useEffect(() => {
