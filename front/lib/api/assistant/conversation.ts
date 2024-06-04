@@ -1155,8 +1155,6 @@ export async function* editUserMessage(
           transaction: t,
         })) ?? -1) + 1;
 
-      console.log("next", nextMessageRank);
-
       const results: ({
         row: AgentMessage;
         m: AgentMessageWithRankType;
