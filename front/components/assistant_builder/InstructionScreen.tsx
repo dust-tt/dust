@@ -38,7 +38,7 @@ import {
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import Document from "@tiptap/extension-document";
-import Paragraph from "@tiptap/extension-paragraph";
+import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -46,6 +46,7 @@ import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
@@ -127,7 +128,7 @@ export function InstructionScreen({
   instructionsError: string | null;
 }) {
   const editor = useEditor({
-    extensions: [Document, Text, Paragraph],
+    extensions: [Document, Text, ParagraphExtension, History],
     content: tipTapContentFromPlainText(builderState.instructions || ""),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
