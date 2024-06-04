@@ -1,5 +1,5 @@
 import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -49,9 +49,8 @@ export default function Subscribe({
     workspaceId: owner.sId,
   });
 
-  const [billingPeriod, setBillingPeriod] = React.useState<
-    "monthly" | "yearly"
-  >("monthly");
+  const [billingPeriod, setBillingPeriod] =
+    React.useState<BillingPeriod>("monthly");
 
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
   // Current plan is always FREE_NO_PLAN if you're on this paywall.

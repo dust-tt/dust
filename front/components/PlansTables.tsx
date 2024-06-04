@@ -1,5 +1,5 @@
 import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
+import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
@@ -119,7 +119,7 @@ export function ProPriceTable({
   onClick?: () => void;
   isProcessing?: boolean;
   display: PriceTableDisplay;
-  billingPeriod?: "monthly" | "yearly";
+  billingPeriod?: BillingPeriod;
 }) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
@@ -411,7 +411,7 @@ export function ProPricePlans({
   className?: string;
   plan?: PlanType;
   display: PriceTableDisplay;
-  setBillingPeriod: (billingPeriod: "monthly" | "yearly") => void;
+  setBillingPeriod: (billingPeriod: BillingPeriod) => void;
 }) {
   return (
     <div className={classNames("w-full sm:px-0", className)}>

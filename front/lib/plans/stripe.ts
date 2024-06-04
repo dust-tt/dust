@@ -1,4 +1,4 @@
-import type { Result, WorkspaceType } from "@dust-tt/types";
+import type { BillingPeriod, Result, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
@@ -59,7 +59,7 @@ export const createProPlanCheckoutSession = async ({
   billingPeriod,
 }: {
   auth: Authenticator;
-  billingPeriod: "monthly" | "yearly";
+  billingPeriod: BillingPeriod;
 }): Promise<string | null> => {
   const owner = auth.workspace();
   if (!owner) {

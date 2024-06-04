@@ -73,10 +73,12 @@ export type SubscriptionType = {
   requestCancelAt: number | null;
 };
 
+export type BillingPeriod = "monthly" | "yearly";
+
 export type SubscriptionPerSeatPricing = {
   seatPrice: number;
   seatCurrency: string;
-  billingPeriod: "monthly" | "yearly";
+  billingPeriod: BillingPeriod;
   quantity: number;
 };
 
