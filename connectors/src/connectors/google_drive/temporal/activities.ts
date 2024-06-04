@@ -655,6 +655,15 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       );
       continue;
     }
+    if (connector.errorType !== null) {
+      // We can't renew webhooks for connectors in error state.
+      // Do not delete the webhook object but push it down the line in 2h so that it does not get
+      // picked up by the next iteration loop calling rewnewOneWebhook.
+      await wh.update({
+        renewAt: literal("NOW() + INTERVAL '2 hour'"),
+      });
+      continue;
+    }
     if (wh.expiresAt < new Date(renewWebhookStartingTime)) {
       logger.error(
         {
