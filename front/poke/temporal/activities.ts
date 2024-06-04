@@ -173,6 +173,7 @@ export async function deleteConversationsActivity({
                     where: {
                       agentMessageId: agentMessage.id,
                     },
+                    transaction: t,
                   });
                   if (retrievalAction) {
                     const retrievalDocuments = await RetrievalDocument.findAll({
@@ -364,16 +365,14 @@ export async function deleteAppsActivity({
     where: { workspaceId: workspace.id },
   });
 
-  await frontSequelize.transaction(async (t) => {
-    for (const app of apps) {
-      const res = await coreAPI.deleteProject({
-        projectId: app.dustAPIProjectId,
-      });
-      if (res.isErr()) {
-        throw new Error(
-          `Error deleting Project from Core: ${res.error.message}`
-        );
-      }
+  for (const app of apps) {
+    const res = await coreAPI.deleteProject({
+      projectId: app.dustAPIProjectId,
+    });
+    if (res.isErr()) {
+      throw new Error(`Error deleting Project from Core: ${res.error.message}`);
+    }
+    await frontSequelize.transaction(async (t) => {
       await Run.destroy({
         where: {
           appId: app.id,
@@ -394,9 +393,11 @@ export async function deleteAppsActivity({
       });
       logger.info(`[Workspace delete] Deleting app ${app.sId}`);
       await app.destroy({ transaction: t });
-    }
+    });
+  }
 
-    await KeyResource.deleteAllForWorkspace(workspace);
+  await frontSequelize.transaction(async (t) => {
+    await KeyResource.deleteAllForWorkspace(workspace, t);
 
     await Provider.destroy({
       where: {
@@ -439,30 +440,28 @@ export async function deleteRunOnDustAppsActivity({
     chunks.push(runs.slice(i, i + chunkSize));
   }
 
-  await frontSequelize.transaction(async (t) => {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      if (!chunk) {
-        continue;
-      }
-      await Promise.all(
-        chunk.map((run) => {
-          return (async () => {
-            const res = await coreAPI.deleteRun({
-              projectId: run.app.dustAPIProjectId,
-              runId: run.dustRunId,
-            });
-            if (res.isErr()) {
-              throw new Error(
-                `Error deleting Run from Core: ${res.error.message}`
-              );
-            }
-            await run.destroy({ transaction: t });
-          })();
-        })
-      );
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) {
+      continue;
     }
-  });
+    await Promise.all(
+      chunk.map((run) => {
+        return (async () => {
+          const res = await coreAPI.deleteRun({
+            projectId: run.app.dustAPIProjectId,
+            runId: run.dustRunId,
+          });
+          if (res.isErr()) {
+            throw new Error(
+              `Error deleting Run from Core: ${res.error.message}`
+            );
+          }
+          await run.destroy();
+        })();
+      })
+    );
+  }
 }
 
 export async function deleteMembersActivity({
@@ -495,6 +494,7 @@ export async function deleteMembersActivity({
         where: {
           id: membership.userId,
         },
+        transaction: t,
       });
 
       if (user) {

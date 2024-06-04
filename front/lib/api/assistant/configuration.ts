@@ -1334,6 +1334,7 @@ async function _createAgentDataSourcesConfigData(
       sId: dataSourceConfigurations.map((dsConfig) => dsConfig.workspaceId),
     },
     attributes: ["id", "sId"],
+    transaction: t,
   });
 
   // Now will want to group the datasource names by workspaceId to do only one query per workspace.
@@ -1386,6 +1387,7 @@ async function _createAgentDataSourcesConfigData(
             [Op.in]: dataSourceNames,
           },
         },
+        transaction: t,
       });
     }
   );
