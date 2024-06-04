@@ -1,49 +1,46 @@
 import type {
   AgentActionSpecificEvent,
-  AgentMessageNewEvent,
-  AgentMessageWithRankType,
-  ConversationTitleEvent,
-  GenerationTokensEvent,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
-  UserMessageWithRankType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  ContentFragmentContentType,
-  ContentFragmentContextType,
-  ContentFragmentType,
-  ConversationType,
-  ConversationVisibility,
-  ConversationWithoutContentType,
-  MentionType,
-  UserMessageContext,
-  UserMessageType,
-} from "@dust-tt/types";
-import type { PlanType } from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageErrorEvent,
+  AgentMessageNewEvent,
   AgentMessageSuccessEvent,
+  AgentMessageType,
+  AgentMessageWithRankType,
+  ContentFragmentContentType,
+  ContentFragmentContextType,
+  ContentFragmentType,
+  ConversationTitleEvent,
+  ConversationType,
+  ConversationVisibility,
+  ConversationWithoutContentType,
+  GenerationTokensEvent,
+  MentionType,
+  PlanType,
+  Result,
+  UserMessageContext,
+  UserMessageErrorEvent,
+  UserMessageNewEvent,
+  UserMessageType,
+  UserMessageWithRankType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
+  cloneBaseConfig,
+  DustProdActionRegistry,
+  Err,
+  getTimeframeSecondsFromLiteral,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  md5,
-  rateLimiter,
-  removeNulls,
-} from "@dust-tt/types";
-import {
   isAgentMention,
   isAgentMessageType,
   isUserMessageType,
+  md5,
+  Ok,
+  rateLimiter,
+  removeNulls,
 } from "@dust-tt/types";
-import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -595,17 +592,21 @@ export async function* postUserMessage(
     return;
   }
   // Check plan and rate limit
-  const isAboveMessageLimit = await isMessagesLimitReached({
+  const messageLimit = await isMessagesLimitReached({
     owner,
     plan,
+    mentions,
   });
-  if (isAboveMessageLimit) {
+  if (messageLimit.isLimitReached && messageLimit.limitType) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "rate_limit_error",
-        message: "The rate limit for this workspace has been exceeded.",
+        code: messageLimit.limitType,
+        message:
+          messageLimit.limitType === "plan_message_limit_exceeded"
+            ? "The message limit for this plan has been exceeded."
+            : "The rate limit for this workspace has been exceeded.",
       },
     };
     return;
@@ -1724,27 +1725,72 @@ async function* streamRunAgentEvents(
   }
 }
 
+export interface MessageLimit {
+  isLimitReached: boolean;
+  limitType: "rate_limit_error" | "plan_message_limit_exceeded" | null;
+}
+
 async function isMessagesLimitReached({
   owner,
   plan,
+  mentions,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
-}): Promise<boolean> {
-  if (plan.limits.assistant.maxMessages === -1) {
-    return false;
-  }
+  mentions: MentionType[];
+}): Promise<MessageLimit> {
+  // Checking rate limit
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
-  const remaining = await rateLimiter({
+  const remainingMessages = await rateLimiter({
     key: `postUserMessage:${owner.sId}`,
     maxPerTimeframe: userMessagesLimit,
     timeframeSeconds: 60,
     logger,
   });
-  if (remaining > 0) {
-    return false;
+
+  if (remainingMessages <= 0) {
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
   }
-  return true;
+
+  // Checking plan limit
+  if (mentions.length === 0) {
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
+  }
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (plan.limits.assistant.maxMessages === -1) {
+    return {
+      isLimitReached: false,
+      limitType: null,
+    };
+  }
+
+  // Accounting for each mention separately.
+  // The return value won't account for the parallel calls depending on network timing
+  // but we are fine with a little bit of overusage.
+  const remainingMentions = await Promise.all(
+    mentions.map(() =>
+      rateLimiter({
+        key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+        maxPerTimeframe: maxMessages * activeSeats,
+        timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+        logger,
+      })
+    )
+  );
+  // We let the user talk to all agents if any of the rate limiter answered "ok".
+  // Subsequent calls to this function would block the user anyway.
+  const isLimitReached = remainingMentions.filter((r) => r > 0).length === 0;
+  return {
+    isLimitReached,
+    limitType: isLimitReached ? "plan_message_limit_exceeded" : null,
+  };
 }
