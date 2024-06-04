@@ -1,5 +1,4 @@
 import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types";
 import moment from "moment-timezone";
 
 // Custom codec to validate the timezone
@@ -15,7 +14,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
     mentions: t.array(t.type({ configurationId: t.string })),
     context: t.type({
       timezone: Timezone,
-      username: NonEmptyString,
+      username: t.string,
       fullName: t.union([t.string, t.null]),
       email: t.union([t.string, t.null]),
       profilePictureUrl: t.union([t.string, t.null]),
