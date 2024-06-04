@@ -994,31 +994,6 @@ export async function* editUserMessage(
     return;
   }
 
-  // Only the last message of the conversation can be edited. In that case, a new version of the message will be created.
-  // Agent messages answering previous versions of the message will be kept but will not be displayed - only agent message
-  // having a visible parent will be shown.
-  const userMessages = conversation.content.filter(
-    (
-      messages: UserMessageType[] | AgentMessageType[] | ContentFragmentType[]
-    ) => messages.some((message) => message.type === "user_message")
-  );
-  if (
-    !userMessages[userMessages.length - 1].some(
-      (m: UserMessageType | AgentMessageType | ContentFragmentType) =>
-        m.sId === message.sId
-    )
-  ) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "edition_unsupported",
-        message: "Only the last user message of the conversation can be edited",
-      },
-    };
-    return;
-  }
-
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
 
@@ -1098,6 +1073,29 @@ export async function* editUserMessage(
           "Invalid user message edit request, this message was already edited."
         );
       }
+
+      // Only the last message of the conversation can be edited. In that case, a new version of the message will be created.
+      // Agent messages answering previous versions of the message will be kept but will not be displayed - only agent message
+      // having a visible parent will be shown.
+      const userMessages = conversation.content.filter(
+        (
+          messages:
+            | UserMessageType[]
+            | AgentMessageType[]
+            | ContentFragmentType[]
+        ) => messages.some((message) => message.type === "user_message")
+      );
+      if (
+        !userMessages[userMessages.length - 1].some(
+          (m: UserMessageType | AgentMessageType | ContentFragmentType) =>
+            m.sId === message.sId
+        )
+      ) {
+        throw new UserMessageError(
+          "Only the last user message of the conversation can be edited."
+        );
+      }
+
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(messageRow: Message) {
@@ -1156,6 +1154,9 @@ export async function* editUserMessage(
           },
           transaction: t,
         })) ?? -1) + 1;
+
+      console.log("next", nextMessageRank);
+
       const results: ({
         row: AgentMessage;
         m: AgentMessageWithRankType;
