@@ -180,11 +180,13 @@ export function usePreviewAssistant({
   owner,
   builderState,
   isPreviewOpened,
+  multiActionsMode,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   isPreviewOpened: boolean;
-  multiActionsMode,
+  multiActionsMode: boolean;
+}): {
   shouldAnimate: boolean;
   isFading: boolean; // Add isFading to the return type
   draftAssistant: LightAgentConfigurationType | null;
@@ -196,8 +198,6 @@ export function usePreviewAssistant({
   const [isFading, setIsFading] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  
 
   // Some state to keep track of the previous builderState
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
@@ -263,7 +263,6 @@ export function usePreviewAssistant({
   }, [
     owner,
     draftAssistant,
-    action,
     isPreviewOpened,
     hasChanged,
     builderState.handle,
