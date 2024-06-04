@@ -7,7 +7,8 @@ import React, { useState } from "react";
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
   getPriceWithCurrency,
-  PRO_PLAN_29_COST,
+  PRO_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
@@ -111,12 +112,14 @@ export function ProPriceTable({
   onClick,
   isProcessing,
   display,
+  billingPeriod = "monthly",
 }: {
   size: "sm" | "xs";
   plan?: PlanType;
   onClick?: () => void;
   isProcessing?: boolean;
   display: PriceTableDisplay;
+  billingPeriod?: "monthly" | "yearly";
 }) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
@@ -197,6 +200,12 @@ export function ProPriceTable({
   ];
 
   const biggerButtonSize = size === "xs" ? "sm" : "md";
+
+  const price =
+    billingPeriod === "monthly"
+      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
+      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+
   return (
     <>
       <FairUsageModal
@@ -205,7 +214,7 @@ export function ProPriceTable({
       />
       <PriceTable
         title="Pro"
-        price={getPriceWithCurrency(PRO_PLAN_29_COST)}
+        price={price}
         color="emerald"
         priceLabel="/ month / user, excl. tax"
         size={size}
@@ -389,4 +398,81 @@ export function PricePlans({
       </div>
     );
   }
+}
+
+export function ProPricePlans({
+  size = "sm",
+  className = "",
+  plan,
+  display,
+  setBillingPeriod,
+}: {
+  size?: "sm" | "xs";
+  className?: string;
+  plan?: PlanType;
+  display: PriceTableDisplay;
+  setBillingPeriod: (billingPeriod: "monthly" | "yearly") => void;
+}) {
+  return (
+    <div className={classNames("w-full  sm:px-0", className)}>
+      <Tab.Group>
+        <Tab.List
+          className={classNames(
+            "flex space-x-1 rounded-full border p-1 backdrop-blur",
+            "s-border-structure-300/30 s-bg-white/80",
+            "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+          )}
+        >
+          <Tab
+            className={({ selected }) =>
+              classNames(
+                "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                "py-3 text-lg",
+                "ring-0 focus:outline-none",
+                selected
+                  ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
+                  : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-element-900"
+              )
+            }
+            onClick={() => setBillingPeriod("monthly")}
+          >
+            Monthly Billing
+          </Tab>
+          <Tab
+            className={({ selected }) =>
+              classNames(
+                "w-full rounded-full font-semibold transition-all duration-300 ease-out",
+                "py-3 text-lg",
+                "ring-0 focus:outline-none",
+                selected
+                  ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
+                  : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-element-900"
+              )
+            }
+            onClick={() => setBillingPeriod("yearly")}
+          >
+            Yearly Billing
+          </Tab>
+        </Tab.List>
+        <Tab.Panels className="mt-8">
+          <Tab.Panel>
+            <ProPriceTable
+              display={display}
+              size={size}
+              plan={plan}
+              billingPeriod="monthly"
+            />
+          </Tab.Panel>
+          <Tab.Panel>
+            <ProPriceTable
+              display={display}
+              size={size}
+              plan={plan}
+              billingPeriod="yearly"
+            />
+          </Tab.Panel>
+        </Tab.Panels>
+      </Tab.Group>
+    </div>
+  );
 }

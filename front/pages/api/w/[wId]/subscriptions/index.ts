@@ -34,6 +34,10 @@ export type GetSubscriptionsResponseBody = {
   subscriptions: SubscriptionType[];
 };
 
+export const PostSubscriptionRequestBody = t.type({
+  billingPeriod: t.union([t.literal("monthly"), t.literal("yearly")]),
+});
+
 export const PatchSubscriptionRequestBody = t.type({
   action: t.union([t.literal("cancel_free_trial"), t.literal("pay_now")]),
 });
@@ -95,9 +99,22 @@ async function handler(
       break;
     }
     case "POST": {
+      const bodyValidation = PostSubscriptionRequestBody.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
       try {
         const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
-          auth
+          auth,
+          bodyValidation.right.billingPeriod
         );
         return res.status(200).json({ checkoutUrl, plan: newPlan });
       } catch (error) {

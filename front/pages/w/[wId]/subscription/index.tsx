@@ -146,6 +146,9 @@ export default function Subscription({
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          billingPeriod: "monthly",
+        }),
       });
 
       if (!res.ok) {
@@ -391,7 +394,7 @@ export default function Subscription({
                         {getPriceAsString({
                           currency: perSeatPricing.seatCurrency,
                           priceInCents: perSeatPricing.seatPrice,
-                        })}
+                        })}{" "}
                         per member.
                       </>
                     ) : (

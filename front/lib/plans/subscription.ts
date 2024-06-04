@@ -359,7 +359,8 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
 // Returns the Stripe checkout URL for the pro plan.
 export const getCheckoutUrlForUpgrade = async (
-  auth: Authenticator
+  auth: Authenticator,
+  billingPeriod: "monthly" | "yearly"
 ): Promise<{ checkoutUrl: string; plan: PlanType }> => {
   const owner = auth.workspace();
 
@@ -395,6 +396,7 @@ export const getCheckoutUrlForUpgrade = async (
   // We enter Stripe Checkout flow.
   const checkoutUrl = await createProPlanCheckoutSession({
     auth,
+    billingPeriod,
   });
 
   if (!checkoutUrl) {
