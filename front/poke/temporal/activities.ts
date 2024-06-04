@@ -457,7 +457,7 @@ export async function deleteRunOnDustAppsActivity({
               `Error deleting Run from Core: ${res.error.message}`
             );
           }
-          await run.destroy({ transaction: t });
+          await run.destroy();
         })();
       })
     );
