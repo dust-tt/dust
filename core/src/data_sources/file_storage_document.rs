@@ -8,11 +8,11 @@ use crate::utils;
 
 use super::data_source::{DataSource, Document, Section};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FileStorageDocument {
-    document_id: String,
-    full_text: String,
-    sections: Section,
+    pub document_id: String,
+    pub full_text: String,
+    pub sections: Section,
 }
 
 impl FileStorageDocument {
@@ -21,6 +21,21 @@ impl FileStorageDocument {
             Ok(bucket) => Ok(bucket),
             Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set")),
         }
+    }
+
+    pub fn get_legacy_file_path(
+        data_source: &DataSource,
+        document_id_hash: &str,
+        document_hash: &str,
+    ) -> String {
+        let legacy_bucket_path = format!(
+            "{}/{}/{}",
+            data_source.project().project_id(),
+            data_source.internal_id(),
+            document_id_hash
+        );
+
+        format!("{}/{}/content.txt", legacy_bucket_path, document_hash)
     }
 
     pub fn get_document_file_path(
@@ -38,6 +53,28 @@ impl FileStorageDocument {
         let filename = format!("{}_{}", document_created, document_hash);
 
         format!("{}/{}/{}.json", ds_bucket_path, document_id_hash, filename)
+    }
+
+    pub async fn get_stored_document(file_path: &str) -> Result<String> {
+        let bucket = FileStorageDocument::get_bucket().await?;
+
+        let bytes = Object::download(&bucket, &file_path).await?;
+
+        let t = match String::from_utf8(bytes) {
+            Ok(content) => Ok(content),
+            Err(err) => Err(anyhow!("Failed to retrieve stored document: {}", err)),
+        }?;
+
+        Ok(t)
+    }
+
+    pub async fn file_exists(file_path: &str) -> Result<bool> {
+        let bucket = FileStorageDocument::get_bucket().await?;
+
+        match Object::read(&bucket, file_path).await {
+            Ok(_) => Ok(true),
+            Err(_err) => Ok(false),
+        }
     }
 
     pub async fn save_document_in_file_storage(

@@ -20,6 +20,10 @@ name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
 [[bin]]
+name = "backfill_stored_documents"
+path = "bin/migrations/20240603_backfill_stored_documents.rs"
+
+[[bin]]
 name = "sqlite-worker"
 path = "bin/sqlite_worker.rs"
 

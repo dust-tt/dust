@@ -72,9 +72,14 @@ impl PostgresStore {
 
 #[async_trait]
 impl Store for PostgresStore {
+    fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>> {
+        return &self.pool;
+    }
+
     async fn create_project(&self) -> Result<Project> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
+
         // Create dataset.
         let stmt = c
             .prepare("INSERT INTO projects (id) VALUES (DEFAULT) RETURNING id")
