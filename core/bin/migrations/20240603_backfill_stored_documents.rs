@@ -60,12 +60,6 @@ async fn get_sections_from_document_version(
         ..Default::default()
     };
 
-    let ob = qdrant::OrderBy {
-        key: "chunk_offset".to_string(),
-        direction: Some(qdrant::Direction::Asc as i32),
-        start_from: None,
-    };
-
     let mut retry = 0;
     let points_per_request = 256;
     let mut page_offset: Option<PointId> = None;
@@ -122,8 +116,6 @@ async fn get_sections_from_document_version(
         root_section
             .sections
             .extend(sorted_results.iter().filter_map(|r| {
-                println!("chunk_offset: {:?}", r.get("chunk_offset"));
-
                 match &r.get("text").kind {
                     Some(value::Kind::StringValue(s)) => {
                         let section = Section {
@@ -131,8 +123,6 @@ async fn get_sections_from_document_version(
                             content: Some(s.clone()),
                             sections: vec![], // Initialize with empty vector or nested sections if needed
                         };
-
-                        println!("Section: {:#?}", section);
 
                         Some(section)
                     }
