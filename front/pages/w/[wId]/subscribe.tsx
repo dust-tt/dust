@@ -190,7 +190,7 @@ export default function Subscribe({
                       <span className="font-bold">Yearly billing.</span>
                     </Page.P>
                     <Page.P>
-                      Pay for a year upfront and save 10% compared to the
+                      Pay for a year upfront and enjoy savings compared to the
                       monthly plan. You can cancel at any time before your next
                       annual billing cycle.
                     </Page.P>
