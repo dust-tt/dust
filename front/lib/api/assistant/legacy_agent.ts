@@ -30,10 +30,6 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  deprecatedGenerateRetrievalSpecificationForSingleActionAgent,
-  runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   constructPrompt,
@@ -293,18 +289,9 @@ async function* runAction(
   const now = Date.now();
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
-  if (isRetrievalConfiguration(action)) {
-    specRes =
-      await deprecatedGenerateRetrievalSpecificationForSingleActionAgent(auth, {
-        actionConfiguration: action,
-      });
-  } else {
-    const runner = getRunnerforActionConfiguration(action);
 
-    specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(
-      auth
-    );
-  }
+  const runner = getRunnerforActionConfiguration(action);
+  specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
 
   if (specRes.isErr()) {
     logger.error(
@@ -376,15 +363,20 @@ async function* runAction(
   }
 
   if (isRetrievalConfiguration(action)) {
-    const eventStream = runRetrieval(auth, {
-      configuration,
-      actionConfiguration: action,
-      conversation,
-      agentMessage,
-      rawInputs,
-      functionCallId: null,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs,
+        functionCallId: null,
+        step,
+      },
+      {}
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {

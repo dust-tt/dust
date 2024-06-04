@@ -2,12 +2,14 @@ import type {
   AgentAction,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
 } from "@dust-tt/types";
 
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
+import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
   BaseActionConfigurationServerRunner,
@@ -19,23 +21,21 @@ import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actio
 interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
+  retrieval_configuration: RetrievalConfigurationType;
   tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
-  // Add other configurations once migrated to classes.
 }
 
 interface ActionTypeToClassMap {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
+  retrieval_configuration: RetrievalConfigurationServerRunner;
   tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
-type EnsureAllAgentActionsAreMapped<
-  // TODO(2025-05-22 flav) Remove `Partial` once all actions have been migrated.
-  T extends Partial<Record<AgentAction, any>>
-> = T;
+type EnsureAllAgentActionsAreMapped<T extends Record<AgentAction, any>> = T;
 
 // Validate the completeness of ActionToConfigTypeMap.
 type ValidatedActionToConfigTypeMap =
@@ -71,6 +71,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   process_configuration: ProcessConfigurationServerRunner,
   tables_query_configuration: TablesQueryConfigurationServerRunner,
   websearch_configuration: WebsearchConfigurationServerRunner,
+  retrieval_configuration: RetrievalConfigurationServerRunner,
 } as const;
 
 export function getRunnerforActionConfiguration<K extends keyof CombinedMap>(

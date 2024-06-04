@@ -30,10 +30,6 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  generateRetrievalSpecification,
-  runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -331,32 +327,19 @@ export async function* runMultiActionsAgent(
       } satisfies AgentErrorEvent;
       return;
     }
-    if (isRetrievalConfiguration(a)) {
-      const r = await generateRetrievalSpecification(auth, {
-        actionConfiguration: a,
-        name: a.name,
-        description: a.description,
-      });
 
-      if (r.isErr()) {
-        return r;
-      }
+    const runner = getRunnerforActionConfiguration(a);
 
-      specifications.push(r.value);
-    } else {
-      const runner = getRunnerforActionConfiguration(a);
+    const res = await runner.buildSpecification(auth, {
+      name: a.name ?? undefined,
+      description: a.description ?? undefined,
+    });
 
-      const res = await runner.buildSpecification(auth, {
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
-      });
-
-      if (res.isErr()) {
-        return res;
-      }
-
-      specifications.push(res.value);
+    if (res.isErr()) {
+      return res;
     }
+
+    specifications.push(res.value);
   }
   // not sure if the speicfications.push() is needed here TBD at review time.
 
@@ -626,17 +609,23 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const eventStream = runRetrieval(auth, {
-      configuration,
-      actionConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-      // We allocate 32 refs per retrieval action.
-      refsOffset: indexForType * 32,
-    });
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId,
+        step,
+      },
+      {
+        // We allocate 32 refs per retrieval action.
+        refsOffset: indexForType * 32,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {
