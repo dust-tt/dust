@@ -1,8 +1,11 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, DustAPI, minTranscriptsSize } from "@dust-tt/types";
+import {
+  assertNever,
+  DustAPI,
+  isEmptyString,
+  minTranscriptsSize,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import { isRight } from "fp-ts/lib/Either";
-import { NonEmptyString } from "io-ts-types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -239,12 +242,7 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const toNonEmptyString = (str: string): NonEmptyString | null => {
-    const result = NonEmptyString.decode(str);
-    return isRight(result) ? result.right : null;
-  };
-  const nonEmptyUsername = toNonEmptyString(user.username);
-  if (!nonEmptyUsername) {
+  if (isEmptyString(user.username)) {
     return new Err(new Error("username must be a non-empty string"));
   }
   const convRes = await dustAPI.createConversation({
@@ -255,7 +253,7 @@ export async function processTranscriptActivity(
       mentions: [{ configurationId: agentConfigurationId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-        username: nonEmptyUsername,
+        username: user.username,
         fullName: user.name,
         email: user.email,
         profilePictureUrl: user.imageUrl,
