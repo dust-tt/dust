@@ -738,6 +738,7 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              multiActionsMode={multiActionsMode}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
