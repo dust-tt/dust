@@ -1,50 +1,61 @@
 import {
-  AssistantPreview,
-  Avatar,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  CloudArrowLeftRightIcon,
-  FolderOpenIcon,
+  HeartAltIcon,
   Page,
-  QuestionMarkCircleIcon,
-  RobotSharedIcon,
+  PlanetIcon,
+  PlusIcon,
+  Searchbar,
+  Tab,
+  Tooltip,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
-  ConversationType,
+  AgentsGetViewType,
   LightAgentConfigurationType,
   MentionType,
+  PlanType,
   UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import type { ComponentType, ReactElement } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import AssistantList from "@app/components/assistant/AssistantList";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     user: UserType;
+    owner: WorkspaceType;
+    plan: PlanType | null;
     isBuilder: boolean;
     helper: LightAgentConfigurationType | null;
   }
@@ -52,6 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.workspace();
   const user = auth.user();
   const subscription = auth.subscription();
+  const plan = auth.plan();
 
   if (!owner || !auth.isUser() || !subscription || !user) {
     return {
@@ -74,66 +86,116 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       subscription,
       user,
+      plan,
     },
   };
 });
 
+const ALL_AGENTS_TABS: {
+  // Moved outside of the component to prevent unnecessary re-renderings
+  label: string;
+  id: AgentsGetViewType;
+  icon?: ComponentType<{ className?: string }>;
+}[] = [
+  { label: "All", id: "all" },
+  { label: "Shared", icon: UserGroupIcon, id: "published" },
+  { label: "Company", icon: PlanetIcon, id: "workspace" },
+];
+
 export default function AssistantNew({
-  helper,
-  isBuilder,
   owner,
   subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [contentMinHeight, setContentMinHeight] = useState(0);
+  const [agentsGetView] = useState<AgentsGetViewType>("all");
+  const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const DEFAULT_TAB = "all";
+  const [selectedTab, setSelectedTab] =
+    useState<AgentsGetViewType>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const [conversationHelperModal, setConversationHelperModal] =
-    useState<ConversationType | null>(null);
+  const { setSelectedAssistant } = useContext(InputBarContext);
 
-  // No limit on global assistants call as they include both active and inactive.
-  const globalAgentConfigurations = useAgentConfigurations({
+  const agentConfigurations = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "global",
-    includes: ["authors"],
-    sort: "priority",
+    agentsGetView,
+    includes: ["authors", "usage"],
   }).agentConfigurations;
 
-  const workspaceAgentConfigurations = isBuilder
-    ? []
-    : useAgentConfigurations({
-        workspaceId: owner.sId,
-        agentsGetView: "workspace",
-        includes: ["authors"],
-        limit: 2,
-        sort: "alphabetical",
-      }).agentConfigurations;
+  const frequentlyUsedByTeamAgents = useMemo(() => {
+    return agentConfigurations
+      .filter(
+        (a) => a.status === "active" && a.usage && a.usage.messageCount > 0
+      )
+      .filter((agent) =>
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
+      )
+      .sort(
+        (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
+      )
+      .slice(0, 6);
+  }, [agentConfigurations, assistantSearch]);
 
-  const displayedAgents = [
-    ...globalAgentConfigurations,
-    ...workspaceAgentConfigurations,
-  ]
-    .filter((a) => a.status === "active")
-    // Sort is necessary due to separately fetched global and workspace assistants, ensuring unified ordering.
-    .sort(compareAgentsForSort)
-    .slice(0, isBuilder ? 2 : 4);
-
-  const {
-    metadata: quickGuideSeen,
-    isMetadataError: isQuickGuideSeenError,
-    isMetadataLoading: isQuickGuideSeenLoading,
-    mutateMetadata: mutateQuickGuideSeen,
-  } = useUserMetadata("quick_guide_seen");
-  const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!quickGuideSeen && !isQuickGuideSeenError && !isQuickGuideSeenLoading) {
-      // Quick guide has never been shown, lets show it.
-      setShowQuickGuide(true);
+  const agentsToDisplay = useMemo(() => {
+    let filteredAgents: LightAgentConfigurationType[] = [];
+    switch (selectedTab) {
+      case "all":
+        filteredAgents = agentConfigurations.filter(
+          (a) => a.status === "active"
+        );
+        break;
+      case "published":
+        filteredAgents = agentConfigurations.filter(
+          (a) => a.status === "active" && a.scope === "published"
+        );
+        break;
+      case "workspace":
+        filteredAgents = agentConfigurations.filter(
+          (a) => a.status === "active" && a.scope === "workspace"
+        );
+        break;
+      default:
+        filteredAgents = [];
     }
-  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
+    if (assistantSearch.trim() !== "") {
+      filteredAgents = filteredAgents.filter((agent) =>
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
+      );
+    }
+    return filteredAgents;
+  }, [selectedTab, agentConfigurations, assistantSearch]);
 
-  const { submit: handleSubmit } = useSubmitFunction(
+  const visibleTabs = useMemo(() => {
+    const counts = {
+      all: 0,
+      published: 0,
+      workspace: 0,
+    };
+
+    agentConfigurations.forEach((agent) => {
+      if (
+        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase()) &&
+        agent.status === "active"
+      ) {
+        counts.all++;
+        if (agent.scope === "published") {
+          counts.published++;
+        }
+        if (agent.scope === "workspace") {
+          counts.workspace++;
+        }
+      }
+    });
+
+    return ALL_AGENTS_TABS.filter(
+      (tab) => counts[tab.id as keyof typeof counts] > 0
+    );
+  }, [agentConfigurations, assistantSearch]);
+
+  const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -169,6 +231,23 @@ export default function AssistantNew({
       [owner, user, router, sendNotification]
     )
   );
+  
+  const {
+    metadata: quickGuideSeen,
+    isMetadataError: isQuickGuideSeenError,
+    isMetadataLoading: isQuickGuideSeenLoading,
+    mutateMetadata: mutateQuickGuideSeen,
+  } = useUserMetadata("quick_guide_seen");
+
+  const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!quickGuideSeen && !isQuickGuideSeenError && !isQuickGuideSeenLoading) {
+      // Quick guide has never been shown, lets show it.
+      setShowQuickGuide(true);
+    }
+  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
+
 
   const { submit: handleOpenHelpConversation } = useSubmitFunction(
     async (content: string) => {
@@ -197,11 +276,10 @@ export default function AssistantNew({
         setConversationHelperModal(conversationRes.value);
       }
     }
-  );
+  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
   const [greeting, setGreeting] = useState<string>("");
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
+  const { animate, setAnimate } = useContext(InputBarContext);
 
   useEffect(() => {
     if (animate) {
@@ -213,7 +291,7 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
-  const { submit: persistQuickGuideSeen } = useSubmitFunction(async () => {
+  const { submit: handleCloseQuickGuide } = useSubmitFunction(async () => {
     setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" })
       .then(() => {
         return mutateQuickGuideSeen();
@@ -222,6 +300,37 @@ export default function AssistantNew({
     setShowQuickGuide(false);
   });
 
+  const scrollToInputBar = useCallback(() => {
+    setTimeout(() => {
+      const scrollContainerElement = document.getElementById(
+        "assistant-input-header"
+      );
+      if (scrollContainerElement) {
+        scrollContainerElement.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 50); // Allows browser to complete the layout update before scrolling.
+  }, []);
+
+  const handleAssistantClick = useCallback(
+    (agent: LightAgentConfigurationType) => {
+      scrollToInputBar();
+      setSelectedAssistant({
+        configurationId: agent.sId,
+      });
+
+      setTimeout(() => {
+        setAnimate(true);
+      }, 500);
+    },
+    [scrollToInputBar, setSelectedAssistant, setAnimate]
+  );
+
+  useEffect(() => {
+    if (contentRef.current) {
+      setContentMinHeight(contentRef.current.offsetHeight);
+    }
+  }, [selectedTab]);
+
   return (
     <>
       <QuickStartGuide
@@ -229,228 +338,140 @@ export default function AssistantNew({
         user={user}
         show={showQuickGuide}
         onClose={() => {
-          void persistQuickGuideSeen();
+          void handleCloseQuickGuide();
         }}
       />
-      {conversationHelperModal && helper && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          title="Getting @help"
-          assistant={helper}
-          openWithConversation={conversationHelperModal}
-          onClose={() => setConversationHelperModal(null)}
-        />
-      )}
-      <div className="flex h-full items-center pb-20">
-        <div className="flex text-sm font-normal text-element-800">
-          <Page.Vertical gap="md" align="left">
-            {/* FEATURED AGENTS */}
-            <Page.Vertical gap="lg" align="left">
-              <div className="flex w-full flex-row gap-4">
-                <div className="flex w-full flex-row justify-between">
-                  <Page.SectionHeader title={greeting} />
+      <div
+        id="assistant-new-page"
+        className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
+      >
+        {/* Assistant input bar */}
+        <div
+          id="assistant-input-container"
+          className="z-10 flex min-h-[50vh] w-full grow flex-col items-center justify-center"
+        >
+          <div
+            id="assistant-input-header"
+            className="mb-2 flex h-fit w-full flex-col justify-between px-4 py-2"
+          >
+            <Page.SectionHeader title={greeting} />
+            <Page.SectionHeader title="Start a conversation" />
+          </div>
+          <div
+            id="assistant-input-bar"
+            className="flex h-fit w-full items-center justify-center"
+          >
+            <AssistantInputBar
+              owner={owner}
+              onSubmit={handleMessageSubmit}
+              conversationId={null}
+              hideQuickActions={false}
+              disableAutoFocus={false}
+            />
+          </div>
+        </div>
+        {/* Assistant lists */}
+        <div
+          id="assistants-lists-container"
+          ref={contentRef}
+          style={{ minHeight: `${contentMinHeight}px` }}
+          className="flex h-full w-full flex-col gap-3 pt-9"
+        >
+          <div id="assistants-list-header" className="px-4">
+            <Page.SectionHeader title="Chat with..." />
+          </div>
 
-                  <div className="flex-cols flex gap-2">
-                    <div>
-                      <Button
-                        icon={QuestionMarkCircleIcon}
-                        variant="tertiary"
-                        label="Quick Start Guide"
-                        size="xs"
-                        onClick={() => {
-                          setShowQuickGuide(true);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-col gap-8 sm:flex-row sm:gap-2">
-                <div className="flex w-full flex-col gap-2">
-                  {isBuilder && (
-                    <>
-                      <div className="text-base font-bold text-element-800">
-                        Assistants
-                      </div>
-                      <Link href={`/w/${owner.sId}/builder/assistants`}>
-                        <Button
-                          variant="secondary"
-                          icon={RobotSharedIcon}
-                          size="xs"
-                          label="Manage Assistants"
-                        />
-                      </Link>
-                    </>
-                  )}
-                  <div
-                    className={`grid grid-cols-2 items-start gap-4 py-2 ${
-                      isBuilder ? "" : "sm:grid-cols-4"
-                    }`}
-                  >
-                    {displayedAgents.map((agent) => {
-                      const href = {
-                        pathname: router.pathname,
-                        query: {
-                          ...router.query,
-                          assistantDetails: agent.sId,
-                        },
-                      };
+          {/* Search bar */}
+          <div
+            id="search-container"
+            className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+          >
+            <Searchbar
+              name="search"
+              size="sm"
+              placeholder="Search (Name)"
+              value={assistantSearch}
+              onChange={setAssistantSearch}
+            />
+            <Button.List>
+              <Tooltip label="Create your own assistant">
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                >
+                  <Button
+                    variant="primary"
+                    icon={PlusIcon}
+                    label="Create An Assistant"
+                    size="sm"
+                  />
+                </Link>
+              </Tooltip>
+            </Button.List>
+          </div>
 
-                      return (
-                        <Link
-                          href={href}
-                          key={agent.sId}
-                          shallow
-                          className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
-                        >
-                          <AssistantPreview
-                            variant="item"
-                            title={agent.name}
-                            description={agent.description}
-                            pictureUrl={agent.pictureUrl}
-                            key={agent.sId}
-                            subtitle={agent.lastAuthors?.join(", ") || ""}
-                            actions={
-                              <div className="s-flex s-justify-end">
-                                <Button
-                                  icon={ChatBubbleBottomCenterTextIcon}
-                                  label="Chat"
-                                  variant="tertiary"
-                                  size="xs"
-                                  onClick={(e) => {
-                                    // Prevent click event from propagating to parent component.
-                                    e.preventDefault();
+          {/* Section: Frequently used by your team */}
+          <div
+            id="frequently-used-by-your-team-header"
+            className="flex h-fit px-4"
+          >
+            <Page.SectionHeader title="Frequently used" />
+          </div>
+          {frequentlyUsedByTeamAgents.length > 0 ? (
+            <AssistantList
+              agents={frequentlyUsedByTeamAgents}
+              handleAssistantClick={handleAssistantClick}
+            />
+          ) : (
+            <div className="text-center">
+              No assistants found. Try adjusting your search criteria.
+            </div>
+          )}
 
-                                    setSelectedAssistant({
-                                      configurationId: agent.sId,
-                                    });
-                                    setAnimate(true);
-                                  }}
-                                />
-                              </div>
-                            }
-                          />
-                        </Link>
-                      );
-                    })}
-                  </div>
-                  <Button.List isWrapping={true}>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="tertiary"
-                        icon={ChatBubbleBottomCenterTextIcon}
-                        label={"@help, what can I use the assistants for?"}
-                        size="xs"
-                        hasMagnifying={false}
-                        onClick={async () => {
-                          await handleOpenHelpConversation(
-                            "@help, what can I use the assistants for?"
-                          );
-                        }}
-                      />
-                      <Button
-                        variant="tertiary"
-                        icon={ChatBubbleBottomCenterTextIcon}
-                        label={"@help, what are the limitations of assistants?"}
-                        size="xs"
-                        hasMagnifying={false}
-                        onClick={async () => {
-                          await handleOpenHelpConversation(
-                            "@help, what are the limitations of assistants?"
-                          );
-                        }}
-                      />
-                    </div>
-                  </Button.List>
-                </div>
-                {isBuilder && (
-                  <div className="flex w-full flex-col gap-2">
-                    <div className="text-base font-bold text-element-800">
-                      Data Sources
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/w/${owner.sId}/builder/data-sources/managed`}
-                      >
-                        <Button
-                          variant="secondary"
-                          icon={CloudArrowLeftRightIcon}
-                          size="xs"
-                          label="Manage Connections"
-                        />
-                      </Link>
-                      <Link
-                        href={`/w/${owner.sId}/builder/data-sources/static`}
-                      >
-                        <Button
-                          variant="secondary"
-                          icon={FolderOpenIcon}
-                          size="xs"
-                          label={"Manage Folders"}
-                        />
-                      </Link>
-                    </div>
-                    <div className="flex flex-wrap gap-2 py-2">
-                      <Link
-                        href={`/w/${owner.sId}/builder/data-sources/managed`}
-                        className="flex flex-wrap gap-2 py-2"
-                      >
-                        <Avatar
-                          size="md"
-                          visual="https://dust.tt/static/systemavatar/drive_avatar_full.png"
-                        />
-                        <Avatar
-                          size="md"
-                          visual="https://dust.tt/static/systemavatar/notion_avatar_full.png"
-                        />
-                        <Avatar
-                          size="md"
-                          visual="https://dust.tt/static/systemavatar/slack_avatar_full.png"
-                        />
-                        <Avatar
-                          size="md"
-                          visual="https://dust.tt/static/systemavatar/github_avatar_full.png"
-                        />
-                        <Avatar
-                          size="md"
-                          visual="https://dust.tt/static/systemavatar/intercom_avatar_full.png"
-                        />
-                      </Link>
-                    </div>
-                    <div className="py-0.5 text-xs font-normal text-element-700">
-                      Manage access to your company’s knowledge and data through
-                      connections (to GDrive, Notion,...) and uploads (Folder).
-                    </div>
-                    <Button.List isWrapping={true}>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="tertiary"
-                          icon={ChatBubbleBottomCenterTextIcon}
-                          label={"@help, tell me about Data Sources"}
-                          size="xs"
-                          hasMagnifying={false}
-                          onClick={async () => {
-                            await handleOpenHelpConversation(
-                              "@help, tell me about Data Sources"
-                            );
-                          }}
-                        />
-                      </div>
-                    </Button.List>
-                  </div>
-                )}
-              </div>
-            </Page.Vertical>
-          </Page.Vertical>
+          {/* Section: All assistants */}
+          <div id="all-assistants-header" className="flex h-fit px-4">
+            <Page.SectionHeader title="All assistants" />
+          </div>
+          <div className="flex flex-row space-x-4 px-4">
+            <Tab
+              className="grow"
+              tabs={visibleTabs.map((tab) => ({
+                ...tab,
+                current: tab.id === selectedTab,
+              }))}
+              setCurrentTab={setSelectedTab}
+            />
+          </div>
+          {visibleTabs.length === 0 ? (
+            <div className="text-center">
+              No assistants found. Try adjusting your search criteria.
+            </div>
+          ) : (
+            <AssistantList
+              agents={agentsToDisplay}
+              handleAssistantClick={handleAssistantClick}
+            />
+          )}
         </div>
       </div>
 
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={handleSubmit}
-        conversationId={null}
-      />
+      {/* Quick start guide CTA */}
+      <div
+        id="quick-start-guide-button"
+        className="fixed right-6 top-2 z-50 lg:bottom-6 lg:right-6 lg:top-auto"
+      >
+        <Button
+          icon={HeartAltIcon}
+          labelVisible={false}
+          label="Quick Start Guide"
+          onClick={() => setShowQuickGuide(true)}
+          size="md"
+          variant="primary"
+          hasMagnifying={true}
+          disabledTooltip={true}
+          className="!border-emerald-600 !bg-brand"
+        />
+      </div>
+
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
