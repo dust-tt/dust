@@ -60,12 +60,10 @@ impl FileStorageDocument {
 
         let bytes = Object::download(&bucket, &file_path).await?;
 
-        let t = match String::from_utf8(bytes) {
+        match String::from_utf8(bytes) {
             Ok(content) => Ok(content),
             Err(err) => Err(anyhow!("Failed to retrieve stored document: {}", err)),
-        }?;
-
-        Ok(t)
+        }
     }
 
     pub async fn file_exists(file_path: &str) -> Result<bool> {
