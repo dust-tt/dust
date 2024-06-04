@@ -32,7 +32,6 @@ import type {
   AgentMessageSuccessEvent,
 } from "@dust-tt/types";
 import {
-  getTimeframeSecondsFromLiteral,
   GPT_3_5_TURBO_MODEL_CONFIG,
   md5,
   rateLimiter,
@@ -595,19 +594,24 @@ export async function* postUserMessage(
     };
     return;
   }
-  // Check plan limit
+  // Check plan and rate limit
   const isAboveMessageLimit = await isMessagesLimitReached({
     owner,
     plan,
-    mentions,
   });
-  if (isAboveMessageLimit) {
+  if (
+    isAboveMessageLimit === "plan_message_limit_exceeded" ||
+    isAboveMessageLimit === "rate_limit_error"
+  ) {
     yield {
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "plan_message_limit_exceeded",
-        message: "The message limit for this plan has been exceeded.",
+        code: isAboveMessageLimit,
+        message:
+          isAboveMessageLimit === "plan_message_limit_exceeded"
+            ? "The message limit for this plan has been exceeded."
+            : "The rate limit for this workspace has been exceeded.",
       },
     };
     return;
@@ -1729,38 +1733,26 @@ async function* streamRunAgentEvents(
 async function isMessagesLimitReached({
   owner,
   plan,
-  mentions,
 }: {
   owner: WorkspaceType;
   plan: PlanType;
-  mentions: MentionType[];
-}): Promise<boolean> {
-  if (mentions.length === 0) {
-    // No mention, the user message can be posted anyway.
-    return false;
-  }
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
-
+}): Promise<
+  "plan_message_limit_exceeded" | "rate_limit_error" | "limit_not_reached"
+> {
   if (plan.limits.assistant.maxMessages === -1) {
-    return false;
+    return "plan_message_limit_exceeded";
   }
   const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
 
-  // Accounting for each mention separately.
-  // The return value won't account for the parallel calls depending on network timing
-  // but we are fine with a little bit of overusage.
-  const remainings = await Promise.all(
-    mentions.map(() =>
-      rateLimiter({
-        key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
-        maxPerTimeframe: maxMessages * activeSeats,
-        timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
-        logger,
-      })
-    )
-  );
-
-  // We let the user talk to all agents if any of the rate limiter answered "ok".
-  // Subsequent calls to the this function would block the user anyway.
-  return remainings.filter((r) => r > 0).length === 0;
+  const userMessagesLimit = 10 * activeSeats;
+  const remaining = await rateLimiter({
+    key: `postUserMessage:${owner.sId}`,
+    maxPerTimeframe: userMessagesLimit,
+    timeframeSeconds: 60,
+    logger,
+  });
+  if (remaining > 0) {
+    return "limit_not_reached";
+  }
+  return "rate_limit_error";
 }

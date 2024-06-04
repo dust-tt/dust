@@ -3,7 +3,6 @@ import type {
   UserMessageType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { rateLimiter } from "@dust-tt/types";
 import { PublicPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -12,8 +11,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostMessagesResponseBody = {
@@ -60,29 +57,6 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const activeUsers = await countActiveSeatsInWorkspaceCached(
-        conversation.owner.sId
-      );
-      const maxPerTimeframe = 10 * activeUsers;
-
-      const remaining = await rateLimiter({
-        key: `postUserMessage:${conversation.owner.sId}`,
-        maxPerTimeframe,
-        timeframeSeconds: 60,
-        logger,
-      });
-
-      if (remaining < 0) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "You have reached the rate limit for posting messages for this workspace.",
-          },
-        });
-      }
-
       const bodyValidation = PublicPostMessagesRequestBodySchema.decode(
         req.body
       );
