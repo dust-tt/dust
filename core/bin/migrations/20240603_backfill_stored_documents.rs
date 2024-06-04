@@ -41,11 +41,12 @@ async fn get_sections_from_document_version(
     ds: &DataSource,
     document_id_hash: &str,
     document_status: &str,
+    full_text: &str,
 ) -> Result<Section> {
     if document_status != "latest" {
         return Ok(Section {
             prefix: None,
-            content: None,
+            content: Some(full_text.to_string()),
             sections: vec![],
         });
     }
@@ -198,6 +199,7 @@ async fn update_stored_document_for_document_id(
                 &data_source,
                 &document_id_hash,
                 &document_status,
+                &legacy_stored_document,
             )
             .await?;
 
@@ -216,7 +218,7 @@ async fn update_stored_document_for_document_id(
             )
             .await?;
 
-            Ok(())
+            Ok::<(), anyhow::Error>(())
         }
     });
 
