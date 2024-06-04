@@ -2,10 +2,9 @@ import type {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorReponse} from "@dust-tt/types";
-import {
-  rateLimiter
+  WithAPIErrorReponse,
 } from "@dust-tt/types";
+import { rateLimiter } from "@dust-tt/types";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -71,7 +70,7 @@ async function handler(
       const maxPerTimeframe = 10 * activeUsers;
 
       const remaining = await rateLimiter({
-        key: `createConversation:${auth.workspace()?.id}`,
+        key: `createConversation:${auth.workspace()?.sId}`,
         maxPerTimeframe,
         timeframeSeconds: 60,
         logger,
@@ -82,7 +81,8 @@ async function handler(
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message: "You have reached the rate limit for this workspace.",
+            message:
+              "You have reached the conversation rate limit for this workspace.",
           },
         });
       }
