@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -404,10 +405,53 @@ pub struct ErrorDetail {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Error {
+pub struct AnthropicError {
     // Anthropi api errors look like this:
     // {"error":{"type":"invalid_request_error","message":"model: field required"}}
     pub error: ErrorDetail,
+}
+
+impl AnthropicError {
+    pub fn message(&self) -> String {
+        format!(
+            "AnthropicError: [{}] {}",
+            self.error.r#type, self.error.message
+        )
+    }
+
+    pub fn retryable(&self) -> bool {
+        match self.error.r#type.as_str() {
+            "overloaded_error" => true,
+            "rate_limit_error" => true,
+            _ => false,
+        }
+    }
+
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        if status.is_server_error() {
+            return true;
+        }
+        match self.error.r#type.as_str() {
+            "overloaded_error" => true,
+            "rate_limit_error" => true,
+            _ => false,
+        }
+    }
+}
+
+impl Display for ErrorDetail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}] {}", self.r#type, self.message)
+    }
+}
+
+impl Display for AnthropicError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.error)
+    }
 }
 
 // Streaming types
@@ -485,18 +529,6 @@ struct StreamMessageDelta {
     pub r#type: String,
     pub delta: ChatResponseDelta,
     pub usage: UsageDelta,
-}
-
-impl Display for ErrorDetail {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{}", self.r#type, self.message)
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.error)
-    }
 }
 
 pub struct AnthropicLLM {
@@ -583,15 +615,22 @@ impl AnthropicLLM {
         let response = match status {
             reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
                     request_id,
-                    message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(500),
-                        factor: 1,
-                        retries: 1,
-                    }),
+                    message: error.message(),
+                    retryable: match error.retryable() {
+                        true => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                        false => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    },
                 })
             }
         }?;
@@ -864,7 +903,7 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                                 "error" => {
-                                    let event: Error =
+                                    let event: AnthropicError =
                                         match serde_json::from_str(event.data.as_str()) {
                                             Ok(event) => event,
                                             Err(_) => {
@@ -879,8 +918,8 @@ impl AnthropicLLM {
                                     Err(ModelError {
                                         request_id: None,
                                         message: format!(
-                                            "Anthropic API Error: {}",
-                                            event.error.to_string()
+                                            "AnthropicError: [{}] {}",
+                                            event.error.r#type, event.error.message,
                                         ),
                                         retryable: None,
                                     })?;
@@ -895,11 +934,48 @@ impl AnthropicLLM {
                         }
                     }
                 }
-                Err(error) => {
-                    Err(anyhow!(
-                        "Error streaming tokens from Anthropic: {:?}",
-                        error
-                    ))?;
+                Err(e) => {
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                            let b = r.body_bytes().await?;
+
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
+                            match error {
+                                Ok(error) => {
+                                    match error.retryable_streamed(status) {
+                                        true => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: Some(ModelErrorRetryOptions {
+                                                sleep: Duration::from_millis(500),
+                                                factor: 1,
+                                                retries: 1,
+                                            }),
+                                        }),
+                                        false => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: None,
+                                        }),
+                                    }
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Anthropic: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Anthropic: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
@@ -1042,8 +1118,48 @@ impl AnthropicLLM {
                         break 'stream;
                     }
                 },
-                Err(error) => {
-                    Err(anyhow!("Error streaming from Anthropic: {:?}", error))?;
+                Err(e) => {
+                    match e {
+                        es::Error::UnexpectedResponse(r) => {
+                            let status = StatusCode::from_u16(r.status())?;
+                            let headers = r.headers()?;
+                            let request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                            let b = r.body_bytes().await?;
+
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
+                            match error {
+                                Ok(error) => {
+                                    match error.retryable_streamed(status) {
+                                        true => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: Some(ModelErrorRetryOptions {
+                                                sleep: Duration::from_millis(500),
+                                                factor: 1,
+                                                retries: 1,
+                                            }),
+                                        }),
+                                        false => Err(ModelError {
+                                            request_id,
+                                            message: error.message(),
+                                            retryable: None,
+                                        }),
+                                    }
+                                }?,
+                                Err(_) => Err(anyhow!(
+                                    "Error streaming tokens from Anthropic: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?,
+                            }
+                        }
+                        _ => {
+                            Err(anyhow!("Error streaming tokens from Anthropic: {:?}", e))?;
+                        }
+                    }
                     break 'stream;
                 }
             }
@@ -1089,6 +1205,11 @@ impl AnthropicLLM {
             .await?;
 
         let status = res.status();
+        let res_headers = res.headers();
+        let request_id = match res_headers.get("request-id") {
+            Some(v) => Some(v.to_str()?.to_string()),
+            None => None,
+        };
         let body = res.bytes().await?;
 
         let mut b: Vec<u8> = vec![];
@@ -1100,15 +1221,22 @@ impl AnthropicLLM {
                 Ok(response)
             }
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
-                    request_id: None,
-                    message: format!("Anthropic API Error: {}", error.to_string()),
-                    retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(500),
-                        factor: 1,
-                        retries: 1,
-                    }),
+                    request_id,
+                    message: error.message(),
+                    retryable: match error.retryable() {
+                        true => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                        false => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    },
                 })
             }
         }?;

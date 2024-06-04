@@ -396,11 +396,11 @@ pub struct InnerError {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Error {
+pub struct OpenAIError {
     pub error: InnerError,
 }
 
-impl Error {
+impl OpenAIError {
     pub fn message(&self) -> String {
         match self.error.internal_message {
             Some(ref msg) => format!(
@@ -550,7 +550,8 @@ pub async fn streamed_completion(
                         let completion: Completion = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
                             Err(err) => {
-                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
+                                let error: Result<OpenAIError, _> =
+                                    serde_json::from_str(e.data.as_str());
                                 match error {
                                     Ok(error) => {
                                         match error.retryable_streamed(StatusCode::OK) && index == 0
@@ -654,7 +655,7 @@ pub async fn streamed_completion(
                         };
                         let b = r.body_bytes().await?;
 
-                        let error: Result<Error, _> = serde_json::from_slice(&b);
+                        let error: Result<OpenAIError, _> = serde_json::from_slice(&b);
                         match error {
                             Ok(error) => {
                                 match error.retryable_streamed(status) {
@@ -827,7 +828,7 @@ pub async fn completion(
     let completion: Completion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
                     request_id,
@@ -979,7 +980,7 @@ pub async fn streamed_chat_completion(
                                     break 'stream;
                                 }
                                 false => {
-                                    let error: Result<Error, _> =
+                                    let error: Result<OpenAIError, _> =
                                         serde_json::from_str(e.data.as_str());
                                     match error {
                                         Ok(error) => {
@@ -1087,7 +1088,7 @@ pub async fn streamed_chat_completion(
                         };
                         let b = r.body_bytes().await?;
 
-                        let error: Result<Error, _> = serde_json::from_slice(&b);
+                        let error: Result<OpenAIError, _> = serde_json::from_slice(&b);
                         match error {
                             Ok(error) => {
                                 match error.retryable_streamed(status) {
@@ -1355,7 +1356,7 @@ pub async fn chat_completion(
     let mut completion: OpenAIChatCompletion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
                     request_id,
@@ -1468,7 +1469,7 @@ pub async fn embed(
     let embeddings: Embeddings = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
                     request_id,
