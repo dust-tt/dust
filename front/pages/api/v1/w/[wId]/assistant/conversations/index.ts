@@ -2,7 +2,9 @@ import type {
   ContentFragmentType,
   ConversationType,
   UserMessageType,
-  WithAPIErrorReponse,
+  WithAPIErrorReponse} from "@dust-tt/types";
+import {
+  rateLimiter
 } from "@dust-tt/types";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -16,6 +18,8 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
@@ -63,6 +67,26 @@ async function handler(
 
   switch (req.method) {
     case "POST":
+      const activeUsers = await countActiveSeatsInWorkspaceCached(owner.sId);
+      const maxPerTimeframe = 10 * activeUsers;
+
+      const remaining = await rateLimiter({
+        key: `createConversation:${auth.workspace()?.id}`,
+        maxPerTimeframe,
+        timeframeSeconds: 60,
+        logger,
+      });
+
+      if (remaining < 0) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message: "You have reached the rate limit for this workspace.",
+          },
+        });
+      }
+
       const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
         req.body
       );
