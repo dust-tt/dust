@@ -52,7 +52,14 @@ function shouldProcessStreamEvent(
     );
   });
 
-  return !isMessageAlreadyInPages;
+  // Check if we have an agent message event that should not be displayed - in that case, ignore the event
+  const isNotVisibleAgentMessage =
+    event.type === "agent_message_new" &&
+    !messages?.some((messages) =>
+      messages.messages.find((f) => f.sId === event.message.parentMessageId)
+    );
+
+  return !isMessageAlreadyInPages && !isNotVisibleAgentMessage;
 }
 
 interface ConversationViewerProps {
@@ -298,12 +305,11 @@ export default function ConversationViewer({
                   return undefined;
                 }
 
-                const { rank } = event.message;
-
-                // We only support adding at the end of the first page.
+                // We only support editing in the first page.
                 const [firstPage] = currentMessagePages;
                 const firstPageLastMessage = firstPage.messages.at(-1);
-                if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
+
+                if (firstPageLastMessage) {
                   return updateMessagePagesWithOptimisticData(
                     currentMessagePages,
                     event.message

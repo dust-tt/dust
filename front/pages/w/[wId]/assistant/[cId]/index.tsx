@@ -67,7 +67,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 export function updateMessagePagesWithOptimisticData(
   currentMessagePages: FetchConversationMessagesResponse[] | undefined,
   messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
-): FetchConversationMessagesResponse[] {
+): FetchConversationMessagesResponse[] | undefined {
   if (!currentMessagePages || currentMessagePages.length === 0) {
     return [
       {
@@ -79,10 +79,30 @@ export function updateMessagePagesWithOptimisticData(
   }
 
   // We need to deep clone here, since SWR relies on the reference.
-  const updatedMessages = cloneDeep(currentMessagePages);
-  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
+  const updatedMessagePages = cloneDeep(currentMessagePages);
+  const updatedMessages = updatedMessagePages.at(
+    0
+  ) as FetchConversationMessagesResponse;
 
-  return updatedMessages;
+  // Check if the message is already in the list, with the same version
+  const currentMessage = updatedMessages.messages.find(
+    (m) => m.rank === messageOrPlaceholder.rank
+  );
+  if (
+    currentMessage &&
+    currentMessage.version >= messageOrPlaceholder.version
+  ) {
+    return undefined;
+  }
+
+  if (currentMessage) {
+    const indexOf = updatedMessages.messages.indexOf(currentMessage);
+    updatedMessages.messages = updatedMessages.messages.slice(0, indexOf);
+  }
+
+  updatedMessages?.messages.push(messageOrPlaceholder);
+
+  return updatedMessagePages;
 }
 
 export default function AssistantConversation({
@@ -175,7 +195,7 @@ export default function AssistantConversation({
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,
               placeholderMessage
-            );
+            ) as FetchConversationMessagesResponse[];
           },
           revalidate: false,
           // Rollback optimistic update on errors.
