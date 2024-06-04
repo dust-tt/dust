@@ -405,13 +405,13 @@ pub struct ErrorDetail {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Error {
+pub struct AnthropicError {
     // Anthropi api errors look like this:
     // {"error":{"type":"invalid_request_error","message":"model: field required"}}
     pub error: ErrorDetail,
 }
 
-impl Error {
+impl AnthropicError {
     pub fn message(&self) -> String {
         format!(
             "AnthropicError: [{}] {}",
@@ -439,6 +439,18 @@ impl Error {
             "rate_limit_error" => true,
             _ => false,
         }
+    }
+}
+
+impl Display for ErrorDetail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{}] {}", self.r#type, self.message)
+    }
+}
+
+impl Display for AnthropicError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.error)
     }
 }
 
@@ -517,18 +529,6 @@ struct StreamMessageDelta {
     pub r#type: String,
     pub delta: ChatResponseDelta,
     pub usage: UsageDelta,
-}
-
-impl Display for ErrorDetail {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{}", self.r#type, self.message)
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.error)
-    }
 }
 
 pub struct AnthropicLLM {
@@ -615,7 +615,7 @@ impl AnthropicLLM {
         let response = match status {
             reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
                     request_id,
                     message: error.message(),
@@ -903,7 +903,7 @@ impl AnthropicLLM {
                                     break 'stream;
                                 }
                                 "error" => {
-                                    let event: Error =
+                                    let event: AnthropicError =
                                         match serde_json::from_str(event.data.as_str()) {
                                             Ok(event) => event,
                                             Err(_) => {
@@ -945,7 +945,7 @@ impl AnthropicLLM {
                             };
                             let b = r.body_bytes().await?;
 
-                            let error: Result<Error, _> = serde_json::from_slice(&b);
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
                             match error {
                                 Ok(error) => {
                                     match error.retryable_streamed(status) {
@@ -1129,7 +1129,7 @@ impl AnthropicLLM {
                             };
                             let b = r.body_bytes().await?;
 
-                            let error: Result<Error, _> = serde_json::from_slice(&b);
+                            let error: Result<AnthropicError, _> = serde_json::from_slice(&b);
                             match error {
                                 Ok(error) => {
                                     match error.retryable_streamed(status) {
@@ -1221,7 +1221,7 @@ impl AnthropicLLM {
                 Ok(response)
             }
             _ => {
-                let error: Error = serde_json::from_slice(c)?;
+                let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
                     request_id,
                     message: error.message(),
