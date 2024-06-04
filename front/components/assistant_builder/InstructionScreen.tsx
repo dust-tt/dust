@@ -37,13 +37,16 @@ import {
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import Document from "@tiptap/extension-document";
+import { History } from "@tiptap/extension-history";
+import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { CONTENT_EDITOR_EXTENSIONS } from "@app/components/wysiwyg/editor";
+import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
@@ -125,7 +128,7 @@ export function InstructionScreen({
   instructionsError: string | null;
 }) {
   const editor = useEditor({
-    extensions: CONTENT_EDITOR_EXTENSIONS,
+    extensions: [Document, Text, ParagraphExtension, History],
     content: tipTapContentFromPlainText(builderState.instructions || ""),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
