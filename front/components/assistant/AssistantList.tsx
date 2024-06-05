@@ -49,7 +49,7 @@ export function AssistantList({
                 variant="minimal"
                 onClick={() => handleAssistantClick(agent)}
                 onActionClick={async () => {
-                  await router.replace(href);
+                  await router.replace(href, undefined, { shallow: true });
                 }}
               />
             </div>
