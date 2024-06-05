@@ -19,7 +19,7 @@ export function ConversationActions({
   isStreaming,
   size = "normal",
 }: ConversationActionsProps) {
-  const [chipLabel, setChipLabel] = useState<string | null>("Thinking");
+  const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function ConversationActions({
     } else if (isStreaming && actions.length > 0) {
       setChipLabel(renderActionName(actions));
     } else {
-      setChipLabel(null);
+      setChipLabel(undefined);
     }
   }, [actions, agentMessageContent, isStreaming]);
 
@@ -43,29 +43,52 @@ export function ConversationActions({
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
       />
-      {chipLabel ? (
-        <div
-          key={chipLabel}
-          className="duration-1000 animate-in fade-in fade-out"
-        >
-          <Chip size="sm" color="pink" label={chipLabel} isBusy={true}>
-            {chipLabel === "Step 1" && (
-              <span className="font-normal">
-                {actions.map((action) => action.type).join(",")}
-              </span>
-            )}
-          </Chip>
-        </div>
-      ) : actions.length > 0 ? (
-        <Button
-          size={size === "normal" ? "sm" : "xs"}
-          label="View Actions Details"
-          icon={EyeIcon}
-          variant="tertiary"
-          onClick={() => setIsActionDrawerOpened(true)}
-        />
-      ) : null}
+      <ActionChip label={chipLabel} />
+      <ActionDetailsButton
+        hasActions={actions.length !== 0}
+        isStreaming={isStreaming}
+        onClick={() => setIsActionDrawerOpened(true)}
+        size={size}
+      />
     </div>
+  );
+}
+
+function ActionChip({ label }: { label?: string }) {
+  if (!label) {
+    return null;
+  }
+
+  return (
+    <div key={label} className="animate-fadeIn duration-1000 fade-out">
+      <Chip size="sm" color="pink" label={label} isBusy={true} />
+    </div>
+  );
+}
+
+function ActionDetailsButton({
+  hasActions,
+  isStreaming,
+  onClick,
+  size,
+}: {
+  hasActions: boolean;
+  isStreaming: boolean;
+  onClick: () => void;
+  size: MessageSizeType;
+}) {
+  if (isStreaming || !hasActions) {
+    return;
+  }
+
+  return (
+    <Button
+      size={size === "normal" ? "sm" : "xs"}
+      label="View Actions Details"
+      icon={EyeIcon}
+      variant="tertiary"
+      onClick={onClick}
+    />
   );
 }
 
