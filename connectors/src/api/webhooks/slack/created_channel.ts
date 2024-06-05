@@ -29,7 +29,7 @@ export function isChannelCreatedEvent(
   );
 }
 
-export interface OnChannelCreationProps {
+export interface OnChannelCreationInterface {
   event: ChannelCreatedEvent;
   logger: Logger;
 }
@@ -37,7 +37,7 @@ export interface OnChannelCreationProps {
 export async function onChannelCreation({
   event,
   logger,
-}: OnChannelCreationProps): Promise<Result<void, Error>> {
+}: OnChannelCreationInterface): Promise<Result<void, Error>> {
   const { channel } = event;
   if (!channel) {
     return new Err(

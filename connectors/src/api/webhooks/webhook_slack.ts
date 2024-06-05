@@ -50,7 +50,7 @@ type SlackWebhookResBody = WithConnectorsAPIErrorReponse<{
 } | null>;
 
 function isSlackWebhookEventReqBody(
-  body: unknown
+  body: SlackWebhookReqBody
 ): body is SlackWebhookEventReqBody {
   return (
     typeof body === "object" &&
