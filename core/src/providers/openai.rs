@@ -1080,7 +1080,10 @@ pub async fn streamed_chat_completion(
                             }
                             None => (),
                         };
-                        chunks.lock().push(chunk);
+
+                        if !chunk.choices.is_empty() {
+                            chunks.lock().push(chunk);
+                        }
                     }
                 },
                 None => {
@@ -1165,7 +1168,7 @@ pub async fn streamed_chat_completion(
 
         for i in 0..guard.len() {
             let a = guard[i].clone();
-            if a.choices.len() != f.choices.len() && a.usage.is_none() {
+            if a.choices.len() != f.choices.len() {
                 Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
             }
             for j in 0..a.choices.len() {
