@@ -34,7 +34,7 @@ import {
 } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import AssistantList from "@app/components/assistant/AssistantList";
+import { AssistantList } from "@app/components/assistant/AssistantList";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -97,10 +97,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 const ALL_AGENTS_TABS = [
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "All", icon: RobotIcon, id: "all" },
-  { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
+  { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
 ] as const;
+
+const DEFAULT_TAB = "most_popular";
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
@@ -116,7 +118,6 @@ export default function AssistantNew({
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  const DEFAULT_TAB = "most_popular";
   const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -277,7 +278,7 @@ export default function AssistantNew({
         id="assistant-new-page"
         className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
       >
-        {/* Assistant input bar */}
+        {/* Assistant input bar container*/}
         <div
           id="assistant-input-container"
           className="z-10 flex min-h-[50vh] w-full grow flex-col items-center justify-center"
@@ -302,7 +303,8 @@ export default function AssistantNew({
             />
           </div>
         </div>
-        {/* Assistant lists */}
+
+        {/* Assistants */}
         <div
           id="assistants-lists-container"
           ref={contentRef}
