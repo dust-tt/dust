@@ -19,7 +19,7 @@ import { classNames } from "@app/lib/utils";
 
 interface MessageEdit {
   conversationId: string;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   userMessage: UserMessageType;
   agentConfigurations: LightAgentConfigurationType[];
   onClose: () => void;
