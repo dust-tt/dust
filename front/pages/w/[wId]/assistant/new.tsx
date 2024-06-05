@@ -8,14 +8,16 @@ import {
   Tab,
   Tooltip,
   UserGroupIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentsGetViewType,
-  LightAgentConfigurationType,
-  MentionType,
-  PlanType,
-  UserType,
-  WorkspaceType,
+import {
+  assertNever,
+  type AgentsGetViewType,
+  type LightAgentConfigurationType,
+  type MentionType,
+  type PlanType,
+  type UserType,
+  type WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -48,6 +50,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
+import { as } from "fp-ts/lib/Option";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -91,16 +94,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
-const ALL_AGENTS_TABS: {
-  // Moved outside of the component to prevent unnecessary re-renderings
-  label: string;
-  id: AgentsGetViewType;
-  icon?: ComponentType<{ className?: string }>;
-}[] = [
+const ALL_AGENTS_TABS = [
+  { label: "Most popular", id: "most_popular" },
   { label: "All", id: "all" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
-];
+  { label: "Personal", icon: UserIcon, id: "personal" },
+] as const;
+
+type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 export default function AssistantNew({
   owner,
@@ -108,92 +110,56 @@ export default function AssistantNew({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentMinHeight, setContentMinHeight] = useState(0);
-  const [agentsGetView] = useState<AgentsGetViewType>("all");
+
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const DEFAULT_TAB = "all";
-  const [selectedTab, setSelectedTab] =
-    useState<AgentsGetViewType>(DEFAULT_TAB);
+
+  const DEFAULT_TAB = "most_popular";
+  const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
   const { setSelectedAssistant } = useContext(InputBarContext);
 
-  const agentConfigurations = useAgentConfigurations({
+  const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView,
+    agentsGetView: "list",
     includes: ["authors", "usage"],
-  }).agentConfigurations;
+  });
 
-  const frequentlyUsedByTeamAgents = useMemo(() => {
-    return agentConfigurations
-      .filter(
-        (a) => a.status === "active" && a.usage && a.usage.messageCount > 0
-      )
-      .filter((agent) =>
-        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
-      )
-      .sort(
-        (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
-      )
-      .slice(0, 6);
-  }, [agentConfigurations, assistantSearch]);
-
-  const agentsToDisplay = useMemo(() => {
-    let filteredAgents: LightAgentConfigurationType[] = [];
-    switch (selectedTab) {
-      case "all":
-        filteredAgents = agentConfigurations.filter(
-          (a) => a.status === "active"
-        );
-        break;
-      case "published":
-        filteredAgents = agentConfigurations.filter(
-          (a) => a.status === "active" && a.scope === "published"
-        );
-        break;
-      case "workspace":
-        filteredAgents = agentConfigurations.filter(
-          (a) => a.status === "active" && a.scope === "workspace"
-        );
-        break;
-      default:
-        filteredAgents = [];
-    }
+  const agentsByTab = useMemo(() => {
+    let filteredAgents: LightAgentConfigurationType[] = agentConfigurations;
     if (assistantSearch.trim() !== "") {
       filteredAgents = filteredAgents.filter((agent) =>
         subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
       );
     }
-    return filteredAgents;
-  }, [selectedTab, agentConfigurations, assistantSearch]);
+    return {
+      all: filteredAgents.filter((a) => a.status === "active"),
+      published: filteredAgents.filter(
+        (a) => a.status === "active" && a.scope === "published"
+      ),
+      workspace: filteredAgents.filter(
+        (a) => a.status === "active" && a.scope === "workspace"
+      ),
+      personal: filteredAgents.filter(
+        (a) => a.status === "active" && a.scope === "private"
+      ),
+      most_popular: filteredAgents
+        .filter(
+          (a) => a.status === "active" && a.usage && a.usage.messageCount > 0
+        )
+        .sort(
+          (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
+        )
+        .slice(0, 12),
+    };
+  }, [agentConfigurations, assistantSearch]);
 
   const visibleTabs = useMemo(() => {
-    const counts = {
-      all: 0,
-      published: 0,
-      workspace: 0,
-    };
-
-    agentConfigurations.forEach((agent) => {
-      if (
-        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase()) &&
-        agent.status === "active"
-      ) {
-        counts.all++;
-        if (agent.scope === "published") {
-          counts.published++;
-        }
-        if (agent.scope === "workspace") {
-          counts.workspace++;
-        }
-      }
-    });
-
-    return ALL_AGENTS_TABS.filter(
-      (tab) => counts[tab.id as keyof typeof counts] > 0
-    );
-  }, [agentConfigurations, assistantSearch]);
+    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
+  }, [agentsByTab]);
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
@@ -379,24 +345,6 @@ export default function AssistantNew({
             </Button.List>
           </div>
 
-          {/* Section: Frequently used by your team */}
-          <div
-            id="frequently-used-by-your-team-header"
-            className="flex h-fit px-4"
-          >
-            <Page.SectionHeader title="Frequently used" />
-          </div>
-          {frequentlyUsedByTeamAgents.length > 0 ? (
-            <AssistantList
-              agents={frequentlyUsedByTeamAgents}
-              handleAssistantClick={handleAssistantClick}
-            />
-          ) : (
-            <div className="text-center">
-              No assistants found. Try adjusting your search criteria.
-            </div>
-          )}
-
           {/* Section: All assistants */}
           <div id="all-assistants-header" className="flex h-fit px-4">
             <Page.SectionHeader title="All assistants" />
@@ -417,7 +365,7 @@ export default function AssistantNew({
             </div>
           ) : (
             <AssistantList
-              agents={agentsToDisplay}
+              agents={agentsByTab[selectedTab]}
               handleAssistantClick={handleAssistantClick}
             />
           )}
