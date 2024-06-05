@@ -350,7 +350,11 @@ export default function AssistantNew({
           </div>
           {(() => {
             if (isAgentConfigurationsLoading) {
-              return <Spinner />;
+              return (
+                <div className="flex grow justify-center">
+                  <Spinner />
+                </div>
+              );
             }
 
             if (visibleTabs.length === 0) {
