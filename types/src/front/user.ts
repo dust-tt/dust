@@ -31,6 +31,7 @@ export type LightWorkspaceType = {
   name: string;
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
+  whiteListedProviders?: string[];
 };
 
 export type WorkspaceType = LightWorkspaceType & {
