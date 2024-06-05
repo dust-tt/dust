@@ -17,6 +17,7 @@ import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
 const modelProviderEnumValues = [...MODEL_PROVIDER_IDS] as string[];
+export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
@@ -33,8 +34,8 @@ export class Workspace extends Model<
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
-  declare whiteListedProviders?: string[];
-  declare defaultEmbeddingProvider?: string;
+  declare whiteListedProviders?: ModelProviderIdType[];
+  declare defaultEmbeddingProvider?: ModelProviderIdType;
 }
 Workspace.init(
   {
@@ -78,7 +79,7 @@ Workspace.init(
     },
     whiteListedProviders: {
       type: DataTypes.ARRAY(DataTypes.ENUM(...modelProviderEnumValues)),
-      defaultValue: MODEL_PROVIDER_IDS,
+      defaultValue: null,
       allowNull: true,
     },
     defaultEmbeddingProvider: {
