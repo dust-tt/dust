@@ -153,7 +153,9 @@ export default function NewApp({
               >
                 Description
               </label>
-              <div className="text-sm font-normal text-gray-400">optional</div>
+              <div className="text-sm font-normal text-gray-400">
+                optional but highly recommended
+              </div>
             </div>
             <div className="mt-1 flex rounded-md shadow-sm">
               <input
@@ -166,9 +168,10 @@ export default function NewApp({
               />
             </div>
             <p className="mt-2 text-sm text-gray-500">
-              A good description will help others discover and understand the
-              purpose of your app. It is also visible at the top of your app
-              specification.
+              This description guides assistants in understanding how to use
+              your app effectively and determines its relevance in responding to
+              user inquiries. If you don't provide a description, members won't
+              be able to select this app in the Assistant Builder.
             </p>
           </div>
 

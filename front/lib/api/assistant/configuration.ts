@@ -37,6 +37,7 @@ import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
+import { App } from "@app/lib/models/apps";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
@@ -486,14 +487,28 @@ async function fetchWorkspaceAgentConfigurationsForView(
     _.groupBy(tablesConfigs, "tablesQueryConfigurationId")
   );
 
+  const dustAppsPromise = Object.values(dustAppRunConfigs).length
+    ? App.findAll({
+        where: {
+          sId: {
+            [Op.in]: Object.values(dustAppRunConfigs).flatMap((r) =>
+              r.map((c) => c.appId)
+            ),
+          },
+        },
+      })
+    : Promise.resolve([]);
+
   const [
     retrievalDatasourceConfigurations,
     processDatasourceConfigurations,
     agentTablesConfigurationTables,
+    dustApps,
   ] = await Promise.all([
     retrievalDatasourceConfigurationsPromise,
     processDatasourceConfigurationsPromise,
     agentTablesQueryConfigurationTablesPromise,
+    dustAppsPromise,
   ]);
 
   let agentConfigurationTypes: AgentConfigurationType[] = [];
@@ -542,14 +557,23 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
       const dustAppRunConfigurations = dustAppRunConfigs[agent.id] ?? [];
       for (const dustAppRunConfig of dustAppRunConfigurations) {
+        const dustApp = dustApps.find(
+          (app) => app.sId === dustAppRunConfig.appId
+        );
+        if (!dustApp) {
+          // unreachable
+          throw new Error(
+            `Couldn't find dust app for dust app run configuration ${dustAppRunConfig.id}`
+          );
+        }
         actions.push({
           id: dustAppRunConfig.id,
           sId: dustAppRunConfig.sId,
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
-          name: dustAppRunConfig.name,
-          description: dustAppRunConfig.description,
+          name: dustApp.name,
+          description: dustApp.description,
         });
       }
 
@@ -1156,8 +1180,6 @@ export async function createAgentActionConfiguration(
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
         agentConfigurationId: agentConfiguration.id,
-        name: action.name,
-        description: action.description,
       });
 
       return {
