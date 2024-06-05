@@ -1,4 +1,5 @@
 import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -27,6 +28,7 @@ export class Workspace extends Model<
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
+  declare whiteListedProviders?: string[];
 }
 Workspace.init(
   {
@@ -67,6 +69,11 @@ Workspace.init(
     ssoEnforced: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    whiteListedProviders: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: MODEL_PROVIDER_IDS,
+      allowNull: true,
     },
   },
   {
