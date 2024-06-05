@@ -81,7 +81,7 @@ export function AssistantInputBar({
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: conversationId ? { conversationId } : "list",
+      agentsGetView: "assistants-search",
     });
 
   const agentConfigurations = useMemo(() => {
