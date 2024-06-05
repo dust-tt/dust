@@ -5,7 +5,9 @@ import type {
   DataSourceType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
+  TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
+  WebsearchConfigurationType,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -130,11 +132,14 @@ export async function buildInitialActions({
         await renderDataSourcesConfigurations(action);
 
       builderAction = retrievalConfiguration;
+      _setNameAndDescriptionFromAction(action, builderAction);
     } else if (isDustAppRunConfiguration(action)) {
       const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
       for (const app of dustApps) {
         if (app.sId === action.appId) {
           dustAppConfiguration.configuration.app = app;
+          dustAppConfiguration.name = app.name.replace(/[\s-]/g, "_");
+          dustAppConfiguration.description = app.description ?? "";
           break;
         }
       }
@@ -179,6 +184,7 @@ export async function buildInitialActions({
       );
 
       builderAction = tablesQueryConfiguration;
+      _setNameAndDescriptionFromAction(action, builderAction);
     } else if (isProcessConfiguration(action)) {
       const processConfiguration = getDefaultProcessActionConfiguration();
       if (
@@ -199,21 +205,32 @@ export async function buildInitialActions({
       processConfiguration.configuration.schema = action.schema;
 
       builderAction = processConfiguration;
+      _setNameAndDescriptionFromAction(action, builderAction);
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+      _setNameAndDescriptionFromAction(action, builderAction);
     } else {
       assertNever(action);
-    }
-
-    if (action.name) {
-      builderAction.name = action.name;
-    }
-    if (action.description) {
-      builderAction.description = action.description;
     }
 
     builderActions.push(builderAction);
   }
 
   return builderActions;
+}
+
+function _setNameAndDescriptionFromAction(
+  action:
+    | TablesQueryConfigurationType
+    | RetrievalConfigurationType
+    | ProcessConfigurationType
+    | WebsearchConfigurationType,
+  builderAction: AssistantBuilderActionConfiguration
+) {
+  if (action.name) {
+    builderAction.name = action.name;
+  }
+  if (action.description) {
+    builderAction.description = action.description;
+  }
 }

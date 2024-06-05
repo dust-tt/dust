@@ -26,8 +26,8 @@ export class AgentDustAppRunConfiguration extends Model<
   declare appWorkspaceId: string;
   declare appId: string;
 
-  declare name: string | null;
-  declare description: string | null;
+  declare name: string | null; // Deprecated, to be removed
+  declare description: string | null; // Deprecated, to be removed
   declare forceUseAtIteration: number | null;
 }
 

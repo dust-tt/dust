@@ -270,14 +270,17 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     // of the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have an output but the error will be stored on the parent agent
     // message.
+
+    const sanitizedAppName = app.name.replace(/[^a-zA-Z0-9]/g, "_");
+
     const action = await AgentDustAppRunAction.create({
       dustAppRunConfigurationId: actionConfiguration.sId,
       appWorkspaceId: actionConfiguration.appWorkspaceId,
       appId: actionConfiguration.appId,
-      appName: app.name,
+      appName: sanitizedAppName,
       params,
       functionCallId,
-      functionCallName: actionConfiguration.name,
+      functionCallName: sanitizedAppName,
       agentMessageId: agentMessage.agentMessageId,
       step,
     });
@@ -296,7 +299,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         runningBlock: null,
         output: null,
         functionCallId,
-        functionCallName: actionConfiguration.name,
+        functionCallName: sanitizedAppName,
         agentMessageId: agentMessage.agentMessageId,
         step,
       }),
@@ -370,7 +373,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
             appName: app.name,
             params,
             functionCallId,
-            functionCallName: actionConfiguration.name,
+            functionCallName: sanitizedAppName,
             runningBlock: {
               type: event.content.block_type,
               name: event.content.name,
@@ -429,7 +432,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         appName: app.name,
         params,
         functionCallId,
-        functionCallName: actionConfiguration.name,
+        functionCallName: sanitizedAppName,
         runningBlock: null,
         output: lastBlockOutput,
         agentMessageId: agentMessage.agentMessageId,

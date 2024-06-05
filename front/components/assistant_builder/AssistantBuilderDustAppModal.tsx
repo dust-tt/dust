@@ -58,14 +58,25 @@ function PickDustApp({
   show: boolean;
   onPick: (app: AppType) => void;
 }) {
+  const hasSomeUnselectableApps = dustApps.some(
+    (app) => !app.description || app.description.length === 0
+  );
+
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select Dust App" icon={CloudArrowDownIcon} />
+        {hasSomeUnselectableApps && (
+          <Page.P>
+            Dust apps without a description are not selectable. To make a Dust
+            App selectable, edit it and add a description.
+          </Page.P>
+        )}
         {dustApps.map((app) => (
           <Item.Navigation
             label={app.name}
             icon={CommandLineIcon}
+            disabled={!app.description || app.description.length === 0}
             key={app.sId}
             onClick={() => {
               onPick(app);

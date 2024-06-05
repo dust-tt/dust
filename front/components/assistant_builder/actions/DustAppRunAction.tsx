@@ -9,10 +9,6 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderDustAppConfiguration,
 } from "@app/components/assistant_builder/types";
-import {
-  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-  ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-} from "@app/components/assistant_builder/types";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -44,8 +40,8 @@ export function ActionDustAppRun({
   const deleteDustApp = () => {
     setEdited(true);
     updateAction({
-      actionName: action.name,
-      actionDescription: action.description,
+      actionName: "",
+      actionDescription: "",
       getNewActionConfig: (previousAction) => ({
         ...previousAction,
         app: null,
@@ -69,23 +65,9 @@ export function ActionDustAppRun({
         dustApps={dustApps}
         onSave={({ app }) => {
           setEdited(true);
-          const newName =
-            action.name ===
-              ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME &&
-            app?.name
-              ? app.name
-              : action.name;
-
-          const newDescription =
-            action.description ===
-              ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION &&
-            app?.description?.length
-              ? app.description
-              : action.description;
-
           updateAction({
-            actionName: newName,
-            actionDescription: newDescription,
+            actionName: app ? app.name.replace(/[\s-]/g, "_") : "",
+            actionDescription: app?.description ?? "",
             getNewActionConfig: (previousAction) => ({
               ...previousAction,
               app,

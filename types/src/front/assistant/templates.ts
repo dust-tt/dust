@@ -186,8 +186,6 @@ export function getAgentActionConfigurationType(
         type: "dust_app_run_configuration",
         appWorkspaceId: "template",
         appId: "template",
-        name: "run_dust_app",
-        description: "Run a Dust app.",
         forceUseAtIteration: 0,
       } satisfies DustAppRunConfigurationType;
 

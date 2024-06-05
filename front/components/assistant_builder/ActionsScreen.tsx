@@ -540,6 +540,10 @@ function ActionEditor({
     "RETRIEVAL_EXHAUSTIVE",
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
+
+  const shouldDisplayActionName = action.type !== "DUST_APP_RUN";
+  const shouldDisplayActionDescription = action.type !== "DUST_APP_RUN";
+
   return (
     <>
       <ActionModeSection show={true}>
@@ -677,53 +681,64 @@ function ActionEditor({
           }
         })()}
       </ActionModeSection>
+
       <div className="flex flex-col gap-4 pt-8">
-        {isDataSourceAction ? (
-          <div className="flex flex-col gap-2">
-            <div className="font-semibold text-element-800">
-              What's the data?
-            </div>
-            <div className="text-sm text-element-600">
-              Clarify the data's content and context to guide your Assistant in
-              determining when and how to utilize it.
-            </div>
-          </div>
-        ) : (
-          <div className="font-semibold text-element-800">
-            Action description
-          </div>
+        {shouldDisplayActionDescription && (
+          <>
+            {isDataSourceAction ? (
+              <div className="flex flex-col gap-2">
+                <div className="font-semibold text-element-800">
+                  What's the data?
+                </div>
+                <div className="text-sm text-element-600">
+                  Clarify the data's content and context to guide your Assistant
+                  in determining when and how to utilize it.
+                </div>
+              </div>
+            ) : (
+              <div className="font-semibold text-element-800">
+                Action description
+              </div>
+            )}
+            <TextArea
+              placeholder={
+                isDataSourceAction
+                  ? "This data contains...."
+                  : "My action description.."
+              }
+              value={action.description}
+              onChange={(v) => {
+                updateAction({
+                  actionName: action.name,
+                  actionDescription: v,
+                  getNewActionConfig: (old) => old,
+                });
+              }}
+              error={!descriptionValid ? "Description cannot be empty" : null}
+            />
+          </>
         )}
-        <TextArea
-          placeholder={
-            isDataSourceAction
-              ? "This data contains...."
-              : "My action description.."
-          }
-          value={action.description}
-          onChange={(v) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: v,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!descriptionValid ? "Description cannot be empty" : null}
-        />
-        <div className="font-semibold text-element-800">Name of the action</div>
-        <Input
-          name="actionName"
-          placeholder="My action name.."
-          value={action.name}
-          onChange={(v) => {
-            updateAction({
-              actionName: v,
-              actionDescription: action.description,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!titleValid ? "Name already exists" : null}
-          className="text-sm"
-        />
+        {shouldDisplayActionName && (
+          <>
+            <div className="font-semibold text-element-800">
+              Name of the action
+            </div>
+            <Input
+              name="actionName"
+              placeholder="My action name.."
+              value={action.name}
+              onChange={(v) => {
+                updateAction({
+                  actionName: v,
+                  actionDescription: action.description,
+                  getNewActionConfig: (old) => old,
+                });
+              }}
+              error={!titleValid ? "Name already exists" : null}
+              className="text-sm"
+            />
+          </>
+        )}
       </div>
     </>
   );

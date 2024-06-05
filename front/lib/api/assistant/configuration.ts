@@ -549,8 +549,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "dust_app_run_configuration",
           appWorkspaceId: dustAppRunConfig.appWorkspaceId,
           appId: dustAppRunConfig.appId,
-          name: dustAppRunConfig.name,
-          description: dustAppRunConfig.description,
           forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
         });
       }
@@ -1175,8 +1173,6 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
-        name: action.name,
-        description: action.description,
         forceUseAtIteration: action.forceUseAtIteration,
       };
     }

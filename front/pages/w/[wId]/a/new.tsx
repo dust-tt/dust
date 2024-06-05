@@ -166,9 +166,9 @@ export default function NewApp({
               />
             </div>
             <p className="mt-2 text-sm text-gray-500">
-              A good description will help others discover and understand the
-              purpose of your app. It is also visible at the top of your app
-              specification.
+              For Assistants using your app, this description helps the model
+              determine how to interact with the app and whether it's relevant
+              for answering the user's request.
             </p>
           </div>
 

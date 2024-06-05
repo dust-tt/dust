@@ -187,20 +187,14 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
   } satisfies AssistantBuilderActionConfiguration;
 }
 
-export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
-  "run_dust_app";
-export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
-  "Run a Dust app.";
-
 export function getDefaultDustAppRunActionConfiguration() {
   return {
     type: "DUST_APP_RUN",
     configuration: {
       app: null,
     } as AssistantBuilderDustAppConfiguration,
-    name: ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-    description:
-      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
+    name: "",
+    description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
