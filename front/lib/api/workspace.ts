@@ -6,7 +6,9 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  DEFAULT_EMBEDDING_PROVIDER_ID
 } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 
@@ -36,6 +38,7 @@ export async function getWorkspaceInfos(
     role: "none",
     segmentation: workspace.segmentation,
     whiteListedProviders: workspace.whiteListedProviders,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
   };
 }
 
@@ -127,6 +130,24 @@ export async function getWhiteListedProviders(
     throw new Error(`Workspace with ID ${workspaceId} not found.`);
   }
   return workspace.whiteListedProviders || [...MODEL_PROVIDER_IDS];
+}
+
+/**
+ * Get the default embedding provider for a workspace.
+ * @param workspaceId - The ID of the workspace.
+ * @returns The ID of the default provider.
+ */
+export async function getDefaultEmbeddingProvider(
+  workspaceId: number
+): Promise<string> {
+  const workspace = await Workspace.findByPk(workspaceId, {
+    attributes: ["defaultEmbeddingProvider"],
+  });
+
+  if (!workspace) {
+    throw new Error(`Workspace with ID ${workspaceId} not found.`);
+  }
+  return workspace.defaultEmbeddingProvider || DEFAULT_EMBEDDING_PROVIDER_ID;
 }
 
 /**

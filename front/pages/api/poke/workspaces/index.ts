@@ -181,6 +181,7 @@ async function handler(
           role: "admin",
           segmentation: ws.segmentation,
           whiteListedProviders: ws.whiteListedProviders,
+          defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
         })),
       });
     default:

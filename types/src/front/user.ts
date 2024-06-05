@@ -32,6 +32,7 @@ export type LightWorkspaceType = {
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders?: string[];
+  defaultEmbeddingProvider?: string;
 };
 
 export type WorkspaceType = LightWorkspaceType & {

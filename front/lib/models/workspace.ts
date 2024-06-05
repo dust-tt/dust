@@ -1,5 +1,8 @@
 import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import {
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  MODEL_PROVIDER_IDS,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -29,6 +32,7 @@ export class Workspace extends Model<
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders?: string[];
+  declare defaultEmbeddingProvider?: string;
 }
 Workspace.init(
   {
@@ -73,6 +77,11 @@ Workspace.init(
     whiteListedProviders: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: MODEL_PROVIDER_IDS,
+      allowNull: true,
+    },
+    defaultEmbeddingProvider: {
+      type: DataTypes.STRING,
+      defaultValue: DEFAULT_EMBEDDING_PROVIDER_ID,
       allowNull: true,
     },
   },
