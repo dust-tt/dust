@@ -11,7 +11,6 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentsGetViewType,
-  ConversationType,
   LightAgentConfigurationType,
   MentionType,
   PlanType,
@@ -249,35 +248,6 @@ export default function AssistantNew({
     }
   }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
 
-  const { submit: handleOpenHelpConversation } = useSubmitFunction(
-    async (content: string) => {
-      // We create a new test conversation with the helper and we open it in the Drawer
-      const conversationRes = await createConversationWithMessage({
-        owner,
-        user,
-        messageData: {
-          input: content.replace("@help", ":mention[help]{sId=helper}"),
-          mentions: [{ configurationId: "helper" }],
-          contentFragments: [],
-        },
-        visibility: "test",
-      });
-      if (conversationRes.isErr()) {
-        if (conversationRes.error.type === "plan_limit_reached_error") {
-          setPlanLimitReached(true);
-        } else {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        }
-      } else {
-        setConversationHelperModal(conversationRes.value);
-      }
-    }
-  );
-
   const [greeting, setGreeting] = useState<string>("");
   const { animate, setAnimate } = useContext(InputBarContext);
 
@@ -489,7 +459,3 @@ AssistantNew.getLayout = (
 ) => {
   return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
 };
-
-function setConversationHelperModal(value: ConversationType) {
-  throw new Error("Function not implemented.");
-}
