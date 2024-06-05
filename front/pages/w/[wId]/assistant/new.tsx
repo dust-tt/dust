@@ -227,7 +227,7 @@ export default function AssistantNew({
   }, [user]);
 
   const handleAssistantClick = useCallback(
-    (agent: LightAgentConfigurationType) => {
+    async (agent: LightAgentConfigurationType) => {
       // scroll to inputbar
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
@@ -235,6 +235,8 @@ export default function AssistantNew({
       if (scrollContainerElement) {
         scrollContainerElement.scrollIntoView({ behavior: "smooth" });
       }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // update mention
       setSelectedAssistant({
