@@ -121,8 +121,7 @@ export default function AssistantNew({
   const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
+  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
 
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
