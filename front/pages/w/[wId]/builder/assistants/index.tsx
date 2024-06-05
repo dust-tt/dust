@@ -107,7 +107,7 @@ export default function WorkspaceAssistants({
   const { agentConfigurations: searchableAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: assistantSearch ? "manage-assistants-search" : null,
+      agentsGetView: assistantSearch ? "assistants-search" : null,
     });
 
   const filteredAgents = (

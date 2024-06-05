@@ -125,32 +125,27 @@ export default function AssistantNew({
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "list",
+      agentsGetView: "assistants-search",
       includes: ["authors", "usage"],
     });
 
   const agentsByTab = useMemo(() => {
-    let filteredAgents: LightAgentConfigurationType[] = agentConfigurations;
-    if (assistantSearch.trim() !== "") {
-      filteredAgents = filteredAgents.filter((agent) =>
-        subFilter(assistantSearch.toLowerCase(), agent.name.toLowerCase())
+    const filteredAgents: LightAgentConfigurationType[] =
+      agentConfigurations.filter(
+        (a) =>
+          a.status === "active" &&
+          // Filters on search query
+          (assistantSearch.trim() === "" ||
+            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
       );
-    }
+
     return {
-      all: filteredAgents.filter((a) => a.status === "active"),
-      published: filteredAgents.filter(
-        (a) => a.status === "active" && a.scope === "published"
-      ),
-      workspace: filteredAgents.filter(
-        (a) => a.status === "active" && a.scope === "workspace"
-      ),
-      personal: filteredAgents.filter(
-        (a) => a.status === "active" && a.scope === "private"
-      ),
+      all: filteredAgents,
+      published: filteredAgents.filter((a) => a.scope === "published"),
+      workspace: filteredAgents.filter((a) => a.scope === "workspace"),
+      personal: filteredAgents.filter((a) => a.scope === "private"),
       most_popular: filteredAgents
-        .filter(
-          (a) => a.status === "active" && a.usage && a.usage.messageCount > 0
-        )
+        .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
           (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
         )

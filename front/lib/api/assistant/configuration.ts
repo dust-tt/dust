@@ -141,7 +141,7 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "all":
     case "admin_internal":
-    case "manage-assistants-search":
+    case "assistants-search":
       return undefined; // undefined means all global agents will be fetched
     default:
       if (
@@ -279,7 +279,7 @@ async function fetchAgentConfigurationsForView(
         where: baseConditionsAndScopesIn(["published"]),
       });
 
-    case "manage-assistants-search":
+    case "assistants-search":
     case "list":
       const user = auth.user();
 
