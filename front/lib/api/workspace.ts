@@ -6,11 +6,12 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  DEFAULT_EMBEDDING_PROVIDER_ID
+  WorkspaceType,
 } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import {
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  MODEL_PROVIDER_IDS,
+} from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";

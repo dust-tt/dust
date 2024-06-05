@@ -16,6 +16,8 @@ import type { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
+const modelProviderEnumValues = [...MODEL_PROVIDER_IDS] as string[];
+
 export class Workspace extends Model<
   InferAttributes<Workspace>,
   InferCreationAttributes<Workspace>
@@ -75,12 +77,12 @@ Workspace.init(
       defaultValue: false,
     },
     whiteListedProviders: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.ENUM(...modelProviderEnumValues)),
       defaultValue: MODEL_PROVIDER_IDS,
       allowNull: true,
     },
     defaultEmbeddingProvider: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM(...modelProviderEnumValues),
       defaultValue: DEFAULT_EMBEDDING_PROVIDER_ID,
       allowNull: true,
     },
