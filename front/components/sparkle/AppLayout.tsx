@@ -205,6 +205,7 @@ export const appLayoutBack = async (
 export default function AppLayout({
   owner,
   subscription,
+  isWideMode = false,
   hideSidebar = false,
   topNavigationCurrent,
   subNavigation,
@@ -216,6 +217,7 @@ export default function AppLayout({
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isWideMode?: boolean;
   hideSidebar?: boolean;
   topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
@@ -431,18 +433,23 @@ export default function AppLayout({
               titleChildren ? "" : "lg:pt-8"
             )}
           >
-            <div className="mx-auto h-full max-w-4xl">{loaded && children}</div>
+            <div
+              className={classNames(
+                "mx-auto h-full w-full",
+                isWideMode ? "w-full" : "max-w-4xl"
+              )}
+            >
+              {loaded && children}
+            </div>
           </main>
         </div>
-        <div>
-          <ToggleSideBarButton
-            isNavigationBarOpened={isNavigationBarOpened}
-            toggleNavigationBarVisibility={(isVisible) =>
-              setNavigationBarOpened(isVisible)
-            }
-            hideSidebar={hideSidebar}
-          />
-        </div>
+        <ToggleSideBarButton
+          isNavigationBarOpened={isNavigationBarOpened}
+          toggleNavigationBarVisibility={(isVisible) =>
+            setNavigationBarOpened(isVisible)
+          }
+          hideSidebar={hideSidebar}
+        />
       </div>
       <>
         <Script

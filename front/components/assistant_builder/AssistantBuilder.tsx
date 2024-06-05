@@ -560,6 +560,7 @@ export default function AssistantBuilder({
         subscription={subscription}
         hideSidebar
         owner={owner}
+        isWideMode
         gaTrackingId={gaTrackingId}
         topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({
