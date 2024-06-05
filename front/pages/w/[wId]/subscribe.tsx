@@ -167,8 +167,8 @@ export default function Subscribe({
                       </span>
                     </Page.P>
                     <Page.P>
-                      You will be charged after your trial ends. During trial,
-                      you can cancel at any time.
+                      You will be charged after your trial ends. You can cancel
+                      at any time during your trial.
                     </Page.P>
                   </>
                 )}
@@ -176,22 +176,26 @@ export default function Subscribe({
                 {billingPeriod === "monthly" ? (
                   <>
                     <Page.P>
-                      <span className="font-bold">Monthly billing.</span>
+                      <span className="font-bold">
+                        You've selected monthly billing.
+                      </span>
                     </Page.P>
                     <Page.P>
-                      Pay on a month-to-month basis. You can cancel at any time
-                      before your next monthly billing cycle.
+                      You'll pay on a month-to-month basis. You can cancel at
+                      any time before the end of your monthly billing cycle.
                     </Page.P>
                   </>
                 ) : (
                   <>
                     <Page.P>
-                      <span className="font-bold">Yearly billing.</span>
+                      <span className="font-bold">
+                        You've selected yearly billing.
+                      </span>
                     </Page.P>
                     <Page.P>
-                      Pay for a year upfront and enjoy savings compared to the
-                      monthly plan. You can cancel at any time before your next
-                      annual billing cycle.
+                      You'll pay for a year upfront and enjoy savings compared
+                      to the monthly plan. You can cancel at any time before the
+                      end of your annual billing cycle.
                     </Page.P>
                   </>
                 )}
