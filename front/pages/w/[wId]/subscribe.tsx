@@ -5,7 +5,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect } from "react";
 
-import { ProPricePlans } from "@app/components/PlansTables";
+import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -215,11 +215,11 @@ export default function Subscribe({
                 ></Button>
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
-                <ProPricePlans
+                <ProPlansTable
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
-                ></ProPricePlans>
+                ></ProPlansTable>
               </Page.Horizontal>
             </Page.Horizontal>
           ) : (
@@ -237,11 +237,11 @@ export default function Subscribe({
                 </Page.P>
               </Page.Vertical>
               <Page.Vertical sizing="grow">
-                <ProPricePlans
+                <ProPlansTable
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
-                ></ProPricePlans>
+                ></ProPlansTable>
               </Page.Vertical>
             </Page.Horizontal>
           )}
