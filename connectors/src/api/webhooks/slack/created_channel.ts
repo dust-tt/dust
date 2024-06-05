@@ -50,7 +50,7 @@ export async function onChannelCreation({
   const autoReadRes = await autoReadChannel(
     channel.context_team_id,
     logger,
-    channel.name
+    channel.id
   );
   if (autoReadRes.isErr()) {
     return new Err(
