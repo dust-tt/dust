@@ -180,6 +180,7 @@ async function handler(
           name: ws.name,
           role: "admin",
           segmentation: ws.segmentation,
+          whiteListedProviders: ws.whiteListedProviders
         })),
       });
     default:
