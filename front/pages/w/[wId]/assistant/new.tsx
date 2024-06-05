@@ -5,24 +5,23 @@ import {
   PlanetIcon,
   PlusIcon,
   Searchbar,
+  Spinner,
   Tab,
   Tooltip,
   UserGroupIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import {
-  assertNever,
-  type AgentsGetViewType,
-  type LightAgentConfigurationType,
-  type MentionType,
-  type PlanType,
-  type UserType,
-  type WorkspaceType,
+import type {
+  LightAgentConfigurationType,
+  MentionType,
+  PlanType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import type { ComponentType, ReactElement } from "react";
+import type { ReactElement } from "react";
 import {
   useCallback,
   useContext,
@@ -50,7 +49,6 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
-import { as } from "fp-ts/lib/Option";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -122,11 +120,12 @@ export default function AssistantNew({
   const sendNotification = useContext(SendNotificationsContext);
   const { setSelectedAssistant } = useContext(InputBarContext);
 
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors", "usage"],
-  });
+  const { agentConfigurations, isAgentConfigurationsLoading } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list",
+      includes: ["authors", "usage"],
+    });
 
   const agentsByTab = useMemo(() => {
     let filteredAgents: LightAgentConfigurationType[] = agentConfigurations;
@@ -345,9 +344,9 @@ export default function AssistantNew({
             </Button.List>
           </div>
 
-          {/* Section: All assistants */}
+          {/* Assistant tabs */}
           <div id="all-assistants-header" className="flex h-fit px-4">
-            <Page.SectionHeader title="All assistants" />
+            <Page.SectionHeader title="Available assistants" />
           </div>
           <div className="flex flex-row space-x-4 px-4">
             <Tab
@@ -359,16 +358,26 @@ export default function AssistantNew({
               setCurrentTab={setSelectedTab}
             />
           </div>
-          {visibleTabs.length === 0 ? (
-            <div className="text-center">
-              No assistants found. Try adjusting your search criteria.
-            </div>
-          ) : (
-            <AssistantList
-              agents={agentsByTab[selectedTab]}
-              handleAssistantClick={handleAssistantClick}
-            />
-          )}
+          {(() => {
+            if (isAgentConfigurationsLoading) {
+              return <Spinner />;
+            }
+
+            if (visibleTabs.length === 0) {
+              return (
+                <div className="text-center">
+                  No assistants found. Try adjusting your search criteria.
+                </div>
+              );
+            }
+
+            return (
+              <AssistantList
+                agents={agentsByTab[selectedTab]}
+                handleAssistantClick={handleAssistantClick}
+              />
+            );
+          })()}
         </div>
       </div>
 
