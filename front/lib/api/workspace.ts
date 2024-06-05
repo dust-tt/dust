@@ -6,8 +6,8 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+  WorkspaceType} from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
@@ -34,6 +34,7 @@ export async function getWorkspaceInfos(
     name: workspace.name,
     role: "none",
     segmentation: workspace.segmentation,
+    whiteListedProviders: workspace.whiteListedProviders
   };
 }
 
@@ -107,6 +108,22 @@ export async function setInternalWorkspaceSegmentation(
     role: "none",
     segmentation: workspace.segmentation,
   };
+}
+
+/**
+ * Get the white-listed providers for a workspace.
+ * @param workspaceId - The ID of the workspace.
+ * @returns A list of white-listed providers.
+ */
+export async function getWhiteListedProviders(workspaceId: number): Promise<string[]> {
+  const workspace = await Workspace.findByPk(workspaceId, {
+    attributes: ['whiteListedProviders'],
+  });
+
+  if (!workspace) {
+    throw new Error(`Workspace with ID ${workspaceId} not found.`);
+  }
+  return workspace.whiteListedProviders || [...MODEL_PROVIDER_IDS];
 }
 
 /**
