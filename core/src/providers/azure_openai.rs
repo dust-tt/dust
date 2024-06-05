@@ -423,7 +423,7 @@ impl LLM for AzureOpenAILLM {
                     total_tokens: usage.total_tokens,
                 }),
                 None => None,
-            }
+            },
         })
     }
 

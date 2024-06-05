@@ -5,7 +5,9 @@ use super::sentencepiece::sentencepiece::{
     mistral_tokenizer_model_v1_base_singleton, tokenize_async,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
+use crate::providers::llm::{
+    ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
+};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils::{self, now};
@@ -599,7 +601,7 @@ impl MistralAILLM {
                                 Some(received_usage) => {
                                     usage = Some(received_usage.clone());
                                 }
-                                None => ()
+                                None => (),
                             };
 
                             // Only stream if choices is length 1 but should always be the case.
@@ -658,7 +660,7 @@ impl MistralAILLM {
                                                 "content": received_usage,
                                             }));
                                         }
-                                        None => ()
+                                        None => (),
                                     };
                                 }
                                 None => (),
@@ -1081,7 +1083,7 @@ impl LLM for MistralAILLM {
                     total_tokens: u.total_tokens,
                 }),
                 None => None,
-            }
+            },
         })
     }
 

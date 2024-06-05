@@ -884,7 +884,7 @@ impl AnthropicLLM {
                                             }
                                         };
 
-                                        match final_response.as_mut() {
+                                    match final_response.as_mut() {
                                         None => {
                                             Err(anyhow!(
                                                 "Error streaming from Anthropic: \
@@ -1226,9 +1226,7 @@ impl AnthropicLLM {
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
         let response = match status {
-            reqwest::StatusCode::OK => {
-                Ok(serde_json::from_slice(c)?)
-            }
+            reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
                 let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {

@@ -1,7 +1,9 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
+use crate::providers::llm::{
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
+};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -1024,7 +1026,7 @@ pub async fn streamed_chat_completion(
                             Some(received_usage) => {
                                 usage = Some(received_usage.clone());
                             }
-                            None => ()
+                            None => (),
                         };
 
                         // Only stream if choices is length 1 but should always be the case.
@@ -1084,7 +1086,7 @@ pub async fn streamed_chat_completion(
                                             "content": received_usage,
                                         }));
                                     }
-                                    None => ()
+                                    None => (),
                                 };
                             }
                             None => (),
@@ -1835,7 +1837,7 @@ impl LLM for OpenAILLM {
                     total_tokens: usage.total_tokens,
                 }),
                 None => None,
-            }
+            },
         })
     }
 
@@ -1972,7 +1974,7 @@ impl LLM for OpenAILLM {
                     total_tokens: usage.total_tokens,
                 }),
                 None => None,
-            }
+            },
         })
     }
 }
