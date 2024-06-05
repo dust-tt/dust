@@ -1,5 +1,4 @@
 import type {
-  AgentConfigurationType,
   AgentModelConfigurationType,
   DataSourceType,
   LightAgentConfigurationType,
@@ -168,15 +167,4 @@ export function orderDatasourceByImportance(dataSources: DataSourceType[]) {
 
     return indexA - indexB;
   });
-}
-
-// This function returns true if the agent is a "legacy" agent with a forced schedule,
-// i.e it has a maxToolsUsePerRun <= 1, every possible iteration has a forced action,
-// and every tool is forced at a certain iteration.
-export function isLegacyAgent(configuration: AgentConfigurationType): boolean {
-  return (
-    configuration.maxToolsUsePerRun <= 1 &&
-    configuration.actions.length <= 1 &&
-    configuration.actions.every((a) => a.forceUseAtIteration === 0)
-  );
 }

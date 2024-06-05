@@ -9,7 +9,6 @@ export type WebsearchConfigurationType = {
   type: "websearch_configuration";
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export const WebsearchResultSchema = t.type({

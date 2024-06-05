@@ -3,18 +3,14 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleIcon,
-  Dialog,
   IconButton,
   MagicIcon,
-  Page,
   SquareIcon,
   Tab,
   TriangleIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -108,7 +104,6 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
-  multiActionsAllowed: boolean;
   multiActionsEnabled: boolean;
 };
 
@@ -207,7 +202,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  multiActionsAllowed,
   multiActionsEnabled,
 }: AssistantBuilderProps) {
   const router = useRouter();
@@ -249,12 +243,6 @@ export default function AssistantBuilder({
 
   const [template, setTemplate] =
     useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
-
-  const [
-    showEnableMultiActionsConfirmation,
-    setShowEnableMultiActionsConfirmation,
-  ] = useState(false);
-  const [multiActionsMode, setMultiActionsMode] = useState(multiActionsEnabled);
 
   const resetTemplate = async () => {
     setTemplate(null);
@@ -498,7 +486,7 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
-        useMultiActions: multiActionsMode,
+        useMultiActions: multiActionsEnabled,
       });
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
@@ -548,14 +536,6 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <MultActionsConfirmationModal
-        show={showEnableMultiActionsConfirmation}
-        onClose={() => setShowEnableMultiActionsConfirmation(false)}
-        onConfirm={() => {
-          setMultiActionsMode(true);
-          setEdited(true);
-        }}
-      />
       <AppLayout
         subscription={subscription}
         hideSidebar
@@ -593,21 +573,6 @@ export default function AssistantBuilder({
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="flex flex-row gap-2 self-end pt-0.5">
-                  {multiActionsAllowed && (
-                    <Button
-                      icon={!multiActionsMode ? XMarkIcon : CheckIcon}
-                      label={`Multi Actions ${multiActionsMode ? "On" : "Off"}`}
-                      onClick={() => {
-                        if (!multiActionsMode) {
-                          setShowEnableMultiActionsConfirmation(true);
-                          return;
-                        }
-                        setMultiActionsMode(false);
-                        setEdited(true);
-                      }}
-                      variant={!multiActionsMode ? "tertiary" : "primary"}
-                    />
-                  )}
                   <SharingButton
                     showSlackIntegration={showSlackIntegration}
                     slackDataSource={slackDataSource || null}
@@ -647,7 +612,7 @@ export default function AssistantBuilder({
                     );
                   case "actions":
                     // TODO(@fontanierh): Remove single actions.
-                    if (!multiActionsMode) {
+                    if (!multiActionsEnabled) {
                       return (
                         <ActionScreen
                           owner={owner}
@@ -738,7 +703,7 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
-              multiActionsMode={multiActionsMode}
+              multiActionsMode={multiActionsEnabled}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
@@ -1044,43 +1009,5 @@ export function BuilderLayout({
         </div>
       </div>
     </div>
-  );
-}
-
-export function MultActionsConfirmationModal({
-  show,
-  onClose,
-  onConfirm,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      onCancel={() => onClose()}
-      onValidate={() => {
-        onConfirm();
-        onClose();
-      }}
-      title="Enable Multi Actions"
-    >
-      <Page.Vertical>
-        <div className="flex flex-col gap-y-2">
-          <div className="text-md grow font-medium text-warning-600">
-            Important
-          </div>
-          <div className="text-md font-normal text-element-700">
-            Multi Actions is an experimental feature that allows an assistant to
-            run multiple actions in a single run.
-          </div>
-          <div className="text-md font-normal text-element-700">
-            This feature is still in development and may not work as expected.
-            We may break or delete any assistant that uses this feature.
-          </div>
-        </div>
-      </Page.Vertical>
-    </Dialog>
   );
 }

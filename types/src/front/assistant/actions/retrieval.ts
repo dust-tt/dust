@@ -64,7 +64,6 @@ export type RetrievalConfigurationType = {
 
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 /**

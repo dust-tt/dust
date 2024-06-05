@@ -28,7 +28,6 @@ export class AgentDustAppRunConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-  declare forceUseAtIteration: number | null;
 }
 
 AgentDustAppRunConfiguration.init(
@@ -68,10 +67,6 @@ AgentDustAppRunConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_dust_app_run_configuration",
@@ -82,10 +77,6 @@ AgentDustAppRunConfiguration.init(
       },
       {
         fields: ["agentConfigurationId"],
-        concurrently: true,
-      },
-      {
-        fields: ["forceUseAtIteration"],
         concurrently: true,
       },
     ],

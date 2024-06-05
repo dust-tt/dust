@@ -57,7 +57,6 @@ export type ProcessConfigurationType = {
 
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export type ProcessActionOutputsType = {
