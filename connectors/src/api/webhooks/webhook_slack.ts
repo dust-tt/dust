@@ -36,9 +36,9 @@ export interface SlackWebhookEvent<T = string> {
 }
 
 type SlackWebhookReqBody = {
-  type?: string;
+  type: string;
   challenge?: string;
-  team_id?: string;
+  team_id: string;
 };
 
 type SlackWebhookEventReqBody = SlackWebhookReqBody & {
@@ -48,6 +48,18 @@ type SlackWebhookEventReqBody = SlackWebhookReqBody & {
 type SlackWebhookResBody = WithConnectorsAPIErrorReponse<{
   challenge: string;
 } | null>;
+
+function isSlackWebhookEventReqBody(
+  body: unknown
+): body is SlackWebhookEventReqBody {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "event" in body &&
+    "type" in body &&
+    "team_id" in body
+  );
+}
 
 async function handleChatBot(req: Request, res: Response, logger: Logger) {
   const { event } = req.body;
@@ -139,9 +151,18 @@ const _webhookSlackAPIHandler = async (
   }
 
   if (req.body.type === "event_callback") {
-    const reqBody = req.body as SlackWebhookEventReqBody;
+    if (!isSlackWebhookEventReqBody(req.body)) {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_request_error",
+          message: "Missing required fields in request body",
+        },
+        status_code: 400,
+      });
+    }
+    const reqBody = req.body;
     const { team_id: teamId } = reqBody;
-    if (!req.body.team_id) {
+    if (!teamId) {
       return apiError(req, res, {
         api_error: {
           type: "invalid_request_error",
@@ -156,15 +177,6 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    if (!teamId) {
-      return apiError(req, res, {
-        api_error: {
-          type: "invalid_request_error",
-          message: "Missing team_id in request body",
-        },
-        status_code: 400,
-      });
-    }
     const slackConfigurations = await SlackConfigurationResource.listForTeamId(
       teamId
     );

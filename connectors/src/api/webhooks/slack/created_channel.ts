@@ -13,9 +13,7 @@ interface ChannelCreatedEventPayload {
   name: string;
 }
 
-type ChannelCreatedEvent = Omit<SlackWebhookEvent, "channel"> & {
-  channel: ChannelCreatedEventPayload;
-};
+type ChannelCreatedEvent = SlackWebhookEvent<ChannelCreatedEventPayload>;
 
 export function isChannelCreatedEvent(
   event: unknown
@@ -41,6 +39,11 @@ export async function onChannelCreation({
   logger,
 }: OnChannelCreationProps): Promise<Result<void, Error>> {
   const { channel } = event;
+  if (!channel) {
+    return new Err(
+      new Error("Missing channel in request body for message event")
+    );
+  }
   const autoReadRes = await autoReadChannel(
     channel.context_team_id,
     logger,
