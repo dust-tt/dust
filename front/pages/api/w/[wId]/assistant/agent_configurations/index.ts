@@ -317,27 +317,6 @@ export async function createOrUpgradeAgentConfiguration({
           .join(", ")}`
       );
     }
-    const actionsWithoutDescription = actions.filter(
-      (action) => !action.description
-    );
-    if (actionsWithoutDescription.length) {
-      // We tolerate a missing description when editing am assistant with a single action of
-      // type retrieval_configuration or tables_query_configuration. That's because we need to keep support for
-      // legacy single-action assistants that have not been edited since the introduction of multi-actions.
-      if (
-        !agentConfigurationId ||
-        actions.length !== 1 ||
-        !["retrieval_configuration", "tables_query_configuration"].includes(
-          actions[0].type
-        )
-      ) {
-        throw new Error(
-          `Every action must have a description. Missing descriptions for: ${actionsWithoutDescription
-            .map((action) => action.type)
-            .join(", ")}`
-        );
-      }
-    }
     const actionNames = new Set<string>();
     for (const action of actions) {
       if (!action.name) {
