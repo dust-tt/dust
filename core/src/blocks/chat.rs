@@ -537,18 +537,6 @@ impl Block for Chat {
                                                 },
                                             }));
                                         }
-                                        if s == "token_usage" {
-                                            let _ = sender.send(json!({
-                                                "type": s,
-                                                "content": {
-                                                    "block_type": "chat",
-                                                    "block_name": block_name,
-                                                    "input_index": input_index,
-                                                    "map": map,
-                                                    "token_usage": c,
-                                                },
-                                            }));
-                                        }
                                         if s == "function_call" {
                                             let _ = sender.send(json!({
                                                 "type": s,

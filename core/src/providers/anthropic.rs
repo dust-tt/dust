@@ -896,15 +896,6 @@ impl AnthropicLLM {
                                             response.stop_reason = event.delta.stop_reason;
                                             response.usage.output_tokens =
                                                 event.usage.output_tokens;
-
-                                            let _ = event_sender.send(json!({
-                                                "type": "token_usage",
-                                                "content": json!({
-                                                    "prompt_tokens": response.usage.input_tokens,
-                                                    "completion_tokens": response.usage.output_tokens,
-                                                    "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
-                                                })
-                                            }));
                                         }
                                     }
                                 }

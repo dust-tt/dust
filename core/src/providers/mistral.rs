@@ -651,17 +651,6 @@ impl MistralAILLM {
                                             });
                                         }
                                     }
-
-                                    // Emit token_usage event when getting count
-                                    match &chunk.usage {
-                                        Some(received_usage) => {
-                                            let _ = sender.send(json!({
-                                                "type": "token_usage",
-                                                "content": received_usage,
-                                            }));
-                                        }
-                                        None => (),
-                                    };
                                 }
                                 None => (),
                             };
@@ -1076,14 +1065,11 @@ impl LLM for MistralAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
-            usage: match c.usage {
-                Some(u) => Some(LLMTokenUsage {
-                    completion_tokens: u.completion_tokens,
-                    prompt_tokens: u.prompt_tokens,
-                    total_tokens: u.total_tokens,
-                }),
-                None => None,
-            },
+            usage: c.usage.map(|u| LLMTokenUsage {
+                completion_tokens: u.completion_tokens,
+                prompt_tokens: u.prompt_tokens,
+                total_tokens: u.total_tokens,
+            }),
         })
     }
 

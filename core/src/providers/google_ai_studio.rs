@@ -16,7 +16,7 @@ use super::{
     embedder::Embedder,
     llm::{
         ChatFunction, ChatFunctionCall, ChatMessage, ChatMessageRole, LLMChatGeneration,
-        LLMGeneration, LLM,
+        LLMGeneration, LLMTokenUsage, LLM,
     },
     provider::{Provider, ProviderID},
     tiktoken::tiktoken::{
@@ -362,7 +362,11 @@ impl LLM for GoogleAiStudioLLM {
                 logprobs: Some(vec![]),
                 top_logprobs: None,
             },
-            usage: None,
+            usage: c.usage_metadata.map(|c| LLMTokenUsage {
+                prompt_tokens: c.prompt_token_count.unwrap_or(0) as u64,
+                completion_tokens: c.candidates_token_count.map(|c| c as u64),
+                total_tokens: c.total_token_count.unwrap_or(0) as u64,
+            }),
         })
     }
 
@@ -474,7 +478,11 @@ impl LLM for GoogleAiStudioLLM {
                     },
                 },
             }],
-            usage: None,
+            usage: c.usage_metadata.map(|c| LLMTokenUsage {
+                prompt_tokens: c.prompt_token_count.unwrap_or(0) as u64,
+                completion_tokens: c.candidates_token_count.map(|c| c as u64),
+                total_tokens: c.total_token_count.unwrap_or(0) as u64,
+            }),
         })
     }
 }

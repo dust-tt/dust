@@ -416,14 +416,11 @@ impl LLM for AzureOpenAILLM {
                 })
                 .collect::<Vec<_>>(),
             prompt: prompt_tokens,
-            usage: match c.usage {
-                Some(usage) => Some(LLMTokenUsage {
-                    prompt_tokens: usage.prompt_tokens,
-                    completion_tokens: usage.completion_tokens,
-                    total_tokens: usage.total_tokens,
-                }),
-                None => None,
-            },
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens,
+                total_tokens: usage.total_tokens,
+            }),
         })
     }
 
@@ -551,14 +548,11 @@ impl LLM for AzureOpenAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
-            usage: match c.usage {
-                Some(usage) => Some(LLMTokenUsage {
-                    prompt_tokens: usage.prompt_tokens,
-                    completion_tokens: usage.completion_tokens,
-                    total_tokens: usage.total_tokens,
-                }),
-                None => None,
-            },
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens,
+                total_tokens: usage.total_tokens,
+            }),
         })
     }
 }
