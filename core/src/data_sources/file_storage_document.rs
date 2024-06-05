@@ -58,7 +58,21 @@ impl FileStorageDocument {
     pub async fn get_stored_document(file_path: &str) -> Result<String> {
         let bucket = FileStorageDocument::get_bucket().await?;
 
-        let bytes = Object::download(&bucket, &file_path).await?;
+        let mut attempts = 0;
+        let bytes = loop {
+            match Object::download(&bucket, &file_path).await {
+                Ok(bytes) => break bytes,
+                Err(err) => {
+                    attempts += 1;
+                    if attempts >= 3 {
+                        return Err(anyhow!(
+                            "Failed to retrieve stored document after 3 attempts: {}",
+                            err
+                        ));
+                    }
+                }
+            }
+        };
 
         match String::from_utf8(bytes) {
             Ok(content) => Ok(content),

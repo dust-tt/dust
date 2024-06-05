@@ -11,6 +11,7 @@ use dust::{
     utils,
 };
 use qdrant_client::qdrant;
+use tokio::time::{sleep, Duration};
 use tokio_postgres::Row;
 
 use bb8::Pool;
@@ -27,7 +28,7 @@ async fn fetch_data_sources_batch(
     let c = pool.get().await?;
 
     c.query(
-        "SELECT id, internal_id FROM data_sources WHERE id > $1 LIMIT $2",
+        "SELECT id, internal_id FROM data_sources WHERE id > $1 ORDER BY id ASC LIMIT $2",
         &[&(last_id as i64), &(limit as i64)],
     )
     .await
@@ -200,6 +201,12 @@ async fn update_stored_document_for_document_id(
                 return Ok::<(), anyhow::Error>(());
             }
 
+            if !FileStorageDocument::file_exists(&legacy_file_path).await? {
+                // File already exist, return early.
+                println!("Legacy file {:} not found -- skipping.", legacy_file_path);
+                return Ok::<(), anyhow::Error>(());
+            }
+
             let legacy_stored_document =
                 FileStorageDocument::get_stored_document(&legacy_file_path).await?;
 
@@ -219,13 +226,29 @@ async fn update_stored_document_for_document_id(
             };
             let serialized_document = serde_json::to_vec(&file_storage_document)?;
 
-            Object::create(
-                &bucket,
-                serialized_document,
-                &new_file_path,
-                "application/json",
-            )
-            .await?;
+            let mut attempts = 0;
+            loop {
+                match Object::create(
+                    &bucket,
+                    serialized_document.clone(),
+                    &new_file_path,
+                    "application/json",
+                )
+                .await
+                {
+                    Ok(_) => break,
+                    Err(err) => {
+                        attempts += 1;
+                        if attempts >= 3 {
+                            return Err(anyhow!(
+                                "Failed to create object after 3 attempts: {}",
+                                err
+                            ));
+                        }
+                        sleep(Duration::from_secs(1)).await;
+                    }
+                }
+            }
 
             Ok::<(), anyhow::Error>(())
         }
