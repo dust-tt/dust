@@ -8,6 +8,7 @@ import {
   Input,
   MagnifyingGlassIcon,
   Modal,
+  MoreIcon,
   Page,
   PlanetIcon,
   PlusIcon,
@@ -545,51 +546,52 @@ function ActionEditor({
 
   return (
     <>
-      <div className="flex w-full flex-row items-end justify-end">
-        <DropdownMenu className="pr-2">
-          <DropdownMenu.Button>
-            <Button
-              label="Advanced settings"
-              variant="tertiary"
-              size="sm"
-              type="menu"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={240} overflow="visible">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col items-end gap-2">
-                <div className="w-full grow text-sm font-bold text-element-800">
-                  Name of the action
-                </div>
-              </div>
-              <Input
-                name="actionName"
-                placeholder="My action name.."
-                value={action.name}
-                onChange={(v) => {
-                  updateAction({
-                    actionName: v,
-                    actionDescription: action.description,
-                    getNewActionConfig: (old) => old,
-                  });
-                }}
-                error={!titleValid ? "Name already exists" : null}
-                className="text-sm"
-              />
-            </div>
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
       <ActionModeSection show={true}>
         {(() => {
           switch (action.type) {
             case "DUST_APP_RUN":
               return (
                 <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
+                  <div className="flex w-full flex-row items-center justify-center justify-between">
+                    <Page.Header
+                      title={ACTION_SPECIFICATIONS[action.type].label}
+                      icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+                    />
+                    <DropdownMenu className="pr-2">
+                      <DropdownMenu.Button>
+                        <Button
+                          label=""
+                          labelVisible={false}
+                          icon={MoreIcon}
+                          size="sm"
+                          variant="tertiary"
+                        />
+                      </DropdownMenu.Button>
+                      <DropdownMenu.Items width={240} overflow="visible">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="w-full grow text-sm font-bold text-element-800">
+                              Name of the action
+                            </div>
+                          </div>
+                          <Input
+                            name="actionName"
+                            placeholder="My action name.."
+                            value={action.name}
+                            onChange={(v) => {
+                              updateAction({
+                                actionName: v,
+                                actionDescription: action.description,
+                                getNewActionConfig: (old) => old,
+                              });
+                            }}
+                            error={!titleValid ? "Name already exists" : null}
+                            className="text-sm"
+                          />
+                        </div>
+                      </DropdownMenu.Items>
+                    </DropdownMenu>
+                  </div>
                   <ActionDustAppRun
                     owner={owner}
                     action={action}
