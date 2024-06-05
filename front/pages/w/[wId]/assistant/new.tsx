@@ -4,6 +4,8 @@ import {
   Page,
   PlanetIcon,
   PlusIcon,
+  RobotIcon,
+  RocketIcon,
   Searchbar,
   Spinner,
   Tab,
@@ -93,8 +95,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 const ALL_AGENTS_TABS = [
-  { label: "Most popular", id: "most_popular" },
-  { label: "All", id: "all" },
+  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
+  { label: "All", icon: RobotIcon, id: "all" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Personal", icon: UserIcon, id: "personal" },
