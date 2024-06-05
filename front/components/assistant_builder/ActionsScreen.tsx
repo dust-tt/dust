@@ -542,6 +542,41 @@ function ActionEditor({
   ].includes(action.type as any);
   return (
     <>
+      <div className="flex w-full flex-row items-end justify-end">
+        <DropdownMenu className="pr-2">
+          <DropdownMenu.Button>
+            <Button
+              label="Advanced settings"
+              variant="tertiary"
+              size="sm"
+              type="menu"
+            />
+          </DropdownMenu.Button>
+          <DropdownMenu.Items width={240} overflow="visible">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col items-end gap-2">
+                <div className="w-full grow text-sm font-bold text-element-800">
+                  Name of the action
+                </div>
+              </div>
+              <Input
+                name="actionName"
+                placeholder="My action name.."
+                value={action.name}
+                onChange={(v) => {
+                  updateAction({
+                    actionName: v,
+                    actionDescription: action.description,
+                    getNewActionConfig: (old) => old,
+                  });
+                }}
+                error={!titleValid ? "Name already exists" : null}
+                className="text-sm"
+              />
+            </div>
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
       <ActionModeSection show={true}>
         {(() => {
           switch (action.type) {
@@ -708,21 +743,6 @@ function ActionEditor({
             });
           }}
           error={!descriptionValid ? "Description cannot be empty" : null}
-        />
-        <div className="font-semibold text-element-800">Name of the action</div>
-        <Input
-          name="actionName"
-          placeholder="My action name.."
-          value={action.name}
-          onChange={(v) => {
-            updateAction({
-              actionName: v,
-              actionDescription: action.description,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!titleValid ? "Name already exists" : null}
-          className="text-sm"
         />
       </div>
     </>
