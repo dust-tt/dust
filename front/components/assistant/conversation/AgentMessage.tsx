@@ -7,7 +7,6 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -35,7 +34,6 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ConversationActions } from "@app/components/assistant/conversation/actions/ConversationActions";
-import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
