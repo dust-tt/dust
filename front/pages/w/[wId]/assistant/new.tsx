@@ -151,7 +151,7 @@ export default function AssistantNew({
         .sort(
           (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
         )
-        .slice(0, 12),
+        .slice(0, 9),
     };
   }, [agentConfigurations, assistantSearch]);
 
@@ -228,7 +228,7 @@ export default function AssistantNew({
 
   const handleAssistantClick = useCallback(
     async (agent: LightAgentConfigurationType) => {
-      // scroll to inputbar
+      // scroll to inputbar title
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
       );
@@ -236,25 +236,19 @@ export default function AssistantNew({
         scrollContainerElement.scrollIntoView({ behavior: "smooth" });
       }
 
+      // update mention after end of scroll and a little delay
       await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // update mention
       setSelectedAssistant({
         configurationId: agent.sId,
       });
 
       // animate input bar
       setAnimate(true);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setAnimate(false);
     },
     [setSelectedAssistant, setAnimate]
   );
-
-  // cancel animation after it's done
-  useEffect(() => {
-    if (animate) {
-      setAnimate(false);
-    }
-  }, [animate, setAnimate]);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -274,12 +268,12 @@ export default function AssistantNew({
       />
       <div
         id="assistant-new-page"
-        className="flex min-h-screen flex-col items-center pb-20 text-sm font-normal text-element-800"
+        className="flex min-h-full flex-col items-center pb-10 text-sm font-normal text-element-800"
       >
         {/* Assistant input bar container*/}
         <div
           id="assistant-input-container"
-          className="z-10 flex min-h-[50vh] w-full grow flex-col items-center justify-center"
+          className="z-10 flex min-h-[50vh] w-full flex-col items-center justify-center"
         >
           <div
             id="assistant-input-header"
