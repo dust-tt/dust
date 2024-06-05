@@ -175,6 +175,8 @@ const _webhookSlackAPIHandler = async (
         event: {
           type: event?.type,
           channelType: event?.channel_type,
+          channelName: event?.channel,
+          teamId: req.body.team_id,
         },
       },
       "Processing webhook event"
