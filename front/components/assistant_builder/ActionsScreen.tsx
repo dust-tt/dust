@@ -540,6 +540,9 @@ function ActionEditor({
     "RETRIEVAL_EXHAUSTIVE",
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
+
+  const shouldDisplayActionDescription = action.type !== "DUST_APP_RUN";
+
   return (
     <>
       <div className="flex w-full flex-row items-end justify-end">
@@ -712,39 +715,41 @@ function ActionEditor({
           }
         })()}
       </ActionModeSection>
-      <div className="flex flex-col gap-4 pt-8">
-        {isDataSourceAction ? (
-          <div className="flex flex-col gap-2">
+      {shouldDisplayActionDescription && (
+        <div className="flex flex-col gap-4 pt-8">
+          {isDataSourceAction ? (
+            <div className="flex flex-col gap-2">
+              <div className="font-semibold text-element-800">
+                What's the data?
+              </div>
+              <div className="text-sm text-element-600">
+                Clarify the data's content and context to guide your Assistant
+                in determining when and how to utilize it.
+              </div>
+            </div>
+          ) : (
             <div className="font-semibold text-element-800">
-              What's the data?
+              Action description
             </div>
-            <div className="text-sm text-element-600">
-              Clarify the data's content and context to guide your Assistant in
-              determining when and how to utilize it.
-            </div>
-          </div>
-        ) : (
-          <div className="font-semibold text-element-800">
-            Action description
-          </div>
-        )}
-        <TextArea
-          placeholder={
-            isDataSourceAction
-              ? "This data contains...."
-              : "My action description.."
-          }
-          value={action.description}
-          onChange={(v) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: v,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!descriptionValid ? "Description cannot be empty" : null}
-        />
-      </div>
+          )}
+          <TextArea
+            placeholder={
+              isDataSourceAction
+                ? "This data contains...."
+                : "My action description.."
+            }
+            value={action.description}
+            onChange={(v) => {
+              updateAction({
+                actionName: action.name,
+                actionDescription: v,
+                getNewActionConfig: (old) => old,
+              });
+            }}
+            error={!descriptionValid ? "Description cannot be empty" : null}
+          />
+        </div>
+      )}
     </>
   );
 }

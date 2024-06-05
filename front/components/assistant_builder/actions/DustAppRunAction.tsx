@@ -1,6 +1,6 @@
 import { ContentMessage } from "@dust-tt/sparkle";
 import type { AppType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, slugify } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderDustAppModal from "@app/components/assistant_builder/AssistantBuilderDustAppModal";
@@ -44,8 +44,10 @@ export function ActionDustAppRun({
   const deleteDustApp = () => {
     setEdited(true);
     updateAction({
-      actionName: action.name,
-      actionDescription: action.description,
+      actionName:
+        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
+      actionDescription:
+        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
       getNewActionConfig: (previousAction) => ({
         ...previousAction,
         app: null,
@@ -67,25 +69,11 @@ export function ActionDustAppRun({
           setShowDustAppsModal(isOpen);
         }}
         dustApps={dustApps}
-        onSave={({ app }) => {
+        onSave={(app) => {
           setEdited(true);
-          const newName =
-            action.name ===
-              ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME &&
-            app?.name
-              ? app.name
-              : action.name;
-
-          const newDescription =
-            action.description ===
-              ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION &&
-            app?.description?.length
-              ? app.description
-              : action.description;
-
           updateAction({
-            actionName: newName,
-            actionDescription: newDescription,
+            actionName: slugify(app.name),
+            actionDescription: app.description ?? "",
             getNewActionConfig: (previousAction) => ({
               ...previousAction,
               app,

@@ -16,6 +16,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  slugify,
 } from "@dust-tt/types";
 
 import type {
@@ -135,6 +136,8 @@ export async function buildInitialActions({
       for (const app of dustApps) {
         if (app.sId === action.appId) {
           dustAppConfiguration.configuration.app = app;
+          dustAppConfiguration.name = slugify(app.name);
+          dustAppConfiguration.description = app.description ?? "";
           break;
         }
       }
