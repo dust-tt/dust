@@ -216,7 +216,7 @@ export default function ActionScreen({
 
   return (
     <>
-      <div className="flex flex-col gap-4 text-sm text-element-700">
+      <div className="flex min-h-96 flex-col gap-4 text-sm text-element-800">
         <div className="flex flex-col gap-2">
           <Page.Header title="Actions & Data sources" />
           <Page.P>
