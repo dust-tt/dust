@@ -543,7 +543,6 @@ function ActionEditor({
   ].includes(action.type as any);
   return (
     <>
-      <div className="flex w-full flex-row items-end justify-end"></div>
       <ActionModeSection show={true}>
         {(() => {
           switch (action.type) {
