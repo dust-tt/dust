@@ -21,11 +21,14 @@ export function isChannelCreatedEvent(
   return (
     typeof event === "object" &&
     event !== null &&
-    "context_team_id" in event &&
-    "created" in event &&
-    "creator" in event &&
-    "id" in event &&
-    "name" in event
+    "channel" in event &&
+    typeof event.channel === "object" &&
+    event.channel !== null &&
+    "context_team_id" in event.channel &&
+    "created" in event.channel &&
+    "creator" in event.channel &&
+    "id" in event.channel &&
+    "name" in event.channel
   );
 }
 
