@@ -37,7 +37,6 @@ import {
   renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
-import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
@@ -72,7 +71,14 @@ export async function* runAgent(
     );
   }
 
-  const stream = isLegacyAgent(fullConfiguration)
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unreachable: could not find owner workspace for agent");
+  }
+
+  const multiActions = owner.flags.includes("multi_actions");
+
+  const stream = !multiActions
     ? runLegacyAgent(
         auth,
         fullConfiguration,
@@ -119,17 +125,11 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
-    const forcedAction = configuration.actions.find(
-      (a) => a.forceUseAtIteration === i
-    );
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
       i === configuration.maxToolsUsePerRun
         ? []
-        : // If we have a forced action, we only run this action.
-        forcedAction
-        ? [forcedAction]
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
@@ -139,7 +139,6 @@ export async function* runMultiActionsAgentLoop(
       userMessage,
       agentMessage,
       availableActions: actions,
-      forcedActionName: forcedAction?.name ?? undefined,
     });
 
     for await (const event of loopIterationStream) {
@@ -252,14 +251,12 @@ export async function* runMultiActionsAgent(
     userMessage,
     agentMessage,
     availableActions,
-    forcedActionName,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
-    forcedActionName?: string;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -314,6 +311,18 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
+    if (!a.name || (!a.description && availableActions.length === 1)) {
+      // Special case for legacy single-action agents that have never been edited in
+      // multi-actions mode. We just use the name/description from the legacy spec.
+      const runner = getRunnerforActionConfiguration(a);
+      const legacySepc =
+        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+      if (legacySepc.isOk()) {
+        a.name = legacySepc.value.name;
+        a.description = legacySepc.value.description;
+      }
+    }
+
     if (!a.name || !a.description) {
       yield {
         type: "agent_error",
@@ -341,13 +350,11 @@ export async function* runMultiActionsAgent(
 
     specifications.push(res.value);
   }
-  // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
-  config.MODEL.function_call =
-    specifications.length === 0 ? null : forcedActionName ?? "auto";
+  config.MODEL.function_call = specifications.length === 0 ? null : "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;

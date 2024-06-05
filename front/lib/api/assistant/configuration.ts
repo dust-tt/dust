@@ -537,7 +537,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           }),
           name: retrievalConfig.name,
           description: retrievalConfig.description,
-          forceUseAtIteration: retrievalConfig.forceUseAtIteration,
         });
       }
 
@@ -551,7 +550,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           appId: dustAppRunConfig.appId,
           name: dustAppRunConfig.name,
           description: dustAppRunConfig.description,
-          forceUseAtIteration: dustAppRunConfig.forceUseAtIteration,
         });
       }
 
@@ -563,7 +561,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "websearch_configuration",
           name: websearchConfig.name,
           description: websearchConfig.description,
-          forceUseAtIteration: websearchConfig.forceUseAtIteration,
         });
       }
 
@@ -582,7 +579,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           })),
           name: tablesQueryConfig.name,
           description: tablesQueryConfig.description,
-          forceUseAtIteration: tablesQueryConfig.forceUseAtIteration,
         });
       }
 
@@ -616,7 +612,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
           schema: processConfig.schema,
           name: processConfig.name,
           description: processConfig.description,
-          forceUseAtIteration: processConfig.forceUseAtIteration,
         });
       }
     }
@@ -1104,7 +1099,6 @@ export async function createAgentActionConfiguration(
   ) & {
     name: string | null;
     description: string | null;
-    forceUseAtIteration: number | null;
   },
   agentConfiguration: LightAgentConfigurationType
 ): Promise<AgentActionConfigurationType> {
@@ -1134,7 +1128,6 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1154,7 +1147,6 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           name: action.name,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
         };
       });
     }
@@ -1166,7 +1158,6 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       });
 
       return {
@@ -1177,7 +1168,6 @@ export async function createAgentActionConfiguration(
         appId: action.appId,
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       };
     }
     case "tables_query_configuration": {
@@ -1188,7 +1178,6 @@ export async function createAgentActionConfiguration(
             agentConfigurationId: agentConfiguration.id,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1213,7 +1202,6 @@ export async function createAgentActionConfiguration(
           tables: action.tables,
           name: action.name,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
         };
       });
     }
@@ -1236,7 +1224,6 @@ export async function createAgentActionConfiguration(
             schema: action.schema,
             name: action.name,
             description: action.description,
-            forceUseAtIteration: action.forceUseAtIteration,
           },
           { transaction: t }
         );
@@ -1256,7 +1243,6 @@ export async function createAgentActionConfiguration(
           dataSources: action.dataSources,
           name: action.name,
           description: action.description,
-          forceUseAtIteration: action.forceUseAtIteration,
         };
       });
     }
@@ -1266,7 +1252,6 @@ export async function createAgentActionConfiguration(
         agentConfigurationId: agentConfiguration.id,
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       });
 
       return {
@@ -1275,7 +1260,6 @@ export async function createAgentActionConfiguration(
         type: "websearch_configuration",
         name: action.name,
         description: action.description,
-        forceUseAtIteration: action.forceUseAtIteration,
       };
     }
     default:

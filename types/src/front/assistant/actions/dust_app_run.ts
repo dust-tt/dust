@@ -12,7 +12,6 @@ export type DustAppRunConfigurationType = {
 
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export type DustAppParameters = {

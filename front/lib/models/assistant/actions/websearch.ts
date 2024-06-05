@@ -25,7 +25,6 @@ export class AgentWebsearchConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-  declare forceUseAtIteration: number | null;
 }
 
 AgentWebsearchConfiguration.init(
@@ -57,10 +56,6 @@ AgentWebsearchConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_websearch_configuration",
@@ -71,10 +66,6 @@ AgentWebsearchConfiguration.init(
       },
       {
         fields: ["agentConfigurationId"],
-        concurrently: true,
-      },
-      {
-        fields: ["forceUseAtIteration"],
         concurrently: true,
       },
     ],
