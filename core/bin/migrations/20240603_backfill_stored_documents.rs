@@ -54,10 +54,19 @@ async fn get_sections_from_document_version(
     let qdrant_client = ds.main_qdrant_client(qdrant_clients);
 
     let f = qdrant::Filter {
-        must: vec![qdrant::Condition::matches(
-            "document_id_hash",
-            document_id_hash.to_string(),
-        )],
+        must: vec![
+            qdrant::Condition::matches("document_id_hash", document_id_hash.to_string()),
+            qdrant::FieldCondition {
+                key: "data_source_internal_id".to_string(),
+                r#match: Some(qdrant::Match {
+                    match_value: Some(qdrant::r#match::MatchValue::Keyword(
+                        ds.internal_id().to_string(),
+                    )),
+                }),
+                ..Default::default()
+            }
+            .into(),
+        ],
         ..Default::default()
     };
 
@@ -275,7 +284,7 @@ async fn backfill_all_documents_for_data_source_id(
             .await
         }
     }))
-    .buffer_unordered(1)
+    .buffer_unordered(16)
     .try_collect::<Vec<_>>()
     .await?;
 
@@ -319,10 +328,9 @@ async fn main() -> Result<(), anyhow::Error> {
                     data_source_id,
                 )
                 .await
-                // update_config_for_data_source(store, &data_source_internal_id.clone()).await
             }
         }))
-        .buffer_unordered(1)
+        .buffer_unordered(16)
         .try_collect::<Vec<_>>()
         .await?;
 
