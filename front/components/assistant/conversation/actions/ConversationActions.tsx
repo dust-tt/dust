@@ -1,4 +1,4 @@
-import { Button, Chip, EyeIcon } from "@dust-tt/sparkle";
+import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
 import type { AgentActionType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -61,7 +61,12 @@ function ActionChip({ label }: { label?: string }) {
 
   return (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="pink" label={label} isBusy={true} />
+      <Chip size="sm" color="pink" isBusy={true}>
+        <div className="flex flex-row items-center gap-x-2">
+          <Spinner variant="pink900" size="xs" />
+          {label}
+        </div>
+      </Chip>
     </div>
   );
 }
