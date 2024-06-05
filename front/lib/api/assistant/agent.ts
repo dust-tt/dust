@@ -311,19 +311,23 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    if (!a.name || (!a.description && availableActions.length === 1)) {
+    // We tolerate missing name/description to preserve support for legacy single-action agents.
+    // In those cases, we use the name/description from the legacy spec.
+    let legacySpec: AgentActionSpecification | null = null;
+    if (!a.name || !a.description) {
       // Special case for legacy single-action agents that have never been edited in
       // multi-actions mode. We just use the name/description from the legacy spec.
       const runner = getRunnerforActionConfiguration(a);
-      const legacySepc =
-        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
-      if (legacySepc.isOk()) {
-        a.name = legacySepc.value.name;
-        a.description = legacySepc.value.description;
+      const res = await runner.deprecatedBuildSpecificationForSingleActionAgent(
+        auth
+      );
+
+      if (res.isOk()) {
+        legacySpec = res.value;
       }
     }
 
-    if (!a.name || !a.description) {
+    if ((!a.name || !a.description) && !legacySpec) {
       yield {
         type: "agent_error",
         created: Date.now(),
@@ -331,24 +335,55 @@ export async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "missing_name_or_description",
-          message: `Action ${a.name} is missing a name or description`,
+          message: `Action ${a.sId} is missing a name or description`,
         },
       } satisfies AgentErrorEvent;
       return;
     }
 
+    let spec: AgentActionSpecification | null = null;
     const runner = getRunnerforActionConfiguration(a);
 
-    const res = await runner.buildSpecification(auth, {
-      name: a.name ?? undefined,
-      description: a.description ?? undefined,
-    });
+    // If we have a description, we can build a regular multi-actions spec.
+    if (a.description) {
+      if (!a.name && availableActions.length > 1) {
+        // We can't allow not having a name if there are multiple actions.
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "missing_name",
+            message: `Action ${a.sId} is missing a name`,
+          },
+        } satisfies AgentErrorEvent;
+      }
+      const name = a.name ?? legacySpec?.name;
+      if (!name) {
+        // Unreachable
+        throw new Error("Unreachable: no name and no legacy spec.");
+      }
 
-    if (res.isErr()) {
-      return res;
+      const res = await runner.buildSpecification(auth, {
+        name,
+        description: a.description,
+      });
+      if (res.isErr()) {
+        return res;
+      }
+      spec = res.value;
+    } else {
+      // We don't have a description, so we have to use the legacy spec.
+      spec = legacySpec;
     }
 
-    specifications.push(res.value);
+    if (!spec) {
+      // Unreachable
+      throw new Error("Unreachable: no spec.");
+    }
+
+    specifications.push(spec);
   }
 
   const config = cloneBaseConfig(

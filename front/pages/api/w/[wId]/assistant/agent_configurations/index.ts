@@ -317,16 +317,6 @@ export async function createOrUpgradeAgentConfiguration({
           .join(", ")}`
       );
     }
-    const actionsWithoutDescription = actions.filter(
-      (action) => !action.description
-    );
-    if (actionsWithoutDescription.length) {
-      throw new Error(
-        `Every action must have a description. Missing descriptions for: ${actionsWithoutDescription
-          .map((action) => action.type)
-          .join(", ")}`
-      );
-    }
     const actionNames = new Set<string>();
     for (const action of actions) {
       if (!action.name) {
