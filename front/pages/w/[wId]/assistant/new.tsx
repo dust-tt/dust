@@ -231,12 +231,19 @@ export default function AssistantNew({
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
       );
+      console.log(
+        "y delta of scroll container with current scroll position:" +
+          scrollContainerElement?.getBoundingClientRect().top
+      );
+
       if (scrollContainerElement) {
         scrollContainerElement.scrollIntoView({ behavior: "smooth" });
+        const waitScrollDelay =
+          -scrollContainerElement?.getBoundingClientRect().top * 0.8;
+        // wait for end of scroll
+        await new Promise((resolve) => setTimeout(resolve, waitScrollDelay));
       }
 
-      // update mention after end of scroll and a little delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
       setSelectedAssistant({
         configurationId: agent.sId,
       });
