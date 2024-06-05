@@ -1,4 +1,4 @@
-import type { ModelId, WithConnectorsAPIErrorReponse } from "@dust-tt/types";
+import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import { RateLimitError } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
@@ -33,27 +33,16 @@ const _webhookGoogleDriveAPIHandler = async (
       webhookId: channelId,
     },
   });
-
-  let connectorId: ModelId | null = null;
-  let webhookId: string | null = null;
-  if (webhook) {
-    connectorId = webhook.connectorId;
-    webhookId = webhook.webhookId;
-  } else if (
-    req.params.connector_id &&
-    typeof req.params.connector_id === "string"
-  ) {
-    connectorId = parseInt(req.params.connector_id);
-  }
-  if (!connectorId) {
+  if (!webhook) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        message: "Could not determine connectorId from webhook",
-        type: "invalid_request_error",
+        type: "google_drive_webhook_not_found",
+        message: `Could not find a webhook with id ${channelId}`,
       },
     });
   }
+  const { connectorId, webhookId } = webhook;
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.info(
