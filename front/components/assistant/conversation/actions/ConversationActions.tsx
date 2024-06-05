@@ -107,6 +107,6 @@ function renderActionName(actions: AgentActionType[]): string {
   }, [] as AgentActionType["type"][]);
 
   return uniqueActionTypes
-    .map((actionType) => getActionSpecification(actionType).name)
+    .map((actionType) => getActionSpecification(actionType).runningLabel)
     .join(", ");
 }

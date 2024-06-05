@@ -2,7 +2,7 @@ import type { AgentActionType } from "@dust-tt/types";
 
 // TODO(2024-06-05 flav) Augment this type with their respective components.
 interface ActionSpecification {
-  name: string;
+  runningLabel: string;
 }
 
 type ActionType = AgentActionType["type"];
@@ -11,11 +11,11 @@ const actionsSpecification: Record<
   AgentActionType["type"],
   ActionSpecification
 > = {
-  websearch_action: { name: "Search and browse the Web" },
-  dust_app_run_action: { name: "Run App" },
-  tables_query_action: { name: "Query Tables" },
-  retrieval_action: { name: "Search Data" },
-  process_action: { name: "Latest Data" },
+  dust_app_run_action: { runningLabel: "Running App" },
+  process_action: { runningLabel: "Gathering latest data" },
+  retrieval_action: { runningLabel: "Searching data" },
+  tables_query_action: { runningLabel: "Querying tables" },
+  websearch_action: { runningLabel: "Searching the web" },
 };
 
 export function getActionSpecification(
