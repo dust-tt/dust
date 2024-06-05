@@ -25,7 +25,9 @@ const pxSizeClasses = {
   xxl: "192",
 };
 
-const colors: { [key: string]: [number, number, number, number] } = {
+type LottieColorType = [number, number, number, number];
+
+const colors: { [key: string]: LottieColorType } = {
   emerald900: [0.0235, 0.3059, 0.2314, 1], // #064E3B
   amber900: [0.5725, 0.251, 0.0549, 1], // #92400E
   slate900: [0.0588, 0.0902, 0.1647, 1], // #0F172A
@@ -37,7 +39,7 @@ const colors: { [key: string]: [number, number, number, number] } = {
   action900: [0.1176, 0.2275, 0.5412, 1], // #1E3A8A
 };
 
-const isColorArray = (arr: any): arr is [number, number, number, number] => {
+const isColorArray = (arr: unknown): arr is LottieColorType => {
   return (
     Array.isArray(arr) &&
     arr.length === 4 &&
@@ -45,10 +47,10 @@ const isColorArray = (arr: any): arr is [number, number, number, number] => {
   );
 };
 
-const replaceColors = (
-  obj: any,
-  newColor: [number, number, number, number]
-): any => {
+// Due to the dynamic nature of Lottie, we use 'any' for the input object.
+// This function recursively replaces color arrays within the Lottie animation object.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const replaceColors = (obj: any, newColor: LottieColorType): any => {
   if (Array.isArray(obj)) {
     return obj.map((item) => replaceColors(item, newColor));
   } else if (obj !== null && typeof obj === "object") {
