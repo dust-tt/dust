@@ -121,7 +121,8 @@ export default function AssistantNew({
   const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const { setSelectedAssistant } = useContext(InputBarContext);
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
 
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
@@ -203,26 +204,7 @@ export default function AssistantNew({
   } = useUserMetadata("quick_guide_seen");
 
   const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!quickGuideSeen && !isQuickGuideSeenError && !isQuickGuideSeenLoading) {
-      // Quick guide has never been shown, lets show it.
-      setShowQuickGuide(true);
-    }
-  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
-
   const [greeting, setGreeting] = useState<string>("");
-  const { animate, setAnimate } = useContext(InputBarContext);
-
-  useEffect(() => {
-    if (animate) {
-      setAnimate(false);
-    }
-  }, [animate, setAnimate]);
-
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user]);
 
   const { submit: handleCloseQuickGuide } = useSubmitFunction(async () => {
     setUserMetadataFromClient({ key: "quick_guide_seen", value: "true" })
@@ -233,30 +215,44 @@ export default function AssistantNew({
     setShowQuickGuide(false);
   });
 
-  const scrollToInputBar = useCallback(() => {
-    setTimeout(() => {
+  useEffect(() => {
+    if (!quickGuideSeen && !isQuickGuideSeenError && !isQuickGuideSeenLoading) {
+      // Quick guide has never been shown, lets show it.
+      setShowQuickGuide(true);
+    }
+  }, [isQuickGuideSeenError, isQuickGuideSeenLoading, quickGuideSeen]);
+
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
+
+  const handleAssistantClick = useCallback(
+    (agent: LightAgentConfigurationType) => {
+      // scroll to inputbar
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
       );
       if (scrollContainerElement) {
         scrollContainerElement.scrollIntoView({ behavior: "smooth" });
       }
-    }, 50); // Allows browser to complete the layout update before scrolling.
-  }, []);
 
-  const handleAssistantClick = useCallback(
-    (agent: LightAgentConfigurationType) => {
-      scrollToInputBar();
+      // update mention
       setSelectedAssistant({
         configurationId: agent.sId,
       });
 
-      setTimeout(() => {
-        setAnimate(true);
-      }, 500);
+      // animate input bar
+      setAnimate(true);
     },
-    [scrollToInputBar, setSelectedAssistant, setAnimate]
+    [setSelectedAssistant, setAnimate]
   );
+
+  // cancel animation after it's done
+  useEffect(() => {
+    if (animate) {
+      setAnimate(false);
+    }
+  }, [animate, setAnimate]);
 
   useEffect(() => {
     if (contentRef.current) {
