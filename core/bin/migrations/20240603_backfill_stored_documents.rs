@@ -254,7 +254,7 @@ async fn update_stored_document_for_document_id(
         }
     });
 
-    let mut stream = stream::iter(tasks).buffer_unordered(32); // Run up to 32 in parallel.
+    let mut stream = stream::iter(tasks).buffer_unordered(16); // Run up to 16 in parallel.
 
     while let Some(result) = stream.next().await {
         result?; // Check for errors.
@@ -307,7 +307,7 @@ async fn backfill_all_documents_for_data_source_id(
             .await
         }
     }))
-    .buffer_unordered(32)
+    .buffer_unordered(16)
     .try_collect::<Vec<_>>()
     .await?;
 
@@ -353,7 +353,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 .await
             }
         }))
-        .buffer_unordered(32)
+        .buffer_unordered(16)
         .try_collect::<Vec<_>>()
         .await?;
 
