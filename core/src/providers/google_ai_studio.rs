@@ -362,6 +362,7 @@ impl LLM for GoogleAiStudioLLM {
                 logprobs: Some(vec![]),
                 top_logprobs: None,
             },
+            usage: None,
         })
     }
 
@@ -473,6 +474,7 @@ impl LLM for GoogleAiStudioLLM {
                     },
                 },
             }],
+            usage: None,
         })
     }
 }

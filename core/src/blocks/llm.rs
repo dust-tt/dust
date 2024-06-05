@@ -583,7 +583,9 @@ impl Block for LLM {
                         prompt: g.prompt,
                         completion: g.completions[0].clone(),
                     })?,
-                    meta: None,
+                    meta: Some(json!({
+                        "token_usage": g.usage,
+                    })),
                 })
             }
         }

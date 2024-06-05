@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, Tokens, LLM,
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
@@ -396,6 +396,7 @@ pub struct CompletionResponse {
     pub completion: String,
     pub stop_reason: Option<StopReason>,
     pub stop: Option<String>,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -635,6 +636,8 @@ impl AnthropicLLM {
             }
         }?;
 
+        println!("RESPONSE {:?}", response);
+
         Ok(response)
     }
 
@@ -650,6 +653,7 @@ impl AnthropicLLM {
         event_sender: UnboundedSender<Value>,
     ) -> Result<ChatResponse> {
         assert!(self.api_key.is_some());
+        println!("ANTHROPIC STREAM CHAT COMPLETION");
 
         let mut body = json!({
             "model": self.id.clone(),
@@ -715,6 +719,8 @@ impl AnthropicLLM {
             .build();
 
         let mut stream = client.stream();
+        let mut input_tokens = 0;
+        let mut output_tokens = 0;
 
         let mut final_response: Option<StreamChatResponse> = None;
         'stream: loop {
@@ -739,7 +745,7 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
-
+                                    input_tokens = event.message.usage.input_tokens;
                                     final_response = Some(event.message.clone());
                                 }
                                 "content_block_start" => {
@@ -884,7 +890,7 @@ impl AnthropicLLM {
                                             }
                                         };
 
-                                    match final_response.as_mut() {
+                                        match final_response.as_mut() {
                                         None => {
                                             Err(anyhow!(
                                                 "Error streaming from Anthropic: \
@@ -898,6 +904,16 @@ impl AnthropicLLM {
                                                 event.usage.output_tokens;
                                         }
                                     }
+
+                                    output_tokens = event.usage.output_tokens;
+                                    let _ = event_sender.send(json!({
+                                        "type": "token_usage",
+                                        "content": json!({
+                                            "prompt_tokens": input_tokens,
+                                            "completion_tokens": output_tokens,
+                                            "total_tokens": input_tokens + output_tokens,
+                                        })
+                                    }));
                                 }
                                 "message_stop" => {
                                     break 'stream;
@@ -980,6 +996,8 @@ impl AnthropicLLM {
                 }
             }
         }
+
+        println!("FINAL RESPONSE {:?} {:?}", input_tokens, output_tokens);
 
         match final_response {
             Some(response) => {
@@ -1087,6 +1105,7 @@ impl AnthropicLLM {
                                         completion,
                                         stop_reason: Some(stop_reason),
                                         stop: response.stop.clone(),
+                                        usage: None,
                                     });
                                     break 'stream;
                                 }
@@ -1218,6 +1237,9 @@ impl AnthropicLLM {
         let response = match status {
             reqwest::StatusCode::OK => {
                 let response: CompletionResponse = serde_json::from_slice(c)?;
+
+                println!("RESPONSE {:?}", response);
+
                 Ok(response)
             }
             _ => {
@@ -1388,6 +1410,7 @@ impl LLM for AnthropicLLM {
                 logprobs: None,
                 top_logprobs: None,
             },
+            usage: None,
         };
 
         Ok(llm_generation)
@@ -1516,11 +1539,19 @@ impl LLM for AnthropicLLM {
             }
         };
 
+        let input_tokens = c.usage.input_tokens;
+        let output_tokens = c.usage.output_tokens;
+
         Ok(LLMChatGeneration {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
             completions: ChatMessage::try_from(c).into_iter().collect(),
+            usage: Some(LLMTokenUsage {
+                prompt_tokens: input_tokens,
+                completion_tokens: Some(output_tokens),
+                total_tokens: input_tokens + output_tokens,
+            }),
         })
     }
 }

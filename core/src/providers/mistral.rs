@@ -5,7 +5,7 @@ use super::sentencepiece::sentencepiece::{
     mistral_tokenizer_model_v1_base_singleton, tokenize_async,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
-use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
 use crate::utils::{self, now};
@@ -274,6 +274,7 @@ struct MistralChatChunk {
     pub id: String,
     pub model: String,
     pub object: Option<String>,
+    pub usage: Option<MistralUsage>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -534,6 +535,7 @@ impl MistralAILLM {
         let mut stream = client.stream();
 
         let chunks: Arc<Mutex<Vec<MistralChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+        let mut usage = None;
 
         'stream: loop {
             match stream.try_next().await {
@@ -592,6 +594,14 @@ impl MistralAILLM {
                                     }
                                 };
 
+                            // Store usage
+                            match &chunk.usage {
+                                Some(received_usage) => {
+                                    usage = Some(received_usage.clone());
+                                }
+                                None => ()
+                            };
+
                             // Only stream if choices is length 1 but should always be the case.
                             match event_sender.as_ref() {
                                 Some(sender) => {
@@ -639,6 +649,17 @@ impl MistralAILLM {
                                             });
                                         }
                                     }
+
+                                    // Emit token_usage event when getting count
+                                    match &chunk.usage {
+                                        Some(received_usage) => {
+                                            let _ = sender.send(json!({
+                                                "type": "token_usage",
+                                                "content": received_usage,
+                                            }));
+                                        }
+                                        None => ()
+                                    };
                                 }
                                 None => (),
                             };
@@ -725,7 +746,7 @@ impl MistralAILLM {
                 // The `object` field defaults to "start" when not present in the initial stream
                 // chunk.
                 object: f.object.unwrap_or(String::from("start")),
-                usage: None,
+                usage,
             };
 
             for i in 0..guard.len() {
@@ -1053,6 +1074,14 @@ impl LLM for MistralAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: match c.usage {
+                Some(u) => Some(LLMTokenUsage {
+                    completion_tokens: u.completion_tokens,
+                    prompt_tokens: u.prompt_tokens,
+                    total_tokens: u.total_tokens,
+                }),
+                None => None,
+            }
         })
     }
 

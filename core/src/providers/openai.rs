@@ -1,7 +1,7 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -71,8 +71,7 @@ pub struct Completion {
     pub created: u64,
     pub model: String,
     pub choices: Vec<Choice>,
-    // Usage is not returned by the Completion endpoint when streamed.
-    // pub usage: Usage,
+    pub usage: Option<Usage>,
 }
 
 ///
@@ -265,8 +264,7 @@ pub struct OpenAIChatCompletion {
     pub object: String,
     pub created: u64,
     pub choices: Vec<OpenAIChatChoice>,
-    // Usage is not returned by the Chat/Completion endpoint when streamed.
-    // pub usage: Usage,
+    pub usage: Option<Usage>,
 }
 
 // This code performs a type conversion with information loss when converting to ChatFunctionCall.
@@ -383,6 +381,7 @@ pub struct ChatChunk {
     pub created: u64,
     pub model: String,
     pub choices: Vec<ChatDelta>,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -915,6 +914,7 @@ pub async fn streamed_chat_completion(
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
         "stream": true,
+        "stream_options": HashMap::from([("include_usage", true)]),
     });
     if user.is_some() {
         body["user"] = json!(user);
@@ -949,6 +949,7 @@ pub async fn streamed_chat_completion(
     let mut stream = client.stream();
 
     let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut usage = None;
 
     'stream: loop {
         match stream.try_next().await {
@@ -1018,6 +1019,14 @@ pub async fn streamed_chat_completion(
                             },
                         };
 
+                        // Store usage
+                        match &chunk.usage {
+                            Some(received_usage) => {
+                                usage = Some(received_usage.clone());
+                            }
+                            None => ()
+                        };
+
                         // Only stream if choices is length 1 but should always be the case.
                         match event_sender.as_ref() {
                             Some(sender) => {
@@ -1066,6 +1075,17 @@ pub async fn streamed_chat_completion(
                                         });
                                     }
                                 }
+
+                                // Emit token_usage event when getting count
+                                match &chunk.usage {
+                                    Some(received_usage) => {
+                                        let _ = sender.send(json!({
+                                            "type": "token_usage",
+                                            "content": received_usage,
+                                        }));
+                                    }
+                                    None => ()
+                                };
                             }
                             None => (),
                         };
@@ -1149,11 +1169,12 @@ pub async fn streamed_chat_completion(
                     finish_reason: None,
                 })
                 .collect::<Vec<_>>(),
+            usage,
         };
 
         for i in 0..guard.len() {
             let a = guard[i].clone();
-            if a.choices.len() != f.choices.len() {
+            if a.choices.len() != f.choices.len() && a.usage.is_none() {
                 Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
             }
             for j in 0..a.choices.len() {
@@ -1807,6 +1828,14 @@ impl LLM for OpenAILLM {
                 })
                 .collect::<Vec<_>>(),
             prompt: prompt_tokens,
+            usage: match c.usage {
+                Some(usage) => Some(LLMTokenUsage {
+                    prompt_tokens: usage.prompt_tokens,
+                    completion_tokens: usage.completion_tokens,
+                    total_tokens: usage.total_tokens,
+                }),
+                None => None,
+            }
         })
     }
 
@@ -1936,6 +1965,14 @@ impl LLM for OpenAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: match c.usage {
+                Some(usage) => Some(LLMTokenUsage {
+                    prompt_tokens: usage.prompt_tokens,
+                    completion_tokens: usage.completion_tokens,
+                    total_tokens: usage.total_tokens,
+                }),
+                None => None,
+            }
         })
     }
 }

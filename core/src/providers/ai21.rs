@@ -335,6 +335,7 @@ impl LLM for AI21LLM {
                     }
                 },
             },
+            usage: None,
         })
     }
 

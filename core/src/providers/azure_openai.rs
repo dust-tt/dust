@@ -1,7 +1,7 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
-use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{ChatMessage, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
 use crate::providers::openai::{
     chat_completion, completion, embed, streamed_chat_completion, streamed_completion,
     to_openai_messages, OpenAILLM, OpenAITool, OpenAIToolChoice,
@@ -416,6 +416,14 @@ impl LLM for AzureOpenAILLM {
                 })
                 .collect::<Vec<_>>(),
             prompt: prompt_tokens,
+            usage: match c.usage {
+                Some(usage) => Some(LLMTokenUsage {
+                    prompt_tokens: usage.prompt_tokens,
+                    completion_tokens: usage.completion_tokens,
+                    total_tokens: usage.total_tokens,
+                }),
+                None => None,
+            }
         })
     }
 
@@ -543,6 +551,14 @@ impl LLM for AzureOpenAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: match c.usage {
+                Some(usage) => Some(LLMTokenUsage {
+                    prompt_tokens: usage.prompt_tokens,
+                    completion_tokens: usage.completion_tokens,
+                    total_tokens: usage.total_tokens,
+                }),
+                None => None,
+            },
         })
     }
 }
