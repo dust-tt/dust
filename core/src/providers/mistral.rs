@@ -188,11 +188,6 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
             _ => String::from(""),
         };
 
-        let tool_call_id = match cm.function_call_id.as_ref() {
-            Some(id) => Some(sanitize_tool_call_id(id)),
-            None => None,
-        };
-
         Ok(MistralChatMessage {
             content: Some(format!(
                 "{}{}",
@@ -213,7 +208,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 ),
                 None => None,
             },
-            tool_call_id,
+            tool_call_id: cm.function_call_id.map(|id| sanitize_tool_call_id(&id)),
         })
     }
 }
@@ -444,10 +439,6 @@ impl MistralAILLM {
                             && (last.role != MistralChatMessageRole::Assistant
                                 && last.role != MistralChatMessageRole::Tool) =>
                     {
-                        let tool_call_id = match cm.tool_call_id.as_ref() {
-                            Some(id) => Some(sanitize_tool_call_id(id)),
-                            None => None,
-                        };
                         acc.push(MistralChatMessage {
                             role: MistralChatMessageRole::Assistant,
                             name: None,
@@ -457,7 +448,10 @@ impl MistralAILLM {
                                 // we generate a new fake one following Mistral format (9 chars, we
                                 // use an hex representation where Mistral uses any char, but
                                 // that's fine).
-                                id: tool_call_id.unwrap_or_else(|| new_id()[0..9].to_string()),
+                                id: cm
+                                    .tool_call_id
+                                    .map(|id| sanitize_tool_call_id(&id))
+                                    .unwrap_or_else(|| new_id()[0..9].to_string()),
                                 function: MistralToolCallFunction {
                                     name: cm
                                         .name
