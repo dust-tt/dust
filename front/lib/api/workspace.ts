@@ -8,10 +8,6 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  MODEL_PROVIDER_IDS,
-} from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
@@ -38,8 +34,8 @@ export async function getWorkspaceInfos(
     name: workspace.name,
     role: "none",
     segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+    whiteListedProviders: workspace.whiteListedProviders || null,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider || null,
   };
 }
 
@@ -112,43 +108,9 @@ export async function setInternalWorkspaceSegmentation(
     name: workspace.name,
     role: "none",
     segmentation: workspace.segmentation,
+    whiteListedProviders: workspace.whiteListedProviders || null,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider || null,
   };
-}
-
-/**
- * Get the white-listed providers for a workspace.
- * @param workspaceId - The ID of the workspace.
- * @returns A list of white-listed providers.
- */
-export async function getWhiteListedProviders(
-  workspaceId: number
-): Promise<string[]> {
-  const workspace = await Workspace.findByPk(workspaceId, {
-    attributes: ["whiteListedProviders"],
-  });
-
-  if (!workspace) {
-    throw new Error(`Workspace with ID ${workspaceId} not found.`);
-  }
-  return workspace.whiteListedProviders || [...MODEL_PROVIDER_IDS];
-}
-
-/**
- * Get the default embedding provider for a workspace.
- * @param workspaceId - The ID of the workspace.
- * @returns The ID of the default provider.
- */
-export async function getDefaultEmbeddingProvider(
-  workspaceId: number
-): Promise<string> {
-  const workspace = await Workspace.findByPk(workspaceId, {
-    attributes: ["defaultEmbeddingProvider"],
-  });
-
-  if (!workspace) {
-    throw new Error(`Workspace with ID ${workspaceId} not found.`);
-  }
-  return workspace.defaultEmbeddingProvider || DEFAULT_EMBEDDING_PROVIDER_ID;
 }
 
 /**
