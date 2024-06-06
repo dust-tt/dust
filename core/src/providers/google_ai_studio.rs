@@ -364,8 +364,7 @@ impl LLM for GoogleAiStudioLLM {
             },
             usage: c.usage_metadata.map(|c| LLMTokenUsage {
                 prompt_tokens: c.prompt_token_count.unwrap_or(0) as u64,
-                completion_tokens: c.candidates_token_count.map(|c| c as u64),
-                total_tokens: c.total_token_count.unwrap_or(0) as u64,
+                completion_tokens: c.candidates_token_count.unwrap_or(0) as u64,
             }),
         })
     }
@@ -480,8 +479,7 @@ impl LLM for GoogleAiStudioLLM {
             }],
             usage: c.usage_metadata.map(|c| LLMTokenUsage {
                 prompt_tokens: c.prompt_token_count.unwrap_or(0) as u64,
-                completion_tokens: c.candidates_token_count.map(|c| c as u64),
-                total_tokens: c.total_token_count.unwrap_or(0) as u64,
+                completion_tokens: c.candidates_token_count.unwrap_or(0) as u64,
             }),
         })
     }

@@ -1066,9 +1066,8 @@ impl LLM for MistralAILLM {
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
             usage: c.usage.map(|u| LLMTokenUsage {
-                completion_tokens: u.completion_tokens,
+                completion_tokens: u.completion_tokens.unwrap_or(0),
                 prompt_tokens: u.prompt_tokens,
-                total_tokens: u.total_tokens,
             }),
         })
     }

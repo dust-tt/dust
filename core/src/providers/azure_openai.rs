@@ -418,8 +418,7 @@ impl LLM for AzureOpenAILLM {
             prompt: prompt_tokens,
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,
-                completion_tokens: usage.completion_tokens,
-                total_tokens: usage.total_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
         })
     }
@@ -550,8 +549,7 @@ impl LLM for AzureOpenAILLM {
                 .collect::<Result<Vec<_>>>()?,
             usage: c.usage.map(|usage| LLMTokenUsage {
                 prompt_tokens: usage.prompt_tokens,
-                completion_tokens: usage.completion_tokens,
-                total_tokens: usage.total_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
         })
     }

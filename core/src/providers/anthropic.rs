@@ -1515,19 +1515,15 @@ impl LLM for AnthropicLLM {
             }
         };
 
-        let input_tokens = c.usage.input_tokens;
-        let output_tokens = c.usage.output_tokens;
-
         Ok(LLMChatGeneration {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
-            completions: ChatMessage::try_from(c).into_iter().collect(),
             usage: Some(LLMTokenUsage {
-                prompt_tokens: input_tokens,
-                completion_tokens: Some(output_tokens),
-                total_tokens: input_tokens + output_tokens,
+                prompt_tokens: c.usage.input_tokens,
+                completion_tokens: c.usage.output_tokens,
             }),
+            completions: ChatMessage::try_from(c).into_iter().collect(),
         })
     }
 }

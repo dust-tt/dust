@@ -95,8 +95,7 @@ pub struct ChatFunction {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMTokenUsage {
     pub prompt_tokens: u64,
-    pub completion_tokens: Option<u64>,
-    pub total_tokens: u64,
+    pub completion_tokens: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
