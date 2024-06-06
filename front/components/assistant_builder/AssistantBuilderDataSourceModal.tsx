@@ -29,7 +29,7 @@ import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
 
-import { DataSourceSelectorTree } from "./DataSourceSelectorTree";
+import { WebsiteDataSourceSelectorTree } from "./WebsiteDataSourceSelectorTree";
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
@@ -445,9 +445,15 @@ function DataSourceResourceSelector({
                 }
                 parentsById={parentsById}
                 onSelectChange={(node, parents, selected) => {
-                  const newParentsById = { ...parentsById };
-                  newParentsById[node.internalId] = new Set(parents);
-                  setParentsById(newParentsById);
+                  setParentsById(parentsById => {
+                    const newParentsById = { ...parentsById };
+                    if (selected) {
+                      newParentsById[node.internalId] = new Set(parents);
+                    } else {
+                      delete newParentsById[node.internalId];
+                    }
+                    return parentsById;
+                  });
                   onSelectChange(node, selected);
                 }}
                 fullySelected={isSelectAll}
@@ -572,7 +578,7 @@ function FolderOrWebsiteTree({
       }}
     >
       {type === "website" && (
-        <DataSourceSelectorTree
+        <WebsiteDataSourceSelectorTree
           showExpand
           owner={owner}
           dataSource={dataSource}

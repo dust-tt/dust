@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { useConnectorPermissions } from "@app/lib/swr";
 
-export function DataSourceSelectorTreeChildren({
+export function WebsiteDataSourceSelectorTreeChildren({
   owner,
   dataSource,
   parentId,
@@ -103,7 +103,7 @@ export function DataSourceSelectorTreeChildren({
             }
           >
             {expanded[r.internalId] && (
-              <DataSourceSelectorTreeChildren
+              <WebsiteDataSourceSelectorTreeChildren
                 owner={owner}
                 dataSource={dataSource}
                 parentId={r.internalId}
@@ -122,7 +122,7 @@ export function DataSourceSelectorTreeChildren({
   );
 }
 
-export function DataSourceSelectorTree({
+export function WebsiteDataSourceSelectorTree({
   owner,
   dataSource,
   showExpand,
@@ -142,13 +142,16 @@ export function DataSourceSelectorTree({
     dataSource,
     selectedResources,
   });
+
+  console.log('parentsById', parentsById);
+
   const selectedParents = [
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
   ];
 
   return (
     <div className="overflow-x-auto">
-      <DataSourceSelectorTreeChildren
+      <WebsiteDataSourceSelectorTreeChildren
         owner={owner}
         dataSource={dataSource}
         parentId={null}
@@ -158,13 +161,15 @@ export function DataSourceSelectorTree({
         selectedResources={selectedResources}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
-          const newParentsById = { ...parentsById };
-          if (selected) {
-            newParentsById[resource.internalId] = new Set(parents);
-          } else {
-            delete newParentsById[resource.internalId];
-          }
-          setParentsById(newParentsById);
+          setParentsById(parentsById => {
+            const newParentsById = { ...parentsById };
+            if (selected) {
+              newParentsById[resource.internalId] = new Set(parents);
+            } else {
+              delete newParentsById[resource.internalId];
+            }
+            return newParentsById;
+          });
           onSelectChange(resource, selected);
         }}
       />
