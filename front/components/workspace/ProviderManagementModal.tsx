@@ -3,7 +3,7 @@ import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import _ from "lodash";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
 
@@ -35,15 +35,19 @@ export function ProviderManagementModal({
   onClose,
   onSave,
 }: ModelManagementModalProps) {
-  const enabledProviders: ModelProviderIdType[] =
-    owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-  const initialProviderStates: ProviderStates = enabledProviders.reduce(
-    (acc, provider) => {
-      acc[provider] = true;
-      return acc;
-    },
-    {} as ProviderStates
-  );
+  const { initialProviderStates } = useMemo(() => {
+    const enabledProviders: ModelProviderIdType[] =
+      owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
+    const initialProviderStates: ProviderStates = enabledProviders.reduce(
+      (acc, provider) => {
+        acc[provider] = true;
+        return acc;
+      },
+      {} as ProviderStates
+    );
+
+    return { initialProviderStates };
+  }, [owner.whiteListedProviders]);
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
