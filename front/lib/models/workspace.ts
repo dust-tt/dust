@@ -34,7 +34,7 @@ export class Workspace extends Model<
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
-  declare whiteListedProviders?: ModelProviderIdType[];
+  declare whiteListedProviders: ModelProviderIdType[] | null;
   declare defaultEmbeddingProvider: ModelProviderIdType;
 }
 Workspace.init(
