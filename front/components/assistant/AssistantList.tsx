@@ -73,7 +73,7 @@ export function AssistantBrowser({
         )
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
-  }, [assistantSearch, loadingStatus]);
+  }, [assistantSearch, loadingStatus, agents]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
@@ -167,9 +167,9 @@ export function AssistantBrowser({
                     description=""
                     variant="minimal"
                     onClick={() => handleAssistantClick(agent)}
-                    onActionClick={async () => {
+                    onActionClick={() => {
                       // Shallow routing to avoid re-fetching the page
-                      await router.replace(href, undefined, { shallow: true });
+                      router.replace(href, undefined, { shallow: true });
                     }}
                   />
                 </div>
