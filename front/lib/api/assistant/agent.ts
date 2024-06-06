@@ -406,7 +406,7 @@ export async function* runMultiActionsAgent(
   }
 
   const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-use-tools"].config
+    DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
   config.MODEL.function_call = specifications.length === 0 ? null : "auto";
   config.MODEL.provider_id = model.providerId;
@@ -415,7 +415,7 @@ export async function* runMultiActionsAgent(
 
   const res = await runActionStreamed(
     auth,
-    "assistant-v2-use-tools",
+    "assistant-v2-multi-actions-agent",
     config,
     [
       {
