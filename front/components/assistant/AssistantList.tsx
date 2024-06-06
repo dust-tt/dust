@@ -1,17 +1,11 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
-import type {
-  ConversationType,
-  LightAgentConfigurationType,
-} from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
 interface AssistantListProps {
   agents: LightAgentConfigurationType[];
-  handleAssistantClick: (
-    agent: LightAgentConfigurationType,
-    conversation?: ConversationType
-  ) => void;
+  handleAssistantClick: (agent: LightAgentConfigurationType) => void;
 }
 
 export function AssistantList({
@@ -49,6 +43,7 @@ export function AssistantList({
                 variant="minimal"
                 onClick={() => handleAssistantClick(agent)}
                 onActionClick={async () => {
+                  // Shallow routing to avoid re-fetching the page
                   await router.replace(href, undefined, { shallow: true });
                 }}
               />

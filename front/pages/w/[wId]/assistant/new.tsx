@@ -43,7 +43,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import { subFilter } from "@app/lib/utils";
+import { sleep, subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -234,17 +234,13 @@ export default function AssistantNew({
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
       );
-      console.log(
-        "y delta of scroll container with current scroll position:" +
-          scrollContainerElement?.getBoundingClientRect().top
-      );
 
       if (scrollContainerElement) {
         scrollContainerElement.scrollIntoView({ behavior: "smooth" });
         const waitScrollDelay =
-          -scrollContainerElement?.getBoundingClientRect().top * 0.8;
+          -scrollContainerElement?.getBoundingClientRect().top * 0.5 + 200;
         // wait for end of scroll
-        await new Promise((resolve) => setTimeout(resolve, waitScrollDelay));
+        await sleep(waitScrollDelay);
       }
 
       setSelectedAssistant({
@@ -253,17 +249,11 @@ export default function AssistantNew({
 
       // animate input bar
       setAnimate(true);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await sleep(500);
       setAnimate(false);
     },
     [setSelectedAssistant, setAnimate]
   );
-
-  /*useEffect(() => {
-    if (contentRef.current) {
-      setContentMinHeight(contentRef.current.offsetHeight);
-    }
-  }, [selectedTab]);*/
 
   return (
     <>
