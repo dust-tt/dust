@@ -117,6 +117,7 @@ export default function AssistantNew({
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView: "assistants-search",
+      includes: ["authors"],
     });
 
   const agentsByTab = useMemo(() => {
