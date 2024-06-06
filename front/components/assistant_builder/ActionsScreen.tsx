@@ -509,6 +509,116 @@ function ActionCard({
   );
 }
 
+function ActionConfigEditor({
+  owner,
+  action,
+  dustApps,
+  dataSources,
+  instructions,
+  updateAction,
+  setEdited,
+}: {
+  owner: WorkspaceType;
+  action: AssistantBuilderActionConfiguration;
+  dustApps: AppType[];
+  dataSources: DataSourceType[];
+  instructions: string | null;
+  updateAction: (args: {
+    actionName: string;
+    actionDescription: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
+  setEdited: (edited: boolean) => void;
+}) {
+  switch (action.type) {
+    case "DUST_APP_RUN":
+      return (
+        <ActionDustAppRun
+          owner={owner}
+          action={action}
+          dustApps={dustApps}
+          updateAction={updateAction}
+          setEdited={setEdited}
+        />
+      );
+    case "RETRIEVAL_SEARCH":
+      return (
+        <ActionRetrievalSearch
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "RETRIEVAL_EXHAUSTIVE":
+      return (
+        <ActionRetrievalExhaustive
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "PROCESS":
+      return (
+        <ActionProcess
+          owner={owner}
+          instructions={instructions}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderProcessConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "TABLES_QUERY":
+      return (
+        <ActionTablesQuery
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderTablesQueryConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "WEBSEARCH":
+      return <ActionWebsearch />;
+    default:
+      assertNever(action);
+  }
+}
+
 function ActionEditor({
   action,
   titleValid,
@@ -542,182 +652,66 @@ function ActionEditor({
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
 
-  const shouldDisplayActionDescription = action.type !== "DUST_APP_RUN";
+  const shouldDisplayAdvancedSettings = action.type !== "DUST_APP_RUN";
 
   return (
     <>
       <ActionModeSection show={true}>
-        {(() => {
-          switch (action.type) {
-            case "DUST_APP_RUN":
-              return (
-                <>
-                  <div className="flex w-full flex-row items-center justify-center justify-between">
-                    <Page.Header
-                      title={ACTION_SPECIFICATIONS[action.type].label}
-                      icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+        <>
+          <div className="flex w-full flex-row items-center justify-center justify-between">
+            <Page.Header
+              title={ACTION_SPECIFICATIONS[action.type].label}
+              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+            />
+            {shouldDisplayAdvancedSettings && (
+              <DropdownMenu className="pr-2">
+                <DropdownMenu.Button>
+                  <Button
+                    label=""
+                    labelVisible={false}
+                    icon={MoreIcon}
+                    size="sm"
+                    variant="tertiary"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={240} overflow="visible">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="w-full grow text-sm font-bold text-element-800">
+                        Name of the action
+                      </div>
+                    </div>
+                    <Input
+                      name="actionName"
+                      placeholder="My action name.."
+                      value={action.name}
+                      onChange={(v) => {
+                        updateAction({
+                          actionName: v,
+                          actionDescription: action.description,
+                          getNewActionConfig: (old) => old,
+                        });
+                      }}
+                      error={!titleValid ? "Name already exists" : null}
+                      className="text-sm"
                     />
-                    <DropdownMenu className="pr-2">
-                      <DropdownMenu.Button>
-                        <Button
-                          label=""
-                          labelVisible={false}
-                          icon={MoreIcon}
-                          size="sm"
-                          variant="tertiary"
-                        />
-                      </DropdownMenu.Button>
-                      <DropdownMenu.Items width={240} overflow="visible">
-                        <div className="flex flex-col gap-4">
-                          <div className="flex flex-col items-end gap-2">
-                            <div className="w-full grow text-sm font-bold text-element-800">
-                              Name of the action
-                            </div>
-                          </div>
-                          <Input
-                            name="actionName"
-                            placeholder="My action name.."
-                            value={action.name}
-                            onChange={(v) => {
-                              updateAction({
-                                actionName: v,
-                                actionDescription: action.description,
-                                getNewActionConfig: (old) => old,
-                              });
-                            }}
-                            error={!titleValid ? "Name already exists" : null}
-                            className="text-sm"
-                          />
-                        </div>
-                      </DropdownMenu.Items>
-                    </DropdownMenu>
                   </div>
-                  <ActionDustAppRun
-                    owner={owner}
-                    action={action}
-                    dustApps={dustApps}
-                    updateAction={updateAction}
-                    setEdited={setEdited}
-                  />
-                </>
-              );
-            case "RETRIEVAL_SEARCH":
-              return (
-                <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
-                  <ActionRetrievalSearch
-                    owner={owner}
-                    actionConfiguration={action.configuration}
-                    dataSources={dataSources}
-                    updateAction={(setNewAction) => {
-                      updateAction({
-                        actionName: action.name,
-                        actionDescription: action.description,
-                        getNewActionConfig: (old) =>
-                          setNewAction(
-                            old as AssistantBuilderRetrievalConfiguration
-                          ),
-                      });
-                    }}
-                    setEdited={setEdited}
-                  />
-                </>
-              );
-            case "RETRIEVAL_EXHAUSTIVE":
-              return (
-                <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
-                  <ActionRetrievalExhaustive
-                    owner={owner}
-                    actionConfiguration={action.configuration}
-                    dataSources={dataSources}
-                    updateAction={(setNewAction) => {
-                      updateAction({
-                        actionName: action.name,
-                        actionDescription: action.description,
-                        getNewActionConfig: (old) =>
-                          setNewAction(
-                            old as AssistantBuilderRetrievalConfiguration
-                          ),
-                      });
-                    }}
-                    setEdited={setEdited}
-                  />
-                </>
-              );
-            case "PROCESS":
-              return (
-                <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
-                  <ActionProcess
-                    owner={owner}
-                    instructions={builderState.instructions}
-                    actionConfiguration={action.configuration}
-                    dataSources={dataSources}
-                    updateAction={(setNewAction) => {
-                      updateAction({
-                        actionName: action.name,
-                        actionDescription: action.description,
-                        getNewActionConfig: (old) =>
-                          setNewAction(
-                            old as AssistantBuilderProcessConfiguration
-                          ),
-                      });
-                    }}
-                    setEdited={setEdited}
-                  />
-                </>
-              );
-            case "TABLES_QUERY":
-              return (
-                <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
-                  <ActionTablesQuery
-                    owner={owner}
-                    actionConfiguration={action.configuration}
-                    dataSources={dataSources}
-                    updateAction={(setNewAction) => {
-                      updateAction({
-                        actionName: action.name,
-                        actionDescription: action.description,
-                        getNewActionConfig: (old) =>
-                          setNewAction(
-                            old as AssistantBuilderTablesQueryConfiguration
-                          ),
-                      });
-                    }}
-                    setEdited={setEdited}
-                  />
-                </>
-              );
-            case "WEBSEARCH":
-              return (
-                <>
-                  <Page.Header
-                    title={ACTION_SPECIFICATIONS[action.type].label}
-                    icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-                  />
-                  <ActionWebsearch />
-                </>
-              );
-            default:
-              assertNever(action);
-          }
-        })()}
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            )}
+          </div>
+          <ActionConfigEditor
+            owner={owner}
+            action={action}
+            dustApps={dustApps}
+            dataSources={dataSources}
+            instructions={builderState.instructions}
+            updateAction={updateAction}
+            setEdited={setEdited}
+          />
+        </>
       </ActionModeSection>
-      {shouldDisplayActionDescription && (
+      {shouldDisplayAdvancedSettings && (
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
