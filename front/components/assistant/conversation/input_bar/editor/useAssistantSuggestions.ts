@@ -26,7 +26,7 @@ const useAssistantSuggestions = (
 ) => {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "all",
+    agentsGetView: "assistants-search",
   });
 
   // `useMemo` will ensure that suggestions is only recalculated

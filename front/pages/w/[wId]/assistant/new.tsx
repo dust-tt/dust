@@ -24,14 +24,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import {
-  use,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantList } from "@app/components/assistant/AssistantList";
@@ -120,14 +113,15 @@ export default function AssistantNew({
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
-  // same fetch as the one in the input bar, pretty quick
+  // fast loading of a few company assistants so we can show them immediately
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
+      agentsGetView: "workspace",
+      limit: 24,
     });
 
-  // we load authors in the background
+  // we load all assistants with authors in the background
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
