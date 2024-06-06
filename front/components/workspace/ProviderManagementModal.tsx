@@ -2,6 +2,7 @@ import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import _ from "lodash";
 import { useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
@@ -41,6 +42,7 @@ export function ProviderManagementModal({
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
+  const allToggleEnabled = Object.values(providerStates).every(Boolean);
 
   const handleToggleChange = (provider: ModelProviderIdType) => {
     setProviderStates((prevStates) => ({
@@ -52,9 +54,7 @@ export function ProviderManagementModal({
     <Modal
       isOpen={showProviderModal}
       onClose={onClose}
-      hasChanged={
-        JSON.stringify(providerStates) !== JSON.stringify(initialProviderStates)
-      }
+      hasChanged={!_.isEqual(providerStates, initialProviderStates)}
       title="Manage Providers"
       saveLabel="Update providers"
       onSave={() => {
@@ -71,12 +71,11 @@ export function ProviderManagementModal({
           </span>
           <SliderToggle
             size="sm"
-            selected={Object.values(providerStates).every(Boolean)}
+            selected={allToggleEnabled}
             onClick={() => {
-              const allEnabled = Object.values(providerStates).every(Boolean);
               setProviderStates(
                 MODEL_PROVIDER_IDS.reduce((acc, provider) => {
-                  acc[provider] = !allEnabled;
+                  acc[provider] = !allToggleEnabled;
                   return acc;
                 }, {} as ProviderStates)
               );
