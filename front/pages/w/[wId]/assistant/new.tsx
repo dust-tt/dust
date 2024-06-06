@@ -306,7 +306,6 @@ export default function AssistantNew({
     if (scrollContainerElement) {
       const observer = new IntersectionObserver(
         (entries) => {
-          console.log("Intersection entries", entries);
           if (assistantToMention.current) {
             setInputbarMention(assistantToMention.current);
             assistantToMention.current = null;
