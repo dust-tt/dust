@@ -6,6 +6,7 @@ use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, P
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
 use crate::run::Credentials;
 use crate::utils;
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt::{self, Display};
 use std::io::prelude::*;
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -270,6 +272,45 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 }
 
 // Tools.
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum AnthropicToolChoiceType {
+    Auto,
+    Any,
+    Tool,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicToolChoice {
+    r#type: AnthropicToolChoiceType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>,
+}
+
+impl FromStr for AnthropicToolChoice {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "auto" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Auto,
+                name: None,
+            }),
+            "any" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Any,
+                name: None,
+            }),
+            "none" => Err(ParseError::with_message(
+                "function_call option `none` is not supported by Antrhopic",
+            )),
+            _ => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Tool,
+                name: Some(s.to_string()),
+            }),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicTool {
@@ -554,11 +595,25 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
+    fn placehodler_tool(&self) -> AnthropicTool {
+        AnthropicTool {
+            name: "dummy_do_not_use".to_string(),
+            description: Some("Dummy placeholder tool that does nothing. Do not use.".to_string()),
+            input_schema: Some(json!({
+                "type": "object",
+                "properties": {
+                    "dummy": {"type": "string", "description": "Do not use."}
+                },
+            })),
+        }
+    }
+
     async fn chat_completion(
         &self,
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
         tools: Vec<AnthropicTool>,
+        tool_choice: Option<AnthropicToolChoice>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
@@ -584,6 +639,18 @@ impl AnthropicLLM {
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
+            if tool_choice.is_some() {
+                body["tool_choice"] = json!(tool_choice);
+            }
+        } else {
+            if messages.iter().any(|m| {
+                m.content
+                    .iter()
+                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+            }) {
+                // Add only if we have tool_use or tool_result in the messages
+                body["tools"] = json!(vec![self.placehodler_tool()]);
+            }
         }
 
         let mut headers = reqwest::header::HeaderMap::new();
@@ -644,6 +711,7 @@ impl AnthropicLLM {
         system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
         tools: Vec<AnthropicTool>,
+        tool_choice: Option<AnthropicToolChoice>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
@@ -671,6 +739,18 @@ impl AnthropicLLM {
 
         if !tools.is_empty() {
             body["tools"] = json!(tools);
+            if tool_choice.is_some() {
+                body["tool_choice"] = json!(tool_choice);
+            }
+        } else {
+            if messages.iter().any(|m| {
+                m.content
+                    .iter()
+                    .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
+            }) {
+                // Add only if we have tool_use or tool_result in the messages
+                body["tools"] = json!(vec![self.placehodler_tool()]);
+            }
         }
 
         let url = self.messages_uri()?.to_string();
@@ -1408,7 +1488,7 @@ impl LLM for AnthropicLLM {
         &self,
         messages: &Vec<ChatMessage>,
         functions: &Vec<ChatFunction>,
-        _function_call: Option<String>,
+        function_call: Option<String>,
         temperature: f32,
         top_p: Option<f32>,
         n: usize,
@@ -1475,12 +1555,18 @@ impl LLM for AnthropicLLM {
             .map(AnthropicTool::try_from)
             .collect::<Result<Vec<AnthropicTool>, _>>()?;
 
+        let tool_choice = match function_call.as_ref() {
+            Some(fc) => Some(AnthropicToolChoice::from_str(fc)?),
+            None => None,
+        };
+
         let c = match event_sender {
             Some(es) => {
                 self.streamed_chat_completion(
                     system,
                     &messages,
                     tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(p) => p,
@@ -1500,6 +1586,7 @@ impl LLM for AnthropicLLM {
                     system,
                     &messages,
                     tools,
+                    tool_choice,
                     temperature,
                     match top_p {
                         Some(p) => p,

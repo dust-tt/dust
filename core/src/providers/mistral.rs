@@ -112,12 +112,29 @@ struct MistralChatMessage {
     pub tool_call_id: Option<String>,
 }
 
+fn sanitize_tool_call_id(id: &str) -> String {
+    // Replace anything not a-zA-Z-0-9 with 0 as mistral enforces that but function_call_id can
+    // come from other providers. Also enforces length 9.
+    let mut s = id
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '0' })
+        .collect::<String>();
+
+    if s.len() > 9 {
+        s = id[0..9].to_string();
+    }
+    if s.len() < 9 {
+        s = format!("{:0>9}", s);
+    }
+    s
+}
+
 impl TryFrom<&ChatFunctionCall> for MistralToolCall {
     type Error = anyhow::Error;
 
     fn try_from(cf: &ChatFunctionCall) -> Result<Self, Self::Error> {
         Ok(MistralToolCall {
-            id: cf.id.clone(),
+            id: sanitize_tool_call_id(&cf.id),
             function: MistralToolCallFunction {
                 name: cf.name.clone(),
                 arguments: cf.arguments.clone(),
@@ -191,7 +208,10 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 ),
                 None => None,
             },
-            tool_call_id: cm.function_call_id.clone(),
+            tool_call_id: cm
+                .function_call_id
+                .as_ref()
+                .map(|id| sanitize_tool_call_id(id)),
         })
     }
 }
@@ -433,6 +453,8 @@ impl MistralAILLM {
                                 // that's fine).
                                 id: cm
                                     .tool_call_id
+                                    .as_ref()
+                                    .map(|id| sanitize_tool_call_id(id))
                                     .clone()
                                     .unwrap_or_else(|| new_id()[0..9].to_string()),
                                 function: MistralToolCallFunction {
