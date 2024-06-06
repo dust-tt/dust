@@ -24,7 +24,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
 };
 
 function isLegacyModel(modelName: string): boolean {
-  const legacyPattern = /\d+\.\d+/;
+  const legacyPattern = /\d+\.\d+(?!.*latest$)/;
   return legacyPattern.test(modelName);
 }
 
