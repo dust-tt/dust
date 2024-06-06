@@ -259,17 +259,22 @@ export async function renderConversationForModelMultiActions({
       }
       userMessage.content = [
         cfMessage.content,
-        // We can now close the </attachment> tag, because the message was already properly truncated.
-        // We also accounted for the closing that above when computing the tokens count.
+        // We can now close the </attachment> tag, because the message was already properly
+        // truncated.  We also accounted for the closing that above when computing the tokens count.
         closingAttachmentTag,
         userMessage.content,
       ].join("");
-      // Now we remove the content fragment from the array since it was merged into the upcoming user message.
+      // Now we remove the content fragment from the array since it was merged into the upcoming
+      // user message.
       selected.splice(i, 1);
     }
   }
 
-  while (selected.length > 0 && selected[0].role === "assistant") {
+  while (
+    selected.length > 0 &&
+    // Most model providers don't support starting by a function result or assistant message.
+    ["assistant", "function"].includes(selected[0].role)
+  ) {
     const tokenCountRes = messagesCountRes[messages.length - selected.length];
     if (tokenCountRes.isErr()) {
       return new Err(tokenCountRes.error);
