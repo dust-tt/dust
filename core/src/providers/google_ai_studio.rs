@@ -145,38 +145,55 @@ impl TryFrom<&ChatMessage> for Content {
     type Error = anyhow::Error;
 
     fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
-        Ok(Content {
-            role: match m.role {
-                ChatMessageRole::Assistant => String::from("model"),
-                ChatMessageRole::Function => String::from("function"),
-                _ => String::from("user"),
-            },
-            parts: Some(vec![Part {
-                text: match m.role {
-                    // System is passed as argument as a Content.
-                    ChatMessageRole::System => m.content.clone(),
-                    ChatMessageRole::User => match m.name {
-                        Some(ref name) => Some(format!(
-                            "[user: {}] {}",
-                            name,
-                            m.content.clone().unwrap_or(String::from(""))
-                        )),
-                        None => m.content.clone(),
+        let role = match m.role {
+            ChatMessageRole::Assistant => String::from("model"),
+            ChatMessageRole::Function => String::from("function"),
+            _ => String::from("user"),
+        };
+
+        let parts = match m.function_calls {
+            Some(ref fcs) => fcs
+                .iter()
+                .map(|fc| {
+                    Ok(Part {
+                        text: m.content.clone(),
+                        function_call: Some(GoogleAIStudioFunctionCall::try_from(fc)?),
+                        function_response: None,
+                    })
+                })
+                .collect::<Result<Vec<Part>>>()?,
+            None => {
+                vec![Part {
+                    text: match m.role {
+                        // System is passed as a Content. We transform it here but it will be removed
+                        // from the list of messages and passed as separate argument to the API.
+                        ChatMessageRole::System => m.content.clone(),
+                        ChatMessageRole::User => match m.name {
+                            Some(ref name) => Some(format!(
+                                "[user: {}] {}",
+                                name,
+                                m.content.clone().unwrap_or(String::from(""))
+                            )),
+                            None => m.content.clone(),
+                        },
+                        ChatMessageRole::Assistant => m.content.clone(),
+                        _ => None,
                     },
-                    ChatMessageRole::Assistant => m.content.clone(),
-                    _ => None,
-                },
-                function_call: match m.function_call.clone() {
-                    Some(function_call) => {
-                        GoogleAIStudioFunctionCall::try_from(&function_call).ok()
-                    }
-                    _ => None,
-                },
-                function_response: match m.role {
-                    ChatMessageRole::Function => GoogleAIStudioFunctionResponse::try_from(m).ok(),
-                    _ => None,
-                },
-            }]),
+
+                    function_call: None,
+                    function_response: match m.role {
+                        ChatMessageRole::Function => {
+                            GoogleAIStudioFunctionResponse::try_from(m).ok()
+                        }
+                        _ => None,
+                    },
+                }]
+            }
+        };
+
+        Ok(Content {
+            role,
+            parts: Some(parts),
         })
     }
 }
@@ -616,19 +633,6 @@ pub async fn streamed_chat_completion(
         false => format!("{}&key={}", uri, api_key),
     };
 
-    // Ensure that all input message have one single part.
-    messages
-        .iter()
-        .map(|m| match &m.parts {
-            None => Err(anyhow!("Message has no parts")),
-            Some(parts) => match parts.len() {
-                0 => Err(anyhow!("Message has no parts")),
-                1 => Ok(()),
-                _ => Err(anyhow!("Message has more than one part")),
-            },
-        })
-        .collect::<Result<Vec<()>>>()?;
-
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
         Ok(builder) => builder,
         Err(e) => {
@@ -684,8 +688,6 @@ pub async fn streamed_chat_completion(
         body["systemInstruction"] = json!(system_instruction);
     }
 
-    println!("BODY: {}", body.to_string());
-
     let client = builder
         .body(body.to_string())
         .method("POST".to_string())
@@ -710,7 +712,6 @@ pub async fn streamed_chat_completion(
                     println!("UNEXPECTED COMMENT");
                 }
                 Some(es::SSE::Event(e)) => {
-                    println!("EVENT DATA: {}", e.data);
                     let completion: Completion = serde_json::from_str(e.data.as_str())?;
                     let completion_candidates = completion.candidates.clone().unwrap_or_default();
 
@@ -900,7 +901,6 @@ pub async fn streamed_chat_completion(
                             None => (),
                         }
                     }
-                    println!("PARTS: {:?}", parts);
                 }
                 _ => Err(anyhow!("Unexpected number of candidates >1"))?,
             },
