@@ -68,6 +68,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
+      navigationTimeoutSecs: 10,
       preNavigationHooks: [
         async (crawlingContext) => {
           const { address, family } = await getIpAddressForUrl(
