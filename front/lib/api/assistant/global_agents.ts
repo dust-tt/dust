@@ -19,7 +19,7 @@ import {
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
@@ -94,8 +94,8 @@ async function _getHelperGlobalAgent(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       };
   return {
     id: -1,
@@ -162,15 +162,15 @@ async function _getGPT4GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "gpt4",
-    description: GPT_4O_MODEL_CONFIG.description,
+    description: GPT_4_TURBO_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
-      providerId: GPT_4O_MODEL_CONFIG.providerId,
-      modelId: GPT_4O_MODEL_CONFIG.modelId,
+      providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+      modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],
@@ -525,8 +525,8 @@ async function _getManagedDataSourceAgent(
         temperature: 0.7,
       }
     : {
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
         temperature: 0.7,
       };
 
@@ -606,7 +606,6 @@ async function _getManagedDataSourceAgent(
         })),
         name: "search_data_sources",
         description: `Search the user's ${connectorProvider} data sources.`,
-        forceUseAtIteration: 0,
       },
     ],
     maxToolsUsePerRun: 1,
@@ -758,8 +757,8 @@ async function _getDustGlobalAgent(
         temperature: 0.7,
       }
     : {
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
         temperature: 0.7,
       };
 
@@ -846,7 +845,6 @@ async function _getDustGlobalAgent(
         })),
         name: "search_data_sources",
         description: `Search the user's data sources.`,
-        forceUseAtIteration: 0,
       },
     ],
     maxToolsUsePerRun: 1,
@@ -877,8 +875,8 @@ async function _getDustNextGlobalAgent(
         temperature: 0.7,
       }
     : {
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
         temperature: 0.7,
       };
 
@@ -968,7 +966,6 @@ async function _getDustNextGlobalAgent(
         })),
         name: "search_data_sources",
         description: `Search the user's data sources.`,
-        forceUseAtIteration: null,
       },
     ],
     maxToolsUsePerRun: 3,

@@ -144,7 +144,6 @@ const ProcessActionConfigurationSchema = t.type({
 const multiActionsCommonFields = {
   name: t.union([t.string, t.null]),
   description: t.union([t.string, t.null]),
-  forceUseAtIteration: t.union([t.number, t.null]),
 };
 
 const ActionConfigurationSchema = t.intersection([

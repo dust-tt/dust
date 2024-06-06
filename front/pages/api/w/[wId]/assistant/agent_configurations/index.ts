@@ -304,31 +304,15 @@ export async function createOrUpgradeAgentConfiguration({
     throw new Error("Only one action is supported in legacy mode.");
   }
 
-  let legacyForceSingleActionAtIteration: number | null = null;
-
   const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
 
-  if (legacySingleActionMode) {
-    if (actions.length) {
-      legacyForceSingleActionAtIteration = 0;
-    }
-  } else {
+  if (!legacySingleActionMode) {
     // Multi actions mode:
     // Enforce that every action has a name and a description and that every name is unique.
     const actionsWithoutName = actions.filter((action) => !action.name);
     if (actionsWithoutName.length) {
       throw new Error(
         `Every action must have a name. Missing names for: ${actionsWithoutName
-          .map((action) => action.type)
-          .join(", ")}`
-      );
-    }
-    const actionsWithoutDescription = actions.filter(
-      (action) => !action.description
-    );
-    if (actionsWithoutDescription.length) {
-      throw new Error(
-        `Every action must have a description. Missing descriptions for: ${actionsWithoutDescription
           .map((action) => action.type)
           .join(", ")}`
       );
@@ -378,9 +362,6 @@ export async function createOrUpgradeAgentConfiguration({
               dataSources: action.dataSources,
               name: action.name ?? null,
               description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -395,9 +376,6 @@ export async function createOrUpgradeAgentConfiguration({
               appId: action.appId,
               name: action.name ?? null,
               description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -411,9 +389,6 @@ export async function createOrUpgradeAgentConfiguration({
               tables: action.tables,
               name: action.name ?? null,
               description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -430,9 +405,6 @@ export async function createOrUpgradeAgentConfiguration({
               schema: action.schema,
               name: action.name ?? null,
               description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )
@@ -445,9 +417,6 @@ export async function createOrUpgradeAgentConfiguration({
               type: "websearch_configuration",
               name: action.name ?? null,
               description: action.description ?? null,
-              forceUseAtIteration:
-                action.forceUseAtIteration ??
-                legacyForceSingleActionAtIteration,
             },
             agentConfigurationRes.value
           )

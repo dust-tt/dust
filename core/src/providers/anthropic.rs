@@ -1,6 +1,6 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::{
-    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, Tokens, LLM,
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, Tokens, LLM,
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::anthropic_base_singleton;
@@ -396,6 +396,7 @@ pub struct CompletionResponse {
     pub completion: String,
     pub stop_reason: Option<StopReason>,
     pub stop: Option<String>,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -739,7 +740,6 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
-
                                     final_response = Some(event.message.clone());
                                 }
                                 "content_block_start" => {
@@ -1087,6 +1087,7 @@ impl AnthropicLLM {
                                         completion,
                                         stop_reason: Some(stop_reason),
                                         stop: response.stop.clone(),
+                                        usage: None,
                                     });
                                     break 'stream;
                                 }
@@ -1216,10 +1217,7 @@ impl AnthropicLLM {
         body.reader().read_to_end(&mut b)?;
         let c: &[u8] = &b;
         let response = match status {
-            reqwest::StatusCode::OK => {
-                let response: CompletionResponse = serde_json::from_slice(c)?;
-                Ok(response)
-            }
+            reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
             _ => {
                 let error: AnthropicError = serde_json::from_slice(c)?;
                 Err(ModelError {
@@ -1388,6 +1386,7 @@ impl LLM for AnthropicLLM {
                 logprobs: None,
                 top_logprobs: None,
             },
+            usage: None,
         };
 
         Ok(llm_generation)
@@ -1520,6 +1519,10 @@ impl LLM for AnthropicLLM {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
+            usage: Some(LLMTokenUsage {
+                prompt_tokens: c.usage.input_tokens,
+                completion_tokens: c.usage.output_tokens,
+            }),
             completions: ChatMessage::try_from(c).into_iter().collect(),
         })
     }

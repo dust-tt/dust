@@ -28,6 +28,7 @@ pub struct LLMGeneration {
     pub model: String,
     pub completions: Vec<Tokens>,
     pub prompt: Tokens,
+    pub usage: Option<LLMTokenUsage>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -92,11 +93,18 @@ pub struct ChatFunction {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct LLMTokenUsage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
     pub model: String,
     pub completions: Vec<ChatMessage>,
+    pub usage: Option<LLMTokenUsage>,
 }
 
 #[async_trait]
