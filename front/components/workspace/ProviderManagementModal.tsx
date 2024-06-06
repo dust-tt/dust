@@ -23,6 +23,11 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
 };
 
+function isLegacyModel(modelName: string): boolean {
+  const legacyPattern = /\d+\.\d+/;
+  return legacyPattern.test(modelName);
+}
+
 // TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
 export function ProviderManagementModal({
   owner,
@@ -88,7 +93,8 @@ export function ProviderManagementModal({
           {MODEL_PROVIDER_IDS.map((provider) => {
             const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
             const providerModels = SUPPORTED_MODEL_CONFIGS.filter(
-              (config) => config.providerId === provider
+              (config) =>
+                config.providerId === provider && !isLegacyModel(config.modelId)
             );
             return (
               <ContextItem
