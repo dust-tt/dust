@@ -141,7 +141,7 @@ export function AssistantBrowser({
 
       {displayedTab && (
         <div className="grid w-full grid-cols-2 gap-2 px-4 md:grid-cols-3">
-          {agents.map((agent) => {
+          {agentsByTab[displayedTab].map((agent) => {
             const href = {
               pathname: router.pathname,
               query: {
