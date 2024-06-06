@@ -311,41 +311,24 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    // We tolerate missing name/description to preserve support for legacy single-action agents.
-    // In those cases, we use the name/description from the legacy spec.
-    let legacySpec: AgentActionSpecification | null = null;
-    if (!a.name || !a.description) {
-      // Special case for legacy single-action agents that have never been edited in
-      // multi-actions mode. We just use the name/description from the legacy spec.
+    if (a.name && a.description) {
+      // Normal case, it's a multi-actions agent.
+
       const runner = getRunnerforActionConfiguration(a);
-      const res = await runner.deprecatedBuildSpecificationForSingleActionAgent(
-        auth
-      );
-
-      if (res.isOk()) {
-        legacySpec = res.value;
+      const specRes = await runner.buildSpecification(auth, {
+        name: a.name,
+        description: a.description,
+      });
+      if (specRes.isErr()) {
+        return specRes;
       }
-    }
+      specifications.push(specRes.value);
+    } else {
+      // Special case for legacy single-action agents that have never been edited in
+      // multi-actions mode.
+      // We tolerate missing name/description to preserve support for legacy single-action agents.
+      // In those cases, we use the name/description from the legacy spec.
 
-    if ((!a.name || !a.description) && !legacySpec) {
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "missing_name_or_description",
-          message: `Action ${a.sId} is missing a name or description`,
-        },
-      } satisfies AgentErrorEvent;
-      return;
-    }
-
-    let spec: AgentActionSpecification | null = null;
-    const runner = getRunnerforActionConfiguration(a);
-
-    // If we have a description, we can build a regular multi-actions spec.
-    if (a.description) {
       if (!a.name && availableActions.length > 1) {
         // We can't allow not having a name if there are multiple actions.
         yield {
@@ -358,32 +341,33 @@ export async function* runMultiActionsAgent(
             message: `Action ${a.sId} is missing a name`,
           },
         } satisfies AgentErrorEvent;
-      }
-      const name = a.name ?? legacySpec?.name;
-      if (!name) {
-        // Unreachable
-        throw new Error("Unreachable: no name and no legacy spec.");
+        return;
       }
 
-      const res = await runner.buildSpecification(auth, {
-        name,
-        description: a.description,
+      const runner = getRunnerforActionConfiguration(a);
+      const legacySpecRes =
+        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+      if (legacySpecRes.isErr()) {
+        return legacySpecRes;
+      }
+
+      const specRes = await runner.buildSpecification(auth, {
+        name: a.name ?? "",
+        description: a.description ?? "",
       });
-      if (res.isErr()) {
-        return res;
+
+      if (specRes.isErr()) {
+        return specRes;
       }
-      spec = res.value;
-    } else {
-      // We don't have a description, so we have to use the legacy spec.
-      spec = legacySpec;
+      const spec = specRes.value;
+      if (!a.name) {
+        spec.name = legacySpecRes.value.name;
+      }
+      if (!a.description) {
+        spec.description = legacySpecRes.value.description;
+      }
+      specifications.push(spec);
     }
-
-    if (!spec) {
-      // Unreachable
-      throw new Error("Unreachable: no spec.");
-    }
-
-    specifications.push(spec);
   }
 
   const config = cloneBaseConfig(
@@ -583,8 +567,23 @@ export async function* runMultiActionsAgent(
   }
 
   const actions: AgentActionsEvent["actions"] = [];
+  const agentActions = agentConfiguration.actions;
+
+  if (agentActions.length === 1 && !agentActions[0].name) {
+    // Special case for legacy single-action agents that have never been edited in
+    // multi-actions mode.
+    // We must backfill the name from the legacy spec in order to match the action.
+    const runner = getRunnerforActionConfiguration(agentActions[0]);
+    const legacySpecRes =
+      await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+    if (legacySpecRes.isErr()) {
+      return legacySpecRes;
+    }
+    agentActions[0].name = legacySpecRes.value.name;
+  }
+
   for (const a of output.actions) {
-    const action = agentConfiguration.actions.find((ac) => ac.name === a.name);
+    const action = agentActions.find((ac) => ac.name === a.name);
 
     if (!action) {
       yield {
