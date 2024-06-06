@@ -10,17 +10,17 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ContentMessageProps } from "@dust-tt/sparkle/dist/cjs/components/ContentMessage";
-import type {
-  APIError,
+import type {   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
   ModelConfig,
   PlanType,
   Result,
   SUPPORTED_MODEL_CONFIGS,
-  SupportedModel,
+  SupportedModel,WorkspaceType } from "@dust-tt/types";
+import {
+  MODEL_PROVIDER_IDS
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
@@ -181,6 +181,7 @@ export function InstructionScreen({
         <div className="flex-grow" />
         <div className="self-end">
           <AdvancedSettings
+            owner={owner}
             plan={plan}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
@@ -215,10 +216,12 @@ export function InstructionScreen({
 }
 
 function AdvancedSettings({
+  owner,
   plan,
   generationSettings,
   setGenerationSettings,
 }: {
+  owner: WorkspaceType;
   plan: PlanType;
   generationSettings: AssistantBuilderState["generationSettings"];
   setGenerationSettings: (
@@ -228,6 +231,7 @@ function AdvancedSettings({
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   if (!supportedModelConfig) {
     // unreachable
     alert("Unsupported model");
@@ -265,7 +269,9 @@ function AdvancedSettings({
               <DropdownMenu.Items origin="topRight" width={250}>
                 <div className="z-[120]">
                   {USED_MODEL_CONFIGS.filter(
-                    (m) => !(m.largeModel && !isUpgraded(plan))
+                    (m) =>
+                      !(m.largeModel && !isUpgraded(plan)) &&
+                      whiteListedProviders.includes(m.providerId)
                   ).map((modelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}
