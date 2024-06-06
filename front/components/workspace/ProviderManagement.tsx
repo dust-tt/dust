@@ -65,7 +65,7 @@ export function ProviderSelectionModal({
       }}
     >
       <div className="mt-8 divide-y divide-gray-200">
-        <div className="flex items-center justify-between pb-4">
+        <div className="s-px-4 flex items-center justify-between pb-4">
           <span className="text-left font-bold text-element-900">
             Make all providers available
           </span>
@@ -84,7 +84,7 @@ export function ProviderSelectionModal({
           />
         </div>
       </div>
-      <div className="mt-4 flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <ContextItem.List>
           {MODEL_PROVIDER_IDS.map((provider) => {
             const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
