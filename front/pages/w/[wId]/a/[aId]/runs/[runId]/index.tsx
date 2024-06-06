@@ -7,6 +7,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
+import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -190,7 +191,7 @@ export default function AppRun({
                 </div>
               ) : null}
             </div>
-            <p className="flex items-center text-xs text-gray-400">
+            <p className="flex items-center gap-x-2 text-xs text-gray-400">
               {savedRunId !== run.run_id ? (
                 <Button
                   onClick={restore}
@@ -206,6 +207,14 @@ export default function AppRun({
                   variant="secondary"
                 />
               )}
+              <CopyRun
+                owner={owner}
+                app={app}
+                run={run}
+                disabled={false}
+                url={"test"}
+                spec={spec}
+              />
             </p>
           </div>
         </div>
