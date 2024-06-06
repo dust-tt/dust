@@ -1,13 +1,12 @@
-import { useConnectorPermissions } from "@app/lib/swr";
-import { NextAppRouterHandler } from "@auth0/nextjs-auth0";
 import { Tree } from "@dust-tt/sparkle";
-import {
-  ConnectorPermission,
+import type {
   ContentNode,
   DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
+
+import { useConnectorPermissions } from "@app/lib/swr";
 
 export function DataSourceSelectorTreeChildren({
   owner,
@@ -55,11 +54,11 @@ export function DataSourceSelectorTreeChildren({
           onChange(r, false);
         });
     }
-  }, [resources, parentIsSelected]);
+  }, [resources, parentIsSelected, selectedValues, onChange]);
 
   return (
     <Tree isLoading={isResourcesLoading}>
-      {resources.map((r, i) => {
+      {resources.map((r) => {
         const isSelected = Boolean(
           selectedValues.find((value) => value.internalId === r.internalId)
         );

@@ -1,5 +1,4 @@
 import {
-  Checkbox,
   CloudArrowDownIcon,
   CloudArrowLeftRightIcon,
   FolderIcon,
@@ -20,9 +19,6 @@ import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
-import { useConnectorPermissions } from "@app/lib/swr";
-import { DataSourceSelectorTree } from "./DataSourceSelectorTree";
 
 import type {
   AssistantBuilderDataSourceConfiguration,
@@ -33,6 +29,8 @@ import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+
+import { DataSourceSelectorTree } from "./DataSourceSelectorTree";
 
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
