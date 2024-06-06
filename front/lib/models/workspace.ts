@@ -13,7 +13,7 @@ import type { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
 
-const modelProviderEnumValues = [...MODEL_PROVIDER_IDS] as string[];
+const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
 export class Workspace extends Model<
@@ -80,10 +80,7 @@ Workspace.init(
       allowNull: true,
       validate: {
         isProviderValid(value: string[] | null) {
-          if (
-            value &&
-            !value.every((val) => modelProviderEnumValues.includes(val))
-          ) {
+          if (value && !value.every((val) => modelProviders.includes(val))) {
             throw new Error("Invalid provider in whiteListedProviders");
           }
         },
@@ -94,11 +91,7 @@ Workspace.init(
       defaultValue: null,
       allowNull: true,
       validate: {
-        isProviderValid(value: string | null) {
-          if (value && !modelProviderEnumValues.includes(value)) {
-            throw new Error("Invalid provider for defaultEmbeddingProvider");
-          }
-        },
+        isIn: [modelProviders],
       },
     },
   },
