@@ -35,7 +35,7 @@ export async function getWorkspaceInfos(
     role: "none",
     segmentation: workspace.segmentation,
     whiteListedProviders: workspace.whiteListedProviders || null,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider || null,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
   };
 }
 
@@ -101,7 +101,6 @@ export async function setInternalWorkspaceSegmentation(
   await workspace.update({
     segmentation,
   });
-
   return {
     id: workspace.id,
     sId: workspace.sId,
@@ -109,7 +108,7 @@ export async function setInternalWorkspaceSegmentation(
     role: "none",
     segmentation: workspace.segmentation,
     whiteListedProviders: workspace.whiteListedProviders || null,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider || null,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
   };
 }
 

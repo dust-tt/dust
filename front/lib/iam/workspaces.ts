@@ -1,4 +1,7 @@
-import { sendUserOperationMessage } from "@dust-tt/types";
+import {
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  sendUserOperationMessage,
+} from "@dust-tt/types";
 
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
@@ -20,6 +23,7 @@ export async function createWorkspace(session: SessionWithUser) {
   const workspace = await Workspace.create({
     sId: generateModelSId(),
     name: externalUser.nickname,
+    defaultEmbeddingProvider: DEFAULT_EMBEDDING_PROVIDER_ID,
   });
 
   sendUserOperationMessage({

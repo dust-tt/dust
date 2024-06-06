@@ -1,6 +1,7 @@
 import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   ConnectorsAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -39,6 +40,8 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const w = await Workspace.create({
         sId: generateModelSId(),
         name: args.name,
+        defaultEmbeddingProvider:
+          args.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID,
       });
 
       args.wId = w.sId;

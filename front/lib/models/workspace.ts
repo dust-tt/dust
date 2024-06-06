@@ -35,7 +35,7 @@ export class Workspace extends Model<
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders?: ModelProviderIdType[];
-  declare defaultEmbeddingProvider?: ModelProviderIdType;
+  declare defaultEmbeddingProvider: ModelProviderIdType;
 }
 Workspace.init(
   {
@@ -85,7 +85,7 @@ Workspace.init(
     defaultEmbeddingProvider: {
       type: DataTypes.ENUM(...modelProviderEnumValues),
       defaultValue: DEFAULT_EMBEDDING_PROVIDER_ID,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
