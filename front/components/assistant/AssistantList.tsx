@@ -169,7 +169,7 @@ export function AssistantBrowser({
                     onClick={() => handleAssistantClick(agent)}
                     onActionClick={() => {
                       // Shallow routing to avoid re-fetching the page
-                      router.replace(href, undefined, { shallow: true });
+                      void router.replace(href, undefined, { shallow: true });
                     }}
                   />
                 </div>
