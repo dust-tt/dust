@@ -203,7 +203,7 @@ export class RetrievalAction extends BaseAction {
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
-    if (!this.documents) {
+    if (!this.documents?.length) {
       content += "(retrieval failed)\n";
     } else {
       for (const d of this.documents) {
