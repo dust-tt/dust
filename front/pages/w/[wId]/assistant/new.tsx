@@ -24,14 +24,7 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantList } from "@app/components/assistant/AssistantList";
@@ -111,9 +104,6 @@ export default function AssistantNew({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-
-  const contentRef = useRef<HTMLDivElement>(null);
-  //const [contentMinHeight, setContentMinHeight] = useState(0);
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
@@ -312,7 +302,6 @@ export default function AssistantNew({
         {/* Assistants */}
         <div
           id="assistants-lists-container"
-          ref={contentRef /*style={{ minHeight: `${contentMinHeight}px` }}*/}
           className="flex h-full w-full flex-col gap-3 pt-9"
         >
           <div id="assistants-list-header" className="px-4">
