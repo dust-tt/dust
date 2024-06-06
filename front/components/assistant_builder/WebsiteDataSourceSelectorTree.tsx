@@ -143,7 +143,7 @@ export function WebsiteDataSourceSelectorTree({
     selectedResources,
   });
 
-  console.log('parentsById', parentsById);
+  console.log("parentsById", parentsById);
 
   const selectedParents = [
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
@@ -161,7 +161,7 @@ export function WebsiteDataSourceSelectorTree({
         selectedResources={selectedResources}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
-          setParentsById(parentsById => {
+          setParentsById((parentsById) => {
             const newParentsById = { ...parentsById };
             if (selected) {
               newParentsById[resource.internalId] = new Set(parents);

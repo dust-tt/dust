@@ -445,7 +445,7 @@ function DataSourceResourceSelector({
                 }
                 parentsById={parentsById}
                 onSelectChange={(node, parents, selected) => {
-                  setParentsById(parentsById => {
+                  setParentsById((parentsById) => {
                     const newParentsById = { ...parentsById };
                     if (selected) {
                       newParentsById[node.internalId] = new Set(parents);
