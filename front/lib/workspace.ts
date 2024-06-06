@@ -21,7 +21,7 @@ export function renderLightWorkspaceType({
     name: workspace.name,
     segmentation: workspace.segmentation,
     whiteListedProviders: workspace.whiteListedProviders || null,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider || null,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
     role,
   };
 }

@@ -454,8 +454,7 @@ export class Authenticator {
               : this._flags,
           ssoEnforced: this._workspace.ssoEnforced,
           whiteListedProviders: this._workspace.whiteListedProviders || null,
-          defaultEmbeddingProvider:
-            this._workspace.defaultEmbeddingProvider || null,
+          defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
         }
       : null;
   }

@@ -80,7 +80,7 @@ export async function getUserFromSession(
         role,
         segmentation: w.segmentation || null,
         whiteListedProviders: w.whiteListedProviders || null,
-        defaultEmbeddingProvider: w.defaultEmbeddingProvider || null,
+        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
       };
     }),
   };

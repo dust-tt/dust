@@ -49,7 +49,7 @@ async function handler(
           role: "admin",
           segmentation: owner.segmentation || null,
           whiteListedProviders: owner.whiteListedProviders || null,
-          defaultEmbeddingProvider: owner.defaultEmbeddingProvider || null,
+          defaultEmbeddingProvider: owner.defaultEmbeddingProvider,
         },
       });
 
