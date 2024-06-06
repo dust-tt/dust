@@ -13,22 +13,21 @@ import type {
   ConnectorProvider,
   ContentNode,
   DataSourceType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
-import * as React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   AssistantBuilderDataSourceConfiguration,
   AssistantBuilderDataSourceConfigurations,
 } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
-import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 import { DataSourceSelectorTree } from "./DataSourceSelectorTree";
 
@@ -391,65 +390,11 @@ function DataSourceResourceSelector({
   onSelectChange: (resource: ContentNode, selected: boolean) => void;
   toggleSelectAll: () => void;
 }) {
-  const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
-    {}
-  );
-  const [parentsAreLoading, setParentsAreLoading] = useState(false);
-  const [parentsAreError, setParentsAreError] = useState(false);
-
-  const fetchParents = useCallback(async () => {
-    setParentsAreLoading(true);
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource?.name || ""
-        )}/managed/parents`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            internalIds: selectedResources.map((resource) => {
-              return resource.internalId;
-            }),
-          }),
-        }
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch parents");
-      }
-      const json: GetContentNodeParentsResponseBody = await res.json();
-      setParentsById(
-        json.nodes.reduce((acc, r) => {
-          acc[r.internalId] = new Set(r.parents);
-          return acc;
-        }, {} as Record<string, Set<string>>)
-      );
-    } catch (e) {
-      setParentsAreError(true);
-    } finally {
-      setParentsAreLoading(false);
-    }
-  }, [owner, dataSource?.name, selectedResources]);
-
-  const hasParentsById = Object.keys(parentsById || {}).length > 0;
-  const hasSelectedResources = selectedResources.length > 0;
-
-  useEffect(() => {
-    if (parentsAreLoading || parentsAreError) {
-      return;
-    }
-    if (!hasParentsById && hasSelectedResources) {
-      fetchParents().catch(console.error);
-    }
-  }, [
-    hasParentsById,
-    hasSelectedResources,
-    fetchParents,
-    parentsAreLoading,
-    parentsAreError,
-  ]);
+  const { parentsById, setParentsById } = useParentResourcesById({
+    owner,
+    dataSource,
+    selectedResources,
+  });
 
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
@@ -501,11 +446,7 @@ function DataSourceResourceSelector({
                 parentsById={parentsById}
                 onSelectChange={(node, parents, selected) => {
                   const newParentsById = { ...parentsById };
-                  if (selected) {
-                    newParentsById[node.internalId] = new Set(parents);
-                  } else {
-                    delete newParentsById[node.internalId];
-                  }
+                  newParentsById[node.internalId] = new Set(parents);
                   setParentsById(newParentsById);
                   onSelectChange(node, selected);
                 }}
@@ -537,7 +478,6 @@ function FolderOrWebsiteResourceSelector({
   ) => void;
 }) {
   const [query, setQuery] = useState<string>("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const filteredDataSources = dataSources.filter((ds) => {
     return subFilter(query.toLowerCase(), ds.name.toLowerCase());
@@ -568,54 +508,82 @@ function FolderOrWebsiteResourceSelector({
         </div>
         <div>
           <Tree>
-            {filteredDataSources.map((ds) => {
+            {filteredDataSources.map((dataSource) => {
               const currentConfig = selectedNodes.find(
-                (selectedNode) => selectedNode.dataSource.id === ds.id
+                (selectedNode) => selectedNode.dataSource.id === dataSource.id
               );
-
               return (
-                <Tree.Item
-                  key={ds.id}
-                  collapsed={!expanded[ds.id]}
-                  onChevronClick={() => {
-                    setExpanded((prev) => ({
-                      ...prev,
-                      [ds.id]: prev[ds.id] ? false : true,
-                    }));
-                  }}
-                  type={type === "folder" ? "leaf" : "node"}
-                  label={ds.name}
-                  variant="folder"
-                  visual={
-                    type === "folder" ? <FolderIcon /> : <CloudArrowDownIcon />
-                  }
-                  className="whitespace-nowrap"
-                  checkbox={{
-                    checked: currentConfig?.isSelectAll ?? false,
-                    onChange: (checked) => {
-                      onSelectChange(ds, checked);
-                    },
-                  }}
-                >
-                  {type === "website" && (
-                    <DataSourceSelectorTree
-                      showExpand
-                      owner={owner}
-                      dataSource={ds}
-                      parentIsSelected={currentConfig?.isSelectAll ?? false}
-                      onChange={(resource, checked) => {
-                        onSelectChange(ds, checked, resource);
-                      }}
-                      selectedValues={currentConfig?.selectedResources ?? []}
-                    />
-                  )}
-                </Tree.Item>
+                <FolderOrWebsiteTree
+                  key={dataSource.id}
+                  owner={owner}
+                  dataSource={dataSource}
+                  type={type}
+                  currentConfig={currentConfig}
+                  onSelectChange={onSelectChange}
+                />
               );
             })}
           </Tree>
         </div>
       </Page>
     </Transition>
+  );
+}
+
+function FolderOrWebsiteTree({
+  owner,
+  dataSource,
+  type,
+  currentConfig,
+  onSelectChange,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  type: "folder" | "website";
+  currentConfig: AssistantBuilderDataSourceConfiguration | undefined;
+  onSelectChange: (
+    ds: DataSourceType,
+    selected: boolean,
+    resource?: ContentNode
+  ) => void;
+}) {
+  const [expanded, setExpanded] = useState<boolean>(false);
+
+  return (
+    <Tree.Item
+      collapsed={!expanded}
+      onChevronClick={() => {
+        setExpanded((prev) => !prev);
+      }}
+      type={type === "folder" ? "leaf" : "node"}
+      label={dataSource.name}
+      variant="folder"
+      visual={type === "folder" ? <FolderIcon /> : <CloudArrowDownIcon />}
+      className="whitespace-nowrap"
+      checkbox={{
+        checked: currentConfig?.isSelectAll ?? false,
+        partialChecked: currentConfig
+          ? !currentConfig.isSelectAll &&
+            currentConfig.selectedResources?.length > 0
+          : false,
+        onChange: (checked) => {
+          onSelectChange(dataSource, checked);
+        },
+      }}
+    >
+      {type === "website" && (
+        <DataSourceSelectorTree
+          showExpand
+          owner={owner}
+          dataSource={dataSource}
+          parentIsSelected={currentConfig?.isSelectAll ?? false}
+          onSelectChange={(resource, checked) => {
+            onSelectChange(dataSource, checked, resource);
+          }}
+          selectedResources={currentConfig?.selectedResources ?? []}
+        />
+      )}
+    </Tree.Item>
   );
 }
 

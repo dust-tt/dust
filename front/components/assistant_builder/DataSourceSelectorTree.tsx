@@ -6,24 +6,33 @@ import type {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { useConnectorPermissions } from "@app/lib/swr";
 
 export function DataSourceSelectorTreeChildren({
   owner,
   dataSource,
   parentId,
+  parents,
   parentIsSelected,
+  selectedParents,
   showExpand,
-  selectedValues,
-  onChange,
+  selectedResources,
+  onSelectChange,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
+  parents: string[];
   parentIsSelected?: boolean;
+  selectedParents: string[];
   showExpand?: boolean;
-  selectedValues: ContentNode[];
-  onChange: (resource: ContentNode, checked: boolean) => void;
+  selectedResources: ContentNode[];
+  onSelectChange: (
+    resource: ContentNode,
+    parents: string[],
+    checked: boolean
+  ) => void;
 }) {
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -48,20 +57,24 @@ export function DataSourceSelectorTreeChildren({
       // Unselected previously selected children
       resources
         .filter((r) =>
-          selectedValues.find((value) => value.internalId === r.internalId)
+          selectedResources.find((value) => value.internalId === r.internalId)
         )
         .forEach((r) => {
-          onChange(r, false);
+          onSelectChange(r, parents, false);
         });
     }
-  }, [resources, parentIsSelected, selectedValues, onChange]);
+  }, [resources, parentIsSelected, selectedResources, onSelectChange, parents]);
 
   return (
     <Tree isLoading={isResourcesLoading}>
       {resources.map((r) => {
         const isSelected = Boolean(
-          selectedValues.find((value) => value.internalId === r.internalId)
+          selectedResources.find((value) => value.internalId === r.internalId)
         );
+        const partialChecked =
+          !isSelected &&
+          Boolean(selectedParents.find((id) => id === r.internalId));
+
         return (
           <Tree.Item
             key={r.internalId}
@@ -81,8 +94,9 @@ export function DataSourceSelectorTreeChildren({
                 ? {
                     disabled: parentIsSelected,
                     checked: parentIsSelected || isSelected,
+                    partialChecked,
                     onChange: (checked) => {
-                      onChange(r, checked);
+                      onSelectChange(r, parents, checked);
                     },
                   }
                 : undefined
@@ -94,9 +108,11 @@ export function DataSourceSelectorTreeChildren({
                 dataSource={dataSource}
                 parentId={r.internalId}
                 showExpand={showExpand}
+                parents={[...parents, r.internalId]}
                 parentIsSelected={parentIsSelected || isSelected}
-                selectedValues={selectedValues}
-                onChange={onChange}
+                selectedResources={selectedResources}
+                selectedParents={selectedParents}
+                onSelectChange={onSelectChange}
               />
             )}
           </Tree.Item>
@@ -111,16 +127,25 @@ export function DataSourceSelectorTree({
   dataSource,
   showExpand,
   parentIsSelected,
-  selectedValues,
-  onChange,
+  selectedResources,
+  onSelectChange,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   showExpand?: boolean;
   parentIsSelected?: boolean;
-  selectedValues: ContentNode[];
-  onChange: (resource: ContentNode, checked: boolean) => void;
+  selectedResources: ContentNode[];
+  onSelectChange: (resource: ContentNode, checked: boolean) => void;
 }) {
+  const { parentsById, setParentsById } = useParentResourcesById({
+    owner,
+    dataSource,
+    selectedResources,
+  });
+  const selectedParents = [
+    ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+  ];
+
   return (
     <div className="overflow-x-auto">
       <DataSourceSelectorTreeChildren
@@ -128,9 +153,20 @@ export function DataSourceSelectorTree({
         dataSource={dataSource}
         parentId={null}
         showExpand={showExpand}
+        parents={[]}
         parentIsSelected={parentIsSelected}
-        selectedValues={selectedValues}
-        onChange={onChange}
+        selectedResources={selectedResources}
+        selectedParents={selectedParents}
+        onSelectChange={(resource, parents, selected) => {
+          const newParentsById = { ...parentsById };
+          if (selected) {
+            newParentsById[resource.internalId] = new Set(parents);
+          } else {
+            delete newParentsById[resource.internalId];
+          }
+          setParentsById(newParentsById);
+          onSelectChange(resource, selected);
+        }}
       />
     </div>
   );
