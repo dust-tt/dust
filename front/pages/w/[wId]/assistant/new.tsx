@@ -12,7 +12,7 @@ import type { ReactElement } from "react";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowser } from "@app/components/assistant/AssistantList";
+import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
