@@ -8,6 +8,7 @@ import {
   Page,
   Searchbar,
   SliderToggle,
+  Tree,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -19,6 +20,9 @@ import { assertNever } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { useConnectorPermissions } from "@app/lib/swr";
+import { DataSourceSelectorTree } from "./DataSourceSelectorTree";
 
 import type {
   AssistantBuilderDataSourceConfiguration,
@@ -45,6 +49,48 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   intercom: { singular: "article", plural: "articles" },
   webcrawler: { singular: "page", plural: "pages" },
 };
+
+function getUpdatedConfigurations(
+  currentConfigurations: AssistantBuilderDataSourceConfigurations,
+  dataSource: DataSourceType,
+  selected: boolean,
+  node: ContentNode
+) {
+  const oldConfiguration = currentConfigurations[dataSource.name] || {
+    dataSource: dataSource,
+    selectedResources: [],
+    isSelectAll: false,
+  };
+
+  const newConfiguration = {
+    ...oldConfiguration,
+  } satisfies AssistantBuilderDataSourceConfiguration;
+
+  if (selected) {
+    newConfiguration.selectedResources = [
+      ...oldConfiguration.selectedResources,
+      node,
+    ];
+  } else {
+    newConfiguration.selectedResources =
+      oldConfiguration.selectedResources.filter(
+        (resource) => resource.internalId !== node.internalId
+      );
+  }
+
+  const newConfigurations = { ...currentConfigurations };
+
+  if (
+    newConfiguration.isSelectAll ||
+    newConfiguration.selectedResources.length > 0
+  ) {
+    newConfigurations[dataSource.name] = newConfiguration;
+  } else {
+    delete newConfigurations[dataSource.name];
+  }
+
+  return newConfigurations;
+}
 
 export default function AssistantBuilderDataSourceModal({
   isOpen,
@@ -92,20 +138,17 @@ export default function AssistantBuilderDataSourceModal({
   }
 
   const allFolders = dataSources.filter((ds) => !ds.connectorProvider);
-  const alreadySelectedFolders = Object.values(dataSourceConfigurations)
-    .map((config) => {
-      return config.dataSource;
-    })
-    .filter((ds) => !ds.connectorProvider);
+  const alreadySelectedFolders = Object.values(dataSourceConfigurations).filter(
+    (ds) => !ds.dataSource.connectorProvider
+  );
 
   const allWebsites = dataSources.filter(
     (ds) => ds.connectorProvider === "webcrawler"
   );
-  const alreadySelectedWebsites = Object.values(dataSourceConfigurations)
-    .map((config) => {
-      return config.dataSource;
-    })
-    .filter((ds) => ds.connectorProvider === "webcrawler");
+
+  const alreadySelectedWebsites = Object.values(
+    dataSourceConfigurations
+  ).filter((ds) => ds.dataSource.connectorProvider === "webcrawler");
 
   return (
     <Modal
@@ -151,61 +194,53 @@ export default function AssistantBuilderDataSourceModal({
               }}
             />
           )}
+        {!selectedDataSource &&
+          (shouldDisplayFoldersScreen || shouldDisplayWebsitesScreen) && (
+            <FolderOrWebsiteResourceSelector
+              owner={owner}
+              type={shouldDisplayFoldersScreen ? "folder" : "website"}
+              dataSources={
+                shouldDisplayFoldersScreen ? allFolders : allWebsites
+              }
+              selectedNodes={
+                shouldDisplayFoldersScreen
+                  ? alreadySelectedFolders
+                  : alreadySelectedWebsites
+              }
+              onSelectChange={(ds, selected, contentNode) => {
+                setDataSourceConfigurations((currentConfigurations) => {
+                  if (currentConfigurations === null) {
+                    // Unreachable
+                    return null;
+                  }
 
-        {!selectedDataSource && shouldDisplayFoldersScreen && (
-          <FolderOrWebsiteResourceSelector
-            owner={owner}
-            type="folder"
-            dataSources={allFolders}
-            selectedDataSources={alreadySelectedFolders}
-            onSelectChange={(ds, selected) => {
-              setDataSourceConfigurations((currentConfigurations) => {
-                if (selected) {
-                  return {
-                    ...currentConfigurations,
-                    [ds.name]: {
-                      dataSource: ds,
-                      selectedResources: [],
-                      isSelectAll: true,
-                    },
-                  };
-                } else {
-                  const newConfigurations = { ...currentConfigurations };
-                  delete newConfigurations[ds.name];
-                  return newConfigurations;
-                }
-              });
-            }}
-          />
-        )}
+                  if (contentNode === undefined) {
+                    if (selected) {
+                      return {
+                        ...currentConfigurations,
+                        [ds.name]: {
+                          dataSource: ds,
+                          selectedResources: [],
+                          isSelectAll: true,
+                        },
+                      };
+                    } else {
+                      const newConfigurations = { ...currentConfigurations };
+                      delete newConfigurations[ds.name];
+                      return newConfigurations;
+                    }
+                  }
 
-        {!selectedDataSource && shouldDisplayWebsitesScreen && (
-          <FolderOrWebsiteResourceSelector
-            type="website"
-            owner={owner}
-            dataSources={allWebsites}
-            selectedDataSources={alreadySelectedWebsites}
-            onSelectChange={(ds, selected) => {
-              setDataSourceConfigurations((currentConfigurations) => {
-                if (selected) {
-                  return {
-                    ...currentConfigurations,
-                    [ds.name]: {
-                      dataSource: ds,
-                      selectedResources: [],
-                      isSelectAll: true,
-                    },
-                  };
-                } else {
-                  const newConfigurations = { ...currentConfigurations };
-                  delete newConfigurations[ds.name];
-                  return newConfigurations;
-                }
-              });
-            }}
-          />
-        )}
-
+                  return getUpdatedConfigurations(
+                    currentConfigurations,
+                    ds,
+                    selected,
+                    contentNode
+                  );
+                });
+              }}
+            />
+          )}
         {selectedDataSource && (
           <DataSourceResourceSelector
             dataSource={selectedDataSource}
@@ -224,42 +259,13 @@ export default function AssistantBuilderDataSourceModal({
                   // Unreachable
                   return null;
                 }
-                const oldConfiguration = currentConfigurations[
-                  selectedDataSource.name
-                ] || {
-                  dataSource: selectedDataSource,
-                  selectedResources: [],
-                  isSelectAll: false,
-                };
 
-                const newConfiguration = {
-                  ...oldConfiguration,
-                } satisfies AssistantBuilderDataSourceConfiguration;
-
-                if (selected) {
-                  newConfiguration.selectedResources = [
-                    ...oldConfiguration.selectedResources,
-                    node,
-                  ];
-                } else {
-                  newConfiguration.selectedResources =
-                    oldConfiguration.selectedResources.filter(
-                      (resource) => resource.internalId !== node.internalId
-                    );
-                }
-
-                const newConfigurations = { ...currentConfigurations };
-
-                if (
-                  newConfiguration.isSelectAll ||
-                  newConfiguration.selectedResources.length > 0
-                ) {
-                  newConfigurations[selectedDataSource.name] = newConfiguration;
-                } else {
-                  delete newConfigurations[selectedDataSource.name];
-                }
-
-                return newConfigurations;
+                return getUpdatedConfigurations(
+                  currentConfigurations,
+                  selectedDataSource,
+                  selected,
+                  node
+                );
               });
             }}
             toggleSelectAll={() => {
@@ -519,16 +525,21 @@ function FolderOrWebsiteResourceSelector({
   owner,
   type,
   dataSources,
-  selectedDataSources,
+  selectedNodes,
   onSelectChange,
 }: {
   owner: WorkspaceType;
   type: "folder" | "website";
   dataSources: DataSourceType[];
-  selectedDataSources: DataSourceType[];
-  onSelectChange: (ds: DataSourceType, selected: boolean) => void;
+  selectedNodes: AssistantBuilderDataSourceConfiguration[];
+  onSelectChange: (
+    ds: DataSourceType,
+    selected: boolean,
+    resource?: ContentNode
+  ) => void;
 }) {
   const [query, setQuery] = useState<string>("");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const filteredDataSources = dataSources.filter((ds) => {
     return subFilter(query.toLowerCase(), ds.name.toLowerCase());
@@ -558,38 +569,52 @@ function FolderOrWebsiteResourceSelector({
           </div>
         </div>
         <div>
-          {filteredDataSources.map((ds) => {
-            const isSelected = selectedDataSources.some(
-              (selectedDs) => selectedDs.name === ds.name
-            );
-            return (
-              <div key={ds.name}>
-                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
-                  <div>
-                    {type === "folder" ? (
-                      <FolderIcon className="h-5 w-5 text-slate-300" />
-                    ) : (
-                      <CloudArrowDownIcon className="h-5 w-5 text-slate-300" />
-                    )}
-                  </div>
-                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
-                    {ds.name}
-                  </span>
-                  <div className="ml-32 flex-grow">
-                    <Checkbox
-                      variant="checkable"
-                      className="ml-auto"
-                      checked={isSelected}
-                      partialChecked={false}
-                      onChange={(checked) => {
-                        onSelectChange(ds, checked);
+          <Tree>
+            {filteredDataSources.map((ds) => {
+              const currentConfig = selectedNodes.find(
+                (selectedNode) => selectedNode.dataSource.id === ds.id
+              );
+
+              return (
+                <Tree.Item
+                  key={ds.id}
+                  collapsed={!expanded[ds.id]}
+                  onChevronClick={() => {
+                    setExpanded((prev) => ({
+                      ...prev,
+                      [ds.id]: prev[ds.id] ? false : true,
+                    }));
+                  }}
+                  type={type === "folder" ? "leaf" : "node"}
+                  label={ds.name}
+                  variant="folder"
+                  visual={
+                    type === "folder" ? <FolderIcon /> : <CloudArrowDownIcon />
+                  }
+                  className="whitespace-nowrap"
+                  checkbox={{
+                    checked: currentConfig?.isSelectAll ?? false,
+                    onChange: (checked) => {
+                      onSelectChange(ds, checked);
+                    },
+                  }}
+                >
+                  {type === "website" && (
+                    <DataSourceSelectorTree
+                      showExpand
+                      owner={owner}
+                      dataSource={ds}
+                      parentIsSelected={currentConfig?.isSelectAll ?? false}
+                      onChange={(resource, checked) => {
+                        onSelectChange(ds, checked, resource);
                       }}
+                      selectedValues={currentConfig?.selectedResources ?? []}
                     />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                  )}
+                </Tree.Item>
+              );
+            })}
+          </Tree>
         </div>
       </Page>
     </Transition>
