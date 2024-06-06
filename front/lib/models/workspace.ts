@@ -1,8 +1,5 @@
 import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
-import {
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  MODEL_PROVIDER_IDS,
-} from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -35,7 +32,7 @@ export class Workspace extends Model<
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
-  declare defaultEmbeddingProvider: ModelProviderIdType;
+  declare defaultEmbeddingProvider: ModelProviderIdType | null;
 }
 Workspace.init(
   {
@@ -94,11 +91,11 @@ Workspace.init(
     },
     defaultEmbeddingProvider: {
       type: DataTypes.STRING,
-      defaultValue: DEFAULT_EMBEDDING_PROVIDER_ID,
-      allowNull: false,
+      defaultValue: null,
+      allowNull: true,
       validate: {
-        isProviderValid(value: string) {
-          if (!modelProviderEnumValues.includes(value)) {
+        isProviderValid(value: string | null) {
+          if (value && !modelProviderEnumValues.includes(value)) {
             throw new Error("Invalid provider for defaultEmbeddingProvider");
           }
         },
