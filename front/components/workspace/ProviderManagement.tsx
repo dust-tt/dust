@@ -107,12 +107,14 @@ export function ProviderSelectionModal({
                 }
               >
                 <ContextItem.Description>
-                  {providerModels.map((model) => (
-                    <div key={model.modelId} className="mt-2">
-                      <div className="text-sm text-element-700">
-                        {model.displayName}
-                      </div>
-                    </div>
+                  {providerModels.map((model, index) => (
+                    <span
+                      key={model.modelId}
+                      className="text-sm text-element-700"
+                    >
+                      {model.displayName}
+                      {index !== providerModels.length - 1 ? ", " : ""}
+                    </span>
                   ))}
                 </ContextItem.Description>
               </ContextItem>
