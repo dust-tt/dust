@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SparklesIcon,
   Spinner,
+  TextArea,
   Tooltip,
   XCircleIcon,
   XMarkIcon,
@@ -262,6 +263,9 @@ export function ActionProcess({
   updateAction,
   setEdited,
   dataSources,
+  description,
+  onDescriptionChange,
+  isDescriptionValid,
 }: {
   owner: WorkspaceType;
   instructions: string | null;
@@ -273,7 +277,18 @@ export function ActionProcess({
   ) => void;
   setEdited: (edited: boolean) => void;
   dataSources: DataSourceType[];
-}) {
+} & (
+  | {
+      description: string;
+      onDescriptionChange: (description: string) => void;
+      isDescriptionValid: boolean;
+    }
+  | {
+      description?: undefined;
+      onDescriptionChange?: undefined;
+      isDescriptionValid?: undefined;
+    }
+)) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
@@ -316,11 +331,17 @@ export function ActionProcess({
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
-
+    let fullInstructions = `${instructions}`;
+    if (description) {
+      fullInstructions += `\n${description}`;
+    }
     if (instructions !== null) {
       setIsGeneratingSchema(true);
       try {
-        const res = await generateSchema({ owner, instructions });
+        const res = await generateSchema({
+          owner,
+          instructions: fullInstructions,
+        });
 
         if (res.isOk()) {
           updateAction((previousAction) => ({
@@ -499,6 +520,28 @@ export function ActionProcess({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {onDescriptionChange && (
+        <div className="flex flex-col gap-4 pt-8">
+          <div className="font-semibold text-element-800">
+            Action description
+          </div>
+          <div className="text-sm text-element-600">
+            Clarify what the action should do and what data it should extract.
+            For example:
+            <span className="block text-element-600">
+              "Extract from the slack channel a list of books, including their
+              title, author, and publication date".
+            </span>
+          </div>
+          <TextArea
+            placeholder={"Action description.."}
+            value={description}
+            onChange={onDescriptionChange}
+            error={!isDescriptionValid ? "Description cannot be empty" : null}
+          />
         </div>
       )}
 
