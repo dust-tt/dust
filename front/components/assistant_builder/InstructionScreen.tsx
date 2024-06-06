@@ -10,17 +10,18 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ContentMessageProps } from "@dust-tt/sparkle/dist/cjs/components/ContentMessage";
-import type {   APIError,
+import type {
+  APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
   ModelConfig,
   PlanType,
   Result,
   SUPPORTED_MODEL_CONFIGS,
-  SupportedModel,WorkspaceType } from "@dust-tt/types";
-import {
-  MODEL_PROVIDER_IDS
+  SupportedModel,
+  WorkspaceType,
 } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
