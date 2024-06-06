@@ -24,7 +24,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import {
-  use,
   useCallback,
   useContext,
   useEffect,
@@ -50,8 +49,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import { classNames, sleep, subFilter } from "@app/lib/utils";
-import { set } from "lodash";
+import { classNames, subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -258,6 +256,16 @@ export default function AssistantNew({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  const setInputbarMention = useCallback(
+    (agent: LightAgentConfigurationType) => {
+      setSelectedAssistant({
+        configurationId: agent.sId,
+      });
+      setAnimate(true);
+    },
+    [setSelectedAssistant, setAnimate]
+  );
+
   const handleAssistantClick = useCallback(
     // on click, scroll to the input bar and set the selected assistant
     async (agent: LightAgentConfigurationType) => {
@@ -282,17 +290,7 @@ export default function AssistantNew({
 
       assistantToMention.current = agent;
     },
-    []
-  );
-
-  const setInputbarMention = useCallback(
-    (agent: LightAgentConfigurationType) => {
-      setSelectedAssistant({
-        configurationId: agent.sId,
-      });
-      setAnimate(true);
-    },
-    [setSelectedAssistant, setAnimate]
+    [setInputbarMention]
   );
 
   useEffect(() => {
@@ -318,7 +316,7 @@ export default function AssistantNew({
       );
       observer.observe(scrollContainerElement);
     }
-  }, [setAnimate]);
+  }, [setAnimate, setInputbarMention]);
 
   return (
     <>
