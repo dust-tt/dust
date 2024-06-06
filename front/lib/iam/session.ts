@@ -79,6 +79,8 @@ export async function getUserFromSession(
         name: w.name,
         role,
         segmentation: w.segmentation || null,
+        whiteListedProviders: w.whiteListedProviders || null,
+        defaultEmbeddingProvider: w.defaultEmbeddingProvider || null,
       };
     }),
   };
