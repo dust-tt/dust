@@ -23,7 +23,14 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  use,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantList } from "@app/components/assistant/AssistantList";
@@ -109,7 +116,8 @@ export default function AssistantNew({
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
 
   // same fetch as the one in the input bar, pretty quick
   const { agentConfigurations, isAgentConfigurationsLoading } =
@@ -266,11 +274,15 @@ export default function AssistantNew({
 
       // animate input bar
       setAnimate(true);
-      await sleep(500);
-      setAnimate(false);
     },
     [setSelectedAssistant, setAnimate]
   );
+
+  useEffect(() => {
+    if (animate) {
+      setTimeout(() => setAnimate(false), 500);
+    }
+  });
 
   return (
     <>
