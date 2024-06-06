@@ -1,44 +1,48 @@
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
 import type { AgentActionType } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
-import { ConversationActionsDrawer } from "@app/components/assistant/conversation/actions/ConversationActionsDrawer";
+import { MessageActionsDrawer } from "@app/components/assistant/conversation/actions/MessageActionsDrawer";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 
-interface ConversationActionsProps {
+interface MessageActionsProps {
   actions: AgentActionType[];
   agentMessageContent: string | null;
-  isStreaming: boolean;
   size?: MessageSizeType;
 }
 
-export function ConversationActions({
+export function MessageActions({
   actions,
   agentMessageContent,
-  isStreaming,
   size = "normal",
-}: ConversationActionsProps) {
+}: MessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
+  // Assuming the action step is complete if the agent message isn't empty.
+  // This workaround will be replaced by proper streaming events in the future.
+  // Note: This might fail if models send CoT beforehand.
+  const agentMessageIsEmpty = useMemo(
+    () => !agentMessageContent?.length,
+    [agentMessageContent]
+  );
+
   useEffect(() => {
-    const isThinking =
-      actions.length === 0 &&
-      (!agentMessageContent || agentMessageContent.length === 0);
+    const isThinking = actions.length === 0 && agentMessageIsEmpty;
 
     if (isThinking) {
       setChipLabel("Thinking");
-    } else if (isStreaming && actions.length > 0) {
+    } else if (actions.length > 0 && agentMessageIsEmpty) {
       setChipLabel(renderActionName(actions));
     } else {
       setChipLabel(undefined);
     }
-  }, [actions, agentMessageContent, isStreaming]);
+  }, [actions, agentMessageContent, agentMessageIsEmpty]);
 
   return (
     <div className="flex flex-col items-start gap-y-4">
-      <ConversationActionsDrawer
+      <MessageActionsDrawer
         actions={actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
@@ -46,7 +50,7 @@ export function ConversationActions({
       <ActionChip label={chipLabel} />
       <ActionDetailsButton
         hasActions={actions.length !== 0}
-        isStreaming={isStreaming}
+        isActionStepDone={!agentMessageIsEmpty}
         onClick={() => setIsActionDrawerOpened(true)}
         size={size}
       />
@@ -73,16 +77,16 @@ function ActionChip({ label }: { label?: string }) {
 
 function ActionDetailsButton({
   hasActions,
-  isStreaming,
+  isActionStepDone,
   onClick,
   size,
 }: {
   hasActions: boolean;
-  isStreaming: boolean;
+  isActionStepDone: boolean;
   onClick: () => void;
   size: MessageSizeType;
 }) {
-  if (isStreaming || !hasActions) {
+  if (!isActionStepDone || !hasActions) {
     return;
   }
 

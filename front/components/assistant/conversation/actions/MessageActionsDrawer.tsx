@@ -3,17 +3,17 @@ import type { AgentActionType } from "@dust-tt/types";
 
 import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 
-interface ConversationActionsDrawerProps {
+interface MessageActionsDrawerProps {
   actions: AgentActionType[];
   isOpened: boolean;
   onClose: () => void;
 }
 
-export function ConversationActionsDrawer({
+export function MessageActionsDrawer({
   actions,
   isOpened,
   onClose,
-}: ConversationActionsDrawerProps) {
+}: MessageActionsDrawerProps) {
   return (
     <Modal
       isOpen={isOpened}
