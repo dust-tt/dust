@@ -201,10 +201,12 @@ export default function AssistantNew({
       }
       const scrollDistance = scrollContainerElement.getBoundingClientRect().top;
 
-      // If the input bar is already in view, set the mention directly -2 is a
-      // small margin since the scroll below can sometimes go a bit below 0, to
-      // -0.3 or -0.5
-      if (scrollDistance >= -2) {
+      // If the input bar is already in view, set the mention directly. We leave
+      // a little margin, -2 instead of 0, since the autoscroll below can
+      // sometimes scroll a bit over 0, to -0.3 or -0.5, in which case if there
+      // is a clic on a visible assistant we still want this condition to
+      // trigger
+      if (scrollDistance > -2) {
         setInputbarMention(agent);
         return;
       }
