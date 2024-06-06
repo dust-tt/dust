@@ -53,37 +53,6 @@ export default function Deploy({
 }) {
   const [open, setOpen] = useState(false);
 
-  const { keys } = useKeys(owner);
-  const activeKey = keys.find((k) => k.status === "active");
-  const [copyButtonText, setCopyButtonText] = useState("Copy");
-
-  // Prepare the cURL request
-  const cURLRequest = (keyIsRevealed: boolean) => {
-    let cURLKey = "YOUR_API_KEY";
-    // Use the active API key if it exists (revealed for copy, unrevealed for display)
-    if (activeKey) {
-      cURLKey = keyIsRevealed
-        ? activeKey.secret
-        : `sk-...${activeKey.secret.slice(-5)}`;
-    }
-    const cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
-    -H "Authorization: Bearer ${cURLKey}" \\
-    -H "Content-Type: application/json" \\
-    -d '{
-      "specification_hash": "${run?.app_hash}",
-      "config": ${cleanUpConfig(run?.config)},
-      "blocking": true,
-      "inputs": [{ "hello": "world" }]
-    }'`;
-    return cURL;
-  };
-
-  // Copy the cURL request to the clipboard
-  const handleCopyClick = async () => {
-    await navigator.clipboard.writeText(cURLRequest(true));
-    setCopyButtonText("Copied!");
-  };
-
   return (
     <div>
       <Tooltip
@@ -139,85 +108,12 @@ export default function Deploy({
                       >
                         Run as API Endpoint
                       </Dialog.Title>
-                      <CodeEditor
-                        data-color-mode="light"
-                        readOnly={true}
-                        value={`$ ${cURLRequest(true)}`}
-                        language="shell"
-                        padding={15}
-                        className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
-                        style={{
-                          fontSize: 13,
-                          fontFamily:
-                            "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                          backgroundColor: "rgb(241 245 249)",
-                        }}
+                      <DisplayCurlRequest
+                        app={app}
+                        owner={owner}
+                        run={run}
+                        url={url}
                       />
-                      <div className="mt-5 flex flex-initial">
-                        <div className="">
-                          {activeKey ? (
-                            <p className="text-sm text-gray-500">
-                              This command is ready to copy with your first
-                              active API key.{" "}
-                              <Link
-                                href={`/w/${owner.sId}/a`}
-                                className={classNames(
-                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                  "text-action-600"
-                                )}
-                              >
-                                Manage your API keys
-                              </Link>{" "}
-                              to use a different one.
-                            </p>
-                          ) : (
-                            <p className="text-sm text-gray-500">
-                              <Link
-                                href={`/w/${owner.sId}/a?t=apikeys`}
-                                className={classNames(
-                                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
-                                  "text-action-600"
-                                )}
-                              >
-                                Create an API key
-                              </Link>{" "}
-                              to run this command.
-                            </p>
-                          )}
-                          <p className="-mt-1 text-sm text-gray-500">
-                            Do not share your API keys: when run via this
-                            endpoint, your app will use the providers set up on
-                            your account.
-                          </p>
-                        </div>
-                        <div className="flex-1"></div>
-                        <div className="mt-1">
-                          <Button
-                            variant="primary"
-                            onClick={handleCopyClick}
-                            label={copyButtonText}
-                            icon={ClipboardIcon}
-                          />
-                        </div>
-                      </div>
-                      <p className="mt-4 text-sm text-gray-500">
-                        For a detailed documentation of the Run model and Run
-                        creation parameters, refer to the API reference.
-                      </p>
-                      <p className="mt-2">
-                        <Button
-                          icon={DocumentTextIcon}
-                          label="Visit API Reference"
-                          variant="secondary"
-                          onClick={() => {
-                            window.open(
-                              "https://docs.dust.tt/runs",
-                              "_blank",
-                              "noopener,noreferrer"
-                            );
-                          }}
-                        />
-                      </p>
                     </div>
                   </div>
                   <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
@@ -237,5 +133,137 @@ export default function Deploy({
         </Dialog>
       </Transition.Root>
     </div>
+  );
+}
+
+const DEFAULT_INPUTS = [{ hello: "world" }];
+
+interface DisplayCurlRequestProps {
+  app: AppType;
+  inputs?: unknown[];
+  owner: WorkspaceType;
+  run: RunType;
+  url: string;
+}
+
+export function DisplayCurlRequest({
+  app,
+  inputs = DEFAULT_INPUTS,
+  owner,
+  run,
+  url,
+}: DisplayCurlRequestProps) {
+  const [copyButtonText, setCopyButtonText] = useState("Copy");
+
+  const { keys } = useKeys(owner);
+  const activeKey = keys.find((k) => k.status === "active");
+
+  // Prepare the cURL request.
+  const cURLRequest = (keyIsRevealed: boolean) => {
+    let cURLKey = "YOUR_API_KEY";
+    // Use the active API key if it exists (revealed for copy, unrevealed for display)
+    if (activeKey) {
+      cURLKey = keyIsRevealed
+        ? activeKey.secret
+        : `sk-...${activeKey.secret.slice(-5)}`;
+    }
+    const cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
+    -H "Authorization: Bearer ${cURLKey}" \\
+    -H "Content-Type: application/json" \\
+    -d '{
+      "specification_hash": "${run?.app_hash}",
+      "config": ${cleanUpConfig(run?.config)},
+      "blocking": true,
+      "inputs": ${JSON.stringify(inputs)}
+    }'`;
+    return cURL;
+  };
+
+  // Copy the cURL request to the clipboard
+  const handleCopyClick = async () => {
+    await navigator.clipboard.writeText(cURLRequest(true));
+    setCopyButtonText("Copied!");
+  };
+
+  return (
+    <>
+      <CodeEditor
+        data-color-mode="light"
+        readOnly={true}
+        value={`$ ${cURLRequest(true)}`}
+        language="shell"
+        padding={15}
+        className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+        style={{
+          fontSize: 13,
+          fontFamily:
+            "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+          backgroundColor: "rgb(241 245 249)",
+        }}
+      />
+      <div className="mt-5 flex flex-initial">
+        <div className="">
+          {activeKey ? (
+            <p className="text-sm text-gray-500">
+              This command is ready to copy with your first active API key.{" "}
+              <Link
+                href={`/w/${owner.sId}/a`}
+                className={classNames(
+                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                  "text-action-600"
+                )}
+              >
+                Manage your API keys
+              </Link>{" "}
+              to use a different one.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">
+              <Link
+                href={`/w/${owner.sId}/a?t=apikeys`}
+                className={classNames(
+                  "inline-flex items-center rounded-md py-1 text-sm font-bold",
+                  "text-action-600"
+                )}
+              >
+                Create an API key
+              </Link>{" "}
+              to run this command.
+            </p>
+          )}
+          <p className="-mt-1 text-sm text-gray-500">
+            Do not share your API keys: when run via this endpoint, your app
+            will use the providers set up on your account.
+          </p>
+        </div>
+        <div className="flex-1"></div>
+        <div className="mt-1">
+          <Button
+            variant="primary"
+            onClick={handleCopyClick}
+            label={copyButtonText}
+            icon={ClipboardIcon}
+          />
+        </div>
+      </div>
+      <p className="mt-4 text-sm text-gray-500">
+        For a detailed documentation of the Run model and Run creation
+        parameters, refer to the API reference.
+      </p>
+      <p className="mt-2">
+        <Button
+          icon={DocumentTextIcon}
+          label="Visit API Reference"
+          variant="secondary"
+          onClick={() => {
+            window.open(
+              "https://docs.dust.tt/runs",
+              "_blank",
+              "noopener,noreferrer"
+            );
+          }}
+        />
+      </p>
+    </>
   );
 }
