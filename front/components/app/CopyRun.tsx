@@ -44,12 +44,12 @@ export default function CopyRun({
 
   const inputs = useMemo(() => {
     if (!runDetails) {
-      return null;
+      return undefined;
     }
 
     const traces = runDetails.traces[0][1];
 
-    return traces.map((t) => t[0].value) ?? undefined;
+    return traces.map((t) => t[0].value);
   }, [runDetails]);
 
   return (
