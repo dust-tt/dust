@@ -7,7 +7,7 @@ import type {
   SupportedModel,
   TimeframeUnit,
 } from "@dust-tt/types";
-import { assertNever, GPT_4O_MODEL_CONFIG } from "@dust-tt/types";
+import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -148,8 +148,8 @@ export function getDefaultAssistantState() {
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
     },
