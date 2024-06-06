@@ -208,7 +208,10 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
                 ),
                 None => None,
             },
-            tool_call_id: cm.function_call_id.map(|id| sanitize_tool_call_id(&id)),
+            tool_call_id: cm
+                .function_call_id
+                .as_ref()
+                .map(|id| sanitize_tool_call_id(id)),
         })
     }
 }
@@ -450,7 +453,9 @@ impl MistralAILLM {
                                 // that's fine).
                                 id: cm
                                     .tool_call_id
-                                    .map(|id| sanitize_tool_call_id(&id))
+                                    .as_ref()
+                                    .map(|id| sanitize_tool_call_id(id))
+                                    .clone()
                                     .unwrap_or_else(|| new_id()[0..9].to_string()),
                                 function: MistralToolCallFunction {
                                     name: cm
