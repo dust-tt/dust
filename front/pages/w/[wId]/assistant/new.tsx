@@ -149,11 +149,14 @@ export default function AssistantNew({
     visibleTabs[0]?.id || null
   );
 
-  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
-    ? selectedTab
-    : visibleTabs.length > 0
-    ? visibleTabs[0].id
-    : null;
+  const displayedTab =
+    assistantSearch.trim() !== "" // If search is active, show all agents
+      ? "all"
+      : visibleTabs.find((tab) => tab.id === selectedTab)
+      ? selectedTab
+      : visibleTabs.length > 0
+      ? visibleTabs[0].id
+      : null;
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
@@ -337,9 +340,6 @@ export default function AssistantNew({
           </div>
 
           {/* Assistant tabs */}
-          <div id="all-assistants-header" className="flex h-fit px-4">
-            <Page.SectionHeader title="Available assistants" />
-          </div>
           <div className="flex flex-row space-x-4 px-4">
             <Tab
               className="grow"
