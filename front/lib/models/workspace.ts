@@ -78,15 +78,29 @@ Workspace.init(
       defaultValue: false,
     },
     whiteListedProviders: {
-      type: DataTypes.ARRAY(DataTypes.ENUM(...modelProviderEnumValues)),
+      type: DataTypes.ARRAY(DataTypes.STRING),
       defaultValue: null,
       allowNull: true,
+      validate: {
+        isProviderValid(value: string[] | null) {
+          if (value && !value.every(val => modelProviderEnumValues.includes(val))) {
+            throw new Error("Invalid provider in whiteListedProviders");
+          }
+        }
+      }
     },
     defaultEmbeddingProvider: {
-      type: DataTypes.ENUM(...modelProviderEnumValues),
+      type: DataTypes.STRING,
       defaultValue: DEFAULT_EMBEDDING_PROVIDER_ID,
       allowNull: false,
-    },
+      validate: {
+        isProviderValid(value: string) {
+          if (!modelProviderEnumValues.includes(value)) {
+            throw new Error("Invalid provider for defaultEmbeddingProvider");
+          }
+        }
+      }
+    }
   },
   {
     modelName: "workspace",
