@@ -554,6 +554,17 @@ function FolderOrWebsiteTree({
   ) => void;
 }) {
   const [expanded, setExpanded] = useState<boolean>(false);
+  const selectedResources = currentConfig?.selectedResources ?? [];
+
+  const { parentsById, setParentsById } = useParentResourcesById({
+    owner,
+    dataSource,
+    selectedResources,
+  });
+
+  const selectedParents = [
+    ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+  ];
 
   return (
     <Tree.Item
@@ -573,6 +584,7 @@ function FolderOrWebsiteTree({
             currentConfig.selectedResources?.length > 0
           : false,
         onChange: (checked) => {
+          setParentsById({});
           onSelectChange(dataSource, checked);
         },
       }}
@@ -583,10 +595,20 @@ function FolderOrWebsiteTree({
           owner={owner}
           dataSource={dataSource}
           parentIsSelected={currentConfig?.isSelectAll ?? false}
-          onSelectChange={(resource, checked) => {
-            onSelectChange(dataSource, checked, resource);
+          selectedParents={selectedParents}
+          onSelectChange={(resource, parents, selected) => {
+            setParentsById((parentsById) => {
+              const newParentsById = { ...parentsById };
+              if (selected) {
+                newParentsById[resource.internalId] = new Set(parents);
+              } else {
+                delete newParentsById[resource.internalId];
+              }
+              return newParentsById;
+            });
+            onSelectChange(dataSource, selected, resource);
           }}
-          selectedResources={currentConfig?.selectedResources ?? []}
+          selectedResources={selectedResources}
         />
       )}
     </Tree.Item>

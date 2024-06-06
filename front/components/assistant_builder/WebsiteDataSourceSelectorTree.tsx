@@ -6,7 +6,6 @@ import type {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
-import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { useConnectorPermissions } from "@app/lib/swr";
 
 export function WebsiteDataSourceSelectorTreeChildren({
@@ -127,6 +126,7 @@ export function WebsiteDataSourceSelectorTree({
   dataSource,
   showExpand,
   parentIsSelected,
+  selectedParents,
   selectedResources,
   onSelectChange,
 }: {
@@ -134,21 +134,14 @@ export function WebsiteDataSourceSelectorTree({
   dataSource: DataSourceType;
   showExpand?: boolean;
   parentIsSelected?: boolean;
+  selectedParents: string[];
   selectedResources: ContentNode[];
-  onSelectChange: (resource: ContentNode, checked: boolean) => void;
+  onSelectChange: (
+    resource: ContentNode,
+    parents: string[],
+    checked: boolean
+  ) => void;
 }) {
-  const { parentsById, setParentsById } = useParentResourcesById({
-    owner,
-    dataSource,
-    selectedResources,
-  });
-
-  console.log("parentsById", parentsById);
-
-  const selectedParents = [
-    ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
-  ];
-
   return (
     <div className="overflow-x-auto">
       <WebsiteDataSourceSelectorTreeChildren
@@ -161,16 +154,7 @@ export function WebsiteDataSourceSelectorTree({
         selectedResources={selectedResources}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
-          setParentsById((parentsById) => {
-            const newParentsById = { ...parentsById };
-            if (selected) {
-              newParentsById[resource.internalId] = new Set(parents);
-            } else {
-              delete newParentsById[resource.internalId];
-            }
-            return newParentsById;
-          });
-          onSelectChange(resource, selected);
+          onSelectChange(resource, parents, selected);
         }}
       />
     </div>
