@@ -100,4 +100,5 @@ export interface RetrievalActionType extends BaseAction {
   functionCallName: string | null;
   documents: RetrievalDocumentType[] | null;
   step: number;
+  type: "retrieval_action";
 }

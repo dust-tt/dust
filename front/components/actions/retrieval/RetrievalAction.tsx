@@ -1,9 +1,4 @@
-import {
-  Citation,
-  Collapsible,
-  Icon,
-  MagnifyingGlassIcon,
-} from "@dust-tt/sparkle";
+import { Citation, Collapsible, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 import type {
   RetrievalActionType,
   RetrievalDocumentType,

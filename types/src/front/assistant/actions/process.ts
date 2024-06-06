@@ -86,4 +86,5 @@ export interface ProcessActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "process_action";
 }

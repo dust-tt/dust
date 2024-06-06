@@ -9,17 +9,18 @@ export interface ActionDetailsComponentBaseProps<
   defaultOpen: boolean;
 }
 
-interface ActionSpecification {
+interface ActionSpecification<T extends AgentActionType> {
   runningLabel: string;
-  detailsComponent?: React.ComponentType<ActionDetailsComponentBaseProps>;
+  detailsComponent?: React.ComponentType<ActionDetailsComponentBaseProps<T>>;
 }
 
 type ActionType = AgentActionType["type"];
 
-const actionsSpecification: Record<
-  AgentActionType["type"],
-  ActionSpecification
-> = {
+type ActionSpecifications = {
+  [K in ActionType]: ActionSpecification<Extract<AgentActionType, { type: K }>>;
+};
+
+const actionsSpecification: ActionSpecifications = {
   dust_app_run_action: { runningLabel: "Running App" },
   process_action: { runningLabel: "Gathering latest data" },
   retrieval_action: {
@@ -30,8 +31,8 @@ const actionsSpecification: Record<
   websearch_action: { runningLabel: "Searching the web" },
 };
 
-export function getActionSpecification(
-  actionType: ActionType
-): ActionSpecification {
+export function getActionSpecification<T extends ActionType>(
+  actionType: T
+): ActionSpecification<Extract<AgentActionType, { type: T }>> {
   return actionsSpecification[actionType];
 }
