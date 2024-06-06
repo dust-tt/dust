@@ -38,13 +38,12 @@ export function ProviderManagementModal({
   const { initialProviderStates } = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
       owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-    const initialProviderStates: ProviderStates = enabledProviders.reduce(
-      (acc, provider) => {
-        acc[provider] = true;
-        return acc;
-      },
-      {} as ProviderStates
-    );
+    const initialProviderStates: ProviderStates = [
+      ...MODEL_PROVIDER_IDS,
+    ].reduce((acc, provider) => {
+      acc[provider] = enabledProviders.includes(provider);
+      return acc;
+    }, {} as ProviderStates);
 
     return { initialProviderStates };
   }, [owner.whiteListedProviders]);
