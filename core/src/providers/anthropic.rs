@@ -591,6 +591,19 @@ impl AnthropicLLM {
             .parse::<Uri>()?)
     }
 
+    fn placehodler_tool(&self) -> AnthropicTool {
+        AnthropicTool {
+            name: "dummy_do_not_use".to_string(),
+            description: Some("Dummy placeholder tool that does nothing. Do not use.".to_string()),
+            input_schema: Some(json!({
+                "type": "object",
+                "properties": {
+                    "dummy": {"type": "string", "description": "Do not use."}
+                },
+            })),
+        }
+    }
+
     async fn chat_completion(
         &self,
         system: Option<String>,
@@ -632,19 +645,7 @@ impl AnthropicLLM {
                     .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
             }) {
                 // Add only if we have tool_use or tool_result in the messages
-                body["tools"] = json!(vec![AnthropicTool {
-                    name: "placeholder_do_not_use".to_string(),
-                    description: Some(
-                        "Dummy placeholder tool. Do not use, generate a response instead."
-                            .to_string()
-                    ),
-                    input_schema: Some(json!({
-                        "type": "object",
-                        "properties": {
-                            "dummy": {"type": "string", "description": "Do not use."}
-                        },
-                    })),
-                }]);
+                body["tools"] = json!(vec![self.placehodler_tool()]);
             }
         }
 
@@ -744,19 +745,7 @@ impl AnthropicLLM {
                     .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
             }) {
                 // Add only if we have tool_use or tool_result in the messages
-                body["tools"] = json!(vec![AnthropicTool {
-                    name: "placeholder_do_not_use".to_string(),
-                    description: Some(
-                        "Dummy placeholder tool. Do not use, generate a response instead."
-                            .to_string()
-                    ),
-                    input_schema: Some(json!({
-                        "type": "object",
-                        "properties": {
-                            "dummy": {"type": "string", "description": "Do not use."}
-                        },
-                    })),
-                }]);
+                body["tools"] = json!(vec![self.placehodler_tool()]);
             }
         }
 
