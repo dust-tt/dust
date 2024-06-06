@@ -27,7 +27,7 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
+import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
 import {
   MermaidDisplayProvider,
   MermaidGraph,
@@ -326,7 +326,7 @@ function CiteBlock(props: ReactMarkdownProps) {
       <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const link = linkFromDocument(document);
+          const link = makeLinkForRetrievedDocument(document);
 
           return (
             <sup key={`${r.ref}-${i}`}>

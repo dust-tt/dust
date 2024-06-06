@@ -15,6 +15,7 @@ import type {
 import { Transition } from "@headlessui/react";
 import { useState } from "react";
 
+import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { classNames, trimText } from "@app/lib/utils";
 
@@ -137,7 +138,7 @@ export default function RetrievalAction({
                     <li key={i}>
                       <a
                         rel="noopener noreferrer"
-                        href={linkFromDocument(document)}
+                        href={makeLinkForRetrievedDocument(document)}
                         className="front-bold flex flex-row items-center text-xs text-element-800"
                         target="_blank"
                       >
@@ -262,16 +263,4 @@ export function titleFromDocument(document: RetrievalDocumentType): string {
   }
 
   return document.documentId;
-}
-
-export function linkFromDocument(document: RetrievalDocumentType): string {
-  if (document.sourceUrl) {
-    return document.sourceUrl;
-  } else {
-    return `https://dust.tt/w/${
-      document.dataSourceWorkspaceId
-    }/builder/data-sources/${
-      document.dataSourceId
-    }/upsert?documentId=${encodeURIComponent(document.documentId)}`;
-  }
 }
