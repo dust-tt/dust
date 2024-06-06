@@ -7,6 +7,7 @@ import {
   RobotIcon,
   RocketIcon,
   Searchbar,
+  Spinner,
   Tab,
   Tooltip,
   UserGroupIcon,
@@ -49,7 +50,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import { classNames, sleep, subFilter } from "@app/lib/utils";
+import { sleep, subFilter } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -327,10 +328,7 @@ export default function AssistantNew({
         {/* Assistants */}
         <div
           id="assistants-lists-container"
-          className={classNames(
-            "duration-400 flex h-full w-full flex-col gap-3 pt-9 transition-opacity",
-            isAgentConfigurationsLoading ? "opacity-0" : "opacity-100"
-          )}
+          className="flex h-full w-full flex-col gap-3 pt-9"
         >
           <div id="assistants-list-header" className="px-4">
             <Page.SectionHeader title="Chat with..." />
@@ -376,6 +374,14 @@ export default function AssistantNew({
             />
           </div>
           {(() => {
+            if (isAgentConfigurationsLoading) {
+              return (
+                <div className="flex grow justify-center">
+                  <Spinner />
+                </div>
+              );
+            }
+
             if (!displayedTab) {
               return (
                 <div className="text-center">
