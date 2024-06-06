@@ -83,11 +83,14 @@ Workspace.init(
       allowNull: true,
       validate: {
         isProviderValid(value: string[] | null) {
-          if (value && !value.every(val => modelProviderEnumValues.includes(val))) {
+          if (
+            value &&
+            !value.every((val) => modelProviderEnumValues.includes(val))
+          ) {
             throw new Error("Invalid provider in whiteListedProviders");
           }
-        }
-      }
+        },
+      },
     },
     defaultEmbeddingProvider: {
       type: DataTypes.STRING,
@@ -98,9 +101,9 @@ Workspace.init(
           if (!modelProviderEnumValues.includes(value)) {
             throw new Error("Invalid provider for defaultEmbeddingProvider");
           }
-        }
-      }
-    }
+        },
+      },
+    },
   },
   {
     modelName: "workspace",
