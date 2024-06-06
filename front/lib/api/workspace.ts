@@ -107,7 +107,7 @@ export async function setInternalWorkspaceSegmentation(
     name: workspace.name,
     role: "none",
     segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders || null,
+    whiteListedProviders: workspace.whiteListedProviders,
     defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
   };
 }
