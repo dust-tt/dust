@@ -87,8 +87,6 @@ export function ProviderManagementModal({
         <ContextItem.List>
           {MODEL_PROVIDER_IDS.map((provider) => {
             const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
-            LogoComponent.defaultProps = { className: "h-8 w-8" };
-
             const providerModels = SUPPORTED_MODEL_CONFIGS.filter(
               (config) => config.providerId === provider
             );
