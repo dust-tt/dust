@@ -3,7 +3,7 @@ import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import _ from "lodash";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
 
@@ -53,12 +53,15 @@ export function ProviderManagementModal({
   );
   const allToggleEnabled = Object.values(providerStates).every(Boolean);
 
-  const handleToggleChange = (provider: ModelProviderIdType) => {
-    setProviderStates((prevStates) => ({
-      ...prevStates,
-      [provider]: !prevStates[provider],
-    }));
-  };
+  const handleToggleChange = useCallback(
+    (provider: ModelProviderIdType) => {
+      setProviderStates((prevStates) => ({
+        ...prevStates,
+        [provider]: !prevStates[provider],
+      }));
+    },
+    [setProviderStates]
+  );
   return (
     <Modal
       isOpen={showProviderModal}
