@@ -118,7 +118,6 @@ export default function AssistantNew({
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
   const {
@@ -156,6 +155,10 @@ export default function AssistantNew({
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
+
+  const [selectedTab, setSelectedTab] = useState<TabId>(
+    visibleTabs.find((tab) => tab.id === DEFAULT_TAB)?.id || visibleTabs[0].id
+  );
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
