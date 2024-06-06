@@ -166,7 +166,7 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
-    // Run incremental sync for "userland" (aka non shared drives)
+    // Run incremental sync for "userland" (aka non shared drives, non "my drive").
     let nextPageToken: undefined | string = undefined;
     do {
       nextPageToken = await incrementalSync(

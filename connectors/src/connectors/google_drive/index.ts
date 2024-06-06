@@ -449,6 +449,8 @@ export async function retrieveGoogleDriveConnectorPermissions({
           };
         })
       );
+      // Adding a fake "Shared with me" node, to allow the user to their shared files
+      // that are not living in a shared drive.
       nodes.push({
         provider: c.type,
         internalId: "sharedWithMe",
@@ -474,7 +476,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
       let nextPageToken: string | undefined = undefined;
       let remoteFolders: drive_v3.Schema$File[] = [];
       // Depending on the view the user is requesting, the way of querying changes.
-      // For example, the "Shared with me" view requires to look for folders
+      // The "Shared with me" view requires to look for folders
       // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
       let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
       if (parentInternalId === "sharedWithMe") {
