@@ -1,17 +1,4 @@
-import {
-  Button,
-  HeartAltIcon,
-  Page,
-  PlanetIcon,
-  PlusIcon,
-  RobotIcon,
-  RocketIcon,
-  Searchbar,
-  Tab,
-  Tooltip,
-  UserGroupIcon,
-  UserIcon,
-} from "@dust-tt/sparkle";
+import { Button, HeartAltIcon, Page } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   MentionType,
@@ -20,20 +7,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantList } from "@app/components/assistant/AssistantList";
+import { AssistantBrowser } from "@app/components/assistant/AssistantList";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -49,7 +28,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import { classNames, subFilter } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -93,25 +72,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
-const ALL_AGENTS_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
-  { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "Company", icon: PlanetIcon, id: "workspace" },
-  { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: UserIcon, id: "personal" },
-  { label: "All", icon: RobotIcon, id: "all" },
-] as const;
-
-type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
-
 export default function AssistantNew({
   owner,
   subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-
-  const [assistantSearch, setAssistantSearch] = useState<string>("");
 
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -141,57 +107,9 @@ export default function AssistantNew({
     includes: ["authors"],
   });
 
-  const agentsByTab = useMemo(() => {
-    const displayedAgentConfigurations = isAgentConfigurationsWithAuthorsLoading
-      ? initialAgentConfigurations
-      : agentConfigurationsWithAuthors;
-
-    const filteredAgents: LightAgentConfigurationType[] =
-      displayedAgentConfigurations.filter(
-        (a) =>
-          a.status === "active" &&
-          // Filters on search query
-          (assistantSearch.trim() === "" ||
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
-      );
-
-    return {
-      // do not show the "all" tab while still loading all agents
-      all: isAgentConfigurationsWithAuthorsLoading ? [] : filteredAgents,
-      published: filteredAgents.filter((a) => a.scope === "published"),
-      workspace: filteredAgents.filter((a) => a.scope === "workspace"),
-      personal: filteredAgents.filter((a) => a.scope === "private"),
-      // TODO: Implement most popular agents (upcoming PR for issue #5454)
-      most_popular: filteredAgents
-        .filter((a) => a.usage && a.usage.messageCount > 0)
-        .sort(
-          (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
-        )
-        .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
-    };
-  }, [
-    initialAgentConfigurations,
-    assistantSearch,
-    isAgentConfigurationsWithAuthorsLoading,
-    agentConfigurationsWithAuthors,
-  ]);
-
-  const visibleTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
-  }, [agentsByTab]);
-
-  const [selectedTab, setSelectedTab] = useState<TabId | null>(
-    visibleTabs[0]?.id || null
-  );
-
-  const displayedTab =
-    assistantSearch.trim() !== "" // If search is active, show all agents
-      ? "all"
-      : visibleTabs.find((tab) => tab.id === selectedTab)
-      ? selectedTab
-      : visibleTabs.length > 0
-      ? visibleTabs[0].id
-      : null;
+  const displayedAgentConfigurations = isAgentConfigurationsWithAuthorsLoading
+    ? initialAgentConfigurations
+    : agentConfigurationsWithAuthors;
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
@@ -361,7 +279,7 @@ export default function AssistantNew({
           </div>
         </div>
 
-        {/* Assistants */}
+        {/* Assistants browse section */}
         <div
           id="assistants-lists-container"
           className={classNames(
@@ -372,62 +290,18 @@ export default function AssistantNew({
           <div id="assistants-list-header" className="px-4">
             <Page.SectionHeader title="Chat with..." />
           </div>
-
-          {/* Search bar */}
-          <div
-            id="search-container"
-            className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
-          >
-            <Searchbar
-              name="search"
-              size="sm"
-              placeholder="Search (Name)"
-              value={assistantSearch}
-              onChange={setAssistantSearch}
-            />
-            <Button.List>
-              <Tooltip label="Create your own assistant">
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create An Assistant"
-                    size="sm"
-                  />
-                </Link>
-              </Tooltip>
-            </Button.List>
-          </div>
-
-          {/* Assistant tabs */}
-          <div className="flex flex-row space-x-4 px-4">
-            <Tab
-              className="grow"
-              tabs={visibleTabs.map((tab) => ({
-                ...tab,
-                current: tab.id === displayedTab,
-              }))}
-              setCurrentTab={setSelectedTab}
-            />
-          </div>
-          {(() => {
-            if (!displayedTab) {
-              return (
-                <div className="text-center">
-                  No assistants found. Try adjusting your search criteria.
-                </div>
-              );
+          <AssistantBrowser
+            owner={owner}
+            agents={displayedAgentConfigurations}
+            loadingStatus={
+              isInitialAgentConfigurationsLoading
+                ? "loading"
+                : isAgentConfigurationsWithAuthorsLoading
+                ? "partial"
+                : "finished"
             }
-
-            return (
-              <AssistantList
-                agents={agentsByTab[displayedTab]}
-                handleAssistantClick={handleAssistantClick}
-              />
-            );
-          })()}
+            handleAssistantClick={handleAssistantClick}
+          />
         </div>
       </div>
 
