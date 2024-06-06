@@ -23,7 +23,15 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  use,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantList } from "@app/components/assistant/AssistantList";
@@ -43,6 +51,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames, sleep, subFilter } from "@app/lib/utils";
+import { set } from "lodash";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -89,10 +98,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 const ALL_AGENTS_TABS = [
   // ordering here is used to determine the default tab
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
+  { label: "All", icon: RobotIcon, id: "all" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
-  { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
@@ -111,6 +120,8 @@ export default function AssistantNew({
 
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
+
+  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
   // fast loading of a few company assistants so we can show them immediately
   const { agentConfigurations, isAgentConfigurationsLoading } =
@@ -248,25 +259,37 @@ export default function AssistantNew({
   }, [user]);
 
   const handleAssistantClick = useCallback(
+    // on click, scroll to the input bar and set the selected assistant
     async (agent: LightAgentConfigurationType) => {
-      // scroll to inputbar title
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
       );
 
-      if (scrollContainerElement) {
-        scrollContainerElement.scrollIntoView({ behavior: "smooth" });
-        const waitScrollDelay =
-          -scrollContainerElement?.getBoundingClientRect().top * 0.5 + 200;
-        // wait for end of scroll
-        await sleep(waitScrollDelay);
+      if (!scrollContainerElement) {
+        console.log("Unexpected: scrollContainerElement not found");
+        return;
+      }
+      const scrollDistance = scrollContainerElement.getBoundingClientRect().top;
+
+      // If the input bar is already in view (with a small margin of error), set the mention directly
+      if (-2 < scrollDistance) {
+        setInputbarMention(agent);
+        return;
       }
 
+      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer)
+      scrollContainerElement.scrollIntoView({ behavior: "smooth" });
+
+      assistantToMention.current = agent;
+    },
+    []
+  );
+
+  const setInputbarMention = useCallback(
+    (agent: LightAgentConfigurationType) => {
       setSelectedAssistant({
         configurationId: agent.sId,
       });
-
-      // animate input bar
       setAnimate(true);
     },
     [setSelectedAssistant, setAnimate]
@@ -277,6 +300,25 @@ export default function AssistantNew({
       setTimeout(() => setAnimate(false), 500);
     }
   });
+
+  useEffect(() => {
+    const scrollContainerElement = document.getElementById(
+      "assistant-input-header"
+    );
+    if (scrollContainerElement) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          console.log("Intersection entries", entries);
+          if (assistantToMention.current) {
+            setInputbarMention(assistantToMention.current);
+            assistantToMention.current = null;
+          }
+        },
+        { threshold: 0.8 }
+      );
+      observer.observe(scrollContainerElement);
+    }
+  }, [setAnimate]);
 
   return (
     <>
