@@ -9,6 +9,7 @@ import type {
   RetrievalDocumentType,
 } from "@dust-tt/types";
 
+import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 
@@ -17,40 +18,32 @@ export function RetrievalActionDetails({
   defaultOpen,
 }: ActionDetailsComponentBaseProps<RetrievalActionType>) {
   return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <Collapsible.Button>
-        <div className="flex flex-row items-center gap-x-2">
-          <Icon className="text-brand" size="xs" visual={MagnifyingGlassIcon} />
-          <span className="text-sm font-bold text-element-900">
-            Search data
-          </span>
-        </div>
-      </Collapsible.Button>
-      <Collapsible.Panel>
-        <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
-          <div>
-            <span className="text-sm font-bold text-slate-900">Query</span>
-            <div className="text-sm font-normal text-slate-500">
-              {makeQueryDescription(action)}
-            </div>
-          </div>
-          <div>
-            <Collapsible defaultOpen={defaultOpen}>
-              <Collapsible.Button>
-                <span className="text-sm font-bold text-slate-900">
-                  Results
-                </span>
-              </Collapsible.Button>
-              <Collapsible.Panel>
-                <RetrievedDocumentsGrid
-                  documents={action.documents ?? undefined}
-                />
-              </Collapsible.Panel>
-            </Collapsible>
+    <ActionDetailsWrapper
+      actionName="Search data"
+      defaultOpen={defaultOpen}
+      visual={MagnifyingGlassIcon}
+    >
+      <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
+        <div>
+          <span className="text-sm font-bold text-slate-900">Query</span>
+          <div className="text-sm font-normal text-slate-500">
+            {makeQueryDescription(action)}
           </div>
         </div>
-      </Collapsible.Panel>
-    </Collapsible>
+        <div>
+          <Collapsible defaultOpen={defaultOpen}>
+            <Collapsible.Button>
+              <span className="text-sm font-bold text-slate-900">Results</span>
+            </Collapsible.Button>
+            <Collapsible.Panel>
+              <RetrievedDocumentsGrid
+                documents={action.documents ?? undefined}
+              />
+            </Collapsible.Panel>
+          </Collapsible>
+        </div>
+      </div>
+    </ActionDetailsWrapper>
   );
 }
 
