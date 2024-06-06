@@ -391,6 +391,7 @@ impl LLM for CohereLLM {
                 logprobs: None,
                 top_logprobs: None,
             },
+            usage: None,
         })
     }
 
