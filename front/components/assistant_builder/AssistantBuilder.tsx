@@ -28,7 +28,7 @@ import {
   assertNever,
   getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -236,7 +236,7 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
-              : GPT_4O_MODEL_CONFIG,
+              : GPT_4_TURBO_MODEL_CONFIG,
           },
         }
   );
