@@ -297,6 +297,10 @@ impl FromStr for AnthropicToolChoice {
                 r#type: AnthropicToolChoiceType::Auto,
                 name: None,
             }),
+            "any" => Ok(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Any,
+                name: None,
+            }),
             "none" => Err(ParseError::with_message(
                 "function_call option `none` is not supported by Antrhopic",
             )),
