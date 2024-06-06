@@ -652,7 +652,6 @@ function ActionEditor({
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
 
-  const shouldDisplayActionDescription = action.type !== "DUST_APP_RUN";
   const shouldDisplayAdvancedSettings = action.type !== "DUST_APP_RUN";
 
   return (
@@ -712,7 +711,7 @@ function ActionEditor({
           />
         </>
       </ActionModeSection>
-      {shouldDisplayActionDescription && (
+      {shouldDisplayAdvancedSettings && (
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
