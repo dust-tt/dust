@@ -48,6 +48,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import {
   batchRenderAgentMessages,
   batchRenderContentFragment,
@@ -75,7 +76,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { generateModelSId } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import { renderConversationForModelMultiActions } from "./generation";
 
 /**
  * Conversation Creation, update and deletion
