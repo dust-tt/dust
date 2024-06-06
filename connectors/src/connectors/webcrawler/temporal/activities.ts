@@ -36,7 +36,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
-const CONCURRENCY = 4;
+const CONCURRENCY = 1;
 
 export async function markAsCrawled(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
