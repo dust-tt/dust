@@ -7,7 +7,6 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -34,7 +33,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
+import { ConversationActions } from "@app/components/assistant/conversation/actions/ConversationActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -370,24 +369,6 @@ export function AgentMessage({
     agentMessageToRender.sId,
   ]);
 
-  function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
-    const router = useRouter();
-    const href = {
-      pathname: router.pathname,
-      query: { ...router.query, assistantDetails: assistant.sId },
-    };
-
-    return (
-      <Link
-        href={href}
-        shallow
-        className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
-      >
-        @{assistant.name}
-      </Link>
-    );
-  }
-
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   return (
@@ -447,27 +428,15 @@ export function AgentMessage({
       );
     }
 
-    if (
-      agentMessage.status === "created" &&
-      !agentMessage.actions.length &&
-      (!agentMessage.content || agentMessage.content === "")
-    ) {
-      return (
-        <div>
-          <div className="pb-2 text-xs font-bold text-element-600">
-            I'm thinking...
-          </div>
-          <Spinner size="sm" />
-        </div>
-      );
-    }
-
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
     return (
-      <>
-        {agentMessage.actions.map((action) => (
-          <AgentAction action={action} key={`action-${action.id}`} />
-        ))}
+      <div className="flex flex-col gap-y-4">
+        <ConversationActions
+          actions={agentMessage.actions}
+          agentMessageContent={agentMessage.content}
+          isStreaming={streaming}
+          size={size}
+        />
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (
@@ -502,7 +471,7 @@ export function AgentMessage({
             className="mt-4"
           />
         )}
-      </>
+      </div>
     );
   }
 
@@ -519,6 +488,24 @@ export function AgentMessage({
     );
     setIsRetryHandlerProcessing(false);
   }
+}
+
+function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
+  const router = useRouter();
+  const href = {
+    pathname: router.pathname,
+    query: { ...router.query, assistantDetails: assistant.sId },
+  };
+
+  return (
+    <Link
+      href={href}
+      shallow
+      className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+    >
+      @{assistant.name}
+    </Link>
+  );
 }
 
 function Citations({
