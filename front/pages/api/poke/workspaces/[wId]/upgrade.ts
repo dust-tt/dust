@@ -52,6 +52,8 @@ async function handler(
           name: owner.name,
           role: "admin",
           segmentation: owner.segmentation || null,
+          whiteListedProviders: owner.whiteListedProviders,
+          defaultEmbeddingProvider: owner.defaultEmbeddingProvider,
         },
       });
 
