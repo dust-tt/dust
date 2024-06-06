@@ -48,7 +48,7 @@ import config from "@app/lib/api/config";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
+import { useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
 
@@ -96,13 +96,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 const ALL_AGENTS_TABS = [
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "All", icon: RobotIcon, id: "all" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
+  { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
-const DEFAULT_TAB = "most_popular";
+const DEFAULT_TAB = "workspace";
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
@@ -121,14 +121,12 @@ export default function AssistantNew({
   const [selectedTab, setSelectedTab] = useState<TabId>(DEFAULT_TAB);
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
-
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
-      includes: ["authors", "usage"],
-    });
+  const {
+    setAnimate,
+    setSelectedAssistant,
+    inputBarAssistants: agentConfigurations,
+    inputBarAssistantsLoading: isAgentConfigurationsLoading,
+  } = useContext(InputBarContext);
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] =
@@ -145,12 +143,13 @@ export default function AssistantNew({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
+      // TODO: Implement most popular agents (upcoming PR for issue #5454)
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
           (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
         )
-        .slice(0, 9),
+        .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
   }, [agentConfigurations, assistantSearch]);
 
