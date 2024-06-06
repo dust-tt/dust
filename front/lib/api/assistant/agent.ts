@@ -306,7 +306,18 @@ export async function* runMultiActionsAgent(
   });
 
   if (modelConversationRes.isErr()) {
-    return modelConversationRes;
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "conversation_render_error",
+        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+      },
+    } satisfies AgentErrorEvent;
+
+    return;
   }
 
   const specifications: AgentActionSpecification[] = [];
@@ -341,6 +352,7 @@ export async function* runMultiActionsAgent(
             message: `Action ${a.sId} is missing a name`,
           },
         } satisfies AgentErrorEvent;
+
         return;
       }
 
@@ -348,7 +360,18 @@ export async function* runMultiActionsAgent(
       const legacySpecRes =
         await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
       if (legacySpecRes.isErr()) {
-        return legacySpecRes;
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_legacy_spec_error",
+            message: `Failed to build the legacy specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
       }
 
       const specRes = await runner.buildSpecification(auth, {
@@ -357,8 +380,20 @@ export async function* runMultiActionsAgent(
       });
 
       if (specRes.isErr()) {
-        return specRes;
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_spec_error",
+            message: `Failed to build the specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
       }
+
       const spec = specRes.value;
       if (!a.name) {
         spec.name = legacySpecRes.value.name;
@@ -407,6 +442,7 @@ export async function* runMultiActionsAgent(
         message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
       },
     } satisfies AgentErrorEvent;
+
     return;
   }
 
