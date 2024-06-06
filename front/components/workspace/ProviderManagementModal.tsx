@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
 
-interface ModelSelectionModalProps {
+interface ModelManagementModalProps {
   owner: WorkspaceType;
   showProviderModal: boolean;
   onClose: () => void;
@@ -23,12 +23,12 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
 };
 
 // TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
-export function ProviderSelectionModal({
+export function ProviderManagementModal({
   owner,
   showProviderModal,
   onClose,
   onSave,
-}: ModelSelectionModalProps) {
+}: ModelManagementModalProps) {
   const enabledProviders: ModelProviderIdType[] =
     owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
   const initialProviderStates: ProviderStates = enabledProviders.reduce(
