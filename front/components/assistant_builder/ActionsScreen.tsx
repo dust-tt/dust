@@ -517,6 +517,9 @@ function ActionConfigEditor({
   instructions,
   updateAction,
   setEdited,
+  description,
+  onDescriptionChange,
+  isDescriptionValid,
 }: {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
@@ -531,6 +534,9 @@ function ActionConfigEditor({
     ) => AssistantBuilderActionConfiguration["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
+  description: string;
+  onDescriptionChange: (v: string) => void;
+  isDescriptionValid: boolean;
 }) {
   switch (action.type) {
     case "DUST_APP_RUN":
@@ -593,6 +599,9 @@ function ActionConfigEditor({
             });
           }}
           setEdited={setEdited}
+          description={description}
+          onDescriptionChange={onDescriptionChange}
+          isDescriptionValid={isDescriptionValid}
         />
       );
     case "TABLES_QUERY":
@@ -653,6 +662,9 @@ function ActionEditor({
   ].includes(action.type as any);
 
   const shouldDisplayAdvancedSettings = action.type !== "DUST_APP_RUN";
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+    action.type
+  );
 
   return (
     <>
@@ -708,10 +720,19 @@ function ActionEditor({
             instructions={builderState.instructions}
             updateAction={updateAction}
             setEdited={setEdited}
+            description={action.description}
+            onDescriptionChange={(v) => {
+              updateAction({
+                actionName: action.name,
+                actionDescription: v,
+                getNewActionConfig: (old) => old,
+              });
+            }}
+            isDescriptionValid={descriptionValid}
           />
         </>
       </ActionModeSection>
-      {shouldDisplayAdvancedSettings && (
+      {shouldDisplayDescription && (
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
@@ -732,7 +753,7 @@ function ActionEditor({
             placeholder={
               isDataSourceAction
                 ? "This data contains...."
-                : "My action description.."
+                : "Action description.."
             }
             value={action.description}
             onChange={(v) => {

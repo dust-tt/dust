@@ -225,8 +225,8 @@ export function getDefaultProcessActionConfiguration() {
       tagsFilter: null,
       schema: [],
     } as AssistantBuilderProcessConfiguration,
-    name: "process_data",
-    description: "Process data.",
+    name: "extract_data",
+    description: "Extract data.",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
