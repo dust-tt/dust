@@ -449,6 +449,19 @@ export async function retrieveGoogleDriveConnectorPermissions({
           };
         })
       );
+      nodes.push({
+        provider: c.type,
+        internalId: "sharedWithMe",
+        parentInternalId: null,
+        type: "folder" as const,
+        preventSelection: true,
+        title: "Shared with me",
+        sourceUrl: null,
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+        expandable: true,
+        permission: "none",
+      });
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -460,6 +473,15 @@ export async function retrieveGoogleDriveConnectorPermissions({
       const drive = await getDriveClient(authCredentials);
       let nextPageToken: string | undefined = undefined;
       let remoteFolders: drive_v3.Schema$File[] = [];
+      // Depending on the view the user is requesting, the way of querying changes.
+      // For example, the "Shared with me" view requires to look for folders
+      // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
+      let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
+      if (parentInternalId === "sharedWithMe") {
+        gdriveQuery += ` and sharedWithMe=true`;
+      } else {
+        gdriveQuery += ` and '${parentInternalId}' in parents`;
+      }
       do {
         const res: GaxiosResponse<drive_v3.Schema$FileList> =
           await drive.files.list({
@@ -470,7 +492,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(
               ", "
             )})`,
-            q: `'${parentInternalId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+            q: gdriveQuery,
             pageToken: nextPageToken,
           });
 

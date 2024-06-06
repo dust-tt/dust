@@ -166,6 +166,18 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
+    // Run incremental sync for "userland" (aka non shared drives)
+    let nextPageToken: undefined | string = undefined;
+    do {
+      nextPageToken = await incrementalSync(
+        connectorId,
+        dataSourceConfig,
+        null,
+        false,
+        startSyncTs,
+        nextPageToken
+      );
+    } while (nextPageToken);
     const shouldGc = await shouldGarbageCollect(connectorId);
     if (shouldGc) {
       await executeChild(googleDriveGarbageCollectorWorkflow, {

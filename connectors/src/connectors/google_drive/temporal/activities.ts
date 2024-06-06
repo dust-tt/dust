@@ -9,7 +9,10 @@ import PQueue from "p-queue";
 import { literal, Op } from "sequelize";
 
 import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
-import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
+import {
+  GOOGLE_DRIVE_USER_LAND_DRIVE_ID,
+  GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS,
+} from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -312,7 +315,7 @@ export async function objectIsInFolderSelection(
 export async function incrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig,
-  driveId: string,
+  driveId: string | null,
   isSharedDrive: boolean,
   startSyncTs: number,
   nextPageToken?: string
@@ -354,8 +357,10 @@ export async function incrementalSync(
       pageToken: nextPageToken,
       pageSize: 100,
       fields: "*",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     };
-    if (isSharedDrive) {
+    if (isSharedDrive && driveId) {
       opts = {
         ...opts,
         driveId: driveId,
@@ -464,7 +469,7 @@ export async function incrementalSync(
     if (changesRes.data.newStartPageToken) {
       await GoogleDriveSyncToken.upsert({
         connectorId: connectorId,
-        driveId: driveId,
+        driveId: driveId ?? GOOGLE_DRIVE_USER_LAND_DRIVE_ID,
         syncToken: changesRes.data.newStartPageToken,
       });
     }
@@ -487,7 +492,7 @@ export async function incrementalSync(
 
 export async function getSyncPageToken(
   connectorId: ModelId,
-  driveId: string,
+  driveId: string | null,
   isSharedDrive: boolean
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -497,7 +502,7 @@ export async function getSyncPageToken(
   const last = await GoogleDriveSyncToken.findOne({
     where: {
       connectorId: connectorId,
-      driveId: driveId,
+      driveId: driveId ?? GOOGLE_DRIVE_USER_LAND_DRIVE_ID,
     },
   });
   if (last) {
@@ -506,8 +511,10 @@ export async function getSyncPageToken(
   const driveClient = await getDriveClient(connector.connectionId);
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
-    let opts = {};
-    if (isSharedDrive) {
+    let opts: { supportsAllDrives: boolean; driveId?: string } = {
+      supportsAllDrives: true,
+    };
+    if (isSharedDrive && driveId) {
       opts = {
         driveId: driveId,
         supportsAllDrives: true,
@@ -806,6 +813,13 @@ export async function populateSyncTokens(connectorId: ModelId) {
       syncToken: lastSyncToken,
     });
   }
+
+  const userLandSyncToken = await getSyncPageToken(connectorId, null, false);
+  await GoogleDriveSyncToken.upsert({
+    connectorId,
+    driveId: GOOGLE_DRIVE_USER_LAND_DRIVE_ID,
+    syncToken: userLandSyncToken,
+  });
 }
 
 export async function garbageCollectorFinished(connectorId: ModelId) {
