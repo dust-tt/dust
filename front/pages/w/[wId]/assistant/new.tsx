@@ -94,12 +94,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 const ALL_AGENTS_TABS = [
-  // ordering here is used to determine the default tab
+  // default shown tab = earliest in this list with non-empty agents
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "All", icon: RobotIcon, id: "all" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
+  { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
@@ -122,12 +122,14 @@ export default function AssistantNew({
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
   // fast loading of a few company assistants so we can show them immediately
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "workspace",
-      limit: 24,
-    });
+  const {
+    agentConfigurations: initialAgentConfigurations,
+    isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "workspace",
+    limit: 24,
+  });
 
   // we load all assistants with authors in the background
   const {
@@ -141,8 +143,9 @@ export default function AssistantNew({
 
   const agentsByTab = useMemo(() => {
     const displayedAgentConfigurations = isAgentConfigurationsWithAuthorsLoading
-      ? agentConfigurations
+      ? initialAgentConfigurations
       : agentConfigurationsWithAuthors;
+
     const filteredAgents: LightAgentConfigurationType[] =
       displayedAgentConfigurations.filter(
         (a) =>
@@ -153,7 +156,8 @@ export default function AssistantNew({
       );
 
     return {
-      all: filteredAgents,
+      // do not show the "all" tab while still loading all agents
+      all: isAgentConfigurationsWithAuthorsLoading ? [] : filteredAgents,
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
@@ -166,7 +170,7 @@ export default function AssistantNew({
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
   }, [
-    agentConfigurations,
+    initialAgentConfigurations,
     assistantSearch,
     isAgentConfigurationsWithAuthorsLoading,
     agentConfigurationsWithAuthors,
@@ -362,7 +366,7 @@ export default function AssistantNew({
           id="assistants-lists-container"
           className={classNames(
             "duration-400 flex h-full w-full flex-col gap-3 pt-9 transition-opacity",
-            isAgentConfigurationsLoading ? "opacity-0" : "opacity-100"
+            isInitialAgentConfigurationsLoading ? "opacity-0" : "opacity-100"
           )}
         >
           <div id="assistants-list-header" className="px-4">
