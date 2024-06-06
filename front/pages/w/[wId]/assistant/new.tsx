@@ -41,7 +41,7 @@ import config from "@app/lib/api/config";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useUserMetadata } from "@app/lib/swr";
+import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { subFilter } from "@app/lib/utils";
 
@@ -109,12 +109,15 @@ export default function AssistantNew({
 
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
-  const {
-    setAnimate,
-    setSelectedAssistant,
-    inputBarAssistants: agentConfigurations,
-    inputBarAssistantsLoading: isAgentConfigurationsLoading,
-  } = useContext(InputBarContext);
+
+  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
+
+  // same fetch as the one in the input bar
+  const { agentConfigurations, isAgentConfigurationsLoading } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "assistants-search",
+    });
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] =

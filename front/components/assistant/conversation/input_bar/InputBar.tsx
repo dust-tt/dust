@@ -78,13 +78,11 @@ export function AssistantInputBar({
     { title: string; content: string; file: File }[]
   >([]);
 
-  const {
-    agentConfigurations: baseAgentConfigurations,
-    isAgentConfigurationsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "assistants-search",
-  });
+  const { agentConfigurations: baseAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "assistants-search",
+    });
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -101,23 +99,7 @@ export function AssistantInputBar({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const {
-    animate,
-    selectedAssistant,
-    setInputBarAssistants,
-    setInputBarAssistantsLoading,
-  } = useContext(InputBarContext);
-
-  useEffect(() => {
-    setInputBarAssistantsLoading(isAgentConfigurationsLoading);
-    setInputBarAssistants(agentConfigurations);
-  }, [
-    agentConfigurations,
-    isAgentConfigurationsLoading,
-    setInputBarAssistants,
-    setInputBarAssistantsLoading,
-  ]);
-
+  const { animate, selectedAssistant } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isProcessingContentFragment, setIsProcessingContentFragment] =
     useState(false);
