@@ -112,17 +112,29 @@ export default function AssistantNew({
 
   const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
 
-  // same fetch as the one in the input bar
+  // same fetch as the one in the input bar, pretty quick
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView: "assistants-search",
-      includes: ["authors"],
     });
 
+  // we load authors in the background
+  const {
+    agentConfigurations: agentConfigurationsWithAuthors,
+    isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "assistants-search",
+    includes: ["authors"],
+  });
+
   const agentsByTab = useMemo(() => {
+    const displayedAgentConfigurations = isAgentConfigurationsWithAuthorsLoading
+      ? agentConfigurations
+      : agentConfigurationsWithAuthors;
     const filteredAgents: LightAgentConfigurationType[] =
-      agentConfigurations.filter(
+      displayedAgentConfigurations.filter(
         (a) =>
           a.status === "active" &&
           // Filters on search query
@@ -143,7 +155,12 @@ export default function AssistantNew({
         )
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
-  }, [agentConfigurations, assistantSearch]);
+  }, [
+    agentConfigurations,
+    assistantSearch,
+    isAgentConfigurationsWithAuthorsLoading,
+    agentConfigurationsWithAuthors,
+  ]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
