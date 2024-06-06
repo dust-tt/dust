@@ -95,14 +95,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 const ALL_AGENTS_TABS = [
+  // ordering here is used to determine the default tab
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
-
-const DEFAULT_TAB = "workspace";
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
@@ -114,7 +113,7 @@ export default function AssistantNew({
   const router = useRouter();
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const [contentMinHeight, setContentMinHeight] = useState(0);
+  //const [contentMinHeight, setContentMinHeight] = useState(0);
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
@@ -156,9 +155,15 @@ export default function AssistantNew({
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
 
-  const [selectedTab, setSelectedTab] = useState<TabId>(
-    visibleTabs.find((tab) => tab.id === DEFAULT_TAB)?.id || visibleTabs[0].id
+  const [selectedTab, setSelectedTab] = useState<TabId | null>(
+    visibleTabs[0]?.id || null
   );
+
+  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
+    ? selectedTab
+    : visibleTabs.length > 0
+    ? visibleTabs[0].id
+    : null;
 
   const { submit: handleMessageSubmit } = useSubmitFunction(
     useCallback(
@@ -258,11 +263,11 @@ export default function AssistantNew({
     [setSelectedAssistant, setAnimate]
   );
 
-  useEffect(() => {
+  /*useEffect(() => {
     if (contentRef.current) {
       setContentMinHeight(contentRef.current.offsetHeight);
     }
-  }, [selectedTab]);
+  }, [selectedTab]);*/
 
   return (
     <>
@@ -307,8 +312,7 @@ export default function AssistantNew({
         {/* Assistants */}
         <div
           id="assistants-lists-container"
-          ref={contentRef}
-          style={{ minHeight: `${contentMinHeight}px` }}
+          ref={contentRef /*style={{ minHeight: `${contentMinHeight}px` }}*/}
           className="flex h-full w-full flex-col gap-3 pt-9"
         >
           <div id="assistants-list-header" className="px-4">
@@ -352,7 +356,7 @@ export default function AssistantNew({
               className="grow"
               tabs={visibleTabs.map((tab) => ({
                 ...tab,
-                current: tab.id === selectedTab,
+                current: tab.id === displayedTab,
               }))}
               setCurrentTab={setSelectedTab}
             />
@@ -366,7 +370,7 @@ export default function AssistantNew({
               );
             }
 
-            if (visibleTabs.length === 0) {
+            if (!displayedTab) {
               return (
                 <div className="text-center">
                   No assistants found. Try adjusting your search criteria.
@@ -376,7 +380,7 @@ export default function AssistantNew({
 
             return (
               <AssistantList
-                agents={agentsByTab[selectedTab]}
+                agents={agentsByTab[displayedTab]}
                 handleAssistantClick={handleAssistantClick}
               />
             );
