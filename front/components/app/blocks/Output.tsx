@@ -486,7 +486,7 @@ export default function Output({
           </div>
           {expandedResult ? (
             <>
-              <hr className="my-1" />
+              <div className="my-0.5" />
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
