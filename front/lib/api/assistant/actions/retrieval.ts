@@ -136,6 +136,7 @@ export class RetrievalAction extends BaseAction {
   readonly functionCallName: string | null;
   readonly documents: RetrievalDocumentType[] | null;
   readonly step: number;
+  readonly type = "retrieval_action";
 
   constructor(blob: RetrievalActionBlob) {
     super(blob.id, "retrieval_action");

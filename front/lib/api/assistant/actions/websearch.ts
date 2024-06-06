@@ -45,6 +45,7 @@ export class WebsearchAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "websearch_action";
 
   constructor(blob: WebsearchActionBlob) {
     super(blob.id, "websearch_action");
