@@ -108,7 +108,6 @@ pub enum OpenAIToolControl {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
-
 pub enum OpenAIToolChoice {
     OpenAIToolControl(OpenAIToolControl),
     OpenAIFunctionCall(OpenAIFunctionCall),
