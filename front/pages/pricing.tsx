@@ -10,7 +10,7 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import { PricePlans } from "@app/components/PlansTables";
+import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
 import { getSession } from "@app/lib/auth";

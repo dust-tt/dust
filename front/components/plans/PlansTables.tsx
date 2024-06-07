@@ -1,5 +1,5 @@
 import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
+import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
@@ -7,7 +7,8 @@ import React, { useState } from "react";
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import {
   getPriceWithCurrency,
-  PRO_PLAN_29_COST,
+  PRO_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
@@ -24,7 +25,7 @@ interface PricePlanProps {
   display: PriceTableDisplay;
 }
 
-type PriceTableDisplay = "landing" | "subscribe";
+export type PriceTableDisplay = "landing" | "subscribe";
 
 type PriceTableItem = {
   label: ReactNode;
@@ -111,12 +112,14 @@ export function ProPriceTable({
   onClick,
   isProcessing,
   display,
+  billingPeriod = "monthly",
 }: {
   size: "sm" | "xs";
   plan?: PlanType;
   onClick?: () => void;
   isProcessing?: boolean;
   display: PriceTableDisplay;
+  billingPeriod?: BillingPeriod;
 }) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
@@ -197,6 +200,12 @@ export function ProPriceTable({
   ];
 
   const biggerButtonSize = size === "xs" ? "sm" : "md";
+
+  const price =
+    billingPeriod === "monthly"
+      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
+      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+
   return (
     <>
       <FairUsageModal
@@ -205,7 +214,7 @@ export function ProPriceTable({
       />
       <PriceTable
         title="Pro"
-        price={getPriceWithCurrency(PRO_PLAN_29_COST)}
+        price={price}
         color="emerald"
         priceLabel="/ month / user, excl. tax"
         size={size}
@@ -317,8 +326,8 @@ export function PricePlans({
           <Tab.List
             className={classNames(
               "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "s-border-structure-300/30 s-bg-white/80",
-              "dark:s-border-structure-300-dark/30 dark:s-bg-structure-50-dark/80"
+              "border-structure-300/30 bg-white/80",
+              "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
             )}
           >
             <Tab
@@ -329,7 +338,7 @@ export function PricePlans({
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
                 )
               }
             >
@@ -343,7 +352,7 @@ export function PricePlans({
                   "ring-0 focus:outline-none",
                   selected
                     ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "dark:s-text-element-700-dark text-element-700 hover:bg-white/20 hover:text-white"
+                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
                 )
               }
             >
