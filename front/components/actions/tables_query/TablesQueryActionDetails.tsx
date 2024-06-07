@@ -113,7 +113,7 @@ function QueryTablesResults({ action }: { action: TablesQueryActionType }) {
 
   return (
     <div onClick={handleDownload}>
-      <Citation size="xs" sizing="fluid" title={title} />
+      <Citation size="xs" title={title} />
     </div>
   );
 }

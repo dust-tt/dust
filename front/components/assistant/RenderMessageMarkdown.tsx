@@ -624,13 +624,15 @@ function ParagraphBlock({ children }: { children: React.ReactNode }) {
 }
 
 export function CodeBlock({
-  inline,
-  className,
   children,
+  className,
+  inline,
+  wrapLongLines = false,
 }: {
-  inline?: boolean;
-  className?: string;
   children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+  wrapLongLines?: boolean;
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
@@ -660,6 +662,7 @@ export function CodeBlock({
 
   return !inline && language ? (
     <SyntaxHighlighter
+      wrapLongLines={wrapLongLines}
       className="rounded-md"
       style={{
         "hljs-comment": {
