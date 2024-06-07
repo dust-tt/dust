@@ -16,7 +16,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -83,11 +83,19 @@ export default function AssistantsGallery({
 
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
+  const filteredAgentConfigurations = useMemo(() => {
+    const whiteListedProviders =
+      owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+    return agentConfigurations.filter((a) =>
+      whiteListedProviders.includes(a.model.providerId)
+    );
+  }, [agentConfigurations, owner.whiteListedProviders]);
+
   let agentsToDisplay: LightAgentConfigurationType[] = [];
 
   switch (orderBy) {
     case "name": {
-      agentsToDisplay = agentConfigurations
+      agentsToDisplay = filteredAgentConfigurations
         .filter((a) => {
           return (
             subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
@@ -100,7 +108,7 @@ export default function AssistantsGallery({
       break;
     }
     case "usage": {
-      agentsToDisplay = agentConfigurations.filter((a) => {
+      agentsToDisplay = filteredAgentConfigurations.filter((a) => {
         return (
           subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()) &&
           a.status === "active"
