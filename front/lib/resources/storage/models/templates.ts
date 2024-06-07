@@ -16,6 +16,19 @@ import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
+type TemplateAction = {
+  type:
+    | "RETRIEVAL_SEARCH"
+    | "RETRIEVAL_EXHAUSTIVE"
+    | "DUST_APP_RUN"
+    | "TABLES_QUERY"
+    | "PROCESS";
+  helpContent: string | null;
+  name: string | null;
+  description: string | null;
+  configuration: Record<string, unknown>;
+};
+
 export class TemplateModel extends Model<
   InferAttributes<TemplateModel>,
   InferCreationAttributes<TemplateModel>
@@ -38,7 +51,8 @@ export class TemplateModel extends Model<
   declare presetTemperature: AssistantCreativityLevel;
   declare presetProviderId: ModelProviderIdType;
   declare presetModelId: ModelIdType;
-  declare presetAction: ActionPreset;
+  declare presetAction: ActionPreset; // @todo[daph] Remove this field once templates are migrated to multi-ations.
+  declare presetActions: TemplateAction[];
 
   declare timeFrameDuration: number | null;
   declare timeFrameUnit: TimeframeUnit | null;
@@ -110,6 +124,11 @@ TemplateModel.init(
     presetAction: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    presetActions: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: [],
     },
     timeFrameDuration: {
       type: DataTypes.INTEGER,
