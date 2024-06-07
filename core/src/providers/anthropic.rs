@@ -1619,11 +1619,11 @@ impl LLM for AnthropicLLM {
             created: utils::now(),
             provider: ProviderID::Anthropic.to_string(),
             model: self.id.clone(),
-            completions: ChatMessage::try_from(c).into_iter().collect(),
             usage: Some(LLMTokenUsage {
                 prompt_tokens: c.usage.input_tokens,
                 completion_tokens: c.usage.output_tokens,
             }),
+            completions: ChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
         })
     }

@@ -158,7 +158,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mut mistral_role = MistralChatMessageRole::try_from(&cm.role)
+        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
         Ok(MistralChatMessage {
