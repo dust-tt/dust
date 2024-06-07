@@ -34,7 +34,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
-import { MessageActions } from "@app/components/assistant/conversation/actions/MessageActions";
+import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
@@ -426,7 +426,7 @@ export function AgentMessage({
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
     return (
       <div className="flex flex-col gap-y-4">
-        <MessageActions
+        <AgentMessageActions
           actions={agentMessage.actions}
           agentMessageContent={agentMessage.content}
           size={size}

@@ -3,20 +3,20 @@ import type { AgentActionType } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
-import { MessageActionsDrawer } from "@app/components/assistant/conversation/actions/MessageActionsDrawer";
+import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 
-interface MessageActionsProps {
+interface AgentMessageActionsProps {
   actions: AgentActionType[];
   agentMessageContent: string | null;
   size?: MessageSizeType;
 }
 
-export function MessageActions({
+export function AgentMessageActions({
   actions,
   agentMessageContent,
   size = "normal",
-}: MessageActionsProps) {
+}: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
@@ -42,7 +42,7 @@ export function MessageActions({
 
   return (
     <div className="flex flex-col items-start gap-y-4">
-      <MessageActionsDrawer
+      <AgentMessageActionsDrawer
         actions={actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
