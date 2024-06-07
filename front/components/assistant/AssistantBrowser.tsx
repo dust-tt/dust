@@ -15,6 +15,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
@@ -50,10 +51,15 @@ export function AssistantBrowser({
   const router = useRouter();
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
+  const whiteListedProviders = useMemo(() => {
+    return owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  }, [owner.whiteListedProviders]);
+
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents.filter(
       (a) =>
         a.status === "active" &&
+        whiteListedProviders.includes(a.model.providerId) &&
         // Filters on search query
         (assistantSearch.trim() === "" ||
           subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
@@ -73,7 +79,7 @@ export function AssistantBrowser({
         )
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
-  }, [assistantSearch, loadingStatus, agents]);
+  }, [agents, loadingStatus, whiteListedProviders, assistantSearch]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
