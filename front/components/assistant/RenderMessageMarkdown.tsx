@@ -194,7 +194,7 @@ export function RenderMessageMarkdown({
               pre: ({ children }) => (
                 <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
               ),
-              code: CodeBlock,
+              code: CodeBlockWithExtendedSupport,
               a: LinkBlock,
               ul: UlBlock,
               ol: OlBlock,
@@ -623,6 +623,29 @@ function ParagraphBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+function CodeBlockWithExtendedSupport({
+  children,
+  className,
+  inline,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+}) {
+  const { isValidMermaid, showMermaid } = useMermaidDisplay();
+
+  const validChildrenContent = String(children).trim();
+  if (!inline && isValidMermaid && showMermaid) {
+    return <MermaidGraph chart={validChildrenContent} />;
+  }
+
+  return (
+    <CodeBlock className={className} inline={inline}>
+      {children}
+    </CodeBlock>
+  );
+}
+
 export function CodeBlock({
   children,
   className,
@@ -652,13 +675,6 @@ export function CodeBlock({
   };
 
   const languageToUse = languageOverrides[language] || language;
-  const validChildrenContent = String(children).trim();
-
-  const { isValidMermaid, showMermaid } = useMermaidDisplay();
-
-  if (!inline && isValidMermaid && showMermaid) {
-    return <MermaidGraph chart={validChildrenContent} />;
-  }
 
   return !inline && language ? (
     <SyntaxHighlighter

@@ -5,7 +5,6 @@ import { useCallback, useContext } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { MermaidDisplayProvider } from "@app/components/assistant/RenderMermaid";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
@@ -51,9 +50,9 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   }
 
   return (
-    <MermaidDisplayProvider>
-      <CodeBlock className="language-sql">{query}</CodeBlock>
-    </MermaidDisplayProvider>
+    <CodeBlock className="language-sql" wrapLongLines={true}>
+      {query}
+    </CodeBlock>
   );
 }
 
