@@ -21,6 +21,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { folderHasChildren, getDrives } from "./temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
@@ -886,6 +887,12 @@ export async function unpauseGoogleDriveConnector(connectorId: ModelId) {
   const r = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
   if (r.isErr()) {
     return r;
+  }
+  const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalSync.isErr()) {
+    return incrementalSync;
   }
   return new Ok(undefined);
 }

@@ -91,16 +91,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-  if (
-    (await rateLimiter({
-      key: `launchGoogleDriveIncrementalSyncWorkflow-${connectorId}`,
-      maxPerTimeframe: 1,
-      timeframeSeconds: GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC,
-      logger: logger,
-    })) === 0
-  ) {
-    return new Err(new RateLimitError("Rate limit exceeded"));
-  }
+
   const client = await getTemporalClient();
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -115,6 +106,8 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       },
       signal: newWebhookSignal,
       signalArgs: undefined,
+      // every minute
+      cronSchedule: "* * * * *",
       memo: {
         connectorId: connectorId,
       },

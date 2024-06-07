@@ -48,7 +48,10 @@ import {
   unpauseGoogleDriveConnector,
   updateGoogleDriveConnector,
 } from "@connectors/connectors/google_drive";
-import { launchGoogleDriveFullSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
+import {
+  launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
+} from "@connectors/connectors/google_drive/temporal/client";
 import {
   cleanupIntercomConnector,
   createIntercomConnector,
@@ -109,6 +112,7 @@ import {
   updateSlackConnector,
 } from "@connectors/connectors/slack";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client";
+import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 
 import {
@@ -162,7 +166,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
   github: stopGithubConnector,
   notion: stopNotionConnector,
   google_drive: async (connectorId: ModelId) => {
-    logger.info({ connectorId }, `Stopping Google Drive connector is a no-op.`);
+    await terminateAllWorkflowsForConnectorId(connectorId);
     return new Ok(undefined);
   },
   intercom: stopIntercomConnector,
@@ -194,7 +198,12 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
   notion: resumeNotionConnector,
   github: resumeGithubConnector,
   google_drive: async (connectorId: ModelId) => {
-    throw new Error(`Not implemented ${connectorId}`);
+    const res = await launchGoogleDriveIncrementalSyncWorkflow(connectorId);
+    if (res.isErr()) {
+      return res;
+    }
+
+    return new Ok(undefined);
   },
   intercom: resumeIntercomConnector,
   webcrawler: (connectorId: ModelId) => {
