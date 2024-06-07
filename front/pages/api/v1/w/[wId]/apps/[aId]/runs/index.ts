@@ -1,4 +1,9 @@
-import type { CredentialsType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  AppType,
+  CoreAPIError,
+  CredentialsType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import {
   credentialsFromProviders,
@@ -6,7 +11,7 @@ import {
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-
+import { createParser } from "eventsource-parser";
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
@@ -77,17 +82,95 @@ const poll = async ({
   return new Promise(executePoll);
 };
 
-function executeOnNestedObjects(obj: Array<any>, fn: (object: any) => void): any {
-  obj.forEach((o) => {
-    if (Array.isArray(o)) {
-      console.log('nest')
-      executeOnNestedObjects(o, fn);
-    } else {
-      console.log('found')
-      fn(o);
-    }
+async function pollForRunCompletion(
+  coreAPI: CoreAPI,
+  app: AppType,
+  runId: string
+) {
+  try {
+    await poll({
+      fn: async () => {
+        const run = await coreAPI.getRunStatus({
+          projectId: app.dustAPIProjectId,
+          runId,
+        });
+        if (run.isErr()) {
+          return { status: "error" };
+        }
+        const r = run.value.run;
+        return { status: r.status.run };
+      },
+      validate: (r) => {
+        if (r && r.status == "running") {
+          return false;
+        }
+        return true;
+      },
+      interval: 128,
+      increment: 32,
+      maxInterval: 1024,
+      maxAttempts: 64,
+    });
+  } catch (e) {
+    throw Error(
+      `There was an error polling the run status: runId=${runId} error=${e}`
+    );
+  }
+
+  // Finally refresh the run object.
+  const runRes = await coreAPI.getRun({
+    projectId: app.dustAPIProjectId,
+    runId,
   });
-};
+  if (runRes.isErr()) {
+    throw Error(`There was an error retrieving the run while polling.`, {
+      cause: runRes.error,
+    });
+  }
+  const run = runRes.value.run;
+  run.specification_hash = run.app_hash;
+  delete run.app_hash;
+  return run;
+}
+
+function extractUsageFromExecutions(
+  block: any,
+  executions: any,
+  usages: any[]
+) {
+  if (block) {
+    executions.forEach((executionsInner: any) => {
+      executionsInner.forEach((execution: any) => {
+        if (execution?.meta?.token_usage) {
+          const promptTokens = execution?.meta?.token_usage.prompt_tokens;
+          const completionTokens =
+            execution?.meta?.token_usage.completion_tokens;
+          usages.push({
+            providerId: block.provider_id,
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+          });
+        }
+      });
+    });
+  }
+}
+
+function storeTokenUsages(run: RunType, runId: number) {
+  const usages: any[] = [];
+  run.traces.forEach((trace: any) => {
+    const block = run.config.blocks[trace[0][1]];
+    extractUsageFromExecutions(block, trace[1], usages);
+  });
+
+  return RunUsage.bulkCreate(
+    usages.map((usage) => ({
+      runId,
+      ...usage,
+    }))
+  );
+}
 
 async function handler(
   req: NextApiRequest,
@@ -215,8 +298,32 @@ async function handler(
           Connection: "keep-alive",
         });
 
+        const usages: any[] = [];
+
         try {
+          // Intercept block_execution events to store token usages.
+          const parser = createParser((event) => {
+            if (event.type === "event") {
+              if (event.data) {
+                try {
+                  const data = JSON.parse(event.data);
+                  if (data.type === "block_execution") {
+                    const block = config[data.content.block_name];
+                    extractUsageFromExecutions(
+                      block,
+                      data.content.execution,
+                      usages
+                    );
+                  }
+                } catch (err) {
+                  logger.error({ error: err }, "Error parsing events");
+                }
+              }
+            }
+          });
+
           for await (const chunk of runRes.value.chunkStream) {
+            parser.feed(new TextDecoder().decode(chunk));
             res.write(chunk);
             // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
             res.flush();
@@ -244,12 +351,19 @@ async function handler(
           return;
         }
 
-        await Run.create({
+        const runEntity = await Run.create({
           dustRunId,
           appId: app.id,
           runType: "deploy",
           workspaceId: keyRes.value.workspaceId,
         });
+
+        await RunUsage.bulkCreate(
+          usages.map((usage) => ({
+            runId: runEntity.id,
+            ...usage,
+          }))
+        );
 
         return;
       }
@@ -291,57 +405,38 @@ async function handler(
       if (req.body.blocking) {
         const runId = run.run_id;
         try {
-          await poll({
-            fn: async () => {
-              const run = await coreAPI.getRunStatus({
-                projectId: app.dustAPIProjectId,
-                runId,
-              });
-              if (run.isErr()) {
-                return { status: "error" };
-              }
-              const r = run.value.run;
-              return { status: r.status.run };
-            },
-            validate: (r) => {
-              if (r && r.status == "running") {
-                return false;
-              }
-              return true;
-            },
-            interval: 128,
-            increment: 32,
-            maxInterval: 1024,
-            maxAttempts: 64,
-          });
+          run = await pollForRunCompletion(coreAPI, app, runId);
+          await storeTokenUsages(run, runEntity.id);
         } catch (e) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "run_error",
-              message: `There was an error polling the run status: runId=${runId} error=${e}`,
+              message:
+                e instanceof Error
+                  ? e.message
+                  : `There was an error polling the run status: runId=${runId} error=${e}`,
+              run_error:
+                e instanceof Error ? (e.cause as CoreAPIError) : undefined,
             },
           });
         }
-
-        // Finally refresh the run object.
-        const runRes = await coreAPI.getRun({
-          projectId: app.dustAPIProjectId,
-          runId,
-        });
-        if (runRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message: "There was an error retrieving the run while polling.",
-              run_error: runRes.error,
+      } else {
+        const runId = run.run_id;
+        try {
+          void (async () => {
+            // Non-blocking, store token usages asynchronously
+            const run = await pollForRunCompletion(coreAPI, app, runId);
+            await storeTokenUsages(run, runEntity.id);
+          })();
+        } catch (e) {
+          logger.error(
+            {
+              error: e,
             },
-          });
+            `There was an error polling the run status: runId=${runId} error=${e}`
+          );
         }
-        run = runRes.value.run;
-        run.specification_hash = run.app_hash;
-        delete run.app_hash;
       }
 
       if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
@@ -358,26 +453,6 @@ async function handler(
       } else {
         run.results = null;
       }
-
-      run.traces.forEach((trace: any) => {
-        const block = run.config.blocks[trace[0][1]];
-        if (block) {
-          executeOnNestedObjects(trace[1], (o: any) => {
-            if (o?.meta?.token_usage) {
-              const promptTokens = o?.meta?.token_usage.prompt_tokens;
-              const completionTokens = o?.meta?.token_usage.completion_tokens;
-              console.log('token_usage: ', block.provider_id, block.model_id, promptTokens, completionTokens);
-              RunUsage.create({
-                runId: runEntity.id,
-                providerId: block.provider_id,
-                modelId: block.model_id,
-                promptTokens,
-                completionTokens,
-              });
-            }
-          });
-        };
-      });
 
       res.status(200).json({ run: run as RunType });
       return;
