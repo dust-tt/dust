@@ -194,15 +194,12 @@ impl TryFrom<&ChatMessage> for AnthropicChatMessage {
 
         // Handling meta prompt.
         let meta_prompt = match cm.role {
-            ChatMessageRole::User => cm
+            // If function_call_id is not set Anthropic has no way to correlate the tool_use with
+            // the tool_result.
+            ChatMessageRole::Function if cm.function_call_id.is_none() => cm
                 .name
                 .as_ref()
-                .map_or(String::new(), |name| format!("[user: {}] ", name)),
-            ChatMessageRole::Function if cm.function_call_id.is_none() => {
-                cm.name.as_ref().map_or(String::new(), |name| {
-                    format!("[function_result: {}] ", name)
-                })
-            }
+                .map_or(String::new(), |name| format!("[tool: {}] ", name)),
             _ => String::new(),
         };
 
@@ -1533,8 +1530,8 @@ impl LLM for AnthropicLLM {
             .map(|cm| AnthropicChatMessage::try_from(cm))
             .collect::<Result<Vec<AnthropicChatMessage>>>()?;
 
-        // Group consecutive messages with the same role by appending their content.
-        // This is needed to group all the `tool_results` within one content vector.
+        // Group consecutive messages with the same role by appending their content. This is
+        // needed to group all the `tool_results` within one content vector.
         messages = messages.iter().fold(
             vec![],
             |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {
