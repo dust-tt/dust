@@ -1,6 +1,11 @@
-import { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
-import { ContentNode, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  ContentNode,
+  DataSourceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
+
+import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export function useParentResourcesById({
   owner,

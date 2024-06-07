@@ -51,11 +51,9 @@ export function AssistantBrowser({
   const router = useRouter();
   const [assistantSearch, setAssistantSearch] = useState<string>("");
 
-  const whiteListedProviders = useMemo(() => {
-    return owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
-  }, [owner.whiteListedProviders]);
-
   const agentsByTab = useMemo(() => {
+    const whiteListedProviders =
+      owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
     const filteredAgents: LightAgentConfigurationType[] = agents.filter(
       (a) =>
         a.status === "active" &&
@@ -79,7 +77,7 @@ export function AssistantBrowser({
         )
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
-  }, [agents, loadingStatus, whiteListedProviders, assistantSearch]);
+  }, [agents, loadingStatus, owner.whiteListedProviders, assistantSearch]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
