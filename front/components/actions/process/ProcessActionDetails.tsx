@@ -92,11 +92,9 @@ function ProcessActionOutputDetails({
 
   return (
     <ClipboardBanner content={stringifiedOutput}>
-      <div className="col-start-2 row-span-1 max-h-48 overflow-auto rounded-md bg-structure-100">
-        <CodeBlock className="language-json" wrapLongLines={true}>
-          {stringifiedOutput}
-        </CodeBlock>
-      </div>
+      <CodeBlock className="language-json" wrapLongLines={true}>
+        {stringifiedOutput}
+      </CodeBlock>
     </ClipboardBanner>
   );
 }
