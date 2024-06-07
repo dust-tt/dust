@@ -123,6 +123,11 @@ const useEditorService = (editor: Editor | null) => {
         };
       },
 
+      hasMention(mention: EditorMention) {
+        const { mentions } = this.getTextAndMentions();
+        return mentions.some((m) => m.id === mention.id);
+      },
+
       getTrimmedText() {
         return editor?.getText().trim();
       },
