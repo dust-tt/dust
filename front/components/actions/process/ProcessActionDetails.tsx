@@ -15,8 +15,6 @@ export function ProcessActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<ProcessActionType>) {
-  // TODO: Handle overflow.
-
   return (
     <ActionDetailsWrapper
       actionName="Extract data"
