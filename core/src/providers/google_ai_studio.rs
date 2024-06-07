@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -10,7 +11,14 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::{providers::llm::Tokens, run::Credentials, utils};
+use crate::{
+    providers::{
+        llm::Tokens,
+        provider::{ModelError, ModelErrorRetryOptions},
+    },
+    run::Credentials,
+    utils,
+};
 
 use super::{
     embedder::Embedder,
@@ -42,20 +50,20 @@ pub struct GoogleAiStudioFunctionResponseContent {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GoogleAiStudioFunctionResponse {
+pub struct GoogleAIStudioFunctionResponse {
     name: String,
     response: GoogleAiStudioFunctionResponseContent,
 }
 
-impl TryFrom<&ChatMessage> for GoogleAiStudioFunctionResponse {
+impl TryFrom<&ChatMessage> for GoogleAIStudioFunctionResponse {
     type Error = anyhow::Error;
 
     fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
         let name = m.name.clone().unwrap_or_default();
-        Ok(GoogleAiStudioFunctionResponse {
+        Ok(GoogleAIStudioFunctionResponse {
             name: name.clone(),
             response: GoogleAiStudioFunctionResponseContent {
-                name: name,
+                name,
                 content: m.content.clone().unwrap_or_default(),
             },
         })
@@ -63,26 +71,66 @@ impl TryFrom<&ChatMessage> for GoogleAiStudioFunctionResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GoogleAiStudioFunctionCall {
+pub struct GoogleAIStudioFunctionCall {
     name: String,
-    args: String,
+    args: Option<Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GoogleAIStudioFunctionDeclaration {
+    name: String,
+    description: String,
+    parameters: Option<Value>,
+}
+
+impl TryFrom<&ChatFunction> for GoogleAIStudioFunctionDeclaration {
+    type Error = anyhow::Error;
+
+    fn try_from(f: &ChatFunction) -> Result<Self, Self::Error> {
+        Ok(GoogleAIStudioFunctionDeclaration {
+            name: f.name.clone(),
+            description: f.description.clone().unwrap_or(String::from("")),
+            parameters: f.parameters.clone(),
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum GoogleAIStudioTooConfigMode {
+    Auto,
+    Any,
+    None,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleAIStudioFunctionCallingConfig {
+    mode: GoogleAIStudioTooConfigMode,
+    allowed_function_names: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Part {
     text: Option<String>,
-    function_call: Option<GoogleAiStudioFunctionCall>,
-    function_response: Option<GoogleAiStudioFunctionResponse>,
+    function_call: Option<GoogleAIStudioFunctionCall>,
+    function_response: Option<GoogleAIStudioFunctionResponse>,
 }
 
-impl TryFrom<&ChatFunctionCall> for GoogleAiStudioFunctionCall {
+impl TryFrom<&ChatFunctionCall> for GoogleAIStudioFunctionCall {
     type Error = anyhow::Error;
 
     fn try_from(f: &ChatFunctionCall) -> Result<Self, Self::Error> {
-        Ok(GoogleAiStudioFunctionCall {
+        let args = match serde_json::from_str(f.arguments.as_str()) {
+            Ok(v) => v,
+            Err(_) => Err(anyhow!(
+                "GoogleAISudio function call arguments must be valid JSON"
+            ))?,
+        };
+        Ok(GoogleAIStudioFunctionCall {
             name: f.name.clone(),
-            args: f.arguments.clone(),
+            args,
         })
     }
 }
@@ -97,61 +145,55 @@ impl TryFrom<&ChatMessage> for Content {
     type Error = anyhow::Error;
 
     fn try_from(m: &ChatMessage) -> Result<Self, Self::Error> {
+        let role = match m.role {
+            ChatMessageRole::Assistant => String::from("model"),
+            ChatMessageRole::Function => String::from("function"),
+            _ => String::from("user"),
+        };
+
+        let parts = match m.function_calls {
+            Some(ref fcs) => fcs
+                .iter()
+                .map(|fc| {
+                    Ok(Part {
+                        text: m.content.clone(),
+                        function_call: Some(GoogleAIStudioFunctionCall::try_from(fc)?),
+                        function_response: None,
+                    })
+                })
+                .collect::<Result<Vec<Part>>>()?,
+            None => {
+                vec![Part {
+                    text: match m.role {
+                        // System is passed as a Content. We transform it here but it will be removed
+                        // from the list of messages and passed as separate argument to the API.
+                        ChatMessageRole::System => m.content.clone(),
+                        ChatMessageRole::User => match m.name {
+                            Some(ref name) => Some(format!(
+                                "[user: {}] {}",
+                                name,
+                                m.content.clone().unwrap_or(String::from(""))
+                            )),
+                            None => m.content.clone(),
+                        },
+                        ChatMessageRole::Assistant => m.content.clone(),
+                        _ => None,
+                    },
+
+                    function_call: None,
+                    function_response: match m.role {
+                        ChatMessageRole::Function => {
+                            GoogleAIStudioFunctionResponse::try_from(m).ok()
+                        }
+                        _ => None,
+                    },
+                }]
+            }
+        };
+
         Ok(Content {
-            role: match m.role {
-                ChatMessageRole::Assistant => String::from("MODEL"),
-                ChatMessageRole::Function => match m.function_call {
-                    // Role "function" is reserved for function responses.
-                    None if USE_FUNCTION_CALLING => String::from("FUNCTION"),
-                    None => String::from("USER"),
-                    // Function calls are done as role "model".
-                    Some(_) => String::from("MODEL"),
-                },
-                _ => String::from("USER"),
-            },
-            parts: Some(vec![Part {
-                text: match m.role {
-                    ChatMessageRole::System => Some(format!(
-                        "[user: SYSTEM] {}\n",
-                        m.content.clone().unwrap_or(String::from(""))
-                    )),
-                    ChatMessageRole::User => match m.name {
-                        Some(ref name) => Some(format!(
-                            "[user: {}] {}",
-                            name,
-                            m.content.clone().unwrap_or(String::from(""))
-                        )),
-                        None => Some(m.content.clone().unwrap_or(String::from(""))),
-                    },
-                    ChatMessageRole::Function if USE_FUNCTION_CALLING => None,
-                    ChatMessageRole::Function => match m.name {
-                        Some(ref name) => Some(format!(
-                            "[function_result: {}] {}",
-                            name,
-                            m.content.clone().unwrap_or(String::from(""))
-                        )),
-                        None => Some(format!(
-                            "[function_result] {}",
-                            m.content.clone().unwrap_or(String::from(""))
-                        )),
-                    },
-                    ChatMessageRole::Assistant => {
-                        Some(m.content.clone().unwrap_or(String::from("")))
-                    }
-                },
-                function_call: match m.function_call.clone() {
-                    Some(function_call) if USE_FUNCTION_CALLING => {
-                        GoogleAiStudioFunctionCall::try_from(&function_call).ok()
-                    }
-                    _ => None,
-                },
-                function_response: match m.role {
-                    ChatMessageRole::Function if USE_FUNCTION_CALLING => {
-                        GoogleAiStudioFunctionResponse::try_from(m).ok()
-                    }
-                    _ => None,
-                },
-            }]),
+            role,
+            parts: Some(parts),
         })
     }
 }
@@ -170,6 +212,37 @@ pub struct Completion {
     usage_metadata: Option<UsageMetadata>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct InnerError {
+    pub message: String,
+    pub code: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GoogleAIStudioError {
+    pub error: InnerError,
+}
+
+impl GoogleAIStudioError {
+    pub fn message(&self) -> String {
+        format!("GoogleAIStudio: {}", self.error.message)
+    }
+
+    pub fn retryable(&self) -> bool {
+        return false;
+    }
+
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        if status.is_server_error() {
+            return true;
+        }
+        return false;
+    }
+}
+
 pub struct GoogleAiStudioProvider {}
 
 impl GoogleAiStudioProvider {
@@ -185,14 +258,14 @@ impl Provider for GoogleAiStudioProvider {
     }
 
     fn setup(&self) -> Result<()> {
-        utils::info("You cannot setup Google AI Studio from the CLI, sorry.");
+        utils::info("You cannot setup GoogleAIStudio from the CLI, sorry.");
 
         Ok(())
     }
 
     async fn test(&self) -> Result<()> {
         Err(anyhow!(
-            "You cannot test Google AI Studio from the CLI, sorry."
+            "You cannot test GoogleAIStudio from the CLI, sorry."
         ))
     }
 
@@ -283,17 +356,13 @@ impl LLM for GoogleAiStudioLLM {
         };
 
         if frequency_penalty.is_some() {
-            Err(anyhow!(
-                "Frequency penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Frequency penalty not supported by GoogleAIStudio"))?;
         }
         if presence_penalty.is_some() {
-            Err(anyhow!(
-                "Presence penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Presence penalty not supported by GoogleAIStudio"))?;
         }
         if top_logprobs.is_some() {
-            Err(anyhow!("Top logprobs not supported by Google AI Studio"))?;
+            Err(anyhow!("Top logprobs not supported by GoogleAIStudio"))?;
         }
 
         if let Some(m) = max_tokens {
@@ -316,7 +385,8 @@ impl LLM for GoogleAiStudioLLM {
                     function_response: None,
                 }]),
             }],
-            &vec![],
+            vec![],
+            None,
             None,
             temperature,
             stop,
@@ -392,14 +462,10 @@ impl LLM for GoogleAiStudioLLM {
         };
 
         if frequency_penalty.is_some() {
-            Err(anyhow!(
-                "Frequency penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Frequency penalty not supported by GoogleAIStudio"))?;
         }
         if presence_penalty.is_some() {
-            Err(anyhow!(
-                "Presence penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Presence penalty not supported by GoogleAIStudio"))?;
         }
 
         if let Some(m) = max_tokens {
@@ -408,35 +474,65 @@ impl LLM for GoogleAiStudioLLM {
             }
         }
 
-        if functions.len() > 0 || function_call.is_some() {
-            if USE_FUNCTION_CALLING {
-                unimplemented!("Functions on Google AI Studio are not implemented yet.");
-            }
-            Err(anyhow!("Functions on Google AI Studio are disabled."))?;
-        }
-
         if frequency_penalty.is_some() {
-            Err(anyhow!(
-                "Frequency penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Frequency penalty not supported by GoogleAIStudio"))?;
         }
         if presence_penalty.is_some() {
-            Err(anyhow!(
-                "Presence penalty not supported by Google AI Studio"
-            ))?;
+            Err(anyhow!("Presence penalty not supported by GoogleAIStudio"))?;
         }
 
         let uri = self.model_endpoint();
 
+        // Remove system message if first.
+        let system = match messages.get(0) {
+            Some(cm) => match cm.role {
+                ChatMessageRole::System => Some(Content::try_from(cm)?),
+                _ => None,
+            },
+            None => None,
+        };
+
+        let messages = messages
+            .iter()
+            .skip(match system.as_ref() {
+                Some(_) => 1,
+                None => 0,
+            })
+            .map(|cm| Content::try_from(cm))
+            .collect::<Result<Vec<Content>>>()?;
+
+        // TODO: backward comp for non alternated messages
+
+        let tools = functions
+            .iter()
+            .map(GoogleAIStudioFunctionDeclaration::try_from)
+            .collect::<Result<Vec<GoogleAIStudioFunctionDeclaration>, _>>()?;
+
+        let tool_config = match function_call {
+            Some(fc) => Some(match fc.as_str() {
+                "auto" => GoogleAIStudioFunctionCallingConfig {
+                    mode: GoogleAIStudioTooConfigMode::Auto,
+                    allowed_function_names: None,
+                },
+                "none" => GoogleAIStudioFunctionCallingConfig {
+                    mode: GoogleAIStudioTooConfigMode::None,
+                    allowed_function_names: None,
+                },
+                _ => GoogleAIStudioFunctionCallingConfig {
+                    mode: GoogleAIStudioTooConfigMode::Any,
+                    allowed_function_names: Some(vec![fc.clone()]),
+                },
+            }),
+            None => None,
+        };
+
         let c = streamed_chat_completion(
             uri,
             api_key,
-            &messages
-                .iter()
-                .map(|m| Content::try_from(m))
-                .collect::<Result<Vec<Content>>>()?,
-            &vec![],
-            None,
+            &messages,
+            tools,
+            tool_config,
+            system,
             temperature,
             stop,
             max_tokens,
@@ -450,32 +546,64 @@ impl LLM for GoogleAiStudioLLM {
         )
         .await?;
 
+        let mut content: Option<String> = None;
+        let mut function_calls: Vec<ChatFunctionCall> = vec![];
+
+        match c.candidates {
+            None => (),
+            Some(candidates) => match candidates.len() {
+                0 => (),
+                _ => match &candidates[0].content.parts {
+                    None => (),
+                    Some(parts) => {
+                        for p in parts.iter() {
+                            match p.text.as_ref() {
+                                Some(t) => match content.as_mut() {
+                                    Some(c) => {
+                                        *c = c.clone() + t.as_str();
+                                    }
+                                    None => {
+                                        content = Some(t.clone());
+                                    }
+                                },
+                                None => (),
+                            }
+                            match p.function_call.as_ref() {
+                                Some(fc) => {
+                                    function_calls.push(ChatFunctionCall {
+                                        id: format!("fc_{}", utils::new_id()[0..9].to_string()),
+                                        name: fc.name.clone(),
+                                        arguments: match fc.args {
+                                            Some(ref args) => serde_json::to_string(args)?,
+                                            None => String::from("{}"),
+                                        },
+                                    });
+                                }
+                                None => (),
+                            }
+                        }
+                    }
+                },
+            },
+        }
+
         Ok(LLMChatGeneration {
             created: utils::now(),
             provider: ProviderID::GoogleAiStudio.to_string(),
             model: self.id().clone(),
             completions: vec![ChatMessage {
                 name: None,
-                function_call: None,
-                function_calls: None,
+                function_call: match function_calls.first() {
+                    Some(fc) => Some(fc.clone()),
+                    None => None,
+                },
+                function_calls: match function_calls.len() {
+                    0 => None,
+                    _ => Some(function_calls),
+                },
                 function_call_id: None,
                 role: ChatMessageRole::Assistant,
-                content: match c.candidates {
-                    None => None,
-                    Some(candidates) => match candidates.len() {
-                        0 => None,
-                        _ => match &candidates[0].content.parts {
-                            None => None,
-                            Some(parts) => match parts.len() {
-                                0 => None,
-                                _ => match &parts[0].text {
-                                    None => None,
-                                    Some(text) => Some(text.clone()),
-                                },
-                            },
-                        },
-                    },
-                },
+                content,
             }],
             usage: c.usage_metadata.map(|c| LLMTokenUsage {
                 prompt_tokens: c.prompt_token_count.unwrap_or(0) as u64,
@@ -489,8 +617,9 @@ pub async fn streamed_chat_completion(
     uri: String,
     api_key: String,
     messages: &Vec<Content>,
-    _functions: &Vec<ChatFunction>,
-    _function_call: Option<String>,
+    tools: Vec<GoogleAIStudioFunctionDeclaration>,
+    tool_config: Option<GoogleAIStudioFunctionCallingConfig>,
+    system_instruction: Option<Content>,
     temperature: f32,
     stop: &Vec<String>,
     max_tokens: Option<i32>,
@@ -504,78 +633,11 @@ pub async fn streamed_chat_completion(
         false => format!("{}&key={}", uri, api_key),
     };
 
-    // Ensure that all input message have one single part.
-    messages
-        .iter()
-        .map(|m| match &m.parts {
-            None => Err(anyhow!("Message has no parts")),
-            Some(parts) => match parts.len() {
-                0 => Err(anyhow!("Message has no parts")),
-                1 => Ok(()),
-                _ => Err(anyhow!("Message has more than one part")),
-            },
-        })
-        .collect::<Result<Vec<()>>>()?;
-
-    // Squash user messages.
-    // Gemini doesn't allow multiple user or assistant messages in a row.
-    let messages: Vec<Content> = messages
-        .iter()
-        .fold(
-            // First we merge consecutive user/assistant messages by making them a multi-part message.
-            Vec::<Content>::new(),
-            |mut acc: Vec<Content>, m: &Content| {
-                match acc.last_mut() {
-                    Some(last)
-                        if last.role == m.role
-                            && ["MODEL", "USER"].contains(&m.role.to_uppercase().as_str()) =>
-                    {
-                        if last.parts.is_none() {
-                            last.parts = Some(vec![]);
-                        }
-                        if let Some(last_parts) = &mut last.parts {
-                            if let Some(m_parts) = &m.parts {
-                                last_parts.extend(m_parts.iter().cloned());
-                            }
-                        }
-                    }
-                    _ => {
-                        acc.push(m.clone());
-                    }
-                }
-                acc
-            },
-        )
-        .iter()
-        // Then we squash the parts together.
-        .map(|m| match m.role.to_uppercase().as_str() {
-            "USER" | "MODEL" => {
-                let parts_text = m.parts.as_ref().map(|parts| {
-                    parts
-                        .iter()
-                        .map(|p| p.text.clone().unwrap_or_default())
-                        .collect::<Vec<String>>()
-                        .join("\n")
-                });
-
-                Content {
-                    role: m.role.clone(),
-                    parts: Some(vec![Part {
-                        text: parts_text,
-                        function_call: None,
-                        function_response: None,
-                    }]),
-                }
-            }
-            _ => m.clone(),
-        })
-        .collect::<Vec<Content>>();
-
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
         Ok(builder) => builder,
         Err(e) => {
             return Err(anyhow!(
-                "Error creating Google AI Studio streaming client: {:?}",
+                "Error creating GoogleAIStudio streaming client: {:?}",
                 e
             ))
         }
@@ -587,24 +649,16 @@ pub async fn streamed_chat_completion(
             format!("Bearer {}", api_key.clone()).as_str(),
         ) {
             Ok(b) => b,
-            Err(_) => {
-                return Err(anyhow!(
-                    "Error creating streamed client to Google AI Studio"
-                ))
-            }
+            Err(_) => return Err(anyhow!("Error creating streamed client to GoogleAIStudio")),
         };
     }
 
     builder = match builder.header("Content-Type", "application/json") {
         Ok(b) => b,
-        Err(_) => {
-            return Err(anyhow!(
-                "Error creating streamed client to Google AI Studio"
-            ))
-        }
+        Err(_) => return Err(anyhow!("Error creating streamed client to GoogleAIStudio")),
     };
 
-    let body = json!({
+    let mut body = json!({
         "contents": vec![json!(messages)],
         "generation_config": {
             "temperature": temperature,
@@ -617,6 +671,22 @@ pub async fn streamed_chat_completion(
             },
         }
     });
+
+    if tools.len() > 0 {
+        body["tools"] = json!(vec![json!({
+            "functionDeclarations": tools
+        })]);
+    }
+
+    if tool_config.is_some() {
+        body["toolConfig"] = json!({
+            "functionCallingConfig": tool_config
+        });
+    }
+
+    if system_instruction.is_some() {
+        body["systemInstruction"] = json!(system_instruction);
+    }
 
     let client = builder
         .body(body.to_string())
@@ -661,22 +731,10 @@ pub async fn streamed_chat_completion(
                         .clone()
                         .unwrap_or_default();
 
-                    match parts.len() {
-                        0 => {
-                            completions.lock().push(completion);
-                            continue 'stream;
-                        }
-                        1 => (),
-                        n => {
-                            Err(anyhow!("Unexpected number of parts: {}", n))?;
-                        }
-                    };
-
                     match event_sender.as_ref() {
-                        Some(sender) => {
-                            let text = parts[0].text.clone();
-                            match text {
-                                Some(t) => {
+                        Some(sender) => parts.iter().for_each(|p| {
+                            match p.text {
+                                Some(ref t) => {
                                     if t.len() > 0 {
                                         let _ = sender.send(json!({
                                             "type": "tokens",
@@ -689,25 +747,18 @@ pub async fn streamed_chat_completion(
                                 None => (),
                             }
 
-                            let function_call = parts[0].function_call.clone();
-                            match function_call {
-                                Some(f) => {
+                            match p.function_call {
+                                Some(ref f) => {
                                     let _ = sender.send(json!({
                                         "type": "function_call",
                                         "content": {
                                             "name": f.name,
                                         }
                                     }));
-                                    let _ = sender.send(json!({
-                                        "type": "function_call_arguments_tokens",
-                                        "content": {
-                                            "text": f.args,
-                                        }
-                                    }));
                                 }
                                 None => (),
                             }
-                        }
+                        }),
 
                         _ => (),
                     };
@@ -718,16 +769,57 @@ pub async fn streamed_chat_completion(
                     break 'stream;
                 }
             },
-            Err(e) => match e {
-                es::Error::Eof => break 'stream,
-                _ => {
-                    Err(anyhow!(
-                        "Error streaming tokens from Google AI Studio: {:?}",
-                        e
-                    ))?;
-                    break 'stream;
+            Err(e) => {
+                match e {
+                    // Nothing to do, go direclty to break stream.
+                    es::Error::Eof => (),
+                    es::Error::UnexpectedResponse(r) => {
+                        let status = StatusCode::from_u16(r.status())?;
+                        // GogoleAIStudio currently has no request id in headers.
+                        // let headers = r.headers()?;
+                        // let request_id = match headers.get("request-id") {
+                        //     Some(v) => Some(v.to_string()),
+                        //     None => None,
+                        // };
+                        let b = r.body_bytes().await?;
+
+                        let error: Result<GoogleAIStudioError, _> = serde_json::from_slice(&b);
+                        match error {
+                            Ok(error) => {
+                                match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id: None,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id: None,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }
+                            }?,
+                            Err(_) => Err(anyhow!(
+                                "Error streaming tokens from GoogleAIStudio: status={} data={}",
+                                status,
+                                String::from_utf8_lossy(&b)
+                            ))?,
+                        }
+                    }
+                    _ => {
+                        Err(anyhow!(
+                            "Error streaming tokens from GoogleAIStudio: {:?}",
+                            e
+                        ))?;
+                        break 'stream;
+                    }
                 }
-            },
+                break 'stream;
+            }
         }
     }
 
@@ -741,27 +833,27 @@ pub async fn streamed_chat_completion(
         });
     }
 
-    // Ensure that we don't have a mix of `function_call` and `text` in the same completion.
-    // Ensure that all the roles are "MODEL"
-    // We merge all the completions texts together.
-    let mut full_completion_text = String::from("");
-    let mut function_call_name = String::from("");
-    let mut function_call_args = String::from("");
-    let mut finish_reason = String::from("");
-    let mut usage_metadata = UsageMetadata {
-        prompt_token_count: None,
-        candidates_token_count: None,
-        total_token_count: None,
+    let mut usage_metadata: Option<UsageMetadata> = None;
+
+    let mut candidate = Candidate {
+        content: Content {
+            role: String::from("MODEL"),
+            parts: Some(vec![]),
+        },
+        finish_reason: None,
     };
+
+    let mut text_parts: Option<Part> = None;
+    let mut function_call_parts: Vec<Part> = vec![];
+
     for c in completions_lock.iter() {
         match &c.usage_metadata {
             None => (),
-            Some(um) => {
-                usage_metadata.prompt_token_count = um.prompt_token_count;
-                usage_metadata.candidates_token_count = um.candidates_token_count;
-                usage_metadata.total_token_count = um.total_token_count;
+            Some(usage) => {
+                usage_metadata = Some(usage.clone());
             }
         }
+
         match &c.candidates {
             None => (),
             Some(candidates) => match candidates.len() {
@@ -777,89 +869,59 @@ pub async fn streamed_chat_completion(
                     match &candidates[0].finish_reason {
                         None => (),
                         Some(r) => {
-                            finish_reason = r.clone();
+                            candidate.finish_reason = Some(r.clone());
                         }
                     }
 
                     let parts = candidates[0].content.parts.clone().unwrap_or_default();
 
-                    match &parts.len() {
-                        0 => (),
-                        1 => {
-                            match &parts[0].text.clone() {
-                                Some(t) => {
-                                    if function_call_name.len() > 0 || function_call_args.len() > 0
-                                    {
-                                        Err(anyhow!("Unexpected text in function call"))?;
-                                    }
-                                    full_completion_text.push_str(t.as_str());
+                    for p in parts.iter() {
+                        match p.text.as_ref() {
+                            Some(t) => match text_parts.as_mut() {
+                                Some(tp) => {
+                                    tp.text =
+                                        Some(tp.text.clone().unwrap_or_default() + t.as_str());
                                 }
-                                None => (),
-                            };
-                            match parts[0].function_call.clone() {
-                                Some(f) => {
-                                    if full_completion_text.len() > 0 {
-                                        Err(anyhow!("Unexpected function call in text"))?;
-                                    }
-                                    match f.name.len() {
-                                        0 => (),
-                                        _ if function_call_name.is_empty() => {
-                                            function_call_name = f.name.clone();
-                                        }
-                                        _ => {
-                                            if function_call_name != f.name {
-                                                Err(anyhow!("Function call name mismatch"))?;
-                                            }
-                                        }
-                                    }
-                                    match f.args.len() {
-                                        0 => (),
-                                        _ if function_call_args.is_empty() => {
-                                            function_call_args.push_str(f.args.as_str());
-                                        }
-                                        _ => (),
-                                    }
+                                None => {
+                                    text_parts = Some(p.clone());
                                 }
-                                None => (),
-                            }
+                            },
+                            None => (),
                         }
-                        _ => (),
+                        match p.function_call.as_ref() {
+                            Some(_) => {
+                                function_call_parts.push(p.clone());
+                            }
+                            None => (),
+                        }
+                        match p.function_response.as_ref() {
+                            Some(_) => {
+                                Err(anyhow!("Unexpected function response part in completion"))?;
+                            }
+                            None => (),
+                        }
                     }
                 }
-                _ => Err(anyhow!("Unexpected number of candidates"))?,
+                _ => Err(anyhow!("Unexpected number of candidates >1"))?,
             },
         }
     }
 
-    if finish_reason.len() == 0 {
-        Err(anyhow!("No finish reason"))?;
+    match text_parts {
+        Some(tp) => {
+            candidate.content.parts.as_mut().unwrap().push(tp);
+        }
+        None => (),
     }
-
-    if function_call_name.len() == 0 && full_completion_text.len() == 0 {
-        Err(anyhow!("No text and no function call"))?;
-    }
+    candidate
+        .content
+        .parts
+        .as_mut()
+        .unwrap()
+        .extend(function_call_parts);
 
     Ok(Completion {
-        candidates: Some(vec![Candidate {
-            content: Content {
-                role: String::from("MODEL"),
-                parts: Some(vec![Part {
-                    text: match full_completion_text.len() {
-                        0 => None,
-                        _ => Some(full_completion_text),
-                    },
-                    function_call: match function_call_name.len() {
-                        0 => None,
-                        _ => Some(GoogleAiStudioFunctionCall {
-                            name: function_call_name,
-                            args: function_call_args,
-                        }),
-                    },
-                    function_response: None,
-                }]),
-            },
-            finish_reason: Some(finish_reason),
-        }]),
-        usage_metadata: Some(usage_metadata),
+        candidates: Some(vec![candidate]),
+        usage_metadata,
     })
 }
