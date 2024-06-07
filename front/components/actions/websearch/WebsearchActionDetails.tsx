@@ -1,4 +1,9 @@
-import { Citation, Collapsible, GlobeAltIcon } from "@dust-tt/sparkle";
+import {
+  Citation,
+  Collapsible,
+  ContentMessage,
+  GlobeAltIcon,
+} from "@dust-tt/sparkle";
 import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
@@ -8,6 +13,13 @@ export function WebsearchActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<WebsearchActionType>) {
+  // Treat "no results" as a non-error case, even though serpApi returns it as an error.
+  const formattedError =
+    hasWebsearchError(action) &&
+    !action.output.error.includes("Google hasn't returned any results")
+      ? action.output.error
+      : null;
+
   return (
     <ActionDetailsWrapper
       actionName="Web navigation"
@@ -28,11 +40,32 @@ export function WebsearchActionDetails({
             </Collapsible.Button>
             <Collapsible.Panel>
               <WebsearchResultsGrid results={action.output?.results} />
+              {formattedError && (
+                <ContentMessage title="Error searching the web">
+                  {formattedError}
+                </ContentMessage>
+              )}
             </Collapsible.Panel>
           </Collapsible>
         </div>
       </div>
     </ActionDetailsWrapper>
+  );
+}
+
+type WebsearchActionWithErrorType = WebsearchActionType & {
+  output: {
+    error: string;
+  };
+};
+
+function hasWebsearchError(
+  action: WebsearchActionType
+): action is WebsearchActionWithErrorType {
+  return (
+    !!action.output &&
+    "error" in action.output &&
+    typeof action.output.error === "string"
   );
 }
 
