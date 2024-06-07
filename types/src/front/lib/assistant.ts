@@ -244,6 +244,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Google's best model for scaling across a wide range of tasks (1m context).",
   shortDescription: "Google's smartest model.",
   supportsMultiActions: false,
+  isLegacy: false,
 };
 
 export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
