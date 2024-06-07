@@ -81,7 +81,7 @@ export const DustProdActionRegistry = createActionRegistry({
       MODEL: {
         provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
         model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-        function_call: "extract_structured_data_from_data_sources",
+        function_call: "extract_data",
         use_cache: false,
       },
     },
