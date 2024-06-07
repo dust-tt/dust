@@ -400,10 +400,9 @@ export function ActionProcess({
       />
 
       <div className="text-sm text-element-700">
-        This action scans selected data sources within the specified time frame,
-        extracting information based on a predefined schema. It can process the
-        equivalent to a 1,000-page book (500k tokens). More in the
-        documentation. Learn more about this feature in the{" "}
+        This action scans selected data sources within the specified time frame, extracting
+        information based on a predefined schema. It can process the equivalent to a 1,000-page book
+        (500k tokens). Learn more about this feature in the{" "}
         <Hoverable
           onClick={() => {
             window.open(
