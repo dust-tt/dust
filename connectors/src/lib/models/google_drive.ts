@@ -256,7 +256,7 @@ export class GoogleDriveSyncToken extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   // The driveId is the Google Drive Id of the user's drive.
-  // For files not living in a specific drive, the driveId is "userland".
+  // For files not living in a specific drive, the driveId is "userspace".
   // We use a virtual drive ID instead of "null" because there might be other concepts of "spaces"
   // and this would allow us to support them.
   declare driveId: string;

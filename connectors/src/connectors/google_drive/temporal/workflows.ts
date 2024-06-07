@@ -8,6 +8,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/config";
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -166,13 +167,13 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
-    // Run incremental sync for "userland" (aka non shared drives, non "my drive").
+    // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
     let nextPageToken: undefined | string = undefined;
     do {
       nextPageToken = await incrementalSync(
         connectorId,
         dataSourceConfig,
-        null,
+        GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
         false,
         startSyncTs,
         nextPageToken

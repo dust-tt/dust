@@ -45,7 +45,10 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import {
+  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+  googleDriveConfig,
+} from "@connectors/connectors/google_drive/lib/config";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
   getGoogleDriveEntityDocumentId,
@@ -449,21 +452,22 @@ export async function retrieveGoogleDriveConnectorPermissions({
           };
         })
       );
-      // Adding a fake "Shared with me" node, to allow the user to their shared files
+      // Adding a fake "Shared with me" node, to allow the user to see their shared files
       // that are not living in a shared drive.
-      nodes.push({
-        provider: c.type,
-        internalId: "sharedWithMe",
-        parentInternalId: null,
-        type: "folder" as const,
-        preventSelection: true,
-        title: "Shared with me",
-        sourceUrl: null,
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-        expandable: true,
-        permission: "none",
-      });
+      // Uncomment the following node to release the "Shared with me" feature.
+      // nodes.push({
+      //   provider: c.type,
+      //   internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+      //   parentInternalId: null,
+      //   type: "folder" as const,
+      //   preventSelection: true,
+      //   title: "Shared with me",
+      //   sourceUrl: null,
+      //   dustDocumentId: null,
+      //   lastUpdatedAt: null,
+      //   expandable: true,
+      //   permission: "none",
+      // });
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -479,7 +483,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
       // The "Shared with me" view requires to look for folders
       // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
       let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
-      if (parentInternalId === "sharedWithMe") {
+      if (parentInternalId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
         gdriveQuery += ` and sharedWithMe=true`;
       } else {
         gdriveQuery += ` and '${parentInternalId}' in parents`;
