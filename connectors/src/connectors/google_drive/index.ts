@@ -45,10 +45,8 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
-  googleDriveConfig,
-} from "@connectors/connectors/google_drive/lib/config";
+import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
   getGoogleDriveEntityDocumentId,

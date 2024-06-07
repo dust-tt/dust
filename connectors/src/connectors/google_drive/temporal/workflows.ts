@@ -8,11 +8,11 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/config";
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";
 

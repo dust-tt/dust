@@ -9,10 +9,8 @@ import PQueue from "p-queue";
 import { literal, Op } from "sequelize";
 
 import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
-import {
-  GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
-  GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS,
-} from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
