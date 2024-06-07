@@ -23,22 +23,6 @@ export const modelProviders: ModelProvider[] = [
     embed: true,
   },
   {
-    providerId: "cohere",
-    name: "Cohere",
-    built: true,
-    enabled: false,
-    chat: false,
-    embed: false,
-  },
-  {
-    providerId: "ai21",
-    name: "AI21 Studio",
-    built: true,
-    enabled: false,
-    chat: false,
-    embed: false,
-  },
-  {
     providerId: "azure_openai",
     name: "Azure OpenAI",
     built: true,

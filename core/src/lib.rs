@@ -25,9 +25,7 @@ pub mod project;
 pub mod run;
 pub mod utils;
 pub mod providers {
-    pub mod ai21;
     pub mod azure_openai;
-    pub mod cohere;
     pub mod embedder;
     pub mod llm;
     pub mod mistral;

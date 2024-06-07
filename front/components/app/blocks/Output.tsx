@@ -399,8 +399,12 @@ export default function Output({
     const logs = traces.reduce((acc, t) => {
       return (
         acc +
-        t.filter((t) => t.meta && (t.meta as { logs: any[] }).logs.length)
-          .length
+        t.filter(
+          (t) =>
+            t.meta &&
+            (t.meta as { logs: any[] }).logs &&
+            (t.meta as { logs: any[] }).logs.length
+        ).length
       );
     }, 0);
 

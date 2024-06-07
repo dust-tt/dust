@@ -1,7 +1,5 @@
-use crate::providers::ai21::AI21Provider;
 use crate::providers::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
-use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
 use crate::providers::mistral::MistralProvider;
@@ -23,8 +21,6 @@ use super::google_ai_studio::GoogleAiStudioProvider;
 #[clap(rename_all = "lowercase")]
 pub enum ProviderID {
     OpenAI,
-    Cohere,
-    AI21,
     #[serde(rename = "azure_openai")]
     AzureOpenAI,
     Anthropic,
@@ -37,8 +33,6 @@ impl fmt::Display for ProviderID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProviderID::OpenAI => write!(f, "openai"),
-            ProviderID::Cohere => write!(f, "cohere"),
-            ProviderID::AI21 => write!(f, "ai21"),
             ProviderID::AzureOpenAI => write!(f, "azure_openai"),
             ProviderID::Anthropic => write!(f, "anthropic"),
             ProviderID::Mistral => write!(f, "mistral"),
@@ -52,14 +46,13 @@ impl FromStr for ProviderID {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "openai" => Ok(ProviderID::OpenAI),
-            "cohere" => Ok(ProviderID::Cohere),
-            "ai21" => Ok(ProviderID::AI21),
             "azure_openai" => Ok(ProviderID::AzureOpenAI),
             "anthropic" => Ok(ProviderID::Anthropic),
             "mistral" => Ok(ProviderID::Mistral),
             "google_ai_studio" => Ok(ProviderID::GoogleAiStudio),
             _ => Err(ParseError::with_message(
-                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral)",
+                "Unknown provider ID \
+                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio)",
             ))?,
         }
     }
@@ -151,8 +144,6 @@ pub trait Provider {
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
-        ProviderID::Cohere => Box::new(CohereProvider::new()),
-        ProviderID::AI21 => Box::new(AI21Provider::new()),
         ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
         ProviderID::Mistral => Box::new(MistralProvider::new()),

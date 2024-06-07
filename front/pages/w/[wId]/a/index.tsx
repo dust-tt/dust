@@ -22,11 +22,9 @@ import { useEffect, useState } from "react";
 import { useContext } from "react";
 import { useSWRConfig } from "swr";
 
-import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
-import CohereSetup from "@app/components/providers/CohereSetup";
 import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
@@ -392,8 +390,6 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
 export function Providers({ owner }: { owner: WorkspaceType }) {
   const [openAIOpen, setOpenAIOpen] = useState(false);
-  const [cohereOpen, setCohereOpen] = useState(false);
-  const [ai21Open, setAI21Open] = useState(false);
   const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [anthropicOpen, setAnthropicOpen] = useState(false);
   const [mistalAIOpen, setMistralAiOpen] = useState(false);
@@ -428,20 +424,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setOpenAIOpen}
         enabled={!!configs["openai"]}
         config={configs["openai"] ?? null}
-      />
-      <CohereSetup
-        owner={owner}
-        open={cohereOpen}
-        setOpen={setCohereOpen}
-        enabled={!!configs["cohere"]}
-        config={configs["cohere"] ?? null}
-      />
-      <AI21Setup
-        owner={owner}
-        open={ai21Open}
-        setOpen={setAI21Open}
-        enabled={!!configs["ai21"]}
-        config={configs["ai21"] ?? null}
       />
       <AzureOpenAISetup
         owner={owner}
@@ -547,12 +529,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "mistral":
                           setMistralAiOpen(true);
-                          break;
-                        case "cohere":
-                          setCohereOpen(true);
-                          break;
-                        case "ai21":
-                          setAI21Open(true);
                           break;
                         case "azure_openai":
                           setAzureOpenAIOpen(true);
