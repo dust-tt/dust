@@ -111,12 +111,24 @@ export function AssistantBrowser({
             <Link
               href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
             >
-              <Button
-                variant="primary"
-                icon={PlusIcon}
-                label="Create An Assistant"
-                size="sm"
-              />
+              <div className="hidden sm:block">
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Create An Assistant"
+                  size="sm"
+                />
+              </div>
+              <div className="sm:hidden">
+                <Button
+                  variant="primary"
+                  icon={PlusIcon}
+                  label="Create An Assistant"
+                  labelVisible={false}
+                  size="sm"
+                  className="sm:hidden"
+                />
+              </div>
             </Link>
           </Tooltip>
         </Button.List>
@@ -140,7 +152,7 @@ export function AssistantBrowser({
       )}
 
       {displayedTab && (
-        <div className="grid w-full grid-cols-2 gap-2 px-4 md:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
           {agentsByTab[displayedTab].map((agent) => {
             const href = {
               pathname: router.pathname,
