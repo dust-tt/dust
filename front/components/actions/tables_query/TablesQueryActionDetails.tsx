@@ -14,7 +14,7 @@ export function TablesQueryActionDetails({
 }: ActionDetailsComponentBaseProps<TablesQueryActionType>) {
   return (
     <ActionDetailsWrapper
-      actionName="Query table"
+      actionName="Query tables"
       defaultOpen={defaultOpen}
       visual={TableIcon}
     >
@@ -46,7 +46,7 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   const noQuery = output?.no_query === true;
 
   if (noQuery) {
-    return "No query";
+    return null;
   }
 
   return (
