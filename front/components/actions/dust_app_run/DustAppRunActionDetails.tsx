@@ -1,19 +1,12 @@
 import { Collapsible, CommandLineIcon } from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
 import { capitalize } from "lodash";
-import dynamic from "next/dynamic";
 import { useMemo } from "react";
-import { amber, emerald, slate } from "tailwindcss/colors";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
 import { ClipboardBanner } from "@app/components/misc/ClipboardBanner";
-
-const SyntaxHighlighter = dynamic(
-  () => import("react-syntax-highlighter").then((mod) => mod.Light),
-  { ssr: false }
-);
 
 export function DustAppRunActionDetails({
   action,
