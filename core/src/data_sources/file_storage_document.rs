@@ -8,11 +8,11 @@ use crate::utils;
 
 use super::data_source::{DataSource, Document, Section};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FileStorageDocument {
-    document_id: String,
-    full_text: String,
-    sections: Section,
+    pub document_id: String,
+    pub full_text: String,
+    pub sections: Section,
 }
 
 impl FileStorageDocument {
@@ -20,6 +20,28 @@ impl FileStorageDocument {
         match std::env::var("DUST_DATA_SOURCES_BUCKET") {
             Ok(bucket) => Ok(bucket),
             Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set")),
+        }
+    }
+
+    pub async fn get_stored_document(
+        data_source: &DataSource,
+        document_created: u64,
+        document_id_hash: &str,
+        document_hash: &str,
+    ) -> Result<FileStorageDocument> {
+        let file_path = FileStorageDocument::get_document_file_path(
+            data_source,
+            document_created,
+            document_id_hash,
+            document_hash,
+        );
+        let bucket = FileStorageDocument::get_bucket().await?;
+
+        let bytes = Object::download(&bucket, &file_path).await?;
+
+        match String::from_utf8(bytes) {
+            Ok(content) => Ok(serde_json::from_str(&content)?),
+            Err(err) => Err(anyhow!("Failed to retrieve stored document: {}", err)),
         }
     }
 
