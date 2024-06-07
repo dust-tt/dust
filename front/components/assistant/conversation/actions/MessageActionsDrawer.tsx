@@ -19,7 +19,7 @@ export function MessageActionsDrawer({
       isOpen={isOpened}
       onClose={onClose}
       title="Actions Details"
-      variant="side-sm"
+      variant="side-md"
       hasChanged={false}
     >
       <Page variant="modal">
