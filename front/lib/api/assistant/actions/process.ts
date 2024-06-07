@@ -65,6 +65,7 @@ export class ProcessAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "process_action";
 
   constructor(blob: ProcessActionBlob) {
     super(blob.id, "process_action");

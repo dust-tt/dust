@@ -24,4 +24,5 @@ export interface TablesQueryActionType extends BaseAction {
   functionCallName: string | null;
   agentMessageId: ModelId;
   step: number;
+  type: "tables_query_action";
 }

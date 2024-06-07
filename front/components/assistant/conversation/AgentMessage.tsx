@@ -33,6 +33,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
+import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
 import { MessageActions } from "@app/components/assistant/conversation/actions/MessageActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
@@ -40,7 +41,6 @@ import { ConversationMessage } from "@app/components/assistant/conversation/Conv
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import {
-  linkFromDocument,
   providerFromDocument,
   titleFromDocument,
 } from "@app/components/assistant/conversation/RetrievalAction";
@@ -530,7 +530,7 @@ function Citations({
             isBlinking={lastHoveredReference === index}
             type={provider === "none" ? "document" : provider}
             title={titleFromDocument(document)}
-            href={linkFromDocument(document)}
+            href={makeLinkForRetrievedDocument(document)}
             index={index}
           />
         );

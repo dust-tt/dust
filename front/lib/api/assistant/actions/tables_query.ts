@@ -44,6 +44,7 @@ export class TablesQueryAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
     super(blob.id, "tables_query_action");

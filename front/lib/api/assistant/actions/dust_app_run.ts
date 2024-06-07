@@ -60,6 +60,7 @@ export class DustAppRunAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "dust_app_run_action";
 
   constructor(blob: DustAppRunActionBlob) {
     super(blob.id, "dust_app_run_action");

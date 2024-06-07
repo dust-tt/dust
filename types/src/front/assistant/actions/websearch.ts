@@ -40,4 +40,5 @@ export interface WebsearchActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "websearch_action";
 }
