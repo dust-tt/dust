@@ -1,7 +1,7 @@
 import type { AgentActionType } from "@dust-tt/types";
 
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppActionDetails";
-import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalAction";
+import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType
