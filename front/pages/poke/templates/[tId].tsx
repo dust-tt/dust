@@ -56,7 +56,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
-import { USED_MODEL_CONFIGS } from "@app/components/providers/utils";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";

@@ -34,7 +34,7 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 import {
   MODEL_PROVIDER_LOGOS,
   USED_MODEL_CONFIGS,
-} from "@app/components/providers/utils";
+} from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {

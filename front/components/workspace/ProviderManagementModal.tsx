@@ -4,7 +4,7 @@ import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/utils";
+import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 
 interface ModelManagementModalProps {
   owner: WorkspaceType;
