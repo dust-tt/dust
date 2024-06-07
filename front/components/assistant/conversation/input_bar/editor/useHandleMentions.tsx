@@ -1,5 +1,5 @@
 import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type {
   EditorMention,
@@ -15,20 +15,8 @@ const useHandleMentions = (
 ) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
 
-  // Memoize the mentioned agents to avoid unnecessary recalculations.
-  const mentionedAgentConfigurationIds = useMemo(() => {
-    let mentions: AgentMention[] = [];
-    if (stickyMentions?.length) {
-      mentions = stickyMentions;
-    } else if (selectedAssistant) {
-      mentions = [selectedAssistant];
-    }
-
-    return Array.from(new Set(mentions.map((m) => m.configurationId)));
-  }, [stickyMentions, selectedAssistant]);
-
   useEffect(() => {
-    if (mentionedAgentConfigurationIds.length === 0) {
+    if (!stickyMentions || stickyMentions.length === 0) {
       return;
     }
 
@@ -44,7 +32,9 @@ const useHandleMentions = (
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
       const mentionsToInsert: EditorMention[] = [];
 
-      for (const configurationId of mentionedAgentConfigurationIds) {
+      for (const configurationId of stickyMentions.map(
+        (mention) => mention.configurationId
+      )) {
         const agentConfiguration = agentConfigurations.find(
           (agent) => agent.sId === configurationId
         );
@@ -62,12 +52,33 @@ const useHandleMentions = (
           editorService.getTrimmedText() ?? null;
       }
     }
-  }, [
-    agentConfigurations,
-    editorService,
-    mentionedAgentConfigurationIds,
-    disableAutoFocus,
-  ]);
+  }, [agentConfigurations, editorService, stickyMentions, disableAutoFocus]);
+
+  useEffect(() => {
+    if (selectedAssistant) {
+      const agentConfiguration = agentConfigurations.find(
+        (agent) => agent.sId === selectedAssistant.configurationId
+      );
+
+      if (!agentConfiguration) {
+        return;
+      }
+
+      const { mentions: currentMentions } = editorService.getTextAndMentions();
+      const hasMention = currentMentions.some(
+        (mention) => mention.id === agentConfiguration.sId
+      );
+
+      if (hasMention) {
+        return;
+      }
+
+      editorService.insertMention({
+        id: agentConfiguration.sId,
+        label: agentConfiguration.name,
+      });
+    }
+  }, [selectedAssistant, editorService, disableAutoFocus, agentConfigurations]);
 };
 
 export default useHandleMentions;
