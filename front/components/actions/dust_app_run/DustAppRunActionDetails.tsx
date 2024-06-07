@@ -2,10 +2,12 @@ import { Collapsible, CommandLineIcon } from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import dynamic from "next/dynamic";
+import { useMemo } from "react";
 import { amber, emerald, slate } from "tailwindcss/colors";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { ClipboardBanner } from "@app/components/misc/ClipboardBanner";
 
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
@@ -76,33 +78,40 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
     return null;
   }
 
+  const stringifiedOutput = useMemo(
+    () => JSON.stringify(action.output, null, 2),
+    [action.output]
+  );
+
   return (
-    <div className="col-start-2 row-span-1 max-h-48 overflow-auto rounded-md bg-structure-100">
-      <SyntaxHighlighter
-        className="h-full w-full rounded-md text-xs"
-        style={{
-          "hljs-number": {
-            color: amber["500"],
-          },
-          "hljs-literal": {
-            color: amber["500"],
-          },
-          "hljs-string": {
-            color: emerald["600"],
-            // @ts-expect-error - this is a valid style
-            textWrap: "wrap",
-          },
-          hljs: {
-            display: "block",
-            color: slate["700"],
-            padding: "1em",
-          },
-        }}
-        language={"json"}
-        PreTag="div"
-      >
-        {JSON.stringify(action.output, null, 2)}
-      </SyntaxHighlighter>
-    </div>
+    <ClipboardBanner content={stringifiedOutput}>
+      <div className="col-start-2 row-span-1 max-h-48 overflow-auto rounded-md bg-structure-100">
+        <SyntaxHighlighter
+          className="h-full w-full rounded-md text-xs"
+          style={{
+            "hljs-number": {
+              color: amber["500"],
+            },
+            "hljs-literal": {
+              color: amber["500"],
+            },
+            "hljs-string": {
+              color: emerald["600"],
+              // @ts-expect-error - this is a valid style
+              textWrap: "wrap",
+            },
+            hljs: {
+              display: "block",
+              color: slate["700"],
+              padding: "1em",
+            },
+          }}
+          language={"json"}
+          PreTag="div"
+        >
+          {stringifiedOutput}
+        </SyntaxHighlighter>
+      </div>
+    </ClipboardBanner>
   );
 }

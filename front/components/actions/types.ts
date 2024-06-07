@@ -1,7 +1,8 @@
 import type { AgentActionType } from "@dust-tt/types";
 
-import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppActionDetails";
+import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
+import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType
@@ -31,7 +32,10 @@ const actionsSpecification: ActionSpecifications = {
     runningLabel: "Searching data",
     detailsComponent: RetrievalActionDetails,
   },
-  tables_query_action: { runningLabel: "Querying tables" },
+  tables_query_action: {
+    runningLabel: "Querying tables",
+    detailsComponent: TablesQueryActionDetails,
+  },
   websearch_action: { runningLabel: "Searching the web" },
 };
 
