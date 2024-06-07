@@ -30,7 +30,7 @@ export function ClipboardBanner({ children, content }: ClipboardBannerProps) {
         <div className="w-full table-auto">{children}</div>
       </div>
 
-      <div className="absolute right-2 top-2 mx-2 rounded-xl bg-structure-50">
+      <div className="absolute right-2 top-2 mx-2 rounded-xl">
         <IconButton
           variant="tertiary"
           size="xs"
