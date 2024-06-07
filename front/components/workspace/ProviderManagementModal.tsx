@@ -1,7 +1,7 @@
 import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
-import _ from "lodash";
+import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
@@ -22,6 +22,16 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
 };
 
+const providerModels = SUPPORTED_MODEL_CONFIGS.reduce((acc, model) => {
+  if (!model.isLegacy) {
+    if (!acc[model.providerId]) {
+      acc[model.providerId] = [];
+    }
+    acc[model.providerId].push(model.displayName);
+  }
+  return acc;
+}, {} as Record<ModelProviderIdType, string[]>);
+
 // TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
 export function ProviderManagementModal({
   owner,
@@ -29,7 +39,7 @@ export function ProviderManagementModal({
   onClose,
   onSave,
 }: ModelManagementModalProps) {
-  const { initialProviderStates } = useMemo(() => {
+  const initialProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
       owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
     const initialProviderStates: ProviderStates = [
@@ -38,9 +48,9 @@ export function ProviderManagementModal({
       acc[provider] = enabledProviders.includes(provider);
       return acc;
     }, {} as ProviderStates);
-
-    return { initialProviderStates };
+    return initialProviderStates;
   }, [owner.whiteListedProviders]);
+
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
@@ -59,7 +69,7 @@ export function ProviderManagementModal({
     <Modal
       isOpen={showProviderModal}
       onClose={onClose}
-      hasChanged={!_.isEqual(providerStates, initialProviderStates)}
+      hasChanged={!isEqual(providerStates, initialProviderStates)}
       title="Manage Providers"
       saveLabel="Update providers"
       onSave={() => {
@@ -92,9 +102,6 @@ export function ProviderManagementModal({
         <ContextItem.List>
           {MODEL_PROVIDER_IDS.map((provider) => {
             const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
-            const providerModels = SUPPORTED_MODEL_CONFIGS.filter(
-              (config) => config.providerId === provider && !config.isLegacy
-            );
             return (
               <ContextItem
                 key={provider}
@@ -109,15 +116,9 @@ export function ProviderManagementModal({
                 }
               >
                 <ContextItem.Description>
-                  {providerModels.map((model, index) => (
-                    <span
-                      key={model.modelId}
-                      className="text-sm text-element-700"
-                    >
-                      {model.displayName}
-                      {index !== providerModels.length - 1 ? ", " : ""}
-                    </span>
-                  ))}
+                  <span className="text-sm text-element-700">
+                    {providerModels[provider].join(", ")}
+                  </span>
                 </ContextItem.Description>
               </ContextItem>
             );
