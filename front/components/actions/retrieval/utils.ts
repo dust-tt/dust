@@ -15,7 +15,7 @@ const providerMap: Record<string, ConnectorProviderDocumentType> = {
 
 const providerRegex = new RegExp(`^(${Object.keys(providerMap).join("|")})`);
 
-function getProviderFromDocument(
+function getProviderFromRetrievedDocument(
   document: RetrievalDocumentType
 ): ConnectorProviderDocumentType {
   const match = document.dataSourceId.match(providerRegex);
@@ -26,8 +26,10 @@ function getProviderFromDocument(
   return "document";
 }
 
-function getTitleFromDocument(document: RetrievalDocumentType): string {
-  const provider = getProviderFromDocument(document);
+function getTitleFromRetrievedDocument(
+  document: RetrievalDocumentType
+): string {
+  const provider = getProviderFromRetrievedDocument(document);
 
   if (provider === "slack") {
     for (const t of document.tags) {
@@ -76,8 +78,8 @@ export function makeDocumentCitations(
   return documents.reduce((acc, doc) => {
     acc.push({
       link: makeLinkForRetrievedDocument(doc),
-      provider: getProviderFromDocument(doc),
-      title: getTitleFromDocument(doc),
+      provider: getProviderFromRetrievedDocument(doc),
+      title: getTitleFromRetrievedDocument(doc),
     });
 
     return acc;
