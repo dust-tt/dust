@@ -130,25 +130,6 @@ async function handler(
           }
           return;
 
-        case "cohere":
-          const cohereModels = [
-            { id: "command" },
-            { id: "command-light" },
-            { id: "command-nightly" },
-            { id: "command-light-nightly" },
-          ];
-          res.status(200).json({ models: cohereModels });
-          return;
-
-        case "ai21":
-          const ai21Models = [
-            { id: "j1-large" },
-            { id: "j1-grande" },
-            { id: "j1-jumbo" },
-          ];
-          res.status(200).json({ models: ai21Models });
-          return;
-
         case "azure_openai":
           const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,

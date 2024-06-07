@@ -71,45 +71,6 @@ async function handler(
           }
           return;
 
-        case "cohere":
-          const testRes = await fetch("https://api.cohere.ai/tokenize", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.api_key}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ text: "Hello World" }),
-          });
-          if (!testRes.ok) {
-            const err = await testRes.json();
-            res.status(400).json({ ok: false, error: err.message });
-          } else {
-            await testRes.json();
-            res.status(200).json({ ok: true });
-          }
-          return;
-
-        case "ai21":
-          const testTokenize = await fetch(
-            "https://api.ai21.com/studio/v1/tokenize",
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${config.api_key}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ text: "Hello World" }),
-            }
-          );
-          if (!testTokenize.ok) {
-            const err = await testTokenize.json();
-            res.status(400).json({ ok: false, error: err.message });
-          } else {
-            await testTokenize.json();
-            res.status(200).json({ ok: true });
-          }
-          return;
-
         case "azure_openai":
           try {
             const parsed = new URL(config.endpoint);

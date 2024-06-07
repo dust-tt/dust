@@ -35,6 +35,13 @@ export default function NewBlock({
         "Query a Large Language Model using a message-based interface.",
     },
     {
+      type: "llm",
+      typeNames: ["llm"],
+      name: "Interact with a Large Language Model (LLM)",
+      description:
+        "Query a Large Language Model using a message-based interface.",
+    },
+    {
       type: "data",
       typeNames: ["data"],
       name: "Data array",
