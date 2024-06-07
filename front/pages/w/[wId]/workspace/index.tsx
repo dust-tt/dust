@@ -10,7 +10,6 @@ import {
   ActivityReport,
   QuickInsights,
 } from "@app/components/workspace/Analytics";
-import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -50,7 +49,6 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -213,12 +211,6 @@ export default function WorkspaceAdmin({
 
   return (
     <>
-      <ProviderManagementModal
-        owner={owner}
-        showProviderModal={showProviderModal}
-        onClose={() => setShowProviderModal(false)}
-        onSave={() => console.log()}
-      />
       <AppLayout
         subscription={subscription}
         owner={owner}
@@ -244,16 +236,10 @@ export default function WorkspaceAdmin({
             />
           </div>
           <Page.SectionHeader title="Settings" />
-          <div className="grid grid-cols-2 gap-2">
-            <Page.SectionHeader
-              title="Workspace name"
-              description="Think GitHub repository names, short and memorable."
-            />
-            <Page.SectionHeader
-              title="Provider Selection"
-              description="Select the providers you want available to your workspace."
-            />
-          </div>
+          <Page.SectionHeader
+            title="Workspace name"
+            description="Think GitHub repository names, short and memorable."
+          />
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-row gap-1">
               <Input
@@ -270,14 +256,6 @@ export default function WorkspaceAdmin({
                 disabled={disable || updating}
                 onClick={handleUpdateWorkspace}
                 label={updating ? "Updating..." : "Update"}
-                className="grow-0"
-              />
-            </div>
-            <div className="flex flex-row gap-1">
-              <Button
-                variant="primary"
-                onClick={() => setShowProviderModal(true)}
-                label="Manage providers"
                 className="grow-0"
               />
             </div>
