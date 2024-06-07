@@ -1,11 +1,7 @@
 import {
-  AnthropicLogo,
   Button,
   ContentMessage,
   DropdownMenu,
-  GoogleLogo,
-  MistralLogo,
-  OpenaiLogo,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -14,10 +10,8 @@ import type {
   APIError,
   AssistantCreativityLevel,
   BuilderSuggestionsType,
-  ModelConfig,
   PlanType,
   Result,
-  SUPPORTED_MODEL_CONFIGS,
   SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -25,16 +19,8 @@ import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   Err,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
   md5,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
@@ -43,10 +29,13 @@ import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { ComponentType } from "react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import {
+  MODEL_PROVIDER_LOGOS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
@@ -64,25 +53,6 @@ export const CREATIVITY_LEVELS = Object.entries(
     ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
   value: v,
 }));
-
-type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
-export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
-  openai: OpenaiLogo,
-  anthropic: AnthropicLogo,
-  mistral: MistralLogo,
-  google_ai_studio: GoogleLogo,
-};
-
-export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
-  GPT_4_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
-  MISTRAL_LARGE_MODEL_CONFIG,
-  MISTRAL_SMALL_MODEL_CONFIG,
-] as const;
 
 export const MAX_INSTRUCTIONS_LENGTH = 1_000_000;
 
