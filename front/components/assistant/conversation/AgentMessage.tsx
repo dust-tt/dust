@@ -157,7 +157,6 @@ export function AgentMessage({
     };
 
     const event = eventPayload.data;
-    console.log("\n\nEvent received\n", { event }, "\n\n");
     switch (event.type) {
       case "agent_action_success":
         setStreamedAgentMessage((m) => {
