@@ -2,7 +2,6 @@ import { Modal, Page } from "@dust-tt/sparkle";
 import type { AgentActionType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
-import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 
 interface MessageActionsDrawerProps {
   actions: AgentActionType[];
@@ -34,14 +33,10 @@ export function MessageActionsDrawer({
               return (
                 <div key={`action-${action.id}`}>
                   {idx !== 0 && <Page.Separator />}
-                  {ActionDetailsComponent ? (
-                    <ActionDetailsComponent
-                      action={action}
-                      defaultOpen={idx === 0}
-                    />
-                  ) : (
-                    <AgentAction action={action} />
-                  )}
+                  <ActionDetailsComponent
+                    action={action}
+                    defaultOpen={idx === 0}
+                  />
                 </div>
               );
             })}

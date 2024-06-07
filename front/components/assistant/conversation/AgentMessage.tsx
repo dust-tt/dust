@@ -33,17 +33,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
+import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { MessageActions } from "@app/components/assistant/conversation/actions/MessageActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import {
-  providerFromDocument,
-  titleFromDocument,
-} from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -520,16 +516,17 @@ function Citations({
       // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
-        const provider = providerFromDocument(document);
+        const [documentCitation] = makeDocumentCitations([document]);
+
         return (
           <Citation
             key={index}
             size="xs"
             sizing="fluid"
             isBlinking={lastHoveredReference === index}
-            type={provider === "none" ? "document" : provider}
-            title={titleFromDocument(document)}
-            href={makeLinkForRetrievedDocument(document)}
+            type={documentCitation.provider}
+            title={documentCitation.title}
+            href={documentCitation.link}
             index={index}
           />
         );
