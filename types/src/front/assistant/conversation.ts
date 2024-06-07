@@ -94,16 +94,6 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
-type AgentActionWithOutputType<T extends AgentActionType> = T & {
-  output: unknown;
-};
-
-export function actionHasOutput<T extends AgentActionType>(
-  action: T
-): action is AgentActionWithOutputType<T> {
-  return action.output !== null && typeof action.output === "object";
-}
-
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *
