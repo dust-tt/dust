@@ -1,4 +1,6 @@
 import type { WorkspaceType } from "@dust-tt/types";
+import type { ModelProviderIdType } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
 
@@ -110,16 +112,24 @@ export async function checkProvider(
 export function filterModelProviders(
   providers: ReturnType<typeof useProviders>["providers"],
   chatOnly: boolean,
-  embedOnly: boolean
+  embedOnly: boolean,
+  whiteListedProviders: ModelProviderIdType[] | null
 ): ReturnType<typeof useProviders>["providers"] {
   if (!providers) {
     return [];
   }
+  const whiteListedModelProviders = whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  const whiteListedAppProviders = [
+    ...whiteListedModelProviders,
+    "azure_openai",
+  ];
   const candidateModelProviderIds = new Set(
     modelProviders
       .filter(
         (p) =>
-          (!chatOnly || p.chat === true) && (!embedOnly || p.embed === true)
+          (!chatOnly || p.chat) &&
+          (!embedOnly || p.embed) &&
+          whiteListedAppProviders.includes(p.providerId)
       )
       .map((p) => p.providerId)
   );
