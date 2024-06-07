@@ -306,6 +306,14 @@ export async function* runMultiActionsAgent(
   });
 
   if (modelConversationRes.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: modelConversationRes.error,
+      },
+      "Error rendering conversation for model."
+    );
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -330,8 +338,28 @@ export async function* runMultiActionsAgent(
         name: a.name,
         description: a.description,
       });
+
       if (specRes.isErr()) {
-        return specRes;
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: specRes.error,
+          },
+          "Failed to build the specification for action."
+        );
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_spec_error",
+            message: `Failed to build the specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
       }
       specifications.push(specRes.value);
     } else {
@@ -360,6 +388,14 @@ export async function* runMultiActionsAgent(
       const legacySpecRes =
         await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
       if (legacySpecRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: legacySpecRes.error,
+          },
+          "Failed to build the legacy specification for action."
+        );
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -380,6 +416,14 @@ export async function* runMultiActionsAgent(
       });
 
       if (specRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: specRes.error,
+          },
+          "Failed to build the specification for action."
+        );
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -432,6 +476,14 @@ export async function* runMultiActionsAgent(
   );
 
   if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: res.error,
+      },
+      "Error running multi-actions agent."
+    );
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -613,7 +665,26 @@ export async function* runMultiActionsAgent(
     const legacySpecRes =
       await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
     if (legacySpecRes.isErr()) {
-      return legacySpecRes;
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: legacySpecRes.error,
+        },
+        "Failed to build the legacy specification for action."
+      );
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "build_legacy_spec_error",
+          message: `Failed to build the legacy specification for action ${agentActions[0].sId},`,
+        },
+      } satisfies AgentErrorEvent;
+
+      return;
     }
     agentActions[0].name = legacySpecRes.value.name;
   }
