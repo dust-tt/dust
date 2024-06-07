@@ -479,7 +479,9 @@ impl Block for LLM {
                                 // move tx to event_sender
                             });
                         }
-                        request.execute(env.credentials.clone(), Some(tx)).await?
+                        request
+                            .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                            .await?
                     }
                     false => {
                         request
@@ -488,6 +490,7 @@ impl Block for LLM {
                                 env.project.clone(),
                                 env.store.clone(),
                                 use_cache,
+                                env.run_id.clone(),
                             )
                             .await?
                     }
@@ -562,7 +565,9 @@ impl Block for LLM {
                                 // move tx to event_sender
                             });
                         }
-                        request.execute(env.credentials.clone(), Some(tx)).await?
+                        request
+                            .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                            .await?
                     }
                     false => {
                         request
@@ -571,6 +576,7 @@ impl Block for LLM {
                                 env.project.clone(),
                                 env.store.clone(),
                                 use_cache,
+                                env.run_id.clone(),
                             )
                             .await?
                     }
