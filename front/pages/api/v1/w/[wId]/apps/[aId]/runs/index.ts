@@ -10,8 +10,9 @@ import {
   dustManagedCredentials,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
 import { createParser } from "eventsource-parser";
+import type { NextApiRequest, NextApiResponse } from "next";
+
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
@@ -37,6 +38,13 @@ interface PoolCall {
   maxInterval: number;
   maxAttempts: number;
 }
+
+type Usage = {
+  providerId: string;
+  modelId: string;
+  promptTokens: number;
+  completionTokens: number;
+};
 
 const poll = async ({
   fn,
@@ -134,13 +142,17 @@ async function pollForRunCompletion(
 }
 
 function extractUsageFromExecutions(
-  block: any,
-  executions: any,
-  usages: any[]
+  block: { provider_id: string; model_id: string },
+  executions: {
+    meta?: {
+      token_usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+  }[][],
+  usages: Usage[]
 ) {
   if (block) {
-    executions.forEach((executionsInner: any) => {
-      executionsInner.forEach((execution: any) => {
+    executions.forEach((executionsInner) => {
+      executionsInner.forEach((execution) => {
         if (execution?.meta?.token_usage) {
           const promptTokens = execution?.meta?.token_usage.prompt_tokens;
           const completionTokens =
@@ -158,7 +170,7 @@ function extractUsageFromExecutions(
 }
 
 function storeTokenUsages(run: RunType, runId: number) {
-  const usages: any[] = [];
+  const usages: Usage[] = [];
   run.traces.forEach((trace: any) => {
     const block = run.config.blocks[trace[0][1]];
     extractUsageFromExecutions(block, trace[1], usages);
@@ -298,7 +310,7 @@ async function handler(
           Connection: "keep-alive",
         });
 
-        const usages: any[] = [];
+        const usages: Usage[] = [];
 
         try {
           // Intercept block_execution events to store token usages.
@@ -316,7 +328,10 @@ async function handler(
                     );
                   }
                 } catch (err) {
-                  logger.error({ error: err }, "Error parsing events");
+                  logger.error(
+                    { error: err },
+                    "Error parsing run events while extracting usage from executions"
+                  );
                 }
               }
             }
