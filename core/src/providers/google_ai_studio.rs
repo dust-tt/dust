@@ -168,14 +168,7 @@ impl TryFrom<&ChatMessage> for Content {
                         // System is passed as a Content. We transform it here but it will be removed
                         // from the list of messages and passed as separate argument to the API.
                         ChatMessageRole::System => m.content.clone(),
-                        ChatMessageRole::User => match m.name {
-                            Some(ref name) => Some(format!(
-                                "[user: {}] {}",
-                                name,
-                                m.content.clone().unwrap_or(String::from(""))
-                            )),
-                            None => m.content.clone(),
-                        },
+                        ChatMessageRole::User => m.content.clone(),
                         ChatMessageRole::Assistant => m.content.clone(),
                         _ => None,
                     },
