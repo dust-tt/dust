@@ -4,7 +4,7 @@ import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
-import { MODEL_PROVIDER_LOGOS } from "@app/components/assistant_builder/InstructionScreen";
+import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/utils";
 
 interface ModelManagementModalProps {
   owner: WorkspaceType;
@@ -80,7 +80,7 @@ export function ProviderManagementModal({
       }}
     >
       <div className="mt-8 divide-y divide-gray-200">
-        <div className="s-px-4 flex items-center justify-between pb-4">
+        <div className="flex items-center justify-between px-4 pb-4">
           <span className="text-left font-bold text-element-900">
             Make all providers available
           </span>
