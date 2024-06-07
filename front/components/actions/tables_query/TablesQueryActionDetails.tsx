@@ -19,7 +19,7 @@ export function TablesQueryActionDetails({
       visual={TableIcon}
     >
       <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
-        <div>
+        <div className="flex flex-col gap-1">
           <span className="text-sm font-bold text-slate-900">Query</span>
           <div className="text-sm font-normal text-slate-500">
             <TablesQuery action={action} />
