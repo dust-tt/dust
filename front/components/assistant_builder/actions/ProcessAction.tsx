@@ -333,7 +333,7 @@ export function ActionProcess({
     setEdited(true);
     let fullInstructions = `${instructions}`;
     if (description) {
-      fullInstructions += `\n${description}`;
+      fullInstructions += `\n\nAction description:\n${description}`;
     }
     if (instructions !== null) {
       setIsGeneratingSchema(true);
