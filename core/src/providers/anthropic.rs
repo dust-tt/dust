@@ -1530,8 +1530,8 @@ impl LLM for AnthropicLLM {
             .map(|cm| AnthropicChatMessage::try_from(cm))
             .collect::<Result<Vec<AnthropicChatMessage>>>()?;
 
-        // Group consecutive messages with the same role by appending their content.
-        // This is needed to group all the `tool_results` within one content vector.
+        // Group consecutive messages with the same role by appending their content. This is
+        // needed to group all the `tool_results` within one content vector.
         messages = messages.iter().fold(
             vec![],
             |mut acc: Vec<AnthropicChatMessage>, cm: &AnthropicChatMessage| {

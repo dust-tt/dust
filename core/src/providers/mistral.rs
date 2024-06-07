@@ -397,59 +397,6 @@ impl MistralAILLM {
             .map(|m| MistralChatMessage::try_from(m))
             .collect::<Result<Vec<_>>>()?;
 
-        // Mistral AI requires a tool call assistant message to be followed by a tool message. We
-        // therefore inject a tool call assistant message before the tool message if it is missing.
-        // Note that we can have multiple tool messages in a row which is valid. They just need to
-        // be preceded by a tool call assistant message.
-        //
-        // We do a best effort here for the case where we have only one function call in the
-        // assistant message. If we had no assistant message and multiple function messages mistral
-        // will compain that there is a mismatch. In practice, Dust (legacy_agent) relies on
-        // cases with one function call only.
-        let mistral_messages = mistral_messages.iter().fold(
-            vec![],
-            |mut acc: Vec<MistralChatMessage>, cm: &MistralChatMessage| {
-                match acc.last_mut() {
-                    Some(last)
-                        if cm.role == MistralChatMessageRole::Tool
-                            && (last.role != MistralChatMessageRole::Assistant
-                                && last.role != MistralChatMessageRole::Tool) =>
-                    {
-                        acc.push(MistralChatMessage {
-                            role: MistralChatMessageRole::Assistant,
-                            name: None,
-                            content: None,
-                            tool_calls: Some(vec![MistralToolCall {
-                                // If we have a tool_call in the agent message we use it, otherwise
-                                // we generate a new fake one following Mistral format (9 chars, we
-                                // use an hex representation where Mistral uses any char, but
-                                // that's fine).
-                                id: cm
-                                    .tool_call_id
-                                    .as_ref()
-                                    .map(|id| sanitize_tool_call_id(id))
-                                    .clone()
-                                    .unwrap_or_else(|| new_id()[0..9].to_string()),
-                                function: MistralToolCallFunction {
-                                    name: cm
-                                        .name
-                                        .clone()
-                                        .unwrap_or_else(|| String::from("unknown_tool")),
-                                    arguments: String::from("{}"),
-                                },
-                            }]),
-                            tool_call_id: None,
-                        });
-                        acc.push(cm.clone());
-                    }
-                    _ => {
-                        acc.push(cm.clone());
-                    }
-                };
-                acc
-            },
-        );
-
         Ok(mistral_messages)
     }
 
