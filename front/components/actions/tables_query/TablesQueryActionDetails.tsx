@@ -6,6 +6,7 @@ import { useCallback, useContext } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
+import { ClipboardBanner } from "@app/components/misc/ClipboardBanner";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function TablesQueryActionDetails({
@@ -45,14 +46,16 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   const query = typeof output?.query === "string" ? output.query : null;
   const noQuery = output?.no_query === true;
 
-  if (noQuery) {
+  if (noQuery || !query) {
     return null;
   }
 
   return (
-    <CodeBlock className="language-sql" wrapLongLines={true}>
-      {query}
-    </CodeBlock>
+    <ClipboardBanner content={query}>
+      <CodeBlock className="language-sql" wrapLongLines={true}>
+        {query}
+      </CodeBlock>
+    </ClipboardBanner>
   );
 }
 
