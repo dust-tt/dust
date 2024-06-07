@@ -763,6 +763,7 @@ export const google_drive = async ({
         where: {
           type: "google_drive",
           errorType: null,
+          pausedAt: null,
         },
       });
       for (const connector of connectors) {
