@@ -116,7 +116,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's cost-effective and high throughput model (16k context).",
   shortDescription: "OpenAI's fast model.",
   supportsMultiActions: false,
-  isLegacy: true,
+  isLegacy: false,
 };
 
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
