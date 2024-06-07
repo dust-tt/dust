@@ -335,8 +335,8 @@ export class RunUsage extends Model<
   declare providerId: string; //ModelProviderIdType;
   declare modelId: string; //ModelIdType;
 
-  declare prompt_tokens: number;
-  declare completion_tokens: number;
+  declare promptTokens: number;
+  declare completionTokens: number;
 }
 
 RunUsage.init(
@@ -354,11 +354,11 @@ RunUsage.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    prompt_tokens: {
+    promptTokens: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    completion_tokens: {
+    completionTokens: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -367,8 +367,7 @@ RunUsage.init(
     modelName: "run_usages",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "status"] },
-      { unique: true, fields: ["sId"] },
+      { fields: ["providerId", "modelId"] },
     ],
   }
 );

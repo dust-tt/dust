@@ -364,15 +364,15 @@ async function handler(
         if (block) {
           executeOnNestedObjects(trace[1], (o: any) => {
             if (o?.meta?.token_usage) {
-              const prompt_tokens = o?.meta?.token_usage.prompt_tokens;
-              const completion_tokens = o?.meta?.token_usage.completion_tokens;
-              console.log('token_usage: ', block.provider_id, block.model_id, prompt_tokens, completion_tokens);
+              const promptTokens = o?.meta?.token_usage.prompt_tokens;
+              const completionTokens = o?.meta?.token_usage.completion_tokens;
+              console.log('token_usage: ', block.provider_id, block.model_id, promptTokens, completionTokens);
               RunUsage.create({
                 runId: runEntity.id,
                 providerId: block.provider_id,
                 modelId: block.model_id,
-                prompt_tokens,
-                completion_tokens,
+                promptTokens,
+                completionTokens,
               });
             }
           });
