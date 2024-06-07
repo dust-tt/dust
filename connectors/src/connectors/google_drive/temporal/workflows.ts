@@ -12,6 +12,7 @@ import type * as activities from "@connectors/connectors/google_drive/temporal/a
 import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
 import { newWebhookSignal } from "./signals";
 
@@ -166,6 +167,18 @@ export async function googleDriveIncrementalSync(
         );
       } while (nextPageToken);
     }
+    // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
+    let nextPageToken: undefined | string = undefined;
+    do {
+      nextPageToken = await incrementalSync(
+        connectorId,
+        dataSourceConfig,
+        GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+        false,
+        startSyncTs,
+        nextPageToken
+      );
+    } while (nextPageToken);
     const shouldGc = await shouldGarbageCollect(connectorId);
     if (shouldGc) {
       await executeChild(googleDriveGarbageCollectorWorkflow, {
