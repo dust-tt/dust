@@ -200,7 +200,7 @@ export function getAgentActionConfigurationType(
         sId: "template",
         schema: [],
         type: "process_configuration",
-        name: "process_data_sources",
+        name: "extract_structured_data_from_data_sources",
         description: "Process the workspace's internal data sources.",
       } satisfies ProcessConfigurationType;
 

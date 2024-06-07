@@ -81,7 +81,8 @@ export class ProcessAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "process_data_sources",
+      name:
+        this.functionCallName ?? "extract_structured_data_from_data_sources",
       arguments: JSON.stringify(this.params),
     };
   }
@@ -121,7 +122,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
   async buildSpecification(
     auth: Authenticator,
     {
-      name = "process_data_sources",
+      name = "extract_structured_data_from_data_sources",
       description,
     }: { name?: string; description?: string }
   ): Promise<Result<AgentActionSpecification, Error>> {
