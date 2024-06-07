@@ -3,6 +3,7 @@ import {
   Collapsible,
   ContentMessage,
   GlobeAltIcon,
+  Page,
 } from "@dust-tt/sparkle";
 import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
 
@@ -79,19 +80,23 @@ function WebsearchResultsGrid({
   }
 
   return (
-    <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pt-4">
-      {results.map((r, idx) => {
-        return (
-          <Citation
-            size="xs"
-            sizing="fluid"
-            key={idx}
-            title={r.title}
-            description={r.snippet}
-            href={r.link}
-          />
-        );
-      })}
-    </div>
+    <>
+      <Page.Separator />
+      <div className="grid max-h-60 grid-cols-3 gap-2 overflow-y-auto overflow-x-hidden py-1">
+        {results.map((r, idx) => {
+          return (
+            <Citation
+              size="xs"
+              sizing="fluid"
+              key={idx}
+              title={r.title}
+              description={r.snippet}
+              href={r.link}
+            />
+          );
+        })}
+      </div>
+      <Page.Separator />
+    </>
   );
 }

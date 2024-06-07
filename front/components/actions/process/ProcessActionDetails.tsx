@@ -105,7 +105,10 @@ function ProcessActionOutputDetails({
 
   return (
     <ClipboardBanner content={stringifiedOutput}>
-      <CodeBlock className="language-json" wrapLongLines={true}>
+      <CodeBlock
+        className="language-json max-h-60 overflow-y-auto"
+        wrapLongLines={true}
+      >
         {stringifiedOutput}
       </CodeBlock>
     </ClipboardBanner>

@@ -3,6 +3,7 @@ import {
   Citation,
   Collapsible,
   MagnifyingGlassIcon,
+  Page,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
@@ -108,19 +109,23 @@ function RetrievedDocumentsGrid({
 
   const documentCitations = makeDocumentCitations(documents);
   return (
-    <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pt-4">
-      {documentCitations.map((d, idx) => {
-        return (
-          <Citation
-            size="xs"
-            sizing="fluid"
-            key={idx}
-            title={d.title}
-            type={d.provider}
-            href={d.link}
-          />
-        );
-      })}
-    </div>
+    <>
+      <Page.Separator />
+      <div className="grid max-h-60 grid-cols-3 gap-2 overflow-y-auto overflow-x-hidden py-1">
+        {documentCitations.map((d, idx) => {
+          return (
+            <Citation
+              size="xs"
+              sizing="fluid"
+              key={idx}
+              title={d.title}
+              type={d.provider}
+              href={d.link}
+            />
+          );
+        })}
+      </div>
+      <Page.Separator />
+    </>
   );
 }

@@ -52,7 +52,10 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
 
   return (
     <ClipboardBanner content={query}>
-      <CodeBlock className="language-sql" wrapLongLines={true}>
+      <CodeBlock
+        className="language-sql max-h-60 overflow-y-auto"
+        wrapLongLines={true}
+      >
         {query}
       </CodeBlock>
     </ClipboardBanner>
