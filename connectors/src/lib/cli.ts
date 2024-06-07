@@ -53,6 +53,7 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { googleDriveIncrementalSyncWorkflowId } from "@connectors/connectors/google_drive/temporal/workflows";
 import {
   fetchIntercomConversation,
   fetchIntercomConversationsForDay,
@@ -84,6 +85,7 @@ import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,
+  terminateWorkflow,
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -756,6 +758,24 @@ export const google_drive = async ({
       );
       return { success: true };
     }
+    case "restart-all-incremental-sync-workflows": {
+      const connectors = await ConnectorModel.findAll({
+        where: {
+          type: "google_drive",
+          errorType: null,
+          pausedAt: null,
+        },
+      });
+      for (const connector of connectors) {
+        const workflowId = googleDriveIncrementalSyncWorkflowId(connector.id);
+        await terminateWorkflow(workflowId);
+        await throwOnError(
+          launchGoogleDriveIncrementalSyncWorkflow(connector.id)
+        );
+      }
+      return { success: true };
+    }
+
     case "skip-file": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
