@@ -10,7 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { Provider, Run } from "@app/lib/models/apps";
+import { Provider, Run, RunUsage } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -75,6 +75,18 @@ const poll = async ({
   };
 
   return new Promise(executePoll);
+};
+
+function executeOnNestedObjects(obj: Array<any>, fn: (object: any) => void): any {
+  obj.forEach((o) => {
+    if (Array.isArray(o)) {
+      console.log('nest')
+      executeOnNestedObjects(o, fn);
+    } else {
+      console.log('found')
+      fn(o);
+    }
+  });
 };
 
 async function handler(
@@ -264,7 +276,7 @@ async function handler(
         });
       }
 
-      await Run.create({
+      const runEntity = await Run.create({
         dustRunId: runRes.value.run.run_id,
         appId: app.id,
         runType: "deploy",
@@ -346,6 +358,26 @@ async function handler(
       } else {
         run.results = null;
       }
+
+      run.traces.forEach((trace: any) => {
+        const block = run.config.blocks[trace[0][1]];
+        if (block) {
+          executeOnNestedObjects(trace[1], (o: any) => {
+            if (o?.meta?.token_usage) {
+              const prompt_tokens = o?.meta?.token_usage.prompt_tokens;
+              const completion_tokens = o?.meta?.token_usage.completion_tokens;
+              console.log('token_usage: ', block.provider_id, block.model_id, prompt_tokens, completion_tokens);
+              RunUsage.create({
+                runId: runEntity.id,
+                providerId: block.provider_id,
+                modelId: block.model_id,
+                prompt_tokens,
+                completion_tokens,
+              });
+            }
+          });
+        };
+      });
 
       res.status(200).json({ run: run as RunType });
       return;
