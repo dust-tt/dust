@@ -1,6 +1,7 @@
 import {
   AssistantPreview,
   Button,
+  ListAddIcon,
   PlanetIcon,
   PlusIcon,
   RobotIcon,
@@ -36,6 +37,7 @@ const ALL_AGENTS_TABS = [
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: UserIcon, id: "personal" },
+  { label: "In my list", icon: ListAddIcon, id: "list" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
@@ -65,6 +67,9 @@ export function AssistantBrowser({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
+      list: filteredAgents.filter(
+        (a) => a.scope === "published" && a.userListStatus === "in-list"
+      ),
       // TODO: Implement most popular agents (upcoming PR for issue #5454)
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
