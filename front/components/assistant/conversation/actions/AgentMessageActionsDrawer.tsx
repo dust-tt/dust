@@ -2,25 +2,24 @@ import { Modal, Page } from "@dust-tt/sparkle";
 import type { AgentActionType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
-import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
 
-interface MessageActionsDrawerProps {
+interface AgentMessageActionsDrawerProps {
   actions: AgentActionType[];
   isOpened: boolean;
   onClose: () => void;
 }
 
-export function MessageActionsDrawer({
+export function AgentMessageActionsDrawer({
   actions,
   isOpened,
   onClose,
-}: MessageActionsDrawerProps) {
+}: AgentMessageActionsDrawerProps) {
   return (
     <Modal
       isOpen={isOpened}
       onClose={onClose}
       title="Actions Details"
-      variant="side-sm"
+      variant="side-md"
       hasChanged={false}
     >
       <Page variant="modal">
@@ -34,14 +33,10 @@ export function MessageActionsDrawer({
               return (
                 <div key={`action-${action.id}`}>
                   {idx !== 0 && <Page.Separator />}
-                  {ActionDetailsComponent ? (
-                    <ActionDetailsComponent
-                      action={action}
-                      defaultOpen={idx === 0}
-                    />
-                  ) : (
-                    <AgentAction action={action} />
-                  )}
+                  <ActionDetailsComponent
+                    action={action}
+                    defaultOpen={idx === 0}
+                  />
                 </div>
               );
             })}

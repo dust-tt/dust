@@ -58,13 +58,13 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
     action.outputs && action.outputs?.total_chunks >= PROCESS_ACTION_TOP_K;
 
   return (
-    <div>
+    <div className="flex flex-col gap-1">
       <p className="text-sm font-normal text-slate-500">
         {makeQueryDescription(action)}
       </p>
       {overflow && (
         <Tooltip
-          label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}`}
+          label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
         >
           <Chip
             color="warning"
@@ -74,6 +74,19 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
       )}
     </div>
   );
+}
+
+function makeQueryDescription(action: ProcessActionType) {
+  const { relativeTimeFrame } = action.params;
+
+  const timeFrameAsString = relativeTimeFrame
+    ? "the last " +
+      (relativeTimeFrame.duration > 1
+        ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
+        : `${relativeTimeFrame.unit}`)
+    : "all time";
+
+  return `Extracted from ${timeFrameAsString}.`;
 }
 
 function ProcessActionOutputDetails({
@@ -97,17 +110,4 @@ function ProcessActionOutputDetails({
       </CodeBlock>
     </ClipboardBanner>
   );
-}
-
-function makeQueryDescription(action: ProcessActionType) {
-  const { relativeTimeFrame } = action.params;
-
-  const timeFrameAsString = relativeTimeFrame
-    ? "the last " +
-      (relativeTimeFrame.duration > 1
-        ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
-        : `${relativeTimeFrame.unit}`)
-    : "all time";
-
-  return `Extracted from ${timeFrameAsString}.`;
 }

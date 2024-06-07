@@ -15,7 +15,7 @@ export interface ActionDetailsComponentBaseProps<
 
 interface ActionSpecification<T extends AgentActionType> {
   runningLabel: string;
-  detailsComponent?: React.ComponentType<ActionDetailsComponentBaseProps<T>>;
+  detailsComponent: React.ComponentType<ActionDetailsComponentBaseProps<T>>;
 }
 
 type ActionType = AgentActionType["type"];
