@@ -132,6 +132,7 @@ export class TemplateResource extends BaseResource<TemplateModel> {
       sId: this.sId,
       tags: this.tags,
       visibility: this.visibility,
+      presetProviderId: this.presetProviderId,
     };
   }
 

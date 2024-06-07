@@ -11,14 +11,16 @@ import type {
   SubscriptionType,
   TemplateTagCodeType,
   TemplateTagsType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  MODEL_PROVIDER_IDS
 } from "@dust-tt/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { createRef, useEffect, useRef, useState } from "react";
+import { createRef, useEffect, useMemo, useRef, useState } from "react";
 
 import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/AssistantBuilder";
@@ -88,15 +90,22 @@ export default function CreateAssistant({
     tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
+  const whiteListedProviders = useMemo(() => {
+    return owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  }, [owner.whiteListedProviders]);
+
   useEffect(() => {
     const templatesToDisplay = assistantTemplates.filter((template) => {
-      return isTemplateTagCodeArray(template.tags);
+      return (
+        isTemplateTagCodeArray(template.tags) &&
+        whiteListedProviders.includes(template.presetProviderId)
+      );
     });
     setFilteredTemplates({
       templates: templatesToDisplay,
       tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
     });
-  }, [assistantTemplates]);
+  }, [assistantTemplates, whiteListedProviders]);
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
