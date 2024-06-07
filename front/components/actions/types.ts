@@ -1,6 +1,6 @@
 import type { AgentActionType } from "@dust-tt/types";
 
-import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppActionDetails";
+import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalAction";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 

@@ -40,7 +40,7 @@ const SyntaxHighlighter = dynamic(
   { ssr: false }
 );
 
-function useCopyToClipboard(
+export function useCopyToClipboard(
   resetInterval = 2000
 ): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
   const [isCopied, setCopied] = useState(false);
