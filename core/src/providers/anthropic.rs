@@ -146,8 +146,16 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
                 let input_json = if let Value::String(ref json_string) = tool_use.input {
-                    serde_json::from_str(json_string).map_err(|e| {
-                        anyhow::anyhow!("Failed to parse Anthropic tool inputs JSON: {}", e)
+                    serde_json::from_str(match json_string.as_str() {
+                        "" => "{}",
+                        _ => json_string,
+                    })
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to parse Anthropic tool inputs JSON ({}): {}",
+                            json_string,
+                            e
+                        )
                     })?
                 } else {
                     tool_use.input.clone()
