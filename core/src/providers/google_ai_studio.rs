@@ -518,6 +518,10 @@ impl LLM for GoogleAiStudioLLM {
                     mode: GoogleAIStudioTooConfigMode::None,
                     allowed_function_names: None,
                 },
+                "any" => GoogleAIStudioFunctionCallingConfig {
+                    mode: GoogleAIStudioTooConfigMode::Any,
+                    allowed_function_names: None,
+                },
                 _ => GoogleAIStudioFunctionCallingConfig {
                     mode: GoogleAIStudioTooConfigMode::Any,
                     allowed_function_names: Some(vec![fc.clone()]),

@@ -103,6 +103,7 @@ pub struct OpenAIFunctionCall {
 #[serde(rename_all = "lowercase")]
 pub enum OpenAIToolControl {
     Auto,
+    Required,
     None,
 }
 
@@ -132,6 +133,9 @@ impl FromStr for OpenAIToolChoice {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "auto" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::Auto)),
+            "any" => Ok(OpenAIToolChoice::OpenAIToolControl(
+                OpenAIToolControl::Required,
+            )),
             "none" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::None)),
             _ => {
                 let function = OpenAIFunctionCall {
