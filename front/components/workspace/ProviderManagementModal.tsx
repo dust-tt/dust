@@ -1,14 +1,6 @@
 import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  LEGACY_SUPPORTED_MODEL_CONFIG,
-  MODEL_PROVIDER_IDS,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
+import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import _ from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
@@ -29,13 +21,6 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   mistral: "Mistral AI",
   google_ai_studio: "Google",
 };
-
-function isLegacyModel(modelName: ModelIdType): boolean {
-  const legacyModelIds = LEGACY_SUPPORTED_MODEL_CONFIG.map(
-    (config) => config.modelId
-  );
-  return legacyModelIds.includes(modelName);
-}
 
 // TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
 export function ProviderManagementModal({
@@ -108,8 +93,7 @@ export function ProviderManagementModal({
           {MODEL_PROVIDER_IDS.map((provider) => {
             const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
             const providerModels = SUPPORTED_MODEL_CONFIGS.filter(
-              (config) =>
-                config.providerId === provider && !isLegacyModel(config.modelId)
+              (config) => config.providerId === provider && !config.isLegacy
             );
             return (
               <ContextItem
