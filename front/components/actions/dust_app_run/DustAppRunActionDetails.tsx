@@ -55,20 +55,8 @@ function DustAppRunParamsDetails({ action }: { action: DustAppRunActionType }) {
   );
 }
 
-type DustAppRunActionWithOutputType = DustAppRunActionType & {
-  output: unknown;
-};
-
-function hasOutput(
-  action: DustAppRunActionType
-): action is DustAppRunActionWithOutputType {
-  const { output } = action;
-
-  return output !== null && typeof output === "object";
-}
-
 function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
-  if (!hasOutput(action)) {
+  if (!action.output) {
     return null;
   }
 
