@@ -585,6 +585,7 @@ impl Block for LLM {
                     })?,
                     meta: Some(json!({
                         "token_usage": g.usage,
+                        "provider_request_id": g.provider_request_id,
                     })),
                 })
             }

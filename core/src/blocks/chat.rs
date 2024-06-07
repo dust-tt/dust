@@ -596,6 +596,7 @@ impl Block for Chat {
             meta: Some(json!({
                 "logs": all_logs,
                 "token_usage": g.usage,
+                "provider_request_id": g.provider_request_id,
             })),
         })
     }
