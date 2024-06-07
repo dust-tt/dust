@@ -1,13 +1,13 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ModelProviderIdType } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import type { AppsModelProviderId, WorkspaceType } from "@dust-tt/types";
+import { APP_MODEL_PROVIDER_IDS, isModelProviderType} from "@dust-tt/types";
 
+import logger from "@app/logger/logger";
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
 
 import type { useProviders } from "./swr";
 
 type ModelProvider = {
-  providerId: string;
+  providerId: AppsModelProviderId;
   name: string;
   built: boolean;
   enabled: boolean;
@@ -113,27 +113,32 @@ export function filterModelProviders(
   providers: ReturnType<typeof useProviders>["providers"],
   chatOnly: boolean,
   embedOnly: boolean,
-  whiteListedProviders: ModelProviderIdType[] | null
+  whiteListedProviders: AppsModelProviderId[] | null
 ): ReturnType<typeof useProviders>["providers"] {
   if (!providers) {
     return [];
   }
-  const whiteListedModelProviders = whiteListedProviders ?? MODEL_PROVIDER_IDS;
-  const whiteListedAppProviders = [
-    ...whiteListedModelProviders,
-    "azure_openai",
-  ];
+  const providersModels = providers.map((provider) => {
+    if (provider && isModelProviderType(provider)) {
+      return provider
+    } else {
+      logger.error("Unexpected type for 'providers'.");
+      throw new Error("Unexpected type for 'providers'.");
+    }
+  })
+  const whiteListedAppProviders = new Set(whiteListedProviders ?
+    [...whiteListedProviders, "azure_openai"]: APP_MODEL_PROVIDER_IDS);
   const candidateModelProviderIds = new Set(
     modelProviders
       .filter(
         (p) =>
           (!chatOnly || p.chat) &&
           (!embedOnly || p.embed) &&
-          whiteListedAppProviders.includes(p.providerId)
+          whiteListedAppProviders.has(p.providerId)
       )
       .map((p) => p.providerId)
   );
-  return providers.filter((p) => candidateModelProviderIds.has(p.providerId));
+  return providersModels.filter((p) => candidateModelProviderIds.has(p.providerId));
 }
 
 export function filterServiceProviders(
