@@ -246,6 +246,12 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
 ];
 
+export const LEGACY_SUPPORTED_MODEL_CONFIG: ModelConfigurationType[] = [
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  CLAUDE_2_DEFAULT_MODEL_CONFIG,
+  CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG
+]
+
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
 
 // this creates a union type of all the {providerId: string, modelId: string}
