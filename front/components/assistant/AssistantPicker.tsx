@@ -3,7 +3,6 @@ import {
   DropdownMenu,
   IconButton,
   Item,
-  ListIcon,
   MoreIcon,
   PlusIcon,
   RobotIcon,
@@ -100,7 +99,7 @@ export function AssistantPicker({
             }
             bottomBar={
               showFooterButtons && (
-                <div className="flex border-t border-structure-50 p-2">
+                <div className="flex justify-center border-t border-structure-50 p-2">
                   <Link
                     href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
                   >
@@ -110,15 +109,6 @@ export function AssistantPicker({
                       variant="primary"
                       icon={PlusIcon}
                       className="mr-2"
-                    />
-                  </Link>
-                  <div className="s-flex-grow" />
-                  <Link href={`/w/${owner.sId}/assistant/assistants`}>
-                    <Button
-                      label="My Assistants"
-                      size="xs"
-                      variant="tertiary"
-                      icon={ListIcon}
                     />
                   </Link>
                 </div>

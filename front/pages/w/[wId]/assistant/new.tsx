@@ -271,7 +271,7 @@ export default function AssistantNew({
           </div>
           <div
             id="assistant-input-bar"
-            className="flex h-fit w-full items-center justify-center"
+            className="flex h-fit w-full items-center justify-center text-base"
           >
             <AssistantInputBar
               owner={owner}

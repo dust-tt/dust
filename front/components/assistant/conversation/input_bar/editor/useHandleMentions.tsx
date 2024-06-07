@@ -64,19 +64,14 @@ const useHandleMentions = (
         return;
       }
 
-      const { mentions: currentMentions } = editorService.getTextAndMentions();
-      const hasMention = currentMentions.some(
-        (mention) => mention.id === agentConfiguration.sId
-      );
-
-      if (hasMention) {
-        return;
-      }
-
-      editorService.insertMention({
+      const mention = {
         id: agentConfiguration.sId,
         label: agentConfiguration.name,
-      });
+      };
+
+      if (!editorService.hasMention(mention)) {
+        editorService.insertMention(mention);
+      }
     }
   }, [selectedAssistant, editorService, disableAutoFocus, agentConfigurations]);
 };
