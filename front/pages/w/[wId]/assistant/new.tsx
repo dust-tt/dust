@@ -29,6 +29,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
+import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 
 const { GA_TRACKING_ID = "" } = process.env;
 
@@ -82,6 +83,7 @@ export default function AssistantNew({
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
+  const [helpDrawer, setHelpDrawer] = useState<boolean>(false);
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
@@ -245,6 +247,12 @@ export default function AssistantNew({
 
   return (
     <>
+      <HelpDrawer
+        owner={owner}
+        user={user}
+        show={helpDrawer}
+        onClose={() => setHelpDrawer(false)}
+      />
       <QuickStartGuide
         owner={owner}
         user={user}
@@ -318,7 +326,7 @@ export default function AssistantNew({
           icon={HeartAltIcon}
           labelVisible={false}
           label="Quick Start Guide"
-          onClick={() => setShowQuickGuide(true)}
+          onClick={() => setHelpDrawer(true)}
           size="md"
           variant="primary"
           hasMagnifying={true}
