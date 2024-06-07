@@ -225,8 +225,10 @@ export function getDefaultProcessActionConfiguration() {
       tagsFilter: null,
       schema: [],
     } as AssistantBuilderProcessConfiguration,
-    name: "extract_data",
-    description: "Extract data.",
+    name: "extract_structured_data_from_data_sources",
+    description:
+      "Process data sources specified by the user over a specific time-frame by extracting" +
+      " structured blobs of information (complying to a fixed schema).",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
