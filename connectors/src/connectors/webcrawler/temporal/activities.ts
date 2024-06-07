@@ -36,7 +36,25 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 
-const CONCURRENCY = 4;
+const CONCURRENCY = 1;
+
+export async function markAsCrawled(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found.`);
+  }
+
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
+
+  if (!webCrawlerConfig) {
+    throw new Error(`Webcrawler configuration not found for connector.`);
+  }
+
+  // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
+  // in case of the crawling takes too long or fails.
+  await webCrawlerConfig.markedAsCrawled();
+}
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -68,6 +86,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const crawler = new CheerioCrawler(
     {
+      navigationTimeoutSecs: 10,
       preNavigationHooks: [
         async (crawlingContext) => {
           const { address, family } = await getIpAddressForUrl(

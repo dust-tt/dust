@@ -21,7 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useEffect, useState } from "react";
 
-import { PricePlans } from "@app/components/PlansTables";
+import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -146,6 +146,9 @@ export default function Subscription({
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          billingPeriod: "monthly",
+        }),
       });
 
       if (!res.ok) {
@@ -391,7 +394,7 @@ export default function Subscription({
                         {getPriceAsString({
                           currency: perSeatPricing.seatCurrency,
                           priceInCents: perSeatPricing.seatPrice,
-                        })}
+                        })}{" "}
                         per member.
                       </>
                     ) : (

@@ -378,8 +378,8 @@ function ProPlanBillingNotice({
       </p>
       <br />
       <p>
-        Next month's bill will be adjusted proportionally based on the members'
-        sign-up date.
+        Next bill will be adjusted proportionally based on the members' sign-up
+        date.
       </p>
     </ContentMessage>
   );

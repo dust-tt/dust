@@ -4,7 +4,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   Result,
   TablesQueryActionType,
   TablesQueryConfigurationType,
@@ -57,23 +56,6 @@ export class TablesQueryAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-    content += `OUTPUT:\n`;
-
-    if (this.output === null) {
-      content += "(query failed)\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
-      role: "action" as const,
-      name: "query_tables",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
@@ -94,6 +76,7 @@ export class TablesQueryAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? "query_tables",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };

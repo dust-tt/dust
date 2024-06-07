@@ -29,7 +29,6 @@ import { useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
-import { USED_MODEL_CONFIGS } from "@app/components/assistant_builder/InstructionScreen";
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
@@ -57,6 +56,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";

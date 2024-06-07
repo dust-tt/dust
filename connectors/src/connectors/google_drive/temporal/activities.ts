@@ -10,6 +10,7 @@ import { literal, Op } from "sequelize";
 
 import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
 import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -354,6 +355,8 @@ export async function incrementalSync(
       pageToken: nextPageToken,
       pageSize: 100,
       fields: "*",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     };
     if (isSharedDrive) {
       opts = {
@@ -506,7 +509,10 @@ export async function getSyncPageToken(
   const driveClient = await getDriveClient(connector.connectionId);
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
-    let opts = {};
+    let opts: { supportsAllDrives: boolean; driveId?: string } = {
+      // For userspace, the driveId must be undefined.
+      supportsAllDrives: true,
+    };
     if (isSharedDrive) {
       opts = {
         driveId: driveId,
@@ -806,6 +812,17 @@ export async function populateSyncTokens(connectorId: ModelId) {
       syncToken: lastSyncToken,
     });
   }
+
+  const userLandSyncToken = await getSyncPageToken(
+    connectorId,
+    GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+    false
+  );
+  await GoogleDriveSyncToken.upsert({
+    connectorId,
+    driveId: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+    syncToken: userLandSyncToken,
+  });
 }
 
 export async function garbageCollectorFinished(connectorId: ModelId) {

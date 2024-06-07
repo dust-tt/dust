@@ -2,7 +2,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
@@ -149,42 +148,6 @@ export class RetrievalAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-    if (!this.documents) {
-      content += "(retrieval failed)\n";
-    } else {
-      for (const d of this.documents) {
-        let title = d.documentId;
-        for (const t of d.tags) {
-          if (t.startsWith("title:")) {
-            title = t.substring(6);
-            break;
-          }
-        }
-
-        let dataSourceName = d.dataSourceId;
-        if (d.dataSourceId.startsWith("managed-")) {
-          dataSourceName = d.dataSourceId.substring(8);
-        }
-
-        content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
-        content += `REFERENCE: ${d.reference}\n`;
-        content += `EXTRACTS:\n`;
-        for (const c of d.chunks) {
-          content += `${c.text}\n`;
-        }
-        content += "\n";
-      }
-    }
-
-    return {
-      role: "action" as const,
-      name: this.functionCallName ?? "search_data_sources",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     const timeFrame = this.params.relativeTimeFrame;
     const params = {
@@ -233,6 +196,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? "search_data_sources",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };

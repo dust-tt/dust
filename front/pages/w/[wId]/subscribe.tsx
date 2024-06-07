@@ -1,11 +1,11 @@
 import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext, useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 
-import { ProPriceTable } from "@app/components/PlansTables";
+import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -49,6 +49,9 @@ export default function Subscribe({
     workspaceId: owner.sId,
   });
 
+  const [billingPeriod, setBillingPeriod] =
+    React.useState<BillingPeriod>("monthly");
+
   // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
   // Current plan is always FREE_NO_PLAN if you're on this paywall.
   // Since FREE_NO_PLAN is not on the database, we check if there is at least 1 subscription.
@@ -64,34 +67,39 @@ export default function Subscribe({
     }
   }, [owner.sId, router.pathname, user]);
 
-  const { submit: handleSubscribePlan } = useSubmitFunction(async () => {
-    const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Subscription failed",
-        description: "Failed to subscribe to a new plan.",
+  const { submit: handleSubscribePlan } = useSubmitFunction(
+    async (billingPeriod) => {
+      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          billingPeriod,
+        }),
       });
-    } else {
-      const content = await res.json();
-      if (content.checkoutUrl) {
-        await router.push(content.checkoutUrl);
-      } else if (content.success) {
+
+      if (!res.ok) {
         sendNotification({
           type: "error",
           title: "Subscription failed",
-          description:
-            "Failed to subscribe to a new plan. Please try again in a few minutes.",
+          description: "Failed to subscribe to a new plan.",
         });
+      } else {
+        const content = await res.json();
+        if (content.checkoutUrl) {
+          await router.push(content.checkoutUrl);
+        } else if (content.success) {
+          sendNotification({
+            type: "error",
+            title: "Subscription failed",
+            description:
+              "Failed to subscribe to a new plan. Please try again in a few minutes.",
+          });
+        }
       }
     }
-  });
+  );
 
   return (
     <>
@@ -147,19 +155,47 @@ export default function Subscribe({
                     <Page.P>
                       Please note that if your previous contract expired over 15
                       days ago, previously stored data will no longer be
-                      available. This is to ensure privacy and security.
+                      available. This is to ensure privacy and security of your
+                      information.
                     </Page.P>
                   </>
                 ) : (
                   <>
                     <Page.P>
                       <span className="font-bold">
-                        You can try the Pro plan for free for two weeks.
+                        Try the Pro plan for free for two weeks.
                       </span>
                     </Page.P>
                     <Page.P>
-                      After your trial ends, you will be charged monthly. You
-                      can cancel at any time.
+                      You will be charged after your trial ends. You can cancel
+                      at any time during your trial.
+                    </Page.P>
+                  </>
+                )}
+
+                {billingPeriod === "monthly" ? (
+                  <>
+                    <Page.P>
+                      <span className="font-bold">
+                        You've selected monthly billing.
+                      </span>
+                    </Page.P>
+                    <Page.P>
+                      You'll pay on a month-to-month basis. You can cancel at
+                      any time before the end of your monthly billing cycle.
+                    </Page.P>
+                  </>
+                ) : (
+                  <>
+                    <Page.P>
+                      <span className="font-bold">
+                        You've selected yearly billing.
+                      </span>
+                    </Page.P>
+                    <Page.P>
+                      You'll pay for a year upfront and enjoy savings compared
+                      to the monthly plan. You can cancel at any time before the
+                      end of your annual billing cycle.
                     </Page.P>
                   </>
                 )}
@@ -168,19 +204,27 @@ export default function Subscribe({
                   variant="primary"
                   label={
                     hasPreviouSubscription
-                      ? "Resume your subscription"
-                      : "Start your trial"
+                      ? billingPeriod === "monthly"
+                        ? "Resume with monthly billing"
+                        : "Resume with yearly billing"
+                      : billingPeriod === "monthly"
+                      ? "Start your trial with monthly billing"
+                      : "Start your trial with yearly billing"
                   }
                   icon={CreditCardIcon}
-                  size="md"
+                  size="sm"
                   onClick={() => {
-                    void handleSubscribePlan();
+                    void handleSubscribePlan(billingPeriod);
                   }}
                 ></Button>
               </Page.Vertical>
-              <Page.Vertical sizing="grow">
-                <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
-              </Page.Vertical>
+              <Page.Horizontal sizing="grow">
+                <ProPlansTable
+                  size="xs"
+                  display="subscribe"
+                  setBillingPeriod={setBillingPeriod}
+                ></ProPlansTable>
+              </Page.Horizontal>
             </Page.Horizontal>
           ) : (
             <Page.Horizontal>
@@ -197,7 +241,11 @@ export default function Subscribe({
                 </Page.P>
               </Page.Vertical>
               <Page.Vertical sizing="grow">
-                <ProPriceTable display="subscribe" size="xs"></ProPriceTable>
+                <ProPlansTable
+                  size="xs"
+                  display="subscribe"
+                  setBillingPeriod={setBillingPeriod}
+                ></ProPlansTable>
               </Page.Vertical>
             </Page.Horizontal>
           )}

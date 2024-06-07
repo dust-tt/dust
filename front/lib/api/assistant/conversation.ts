@@ -48,7 +48,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import {
   batchRenderAgentMessages,
   batchRenderContentFragment,
@@ -433,12 +433,11 @@ export async function generateConversationTitle(
   const contextSize = GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel({
+  const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
-    excludeActions: true,
   });
 
   if (modelConversationRes.isErr()) {

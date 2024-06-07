@@ -411,9 +411,8 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType },
     streaming: boolean
   ) {
-    // const action = getDeprecatedSingleAction(agentMessage.actions);
-    // Display the error to the user so they can report it to us (or some can be
-    // understandable directly to them)
+    // Display the error to the user so they can report it to us (or some can be understandable
+    // directly to them)
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage

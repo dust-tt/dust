@@ -1,5 +1,6 @@
 import type { AgentActionType } from "@dust-tt/types";
 
+import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalAction";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 
@@ -22,7 +23,10 @@ type ActionSpecifications = {
 };
 
 const actionsSpecification: ActionSpecifications = {
-  dust_app_run_action: { runningLabel: "Running App" },
+  dust_app_run_action: {
+    runningLabel: "Running App",
+    detailsComponent: DustAppRunActionDetails,
+  },
   process_action: { runningLabel: "Gathering latest data" },
   retrieval_action: {
     runningLabel: "Searching data",

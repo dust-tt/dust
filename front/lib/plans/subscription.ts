@@ -1,4 +1,5 @@
 import type {
+  BillingPeriod,
   EnterpriseUpgradeFormType,
   PlanType,
   SubscriptionType,
@@ -359,7 +360,8 @@ export const pokeUpgradeWorkspaceToPlan = async (
 
 // Returns the Stripe checkout URL for the pro plan.
 export const getCheckoutUrlForUpgrade = async (
-  auth: Authenticator
+  auth: Authenticator,
+  billingPeriod: BillingPeriod
 ): Promise<{ checkoutUrl: string; plan: PlanType }> => {
   const owner = auth.workspace();
 
@@ -395,6 +397,7 @@ export const getCheckoutUrlForUpgrade = async (
   // We enter Stripe Checkout flow.
   const checkoutUrl = await createProPlanCheckoutSession({
     auth,
+    billingPeriod,
   });
 
   if (!checkoutUrl) {
@@ -441,7 +444,7 @@ export async function getPerSeatSubscriptionPricing(
 ): Promise<{
   seatPrice: number;
   seatCurrency: string;
-  billingPeriod: "monthly" | "yearly";
+  billingPeriod: BillingPeriod;
   quantity: number;
 } | null> {
   if (!subscription.stripeSubscriptionId) {
