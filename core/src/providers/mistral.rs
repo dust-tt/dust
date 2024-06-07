@@ -1009,6 +1009,7 @@ impl LLM for MistralAILLM {
                 let choice = match fc.as_str() {
                     "auto" => MistralToolChoice::Auto,
                     "none" => MistralToolChoice::None,
+                    "any" => MistralToolChoice::Any,
                     // This string is validated in the block to match at least one function.
                     // Mistral semantic of `any` is to force the model to make a function call (but
                     // can be any of the functions passed). The two semantics only match if there
