@@ -623,7 +623,7 @@ function ParagraphBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CodeBlock({
+export function CodeBlock({
   inline,
   className,
   children,
