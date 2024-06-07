@@ -9,9 +9,7 @@ import type {
   GenerationErrorEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
-  ModelConversationType,
   ModelConversationTypeMultiActions,
-  ModelMessageType,
   ModelMessageTypeMultiActions,
   Result,
   UserMessageType,
@@ -22,9 +20,7 @@ import {
   DustProdActionRegistry,
   Err,
   isAgentMessageType,
-  isBaseActionClass,
   isContentFragmentType,
-  isRetrievalActionType,
   isRetrievalConfiguration,
   isUserMessageType,
   Ok,
@@ -40,7 +36,6 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getDeprecatedSingleAction } from "@app/lib/client/assistant_builder/deprecated_single_action";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
@@ -52,205 +47,6 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 /**
  * Model rendering of conversations.
  */
-
-// This function transforms a conversation in a simplified format that we feed the model as context.
-// It takes care of truncating the conversation all the way to `allowedTokenCount` tokens.
-export async function renderConversationForModel({
-  conversation,
-  model,
-  prompt,
-  allowedTokenCount,
-  excludeActions,
-}: {
-  conversation: ConversationType;
-  model: { providerId: string; modelId: string };
-  prompt: string;
-  allowedTokenCount: number;
-  excludeActions?: boolean;
-}): Promise<
-  Result<
-    { modelConversation: ModelConversationType; tokensUsed: number },
-    Error
-  >
-> {
-  const messages: ModelMessageType[] = [];
-
-  // We include the retrievals from the last agent message that involved retrievals only. This
-  // allows to have multiple retrievals per agent messages (multi-actions) while not including old
-  // retrievals from previous messages once one set of retrievals was included (existing behavior).
-  let foundRetrieval = false;
-  let includeRetrieval = true;
-
-  // Render all messages and all actions.
-  for (let i = conversation.content.length - 1; i >= 0; i--) {
-    const versions = conversation.content[i];
-    const m = versions[versions.length - 1];
-
-    if (isAgentMessageType(m)) {
-      if (m.content) {
-        messages.unshift({
-          role: "agent" as const,
-          name: m.configuration.name,
-          content: m.content,
-        });
-      }
-      // There are contexts where we want to exclude the actions from the rendering.
-      // Eg: During the conversation title generation step.
-      const action = getDeprecatedSingleAction(m.actions);
-      if (action && !excludeActions) {
-        if (isBaseActionClass(action)) {
-          if (isRetrievalActionType(action) && includeRetrieval) {
-            foundRetrieval = true;
-          }
-          messages.unshift(action.renderForModel());
-        } else {
-          assertNever(action);
-        }
-      }
-    } else if (isUserMessageType(m)) {
-      if (foundRetrieval) {
-        includeRetrieval = false;
-      }
-
-      // Replace all `:mention[{name}]{.*}` with `@name`.
-      const content = m.content.replaceAll(
-        /:mention\[([^\]]+)\]\{[^}]+\}/g,
-        (_, name) => {
-          return `@${name}`;
-        }
-      );
-      messages.unshift({
-        role: "user" as const,
-        name: m.context.fullName || m.context.username,
-        content,
-      });
-    } else if (isContentFragmentType(m)) {
-      try {
-        const content = await getContentFragmentText({
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          messageId: m.sId,
-        });
-        messages.unshift({
-          role: "content_fragment",
-          name: `inject_${m.contentType}`,
-          content:
-            `TITLE: ${m.title}\n` +
-            `TYPE: ${m.contentType}${
-              m.contentType === "file_attachment" ? " (user provided)" : ""
-            }\n` +
-            `CONTENT:\n${content}`,
-        });
-      } catch (error) {
-        logger.error(
-          {
-            error,
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            messageId: m.sId,
-          },
-          "Failed to retrieve content fragment text"
-        );
-        return new Err(new Error("Failed to retrieve content fragment text"));
-      }
-    } else {
-      ((x: never) => {
-        throw new Error(`Unexpected message type: ${x}`);
-      })(m);
-    }
-  }
-
-  const now = Date.now();
-
-  // Compute in parallel the token count for each message and the prompt.
-  const [messagesCountRes, promptCountRes] = await Promise.all([
-    // This is a bit aggressive but fuck it.
-    Promise.all(
-      messages.map((m) => {
-        return tokenCountForText(`${m.role} ${m.name} ${m.content}`, model);
-      })
-    ),
-    tokenCountForText(prompt, model),
-  ]);
-
-  if (promptCountRes.isErr()) {
-    return new Err(promptCountRes.error);
-  }
-
-  // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
-  // approximations, 64 tokens seems small enough and ample enough.
-  const tokensMargin = 64;
-  let tokensUsed = promptCountRes.value + tokensMargin;
-
-  // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected: ModelMessageType[] = [];
-  const truncationMessage = `... (content truncated)`;
-  const approxTruncMsgTokenCount = truncationMessage.length / 3;
-
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const r = messagesCountRes[i];
-    if (r.isErr()) {
-      return new Err(r.error);
-    }
-    const c = r.value;
-    if (tokensUsed + c <= allowedTokenCount) {
-      tokensUsed += c;
-      selected.unshift(messages[i]);
-    } else if (
-      // When a content fragment has more than the remaining number of tokens, we split it.
-      messages[i].role === "content_fragment" &&
-      // Allow at least tokensMargin tokens in addition to the truncation message.
-      tokensUsed + approxTruncMsgTokenCount + tokensMargin < allowedTokenCount
-    ) {
-      const remainingTokens =
-        allowedTokenCount - tokensUsed - approxTruncMsgTokenCount;
-      const contentRes = await tokenSplit(
-        messages[i].content,
-        model,
-        remainingTokens
-      );
-      if (contentRes.isErr()) {
-        return new Err(contentRes.error);
-      }
-      selected.unshift({
-        ...messages[i],
-        content: contentRes.value + truncationMessage,
-      });
-      tokensUsed += remainingTokens;
-      break;
-    } else {
-      break;
-    }
-  }
-
-  logger.info(
-    {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      messageCount: messages.length,
-      promptToken: promptCountRes.value,
-      tokensUsed,
-      messageSelected: selected.length,
-      elapsed: Date.now() - now,
-    },
-    "[ASSISTANT_TRACE] Genration message token counts for model conversation rendering"
-  );
-  while (selected.length > 0 && selected[0].role === "agent") {
-    const tokenCountRes = messagesCountRes[messages.length - selected.length];
-    if (tokenCountRes.isErr()) {
-      return new Err(tokenCountRes.error);
-    }
-    tokensUsed -= tokenCountRes.value;
-    selected.shift();
-  }
-
-  return new Ok({
-    modelConversation: {
-      messages: selected,
-    },
-    tokensUsed,
-  });
-}
 
 export async function renderConversationForModelMultiActions({
   conversation,
@@ -271,6 +67,7 @@ export async function renderConversationForModelMultiActions({
     Error
   >
 > {
+  const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
   const closingAttachmentTag = "</attachment>\n";
 
@@ -462,17 +259,22 @@ export async function renderConversationForModelMultiActions({
       }
       userMessage.content = [
         cfMessage.content,
-        // We can now close the </attachment> tag, because the message was already properly truncated.
-        // We also accounted for the closing that above when computing the tokens count.
+        // We can now close the </attachment> tag, because the message was already properly
+        // truncated.  We also accounted for the closing that above when computing the tokens count.
         closingAttachmentTag,
         userMessage.content,
       ].join("");
-      // Now we remove the content fragment from the array since it was merged into the upcoming user message.
+      // Now we remove the content fragment from the array since it was merged into the upcoming
+      // user message.
       selected.splice(i, 1);
     }
   }
 
-  while (selected.length > 0 && selected[0].role === "assistant") {
+  while (
+    selected.length > 0 &&
+    // Most model providers don't support starting by a function result or assistant message.
+    ["assistant", "function"].includes(selected[0].role)
+  ) {
     const tokenCountRes = messagesCountRes[messages.length - selected.length];
     if (tokenCountRes.isErr()) {
       return new Err(tokenCountRes.error);
@@ -480,6 +282,19 @@ export async function renderConversationForModelMultiActions({
     tokensUsed -= tokenCountRes.value;
     selected.shift();
   }
+
+  logger.info(
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      messageCount: messages.length,
+      promptToken: promptCountRes.value,
+      tokensUsed,
+      messageSelected: selected.length,
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
+  );
 
   return new Ok({
     modelConversation: {
@@ -681,7 +496,7 @@ export async function* runGeneration(
   const prompt = await constructPrompt(auth, userMessage, configuration);
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel({
+  const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,
@@ -708,14 +523,6 @@ export async function* runGeneration(
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = model.temperature;
-
-  // This is the console.log you want to uncomment to generate inputs for the generator app.
-  // console.log(
-  //   JSON.stringify({
-  //     conversation: modelConversationRes.value,
-  //     prompt,
-  //   })
-  // );
 
   logger.info(
     {

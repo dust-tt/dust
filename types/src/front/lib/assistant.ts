@@ -38,6 +38,8 @@ export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
+export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
+  "gemini-1.5-flash-latest" as const;
 
 export const MODEL_IDS = [
   GPT_4_TURBO_MODEL_ID,
@@ -52,6 +54,7 @@ export const MODEL_IDS = [
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
+  GEMINI_1_5_FLASH_LATEST_MODEL_ID,
 ] as const;
 export type ModelIdType = (typeof MODEL_IDS)[number];
 
@@ -115,7 +118,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "OpenAI's cost-effective and high throughput model (16k context).",
   shortDescription: "OpenAI's fast model.",
-  supportsMultiActions: false,
+  supportsMultiActions: true,
   isLegacy: false,
 };
 
@@ -238,7 +241,22 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
-    "Google's best model for scaling across a wide range of tasks (1M context).",
+    "Google's best model for scaling across a wide range of tasks (1m context).",
+  shortDescription: "Google's smartest model.",
+  supportsMultiActions: false,
+  isLegacy: false,
+};
+
+export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_1_5_FLASH_LATEST_MODEL_ID,
+  displayName: "Gemini Flash 1.5",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's smartest model.",
   supportsMultiActions: false,
   isLegacy: false,
@@ -257,6 +275,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
+  GEMINI_FLASH_DEFAULT_MODEL_CONFIG,
 ];
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

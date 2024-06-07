@@ -33,7 +33,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   constructPrompt,
-  renderConversationForModel,
+  renderConversationForModelMultiActions,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
@@ -79,7 +79,7 @@ async function generateActionInputs(
     : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel({
+  const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,

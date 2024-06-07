@@ -3,7 +3,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   ProcessActionOutputsType,
   ProcessActionType,
   ProcessConfigurationType,
@@ -79,32 +78,6 @@ export class ProcessAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-
-    content += "PROCESSED OUTPUTS:\n";
-
-    // TODO(spolu): figure out if we want to add the schema here?
-
-    if (this.outputs) {
-      if (this.outputs.data.length === 0) {
-        content += "(none)\n";
-      } else {
-        for (const o of this.outputs.data) {
-          content += `${JSON.stringify(o)}\n`;
-        }
-      }
-    } else if (this.outputs === null) {
-      content += "(processing failed)\n";
-    }
-
-    return {
-      role: "action" as const,
-      name: this.functionCallName ?? "process_data_sources",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
@@ -132,6 +105,7 @@ export class ProcessAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? "process_data_sources",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };

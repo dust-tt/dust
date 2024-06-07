@@ -7,7 +7,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
 } from "@dust-tt/types";
 import type { DustAppParameters, DustAppRunActionType } from "@dust-tt/types";
 import type { AgentActionSpecification } from "@dust-tt/types";
@@ -77,20 +76,6 @@ export class DustAppRunAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-
-    // Note action.output can be any valid JSON including null.
-    content += `OUTPUT:\n`;
-    content += `${JSON.stringify(this.output, null, 2)}\n`;
-
-    return {
-      role: "action" as const,
-      name: this.appName,
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
@@ -108,6 +93,7 @@ export class DustAppRunAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? this.appName,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
