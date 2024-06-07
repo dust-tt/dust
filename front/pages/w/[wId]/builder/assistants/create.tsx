@@ -11,10 +11,9 @@ import type {
   SubscriptionType,
   TemplateTagCodeType,
   TemplateTagsType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  MODEL_PROVIDER_IDS
+  WorkspaceType,
 } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
