@@ -1,5 +1,5 @@
 import type { AppsModelProviderId, WorkspaceType } from "@dust-tt/types";
-import { APP_MODEL_PROVIDER_IDS, isModelProviderType} from "@dust-tt/types";
+import { APP_MODEL_PROVIDER_IDS, isModelProviderType } from "@dust-tt/types";
 
 import logger from "@app/logger/logger";
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
@@ -120,14 +120,17 @@ export function filterModelProviders(
   }
   const providersModels = providers.map((provider) => {
     if (provider && isModelProviderType(provider)) {
-      return provider
+      return provider;
     } else {
       logger.error("Unexpected type for 'providers'.");
       throw new Error("Unexpected type for 'providers'.");
     }
-  })
-  const whiteListedAppProviders = new Set(whiteListedProviders ?
-    [...whiteListedProviders, "azure_openai"]: APP_MODEL_PROVIDER_IDS);
+  });
+  const whiteListedAppProviders = new Set(
+    whiteListedProviders
+      ? [...whiteListedProviders, "azure_openai"]
+      : APP_MODEL_PROVIDER_IDS
+  );
   const candidateModelProviderIds = new Set(
     modelProviders
       .filter(
@@ -138,7 +141,9 @@ export function filterModelProviders(
       )
       .map((p) => p.providerId)
   );
-  return providersModels.filter((p) => candidateModelProviderIds.has(p.providerId));
+  return providersModels.filter((p) =>
+    candidateModelProviderIds.has(p.providerId)
+  );
 }
 
 export function filterServiceProviders(

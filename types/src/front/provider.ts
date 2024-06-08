@@ -5,14 +5,14 @@ export const APP_MODEL_PROVIDER_IDS = [
   "azure_openai",
 ] as const;
 
-export type AppsModelProviderId = typeof APP_MODEL_PROVIDER_IDS[number];
+export type AppsModelProviderId = (typeof APP_MODEL_PROVIDER_IDS)[number];
 
-export interface ProviderType<T = string>{
+export interface ProviderType<T = string> {
   providerId: T;
   config: string;
 }
 
-export type ModelProviderType = ProviderType<AppsModelProviderId>
+export type ModelProviderType = ProviderType<AppsModelProviderId>;
 
 export type CredentialsType = {
   OPENAI_API_KEY?: string;
@@ -34,7 +34,6 @@ export function isModelProviderType(
 ): providerId is ModelProviderType {
   const modelProviderIds = [...APP_MODEL_PROVIDER_IDS] as string[];
   return (
-    typeof providerId === "string" &&
-    modelProviderIds.includes(providerId)
+    typeof providerId === "string" && modelProviderIds.includes(providerId)
   );
 }
