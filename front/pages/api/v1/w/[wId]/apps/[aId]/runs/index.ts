@@ -1,7 +1,6 @@
 import type {
-  AppType,
-  CoreAPIError,
   CredentialsType,
+  TraceType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
@@ -30,15 +29,6 @@ export const config = {
   },
 };
 
-interface PoolCall {
-  fn: () => Promise<any>;
-  validate: (result: any) => boolean;
-  interval: number;
-  increment: number;
-  maxInterval: number;
-  maxAttempts: number;
-}
-
 type Usage = {
   providerId: string;
   modelId: string;
@@ -46,142 +36,33 @@ type Usage = {
   completionTokens: number;
 };
 
-const poll = async ({
-  fn,
-  validate,
-  interval,
-  increment,
-  maxInterval,
-  maxAttempts,
-}: PoolCall) => {
-  let attempts = 0;
-
-  const executePoll = async (resolve: any, reject: any) => {
-    let result = null;
-    try {
-      result = await fn();
-    } catch (e) {
-      logger.error(
-        {
-          error: e,
-        },
-        "Caught error in executePoll"
-      );
-      return reject(e);
-    }
-    attempts++;
-    if (interval < maxInterval) {
-      interval += increment;
-    }
-
-    if (validate(result)) {
-      return resolve(result);
-    } else if (maxAttempts && attempts === maxAttempts) {
-      return reject(
-        new Error(
-          "The run took too long to complete, retry with `blocking=false` and direct polling of the runId"
-        )
-      );
-    } else {
-      setTimeout(executePoll, interval, resolve, reject);
-    }
-  };
-
-  return new Promise(executePoll);
-};
-
-async function pollForRunCompletion(
-  coreAPI: CoreAPI,
-  app: AppType,
-  runId: string
-) {
-  try {
-    await poll({
-      fn: async () => {
-        const run = await coreAPI.getRunStatus({
-          projectId: app.dustAPIProjectId,
-          runId,
-        });
-        if (run.isErr()) {
-          return { status: "error" };
-        }
-        const r = run.value.run;
-        return { status: r.status.run };
-      },
-      validate: (r) => {
-        if (r && r.status == "running") {
-          return false;
-        }
-        return true;
-      },
-      interval: 128,
-      increment: 32,
-      maxInterval: 1024,
-      maxAttempts: 64,
-    });
-  } catch (e) {
-    throw Error(
-      `There was an error polling the run status: runId=${runId} error=${e}`
-    );
-  }
-
-  // Finally refresh the run object.
-  const runRes = await coreAPI.getRun({
-    projectId: app.dustAPIProjectId,
-    runId,
-  });
-  if (runRes.isErr()) {
-    throw Error(`There was an error retrieving the run while polling.`, {
-      cause: runRes.error,
-    });
-  }
-  const run = runRes.value.run;
-  run.specification_hash = run.app_hash;
-  delete run.app_hash;
-  return run;
-}
+type Executions = 
+ {value: unknown, error?: unknown, meta?: { token_usage?: { prompt_tokens: number; completion_tokens: number }}}[][];
 
 function extractUsageFromExecutions(
   block: { provider_id: string; model_id: string },
-  executions: {
-    meta?: {
-      token_usage?: { prompt_tokens: number; completion_tokens: number };
-    };
-  }[][],
+  traces: TraceType[][],
   usages: Usage[]
 ) {
   if (block) {
-    executions.forEach((executionsInner) => {
-      executionsInner.forEach((execution) => {
-        if (execution?.meta?.token_usage) {
-          const promptTokens = execution?.meta?.token_usage.prompt_tokens;
-          const completionTokens =
-            execution?.meta?.token_usage.completion_tokens;
-          usages.push({
-            providerId: block.provider_id,
-            modelId: block.model_id,
-            promptTokens,
-            completionTokens,
-          });
+    traces.forEach((tracesInner) => {
+      tracesInner.forEach((trace) => {
+        if (trace?.meta) {
+          const {token_usage} = trace.meta as {token_usage: {prompt_tokens: number; completion_tokens: number}};
+          if (token_usage) {
+            const promptTokens = token_usage.prompt_tokens;
+            const completionTokens = token_usage.completion_tokens;
+            usages.push({
+              providerId: block.provider_id,
+              modelId: block.model_id,
+              promptTokens,
+              completionTokens,
+            });
+          }
         }
       });
     });
   }
-}
-
-function storeTokenUsages(run: RunType, runId: number) {
-  const usages: Usage[] = [];
-  run.traces.forEach((trace: any) => {
-    const block = run.config.blocks[trace[0][1]];
-    extractUsageFromExecutions(block, trace[1], usages);
-  });
-
-  return RunUsage.bulkCreate(
-    usages.map((usage) => ({
-      runId,
-      ...usage,
-    }))
-  );
 }
 
 async function handler(
@@ -281,109 +162,7 @@ async function handler(
         "App run creation"
       );
 
-      // If `stream` is true, run in streaming mode.
-      if (req.body.stream) {
-        const runRes = await coreAPI.createRunStream({
-          projectId: app.dustAPIProjectId,
-          runAsWorkspaceId: keyWorkspaceId,
-          runType: "deploy",
-          specificationHash: specificationHash,
-          config: { blocks: config },
-          inputs,
-          credentials,
-          secrets,
-        });
-
-        if (runRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message: "There was an error running the app.",
-              run_error: runRes.error,
-            },
-          });
-        }
-        res.writeHead(200, {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        });
-
-        const usages: Usage[] = [];
-
-        try {
-          // Intercept block_execution events to store token usages.
-          const parser = createParser((event) => {
-            if (event.type === "event") {
-              if (event.data) {
-                try {
-                  const data = JSON.parse(event.data);
-                  if (data.type === "block_execution") {
-                    const block = config[data.content.block_name];
-                    extractUsageFromExecutions(
-                      block,
-                      data.content.execution,
-                      usages
-                    );
-                  }
-                } catch (err) {
-                  logger.error(
-                    { error: err },
-                    "Error parsing run events while extracting usage from executions"
-                  );
-                }
-              }
-            }
-          });
-
-          for await (const chunk of runRes.value.chunkStream) {
-            parser.feed(new TextDecoder().decode(chunk));
-            res.write(chunk);
-            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
-            res.flush();
-          }
-        } catch (err) {
-          logger.error(
-            {
-              error: err,
-            },
-            "Error streaming from Dust API"
-          );
-        }
-        res.end();
-
-        let dustRunId: string;
-        try {
-          dustRunId = await runRes.value.dustRunId;
-        } catch (e) {
-          logger.error(
-            {
-              error: "No run ID received from Dust API after consuming stream",
-            },
-            "Error streaming from Dust API"
-          );
-          return;
-        }
-
-        const runEntity = await Run.create({
-          dustRunId,
-          appId: app.id,
-          runType: "deploy",
-          workspaceId: keyRes.value.workspaceId,
-        });
-
-        await RunUsage.bulkCreate(
-          usages.map((usage) => ({
-            runId: runEntity.id,
-            ...usage,
-          }))
-        );
-
-        return;
-      }
-
-      const runRes = await coreAPI.createRun({
+      const runRes = await coreAPI.createRunStream({
         projectId: app.dustAPIProjectId,
         runAsWorkspaceId: keyWorkspaceId,
         runType: "deploy",
@@ -405,73 +184,181 @@ async function handler(
         });
       }
 
-      const runEntity = await Run.create({
-        dustRunId: runRes.value.run.run_id,
-        appId: app.id,
-        runType: "deploy",
-        workspaceId: keyRes.value.workspaceId,
-      });
+      if (req.body.stream) {
+        // Start SSE stream.
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        });
+      } else if (!req.body.blocking) {
+        // Non blocking, return a run object as soon as we get the runId.
+        void (async () => {
+          try {
+            const runId = await runRes.value.dustRunId;
 
-      let run: RunType = runRes.value.run;
-      run.specification_hash = run.app_hash;
-      delete run.app_hash;
+            const statusRunRes = await coreAPI.getRunStatus({
+              projectId: app.dustAPIProjectId,
+              runId,
+            });
+            if (statusRunRes.isErr()) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "run_error",
+                  message: "There was an error getting the app run status.",
+                  run_error: statusRunRes.error,
+                },
+              });
+            }
+            const run: RunType = statusRunRes.value.run;
+            run.specification_hash = run.app_hash;
+            run.status.blocks = [];
+            run.results = null;
+            delete run.app_hash;
 
-      // If `blocking` is set, poll for run completion.
-      if (req.body.blocking) {
-        const runId = run.run_id;
-        try {
-          run = await pollForRunCompletion(coreAPI, app, runId);
-          await storeTokenUsages(run, runEntity.id);
-        } catch (e) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message:
-                e instanceof Error
-                  ? e.message
-                  : `There was an error polling the run status: runId=${runId} error=${e}`,
-              run_error:
-                e instanceof Error ? (e.cause as CoreAPIError) : undefined,
-            },
+            res.status(200).json({ run: run as RunType });
+          } catch (err) {
+            logger.error(
+              {
+                error: err
+              },
+              "There was an error getting the app status."
+            );
+
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "run_error",
+                message: "There was an error getting the app status."
+              },
+            });
+          }
+        })();
+      }
+
+      const usages: Usage[] = [];
+
+      try {
+        // Intercept block_execution events to store token usages.
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.type === "block_execution") {
+                  const block = config[data.content.block_name];
+                  extractUsageFromExecutions(
+                    block,
+                    data.content.execution,
+                    usages
+                  );
+                }
+              } catch (err) {
+                logger.error(
+                  { error: err },
+                  "Error parsing run events while extracting usage from executions"
+                );
+              }
+            }
+          }
+        });
+
+        for await (const chunk of runRes.value.chunkStream) {
+          parser.feed(new TextDecoder().decode(chunk));
+          if (req.body.stream) {
+            res.write(chunk);
+            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
+            res.flush();
+          }
+        }
+      } catch (err) {
+        logger.error(
+          {
+            error: err,
+          },
+          "Error streaming from Dust API"
+        );
+      }
+
+      if (req.body.stream) {
+        res.end();
+      }
+
+      try {
+        const dustRunId = await runRes.value.dustRunId;
+      
+        const runEntity = await Run.create({
+          dustRunId,
+          appId: app.id,
+          runType: "deploy",
+          workspaceId: keyRes.value.workspaceId,
+        });
+  
+        await RunUsage.bulkCreate(
+          usages.map((usage) => ({
+            runId: runEntity.id,
+            ...usage,
+          }))
+        );
+  
+        if (req.body.blocking && !req.body.stream) {
+          const statusRunRes = await coreAPI.getRun({
+            projectId: app.dustAPIProjectId,
+            runId: dustRunId,
           });
+
+          if (statusRunRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "run_error",
+                message: "There was an error getting the app run details.",
+                run_error: statusRunRes.error,
+              },
+            });
+          }
+
+          const run: RunType = statusRunRes.value.run;
+          run.specification_hash = run.app_hash;
+          delete run.app_hash;
+
+          if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
+            run.traces = run.traces.filter((t: any) => {
+              return req.body.block_filter.includes(t[0][1]);
+            });
+
+            run.status.blocks = run.status.blocks.filter((c: any) => {
+              return req.body.block_filter.includes(c.name);
+            });
+          }
+
+          if (run.status.run === "succeeded" && run.traces.length > 0) {
+            run.results = run.traces[run.traces.length - 1][1];
+          } else {
+            run.results = null;
+          }
+
+          res.status(200).json({ run: run as RunType });
         }
-      } else {
-        const runId = run.run_id;
-        try {
-          void (async () => {
-            // Non-blocking, store token usages asynchronously
-            const run = await pollForRunCompletion(coreAPI, app, runId);
-            await storeTokenUsages(run, runEntity.id);
-          })();
-        } catch (e) {
-          logger.error(
-            {
-              error: e,
-            },
-            `There was an error polling the run status: runId=${runId} error=${e}`
-          );
-        }
-      }
-
-      if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
-        run.traces = run.traces.filter((t: any) => {
-          return req.body.block_filter.includes(t[0][1]);
-        });
-        run.status.blocks = run.status.blocks.filter((c: any) => {
-          return req.body.block_filter.includes(c.name);
+      } catch (err) {
+        logger.error(
+          {
+            error: err,
+          },
+          "There was an error getting the app status."
+        );
+      
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "run_error",
+            message: "There was an error getting the app status."
+          },
         });
       }
 
-      if (run.status.run === "succeeded" && run.traces.length > 0) {
-        run.results = run.traces[run.traces.length - 1][1];
-      } else {
-        run.results = null;
-      }
-
-      res.status(200).json({ run: run as RunType });
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,
