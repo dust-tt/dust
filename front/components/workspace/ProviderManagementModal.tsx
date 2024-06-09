@@ -68,7 +68,7 @@ export function ProviderManagementModal({
     [setProviderStates]
   );
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     const activeProviders = MODEL_PROVIDER_IDS.filter(
       (key) => providerStates[key]
     );
@@ -82,7 +82,7 @@ export function ProviderManagementModal({
     } else {
       onSave(activeProviders);
     }
-  }, [providerStates, sendNotifications, onSave]);
+  };
 
   return (
     <Modal
