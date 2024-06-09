@@ -37,10 +37,7 @@ type Usage = {
   completionTokens: number;
 };
 
-type Trace = [
-  [BlockType, string],
-  TraceType[][]
-];
+type Trace = [[BlockType, string], TraceType[][]];
 
 function extractUsageFromExecutions(
   block: { provider_id: string; model_id: string },
@@ -51,7 +48,9 @@ function extractUsageFromExecutions(
     traces.forEach((tracesInner) => {
       tracesInner.forEach((trace) => {
         if (trace?.meta) {
-          const {token_usage} = trace.meta as {token_usage: {prompt_tokens: number; completion_tokens: number}};
+          const { token_usage } = trace.meta as {
+            token_usage: { prompt_tokens: number; completion_tokens: number };
+          };
           if (token_usage) {
             const promptTokens = token_usage.prompt_tokens;
             const completionTokens = token_usage.completion_tokens;
@@ -224,7 +223,7 @@ async function handler(
           } catch (err) {
             logger.error(
               {
-                error: err
+                error: err,
               },
               "There was an error getting the app status."
             );
@@ -233,7 +232,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "run_error",
-                message: "There was an error getting the app status."
+                message: "There was an error getting the app status.",
               },
             });
           }
@@ -298,21 +297,21 @@ async function handler(
 
       try {
         const dustRunId = await runRes.value.dustRunId;
-      
-        const runEntity = await Run.create({
+
+        const { id: runId } = await Run.create({
           dustRunId,
           appId: app.id,
           runType: "deploy",
           workspaceId: keyRes.value.workspaceId,
         });
-  
+
         await RunUsage.bulkCreate(
           usages.map((usage) => ({
-            runId: runEntity.id,
+            runId,
             ...usage,
           }))
         );
-  
+
         if (req.body.blocking && !req.body.stream) {
           const statusRunRes = await coreAPI.getRunStatus({
             projectId: app.dustAPIProjectId,
@@ -361,12 +360,12 @@ async function handler(
           },
           "There was an error getting the app status."
         );
-      
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "run_error",
-            message: "There was an error getting the app status."
+            message: "There was an error getting the app status.",
           },
         });
       }
