@@ -491,6 +491,7 @@ impl LLMChatRequest {
                     attempts = attempts,
                     sleep = sleep.as_millis(),
                     err_msg = err_msg,
+                    run_id = run_id,
                     "Retry querying"
                 );
             },
@@ -514,6 +515,7 @@ impl LLMChatRequest {
                     messages_count = self.messages.len(),
                     temperature = self.temperature,
                     request_id = c.provider_request_id.as_deref().unwrap_or(""),
+                    run_id = run_id,
                     completion_message_length = c
                         .completions
                         .iter()
