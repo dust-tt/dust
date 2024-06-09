@@ -1,4 +1,5 @@
 import type {
+  BlockType,
   CredentialsType,
   TraceType,
   WithAPIErrorReponse,
@@ -36,8 +37,10 @@ type Usage = {
   completionTokens: number;
 };
 
-type Executions = 
- {value: unknown, error?: unknown, meta?: { token_usage?: { prompt_tokens: number; completion_tokens: number }}}[][];
+type Trace = [
+  [BlockType, string],
+  TraceType[][]
+];
 
 function extractUsageFromExecutions(
   block: { provider_id: string; model_id: string },
@@ -238,6 +241,7 @@ async function handler(
       }
 
       const usages: Usage[] = [];
+      const traces: Trace[] = [];
 
       try {
         // Intercept block_execution events to store token usages.
@@ -247,6 +251,13 @@ async function handler(
               try {
                 const data = JSON.parse(event.data);
                 if (data.type === "block_execution") {
+                  if (req.body.blocking) {
+                    // Keep track of block executions for blocking requests.
+                    traces.push([
+                      [data.content.block_type, data.content.block_name],
+                      data.content.execution,
+                    ]);
+                  }
                   const block = config[data.content.block_name];
                   extractUsageFromExecutions(
                     block,
@@ -303,7 +314,7 @@ async function handler(
         );
   
         if (req.body.blocking && !req.body.stream) {
-          const statusRunRes = await coreAPI.getRun({
+          const statusRunRes = await coreAPI.getRunStatus({
             projectId: app.dustAPIProjectId,
             runId: dustRunId,
           });
@@ -321,6 +332,8 @@ async function handler(
 
           const run: RunType = statusRunRes.value.run;
           run.specification_hash = run.app_hash;
+          run.traces = traces;
+
           delete run.app_hash;
 
           if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
