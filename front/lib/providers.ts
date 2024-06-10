@@ -1,5 +1,9 @@
-import type { AppsModelProviderId, WorkspaceType } from "@dust-tt/types";
-import { APP_MODEL_PROVIDER_IDS, isModelProviderType } from "@dust-tt/types";
+import type {
+  AppsModelProviderId,
+  ModelProviderIdType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { APP_MODEL_PROVIDER_IDS, isAppModelProviderType } from "@dust-tt/types";
 
 import logger from "@app/logger/logger";
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
@@ -113,13 +117,13 @@ export function filterModelProviders(
   providers: ReturnType<typeof useProviders>["providers"],
   chatOnly: boolean,
   embedOnly: boolean,
-  whiteListedProviders: AppsModelProviderId[] | null
+  whiteListedProviders: ModelProviderIdType[] | null
 ): ReturnType<typeof useProviders>["providers"] {
   if (!providers) {
     return [];
   }
   const providersModels = providers.map((provider) => {
-    if (provider && isModelProviderType(provider)) {
+    if (provider && isAppModelProviderType(provider)) {
       return provider;
     } else {
       logger.error("Unexpected type for 'providers'.");

@@ -12,7 +12,7 @@ export interface ProviderType<T = string> {
   config: string;
 }
 
-export type ModelProviderType = ProviderType<AppsModelProviderId>;
+export type AppModelProviderType = ProviderType<AppsModelProviderId>;
 
 export type CredentialsType = {
   OPENAI_API_KEY?: string;
@@ -29,9 +29,9 @@ export type CredentialsType = {
   GOOGLE_AI_STUDIO_API_KEY?: string;
 };
 
-export function isModelProviderType(
+export function isAppModelProviderType(
   providerId: unknown
-): providerId is ModelProviderType {
+): providerId is AppModelProviderType {
   const modelProviderIds = [...APP_MODEL_PROVIDER_IDS] as string[];
   return (
     typeof providerId === "string" && modelProviderIds.includes(providerId)
