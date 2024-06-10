@@ -657,7 +657,7 @@ export async function* postUserMessage(
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `The model provider for agent configuration ${agentConfig.sId} is currently disabled.`,
+          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
@@ -1090,7 +1090,7 @@ export async function* editUserMessage(
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `The model provider for agent configuration ${agentConfig.sId} is currently disabled.`,
+          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
