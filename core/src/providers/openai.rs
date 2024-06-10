@@ -395,7 +395,6 @@ pub struct InnerError {
     #[serde(alias = "type")]
     pub _type: String,
     pub param: Option<String>,
-    pub code: Option<usize>,
     pub internal_message: Option<String>,
 }
 
@@ -686,11 +685,13 @@ pub async fn streamed_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
@@ -1128,11 +1129,13 @@ pub async fn streamed_chat_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
