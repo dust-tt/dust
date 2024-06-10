@@ -56,6 +56,14 @@ export const modelProviders: ModelProvider[] = [
   },
 ];
 
+export const APP_MODEL_PROVIDER_IDS: string[] = [
+  "openai",
+  "anthropic",
+  "mistral",
+  "google_ai_studio",
+  "azure_openai",
+] as const;
+
 type ServiceProvider = {
   providerId: string;
   name: string;
