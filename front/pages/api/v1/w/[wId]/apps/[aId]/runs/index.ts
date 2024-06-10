@@ -1,6 +1,8 @@
 import type {
   BlockType,
   CredentialsType,
+  ModelIdType,
+  ModelProviderIdType,
   TraceType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
@@ -33,8 +35,8 @@ export const config = {
 type RunFlavor = "blocking" | "streaming" | "non-blocking";
 
 type Usage = {
-  providerId: string;
-  modelId: string;
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
   promptTokens: number;
   completionTokens: number;
 };
@@ -42,7 +44,7 @@ type Usage = {
 type Trace = [[BlockType, string], TraceType[][]];
 
 function extractUsageFromExecutions(
-  block: { provider_id: string; model_id: string },
+  block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
   traces: TraceType[][],
   usages: Usage[]
 ) {
