@@ -1,3 +1,5 @@
+## This is the init script used to initialize the development environment.
+
 ## Initializing PostgresSQL databases
 psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_api;";
 psql "postgres://dev:dev@localhost:5432/" -c "CREATE DATABASE dust_databases_store;";
