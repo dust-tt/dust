@@ -19,7 +19,7 @@ export async function runGoogleWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 4,
+    maxConcurrentActivityTaskExecutions: 30,
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     reuseV8Context: true,
