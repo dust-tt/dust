@@ -105,7 +105,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       },
       signal: newWebhookSignal,
       signalArgs: undefined,
-      // every minute
+      // Every 5 minutes.
       cronSchedule: "*/5 * * * *",
       memo: {
         connectorId: connectorId,
