@@ -106,6 +106,11 @@ export type AssistantBuilderActionConfiguration = (
   description: string;
 };
 
+export type TemplateActionType = Omit<
+  AssistantBuilderActionConfiguration,
+  "configuration"
+>;
+
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 

@@ -95,9 +95,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
   } else if (templateId) {
+    const isMultiActions = owner.flags.includes("multi_actions");
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
-      flow
+      flow,
+      isMultiActions
     );
 
     if (agentConfigRes.isErr()) {

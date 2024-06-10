@@ -1,29 +1,18 @@
 import {
   Button,
   CardButton,
-  CommandLineIcon,
   DropdownMenu,
   Icon,
   IconButton,
   Input,
-  MagnifyingGlassIcon,
   Modal,
   MoreIcon,
   Page,
-  PlanetIcon,
   PlusIcon,
-  ScanIcon,
-  TableIcon,
   TextArea,
-  TimeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  DataSourceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import _ from "lodash";
 import type { ReactNode } from "react";
@@ -55,65 +44,12 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "./actions/DustAppRunAction";
-
-const ACTION_SPECIFICATIONS: Record<
-  AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
-    flag: WhitelistableFeature | null;
-  }
-> = {
-  RETRIEVAL_EXHAUSTIVE: {
-    label: "Most recent data",
-    description: "Include as much data as possible",
-    cardIcon: TimeIcon,
-    dropDownIcon: TimeIcon,
-    flag: null,
-  },
-  RETRIEVAL_SEARCH: {
-    label: "Search",
-    description: "Search through selected Data sources",
-    cardIcon: MagnifyingGlassIcon,
-    dropDownIcon: MagnifyingGlassIcon,
-    flag: null,
-  },
-  PROCESS: {
-    label: "Extract data",
-    description: "Structured extraction",
-    cardIcon: ScanIcon,
-    dropDownIcon: ScanIcon,
-    flag: null,
-  },
-  DUST_APP_RUN: {
-    label: "Run a Dust App",
-    description: "Run a Dust app, then reply",
-    cardIcon: CommandLineIcon,
-    dropDownIcon: CommandLineIcon,
-    flag: null,
-  },
-  TABLES_QUERY: {
-    label: "Query Tables",
-    description: "Tables, Spreadsheets, Notion DBs (quantitative)",
-    cardIcon: TableIcon,
-    dropDownIcon: TableIcon,
-    flag: null,
-  },
-  WEBSEARCH: {
-    label: "Web search",
-    description: "Perform a web search",
-    cardIcon: PlanetIcon,
-    dropDownIcon: PlanetIcon,
-    flag: "websearch_action",
-  },
-};
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
