@@ -403,8 +403,7 @@ impl LLM for GoogleAiStudioLLM {
                 text: c
                     .candidates
                     .as_ref()
-                    .unwrap_or(&vec![])
-                    .first()
+                    .and_then(|c| c.first())
                     .and_then(|c| c.content.as_ref())
                     .and_then(|c| c.parts.as_ref())
                     .and_then(|p| p.first())
@@ -720,43 +719,43 @@ pub async fn streamed_chat_completion(
                         }
                     };
 
-                    let parts = completion_candidates[0]
+                    if let Some(parts) = completion_candidates[0]
                         .content
                         .as_ref()
-                        .and_then(|c| c.parts.clone())
-                        .unwrap_or_default();
+                        .and_then(|c| c.parts.as_ref())
+                    {
+                        match event_sender.as_ref() {
+                            Some(sender) => parts.iter().for_each(|p| {
+                                match p.text {
+                                    Some(ref t) => {
+                                        if t.len() > 0 {
+                                            let _ = sender.send(json!({
+                                                "type": "tokens",
+                                                "content": {
+                                                    "text": t,
+                                                }
+                                            }));
+                                        }
+                                    }
+                                    None => (),
+                                }
 
-                    match event_sender.as_ref() {
-                        Some(sender) => parts.iter().for_each(|p| {
-                            match p.text {
-                                Some(ref t) => {
-                                    if t.len() > 0 {
+                                match p.function_call {
+                                    Some(ref f) => {
                                         let _ = sender.send(json!({
-                                            "type": "tokens",
+                                            "type": "function_call",
                                             "content": {
-                                                "text": t,
+                                                "name": f.name,
                                             }
                                         }));
                                     }
+                                    None => (),
                                 }
-                                None => (),
-                            }
+                            }),
 
-                            match p.function_call {
-                                Some(ref f) => {
-                                    let _ = sender.send(json!({
-                                        "type": "function_call",
-                                        "content": {
-                                            "name": f.name,
-                                        }
-                                    }));
-                                }
-                                None => (),
-                            }
-                        }),
-
-                        _ => (),
-                    };
+                            _ => (),
+                        };
+                    }
 
                     completions.lock().push(completion);
                 }
