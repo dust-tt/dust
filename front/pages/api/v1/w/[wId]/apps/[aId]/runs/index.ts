@@ -289,6 +289,13 @@ async function handler(
           }
         }
       } catch (err) {
+        logger.error(
+          {
+            error: err,
+          },
+          "Error streaming from Dust API"
+        );
+
         if (runFlavor === "streaming") {
           res.end();
         }
