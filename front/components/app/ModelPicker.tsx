@@ -36,8 +36,7 @@ export default function ModelPicker({
   const modelProviders = filterModelProviders(
     providers,
     !!chatOnly,
-    !!embedOnly,
-    owner.whiteListedProviders
+    !!embedOnly
   );
 
   const [models, setModels] = useState(null as any[] | null);

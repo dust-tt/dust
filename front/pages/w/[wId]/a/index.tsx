@@ -36,7 +36,11 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { modelProviders, serviceProviders } from "@app/lib/providers";
+import {
+  APP_MODEL_PROVIDER_IDS,
+  modelProviders,
+  serviceProviders,
+} from "@app/lib/providers";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -401,6 +405,16 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const { providers, isProvidersLoading, isProvidersError } =
     useProviders(owner);
 
+  const appWhiteListedProviders = owner.whiteListedProviders
+    ? [...owner.whiteListedProviders, "azure_openai"]
+    : APP_MODEL_PROVIDER_IDS;
+  const filteredProviders = modelProviders.filter((provider) => {
+    return (
+      APP_MODEL_PROVIDER_IDS.includes(provider.providerId) &&
+      appWhiteListedProviders.includes(provider.providerId)
+    );
+  });
+
   const configs = {} as any;
 
   if (!isProvidersLoading && !isProvidersError) {
@@ -481,7 +495,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
         />
         <ul role="list" className="pt-4">
-          {modelProviders.map((provider) => (
+          {filteredProviders.map((provider) => (
             <li key={provider.providerId} className="px-2 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1.5">
