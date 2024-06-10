@@ -360,13 +360,6 @@ export class CoreAPI {
           parser.feed(new TextDecoder().decode(value));
           yield value;
         }
-        if (!hasRunId) {
-          // once the stream is entirely consumed, if we haven't received a run id, reject the promise
-          setImmediate(() => {
-            logger.error({}, "No run id received");
-            rejectDustRunIdPromise(new Error("No run id received"));
-          });
-        }
       } catch (e) {
         logger.error(
           {
@@ -377,6 +370,13 @@ export class CoreAPI {
           "Error streaming chunks"
         );
       } finally {
+        if (!hasRunId) {
+          // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+          setImmediate(() => {
+            logger.error({}, "No run id received");
+            rejectDustRunIdPromise(new Error("No run id received"));
+          });
+        }
         reader.releaseLock();
       }
     };

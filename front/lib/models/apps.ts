@@ -323,3 +323,54 @@ Workspace.hasMany(Run, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+
+export class RunUsage extends Model<
+  InferAttributes<RunUsage>,
+  InferCreationAttributes<RunUsage>
+> {
+  declare id: CreationOptional<number>;
+
+  declare runId: ForeignKey<Run["id"]>;
+
+  declare providerId: string; //ModelProviderIdType;
+  declare modelId: string; //ModelIdType;
+
+  declare promptTokens: number;
+  declare completionTokens: number;
+}
+
+RunUsage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    providerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    modelId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    promptTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    completionTokens: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "run_usages",
+    sequelize: frontSequelize,
+    indexes: [{ fields: ["runId"] }, { fields: ["providerId", "modelId"] }],
+  }
+);
+
+Run.hasMany(RunUsage, {
+  foreignKey: { allowNull: false },
+  onDelete: "CASCADE",
+});
