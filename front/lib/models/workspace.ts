@@ -1,4 +1,8 @@
-import type { EmbeddingProviderIdType, RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
+import type {
+  EmbeddingProviderIdType,
+  RoleType,
+  WorkspaceSegmentationType,
+} from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type {
   CreationOptional,
