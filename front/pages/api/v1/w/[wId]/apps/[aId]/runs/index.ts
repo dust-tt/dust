@@ -30,6 +30,8 @@ export const config = {
   },
 };
 
+type RunFlavor = "blocking" | "streaming" | "non-blocking";
+
 type Usage = {
   providerId: string;
   modelId: string;
@@ -115,6 +117,11 @@ async function handler(
   // instead of our managed credentials when running an app with a system API key.
   const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
   const coreAPI = new CoreAPI(logger);
+  const runFlavor: RunFlavor = req.body.stream
+    ? "streaming"
+    : req.body.blocking
+    ? "blocking"
+    : "non-blocking";
 
   switch (req.method) {
     case "POST":
@@ -186,17 +193,19 @@ async function handler(
         });
       }
 
-      if (req.body.stream) {
-        // Start SSE stream.
-        res.writeHead(200, {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        });
-      } else if (!req.body.blocking) {
-        // Non blocking, return a run object as soon as we get the runId.
-        void (async () => {
-          try {
+      switch (runFlavor) {
+        case "streaming":
+          // Start SSE stream.
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          });
+          break;
+
+        case "non-blocking":
+          // Non blocking, return a run object as soon as we get the runId.
+          void (async () => {
             const dustRunId = await runRes.value.dustRunId;
 
             const statusRunRes = await coreAPI.getRunStatus({
@@ -206,7 +215,7 @@ async function handler(
 
             if (statusRunRes.isErr()) {
               return apiError(req, res, {
-                status_code: 400,
+                status_code: 500,
                 api_error: {
                   type: "run_error",
                   message: "There was an error getting the app run status.",
@@ -223,23 +232,7 @@ async function handler(
             run.results = null;
 
             res.status(200).json({ run: run as RunType });
-          } catch (err) {
-            logger.error(
-              {
-                error: err,
-              },
-              "There was an error getting the app status."
-            );
-
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "run_error",
-                message: "There was an error getting the app status.",
-              },
-            });
-          }
-        })();
+          })();
       }
 
       const usages: Usage[] = [];
@@ -286,36 +279,43 @@ async function handler(
           }
         }
       } catch (err) {
-        logger.error(
-          {
-            error: err,
-          },
-          "Error streaming from Dust API"
-        );
+        switch (runFlavor) {
+          case "streaming":
+            logger.error(
+              {
+                error: err,
+              },
+              "Error streaming from Dust API"
+            );
+            break;
+
+          default:
+            throw err;
+        }
       }
 
-      if (req.body.stream) {
-        res.end();
-      }
+      const dustRunId = await runRes.value.dustRunId;
 
-      try {
-        const dustRunId = await runRes.value.dustRunId;
+      const { id: runId } = await Run.create({
+        dustRunId,
+        appId: app.id,
+        runType: "deploy",
+        workspaceId: keyRes.value.workspaceId,
+      });
 
-        const { id: runId } = await Run.create({
-          dustRunId,
-          appId: app.id,
-          runType: "deploy",
-          workspaceId: keyRes.value.workspaceId,
-        });
+      await RunUsage.bulkCreate(
+        usages.map((usage) => ({
+          runId,
+          ...usage,
+        }))
+      );
 
-        await RunUsage.bulkCreate(
-          usages.map((usage) => ({
-            runId,
-            ...usage,
-          }))
-        );
+      switch (runFlavor) {
+        case "streaming":
+          res.end();
+          return;
 
-        if (req.body.blocking && !req.body.stream) {
+        case "blocking":
           const statusRunRes = await coreAPI.getRunStatus({
             projectId: app.dustAPIProjectId,
             runId: dustRunId,
@@ -323,7 +323,7 @@ async function handler(
 
           if (statusRunRes.isErr()) {
             return apiError(req, res, {
-              status_code: 400,
+              status_code: 500,
               api_error: {
                 type: "run_error",
                 message: "There was an error getting the app run details.",
@@ -355,22 +355,7 @@ async function handler(
           }
 
           res.status(200).json({ run: run as RunType });
-        }
-      } catch (err) {
-        logger.error(
-          {
-            error: err,
-          },
-          "There was an error getting the app status."
-        );
-
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "run_error",
-            message: "There was an error getting the app status.",
-          },
-        });
+          return;
       }
 
       return;
