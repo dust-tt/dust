@@ -9,7 +9,6 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { QUEUE_NAME } from "./config";
-import { newWebhookSignal } from "./signals";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
@@ -96,15 +95,13 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
   try {
-    await client.workflow.signalWithStart(googleDriveIncrementalSync, {
+    await client.workflow.start(googleDriveIncrementalSync, {
       args: [connectorId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
       },
-      signal: newWebhookSignal,
-      signalArgs: undefined,
       // Every 5 minutes.
       cronSchedule: "*/5 * * * *",
       memo: {
