@@ -1,4 +1,5 @@
 import type {
+  AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
@@ -110,6 +111,7 @@ async function handleUserMessageEvents(
     | UserMessageNewEvent
     | AgentMessageNewEvent
     | AgentErrorEvent
+    | AgentDisabledErrorEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -195,6 +197,7 @@ async function handleUserMessageEvents(
               }
               break;
             }
+            case "agent_disabled_error":
             case "user_message_error": {
               //  We resolve the promise with an error as we were not able to
               //  create the user message. This is possible for a variety of
