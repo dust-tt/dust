@@ -1,4 +1,5 @@
 import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -11,6 +12,9 @@ import { DataTypes, Model } from "sequelize";
 import type { Subscription } from "@app/lib/models/plan";
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
+
+const modelProviders = [...MODEL_PROVIDER_IDS] as string[];
+export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
 export class Workspace extends Model<
   InferAttributes<Workspace>,
@@ -27,6 +31,8 @@ export class Workspace extends Model<
   declare segmentation: WorkspaceSegmentationType;
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
+  declare whiteListedProviders: ModelProviderIdType[] | null;
+  declare defaultEmbeddingProvider: ModelProviderIdType | null;
 }
 Workspace.init(
   {
@@ -67,6 +73,26 @@ Workspace.init(
     ssoEnforced: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    whiteListedProviders: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      defaultValue: null,
+      allowNull: true,
+      validate: {
+        isProviderValid(value: string[] | null) {
+          if (value && !value.every((val) => modelProviders.includes(val))) {
+            throw new Error("Invalid provider in whiteListedProviders");
+          }
+        },
+      },
+    },
+    defaultEmbeddingProvider: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+      allowNull: true,
+      validate: {
+        isIn: [modelProviders],
+      },
     },
   },
   {

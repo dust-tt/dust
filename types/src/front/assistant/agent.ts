@@ -104,8 +104,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  *   agents mentioned in the conversation with the provided Id.
  * - 'all': Combines workspace and published agents, excluding private agents.
  *   Typically used in agent galleries.
- * - 'manage-assistants-search': specific to the manage-assistants page,
- *   retrieves all global agents including inactive ones, all workspace, all
+ * - 'assistants-search': retrieves all global agents including inactive ones, all workspace, all
  *   published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
@@ -120,7 +119,7 @@ export type AgentsGetViewType =
   | "list"
   | { conversationId: string }
   | "all"
-  | "manage-assistants-search"
+  | "assistants-search"
   | "workspace"
   | "published"
   | "global"

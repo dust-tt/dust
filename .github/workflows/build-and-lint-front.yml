@@ -3,6 +3,7 @@ name: Lint & Build (front)
 on:
   push:
     paths:
+      - types/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
 

@@ -297,6 +297,30 @@ impl DustQdrantClient {
             .await
     }
 
+    pub async fn count_points(
+        &self,
+        embedder_config: &EmbedderConfig,
+        internal_id: &String,
+        filter: Option<qdrant::Filter>,
+        exact: bool,
+    ) -> Result<qdrant::CountResponse> {
+        // If we don't have a filter create an empty one to ensure tenant separation.
+        let mut filter = filter.unwrap_or_default();
+        self.apply_tenant_filter(internal_id, &mut filter);
+
+        self.client
+            .count(&qdrant::CountPoints {
+                collection_name: self.collection_name(embedder_config),
+                filter: Some(filter),
+                exact: Some(exact),
+                shard_key_selector: Some(
+                    vec![self.shard_key(embedder_config, internal_id)?].into(),
+                ),
+                ..Default::default()
+            })
+            .await
+    }
+
     pub async fn upsert_points(
         &self,
         embedder_config: &EmbedderConfig,

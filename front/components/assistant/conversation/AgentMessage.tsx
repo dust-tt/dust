@@ -7,7 +7,6 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -34,17 +33,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { AgentAction } from "@app/components/assistant/conversation/AgentAction";
+import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
+import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import {
-  linkFromDocument,
-  providerFromDocument,
-  titleFromDocument,
-} from "@app/components/assistant/conversation/RetrievalAction";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -370,24 +365,6 @@ export function AgentMessage({
     agentMessageToRender.sId,
   ]);
 
-  function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
-    const router = useRouter();
-    const href = {
-      pathname: router.pathname,
-      query: { ...router.query, assistantDetails: assistant.sId },
-    };
-
-    return (
-      <Link
-        href={href}
-        shallow
-        className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
-      >
-        @{assistant.name}
-      </Link>
-    );
-  }
-
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   return (
@@ -430,9 +407,8 @@ export function AgentMessage({
     references: { [key: string]: RetrievalDocumentType },
     streaming: boolean
   ) {
-    // const action = getDeprecatedSingleAction(agentMessage.actions);
-    // Display the error to the user so they can report it to us (or some can be
-    // understandable directly to them)
+    // Display the error to the user so they can report it to us (or some can be understandable
+    // directly to them)
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
@@ -447,28 +423,14 @@ export function AgentMessage({
       );
     }
 
-    // Loading state (no action nor text yet)
-    if (
-      agentMessage.status === "created" &&
-      !agentMessage.actions.length &&
-      (!agentMessage.content || agentMessage.content === "")
-    ) {
-      return (
-        <div>
-          <div className="pb-2 text-xs font-bold text-element-600">
-            I'm thinking...
-          </div>
-          <Spinner size="sm" />
-        </div>
-      );
-    }
-
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
     return (
-      <>
-        {agentMessage.actions.map((action) => (
-          <AgentAction action={action} key={`action-${action.id}`} />
-        ))}
+      <div className="flex flex-col gap-y-4">
+        <AgentMessageActions
+          actions={agentMessage.actions}
+          agentMessageContent={agentMessage.content}
+          size={size}
+        />
         {agentMessage.content !== null && (
           <div>
             {agentMessage.content === "" ? (
@@ -503,7 +465,7 @@ export function AgentMessage({
             className="mt-4"
           />
         )}
-      </>
+      </div>
     );
   }
 
@@ -522,6 +484,24 @@ export function AgentMessage({
   }
 }
 
+function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
+  const router = useRouter();
+  const href = {
+    pathname: router.pathname,
+    query: { ...router.query, assistantDetails: assistant.sId },
+  };
+
+  return (
+    <Link
+      href={href}
+      shallow
+      className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
+    >
+      @{assistant.name}
+    </Link>
+  );
+}
+
 function Citations({
   activeReferences,
   lastHoveredReference,
@@ -536,16 +516,17 @@ function Citations({
       // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
-        const provider = providerFromDocument(document);
+        const [documentCitation] = makeDocumentCitations([document]);
+
         return (
           <Citation
             key={index}
             size="xs"
             sizing="fluid"
             isBlinking={lastHoveredReference === index}
-            type={provider === "none" ? "document" : provider}
-            title={titleFromDocument(document)}
-            href={linkFromDocument(document)}
+            type={documentCitation.provider}
+            title={documentCitation.title}
+            href={documentCitation.link}
             index={index}
           />
         );

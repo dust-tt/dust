@@ -112,6 +112,20 @@ export async function cancelWorkflow(workflowId: string) {
   return false;
 }
 
+export async function terminateWorkflow(workflowId: string) {
+  const client = await getTemporalClient();
+  try {
+    const workflowHandle = client.workflow.getHandle(workflowId);
+    await workflowHandle.terminate();
+    return true;
+  } catch (e) {
+    if (!(e instanceof WorkflowNotFoundError)) {
+      throw e;
+    }
+  }
+  return false;
+}
+
 export async function terminateAllWorkflowsForConnectorId(
   connectorId: ModelId
 ) {

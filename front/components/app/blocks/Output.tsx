@@ -399,8 +399,12 @@ export default function Output({
     const logs = traces.reduce((acc, t) => {
       return (
         acc +
-        t.filter((t) => t.meta && (t.meta as { logs: any[] }).logs.length)
-          .length
+        t.filter(
+          (t) =>
+            t.meta &&
+            (t.meta as { logs: any[] }).logs &&
+            (t.meta as { logs: any[] }).logs.length
+        ).length
       );
     }, 0);
 
@@ -486,7 +490,7 @@ export default function Output({
           </div>
           {expandedResult ? (
             <>
-              <hr className="my-1" />
+              <div className="my-0.5" />
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">

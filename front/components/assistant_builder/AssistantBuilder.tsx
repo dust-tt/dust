@@ -3,18 +3,14 @@ import "react-image-crop/dist/ReactCrop.css";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CircleIcon,
-  Dialog,
   IconButton,
   MagicIcon,
-  Page,
   SquareIcon,
   Tab,
   TriangleIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -32,7 +28,7 @@ import {
   assertNever,
   getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -108,7 +104,6 @@ type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   baseUrl: string;
   defaultTemplate: FetchAssistantTemplateResponse | null;
-  multiActionsAllowed: boolean;
   multiActionsEnabled: boolean;
 };
 
@@ -183,16 +178,14 @@ const screens = {
   instructions: {
     label: "Instructions",
     icon: CircleIcon,
-    helpContainer: "instructions-help-container",
   },
   actions: {
     label: "Actions & Data sources",
     icon: SquareIcon,
-    helpContainer: "actions-help-container",
   },
-  naming: { label: "Naming", icon: TriangleIcon, helpContainer: null },
+  naming: { label: "Naming", icon: TriangleIcon },
 };
-type BuilderScreen = keyof typeof screens;
+export type BuilderScreen = keyof typeof screens;
 
 export default function AssistantBuilder({
   owner,
@@ -207,7 +200,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  multiActionsAllowed,
   multiActionsEnabled,
 }: AssistantBuilderProps) {
   const router = useRouter();
@@ -242,19 +234,13 @@ export default function AssistantBuilder({
             ...getDefaultAssistantState().generationSettings,
             modelSettings: !isUpgraded(plan)
               ? GPT_3_5_TURBO_MODEL_CONFIG
-              : GPT_4O_MODEL_CONFIG,
+              : GPT_4_TURBO_MODEL_CONFIG,
           },
         }
   );
 
   const [template, setTemplate] =
     useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
-
-  const [
-    showEnableMultiActionsConfirmation,
-    setShowEnableMultiActionsConfirmation,
-  ] = useState(false);
-  const [multiActionsMode, setMultiActionsMode] = useState(multiActionsEnabled);
 
   const resetTemplate = async () => {
     setTemplate(null);
@@ -288,17 +274,19 @@ export default function AssistantBuilder({
     if (template === null) {
       return;
     }
-    const action = getAgentActionConfigurationType(template.presetAction);
-    let actionType: AssistantBuilderActionType | null = null;
 
-    if (isRetrievalConfiguration(action)) {
-      actionType = "RETRIEVAL_SEARCH";
-    } else if (isDustAppRunConfiguration(action)) {
-      actionType = "DUST_APP_RUN";
-    } else if (isTablesQueryConfiguration(action)) {
-      actionType = "TABLES_QUERY";
-    } else if (isProcessConfiguration(action)) {
-      actionType = "PROCESS";
+    let actionType: AssistantBuilderActionType | null = null;
+    if (!multiActionsEnabled) {
+      const action = getAgentActionConfigurationType(template.presetAction);
+      if (isRetrievalConfiguration(action)) {
+        actionType = "RETRIEVAL_SEARCH";
+      } else if (isDustAppRunConfiguration(action)) {
+        actionType = "DUST_APP_RUN";
+      } else if (isTablesQueryConfiguration(action)) {
+        actionType = "TABLES_QUERY";
+      } else if (isProcessConfiguration(action)) {
+        actionType = "PROCESS";
+      }
     }
 
     if (actionType !== null) {
@@ -313,7 +301,7 @@ export default function AssistantBuilder({
         return newState;
       });
     }
-  }, [template]);
+  }, [template, multiActionsEnabled]);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -498,7 +486,7 @@ export default function AssistantBuilder({
           selectedSlackChannels: selectedSlackChannels || [],
           slackChannelsLinkedWithAgent,
         },
-        useMultiActions: multiActionsMode,
+        useMultiActions: multiActionsEnabled,
       });
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
@@ -525,18 +513,11 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(screens).map(([key, { label, icon, helpContainer }]) => ({
+      Object.entries(screens).map(([key, { label, icon }]) => ({
         label,
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
-
-          if (helpContainer) {
-            const element = document.getElementById(helpContainer);
-            if (element) {
-              element.scrollIntoView({ behavior: "smooth" });
-            }
-          }
         },
         icon,
       })),
@@ -548,14 +529,6 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <MultActionsConfirmationModal
-        show={showEnableMultiActionsConfirmation}
-        onClose={() => setShowEnableMultiActionsConfirmation(false)}
-        onConfirm={() => {
-          setMultiActionsMode(true);
-          setEdited(true);
-        }}
-      />
       <AppLayout
         subscription={subscription}
         hideSidebar
@@ -593,21 +566,6 @@ export default function AssistantBuilder({
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tab tabs={tabs} variant="stepper" />
                 <div className="flex flex-row gap-2 self-end pt-0.5">
-                  {multiActionsAllowed && (
-                    <Button
-                      icon={!multiActionsMode ? XMarkIcon : CheckIcon}
-                      label={`Multi Actions ${multiActionsMode ? "On" : "Off"}`}
-                      onClick={() => {
-                        if (!multiActionsMode) {
-                          setShowEnableMultiActionsConfirmation(true);
-                          return;
-                        }
-                        setMultiActionsMode(false);
-                        setEdited(true);
-                      }}
-                      variant={!multiActionsMode ? "tertiary" : "primary"}
-                    />
-                  )}
                   <SharingButton
                     showSlackIntegration={showSlackIntegration}
                     slackDataSource={slackDataSource || null}
@@ -647,7 +605,7 @@ export default function AssistantBuilder({
                     );
                   case "actions":
                     // TODO(@fontanierh): Remove single actions.
-                    if (!multiActionsMode) {
+                    if (!multiActionsEnabled) {
                       return (
                         <ActionScreen
                           owner={owner}
@@ -730,6 +688,7 @@ export default function AssistantBuilder({
           }
           rightPanel={
             <AssistantBuilderRightPanel
+              screen={screen}
               template={template}
               resetTemplate={resetTemplate}
               resetToTemplateInstructions={resetToTemplateInstructions}
@@ -738,6 +697,7 @@ export default function AssistantBuilder({
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
+              multiActionsMode={multiActionsEnabled}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
@@ -1043,43 +1003,5 @@ export function BuilderLayout({
         </div>
       </div>
     </div>
-  );
-}
-
-export function MultActionsConfirmationModal({
-  show,
-  onClose,
-  onConfirm,
-}: {
-  show: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog
-      isOpen={show}
-      onCancel={() => onClose()}
-      onValidate={() => {
-        onConfirm();
-        onClose();
-      }}
-      title="Enable Multi Actions"
-    >
-      <Page.Vertical>
-        <div className="flex flex-col gap-y-2">
-          <div className="text-md grow font-medium text-warning-600">
-            Important
-          </div>
-          <div className="text-md font-normal text-element-700">
-            Multi Actions is an experimental feature that allows an assistant to
-            run multiple actions in a single run.
-          </div>
-          <div className="text-md font-normal text-element-700">
-            This feature is still in development and may not work as expected.
-            We may break or delete any assistant that uses this feature.
-          </div>
-        </div>
-      </Page.Vertical>
-    </Dialog>
   );
 }

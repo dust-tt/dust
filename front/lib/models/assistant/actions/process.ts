@@ -37,7 +37,6 @@ export class AgentProcessConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-  declare forceUseAtIteration: number | null;
 }
 
 AgentProcessConfiguration.init(
@@ -90,13 +89,20 @@ AgentProcessConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_process_configuration",
+    indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+        concurrently: true,
+      },
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
+      },
+    ],
     sequelize: frontSequelize,
     hooks: {
       beforeValidate: (p: AgentProcessConfiguration) => {

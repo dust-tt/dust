@@ -22,11 +22,9 @@ import { useEffect, useState } from "react";
 import { useContext } from "react";
 import { useSWRConfig } from "swr";
 
-import AI21Setup from "@app/components/providers/AI21Setup";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
-import CohereSetup from "@app/components/providers/CohereSetup";
 import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
@@ -38,7 +36,11 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { modelProviders, serviceProviders } from "@app/lib/providers";
+import {
+  APP_MODEL_PROVIDER_IDS,
+  modelProviders,
+  serviceProviders,
+} from "@app/lib/providers";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -392,8 +394,6 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
 export function Providers({ owner }: { owner: WorkspaceType }) {
   const [openAIOpen, setOpenAIOpen] = useState(false);
-  const [cohereOpen, setCohereOpen] = useState(false);
-  const [ai21Open, setAI21Open] = useState(false);
   const [azureOpenAIOpen, setAzureOpenAIOpen] = useState(false);
   const [anthropicOpen, setAnthropicOpen] = useState(false);
   const [mistalAIOpen, setMistralAiOpen] = useState(false);
@@ -404,6 +404,20 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
 
   const { providers, isProvidersLoading, isProvidersError } =
     useProviders(owner);
+
+  const appWhiteListedProviders = owner.whiteListedProviders
+    ? [...owner.whiteListedProviders, "azure_openai"]
+    : APP_MODEL_PROVIDER_IDS;
+  const filteredProvidersIdSet = new Set(
+    modelProviders
+      .filter((provider) => {
+        return (
+          APP_MODEL_PROVIDER_IDS.includes(provider.providerId) &&
+          appWhiteListedProviders.includes(provider.providerId)
+        );
+      })
+      .map((provider) => provider.providerId)
+  );
 
   const configs = {} as any;
 
@@ -417,9 +431,12 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         api_key: "",
         redactedApiKey: api_key,
       };
+      filteredProvidersIdSet.add(providers[i].providerId);
     }
   }
-
+  const filteredProviders = modelProviders.filter((provider) =>
+    filteredProvidersIdSet.has(provider.providerId)
+  );
   return (
     <>
       <OpenAISetup
@@ -428,20 +445,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setOpenAIOpen}
         enabled={!!configs["openai"]}
         config={configs["openai"] ?? null}
-      />
-      <CohereSetup
-        owner={owner}
-        open={cohereOpen}
-        setOpen={setCohereOpen}
-        enabled={!!configs["cohere"]}
-        config={configs["cohere"] ?? null}
-      />
-      <AI21Setup
-        owner={owner}
-        open={ai21Open}
-        setOpen={setAI21Open}
-        enabled={!!configs["ai21"]}
-        config={configs["ai21"] ?? null}
       />
       <AzureOpenAISetup
         owner={owner}
@@ -499,7 +502,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           description="Model providers available to your apps. These providers are not required to run our assistant apps, only your own custom large language model apps."
         />
         <ul role="list" className="pt-4">
-          {modelProviders.map((provider) => (
+          {filteredProviders.map((provider) => (
             <li key={provider.providerId} className="px-2 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1.5">
@@ -547,12 +550,6 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                           break;
                         case "mistral":
                           setMistralAiOpen(true);
-                          break;
-                        case "cohere":
-                          setCohereOpen(true);
-                          break;
-                        case "ai21":
-                          setAI21Open(true);
                           break;
                         case "azure_openai":
                           setAzureOpenAIOpen(true);

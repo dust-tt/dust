@@ -21,7 +21,6 @@ import type { AssistantBuilderInitialState } from "@app/components/assistant_bui
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { isLegacyAgent } from "@app/lib/assistant";
 import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -39,7 +38,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   isMultiActionsAgent: boolean;
-  multiActionsAllowed: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -79,9 +77,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const multiActionsAllowed = owner.flags.includes("multi_actions");
-  const isMultiActionsAgent =
-    multiActionsAllowed && !isLegacyAgent(configuration);
+  const isMultiActionsAgent = owner.flags.includes("multi_actions");
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -107,7 +103,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
-      multiActionsAllowed,
       isMultiActionsAgent,
     },
   };
@@ -124,7 +119,6 @@ export default function EditAssistant({
   agentConfiguration,
   flow,
   baseUrl,
-  multiActionsAllowed,
   isMultiActionsAgent,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
@@ -193,7 +187,6 @@ export default function EditAssistant({
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
       defaultTemplate={null}
-      multiActionsAllowed={multiActionsAllowed}
       multiActionsEnabled={isMultiActionsAgent}
     />
   );

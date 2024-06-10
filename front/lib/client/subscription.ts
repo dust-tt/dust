@@ -2,7 +2,8 @@
 // so this is just a way to have that value hardcoded in one place.
 // Changing this value only changes the value displayed on the webapp and the website,
 // not on the Stripe dashboard.
-export const PRO_PLAN_29_COST = 29;
+export const PRO_PLAN_COST_MONTHLY = 29;
+export const PRO_PLAN_COST_YEARLY = 27;
 
 export const getPriceWithCurrency = (price: number): string => {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;

@@ -3,7 +3,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   Result,
   WebsearchActionOutputType,
   WebsearchActionType,
@@ -45,6 +44,7 @@ export class WebsearchAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "websearch_action";
 
   constructor(blob: WebsearchActionBlob) {
     super(blob.id, "websearch_action");
@@ -55,21 +55,6 @@ export class WebsearchAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
-  }
-
-  renderForModel(): ModelMessageType {
-    let content = "WEBSEARCH OUTPUT:\n";
-    if (this.output === null) {
-      content += "The web search failed.\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
-      role: "action" as const,
-      name: this.functionCallName ?? "web_search",
-      content,
-    };
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -90,6 +75,7 @@ export class WebsearchAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? "web_search",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };

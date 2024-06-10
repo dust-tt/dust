@@ -6,7 +6,6 @@ import {
   Page,
   SliderToggle,
   Spinner,
-  Tooltip,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -451,33 +450,19 @@ export default function LabsTranscriptsIndex({
                   style={{ maxHeight: "35px" }}
                 />
               </div>
-              {owner.flags.includes("labs_transcripts_gong") ? (
-                <div
-                  className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-                    transcriptsConfigurationState.provider == "gong"
-                      ? "border-gray-400"
-                      : "border-gray-200"
-                  }`}
-                  onClick={() => handleProviderChange("gong")}
-                >
-                  <img
-                    src="/static/labs/transcripts/gong.jpeg"
-                    style={{ maxHeight: "35px" }}
-                  />
-                </div>
-              ) : (
-                <Tooltip label="Gong integration coming soon. Contact us at team@dust.tt to be notified when it's ready!">
-                  <div
-                    className="cursor-not-allowed rounded-md border border-gray-200 p-4"
-                    style={{ opacity: 0.5 }}
-                  >
-                    <img
-                      src="/static/labs/transcripts/gong.jpeg"
-                      style={{ maxHeight: "35px" }}
-                    />
-                  </div>
-                </Tooltip>
-              )}
+              <div
+                className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+                  transcriptsConfigurationState.provider == "gong"
+                    ? "border-gray-400"
+                    : "border-gray-200"
+                }`}
+                onClick={() => handleProviderChange("gong")}
+              >
+                <img
+                  src="/static/labs/transcripts/gong.jpeg"
+                  style={{ maxHeight: "35px" }}
+                />
+              </div>
             </Page.Layout>
           )}
 

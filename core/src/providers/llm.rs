@@ -11,7 +11,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::info;
+use tracing::{error, info};
 
 #[derive(Debug, Serialize, PartialEq, Clone, Deserialize)]
 pub struct Tokens {
@@ -28,6 +28,8 @@ pub struct LLMGeneration {
     pub model: String,
     pub completions: Vec<Tokens>,
     pub prompt: Tokens,
+    pub usage: Option<LLMTokenUsage>,
+    pub provider_request_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -92,11 +94,19 @@ pub struct ChatFunction {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct LLMTokenUsage {
+    pub prompt_tokens: u64,
+    pub completion_tokens: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LLMChatGeneration {
     pub created: u64,
     pub provider: String,
     pub model: String,
     pub completions: Vec<ChatMessage>,
+    pub usage: Option<LLMTokenUsage>,
+    pub provider_request_id: Option<String>,
 }
 
 #[async_trait]
@@ -238,6 +248,7 @@ impl LLMRequest {
         &self,
         credentials: Credentials,
         event_sender: Option<UnboundedSender<Value>>,
+        run_id: String,
     ) -> Result<LLMGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize(credentials).await?;
@@ -265,7 +276,18 @@ impl LLMRequest {
                     attempts = attempts,
                     sleep = sleep.as_millis(),
                     err_msg = err_msg,
+                    run_id = run_id,
                     "Retry querying"
+                );
+            },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    run_id = run_id,
+                    "LLMRequest ModelError",
                 );
             },
         )
@@ -283,6 +305,8 @@ impl LLMRequest {
                         None => 0,
                         Some(logprobs) => logprobs.len(),
                     },
+                    request_id = c.provider_request_id.as_deref().unwrap_or(""),
+                    run_id = run_id,
                     completion_tokens = c
                         .completions
                         .iter()
@@ -308,6 +332,7 @@ impl LLMRequest {
         project: Project,
         store: Box<dyn Store + Send + Sync>,
         use_cache: bool,
+        run_id: String,
     ) -> Result<LLMGeneration> {
         let generation = {
             match use_cache {
@@ -325,7 +350,7 @@ impl LLMRequest {
         match generation {
             Some(generation) => Ok(generation),
             None => {
-                let generation = self.execute(credentials, None).await?;
+                let generation = self.execute(credentials, None, run_id).await?;
                 store.llm_cache_store(&project, self, &generation).await?;
                 Ok(generation)
             }
@@ -437,6 +462,7 @@ impl LLMChatRequest {
         &self,
         credentials: Credentials,
         event_sender: Option<UnboundedSender<Value>>,
+        run_id: String,
     ) -> Result<LLMChatGeneration> {
         let mut llm = provider(self.provider_id).llm(self.model_id.clone());
         llm.initialize(credentials).await?;
@@ -465,7 +491,17 @@ impl LLMChatRequest {
                     attempts = attempts,
                     sleep = sleep.as_millis(),
                     err_msg = err_msg,
+                    run_id = run_id,
                     "Retry querying"
+                );
+            },
+            |err| {
+                error!(
+                    provider_id = self.provider_id.to_string(),
+                    model_id = self.model_id,
+                    err_msg = err.message,
+                    request_id = err.request_id.as_deref().unwrap_or(""),
+                    "LLMChatRequest ModelError",
                 );
             },
         )
@@ -478,6 +514,8 @@ impl LLMChatRequest {
                     model_id = self.model_id,
                     messages_count = self.messages.len(),
                     temperature = self.temperature,
+                    request_id = c.provider_request_id.as_deref().unwrap_or(""),
+                    run_id = run_id,
                     completion_message_length = c
                         .completions
                         .iter()
@@ -508,6 +546,7 @@ impl LLMChatRequest {
         project: Project,
         store: Box<dyn Store + Send + Sync>,
         use_cache: bool,
+        run_id: String,
     ) -> Result<LLMChatGeneration> {
         let generation = {
             match use_cache {
@@ -525,7 +564,7 @@ impl LLMChatRequest {
         match generation {
             Some(generation) => Ok(generation),
             None => {
-                let generation = self.execute(credentials, None).await?;
+                let generation = self.execute(credentials, None, run_id).await?;
                 store
                     .llm_chat_cache_store(&project, self, &generation)
                     .await?;

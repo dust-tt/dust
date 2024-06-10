@@ -21,7 +21,7 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
-    t.literal("manage-assistants-search"),
+    t.literal("assistants-search"),
     t.undefined,
   ]),
   conversationId: t.union([t.string, t.undefined]),
@@ -144,7 +144,6 @@ const ProcessActionConfigurationSchema = t.type({
 const multiActionsCommonFields = {
   name: t.union([t.string, t.null]),
   description: t.union([t.string, t.null]),
-  forceUseAtIteration: t.union([t.number, t.null]),
 };
 
 const ActionConfigurationSchema = t.intersection([

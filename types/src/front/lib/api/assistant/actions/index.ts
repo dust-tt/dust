@@ -1,9 +1,5 @@
 import { ModelId } from "../../../../../shared/model_id";
-import {
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelMessageType,
-} from "../generation";
+import { FunctionCallType, FunctionMessageTypeModel } from "../generation";
 
 type BaseActionType =
   | "dust_app_run_action"
@@ -21,7 +17,6 @@ export abstract class BaseAction {
     this.type = type;
   }
 
-  abstract renderForModel(): ModelMessageType;
   abstract renderForFunctionCall(): FunctionCallType;
   abstract renderForMultiActionsModel(): FunctionMessageTypeModel;
 }

@@ -30,10 +30,6 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  generateRetrievalSpecification,
-  runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -41,7 +37,6 @@ import {
   renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
 import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
-import { isLegacyAgent } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
@@ -76,7 +71,14 @@ export async function* runAgent(
     );
   }
 
-  const stream = isLegacyAgent(fullConfiguration)
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unreachable: could not find owner workspace for agent");
+  }
+
+  const multiActions = owner.flags.includes("multi_actions");
+
+  const stream = !multiActions
     ? runLegacyAgent(
         auth,
         fullConfiguration,
@@ -123,17 +125,11 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
-    const forcedAction = configuration.actions.find(
-      (a) => a.forceUseAtIteration === i
-    );
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
       i === configuration.maxToolsUsePerRun
         ? []
-        : // If we have a forced action, we only run this action.
-        forcedAction
-        ? [forcedAction]
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
@@ -143,7 +139,6 @@ export async function* runMultiActionsAgentLoop(
       userMessage,
       agentMessage,
       availableActions: actions,
-      forcedActionName: forcedAction?.name ?? undefined,
     });
 
     for await (const event of loopIterationStream) {
@@ -256,14 +251,12 @@ export async function* runMultiActionsAgent(
     userMessage,
     agentMessage,
     availableActions,
-    forcedActionName,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
-    forcedActionName?: string;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -313,58 +306,153 @@ export async function* runMultiActionsAgent(
   });
 
   if (modelConversationRes.isErr()) {
-    return modelConversationRes;
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: modelConversationRes.error,
+      },
+      "Error rendering conversation for model."
+    );
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "conversation_render_error",
+        message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+      },
+    } satisfies AgentErrorEvent;
+
+    return;
   }
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    if (!a.name || !a.description) {
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "missing_name_or_description",
-          message: `Action ${a.name} is missing a name or description`,
-        },
-      } satisfies AgentErrorEvent;
-      return;
-    }
-    if (isRetrievalConfiguration(a)) {
-      const r = await generateRetrievalSpecification(auth, {
-        actionConfiguration: a,
+    if (a.name && a.description) {
+      // Normal case, it's a multi-actions agent.
+
+      const runner = getRunnerforActionConfiguration(a);
+      const specRes = await runner.buildSpecification(auth, {
         name: a.name,
         description: a.description,
       });
 
-      if (r.isErr()) {
-        return r;
+      if (specRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: specRes.error,
+          },
+          "Failed to build the specification for action."
+        );
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_spec_error",
+            message: `Failed to build the specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      }
+      specifications.push(specRes.value);
+    } else {
+      // Special case for legacy single-action agents that have never been edited in
+      // multi-actions mode.
+      // We tolerate missing name/description to preserve support for legacy single-action agents.
+      // In those cases, we use the name/description from the legacy spec.
+
+      if (!a.name && availableActions.length > 1) {
+        // We can't allow not having a name if there are multiple actions.
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "missing_name",
+            message: `Action ${a.sId} is missing a name`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
       }
 
-      specifications.push(r.value);
-    } else {
       const runner = getRunnerforActionConfiguration(a);
+      const legacySpecRes =
+        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+      if (legacySpecRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: legacySpecRes.error,
+          },
+          "Failed to build the legacy specification for action."
+        );
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_legacy_spec_error",
+            message: `Failed to build the legacy specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
 
-      const res = await runner.buildSpecification(auth, {
-        name: a.name ?? undefined,
-        description: a.description ?? undefined,
+        return;
+      }
+
+      const specRes = await runner.buildSpecification(auth, {
+        name: a.name ?? "",
+        description: a.description ?? "",
       });
 
-      if (res.isErr()) {
-        return res;
+      if (specRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            error: specRes.error,
+          },
+          "Failed to build the specification for action."
+        );
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "build_spec_error",
+            message: `Failed to build the specification for action ${a.sId},`,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
       }
 
-      specifications.push(res.value);
+      const spec = specRes.value;
+      if (!a.name) {
+        spec.name = legacySpecRes.value.name;
+      }
+      if (!a.description) {
+        spec.description = legacySpecRes.value.description;
+      }
+      specifications.push(spec);
     }
   }
-  // not sure if the speicfications.push() is needed here TBD at review time.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
-  config.MODEL.function_call =
-    specifications.length === 0 ? null : forcedActionName ?? "auto";
+  config.MODEL.function_call = specifications.length === 0 ? null : "auto";
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;
@@ -388,6 +476,14 @@ export async function* runMultiActionsAgent(
   );
 
   if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: res.error,
+      },
+      "Error running multi-actions agent."
+    );
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -398,6 +494,7 @@ export async function* runMultiActionsAgent(
         message: `Error running multi-actions agent action: [${res.error.type}] ${res.error.message}`,
       },
     } satisfies AgentErrorEvent;
+
     return;
   }
 
@@ -558,8 +655,42 @@ export async function* runMultiActionsAgent(
   }
 
   const actions: AgentActionsEvent["actions"] = [];
+  const agentActions = agentConfiguration.actions;
+
+  if (agentActions.length === 1 && !agentActions[0].name) {
+    // Special case for legacy single-action agents that have never been edited in
+    // multi-actions mode.
+    // We must backfill the name from the legacy spec in order to match the action.
+    const runner = getRunnerforActionConfiguration(agentActions[0]);
+    const legacySpecRes =
+      await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+    if (legacySpecRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: legacySpecRes.error,
+        },
+        "Failed to build the legacy specification for action."
+      );
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "build_legacy_spec_error",
+          message: `Failed to build the legacy specification for action ${agentActions[0].sId},`,
+        },
+      } satisfies AgentErrorEvent;
+
+      return;
+    }
+    agentActions[0].name = legacySpecRes.value.name;
+  }
+
   for (const a of output.actions) {
-    const action = agentConfiguration.actions.find((ac) => ac.name === a.name);
+    const action = agentActions.find((ac) => ac.name === a.name);
 
     if (!action) {
       yield {
@@ -626,17 +757,23 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const eventStream = runRetrieval(auth, {
-      configuration,
-      actionConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-      // We allocate 32 refs per retrieval action.
-      refsOffset: indexForType * 32,
-    });
+    const runner = getRunnerforActionConfiguration(actionConfiguration);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs: inputs,
+        functionCallId,
+        step,
+      },
+      {
+        // We allocate 32 refs per retrieval action.
+        refsOffset: indexForType * 32,
+      }
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {

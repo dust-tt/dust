@@ -1,7 +1,9 @@
 use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
-use crate::providers::llm::{ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLM};
+use crate::providers::llm::{
+    ChatMessage, ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
+};
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
     cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
@@ -15,6 +17,7 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
 use parking_lot::{Mutex, RwLock};
@@ -70,8 +73,7 @@ pub struct Completion {
     pub created: u64,
     pub model: String,
     pub choices: Vec<Choice>,
-    // Usage is not returned by the Completion endpoint when streamed.
-    // pub usage: Usage,
+    pub usage: Option<Usage>,
 }
 
 ///
@@ -101,12 +103,12 @@ pub struct OpenAIFunctionCall {
 #[serde(rename_all = "lowercase")]
 pub enum OpenAIToolControl {
     Auto,
+    Required,
     None,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(untagged)]
-
 pub enum OpenAIToolChoice {
     OpenAIToolControl(OpenAIToolControl),
     OpenAIFunctionCall(OpenAIFunctionCall),
@@ -131,6 +133,9 @@ impl FromStr for OpenAIToolChoice {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "auto" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::Auto)),
+            "any" => Ok(OpenAIToolChoice::OpenAIToolControl(
+                OpenAIToolControl::Required,
+            )),
             "none" => Ok(OpenAIToolChoice::OpenAIToolControl(OpenAIToolControl::None)),
             _ => {
                 let function = OpenAIFunctionCall {
@@ -264,8 +269,7 @@ pub struct OpenAIChatCompletion {
     pub object: String,
     pub created: u64,
     pub choices: Vec<OpenAIChatChoice>,
-    // Usage is not returned by the Chat/Completion endpoint when streamed.
-    // pub usage: Usage,
+    pub usage: Option<Usage>,
 }
 
 // This code performs a type conversion with information loss when converting to ChatFunctionCall.
@@ -382,6 +386,7 @@ pub struct ChatChunk {
     pub created: u64,
     pub model: String,
     pub choices: Vec<ChatDelta>,
+    pub usage: Option<Usage>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -390,16 +395,15 @@ pub struct InnerError {
     #[serde(alias = "type")]
     pub _type: String,
     pub param: Option<String>,
-    pub code: Option<usize>,
     pub internal_message: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Error {
+pub struct OpenAIError {
     pub error: InnerError,
 }
 
-impl Error {
+impl OpenAIError {
     pub fn message(&self) -> String {
         match self.error.internal_message {
             Some(ref msg) => format!(
@@ -421,7 +425,13 @@ impl Error {
         }
     }
 
-    pub fn retryable_streamed(&self) -> bool {
+    pub fn retryable_streamed(&self, status: StatusCode) -> bool {
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            return true;
+        }
+        if status.is_server_error() {
+            return true;
+        }
         match self.error._type.as_str() {
             "server_error" => match self.error.internal_message {
                 Some(_) => true,
@@ -454,7 +464,7 @@ pub async fn streamed_completion(
     top_p: f32,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
-) -> Result<Completion> {
+) -> Result<(Completion, Option<String>)> {
     let url = uri.to_string();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -523,10 +533,17 @@ pub async fn streamed_completion(
     let mut stream = client.stream();
 
     let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -543,11 +560,14 @@ pub async fn streamed_completion(
                         let completion: Completion = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
                             Err(err) => {
-                                let error: Result<Error, _> = serde_json::from_str(e.data.as_str());
+                                let error: Result<OpenAIError, _> =
+                                    serde_json::from_str(e.data.as_str());
                                 match error {
                                     Ok(error) => {
-                                        match error.retryable_streamed() && index == 0 {
+                                        match error.retryable_streamed(StatusCode::OK) && index == 0
+                                        {
                                             true => Err(ModelError {
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -556,6 +576,7 @@ pub async fn streamed_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -634,7 +655,49 @@ pub async fn streamed_completion(
                 }
             },
             Err(e) => {
-                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                match e {
+                    es::Error::UnexpectedResponse(r) => {
+                        let status = StatusCode::from_u16(r.status())?;
+                        let headers = r.headers()?;
+                        let request_id = match headers.get("x-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                        let b = r.body_bytes().await?;
+
+                        let error: Result<OpenAIError, _> = serde_json::from_slice(&b);
+                        match error {
+                            Ok(error) => {
+                                match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }
+                            }?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
+                        }
+                    }
+                    _ => {
+                        Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    }
+                }
                 break 'stream;
             }
         }
@@ -688,7 +751,7 @@ pub async fn streamed_completion(
         c
     };
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn completion(
@@ -707,7 +770,7 @@ pub async fn completion(
     presence_penalty: f32,
     top_p: f32,
     user: Option<String>,
-) -> Result<Completion> {
+) -> Result<(Completion, Option<String>)> {
     // let https = HttpsConnector::new();
     // let cli = Client::builder().build::<_, hyper::Body>(https);
 
@@ -759,6 +822,13 @@ pub async fn completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
+
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
+
     let body = match timeout(Duration::new(180, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -772,9 +842,10 @@ pub async fn completion(
     let completion: Completion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -783,6 +854,7 @@ pub async fn completion(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -794,7 +866,7 @@ pub async fn completion(
         }
     }?;
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn streamed_chat_completion(
@@ -815,7 +887,7 @@ pub async fn streamed_chat_completion(
     response_format: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
-) -> Result<OpenAIChatCompletion> {
+) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let url = uri.to_string();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -857,6 +929,7 @@ pub async fn streamed_chat_completion(
         "presence_penalty": presence_penalty,
         "frequency_penalty": frequency_penalty,
         "stream": true,
+        "stream_options": HashMap::from([("include_usage", true)]),
     });
     if user.is_some() {
         body["user"] = json!(user);
@@ -891,10 +964,18 @@ pub async fn streamed_chat_completion(
     let mut stream = client.stream();
 
     let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut usage = None;
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -910,50 +991,49 @@ pub async fn streamed_chat_completion(
 
                         let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
-                            Err(err) => match serde_json::Error::is_data(&err) {
-                                true => {
-                                    Err(anyhow!(
-                                        "OpenAIError: failed parsing streamed \
-                                         completion from OpenAI err={} data={}",
-                                        err,
-                                        e.data.as_str(),
-                                    ))?;
-
-                                    break 'stream;
-                                }
-                                false => {
-                                    let error: Result<Error, _> =
-                                        serde_json::from_str(e.data.as_str());
-                                    match error {
-                                        Ok(error) => {
-                                            match error.retryable_streamed() && index == 0 {
-                                                true => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: Some(ModelErrorRetryOptions {
-                                                        sleep: Duration::from_millis(500),
-                                                        factor: 2,
-                                                        retries: 3,
-                                                    }),
-                                                })?,
-                                                false => Err(ModelError {
-                                                    message: error.message(),
-                                                    retryable: None,
-                                                })?,
-                                            }
-                                            break 'stream;
+                            Err(err) => {
+                                let error: Result<OpenAIError, _> =
+                                    serde_json::from_str(e.data.as_str());
+                                match error {
+                                    Ok(error) => {
+                                        match error.retryable_streamed(StatusCode::OK) && index == 0
+                                        {
+                                            true => Err(ModelError {
+                                                request_id: request_id.clone(),
+                                                message: error.message(),
+                                                retryable: Some(ModelErrorRetryOptions {
+                                                    sleep: Duration::from_millis(500),
+                                                    factor: 2,
+                                                    retries: 3,
+                                                }),
+                                            })?,
+                                            false => Err(ModelError {
+                                                request_id: request_id.clone(),
+                                                message: error.message(),
+                                                retryable: None,
+                                            })?,
                                         }
-                                        Err(_) => {
-                                            Err(anyhow!(
-                                                "OpenAIError: failed parsing streamed \
+                                        break 'stream;
+                                    }
+                                    Err(_) => {
+                                        Err(anyhow!(
+                                            "OpenAIError: failed parsing streamed \
                                                  completion from OpenAI err={} data={}",
-                                                err,
-                                                e.data.as_str(),
-                                            ))?;
-                                            break 'stream;
-                                        }
+                                            err,
+                                            e.data.as_str(),
+                                        ))?;
+                                        break 'stream;
                                     }
                                 }
-                            },
+                            }
+                        };
+
+                        // Store usage
+                        match &chunk.usage {
+                            Some(received_usage) => {
+                                usage = Some(received_usage.clone());
+                            }
+                            None => (),
                         };
 
                         // Only stream if choices is length 1 but should always be the case.
@@ -1007,7 +1087,10 @@ pub async fn streamed_chat_completion(
                             }
                             None => (),
                         };
-                        chunks.lock().push(chunk);
+
+                        if !chunk.choices.is_empty() {
+                            chunks.lock().push(chunk);
+                        }
                     }
                 },
                 None => {
@@ -1016,7 +1099,49 @@ pub async fn streamed_chat_completion(
                 }
             },
             Err(e) => {
-                Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                match e {
+                    es::Error::UnexpectedResponse(r) => {
+                        let status = StatusCode::from_u16(r.status())?;
+                        let headers = r.headers()?;
+                        let request_id = match headers.get("x-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                        let b = r.body_bytes().await?;
+
+                        let error: Result<OpenAIError, _> = serde_json::from_slice(&b);
+                        match error {
+                            Ok(error) => {
+                                match error.retryable_streamed(status) {
+                                    true => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: Some(ModelErrorRetryOptions {
+                                            sleep: Duration::from_millis(500),
+                                            factor: 2,
+                                            retries: 3,
+                                        }),
+                                    }),
+                                    false => Err(ModelError {
+                                        request_id,
+                                        message: error.message(),
+                                        retryable: None,
+                                    }),
+                                }
+                            }?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
+                        }
+                    }
+                    _ => {
+                        Err(anyhow!("Error streaming tokens from OpenAI: {:?}", e))?;
+                    }
+                }
                 break 'stream;
             }
         }
@@ -1047,6 +1172,7 @@ pub async fn streamed_chat_completion(
                     finish_reason: None,
                 })
                 .collect::<Vec<_>>(),
+            usage,
         };
 
         for i in 0..guard.len() {
@@ -1160,7 +1286,7 @@ pub async fn streamed_chat_completion(
         };
     }
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn chat_completion(
@@ -1180,7 +1306,7 @@ pub async fn chat_completion(
     frequency_penalty: f32,
     response_format: Option<String>,
     user: Option<String>,
-) -> Result<OpenAIChatCompletion> {
+) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
         "messages": messages,
         "temperature": temperature,
@@ -1234,6 +1360,13 @@ pub async fn chat_completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
+
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
+
     let body = match timeout(Duration::new(180, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -1247,9 +1380,10 @@ pub async fn chat_completion(
     let mut completion: OpenAIChatCompletion = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1258,6 +1392,7 @@ pub async fn chat_completion(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1277,7 +1412,7 @@ pub async fn chat_completion(
         };
     }
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 ///
@@ -1339,6 +1474,12 @@ pub async fn embed(
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 60s"))?,
     };
 
+    let res_headers = res.headers();
+    let request_id = match res_headers.get("x-request-id") {
+        Some(request_id) => Some(request_id.to_str()?.to_string()),
+        None => None,
+    };
+
     let body = match timeout(Duration::new(60, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -1352,9 +1493,10 @@ pub async fn embed(
     let embeddings: Embeddings = match serde_json::from_slice(c) {
         Ok(c) => Ok(c),
         Err(_) => {
-            let error: Error = serde_json::from_slice(c)?;
+            let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1363,6 +1505,7 @@ pub async fn embed(
                     }),
                 }),
                 false => Err(ModelError {
+                    request_id,
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1517,7 +1660,7 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 if n > 1 {
                     return Err(anyhow!(
@@ -1688,6 +1831,11 @@ impl LLM for OpenAILLM {
                 })
                 .collect::<Vec<_>>(),
             prompt: prompt_tokens,
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
+            }),
+            provider_request_id: request_id,
         })
     }
 
@@ -1742,7 +1890,7 @@ impl LLM for OpenAILLM {
 
         let openai_messages = to_openai_messages(messages)?;
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
                     self.chat_uri()?,
@@ -1817,6 +1965,11 @@ impl LLM for OpenAILLM {
                 .iter()
                 .map(|c| ChatMessage::try_from(&c.message))
                 .collect::<Result<Vec<_>>>()?,
+            usage: c.usage.map(|usage| LLMTokenUsage {
+                prompt_tokens: usage.prompt_tokens,
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
+            }),
+            provider_request_id: request_id,
         })
     }
 }

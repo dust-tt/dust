@@ -1,5 +1,10 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, DustAPI, minTranscriptsSize } from "@dust-tt/types";
+import {
+  assertNever,
+  DustAPI,
+  isEmptyString,
+  minTranscriptsSize,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -237,6 +242,9 @@ export async function processTranscriptActivity(
     return;
   }
 
+  if (isEmptyString(user.username)) {
+    return new Err(new Error("username must be a non-empty string"));
+  }
   const convRes = await dustAPI.createConversation({
     title: transcriptTitle,
     visibility: "unlisted",

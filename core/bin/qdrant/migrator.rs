@@ -384,7 +384,7 @@ async fn migrate_shadow_write(
 
 async fn commit_shadow_write(
     store: Box<dyn Store + Sync + Send>,
-    qdrant_clients: QdrantClients,
+    _qdrant_clients: QdrantClients,
     data_source_internal_id: String,
 ) -> Result<()> {
     let mut ds = match store

@@ -9,7 +9,6 @@ export type WebsearchConfigurationType = {
   type: "websearch_configuration";
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export const WebsearchResultSchema = t.type({
@@ -41,4 +40,5 @@ export interface WebsearchActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "websearch_action";
 }

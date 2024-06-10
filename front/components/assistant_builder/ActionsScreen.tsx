@@ -1,33 +1,18 @@
 import {
   Button,
   CardButton,
-  CommandLineIcon,
-  CommandLineStrokeIcon,
   DropdownMenu,
   Icon,
   IconButton,
   Input,
-  MagnifyingGlassIcon,
-  MagnifyingGlassStrokeIcon,
   Modal,
+  MoreIcon,
   Page,
-  PlanetIcon,
-  PlanetStrokeIcon,
   PlusIcon,
-  RobotIcon,
-  RobotStrokeIcon,
-  TableStrokeIcon,
   TextArea,
-  TimeIcon,
-  TimeStrokeIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  DataSourceType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import _ from "lodash";
 import type { ReactNode } from "react";
@@ -53,72 +38,18 @@ import {
 } from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
-  AssistantBuilderDustAppConfiguration,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 
 import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "./actions/DustAppRunAction";
-
-const ACTION_SPECIFICATIONS: Record<
-  AssistantBuilderActionConfiguration["type"],
-  {
-    label: string;
-    description: string;
-    dropDownIcon: React.ComponentProps<typeof Icon>["visual"];
-    cardIcon: React.ComponentProps<typeof Icon>["visual"];
-    flag: WhitelistableFeature | null;
-  }
-> = {
-  RETRIEVAL_EXHAUSTIVE: {
-    label: "Most recent data",
-    description: "Include as much data as possible",
-    cardIcon: TimeStrokeIcon,
-    dropDownIcon: TimeIcon,
-    flag: null,
-  },
-  RETRIEVAL_SEARCH: {
-    label: "Search",
-    description: "Search through selected Data sources",
-    cardIcon: MagnifyingGlassStrokeIcon,
-    dropDownIcon: MagnifyingGlassIcon,
-    flag: null,
-  },
-  PROCESS: {
-    label: "Extract data",
-    description: "Structured extraction",
-    cardIcon: RobotStrokeIcon,
-    dropDownIcon: RobotIcon,
-    flag: null,
-  },
-  DUST_APP_RUN: {
-    label: "Run a Dust App",
-    description: "Run a Dust app, then reply",
-    cardIcon: CommandLineStrokeIcon,
-    dropDownIcon: CommandLineIcon,
-    flag: null,
-  },
-  TABLES_QUERY: {
-    label: "Query Tables",
-    description: "Tables, Spreadsheets, Notion DBs (quantitative)",
-    cardIcon: TableStrokeIcon,
-    dropDownIcon: TableStrokeIcon,
-    flag: null,
-  },
-  WEBSEARCH: {
-    label: "Web search",
-    description: "Perform a web search",
-    cardIcon: PlanetStrokeIcon,
-    dropDownIcon: PlanetIcon,
-    flag: "websearch_action",
-  },
-};
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -286,8 +217,8 @@ export default function ActionsScreen({
         dustApps={dustApps}
       />
 
-      <div className="flex flex-col gap-8 text-sm text-element-700">
-        <div className="flex flex-col sm:flex-row">
+      <div className="flex min-h-96 flex-col gap-8 text-sm text-element-700">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Actions & Data sources" />
             <Page.P>
@@ -299,8 +230,20 @@ export default function ActionsScreen({
               </span>
             </Page.P>
           </div>
-          <div className="flex-grow" />
-          <div className="self-end">
+          <div className="flex flex-row">
+            {builderState.actions.length > 0 && (
+              <div>
+                <AddAction
+                  owner={owner}
+                  builderState={builderState}
+                  onAddAction={(action) => {
+                    setPendingAction(action);
+                    setNewActionModalOpen(true);
+                  }}
+                />
+              </div>
+            )}
+            <div className="flex-grow" />
             <AdvancedSettings
               maxToolsUsePerRun={builderState.maxToolsUsePerRun}
               setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
@@ -314,11 +257,11 @@ export default function ActionsScreen({
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex h-full min-h-40 flex-col gap-4">
           {builderState.actions.length === 0 && (
             <div
               className={
-                "flex h-full min-h-40 items-center justify-center rounded-lg bg-structure-50"
+                "flex h-full items-center justify-center rounded-lg border border-structure-100 bg-structure-50"
               }
             >
               <AddAction
@@ -348,18 +291,6 @@ export default function ActionsScreen({
               </div>
             ))}
           </div>
-          {builderState.actions.length > 0 && (
-            <div>
-              <AddAction
-                owner={owner}
-                builderState={builderState}
-                onAddAction={(action) => {
-                  setPendingAction(action);
-                  setNewActionModalOpen(true);
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
     </>
@@ -426,7 +357,7 @@ function NewActionModal({
       onClose={onCloseLocal}
       hasChanged={true}
       variant="side-md"
-      title="Add Action"
+      title=" "
       onSave={
         newAction && titleValid && descriptionValid && isActionValid(newAction)
           ? () => {
@@ -438,7 +369,7 @@ function NewActionModal({
           : undefined
       }
     >
-      <div className="w-full pl-4 pt-12">
+      <div className="w-full pt-8">
         <div className="flex flex-col gap-4">
           {newAction && (
             <ActionEditor
@@ -488,7 +419,7 @@ function ActionCard({
   }
   return (
     <CardButton
-      variant="secondary"
+      variant="primary"
       onClick={editAction}
       className="mx-auto inline-block w-72"
     >
@@ -512,6 +443,125 @@ function ActionCard({
       </div>
     </CardButton>
   );
+}
+
+function ActionConfigEditor({
+  owner,
+  action,
+  dustApps,
+  dataSources,
+  instructions,
+  updateAction,
+  setEdited,
+  description,
+  onDescriptionChange,
+  isDescriptionValid,
+}: {
+  owner: WorkspaceType;
+  action: AssistantBuilderActionConfiguration;
+  dustApps: AppType[];
+  dataSources: DataSourceType[];
+  instructions: string | null;
+  updateAction: (args: {
+    actionName: string;
+    actionDescription: string;
+    getNewActionConfig: (
+      old: AssistantBuilderActionConfiguration["configuration"]
+    ) => AssistantBuilderActionConfiguration["configuration"];
+  }) => void;
+  setEdited: (edited: boolean) => void;
+  description: string;
+  onDescriptionChange: (v: string) => void;
+  isDescriptionValid: boolean;
+}) {
+  switch (action.type) {
+    case "DUST_APP_RUN":
+      return (
+        <ActionDustAppRun
+          owner={owner}
+          action={action}
+          dustApps={dustApps}
+          updateAction={updateAction}
+          setEdited={setEdited}
+        />
+      );
+    case "RETRIEVAL_SEARCH":
+      return (
+        <ActionRetrievalSearch
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "RETRIEVAL_EXHAUSTIVE":
+      return (
+        <ActionRetrievalExhaustive
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderRetrievalConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "PROCESS":
+      return (
+        <ActionProcess
+          owner={owner}
+          instructions={instructions}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderProcessConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+          description={description}
+          onDescriptionChange={onDescriptionChange}
+          isDescriptionValid={isDescriptionValid}
+        />
+      );
+    case "TABLES_QUERY":
+      return (
+        <ActionTablesQuery
+          owner={owner}
+          actionConfiguration={action.configuration}
+          dataSources={dataSources}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderTablesQueryConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+    case "WEBSEARCH":
+      return <ActionWebsearch />;
+    default:
+      assertNever(action);
+  }
 }
 
 function ActionEditor({
@@ -546,163 +596,114 @@ function ActionEditor({
     "RETRIEVAL_EXHAUSTIVE",
     "RETRIEVAL_SEARCH",
   ].includes(action.type as any);
+
+  const shouldDisplayAdvancedSettings = action.type !== "DUST_APP_RUN";
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+    action.type
+  );
+
   return (
-    <div>
+    <>
       <ActionModeSection show={true}>
-        {(() => {
-          switch (action.type) {
-            case "DUST_APP_RUN":
-              return (
-                <ActionDustAppRun
-                  owner={owner}
-                  actionConfigration={action.configuration}
-                  dustApps={dustApps}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderDustAppConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
-              );
-            case "RETRIEVAL_SEARCH":
-              return (
-                <ActionRetrievalSearch
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderRetrievalConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
-              );
-            case "RETRIEVAL_EXHAUSTIVE":
-              return (
-                <ActionRetrievalExhaustive
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderRetrievalConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
-              );
-            case "PROCESS":
-              return (
-                <ActionProcess
-                  owner={owner}
-                  instructions={builderState.instructions}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderProcessConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
-              );
-            case "TABLES_QUERY":
-              return (
-                <ActionTablesQuery
-                  owner={owner}
-                  actionConfiguration={action.configuration}
-                  dataSources={dataSources}
-                  updateAction={(setNewAction) => {
-                    updateAction({
-                      actionName: action.name,
-                      actionDescription: action.description,
-                      getNewActionConfig: (old) =>
-                        setNewAction(
-                          old as AssistantBuilderTablesQueryConfiguration
-                        ),
-                    });
-                  }}
-                  setEdited={setEdited}
-                />
-              );
-            case "WEBSEARCH":
-              return <ActionWebsearch />;
-            default:
-              assertNever(action);
-          }
-        })()}
+        <>
+          <div className="flex w-full flex-row items-center justify-center justify-between">
+            <Page.Header
+              title={ACTION_SPECIFICATIONS[action.type].label}
+              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
+            />
+            {shouldDisplayAdvancedSettings && (
+              <DropdownMenu className="pr-2">
+                <DropdownMenu.Button>
+                  <Button
+                    label=""
+                    labelVisible={false}
+                    icon={MoreIcon}
+                    size="sm"
+                    variant="tertiary"
+                  />
+                </DropdownMenu.Button>
+                <DropdownMenu.Items width={240} overflow="visible">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="w-full grow text-sm font-bold text-element-800">
+                        Name of the action
+                      </div>
+                    </div>
+                    <Input
+                      name="actionName"
+                      placeholder="My action name.."
+                      value={action.name}
+                      onChange={(v) => {
+                        updateAction({
+                          actionName: v,
+                          actionDescription: action.description,
+                          getNewActionConfig: (old) => old,
+                        });
+                      }}
+                      error={!titleValid ? "Name already exists" : null}
+                      className="text-sm"
+                    />
+                  </div>
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            )}
+          </div>
+          <ActionConfigEditor
+            owner={owner}
+            action={action}
+            dustApps={dustApps}
+            dataSources={dataSources}
+            instructions={builderState.instructions}
+            updateAction={updateAction}
+            setEdited={setEdited}
+            description={action.description}
+            onDescriptionChange={(v) => {
+              updateAction({
+                actionName: action.name,
+                actionDescription: v,
+                getNewActionConfig: (old) => old,
+              });
+            }}
+            isDescriptionValid={descriptionValid}
+          />
+        </>
       </ActionModeSection>
-      <div className="flex flex-col gap-4 pt-8">
-        {isDataSourceAction ? (
-          <div className="flex flex-col gap-2">
+      {shouldDisplayDescription && (
+        <div className="flex flex-col gap-4 pt-8">
+          {isDataSourceAction ? (
+            <div className="flex flex-col gap-2">
+              <div className="font-semibold text-element-800">
+                What's the data?
+              </div>
+              <div className="text-sm text-element-600">
+                Clarify the data's content and context to guide your Assistant
+                in determining when and how to utilize it.
+              </div>
+            </div>
+          ) : (
             <div className="font-semibold text-element-800">
-              What's the data?
+              Action description
             </div>
-            <div className="text-sm text-element-600">
-              Clarify the data's content and context to guide your Assistant in
-              determining when and how to utilize it.
-            </div>
-          </div>
-        ) : (
-          <div className="font-semibold text-element-800">
-            Action description
-          </div>
-        )}
-        <TextArea
-          placeholder={
-            isDataSourceAction
-              ? "This data contains...."
-              : "My action description.."
-          }
-          value={action.description}
-          onChange={(v) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: v,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!descriptionValid ? "Description cannot be empty" : null}
-        />
-        <div className="font-semibold text-element-800">Name of the action</div>
-        <Input
-          name="actionName"
-          placeholder="My action name.."
-          value={action.name}
-          onChange={(v) => {
-            updateAction({
-              actionName: v,
-              actionDescription: action.description,
-              getNewActionConfig: (old) => old,
-            });
-          }}
-          error={!titleValid ? "Name already exists" : null}
-          className="text-sm"
-        />
-      </div>
-    </div>
+          )}
+          <TextArea
+            placeholder={
+              isDataSourceAction
+                ? "This data contains...."
+                : "Action description.."
+            }
+            value={action.description}
+            onChange={(v) => {
+              updateAction({
+                actionName: action.name,
+                actionDescription: v,
+                getNewActionConfig: (old) => old,
+              });
+            }}
+            error={!descriptionValid ? "Description cannot be empty" : null}
+          />
+        </div>
+      )}
+    </>
   );
 }
 

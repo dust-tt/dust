@@ -51,6 +51,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("check-file"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
+    t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),

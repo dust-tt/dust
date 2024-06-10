@@ -44,6 +44,7 @@ export type APIErrorType =
   | "connector_provider_not_supported"
   | "conversation_not_found"
   | "agent_configuration_not_found"
+  | "agent_message_error"
   | "message_not_found"
   | "plan_message_limit_exceeded"
   | "global_agent_error"

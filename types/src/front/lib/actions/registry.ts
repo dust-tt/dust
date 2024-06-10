@@ -1,5 +1,8 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import { GPT_3_5_TURBO_MODEL_CONFIG, GPT_4O_MODEL_CONFIG } from "../assistant";
+import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+} from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -18,12 +21,12 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "f4816b1e13",
       appHash:
-        "83dffd37b090ad428fd87f31140e283ac1a1595ca0c69758d184e1c96dc5d4cd",
+        "96544446491e8f878b3455311e2827f40d6da895db7a6b5f321b972bbeecef54",
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
       },
@@ -34,7 +37,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "84dfc1d4f7",
       appHash:
-        "cddc215f2cc07e4a1bdd9c253524ac09667de629420af2570ab1e715fa4ee2b2",
+        "c0f71a1ee28895b3c6adb7d78b40a21bb934faa24ec4035bb86921d35788c5e9",
     },
     config: {
       MODEL: {
@@ -88,12 +91,12 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "6a27050429",
       appHash:
-        "e0b00417afae51adc7e23c1365850fab154d9b945364c47074ef907915cf8c2c",
+        "b0b25be4fb6ed264b4240a61117a940c5b366babaa1e0711218eded7428e0ace",
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: null,
         use_cache: false,
         use_stream: true,
@@ -133,8 +136,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       SUGGEST_CHANGES: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         use_cache: false,
         function_call: "suggest_changes",
       },
@@ -149,8 +152,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         use_cache: false,
         function_call: "execute_sql_query",
       },
@@ -174,8 +177,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "send_ranked_suggestions",
         use_cache: false,
       },
@@ -222,8 +225,8 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "set_extraction_schema",
         use_cache: false,
       },
@@ -234,12 +237,12 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "0e9889c787",
       appHash:
-        "4a69f3683369c0398e9716e3c25cb628021ac4949ccf9c73944c7fd0be591aaf",
+        "c80417243b780b7076a4269d3dcda67eb5775cedf19147020825f804156e9d0f",
     },
     config: {
       MODEL: {
-        provider_id: GPT_4O_MODEL_CONFIG.providerId,
-        model_id: GPT_4O_MODEL_CONFIG.modelId,
+        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
         function_call: "auto",
         use_cache: false,
         use_stream: true,

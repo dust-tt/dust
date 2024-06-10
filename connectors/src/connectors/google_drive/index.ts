@@ -5,7 +5,6 @@ import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import {
   getLocalParents,
   isDriveObjectExpandable,
-  registerWebhooksForAllDrives,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -21,6 +20,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { folderHasChildren, getDrives } from "./temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
@@ -46,6 +46,7 @@ import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import { googleDriveConfig } from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import {
   getGoogleDriveEntityDocumentId,
@@ -449,6 +450,21 @@ export async function retrieveGoogleDriveConnectorPermissions({
           };
         })
       );
+      // Adding a fake "Shared with me" node, to allow the user to see their shared files
+      // that are not living in a shared drive.
+      nodes.push({
+        provider: c.type,
+        internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+        parentInternalId: null,
+        type: "folder" as const,
+        preventSelection: true,
+        title: "Shared with me",
+        sourceUrl: null,
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+        expandable: true,
+        permission: "none",
+      });
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -460,6 +476,15 @@ export async function retrieveGoogleDriveConnectorPermissions({
       const drive = await getDriveClient(authCredentials);
       let nextPageToken: string | undefined = undefined;
       let remoteFolders: drive_v3.Schema$File[] = [];
+      // Depending on the view the user is requesting, the way of querying changes.
+      // The "Shared with me" view requires to look for folders
+      // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
+      let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
+      if (parentInternalId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
+        gdriveQuery += ` and sharedWithMe=true`;
+      } else {
+        gdriveQuery += ` and '${parentInternalId}' in parents`;
+      }
       do {
         const res: GaxiosResponse<drive_v3.Schema$FileList> =
           await drive.files.list({
@@ -470,7 +495,7 @@ export async function retrieveGoogleDriveConnectorPermissions({
             fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(
               ", "
             )})`,
-            q: `'${parentInternalId}' in parents and mimeType='application/vnd.google-apps.folder'`,
+            q: gdriveQuery,
             pageToken: nextPageToken,
           });
 
@@ -554,28 +579,17 @@ export async function setGoogleDriveConnectorPermissions(
     }
   }
 
-  const webhooksRes = await registerWebhooksForAllDrives({
-    connector,
-    marginMs: 0,
-  });
-  if (webhooksRes.isErr()) {
-    const firstError = webhooksRes.error[0];
-    if (firstError) {
-      return new Err(
-        new Error(
-          "Error registering webhooks. First error message: " +
-            firstError.message
-        )
-      );
-    } else {
-      return new Err(new Error("Error registering webhooks."));
-    }
-  }
   if (shouldFullSync) {
     const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
     if (res.isErr()) {
       return res;
     }
+  }
+  const incrementalRes = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalRes.isErr()) {
+    return incrementalRes;
   }
 
   return new Ok(undefined);
@@ -860,6 +874,12 @@ export async function unpauseGoogleDriveConnector(connectorId: ModelId) {
   const r = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
   if (r.isErr()) {
     return r;
+  }
+  const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalSync.isErr()) {
+    return incrementalSync;
   }
   return new Ok(undefined);
 }

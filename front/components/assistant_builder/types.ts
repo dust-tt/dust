@@ -7,7 +7,7 @@ import type {
   SupportedModel,
   TimeframeUnit,
 } from "@dust-tt/types";
-import { assertNever, GPT_4O_MODEL_CONFIG } from "@dust-tt/types";
+import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -106,6 +106,11 @@ export type AssistantBuilderActionConfiguration = (
   description: string;
 };
 
+export type TemplateActionType = Omit<
+  AssistantBuilderActionConfiguration,
+  "configuration"
+>;
+
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 
@@ -148,8 +153,8 @@ export function getDefaultAssistantState() {
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
     },
@@ -187,14 +192,20 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
   } satisfies AssistantBuilderActionConfiguration;
 }
 
+export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
+  "run_dust_app";
+export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
+  "Run a Dust app.";
+
 export function getDefaultDustAppRunActionConfiguration() {
   return {
     type: "DUST_APP_RUN",
     configuration: {
       app: null,
     } as AssistantBuilderDustAppConfiguration,
-    name: "run_dust_app",
-    description: "Run a Dust app.",
+    name: ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
+    description:
+      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
   } satisfies AssistantBuilderActionConfiguration;
 }
 
@@ -219,8 +230,10 @@ export function getDefaultProcessActionConfiguration() {
       tagsFilter: null,
       schema: [],
     } as AssistantBuilderProcessConfiguration,
-    name: "process_data",
-    description: "Process data.",
+    name: "extract_structured_data_from_data_sources",
+    description:
+      "Process data sources specified by the user over a specific time-frame by extracting" +
+      " structured blobs of information (complying to a fixed schema).",
   } satisfies AssistantBuilderActionConfiguration;
 }
 

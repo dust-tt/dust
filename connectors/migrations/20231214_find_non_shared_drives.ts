@@ -1,5 +1,5 @@
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { objectIsInFolders } from "@connectors/connectors/google_drive/temporal/activities";
+import { objectIsInFolderSelection } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   getAuthObject,
   getDriveClient,
@@ -58,7 +58,7 @@ async function main() {
               console.log(`Folder not found: folderId=${f.folderId}`);
               continue;
             }
-            const isInPersonalDrive = await objectIsInFolders(
+            const isInPersonalDrive = await objectIsInFolderSelection(
               c.id,
               authCredentials,
               gDriveObject,

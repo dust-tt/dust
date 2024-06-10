@@ -27,7 +27,7 @@ const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
     },
   });
 
-const { getConnectorIdsForWebsitesToCrawl } = proxyActivities<
+const { getConnectorIdsForWebsitesToCrawl, markAsCrawled } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "2 minutes",
@@ -51,6 +51,9 @@ export async function crawlWebsiteSchedulerWorkflow() {
   const connectorIds = await getConnectorIdsForWebsitesToCrawl();
 
   for (const connectorId of connectorIds) {
+    // We mark the website as crawled before starting the workflow to avoid
+    // starting the same workflow in the next run of the scheduler.
+    await markAsCrawled(connectorId);
     // Start a workflow to crawl the website but don't wait for it to complete.
     await startChild(crawlWebsiteWorkflow, {
       workflowId: crawlWebsiteWorkflowId(connectorId),

@@ -43,6 +43,7 @@ export type AssistantContentMessageTypeModel = {
 
 export type FunctionMessageTypeModel = {
   role: "function";
+  name: string;
   function_call_id: string;
   content: string;
 };

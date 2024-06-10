@@ -24,7 +24,6 @@ export class AgentTablesQueryConfiguration extends Model<
 
   declare name: string | null;
   declare description: string | null;
-  declare forceUseAtIteration: number | null;
 }
 
 AgentTablesQueryConfiguration.init(
@@ -56,10 +55,6 @@ AgentTablesQueryConfiguration.init(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    forceUseAtIteration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_tables_query_configuration",
@@ -68,6 +63,10 @@ AgentTablesQueryConfiguration.init(
         unique: true,
         fields: ["sId"],
         name: "agent_tables_query_configuration_s_id",
+      },
+      {
+        fields: ["agentConfigurationId"],
+        concurrently: true,
       },
     ],
     sequelize: frontSequelize,

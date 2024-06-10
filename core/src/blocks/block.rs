@@ -44,6 +44,7 @@ pub struct Env {
     pub input: InputState,
     pub map: Option<MapState>,
     pub secrets: Secrets,
+    pub run_id: String,
     #[serde(skip_serializing)]
     pub store: Box<dyn Store + Sync + Send>,
     #[serde(skip_serializing)]

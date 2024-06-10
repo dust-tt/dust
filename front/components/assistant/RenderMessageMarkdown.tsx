@@ -27,7 +27,7 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import { linkFromDocument } from "@app/components/assistant/conversation/RetrievalAction";
+import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
 import {
   MermaidDisplayProvider,
   MermaidGraph,
@@ -40,7 +40,7 @@ const SyntaxHighlighter = dynamic(
   { ssr: false }
 );
 
-function useCopyToClipboard(
+export function useCopyToClipboard(
   resetInterval = 2000
 ): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
   const [isCopied, setCopied] = useState(false);
@@ -194,7 +194,7 @@ export function RenderMessageMarkdown({
               pre: ({ children }) => (
                 <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
               ),
-              code: CodeBlock,
+              code: CodeBlockWithExtendedSupport,
               a: LinkBlock,
               ul: UlBlock,
               ol: OlBlock,
@@ -326,7 +326,7 @@ function CiteBlock(props: ReactMarkdownProps) {
       <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const link = linkFromDocument(document);
+          const link = makeLinkForRetrievedDocument(document);
 
           return (
             <sup key={`${r.ref}-${i}`}>
@@ -623,14 +623,39 @@ function ParagraphBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CodeBlock({
-  inline,
-  className,
+function CodeBlockWithExtendedSupport({
   children,
+  className,
+  inline,
 }: {
-  inline?: boolean;
-  className?: string;
   children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+}) {
+  const { isValidMermaid, showMermaid } = useMermaidDisplay();
+
+  const validChildrenContent = String(children).trim();
+  if (!inline && isValidMermaid && showMermaid) {
+    return <MermaidGraph chart={validChildrenContent} />;
+  }
+
+  return (
+    <CodeBlock className={className} inline={inline}>
+      {children}
+    </CodeBlock>
+  );
+}
+
+export function CodeBlock({
+  children,
+  className,
+  inline,
+  wrapLongLines = false,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+  wrapLongLines?: boolean;
 }): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
@@ -650,16 +675,10 @@ function CodeBlock({
   };
 
   const languageToUse = languageOverrides[language] || language;
-  const validChildrenContent = String(children).trim();
-
-  const { isValidMermaid, showMermaid } = useMermaidDisplay();
-
-  if (!inline && isValidMermaid && showMermaid) {
-    return <MermaidGraph chart={validChildrenContent} />;
-  }
 
   return !inline && language ? (
     <SyntaxHighlighter
+      wrapLongLines={wrapLongLines}
       className="rounded-md"
       style={{
         "hljs-comment": {

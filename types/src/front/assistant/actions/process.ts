@@ -57,7 +57,6 @@ export type ProcessConfigurationType = {
 
   name: string | null;
   description: string | null;
-  forceUseAtIteration: number | null;
 };
 
 export type ProcessActionOutputsType = {
@@ -87,4 +86,5 @@ export interface ProcessActionType extends BaseAction {
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
+  type: "process_action";
 }

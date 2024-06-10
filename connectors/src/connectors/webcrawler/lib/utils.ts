@@ -109,7 +109,7 @@ export async function getIpAddressForUrl(url: string) {
 }
 
 export function isPrivateIp(ip: string) {
-  const privatePrefixes = ["0", "127", "10", "192.168"];
+  const privatePrefixes = ["0.", "127.", "10.", "192.168."];
   for (const prefix of privatePrefixes) {
     if (ip.startsWith(prefix)) {
       return true;

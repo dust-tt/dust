@@ -69,16 +69,6 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversation = await getConversation(auth, conversationId);
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
 
   switch (req.method) {
     case "GET":
@@ -140,6 +130,17 @@ async function handler(
       }
 
       const { content, context, mentions } = bodyValidation.right;
+
+      const conversation = await getConversation(auth, conversationId);
+      if (!conversation) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "conversation_not_found",
+            message: "Conversation not found.",
+          },
+        });
+      }
 
       /* postUserMessageWithPubSub returns swiftly since it only waits for the
         initial message creation event (or error) */

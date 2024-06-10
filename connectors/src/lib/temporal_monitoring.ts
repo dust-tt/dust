@@ -78,6 +78,18 @@ export class ActivityInboundLogInterceptor
       );
     }, this.context.info.startToCloseTimeoutMs);
 
+    // We already trigger a monitor after 20 failures, but when the pod crashes (eg: OOM or segfault), the attempt never gets logged.
+    // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
+    if (this.context.info.attempt > 25) {
+      this.logger.error(
+        {
+          activity_name: this.context.info.activityType,
+          workflow_name: this.context.info.workflowType,
+          attempt: this.context.info.attempt,
+        },
+        "Activity has been attempted more than 25 times. Make sure it's not crashing the pod."
+      );
+    }
     try {
       return await tracer.trace(
         `${this.context.info.workflowType}-${this.context.info.activityType}`,

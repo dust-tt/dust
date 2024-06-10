@@ -3,7 +3,6 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
-  ModelMessageType,
   ProcessActionOutputsType,
   ProcessActionType,
   ProcessConfigurationType,
@@ -65,6 +64,7 @@ export class ProcessAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
+  readonly type = "process_action";
 
   constructor(blob: ProcessActionBlob) {
     super(blob.id, "process_action");
@@ -78,36 +78,11 @@ export class ProcessAction extends BaseAction {
     this.step = blob.step;
   }
 
-  renderForModel(): ModelMessageType {
-    let content = "";
-
-    content += "PROCESSED OUTPUTS:\n";
-
-    // TODO(spolu): figure out if we want to add the schema here?
-
-    if (this.outputs) {
-      if (this.outputs.data.length === 0) {
-        content += "(none)\n";
-      } else {
-        for (const o of this.outputs.data) {
-          content += `${JSON.stringify(o)}\n`;
-        }
-      }
-    } else if (this.outputs === null) {
-      content += "(processing failed)\n";
-    }
-
-    return {
-      role: "action" as const,
-      name: this.functionCallName ?? "process_data_sources",
-      content,
-    };
-  }
-
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "process_data_sources",
+      name:
+        this.functionCallName ?? "extract_structured_data_from_data_sources",
       arguments: JSON.stringify(this.params),
     };
   }
@@ -131,6 +106,7 @@ export class ProcessAction extends BaseAction {
 
     return {
       role: "function" as const,
+      name: this.functionCallName ?? "process_data_sources",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -146,7 +122,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
   async buildSpecification(
     auth: Authenticator,
     {
-      name = "process_data_sources",
+      name = "extract_structured_data_from_data_sources",
       description,
     }: { name?: string; description?: string }
   ): Promise<Result<AgentActionSpecification, Error>> {

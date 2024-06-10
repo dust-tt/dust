@@ -31,6 +31,7 @@ import { ActionTablesQuery } from "@app/components/assistant_builder/actions/Tab
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionType,
+  AssistantBuilderDustAppConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
@@ -215,7 +216,7 @@ export default function ActionScreen({
 
   return (
     <>
-      <div className="flex flex-col gap-4 text-sm text-element-700">
+      <div className="flex min-h-96 flex-col gap-4 text-sm text-element-800">
         <div className="flex flex-col gap-2">
           <Page.Header title="Actions & Data sources" />
           <Page.P>
@@ -547,38 +548,45 @@ export default function ActionScreen({
           />
         </ActionModeSection>
 
-        <ActionModeSection show={action?.type === "DUST_APP_RUN"}>
-          <ActionDustAppRun
-            owner={owner}
-            actionConfigration={
-              action?.type === "DUST_APP_RUN" ? action.configuration : null
-            }
-            dustApps={dustApps}
-            updateAction={(setNewAction) => {
-              setBuilderState((state) => {
-                const previousAction = state.actions[0];
-                if (!previousAction || previousAction.type !== "DUST_APP_RUN") {
-                  // Unreachable
-                  return state;
-                }
-                const newActionConfig = setNewAction(
-                  previousAction.configuration
-                );
-                const newAction: AssistantBuilderActionConfiguration = {
-                  type: "DUST_APP_RUN",
-                  configuration: newActionConfig,
-                  name: previousAction.name,
-                  description: previousAction.description,
-                };
-                return {
-                  ...state,
-                  actions: removeNulls([newAction]),
-                };
-              });
-            }}
-            setEdited={setEdited}
-          />
-        </ActionModeSection>
+        {action?.type === "DUST_APP_RUN" && (
+          <ActionModeSection show={action?.type === "DUST_APP_RUN"}>
+            <ActionDustAppRun
+              owner={owner}
+              action={action}
+              dustApps={dustApps}
+              updateAction={({
+                actionName,
+                actionDescription,
+                getNewActionConfig,
+              }) => {
+                setBuilderState((state) => {
+                  const previousAction = state.actions[0];
+                  if (
+                    !previousAction ||
+                    previousAction.type !== "DUST_APP_RUN"
+                  ) {
+                    // Unreachable
+                    return state;
+                  }
+
+                  const newAction: AssistantBuilderActionConfiguration = {
+                    type: "DUST_APP_RUN",
+                    configuration: getNewActionConfig(
+                      previousAction.configuration
+                    ) as AssistantBuilderDustAppConfiguration,
+                    name: actionName,
+                    description: actionDescription,
+                  };
+                  return {
+                    ...state,
+                    actions: removeNulls([newAction]),
+                  };
+                });
+              }}
+              setEdited={setEdited}
+            />
+          </ActionModeSection>
+        )}
       </div>
     </>
   );

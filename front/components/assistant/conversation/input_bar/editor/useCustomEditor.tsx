@@ -60,9 +60,13 @@ const useEditorService = (editor: Editor | null) => {
     return {
       // Insert mention helper function
       insertMention: ({ id, label }: { id: string; label: string }) => {
+        const shouldAddSpaceBeforeMention =
+          !editor?.isEmpty &&
+          editor?.getText()[editor?.getText().length - 1] !== " ";
         editor
           ?.chain()
           .focus()
+          .insertContent(shouldAddSpaceBeforeMention ? " " : "") // Add an extra space before the mention.
           .insertContent({
             type: "mention",
             attrs: { id, label },
@@ -117,6 +121,11 @@ const useEditorService = (editor: Editor | null) => {
           mentions,
           text: text.trim(),
         };
+      },
+
+      hasMention(mention: EditorMention) {
+        const { mentions } = this.getTextAndMentions();
+        return mentions.some((m) => m.id === mention.id);
       },
 
       getTrimmedText() {

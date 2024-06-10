@@ -1,7 +1,5 @@
-use crate::providers::ai21::AI21Provider;
 use crate::providers::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
-use crate::providers::cohere::CohereProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::LLM;
 use crate::providers::mistral::MistralProvider;
@@ -23,8 +21,6 @@ use super::google_ai_studio::GoogleAiStudioProvider;
 #[clap(rename_all = "lowercase")]
 pub enum ProviderID {
     OpenAI,
-    Cohere,
-    AI21,
     #[serde(rename = "azure_openai")]
     AzureOpenAI,
     Anthropic,
@@ -37,8 +33,6 @@ impl fmt::Display for ProviderID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProviderID::OpenAI => write!(f, "openai"),
-            ProviderID::Cohere => write!(f, "cohere"),
-            ProviderID::AI21 => write!(f, "ai21"),
             ProviderID::AzureOpenAI => write!(f, "azure_openai"),
             ProviderID::Anthropic => write!(f, "anthropic"),
             ProviderID::Mistral => write!(f, "mistral"),
@@ -52,14 +46,13 @@ impl FromStr for ProviderID {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "openai" => Ok(ProviderID::OpenAI),
-            "cohere" => Ok(ProviderID::Cohere),
-            "ai21" => Ok(ProviderID::AI21),
             "azure_openai" => Ok(ProviderID::AzureOpenAI),
             "anthropic" => Ok(ProviderID::Anthropic),
             "mistral" => Ok(ProviderID::Mistral),
             "google_ai_studio" => Ok(ProviderID::GoogleAiStudio),
             _ => Err(ParseError::with_message(
-                "Unknown provider ID (possible values: openai, cohere, ai21, azure_openai, mistral)",
+                "Unknown provider ID \
+                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio)",
             ))?,
         }
     }
@@ -76,13 +69,18 @@ pub struct ModelErrorRetryOptions {
 pub struct ModelError {
     pub message: String,
     pub retryable: Option<ModelErrorRetryOptions>,
+    pub request_id: Option<String>,
 }
 
 impl std::fmt::Display for ModelError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "[model_error(retryable={})] {}",
+            "[model_error(retryable={}{})] {}",
+            match self.request_id.as_ref() {
+                Some(r) => format!(", request_id={}", r),
+                None => String::from(""),
+            },
             self.retryable.is_some(),
             self.message
         )
@@ -94,6 +92,7 @@ impl std::error::Error for ModelError {}
 pub async fn with_retryable_back_off<F, O>(
     mut f: impl FnMut() -> F,
     log_retry: impl Fn(&str, &Duration, usize) -> (),
+    log_model_error: impl Fn(&ModelError) -> (),
 ) -> Result<O>
 where
     F: Future<Output = Result<O, anyhow::Error>>,
@@ -104,6 +103,7 @@ where
         match f().await {
             Err(e) => match e.downcast::<ModelError>() {
                 Ok(err) => {
+                    log_model_error(&err);
                     match err.retryable.clone() {
                         Some(retry) => {
                             attempts += 1;
@@ -148,8 +148,6 @@ pub trait Provider {
 pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
     match t {
         ProviderID::OpenAI => Box::new(OpenAIProvider::new()),
-        ProviderID::Cohere => Box::new(CohereProvider::new()),
-        ProviderID::AI21 => Box::new(AI21Provider::new()),
         ProviderID::AzureOpenAI => Box::new(AzureOpenAIProvider::new()),
         ProviderID::Anthropic => Box::new(AnthropicProvider::new()),
         ProviderID::Mistral => Box::new(MistralProvider::new()),

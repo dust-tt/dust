@@ -20,7 +20,7 @@ import {
   DustProdActionRegistry,
   Err,
   GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4O_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -30,14 +30,10 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  deprecatedGenerateRetrievalSpecificationForSingleActionAgent,
-  runRetrieval,
-} from "@app/lib/api/assistant/actions/retrieval";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   constructPrompt,
-  renderConversationForModel,
+  renderConversationForModelMultiActions,
   runGeneration,
 } from "@app/lib/api/assistant/generation";
 import type { Authenticator } from "@app/lib/auth";
@@ -74,16 +70,16 @@ async function generateActionInputs(
         modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
       }
     : {
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
+        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
+        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
       };
 
   const contextSize = auth.isUpgraded()
-    ? GPT_4O_MODEL_CONFIG.contextSize
+    ? GPT_4_TURBO_MODEL_CONFIG.contextSize
     : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel({
+  const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,
@@ -293,18 +289,9 @@ async function* runAction(
   const now = Date.now();
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
-  if (isRetrievalConfiguration(action)) {
-    specRes =
-      await deprecatedGenerateRetrievalSpecificationForSingleActionAgent(auth, {
-        actionConfiguration: action,
-      });
-  } else {
-    const runner = getRunnerforActionConfiguration(action);
 
-    specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(
-      auth
-    );
-  }
+  const runner = getRunnerforActionConfiguration(action);
+  specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
 
   if (specRes.isErr()) {
     logger.error(
@@ -376,15 +363,20 @@ async function* runAction(
   }
 
   if (isRetrievalConfiguration(action)) {
-    const eventStream = runRetrieval(auth, {
-      configuration,
-      actionConfiguration: action,
-      conversation,
-      agentMessage,
-      rawInputs,
-      functionCallId: null,
-      step,
-    });
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(
+      auth,
+      {
+        agentConfiguration: configuration,
+        conversation,
+        agentMessage,
+        rawInputs,
+        functionCallId: null,
+        step,
+      },
+      {}
+    );
 
     for await (const event of eventStream) {
       switch (event.type) {

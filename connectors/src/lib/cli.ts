@@ -24,7 +24,11 @@ import type {
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
+import {
+  assertNever,
+  googleDriveIncrementalSyncWorkflowId,
+  isConnectorError,
+} from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -84,6 +88,7 @@ import { nango_client } from "@connectors/lib/nango_client";
 import {
   getTemporalClient,
   terminateAllWorkflowsForConnectorId,
+  terminateWorkflow,
 } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -756,6 +761,24 @@ export const google_drive = async ({
       );
       return { success: true };
     }
+    case "restart-all-incremental-sync-workflows": {
+      const connectors = await ConnectorModel.findAll({
+        where: {
+          type: "google_drive",
+          errorType: null,
+          pausedAt: null,
+        },
+      });
+      for (const connector of connectors) {
+        const workflowId = googleDriveIncrementalSyncWorkflowId(connector.id);
+        await terminateWorkflow(workflowId);
+        await throwOnError(
+          launchGoogleDriveIncrementalSyncWorkflow(connector.id)
+        );
+      }
+      return { success: true };
+    }
+
     case "skip-file": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -821,10 +844,10 @@ export const google_drive = async ({
           `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
         );
       }
-
+      const maxRenewalTime = new Date().getTime();
       const res = await registerWebhooksForAllDrives({
         connector,
-        marginMs: 0,
+        maxRenewalTime,
       });
       if (res.isErr()) {
         throw res.error;
@@ -841,9 +864,10 @@ export const google_drive = async ({
           );
           continue;
         }
+        const maxRenewalTime = new Date().getTime();
         const res = await registerWebhooksForAllDrives({
           connector,
-          marginMs: 0,
+          maxRenewalTime,
         });
         if (res.isErr()) {
           // error registering for this webhook, but we need to keep going

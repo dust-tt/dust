@@ -10,6 +10,7 @@ import { literal, Op } from "sequelize";
 
 import { ensureWebhookForDriveId } from "@connectors/connectors/google_drive/lib";
 import { GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS } from "@connectors/connectors/google_drive/lib/config";
+import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
@@ -40,6 +41,7 @@ import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { sequelizeConnection } from "@connectors/resources/storage";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
@@ -108,6 +110,7 @@ export async function getDrivesToSync(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+  const allSharedDrives = await getDrives(connectorId);
   const authCredentials = await getAuthObject(connector.connectionId);
   const drives: Record<string, LightGoogledrive> = {};
 
@@ -120,11 +123,16 @@ export async function getDrivesToSync(
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
       }
-      drives[remoteFolder.driveId] = {
-        id: remoteFolder.driveId,
-        name: remoteFolder.name,
-        isSharedDrive: remoteFolder.isInSharedDrive,
-      };
+      // A selected folder can be in a shared drive we don't have access to,
+      // so we need to filter them out.
+      // This is the case for files "shared with me" for example.
+      if (allSharedDrives.find((d) => d.id === remoteFolder.driveId)) {
+        drives[remoteFolder.driveId] = {
+          id: remoteFolder.driveId,
+          name: remoteFolder.name,
+          isSharedDrive: remoteFolder.isInSharedDrive,
+        };
+      }
     }
   }
 
@@ -281,19 +289,24 @@ export async function syncFiles(
   };
 }
 
-export async function objectIsInFolders(
+export async function objectIsInFolderSelection(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
   foldersIds: string[],
   startSyncTs: number
 ): Promise<boolean> {
+  if (foldersIds.includes(driveFile.id)) {
+    return true;
+  }
+
   const parents = await getFileParentsMemoized(
     connectorId,
     authCredentials,
     driveFile,
     startSyncTs
   );
+
   for (const parent of parents) {
     if (foldersIds.includes(parent.id)) {
       return true;
@@ -348,6 +361,8 @@ export async function incrementalSync(
       pageToken: nextPageToken,
       pageSize: 100,
       fields: "*",
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     };
     if (isSharedDrive) {
       opts = {
@@ -393,7 +408,7 @@ export async function incrementalSync(
       }
       const file = await driveObjectToDustType(change.file, authCredentials);
       if (
-        !(await objectIsInFolders(
+        !(await objectIsInFolderSelection(
           connectorId,
           authCredentials,
           file,
@@ -500,7 +515,10 @@ export async function getSyncPageToken(
   const driveClient = await getDriveClient(connector.connectionId);
   let lastSyncToken = undefined;
   if (!lastSyncToken) {
-    let opts = {};
+    let opts: { supportsAllDrives: boolean; driveId?: string } = {
+      // For userspace, the driveId must be undefined.
+      supportsAllDrives: true,
+    };
     if (isSharedDrive) {
       opts = {
         driveId: driveId,
@@ -597,14 +615,15 @@ export async function garbageCollector(
           await deleteFile(file);
           return null;
         }
-        const isInFolder = await objectIsInFolders(
+        const isInFolderSelection = await objectIsInFolderSelection(
           connectorId,
           authCredentials,
           driveFile,
           selectedFolders,
           lastSeenTs
         );
-        if (isInFolder === false || driveFile.trashed) {
+
+        if (isInFolderSelection === false || driveFile.trashed) {
           await deleteOneFile(connectorId, driveFile);
         } else {
           await file.update({
@@ -620,11 +639,12 @@ export async function garbageCollector(
 
 export async function renewWebhooks(pageSize: number): Promise<number> {
   // Find webhook that are about to expire in the next hour.
+  const renewWebhookStartingTime = new Date().getTime();
   const webhooks = await GoogleDriveWebhook.findAll({
     where: {
       renewAt: {
         [Op.lt]: new Date(
-          new Date().getTime() + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+          renewWebhookStartingTime + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
         ),
       },
 
@@ -647,7 +667,16 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       );
       continue;
     }
-    if (wh.expiresAt < new Date()) {
+    if (connector.errorType !== null) {
+      // We can't renew webhooks for connectors in error state.
+      // Do not delete the webhook object but push it down the line in 2h so that it does not get
+      // picked up by the next iteration loop calling rewnewOneWebhook.
+      await wh.update({
+        renewAt: literal("NOW() + INTERVAL '2 hour'"),
+      });
+      continue;
+    }
+    if (wh.expiresAt < new Date(renewWebhookStartingTime)) {
       logger.error(
         {
           webhook: {
@@ -677,7 +706,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       const res = await ensureWebhookForDriveId(
         connector,
         wh.driveId,
-        GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
+        renewWebhookStartingTime + GOOGLE_DRIVE_WEBHOOK_RENEW_MARGIN_MS
       );
       if (res.isErr()) {
         // Throwing here to centralize error handling in the catch block
@@ -789,6 +818,17 @@ export async function populateSyncTokens(connectorId: ModelId) {
       syncToken: lastSyncToken,
     });
   }
+
+  const userLandSyncToken = await getSyncPageToken(
+    connectorId,
+    GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+    false
+  );
+  await GoogleDriveSyncToken.upsert({
+    connectorId,
+    driveId: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+    syncToken: userLandSyncToken,
+  });
 }
 
 export async function garbageCollectorFinished(connectorId: ModelId) {
@@ -847,7 +887,19 @@ async function deleteFile(googleDriveFile: GoogleDriveFiles) {
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     await deleteFromDataSource(dataSourceConfig, googleDriveFile.dustFileId);
   }
-  await googleDriveFile.destroy();
+  const folder = await GoogleDriveFolders.findOne({
+    where: {
+      connectorId: connectorId,
+      folderId: googleDriveFile.driveFileId,
+    },
+  });
+
+  await sequelizeConnection.transaction(async (t) => {
+    if (folder) {
+      await folder.destroy({ transaction: t });
+    }
+    await googleDriveFile.destroy({ transaction: t });
+  });
 }
 
 export async function markFolderAsVisited(
