@@ -4,7 +4,7 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { getTemporalClient } from "@connectors/lib/temporal";
+import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -41,15 +41,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
 
   const workflowId = googleDriveFullSyncWorkflowId(connectorId);
   try {
-    const handle: WorkflowHandle<typeof googleDriveFullSync> =
-      client.workflow.getHandle(workflowId);
-    try {
-      await handle.terminate();
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
-      }
-    }
+    await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveFullSync, {
       args: [connectorId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
@@ -94,7 +86,9 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
+
   try {
+    await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveIncrementalSync, {
       args: [connectorId, dataSourceConfig],
       taskQueue: QUEUE_NAME,
