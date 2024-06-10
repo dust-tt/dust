@@ -34,15 +34,27 @@ async function handler(
     });
   }
 
+  const isMultiActionsEnabled = owner.flags.includes("multi_actions");
+
   switch (req.method) {
     case "GET":
       const templates = await TemplateResource.listAll({
         visibility: "published",
       });
 
+      // For multi-actions workspaces, we only want to show templates that were built for multi-actions, or the one in reply-only.
+      // For non multi-actions workspaces, we only want to show templates that were built for single actions.
+      const filteredTemplates = templates.filter((t) => {
+        if (isMultiActionsEnabled) {
+          return t.presetAction === "reply" || t.presetActions.length > 0;
+        } else {
+          return t.presetActions.length === 0;
+        }
+      });
+
       return res
         .status(200)
-        .json({ templates: templates.map((t) => t.toListJSON()) });
+        .json({ templates: filteredTemplates.map((t) => t.toListJSON()) });
 
     default:
       return apiError(req, res, {
