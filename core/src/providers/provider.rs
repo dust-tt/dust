@@ -76,7 +76,11 @@ impl std::fmt::Display for ModelError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "[model_error(retryable={})] {}",
+            "[model_error(retryable={}{})] {}",
+            match self.request_id.as_ref() {
+                Some(r) => format!(", request_id={}", r),
+                None => String::from(""),
+            },
             self.retryable.is_some(),
             self.message
         )

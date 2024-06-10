@@ -52,7 +52,7 @@ urlencoding = "2.1"
 url = "2.5"
 dns-lookup = "1.0"
 async-stream = "0.3"
-eventsource-client = { git = "https://github.com/dust-tt/rust-eventsource-client", commit = "d34896e77b2198cd4d71e05007798736142ec336" }
+eventsource-client = { git = "https://github.com/dust-tt/rust-eventsource-client", commit = "d34896e" }
 tera = "1.20"
 fancy-regex = "0.13"
 rustc-hash = "1.1"

@@ -10,8 +10,7 @@ use crate::providers::llm::{
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
-use crate::utils::{self, now};
-use crate::utils::{new_id, ParseError};
+use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -159,7 +158,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mut mistral_role = MistralChatMessageRole::try_from(&cm.role)
+        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
         Ok(MistralChatMessage {
@@ -428,7 +427,7 @@ impl MistralAILLM {
         tools: Vec<MistralTool>,
         tool_choice: Option<MistralToolChoice>,
         event_sender: Option<UnboundedSender<Value>>,
-    ) -> Result<MistralChatCompletion> {
+    ) -> Result<(MistralChatCompletion, Option<String>)> {
         let url = uri.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -741,7 +740,7 @@ impl MistralAILLM {
             };
         }
 
-        Ok(completion)
+        Ok((completion, None))
     }
 
     async fn chat_completion(
@@ -755,7 +754,7 @@ impl MistralAILLM {
         max_tokens: Option<i32>,
         tools: Vec<MistralTool>,
         tool_choice: Option<MistralToolChoice>,
-    ) -> Result<MistralChatCompletion> {
+    ) -> Result<(MistralChatCompletion, Option<String>)> {
         let mut body = json!({
             "messages": messages,
             "temperature": temperature,
@@ -845,7 +844,7 @@ impl MistralAILLM {
             };
         }
 
-        Ok(completion)
+        Ok((completion, request_id))
     }
 }
 
@@ -959,7 +958,7 @@ impl LLM for MistralAILLM {
             None => (None, vec![]),
         };
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 self.streamed_chat_completion(
                     self.chat_uri()?,
@@ -1012,6 +1011,7 @@ impl LLM for MistralAILLM {
                 completion_tokens: u.completion_tokens.unwrap_or(0),
                 prompt_tokens: u.prompt_tokens,
             }),
+            provider_request_id: request_id,
         })
     }
 
