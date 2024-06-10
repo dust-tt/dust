@@ -3,8 +3,6 @@ import {
   continueAsNew,
   executeChild,
   proxyActivities,
-  setHandler,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
@@ -13,8 +11,6 @@ import type * as sync_status from "@connectors/lib/sync_status";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
-import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC } from "./config";
-import { newWebhookSignal } from "./signals";
 
 const {
   getDrivesToSync,
@@ -123,106 +119,46 @@ export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
 ) {
-  const maxPassCount = 2;
-  const debounceMaxCount = 10;
-  const debounceSleepTimeMs = GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC * 1000;
-  const secondPassSleepStepMs = 5 * 1000;
-  const secondPassSleepTimeMs = 5 * 60 * 1000;
-
-  let signaled = false;
-  let debounceCount = 0;
-  let passCount = 0;
-
-  setHandler(newWebhookSignal, () => {
-    console.log("Got a new webhook ");
-    signaled = true;
-    passCount = 0;
-  });
-  while (signaled || passCount < maxPassCount) {
-    signaled = false;
-    await sleep(debounceSleepTimeMs);
-    if (signaled) {
-      debounceCount++;
-      if (debounceCount < debounceMaxCount) {
-        continue;
-      }
-    }
-    // Reset the debounce count so that if we get another webhook we can debounce again.
-    debounceCount = 0;
-    passCount++;
-    console.log("Doing pass number", passCount);
-    console.log(`Processing after debouncing ${debounceCount} time(s)`);
-    const drives = await getDrivesToSync(connectorId);
-    const startSyncTs = new Date().getTime();
-    for (const googleDrive of drives) {
-      let nextPageToken: undefined | string = undefined;
-      do {
-        nextPageToken = await incrementalSync(
-          connectorId,
-          dataSourceConfig,
-          googleDrive.id,
-          googleDrive.isSharedDrive,
-          startSyncTs,
-          nextPageToken
-        );
-      } while (nextPageToken);
-    }
-    // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
+  const drives = await getDrivesToSync(connectorId);
+  const startSyncTs = new Date().getTime();
+  for (const googleDrive of drives) {
     let nextPageToken: undefined | string = undefined;
     do {
       nextPageToken = await incrementalSync(
         connectorId,
         dataSourceConfig,
-        GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
-        false,
+        googleDrive.id,
+        googleDrive.isSharedDrive,
         startSyncTs,
         nextPageToken
       );
     } while (nextPageToken);
-    const shouldGc = await shouldGarbageCollect(connectorId);
-    if (shouldGc) {
-      await executeChild(googleDriveGarbageCollectorWorkflow, {
-        workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
-        searchAttributes: {
-          connectorId: [connectorId],
-        },
-        args: [connectorId, startSyncTs],
-        memo: workflowInfo().memo,
-      });
-    }
-    await syncSucceeded(connectorId);
-    console.log("googleDriveIncrementalSync done for connectorId", connectorId);
-
-    if (workflowInfo().historyLength > 4000) {
-      // If we have been deboucing and doing second passes for more than 4000 events,
-      // it means that this workflow is pretty busy and being signaled a lot, so we can safely exit and rely on the next signal to
-      // start a new workflow.
-      return;
-    }
-
-    if (passCount < maxPassCount) {
-      let secondPassSleptTimeMs = 0;
-
-      while (secondPassSleptTimeMs < secondPassSleepTimeMs) {
-        await sleep(secondPassSleepStepMs);
-        console.log("Sleeping for the second pass", secondPassSleptTimeMs);
-        secondPassSleptTimeMs += secondPassSleepStepMs;
-        if (signaled) {
-          console.log(
-            "Got a new webhook while sleeping for the second pass",
-            secondPassSleptTimeMs,
-            passCount
-          );
-          // We got another webhook, restarting from the beginning.
-          break;
-        }
-      }
-    }
   }
-}
-
-export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
-  return `googleDrive-IncrementalSync-${connectorId}`;
+  // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
+  let nextPageToken: undefined | string = undefined;
+  do {
+    nextPageToken = await incrementalSync(
+      connectorId,
+      dataSourceConfig,
+      GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+      false,
+      startSyncTs,
+      nextPageToken
+    );
+  } while (nextPageToken);
+  const shouldGc = await shouldGarbageCollect(connectorId);
+  if (shouldGc) {
+    await executeChild(googleDriveGarbageCollectorWorkflow, {
+      workflowId: googleDriveGarbageCollectorWorkflowId(connectorId),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [connectorId, startSyncTs],
+      memo: workflowInfo().memo,
+    });
+  }
+  await syncSucceeded(connectorId);
+  console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
 export async function googleDriveRenewWebhooks() {

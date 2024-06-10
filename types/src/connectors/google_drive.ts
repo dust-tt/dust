@@ -1,4 +1,7 @@
 // Get the Table ID for a sheet within a Google Spreadsheet from the
+
+import { ModelId } from "../shared/model_id";
+
 // Google-provided file ID and the ID of the sheet within the spreadsheet.
 export function getGoogleSheetTableId(
   googleFileId: string,
@@ -56,4 +59,8 @@ export function isGoogleSheetContentNodeInternalId(
     internalId.startsWith("google-spreadsheet-") &&
     internalId.includes("-sheet-")
   );
+}
+
+export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
+  return `googleDrive-IncrementalSync-${connectorId}`;
 }

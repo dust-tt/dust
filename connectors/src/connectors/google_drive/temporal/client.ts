@@ -1,5 +1,5 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok, rateLimiter, RateLimitError } from "@dust-tt/types";
+import { Err, googleDriveIncrementalSyncWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -8,7 +8,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC, QUEUE_NAME } from "./config";
+import { QUEUE_NAME } from "./config";
 import { newWebhookSignal } from "./signals";
 import {
   googleDriveFullSync,
@@ -16,7 +16,6 @@ import {
   googleDriveGarbageCollectorWorkflow,
   googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
-  googleDriveIncrementalSyncWorkflowId,
   googleDriveRenewWebhooks,
   googleDriveRenewWebhooksWorkflowId,
 } from "./workflows";
@@ -91,16 +90,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-  if (
-    (await rateLimiter({
-      key: `launchGoogleDriveIncrementalSyncWorkflow-${connectorId}`,
-      maxPerTimeframe: 1,
-      timeframeSeconds: GDRIVE_INCREMENTAL_SYNC_DEBOUNCE_SEC,
-      logger: logger,
-    })) === 0
-  ) {
-    return new Err(new RateLimitError("Rate limit exceeded"));
-  }
+
   const client = await getTemporalClient();
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -115,6 +105,8 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
       },
       signal: newWebhookSignal,
       signalArgs: undefined,
+      // Every 5 minutes.
+      cronSchedule: "*/5 * * * *",
       memo: {
         connectorId: connectorId,
       },
