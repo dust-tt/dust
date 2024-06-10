@@ -805,10 +805,18 @@ impl AnthropicLLM {
         let mut stream = client.stream();
 
         let mut final_response: Option<StreamChatResponse> = None;
+        let mut request_id: Option<String> = None;
+
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => {
                     match stream_next {
+                        Some(es::SSE::Connected((_, headers))) => {
+                            request_id = match headers.get("request-id") {
+                                Some(v) => Some(v.to_string()),
+                                None => None,
+                            };
+                        }
                         Some(es::SSE::Comment(comment)) => {
                             println!("UNEXPECTED COMMENT {}", comment);
                         }
@@ -1006,7 +1014,7 @@ impl AnthropicLLM {
                                         };
 
                                     Err(ModelError {
-                                        request_id: None,
+                                        request_id: request_id.clone(),
                                         message: format!(
                                             "AnthropicError: [{}] {}",
                                             event.error.r#type, event.error.message,
@@ -1074,7 +1082,7 @@ impl AnthropicLLM {
         match final_response {
             Some(response) => {
                 let chat_response: ChatResponse = ChatResponse::try_from(response)?;
-                Ok((chat_response, None))
+                Ok((chat_response, request_id))
             }
             None => Err(anyhow!("No response from Anthropic")),
         }
@@ -1148,9 +1156,17 @@ impl AnthropicLLM {
 
         let mut final_response: Option<CompletionResponse> = None;
         let mut completion = String::new();
+        let mut request_id: Option<String> = None;
+
         'stream: loop {
             match stream.try_next().await {
                 Ok(stream_next) => match stream_next {
+                    Some(es::SSE::Connected((_, headers))) => {
+                        request_id = match headers.get("request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                    }
                     Some(es::SSE::Comment(comment)) => {
                         println!("UNEXPECTED COMMENT {}", comment);
                     }
@@ -1256,7 +1272,7 @@ impl AnthropicLLM {
         }
 
         return match final_response {
-            Some(response) => Ok((response, None)),
+            Some(response) => Ok((response, request_id)),
             None => Err(anyhow!("No response from Anthropic")),
         };
     }

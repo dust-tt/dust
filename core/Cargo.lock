@@ -1140,7 +1140,7 @@ dependencies = [
 [[package]]
 name = "eventsource-client"
 version = "0.12.2"
-source = "git+https://github.com/dust-tt/rust-eventsource-client?rev=d34896e77b2198cd4d71e05007798736142ec336#d34896e77b2198cd4d71e05007798736142ec336"
+source = "git+https://github.com/dust-tt/rust-eventsource-client?rev=148050f8fb9f8abb25ca171aa68ea817277ca4f6#148050f8fb9f8abb25ca171aa68ea817277ca4f6"
 dependencies = [
  "futures",
  "hyper 0.14.29",

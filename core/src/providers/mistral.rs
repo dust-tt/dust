@@ -479,10 +479,17 @@ impl MistralAILLM {
 
         let chunks: Arc<Mutex<Vec<MistralChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
         let mut usage = None;
+        let mut request_id: Option<String> = None;
 
         'stream: loop {
             match stream.try_next().await {
                 Ok(e) => match e {
+                    Some(es::SSE::Connected((_, headers))) => {
+                        request_id = match headers.get("x-kong-request-id") {
+                            Some(v) => Some(v.to_string()),
+                            None => None,
+                        };
+                    }
                     Some(es::SSE::Comment(_)) => {
                         println!("UNEXPECTED COMMENT");
                     }
@@ -508,7 +515,7 @@ impl MistralAILLM {
                                                     && index == 0
                                                 {
                                                     true => Err(ModelError {
-                                                        request_id: None,
+                                                        request_id: request_id.clone(),
                                                         message: error.message(),
                                                         retryable: Some(ModelErrorRetryOptions {
                                                             sleep: Duration::from_millis(500),
@@ -517,7 +524,7 @@ impl MistralAILLM {
                                                         }),
                                                     })?,
                                                     false => Err(ModelError {
-                                                        request_id: None,
+                                                        request_id: request_id.clone(),
                                                         message: error.message(),
                                                         retryable: None,
                                                     })?,
@@ -740,7 +747,7 @@ impl MistralAILLM {
             };
         }
 
-        Ok((completion, None))
+        Ok((completion, request_id))
     }
 
     async fn chat_completion(

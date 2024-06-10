@@ -694,6 +694,10 @@ pub async fn streamed_chat_completion(
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected(_)) => {
+                    // GoogleAISudio does not return a request id in headers.
+                    // Nothing to do.
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
