@@ -161,10 +161,6 @@ export async function googleDriveIncrementalSync(
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
 }
 
-export function googleDriveIncrementalSyncWorkflowId(connectorId: ModelId) {
-  return `googleDrive-IncrementalSync-${connectorId}`;
-}
-
 export async function googleDriveRenewWebhooks() {
   let count = 0;
   do {

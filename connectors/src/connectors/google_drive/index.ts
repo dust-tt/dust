@@ -5,7 +5,6 @@ import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import {
   getLocalParents,
   isDriveObjectExpandable,
-  registerWebhooksForAllDrives,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -580,29 +579,18 @@ export async function setGoogleDriveConnectorPermissions(
       );
     }
   }
-  const maxRenewalTime = new Date().getTime();
-  const webhooksRes = await registerWebhooksForAllDrives({
-    connector,
-    maxRenewalTime,
-  });
-  if (webhooksRes.isErr()) {
-    const firstError = webhooksRes.error[0];
-    if (firstError) {
-      return new Err(
-        new Error(
-          "Error registering webhooks. First error message: " +
-            firstError.message
-        )
-      );
-    } else {
-      return new Err(new Error("Error registering webhooks."));
-    }
-  }
+
   if (shouldFullSync) {
     const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
     if (res.isErr()) {
       return res;
     }
+  }
+  const incrementalRes = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalRes.isErr()) {
+    return incrementalRes;
   }
 
   return new Ok(undefined);
