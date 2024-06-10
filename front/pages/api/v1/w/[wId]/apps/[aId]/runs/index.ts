@@ -197,12 +197,13 @@ async function handler(
         // Non blocking, return a run object as soon as we get the runId.
         void (async () => {
           try {
-            const runId = await runRes.value.dustRunId;
+            const dustRunId = await runRes.value.dustRunId;
 
             const statusRunRes = await coreAPI.getRunStatus({
               projectId: app.dustAPIProjectId,
-              runId,
+              runId: dustRunId,
             });
+
             if (statusRunRes.isErr()) {
               return apiError(req, res, {
                 status_code: 400,
@@ -213,11 +214,13 @@ async function handler(
                 },
               });
             }
+
             const run: RunType = statusRunRes.value.run;
             run.specification_hash = run.app_hash;
+            delete run.app_hash;
+
             run.status.blocks = [];
             run.results = null;
-            delete run.app_hash;
 
             res.status(200).json({ run: run as RunType });
           } catch (err) {
@@ -331,9 +334,9 @@ async function handler(
 
           const run: RunType = statusRunRes.value.run;
           run.specification_hash = run.app_hash;
-          run.traces = traces;
-
           delete run.app_hash;
+
+          run.traces = traces;
 
           if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
             run.traces = run.traces.filter((t: any) => {
