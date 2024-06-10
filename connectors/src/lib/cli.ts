@@ -24,7 +24,11 @@ import type {
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
+import {
+  assertNever,
+  googleDriveIncrementalSyncWorkflowId,
+  isConnectorError,
+} from "@dust-tt/types";
 import { Client } from "@notionhq/client";
 import PQueue from "p-queue";
 import readline from "readline";
@@ -53,7 +57,6 @@ import {
   getDocumentId,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { googleDriveIncrementalSyncWorkflowId } from "@connectors/connectors/google_drive/temporal/workflows";
 import {
   fetchIntercomConversation,
   fetchIntercomConversationsForDay,

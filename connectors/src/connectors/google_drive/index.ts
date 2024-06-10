@@ -453,19 +453,19 @@ export async function retrieveGoogleDriveConnectorPermissions({
       // Adding a fake "Shared with me" node, to allow the user to see their shared files
       // that are not living in a shared drive.
       // Uncomment the following node to release the "Shared with me" feature.
-      // nodes.push({
-      //   provider: c.type,
-      //   internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
-      //   parentInternalId: null,
-      //   type: "folder" as const,
-      //   preventSelection: true,
-      //   title: "Shared with me",
-      //   sourceUrl: null,
-      //   dustDocumentId: null,
-      //   lastUpdatedAt: null,
-      //   expandable: true,
-      //   permission: "none",
-      // });
+      nodes.push({
+        provider: c.type,
+        internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+        parentInternalId: null,
+        type: "folder" as const,
+        preventSelection: true,
+        title: "Shared with me",
+        sourceUrl: null,
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+        expandable: true,
+        permission: "none",
+      });
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
