@@ -89,7 +89,7 @@ impl TryFrom<&ChatFunction> for GoogleAIStudioFunctionDeclaration {
     fn try_from(f: &ChatFunction) -> Result<Self, Self::Error> {
         Ok(GoogleAIStudioFunctionDeclaration {
             name: f.name.clone(),
-            description: f.description.clone().unwrap_or(String::from("")),
+            description: f.description.clone().unwrap_or_else(|| String::from("")),
             parameters: f.parameters.clone(),
         })
     }
@@ -194,7 +194,7 @@ impl TryFrom<&ChatMessage> for Content {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
-    content: Content,
+    content: Option<Content>,
     finish_reason: Option<String>,
 }
 
@@ -399,22 +399,19 @@ impl LLM for GoogleAiStudioLLM {
             provider: ProviderID::GoogleAiStudio.to_string(),
             model: self.id().clone(),
             completions: vec![Tokens {
-                text: match c.candidates {
-                    None => String::from(""),
-                    Some(candidates) => match candidates.len() {
-                        0 => String::from(""),
-                        _ => match &candidates[0].content.parts {
-                            None => String::from(""),
-                            Some(parts) => match parts.len() {
-                                0 => String::from(""),
-                                _ => match &parts[0].text {
-                                    None => String::from(""),
-                                    Some(text) => text.clone(),
-                                },
-                            },
-                        },
-                    },
-                },
+                // Get candidates?.[0]?.content?.parts?.[0]?.text ?? "".
+                text: c
+                    .candidates
+                    .as_ref()
+                    .unwrap_or(&vec![])
+                    .first()
+                    .and_then(|c| c.content.as_ref())
+                    .and_then(|c| c.parts.as_ref())
+                    .and_then(|p| p.first())
+                    .and_then(|p| p.text.as_ref())
+                    .map(|t| t.to_string())
+                    .unwrap_or_else(|| String::from("")),
+
                 tokens: Some(vec![]),
                 logprobs: Some(vec![]),
                 top_logprobs: None,
@@ -546,42 +543,43 @@ impl LLM for GoogleAiStudioLLM {
         let mut content: Option<String> = None;
         let mut function_calls: Vec<ChatFunctionCall> = vec![];
 
-        match c.candidates {
+        // Get candidates?.[0]?.content?.parts.
+        match c
+            .candidates
+            .as_ref()
+            .and_then(|c| c.first())
+            .and_then(|c| c.content.as_ref())
+            .and_then(|c| c.parts.as_ref())
+        {
             None => (),
-            Some(candidates) => match candidates.len() {
-                0 => (),
-                _ => match &candidates[0].content.parts {
-                    None => (),
-                    Some(parts) => {
-                        for p in parts.iter() {
-                            match p.text.as_ref() {
-                                Some(t) => match content.as_mut() {
-                                    Some(c) => {
-                                        *c = c.clone() + t.as_str();
-                                    }
-                                    None => {
-                                        content = Some(t.clone());
-                                    }
-                                },
-                                None => (),
+            Some(parts) => {
+                for p in parts.iter() {
+                    match p.text.as_ref() {
+                        Some(t) => match content.as_mut() {
+                            Some(c) => {
+                                *c = c.clone() + t.as_str();
                             }
-                            match p.function_call.as_ref() {
-                                Some(fc) => {
-                                    function_calls.push(ChatFunctionCall {
-                                        id: format!("fc_{}", utils::new_id()[0..9].to_string()),
-                                        name: fc.name.clone(),
-                                        arguments: match fc.args {
-                                            Some(ref args) => serde_json::to_string(args)?,
-                                            None => String::from("{}"),
-                                        },
-                                    });
-                                }
-                                None => (),
+                            None => {
+                                content = Some(t.clone());
                             }
-                        }
+                        },
+                        None => (),
                     }
-                },
-            },
+                    match p.function_call.as_ref() {
+                        Some(fc) => {
+                            function_calls.push(ChatFunctionCall {
+                                id: format!("fc_{}", utils::new_id()[0..9].to_string()),
+                                name: fc.name.clone(),
+                                arguments: match fc.args {
+                                    Some(ref args) => serde_json::to_string(args)?,
+                                    None => String::from("{}"),
+                                },
+                            });
+                        }
+                        None => (),
+                    }
+                }
+            }
         }
 
         Ok(LLMChatGeneration {
@@ -724,8 +722,8 @@ pub async fn streamed_chat_completion(
 
                     let parts = completion_candidates[0]
                         .content
-                        .parts
-                        .clone()
+                        .as_ref()
+                        .and_then(|c| c.parts.clone())
                         .unwrap_or_default();
 
                     match event_sender.as_ref() {
@@ -833,10 +831,10 @@ pub async fn streamed_chat_completion(
     let mut usage_metadata: Option<UsageMetadata> = None;
 
     let mut candidate = Candidate {
-        content: Content {
+        content: Some(Content {
             role: String::from("MODEL"),
             parts: Some(vec![]),
-        },
+        }),
         finish_reason: None,
     };
 
@@ -851,27 +849,43 @@ pub async fn streamed_chat_completion(
             }
         }
 
-        match &c.candidates {
+        // Check that we don't have more than one candidate.
+        match c
+            .candidates
+            .as_ref()
+            .map(|candidates| candidates.len())
+            .unwrap_or_default()
+        {
+            0 => (),
+            1 => (),
+            n => Err(anyhow!("Unexpected number of candidates >1: {}", n))?,
+        }
+
+        match c.candidates.as_ref().map(|c| c.first()).flatten() {
             None => (),
-            Some(candidates) => match candidates.len() {
-                0 => (),
-                1 => {
-                    match candidates[0].content.role.to_uppercase().as_str() {
+            Some(cand) => {
+                // Validate that the role (if any) is MODEL.
+                match cand.content.as_ref() {
+                    None => (),
+                    Some(c) => match c.role.to_uppercase().as_str() {
                         "MODEL" => (),
-                        _ => Err(anyhow!(format!(
-                            "Unexpected role in completion: {}",
-                            candidates[0].content.role
-                        )))?,
-                    };
-                    match &candidates[0].finish_reason {
-                        None => (),
-                        Some(r) => {
-                            candidate.finish_reason = Some(r.clone());
-                        }
+                        r => Err(anyhow!("Unexpected role in completion: {}", r))?,
+                    },
+                };
+
+                match cand.finish_reason.as_ref() {
+                    None => (),
+                    Some(r) => {
+                        candidate.finish_reason = Some(r.clone());
                     }
+                }
 
-                    let parts = candidates[0].content.parts.clone().unwrap_or_default();
+                let parts = match cand.content.as_ref() {
+                    None => None,
+                    Some(c) => c.parts.as_ref(),
+                };
 
+                if let Some(parts) = parts {
                     for p in parts.iter() {
                         match p.text.as_ref() {
                             Some(t) => match text_parts.as_mut() {
@@ -899,23 +913,19 @@ pub async fn streamed_chat_completion(
                         }
                     }
                 }
-                _ => Err(anyhow!("Unexpected number of candidates >1"))?,
-            },
+            }
         }
     }
 
-    match text_parts {
-        Some(tp) => {
-            candidate.content.parts.as_mut().unwrap().push(tp);
+    match candidate.content.as_mut().and_then(|c| c.parts.as_mut()) {
+        Some(parts) => {
+            if let Some(tp) = text_parts {
+                parts.push(tp);
+            }
+            parts.extend(function_call_parts);
         }
         None => (),
     }
-    candidate
-        .content
-        .parts
-        .as_mut()
-        .unwrap()
-        .extend(function_call_parts);
 
     Ok(Completion {
         candidates: Some(vec![candidate]),
