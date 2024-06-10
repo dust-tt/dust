@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import {
+  assertNever,
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@dust-tt/types";
@@ -204,6 +205,9 @@ async function handler(
             Connection: "keep-alive",
           });
           break;
+        case "blocking":
+          // Blocking, nothing to do for now
+          break;
 
         case "non-blocking":
           // Non blocking, return a run object as soon as we get the runId.
@@ -235,6 +239,10 @@ async function handler(
 
             res.status(200).json({ run: run as RunType });
           })();
+          break;
+
+        default:
+          assertNever(runFlavor);
       }
 
       const usages: Usage[] = [];
@@ -314,10 +322,12 @@ async function handler(
 
       switch (runFlavor) {
         case "streaming":
+          // End SSE stream.
           res.end();
           return;
 
         case "blocking":
+          // Blocking, return the run status.
           const statusRunRes = await coreAPI.getRunStatus({
             projectId: app.dustAPIProjectId,
             runId: dustRunId,
@@ -358,6 +368,13 @@ async function handler(
 
           res.status(200).json({ run: run as RunType });
           return;
+
+        case "non-blocking":
+          // Response already sent earlier in async block.
+          return;
+
+        default:
+          assertNever(runFlavor);
       }
 
       return;
