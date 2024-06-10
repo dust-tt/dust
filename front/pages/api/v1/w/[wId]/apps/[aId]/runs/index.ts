@@ -289,19 +289,11 @@ async function handler(
           }
         }
       } catch (err) {
-        switch (runFlavor) {
-          case "streaming":
-            logger.error(
-              {
-                error: err,
-              },
-              "Error streaming from Dust API"
-            );
-            break;
-
-          default:
-            throw err;
+        if (runFlavor === "streaming") {
+          res.end();
         }
+
+        throw err;
       }
 
       const dustRunId = await runRes.value.dustRunId;
