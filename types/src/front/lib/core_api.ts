@@ -25,19 +25,21 @@ import { EmbeddingProviderIdType } from "./assistant";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
+export const MAX_CHUNK_SIZE = 512;
+
 export const EMBEDDING_CONFIGS: Record<EmbeddingProviderIdType, EmbedderType> =
   {
     openai: {
       model_id: "text-embedding-3-large-1536",
       provider_id: "openai",
       splitter_id: "base_v0",
-      max_chunk_size: 512,
+      max_chunk_size: MAX_CHUNK_SIZE,
     },
     mistral: {
       model_id: "mistral-embed",
       provider_id: "mistral",
       splitter_id: "base_v0",
-      max_chunk_size: 512,
+      max_chunk_size: MAX_CHUNK_SIZE,
     },
   } as const;
 
