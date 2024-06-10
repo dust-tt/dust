@@ -178,16 +178,14 @@ const screens = {
   instructions: {
     label: "Instructions",
     icon: CircleIcon,
-    helpContainer: "instructions-help-container",
   },
   actions: {
     label: "Actions & Data sources",
     icon: SquareIcon,
-    helpContainer: "actions-help-container",
   },
-  naming: { label: "Naming", icon: TriangleIcon, helpContainer: null },
+  naming: { label: "Naming", icon: TriangleIcon },
 };
-type BuilderScreen = keyof typeof screens;
+export type BuilderScreen = keyof typeof screens;
 
 export default function AssistantBuilder({
   owner,
@@ -276,17 +274,19 @@ export default function AssistantBuilder({
     if (template === null) {
       return;
     }
-    const action = getAgentActionConfigurationType(template.presetAction);
-    let actionType: AssistantBuilderActionType | null = null;
 
-    if (isRetrievalConfiguration(action)) {
-      actionType = "RETRIEVAL_SEARCH";
-    } else if (isDustAppRunConfiguration(action)) {
-      actionType = "DUST_APP_RUN";
-    } else if (isTablesQueryConfiguration(action)) {
-      actionType = "TABLES_QUERY";
-    } else if (isProcessConfiguration(action)) {
-      actionType = "PROCESS";
+    let actionType: AssistantBuilderActionType | null = null;
+    if (!multiActionsEnabled) {
+      const action = getAgentActionConfigurationType(template.presetAction);
+      if (isRetrievalConfiguration(action)) {
+        actionType = "RETRIEVAL_SEARCH";
+      } else if (isDustAppRunConfiguration(action)) {
+        actionType = "DUST_APP_RUN";
+      } else if (isTablesQueryConfiguration(action)) {
+        actionType = "TABLES_QUERY";
+      } else if (isProcessConfiguration(action)) {
+        actionType = "PROCESS";
+      }
     }
 
     if (actionType !== null) {
@@ -301,7 +301,7 @@ export default function AssistantBuilder({
         return newState;
       });
     }
-  }, [template]);
+  }, [template, multiActionsEnabled]);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -513,18 +513,11 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(screens).map(([key, { label, icon, helpContainer }]) => ({
+      Object.entries(screens).map(([key, { label, icon }]) => ({
         label,
         current: screen === key,
         onClick: () => {
           setScreen(key as BuilderScreen);
-
-          if (helpContainer) {
-            const element = document.getElementById(helpContainer);
-            if (element) {
-              element.scrollIntoView({ behavior: "smooth" });
-            }
-          }
         },
         icon,
       })),
@@ -695,6 +688,7 @@ export default function AssistantBuilder({
           }
           rightPanel={
             <AssistantBuilderRightPanel
+              screen={screen}
               template={template}
               resetTemplate={resetTemplate}
               resetToTemplateInstructions={resetToTemplateInstructions}
