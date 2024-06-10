@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { DropdownMenu, Item } from "../index_with_tw_base";
+import { DropdownMenu, Item, PlusIcon } from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
 
 const meta = {
@@ -54,6 +54,19 @@ export const ListItemExample = () => (
           icon={Cog6ToothIcon}
           description="Desciption of the item"
           disabled
+        />
+        <Item.Navigation
+          label="Item 4"
+          icon={Cog6ToothIcon}
+          description="Custom action icon"
+          action={PlusIcon}
+        />
+
+        <Item.Navigation
+          label="Item 5"
+          icon={Cog6ToothIcon}
+          description="No action icon (so no chevron)"
+          hasAction={false}
         />
       </Item.List>
     </div>
