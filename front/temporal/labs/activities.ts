@@ -181,8 +181,17 @@ export async function processTranscriptActivity(
         fileId,
         localLogger
       );
-      transcriptTitle = gongResult?.transcriptTitle || "";
-      transcriptContent = gongResult?.transcriptContent || "";
+
+      if (!gongResult) {
+        localLogger.error(
+          {},
+          "[processTranscriptActivity] No Gong result found. Stopping."
+        );
+        return;
+      }
+
+      transcriptTitle = gongResult.transcriptTitle;
+      transcriptContent = gongResult.transcriptContent;
       break;
 
     default:
@@ -192,15 +201,12 @@ export async function processTranscriptActivity(
   // Short transcripts are likely not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
-      {},
+      {
+        transcriptTitle,
+        transcriptContent,
+      },
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."
     );
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: transcriptTitle,
-      conversationId: null,
-    });
     return;
   }
 
