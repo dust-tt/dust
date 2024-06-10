@@ -55,7 +55,6 @@ export type AgentDisabledErrorEvent = {
   };
 };
 
-
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
   | RetrievalParamsEvent

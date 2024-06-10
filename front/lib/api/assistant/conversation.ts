@@ -26,10 +26,9 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  MODEL_PROVIDER_IDS
+  WorkspaceType,
 } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
