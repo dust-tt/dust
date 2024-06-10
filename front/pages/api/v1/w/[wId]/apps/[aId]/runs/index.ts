@@ -248,7 +248,7 @@ async function handler(
               try {
                 const data = JSON.parse(event.data);
                 if (data.type === "block_execution") {
-                  if (req.body.blocking) {
+                  if (runFlavor === 'blocking') {
                     // Keep track of block executions for blocking requests.
                     traces.push([
                       [data.content.block_type, data.content.block_name],
@@ -274,7 +274,7 @@ async function handler(
 
         for await (const chunk of runRes.value.chunkStream) {
           parser.feed(new TextDecoder().decode(chunk));
-          if (req.body.stream) {
+          if (runFlavor === 'streaming') {
             res.write(chunk);
             // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
             res.flush();
