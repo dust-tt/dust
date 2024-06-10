@@ -408,12 +408,16 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const appWhiteListedProviders = owner.whiteListedProviders
     ? [...owner.whiteListedProviders, "azure_openai"]
     : APP_MODEL_PROVIDER_IDS;
-  const filteredProviders = modelProviders.filter((provider) => {
-    return (
-      APP_MODEL_PROVIDER_IDS.includes(provider.providerId) &&
-      appWhiteListedProviders.includes(provider.providerId)
-    );
-  });
+  const filteredProvidersIdSet = new Set(
+    modelProviders
+      .filter((provider) => {
+        return (
+          APP_MODEL_PROVIDER_IDS.includes(provider.providerId) &&
+          appWhiteListedProviders.includes(provider.providerId)
+        );
+      })
+      .map((provider) => provider.providerId)
+  );
 
   const configs = {} as any;
 
@@ -427,9 +431,12 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         api_key: "",
         redactedApiKey: api_key,
       };
+      filteredProvidersIdSet.add(providers[i].providerId);
     }
   }
-
+  const filteredProviders = modelProviders.filter((provider) =>
+    filteredProvidersIdSet.has(provider.providerId)
+  );
   return (
     <>
       <OpenAISetup
