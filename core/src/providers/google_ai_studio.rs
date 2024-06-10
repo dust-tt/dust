@@ -543,40 +543,30 @@ impl LLM for GoogleAiStudioLLM {
         let mut function_calls: Vec<ChatFunctionCall> = vec![];
 
         // Get candidates?.[0]?.content?.parts.
-        match c
+        if let Some(parts) = c
             .candidates
             .as_ref()
             .and_then(|c| c.first())
             .and_then(|c| c.content.as_ref())
             .and_then(|c| c.parts.as_ref())
         {
-            None => (),
-            Some(parts) => {
-                for p in parts.iter() {
-                    match p.text.as_ref() {
-                        Some(t) => match content.as_mut() {
-                            Some(c) => {
-                                *c = c.clone() + t.as_str();
-                            }
-                            None => {
-                                content = Some(t.clone());
-                            }
+            for p in parts.iter() {
+                // If the part has text, either append it to the content if we already have some
+                //  or set it as the content.
+                if let Some(t) = p.text.as_ref() {
+                    content = content.map(|c| c + t).or_else(|| Some(t.clone()));
+                }
+
+                // If the part has a function call, add it to the list of function calls.
+                if let Some(fc) = p.function_call.as_ref() {
+                    function_calls.push(ChatFunctionCall {
+                        id: format!("fc_{}", utils::new_id()[0..9].to_string()),
+                        name: fc.name.clone(),
+                        arguments: match fc.args {
+                            Some(ref args) => serde_json::to_string(args)?,
+                            None => String::from("{}"),
                         },
-                        None => (),
-                    }
-                    match p.function_call.as_ref() {
-                        Some(fc) => {
-                            function_calls.push(ChatFunctionCall {
-                                id: format!("fc_{}", utils::new_id()[0..9].to_string()),
-                                name: fc.name.clone(),
-                                arguments: match fc.args {
-                                    Some(ref args) => serde_json::to_string(args)?,
-                                    None => String::from("{}"),
-                                },
-                            });
-                        }
-                        None => (),
-                    }
+                    });
                 }
             }
         }
@@ -719,42 +709,40 @@ pub async fn streamed_chat_completion(
                         }
                     };
 
-                    if let Some(parts) = completion_candidates[0]
-                        .content
-                        .as_ref()
-                        .and_then(|c| c.parts.as_ref())
-                    {
-                        match event_sender.as_ref() {
-                            Some(sender) => parts.iter().for_each(|p| {
-                                match p.text {
-                                    Some(ref t) => {
-                                        if t.len() > 0 {
-                                            let _ = sender.send(json!({
-                                                "type": "tokens",
-                                                "content": {
-                                                    "text": t,
-                                                }
-                                            }));
-                                        }
-                                    }
-                                    None => (),
-                                }
-
-                                match p.function_call {
-                                    Some(ref f) => {
+                    if let (Some(parts), Some(sender)) = (
+                        completion_candidates[0]
+                            .content
+                            .as_ref()
+                            .and_then(|c| c.parts.as_ref()),
+                        event_sender.as_ref(),
+                    ) {
+                        parts.iter().for_each(|p| {
+                            match p.text {
+                                Some(ref t) => {
+                                    if t.len() > 0 {
                                         let _ = sender.send(json!({
-                                            "type": "function_call",
+                                            "type": "tokens",
                                             "content": {
-                                                "name": f.name,
+                                                "text": t,
                                             }
                                         }));
                                     }
-                                    None => (),
                                 }
-                            }),
+                                None => (),
+                            }
 
-                            _ => (),
-                        };
+                            match p.function_call {
+                                Some(ref f) => {
+                                    let _ = sender.send(json!({
+                                        "type": "function_call",
+                                        "content": {
+                                            "name": f.name,
+                                        }
+                                    }));
+                                }
+                                None => (),
+                            }
+                        });
                     }
 
                     completions.lock().push(completion);
@@ -829,7 +817,7 @@ pub async fn streamed_chat_completion(
 
     let mut usage_metadata: Option<UsageMetadata> = None;
 
-    let mut candidate = Candidate {
+    let mut full_candidate = Candidate {
         content: Some(Content {
             role: String::from("MODEL"),
             parts: Some(vec![]),
@@ -860,74 +848,62 @@ pub async fn streamed_chat_completion(
             n => Err(anyhow!("Unexpected number of candidates >1: {}", n))?,
         }
 
-        match c.candidates.as_ref().map(|c| c.first()).flatten() {
-            None => (),
-            Some(cand) => {
-                // Validate that the role (if any) is MODEL.
-                match cand.content.as_ref() {
-                    None => (),
-                    Some(c) => match c.role.to_uppercase().as_str() {
-                        "MODEL" => (),
-                        r => Err(anyhow!("Unexpected role in completion: {}", r))?,
-                    },
-                };
+        if let Some(candidate) = c.candidates.as_ref().map(|c| c.first()).flatten() {
+            // Validate that the role (if any) is MODEL.
 
-                match cand.finish_reason.as_ref() {
-                    None => (),
-                    Some(r) => {
-                        candidate.finish_reason = Some(r.clone());
-                    }
+            if let Some(c) = candidate.content.as_ref() {
+                match c.role.to_uppercase().as_str() {
+                    "MODEL" => (),
+                    r => Err(anyhow!("Unexpected role in completion: {}", r))?,
                 }
+            }
 
-                let parts = match cand.content.as_ref() {
-                    None => None,
-                    Some(c) => c.parts.as_ref(),
-                };
+            if let Some(r) = candidate.finish_reason.as_ref() {
+                full_candidate.finish_reason = Some(r.clone());
+            }
 
-                if let Some(parts) = parts {
-                    for p in parts.iter() {
-                        match p.text.as_ref() {
-                            Some(t) => match text_parts.as_mut() {
-                                Some(tp) => {
-                                    tp.text =
-                                        Some(tp.text.clone().unwrap_or_default() + t.as_str());
-                                }
-                                None => {
-                                    text_parts = Some(p.clone());
-                                }
-                            },
-                            None => (),
-                        }
-                        match p.function_call.as_ref() {
-                            Some(_) => {
-                                function_call_parts.push(p.clone());
+            if let Some(parts) = candidate.content.as_ref().and_then(|c| c.parts.as_ref()) {
+                for p in parts.iter() {
+                    if let Some(t) = p.text.as_ref() {
+                        match text_parts.as_mut() {
+                            Some(tp) => {
+                                tp.text = Some(tp.text.clone().unwrap_or_default() + t.as_str());
                             }
-                            None => (),
-                        }
-                        match p.function_response.as_ref() {
-                            Some(_) => {
-                                Err(anyhow!("Unexpected function response part in completion"))?;
+                            None => {
+                                text_parts = Some(p.clone());
                             }
-                            None => (),
                         }
+                    }
+
+                    if p.function_call.is_some() {
+                        function_call_parts.push(p.clone());
+                    }
+
+                    if p.function_response.is_some() {
+                        Err(anyhow!("Unexpected function response part in completion"))?;
                     }
                 }
             }
         }
     }
 
-    match candidate.content.as_mut().and_then(|c| c.parts.as_mut()) {
+    match full_candidate
+        .content
+        .as_mut()
+        .and_then(|c| c.parts.as_mut())
+    {
         Some(parts) => {
             if let Some(tp) = text_parts {
                 parts.push(tp);
             }
             parts.extend(function_call_parts);
         }
-        None => (),
+        // This should never happen since we define the `full_candidate` above.
+        None => unreachable!(),
     }
 
     Ok(Completion {
-        candidates: Some(vec![candidate]),
+        candidates: Some(vec![full_candidate]),
         usage_metadata,
     })
 }
