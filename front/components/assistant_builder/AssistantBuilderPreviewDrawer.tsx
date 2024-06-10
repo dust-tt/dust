@@ -227,7 +227,6 @@ export default function AssistantBuilderRightPanel({
                 {template && template.helpActions && (
                   <>
                     <div>
-                      {/* <Page.SectionHeader title="Guide" /> */}
                       <Markdown
                         content={template?.helpActions ?? ""}
                         className=""
