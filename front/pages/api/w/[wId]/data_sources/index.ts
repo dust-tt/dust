@@ -2,7 +2,7 @@ import type { DataSourceType, WithAPIErrorReponse } from "@dust-tt/types";
 import {
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
-  EMBEDDING_CONFIG,
+  EMBEDDING_CONFIGS,
   isDataSourceNameValid,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
@@ -138,6 +138,8 @@ async function handler(
       // Dust managed credentials: all data sources.
       const credentials = dustManagedCredentials();
 
+      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
         dataSourceId: req.body.name as string,
@@ -148,10 +150,10 @@ async function handler(
           },
           embedder_config: {
             embedder: {
-              max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-              model_id: EMBEDDING_CONFIG.model_id,
-              provider_id: EMBEDDING_CONFIG.provider_id,
-              splitter_id: EMBEDDING_CONFIG.splitter_id,
+              max_chunk_size: embedderConfig.max_chunk_size,
+              model_id: embedderConfig.model_id,
+              provider_id: embedderConfig.provider_id,
+              splitter_id: embedderConfig.splitter_id,
             },
           },
         },
