@@ -2,9 +2,10 @@ import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface ModelManagementModalProps {
   owner: WorkspaceType;
@@ -22,15 +23,14 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
 };
 
-const providerModels = SUPPORTED_MODEL_CONFIGS.reduce((acc, model) => {
-  if (!model.isLegacy) {
-    if (!acc[model.providerId]) {
-      acc[model.providerId] = [];
+const providerModels: Record<ModelProviderIdType, string[]> =
+  SUPPORTED_MODEL_CONFIGS.reduce((acc, model) => {
+    if (!model.isLegacy) {
+      acc[model.providerId] = acc[model.providerId] || [];
+      acc[model.providerId].push(model.displayName);
     }
-    acc[model.providerId].push(model.displayName);
-  }
-  return acc;
-}, {} as Record<ModelProviderIdType, string[]>);
+    return acc;
+  }, {} as Record<ModelProviderIdType, string[]>);
 
 // TODO: Jules 06/06/2024: use selection modal in workspace/index.tsx once Model Deactivation ready
 export function ProviderManagementModal({
@@ -39,22 +39,24 @@ export function ProviderManagementModal({
   onClose,
   onSave,
 }: ModelManagementModalProps) {
-  const initialProviderStates = useMemo(() => {
+  const sendNotifications = useContext(SendNotificationsContext);
+
+  const initialProviderStates: ProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
       owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-    const initialProviderStates: ProviderStates = [
-      ...MODEL_PROVIDER_IDS,
-    ].reduce((acc, provider) => {
+    return MODEL_PROVIDER_IDS.reduce((acc, provider) => {
       acc[provider] = enabledProviders.includes(provider);
       return acc;
     }, {} as ProviderStates);
-    return initialProviderStates;
   }, [owner.whiteListedProviders]);
 
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
-  const allToggleEnabled = Object.values(providerStates).every(Boolean);
+  const allToggleEnabled = useMemo(
+    () => Object.values(providerStates).every(Boolean),
+    [providerStates]
+  );
 
   const handleToggleChange = useCallback(
     (provider: ModelProviderIdType) => {
@@ -65,6 +67,23 @@ export function ProviderManagementModal({
     },
     [setProviderStates]
   );
+
+  const handleSave = () => {
+    const activeProviders = MODEL_PROVIDER_IDS.filter(
+      (key) => providerStates[key]
+    );
+    if (activeProviders.length === 0) {
+      sendNotifications({
+        type: "error",
+        title: "One provider required",
+        description:
+          "Please select at least one provider to continue with the update.",
+      });
+    } else {
+      onSave(activeProviders);
+    }
+  };
+
   return (
     <Modal
       isOpen={showProviderModal}
@@ -72,12 +91,7 @@ export function ProviderManagementModal({
       hasChanged={!isEqual(providerStates, initialProviderStates)}
       title="Manage Providers"
       saveLabel="Update providers"
-      onSave={() => {
-        const activeProviders = MODEL_PROVIDER_IDS.filter(
-          (key) => providerStates[key]
-        );
-        onSave(activeProviders);
-      }}
+      onSave={handleSave}
     >
       <div className="mt-8 divide-y divide-gray-200">
         <div className="flex items-center justify-between px-4 pb-4">
