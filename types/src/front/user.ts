@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
 import { WhitelistableFeature } from "./feature_flags";
-import { ModelProviderIdType } from "./lib/assistant";
+import { EmbeddingProviderIdType, ModelProviderIdType } from "./lib/assistant";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
@@ -33,7 +33,7 @@ export type LightWorkspaceType = {
   role: RoleType;
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
-  defaultEmbeddingProvider: ModelProviderIdType | null;
+  defaultEmbeddingProvider: EmbeddingProviderIdType | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {
