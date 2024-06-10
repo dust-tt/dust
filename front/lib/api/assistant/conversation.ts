@@ -976,6 +976,7 @@ export async function* editUserMessage(
   | UserMessageNewEvent
   | UserMessageErrorEvent
   | AgentMessageNewEvent
+  | AgentDisabledErrorEvent
   | AgentErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
@@ -1079,6 +1080,22 @@ export async function* editUserMessage(
   ]);
 
   const agentConfigurations = results[0];
+
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  for (const agentConfig of agentConfigurations) {
+    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "provider_disabled",
+          message: `The model provider for agent configuration ${agentConfig.sId} is currently disabled.`,
+        },
+      };
+      return; // Stop processing if any agent uses a disabled provider
+    }
+  }
 
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
