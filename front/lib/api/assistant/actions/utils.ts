@@ -68,6 +68,6 @@ export const ACTION_SPECIFICATIONS: Record<
     description: "Get the content of a page",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
-    flag: null,
+    flag: "browse_action",
   },
 };

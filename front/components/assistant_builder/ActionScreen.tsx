@@ -99,6 +99,7 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     icon: PlanetIcon,
     description: "Browse a web page",
     defaultActionType: "BROWSE",
+    flag: "browse_action",
   },
 };
 

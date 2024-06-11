@@ -51,6 +51,11 @@ import { getDefaultActionConfiguration } from "@app/components/assistant_builder
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { classNames } from "@app/lib/utils";
 
+import {
+  ActionBrowse,
+  isActionBrowseValid,
+} from "@app/components/assistant_builder/actions/BrowseAction";
+
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
   "RETRIEVAL_EXHAUSTIVE",
@@ -94,7 +99,7 @@ export function isActionValid(
     case "WEBSEARCH":
       return isActionWebsearchValid(action);
     case "BROWSE":
-      return true;
+      return isActionBrowseValid(action);
     default:
       assertNever(action);
   }
@@ -577,7 +582,7 @@ function ActionConfigEditor({
     case "WEBSEARCH":
       return <ActionWebsearch />;
     case "BROWSE":
-      return <ActionWebsearch />;
+      return <ActionBrowse />;
     default:
       assertNever(action);
   }
