@@ -219,6 +219,7 @@ export async function batchRenderAgentMessages(
       status: agentMessage.status,
       actions: actions,
       content: agentMessage.content,
+      chainOfThoughts: agentMessage.chainOfThoughts,
       error,
       // TODO(2024-03-21 flav) Dry the agent configuration object for rendering.
       configuration: agentConfiguration,

@@ -241,6 +241,7 @@ export async function* runMultiActionsAgentLoop(
           } satisfies AgentGenerationSuccessEvent;
 
           agentMessage.content = event.text;
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
           agentMessage.status = "succeeded";
           yield {
             type: "agent_message_success",
