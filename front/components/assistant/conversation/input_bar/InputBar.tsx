@@ -56,6 +56,7 @@ export function AssistantInputBar({
   stickyMentions,
   additionalAgentConfiguration,
   hideQuickActions,
+  hideAttachment,
   disableAutoFocus = false,
   isFloating = true,
 }: {
@@ -69,6 +70,7 @@ export function AssistantInputBar({
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   hideQuickActions: boolean;
+  hideAttachment?: boolean;
   disableAutoFocus: boolean;
   isFloating?: boolean;
 }) {
@@ -335,6 +337,7 @@ export function AssistantInputBar({
 
               <InputBarContainer
                 hideQuickActions={hideQuickActions}
+                hideAttachment={!!hideAttachment}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}

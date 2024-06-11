@@ -19,6 +19,7 @@ import { AssistantInputBar } from "@app/components/assistant/conversation/input_
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -82,6 +83,7 @@ export default function AssistantNew({
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
+  const [isHelpDrawerOpen, setIsHelpDrawerOpen] = useState<boolean>(false);
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
@@ -245,6 +247,12 @@ export default function AssistantNew({
 
   return (
     <>
+      <HelpDrawer
+        owner={owner}
+        user={user}
+        show={isHelpDrawerOpen}
+        onClose={() => setIsHelpDrawerOpen(false)}
+      />
       <QuickStartGuide
         owner={owner}
         user={user}
@@ -318,7 +326,7 @@ export default function AssistantNew({
           icon={HeartAltIcon}
           labelVisible={false}
           label="Quick Start Guide"
-          onClick={() => setShowQuickGuide(true)}
+          onClick={() => setIsHelpDrawerOpen(true)}
           size="md"
           variant="primary"
           hasMagnifying={true}
