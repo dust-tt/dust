@@ -215,6 +215,8 @@ interface NavigationListItemProps {
   icon?: ComponentType;
   className?: string;
   href?: string;
+  hasAction?: boolean | "hover";
+  action?: ComponentType;
 }
 
 Item.Navigation = function (props: NavigationListItemProps) {
