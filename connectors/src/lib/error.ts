@@ -1,6 +1,6 @@
 // JS cannot give you any guarantee about the shape of an error you `catch`
 
-import type { ConnectorProvider } from "@dust-tt/types";
+import type { APIError, ConnectorProvider } from "@dust-tt/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {
@@ -36,7 +36,7 @@ export class DustConnectorWorkflowError extends Error {
   constructor(
     message: string,
     readonly type: WorkflowErrorType,
-    readonly originalError?: Error
+    readonly originalError?: Error | APIError
   ) {
     super(message);
   }
@@ -47,7 +47,7 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
   constructor(
     message: string,
     public readonly provider: ConnectorProvider,
-    originalError?: Error
+    originalError?: Error | APIError
   ) {
     super(
       message,

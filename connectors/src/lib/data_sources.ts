@@ -316,7 +316,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     throw new DustConnectorWorkflowError(
       `Error tokenizing text for ${ds.dataSourceName}`,
       "transient_upstream_activity_error",
-      tokensRes.error as unknown as Error
+      tokensRes.error
     );
   }
   return tokensRes.value;
