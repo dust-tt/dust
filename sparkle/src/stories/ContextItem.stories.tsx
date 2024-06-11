@@ -11,7 +11,6 @@ import {
   ContextItem,
   PencilSquareIcon,
   SliderToggle,
-  TemplateItem,
   TrashIcon,
 } from "../index_with_tw_base";
 
