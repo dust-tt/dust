@@ -175,7 +175,13 @@ export const DustProdActionRegistry = createActionRegistry({
       appHash:
         "8450a81c6358db2e67d131e7e21b18988816cba0efa726f5e84c2b47c219fbb2",
     },
-    config: { WEBCONTENT:{"provider_id":"browserlessapi","use_cache":true,"error_as_output":true} },
+    config: {
+      WEBCONTENT: {
+        provider_id: "browserlessapi",
+        use_cache: true,
+        error_as_output: true,
+      },
+    },
   },
   "assistant-builder-instructions-suggestions": {
     app: {

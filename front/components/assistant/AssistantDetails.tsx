@@ -26,12 +26,12 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
-  isBrowseConfiguration,
 } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";

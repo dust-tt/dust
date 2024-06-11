@@ -4,6 +4,7 @@ import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { BrowseConfigurationType } from "./actions/browse";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
 import type { TimeframeUnit } from "./actions/retrieval";
@@ -15,7 +16,6 @@ import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
-import { BrowseConfigurationType } from "./actions/browse";
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -223,7 +223,7 @@ export function getAgentActionConfigurationType(
         name: "browse",
         description: "Browse a page.",
       } satisfies BrowseConfigurationType;
-  
+
     default:
       assertNever(action);
   }

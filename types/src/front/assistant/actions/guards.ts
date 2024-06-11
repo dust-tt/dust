@@ -128,7 +128,6 @@ export function isBrowseActionType(
   return arg.type === "browse_action";
 }
 
-
 export function isAgentActionConfigurationType(
   arg: unknown
 ): arg is AgentActionConfigurationType {

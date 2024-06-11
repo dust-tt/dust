@@ -1,11 +1,5 @@
-import {
-  Citation,
-  Collapsible,
-  ContentMessage,
-  GlobeAltIcon,
-  Page,
-} from "@dust-tt/sparkle";
-import type { BrowseActionType, BrowseResultType } from "@dust-tt/types";
+import { Collapsible, GlobeAltIcon } from "@dust-tt/sparkle";
+import type { BrowseActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
@@ -14,7 +8,7 @@ export function BrowseActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<BrowseActionType>) {
-  console.log(action.urls);
+  console.log(action);
 
   return (
     <ActionDetailsWrapper

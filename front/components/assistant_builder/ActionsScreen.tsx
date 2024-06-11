@@ -22,6 +22,10 @@ import {
   isActionDustAppRunValid,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
+  ActionBrowse,
+  isActionBrowseValid,
+} from "@app/components/assistant_builder/actions/BrowseAction";
+import {
   ActionProcess,
   isActionProcessValid,
 } from "@app/components/assistant_builder/actions/ProcessAction";
@@ -50,11 +54,6 @@ import type {
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { classNames } from "@app/lib/utils";
-
-import {
-  ActionBrowse,
-  isActionBrowseValid,
-} from "@app/components/assistant_builder/actions/BrowseAction";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",

@@ -11,12 +11,12 @@ import {
   assertNever,
   ConnectorsAPI,
   CoreAPI,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
-  isBrowseConfiguration,
   slugify,
 } from "@dust-tt/types";
 
@@ -26,13 +26,13 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import {
+  getDefaultBrowseActionConfiguration,
   getDefaultDustAppRunActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
-  getDefaultBrowseActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";

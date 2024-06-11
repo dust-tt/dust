@@ -1,12 +1,11 @@
 import type { AgentActionType } from "@dust-tt/types";
 
+import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
-import { BrowseAction } from "@app/lib/api/assistant/actions/browse";
-import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType

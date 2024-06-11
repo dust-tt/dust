@@ -25,9 +25,7 @@ export const BrowseActionOutputSchema = t.union([
   }),
 ]);
 
-export type BrowseActionOutputType = t.TypeOf<
-  typeof BrowseActionOutputSchema
->;
+export type BrowseActionOutputType = t.TypeOf<typeof BrowseActionOutputSchema>;
 
 export type BrowseResultType = t.TypeOf<typeof BrowseResultSchema>;
 

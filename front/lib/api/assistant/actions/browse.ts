@@ -1,22 +1,22 @@
 import type {
   AgentActionSpecification,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelId,
-  Result,
   BrowseActionOutputType,
   BrowseActionType,
   BrowseConfigurationType,
   BrowseErrorEvent,
   BrowseParamsEvent,
   BrowseSuccessEvent,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+  Result,
 } from "@dust-tt/types";
 import {
   BaseAction,
+  BrowseActionOutputSchema,
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
-  BrowseActionOutputSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
