@@ -217,7 +217,7 @@ export default function ActionsScreen({
         dustApps={dustApps}
       />
 
-      <div className="flex min-h-96 flex-col gap-8 text-sm text-element-700">
+      <div className="flex flex-col gap-8 text-sm text-element-700">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Actions & Data sources" />
