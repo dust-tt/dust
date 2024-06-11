@@ -224,6 +224,7 @@ export async function* runMultiActionsAgentLoop(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: event.text,
+            chainOfThought: event.chainOfThought,
           } satisfies AgentGenerationSuccessEvent;
 
           agentMessage.content = event.text;

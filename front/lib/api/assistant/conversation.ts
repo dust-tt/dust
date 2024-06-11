@@ -1714,6 +1714,7 @@ async function* streamRunAgentEvents(
         // Store message in database.
         await agentMessageRow.update({
           content: event.text,
+          chainOfThoughts: [...agentMessageRow.chainOfThoughts, event.chainOfThought],
         });
         yield event;
         break;

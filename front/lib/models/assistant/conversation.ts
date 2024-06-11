@@ -245,7 +245,7 @@ export class AgentMessage extends Model<
   declare status: CreationOptional<AgentMessageStatus>;
 
   declare content: string | null;
-  declare chainOfThoughts: string[];
+  declare chainOfThoughts: CreationOptional<string[]>;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
