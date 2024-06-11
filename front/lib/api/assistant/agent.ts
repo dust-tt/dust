@@ -29,6 +29,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { escapeRegExp } from "lodash";
@@ -743,10 +744,10 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       message: agentMessage,
-      // In practice, we shouls never have both chainOfThought and content.
+      // In practice, we should never have both chainOfThought and content.
       // It is not completely impossible that eg Anthropic decides to emit part of the
       // CoT between `<thinking>` XML tags and the rest outside of any tag.
-      chainOfThought: [chainOfThought, content].join("\n"),
+      chainOfThought: removeNulls([chainOfThought, content]).join("\n"),
     };
   }
 
