@@ -71,7 +71,10 @@ import {
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import logger from "@app/logger/logger";
-import { AgentBrowseAction, AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 
 async function main() {
   await sendInitDbMessage({

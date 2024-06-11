@@ -4,6 +4,7 @@ import { RetrievalConfigurationType } from "../../front/assistant/actions/retrie
 import { TablesQueryConfigurationType } from "../../front/assistant/actions/tables_query";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { BrowseConfigurationType } from "./actions/browse";
 import { WebsearchConfigurationType } from "./actions/websearch";
 
 /**
@@ -18,7 +19,8 @@ export type AgentActionConfigurationType =
   | RetrievalConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | WebsearchConfigurationType;
+  | WebsearchConfigurationType
+  | BrowseConfigurationType;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 

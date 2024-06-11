@@ -97,6 +97,10 @@ const WebsearchActionConfigurationSchema = t.type({
   type: t.literal("websearch_configuration"),
 });
 
+const BrowseActionConfigurationSchema = t.type({
+  type: t.literal("browse_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -153,6 +157,7 @@ const ActionConfigurationSchema = t.intersection([
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
+    BrowseActionConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);

@@ -171,11 +171,11 @@ export const DustProdActionRegistry = createActionRegistry({
   "assistant-v2-browse": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "96647d9723",
+      appId: "21092925b9",
       appHash:
-        "43ed68f445abed6a722b2f26c0b1bb47caa5abd6564216d71d6bc6379d851f8b",
+        "8450a81c6358db2e67d131e7e21b18988816cba0efa726f5e84c2b47c219fbb2",
     },
-    config: { BROWSE: { provider_id: "browserless", use_cache: false } },
+    config: { WEBCONTENT:{"provider_id":"browserlessapi","use_cache":true,"error_as_output":true} },
   },
   "assistant-builder-instructions-suggestions": {
     app: {

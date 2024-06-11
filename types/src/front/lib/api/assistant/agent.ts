@@ -19,6 +19,7 @@ import {
   AgentActionConfigurationType,
   AgentActionSpecification,
 } from "../../../assistant/agent";
+import { BrowseParamsEvent } from "./actions/browse";
 import { ProcessParamsEvent } from "./actions/process";
 import { WebsearchParamsEvent } from "./actions/websearch";
 
@@ -63,7 +64,8 @@ export type AgentActionSpecificEvent =
   | TablesQueryParamsEvent
   | TablesQueryOutputEvent
   | ProcessParamsEvent
-  | WebsearchParamsEvent;
+  | WebsearchParamsEvent
+  | BrowseParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

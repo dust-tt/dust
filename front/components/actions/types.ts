@@ -5,6 +5,8 @@ import { ProcessActionDetails } from "@app/components/actions/process/ProcessAct
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
+import { BrowseAction } from "@app/lib/api/assistant/actions/browse";
+import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType
@@ -44,6 +46,10 @@ const actionsSpecification: ActionSpecifications = {
   websearch_action: {
     detailsComponent: WebsearchActionDetails,
     runningLabel: "Searching the web",
+  },
+  browse_action: {
+    detailsComponent: BrowseActionDetails,
+    runningLabel: "Browsing page",
   },
 };
 

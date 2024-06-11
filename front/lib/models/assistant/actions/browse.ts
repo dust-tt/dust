@@ -21,8 +21,6 @@ export class AgentBrowseConfiguration extends Model<
 
   declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]>;
 
-  declare sizeLimit: number;
-
   declare sId: string;
 
   declare name: string | null;
@@ -45,10 +43,6 @@ AgentBrowseConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    sizeLimit: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
     },
     sId: {
       type: DataTypes.STRING,
@@ -96,7 +90,7 @@ export class AgentBrowseAction extends Model<
 
   declare browseConfigurationId: string;
 
-  declare links: string;
+  declare urls: string;
 
   declare output: BrowseActionOutputType | null;
   declare functionCallId: string | null;
@@ -128,7 +122,7 @@ AgentBrowseAction.init(
       allowNull: false,
     },
 
-    links: {
+    urls: {
       type: DataTypes.TEXT,
       allowNull: false,
     },

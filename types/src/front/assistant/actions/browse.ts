@@ -7,7 +7,6 @@ export type BrowseConfigurationType = {
   id: ModelId;
   sId: string;
   type: "browse_configuration";
-  sizeLimit: number;
   name: string | null;
   description: string | null;
 };

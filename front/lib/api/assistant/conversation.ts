@@ -1751,6 +1751,7 @@ async function* streamRunAgentEvents(
       case "tables_query_output":
       case "process_params":
       case "websearch_params":
+      case "browse_params":
         yield event;
         break;
       case "generation_tokens":

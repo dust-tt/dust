@@ -15,6 +15,7 @@ import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
+import { BrowseConfigurationType } from "./actions/browse";
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -105,6 +106,7 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   tables_query_configuration: "Query tables",
   process_configuration: "Extract data",
   websearch_configuration: "Web search",
+  browse_configuration: "Browse",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
@@ -213,6 +215,15 @@ export function getAgentActionConfigurationType(
         description: "Search the web.",
       } satisfies WebsearchConfigurationType;
 
+    case "browse_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        type: "browse_configuration",
+        name: "browse",
+        description: "Browse a page.",
+      } satisfies BrowseConfigurationType;
+  
     default:
       assertNever(action);
   }

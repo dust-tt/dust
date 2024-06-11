@@ -58,9 +58,10 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const CAPABILITIES_ACTION_CATEGORIES = ["WEBSEARCH"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const CAPABILITIES_ACTION_CATEGORIES = [
+  "WEBSEARCH",
+  "BROWSE",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
   AssistantBuilderActionConfiguration["type"]
@@ -92,6 +93,8 @@ export function isActionValid(
       return isActionTablesQueryValid(action);
     case "WEBSEARCH":
       return isActionWebsearchValid(action);
+    case "BROWSE":
+      return true;
     default:
       assertNever(action);
   }
@@ -572,6 +575,8 @@ function ActionConfigEditor({
         />
       );
     case "WEBSEARCH":
+      return <ActionWebsearch />;
+    case "BROWSE":
       return <ActionWebsearch />;
     default:
       assertNever(action);

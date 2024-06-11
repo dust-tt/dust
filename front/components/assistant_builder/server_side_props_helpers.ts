@@ -16,6 +16,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  isBrowseConfiguration,
   slugify,
 } from "@dust-tt/types";
 
@@ -31,6 +32,7 @@ import {
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
+  getDefaultBrowseActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { tableKey } from "@app/lib/client/tables_query";
 import logger from "@app/logger/logger";
@@ -204,6 +206,8 @@ export async function buildInitialActions({
       builderAction = processConfiguration;
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+    } else if (isBrowseConfiguration(action)) {
+      builderAction = getDefaultBrowseActionConfiguration();
     } else {
       assertNever(action);
     }
