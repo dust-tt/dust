@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
-import { isModelProviderId } from "@dust-tt/types";
+import { ioTsEnum, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,6 +12,9 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
+
+const ModelProviderIdCodec =
+  ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
 
 const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
@@ -27,11 +30,11 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
 });
 
 const WorkspaceProvidersUpdateBodySchema = t.type({
-  whiteListedProviders: t.array(t.string),
+  whiteListedProviders: t.array(ModelProviderIdCodec),
 });
 
 const WorkspaceEmbedderUpdateBodySchema = t.type({
-  defaultEmbeddingProvider: t.string,
+  defaultEmbeddingProvider: ModelProviderIdCodec,
 });
 
 const PostWorkspaceRequestBodySchema = t.union([
@@ -115,18 +118,14 @@ async function handler(
 
         owner.ssoEnforced = body.ssoEnforced;
       } else if ("whiteListedProviders" in body) {
-        if (body.whiteListedProviders.every(isModelProviderId)) {
-          await w.update({
-            whiteListedProviders: body.whiteListedProviders,
-          });
-          owner.whiteListedProviders = w.whiteListedProviders;
-        }
+        await w.update({
+          whiteListedProviders: body.whiteListedProviders,
+        });
+        owner.whiteListedProviders = w.whiteListedProviders;
       } else if ("defaultEmbeddingProvider" in body) {
-        if (isModelProviderId(body.defaultEmbeddingProvider)) {
-          await w.update({
-            defaultEmbeddingProvider: body.defaultEmbeddingProvider,
-          });
-        }
+        await w.update({
+          defaultEmbeddingProvider: body.defaultEmbeddingProvider,
+        });
         owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
