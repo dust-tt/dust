@@ -11,7 +11,6 @@ interface ModelManagementModalProps {
   owner: WorkspaceType;
   showProviderModal: boolean;
   onClose: () => void;
-  onSave: (updateProviders: ModelProviderIdType[]) => void;
 }
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
@@ -37,7 +36,6 @@ export function ProviderManagementModal({
   owner,
   showProviderModal,
   onClose,
-  onSave,
 }: ModelManagementModalProps) {
   const sendNotifications = useContext(SendNotificationsContext);
 
@@ -68,7 +66,7 @@ export function ProviderManagementModal({
     [setProviderStates]
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const activeProviders = MODEL_PROVIDER_IDS.filter(
       (key) => providerStates[key]
     );
@@ -80,7 +78,33 @@ export function ProviderManagementModal({
           "Please select at least one provider to continue with the update.",
       });
     } else {
-      onSave(activeProviders);
+      try {
+        const response = await fetch(`/api/w/${owner.sId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            whiteListedProviders: activeProviders,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update workspace providers");
+        }
+        sendNotifications({
+          type: "success",
+          title: "Providers Updated",
+          description: "The list of providers has been successfully updated.",
+        });
+        onClose();
+      } catch (error) {
+        sendNotifications({
+          type: "error",
+          title: "Update Failed",
+          description: "An unexpected error occurred while updating providers.",
+        });
+      }
     }
   };
 

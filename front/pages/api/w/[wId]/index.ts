@@ -1,4 +1,5 @@
 import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
+import { ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -25,10 +26,20 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
   domainAutoJoinEnabled: t.boolean,
 });
 
+const WorkspaceProvidersUpdateBodySchema = t.type({
+  whiteListedProviders: t.array(ModelProviderIdCodec),
+});
+
+const WorkspaceEmbedderUpdateBodySchema = t.type({
+  defaultEmbeddingProvider: ModelProviderIdCodec,
+});
+
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
+  WorkspaceProvidersUpdateBodySchema,
+  WorkspaceEmbedderUpdateBodySchema,
 ]);
 
 async function handler(
@@ -103,6 +114,16 @@ async function handler(
         });
 
         owner.ssoEnforced = body.ssoEnforced;
+      } else if ("whiteListedProviders" in body) {
+        await w.update({
+          whiteListedProviders: body.whiteListedProviders,
+        });
+        owner.whiteListedProviders = w.whiteListedProviders;
+      } else if ("defaultEmbeddingProvider" in body) {
+        await w.update({
+          defaultEmbeddingProvider: body.defaultEmbeddingProvider,
+        });
+        owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const [affectedCount] = await WorkspaceHasDomain.update(
