@@ -1,7 +1,5 @@
 -- Migration created on Jun 11, 2024
 ALTER TABLE
-    "public"."agent_configurations"
+    "public"."agent_messages"
 ADD
-    COLUMN "templateId" INTEGER REFERENCES "templates" ("id") ON DELETE
-SET
-    NULL ON UPDATE CASCADE;
+    COLUMN "chainOfThoughts" TEXT [] NOT NULL DEFAULT ARRAY [] :: TEXT [];
