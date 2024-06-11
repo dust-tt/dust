@@ -55,7 +55,9 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
     <div className="flex flex-grow flex-col gap-1">
       <Page.H variant="h6">Quick insights</Page.H>
       {isMemberCountLoading ? (
-        <Spinner />
+        <div className="flex h-full min-h-28 w-full items-center justify-center">
+          <Spinner />
+        </div>
       ) : (
         <div className="mt-2 grid grid-cols-2 gap-2">
           <InsightCard
