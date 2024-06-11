@@ -27,10 +27,18 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import logger from "@app/logger/logger";
 
+function isValidJSONArray(json: string): boolean {
+  try {
+    return Array.isArray(JSON.parse(json));
+  } catch (e) {
+    return false;
+  }
+}
+
 interface BrowseActionBlob {
   id: ModelId; // AgentBrowseAction
   agentMessageId: ModelId;
-  urls: string;
+  urls: string[];
   output: BrowseActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
@@ -48,9 +56,8 @@ export class BrowseAction extends BaseAction {
 
   constructor(blob: BrowseActionBlob) {
     super(blob.id, "browse_action");
-
     this.agentMessageId = blob.agentMessageId;
-    this.urls = [];
+    this.urls = blob.urls;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -148,11 +155,10 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 
     const rawUrls = rawInputs.urls;
 
-    // CHECK urls is in valid format
     if (
       !rawUrls ||
       typeof rawUrls !== "string" ||
-      rawUrls.length === 0 ||
+      !isValidJSONArray(rawUrls) ||
       JSON.parse(rawUrls).length === 0
     ) {
       yield {
@@ -362,7 +368,7 @@ export async function browseActionTypesFromAgentMessageIds(
     return new BrowseAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      urls: action.urls,
+      urls: isValidJSONArray(action.urls) ? JSON.parse(action.urls) : [],
       output: action.output,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
