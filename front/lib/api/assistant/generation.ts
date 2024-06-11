@@ -392,10 +392,10 @@ export async function constructPromptMultiActions(
   const owner = auth.workspace();
 
   let context = "CONTEXT:\n";
-  context += `  assistant: @${configuration.name}\n`;
-  context += `  local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
+  context += `assistant: @${configuration.name}\n`;
+  context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   if (owner) {
-    context += `  workspace: ${owner.name}\n`;
+    context += `workspace: ${owner.name}\n`;
   }
 
   let instructions = "";
