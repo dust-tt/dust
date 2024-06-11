@@ -13,6 +13,9 @@ export const MODEL_PROVIDER_IDS = [
 ] as const;
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 
+export const EMBEDDING_PROVIDER_IDS = ["openai", "mistral"] as const;
+export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
+
 export const isModelProviderId = (
   providerId: string
 ): providerId is ModelProviderIdType =>

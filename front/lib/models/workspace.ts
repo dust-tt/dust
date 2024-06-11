@@ -1,4 +1,8 @@
-import type { RoleType, WorkspaceSegmentationType } from "@dust-tt/types";
+import type {
+  EmbeddingProviderIdType,
+  RoleType,
+  WorkspaceSegmentationType,
+} from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -32,7 +36,7 @@ export class Workspace extends Model<
   declare ssoEnforced?: boolean;
   declare subscriptions: NonAttribute<Subscription[]>;
   declare whiteListedProviders: ModelProviderIdType[] | null;
-  declare defaultEmbeddingProvider: ModelProviderIdType | null;
+  declare defaultEmbeddingProvider: EmbeddingProviderIdType | null;
 }
 Workspace.init(
   {

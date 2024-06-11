@@ -6,9 +6,11 @@ import {
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
   CoreAPILightDocument,
+  EmbedderType,
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
 import { dustManagedCredentials } from "../../front/lib/api/credentials";
+import { EmbeddingProviderIdType } from "../../front/lib/assistant";
 import { Project } from "../../front/project";
 import { CredentialsType } from "../../front/provider";
 import {
@@ -23,12 +25,23 @@ import { Err, Ok, Result } from "../../shared/result";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
-export const EMBEDDING_CONFIG = {
-  model_id: "text-embedding-3-large-1536",
-  provider_id: "openai",
-  splitter_id: "base_v0",
-  max_chunk_size: 512,
-};
+export const MAX_CHUNK_SIZE = 512;
+
+export const EMBEDDING_CONFIGS: Record<EmbeddingProviderIdType, EmbedderType> =
+  {
+    openai: {
+      model_id: "text-embedding-3-large-1536",
+      provider_id: "openai",
+      splitter_id: "base_v0",
+      max_chunk_size: MAX_CHUNK_SIZE,
+    },
+    mistral: {
+      model_id: "mistral-embed",
+      provider_id: "mistral",
+      splitter_id: "base_v0",
+      max_chunk_size: MAX_CHUNK_SIZE,
+    },
+  } as const;
 
 export type CoreAPIError = {
   message: string;

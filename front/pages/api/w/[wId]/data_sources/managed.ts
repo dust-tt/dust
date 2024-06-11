@@ -4,7 +4,7 @@ import {
   assertNever,
   ConnectorConfigurationTypeSchema,
   DEFAULT_QDRANT_CLUSTER,
-  EMBEDDING_CONFIG,
+  EMBEDDING_CONFIGS,
   ioTsParsePayload,
   isConnectorProvider,
   sendUserOperationMessage,
@@ -279,6 +279,9 @@ async function handler(
         });
       }
 
+      const dataSourceEmbedder = owner.defaultEmbeddingProvider ?? "openai";
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+
       // Dust managed credentials: managed data source.
       const credentials = dustManagedCredentials();
 
@@ -288,10 +291,10 @@ async function handler(
         config: {
           embedder_config: {
             embedder: {
-              max_chunk_size: EMBEDDING_CONFIG.max_chunk_size,
-              model_id: EMBEDDING_CONFIG.model_id,
-              provider_id: EMBEDDING_CONFIG.provider_id,
-              splitter_id: EMBEDDING_CONFIG.splitter_id,
+              max_chunk_size: embedderConfig.max_chunk_size,
+              model_id: embedderConfig.model_id,
+              provider_id: embedderConfig.provider_id,
+              splitter_id: embedderConfig.splitter_id,
             },
           },
           qdrant_config: {

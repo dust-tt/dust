@@ -4,11 +4,11 @@ import type {
 } from "@dust-tt/types";
 import {
   DustAPI,
-  EMBEDDING_CONFIG,
   isValidDate,
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
+import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
@@ -246,7 +246,7 @@ async function _updateDocumentParentsField({
 
 // allows for 4 full prefixes before hitting half of the max chunk size (approx.
 // 256 chars for 512 token chunks)
-export const MAX_PREFIX_TOKENS = EMBEDDING_CONFIG.max_chunk_size / 8;
+export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
 // limit can be large and should be large to avoid underusing prexfixes
