@@ -25,18 +25,25 @@ export class NotionCastKnownErrorsInterceptor
         switch (err.code) {
           case APIErrorCode.ServiceUnavailable:
             throw new ProviderWorkflowError(
-              "Service Unavailable",
               "notion",
+              "Service Unavailable",
+              "transcient_upstream_activity_error",
               err
             );
 
           case APIErrorCode.RateLimited:
-            throw new ProviderWorkflowError("Rate Limit Error", "notion", err);
+            throw new ProviderWorkflowError(
+              "notion",
+              "Rate Limit Error",
+              "rate_limit_error",
+              err
+            );
 
           case APIErrorCode.InternalServerError:
             throw new ProviderWorkflowError(
-              "Internal Server Error",
               "notion",
+              "Internal Server Error",
+              "transcient_upstream_activity_error",
               err
             );
         }
@@ -45,13 +52,19 @@ export class NotionCastKnownErrorsInterceptor
           // Sometimes notion returns 502/504s, they are transient and look like rate limiting
           // errors. 530 is transient and looks like DNS errors.
           throw new ProviderWorkflowError(
-            "Notion 5XX transient error",
             "notion",
+            "Notion 5XX transient error",
+            "transcient_upstream_activity_error",
             err
           );
         }
       } else if (RequestTimeoutError.isRequestTimeoutError(err)) {
-        throw new ProviderWorkflowError("Request Timeout", "notion", err);
+        throw new ProviderWorkflowError(
+          "notion",
+          "Request Timeout",
+          "transcient_upstream_activity_error",
+          err
+        );
       }
 
       throw err;

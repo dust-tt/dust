@@ -20,8 +20,9 @@ export class GithubCastKnownErrorsInterceptor
       if (err instanceof RequestError) {
         if (err.status === 403 && err.name === "HttpError") {
           throw new ProviderWorkflowError(
-            "403 - Rate Limit Error",
             "github",
+            "403 - Rate Limit Error",
+            "rate_limit_error",
             err
           );
         }

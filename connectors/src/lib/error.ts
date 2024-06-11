@@ -12,8 +12,9 @@ export function errorFromAny(e: any): Error {
 }
 
 // Generate dynamic error types.
-type ProviderErrorType<T extends string> =
-  `${T}_transcient_upstream_activity_error`;
+type ProviderErrorType =
+  | "rate_limit_error"
+  | "transcient_upstream_activity_error";
 
 // Define general workflow error types.
 type GeneralWorkflowErrorType =
@@ -23,9 +24,7 @@ type GeneralWorkflowErrorType =
   | "workflow_timeout_failure";
 
 // Combine both general and provider-specific error types.
-type WorkflowErrorType =
-  | GeneralWorkflowErrorType
-  | ProviderErrorType<ConnectorProvider>;
+type WorkflowErrorType = GeneralWorkflowErrorType | ProviderErrorType;
 
 export class DustConnectorWorkflowError extends Error {
   constructor(
@@ -40,15 +39,12 @@ export class DustConnectorWorkflowError extends Error {
 // Define a specific error class for provider-related errors.
 export class ProviderWorkflowError extends DustConnectorWorkflowError {
   constructor(
-    message: string,
     public readonly provider: ConnectorProvider,
+    message: string,
+    type: ProviderErrorType,
     originalError?: Error | APIError
   ) {
-    super(
-      message,
-      `${provider}_upstream_activity_error` as WorkflowErrorType,
-      originalError
-    );
+    super(message, type, originalError);
   }
 }
 

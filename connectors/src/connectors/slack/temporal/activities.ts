@@ -124,8 +124,9 @@ export async function getChannel(
   // Despite the typing, in practice `conversations.info` can be undefined at times.
   if (!res) {
     throw new ProviderWorkflowError(
+      "slack",
       "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
-      "slack"
+      "transcient_upstream_activity_error"
     );
   }
   if (res.error) {
@@ -293,8 +294,9 @@ export async function getMessagesForChannel(
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
     throw new ProviderWorkflowError(
+      "slack",
       "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
-      "slack"
+      "transcient_upstream_activity_error"
     );
   }
   if (c.error) {

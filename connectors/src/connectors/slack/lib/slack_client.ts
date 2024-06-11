@@ -67,8 +67,9 @@ export async function getSlackClient(
           e.message.startsWith("A rate limit was exceeded")
         ) {
           throw new ProviderWorkflowError(
-            `Rate limited: ${e.message}`,
             "slack",
+            `Rate limited: ${e.message}`,
+            "rate_limit_error",
             e
           );
         }
@@ -78,8 +79,9 @@ export async function getSlackClient(
           const httpError = slackError as WebAPIHTTPError;
           if (httpError.statusCode === 503) {
             throw new ProviderWorkflowError(
-              `Slack is down: ${httpError.message}`,
               "slack",
+              `Slack is down: ${httpError.message}`,
+              "transcient_upstream_activity_error",
               httpError
             );
           }
