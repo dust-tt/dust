@@ -1199,13 +1199,11 @@ class TokenEmitter {
       }
 
       if (isChainOfThought) {
-        this.chainOfToughtDelimitersOpened = Math.max(
-          0,
-          this.chainOfToughtDelimitersOpened + classification ===
-            "opening_delimiter"
-            ? 1
-            : -1
-        );
+        if (classification === "opening_delimiter") {
+          this.chainOfToughtDelimitersOpened += 1;
+        } else {
+          this.chainOfToughtDelimitersOpened -= 1;
+        }
       }
 
       // Emit the delimiter.
