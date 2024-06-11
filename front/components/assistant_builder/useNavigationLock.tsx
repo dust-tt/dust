@@ -4,7 +4,7 @@ import React from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 
-export const useNavigationLock = (
+export function useNavigationLock(
   isEnabled = true,
   warningData = {
     title: "Double checking",
@@ -12,7 +12,7 @@ export const useNavigationLock = (
       "You have unsaved changes - are you sure you wish to leave this page?",
     validation: "primaryWarning",
   }
-) => {
+) {
   const router = useRouter();
   const confirm = useContext(ConfirmContext);
   const isNavigatingAway = React.useRef<boolean>(false);
@@ -69,4 +69,4 @@ export const useNavigationLock = (
       router.events.off("routeChangeStart", handleBrowseAway);
     };
   }, [isEnabled, warningData, router.events, router.asPath, confirm, router]);
-};
+}
