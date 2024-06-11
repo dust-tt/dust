@@ -526,7 +526,10 @@ impl Block for LLM {
                     &model_id,
                     self.prompt(env)?.as_str(),
                     Some(self.max_tokens),
-                    self.temperature,
+                    match temperature {
+                        Some(t) => t,
+                        None => self.temperature,
+                    },
                     1,
                     &self.stop,
                     self.frequency_penalty,
