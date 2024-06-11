@@ -18,6 +18,7 @@ import { DataTypes, Model } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 
 /**
  * Agent configuration
@@ -50,6 +51,8 @@ export class AgentConfiguration extends Model<
   declare authorId: ForeignKey<User["id"]>;
 
   declare maxToolsUsePerRun: number;
+
+  declare templateId: ForeignKey<TemplateModel["id"]> | null;
 
   declare author: NonAttribute<User>;
 }
@@ -223,6 +226,15 @@ Workspace.hasMany(GlobalAgentSettings, {
 });
 GlobalAgentSettings.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
+});
+
+TemplateModel.hasOne(AgentConfiguration, {
+  foreignKey: { name: "templateId", allowNull: true },
+  onDelete: "SET NULL",
+});
+
+AgentConfiguration.belongsTo(TemplateModel, {
+  foreignKey: { name: "templateId", allowNull: true },
 });
 
 export class AgentUserRelation extends Model<

@@ -195,6 +195,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
           IsSupportedModelSchema,
         ]),
         actions: t.array(ActionConfigurationSchema),
+        templateId: t.union([t.string, t.null, t.undefined]),
       }),
       t.partial({
         maxToolsUsePerRun: t.number,

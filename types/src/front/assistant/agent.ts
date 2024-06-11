@@ -174,6 +174,8 @@ export type LightAgentConfigurationType = {
   usage?: AgentUsageType;
 
   maxToolsUsePerRun: number;
+
+  templateId: string | null;
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

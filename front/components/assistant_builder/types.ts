@@ -132,6 +132,7 @@ export type AssistantBuilderState = {
   };
   actions: Array<AssistantBuilderActionConfiguration>;
   maxToolsUsePerRun: number | null;
+  templateId: string | null;
 };
 
 export type AssistantBuilderInitialState = {
@@ -146,6 +147,7 @@ export type AssistantBuilderInitialState = {
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxToolsUsePerRun: number | null;
+  templateId: string | null;
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -165,6 +167,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxToolsUsePerRun: 3,
+    templateId: null,
   } satisfies AssistantBuilderState;
 }
 

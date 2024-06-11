@@ -175,6 +175,7 @@ export async function submitAssistantBuilderForm({
           ? builderState.maxToolsUsePerRun ??
             getDefaultAssistantState().maxToolsUsePerRun
           : undefined,
+        templateId: builderState.templateId,
       },
       useMultiActions,
     };

@@ -117,6 +117,7 @@ export default function AssistantBuilder({
           maxToolsUsePerRun:
             initialBuilderState.maxToolsUsePerRun ??
             getDefaultAssistantState().maxToolsUsePerRun,
+          templateId: initialBuilderState.templateId,
         }
       : {
           ...getDefaultAssistantState(),

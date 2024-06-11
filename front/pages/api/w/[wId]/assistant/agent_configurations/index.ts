@@ -340,6 +340,7 @@ export async function createOrUpgradeAgentConfiguration({
     scope: assistant.scope,
     model: assistant.model,
     agentConfigurationId,
+    templateId: assistant.templateId ?? null,
   });
 
   if (agentConfigurationRes.isErr()) {
