@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
-import { ModelProviderIdCodec } from "@dust-tt/types";
+import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -31,7 +31,7 @@ const WorkspaceProvidersUpdateBodySchema = t.type({
 });
 
 const WorkspaceEmbedderUpdateBodySchema = t.type({
-  defaultEmbeddingProvider: ModelProviderIdCodec,
+  defaultEmbeddingProvider: EmbeddingProviderCodec,
 });
 
 const PostWorkspaceRequestBodySchema = t.union([
