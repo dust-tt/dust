@@ -11,11 +11,6 @@ export function errorFromAny(e: any): Error {
   };
 }
 
-// export type WorkflowErrorType =
-//   | "unhandled_internal_activity_error"
-//   | "transient_nango_activity_error"
-//   | "worfklow_timeout_failure";
-
 // Generate dynamic error types.
 type ProviderErrorType<T extends string> =
   `${T}_transcient_upstream_activity_error`;
