@@ -131,6 +131,17 @@ export default function Chat({
   const [functionsExpanded, setFunctionsExpanded] = useState(false);
   const [newStop, setNewStop] = useState("");
 
+  const config =
+    (block.config as {
+      provider_id: string;
+      model_id: string;
+      temperature?: number;
+    }) || null;
+  let temperature = block.spec.temperature;
+  if (typeof block.config.temperature === "number") {
+    temperature = block.config.temperature.toString();
+  }
+
   return (
     <Block
       owner={owner}
@@ -156,8 +167,11 @@ export default function Chat({
               owner={owner}
               readOnly={readOnly}
               model={
-                block.config
-                  ? (block.config as { provider_id: string; model_id: string })
+                config
+                  ? {
+                      provider_id: block.config.provider_id,
+                      model_id: block.config.model_id,
+                    }
                   : { provider_id: "", model_id: "" }
               }
               onModelUpdate={(model) => {
@@ -178,7 +192,7 @@ export default function Chat({
                     : "border-white focus:border-gray-300 focus:ring-0"
                 )}
                 readOnly={readOnly}
-                value={block.spec.temperature}
+                value={temperature}
                 onChange={(e) => handleTemperatureChange(e.target.value)}
               />
             </div>
