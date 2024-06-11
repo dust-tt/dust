@@ -156,7 +156,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
     delimiters: [
       {
         openingPattern: "<thinking>",
@@ -166,6 +166,11 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
       {
         openingPattern: "<search_quality_reflection>",
         closingPattern: "</search_quality_reflection>",
+        isChainOfThought: true,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
         isChainOfThought: true,
       },
       {
