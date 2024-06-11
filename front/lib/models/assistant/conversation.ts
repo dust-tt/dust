@@ -245,6 +245,7 @@ export class AgentMessage extends Model<
   declare status: CreationOptional<AgentMessageStatus>;
 
   declare content: string | null;
+  declare chainOfThoughts: CreationOptional<string[]>;
   declare errorCode: string | null;
   declare errorMessage: string | null;
 
@@ -279,6 +280,11 @@ AgentMessage.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    chainOfThoughts: {
+      type: DataTypes.ARRAY(DataTypes.TEXT),
+      allowNull: false,
+      defaultValue: [],
     },
     errorCode: {
       type: DataTypes.STRING,

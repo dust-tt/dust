@@ -1,4 +1,5 @@
 import type {
+  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
@@ -23,7 +24,7 @@ import type {
   UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
@@ -118,7 +119,8 @@ async function handleUserMessageEvents(
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
     | AgentMessageSuccessEvent
-    | ConversationTitleEvent,
+    | ConversationTitleEvent
+    | AgentChainOfThoughtEvent,
     void
   >,
   resolveAfterFullGeneration = false
@@ -182,6 +184,7 @@ async function handleUserMessageEvents(
             case "generation_tokens":
             case "agent_generation_success":
             case "agent_generation_cancelled":
+            case "agent_chain_of_thought":
             case "agent_message_success": {
               const pubsubChannel = getMessageChannelId(event.messageId);
               await redis.xAdd(pubsubChannel, "*", {
@@ -230,10 +233,7 @@ async function handleUserMessageEvents(
             }
 
             default:
-              ((event: never) => {
-                logger.error("Unknown event type", event);
-              })(event);
-              return null;
+              assertNever(event);
           }
         }
         if (resolveAfterFullGeneration && userMessage && !didResolve) {
@@ -325,6 +325,7 @@ export async function retryAgentMessageWithPubSub(
               case "generation_tokens":
               case "agent_generation_success":
               case "agent_generation_cancelled":
+              case "agent_chain_of_thought":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await redis.xAdd(pubsubChannel, "*", {
@@ -335,10 +336,7 @@ export async function retryAgentMessageWithPubSub(
               }
 
               default:
-                ((event: never) => {
-                  logger.error("Unknown event type", event);
-                })(event);
-                return null;
+                assertNever(event);
             }
           }
         } catch (e) {

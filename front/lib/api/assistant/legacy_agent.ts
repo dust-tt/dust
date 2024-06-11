@@ -240,7 +240,6 @@ export async function* runLegacyAgent(
           messageId: agentMessage.sId,
           text: event.text,
         };
-
         agentMessage.content = event.text;
         break;
 

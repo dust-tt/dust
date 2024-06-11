@@ -1,6 +1,7 @@
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -575,7 +576,8 @@ export async function* postUserMessage(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | ConversationTitleEvent,
+  | ConversationTitleEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const user = auth.user();
@@ -984,7 +986,8 @@ export async function* editUserMessage(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const user = auth.user();
@@ -1398,7 +1401,8 @@ export async function* retryAgentMessage(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   class AgentMessageError extends Error {}
@@ -1668,7 +1672,8 @@ async function* streamRunAgentEvents(
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent,
+    | AgentMessageSuccessEvent
+    | AgentChainOfThoughtEvent,
     void
   >,
   agentMessage: AgentMessageType,
@@ -1680,7 +1685,8 @@ async function* streamRunAgentEvents(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   let content = "";
@@ -1761,14 +1767,19 @@ async function* streamRunAgentEvents(
         } else {
           assertNever(event.classification);
         }
+        break;
 
+      case "agent_chain_of_thought":
+        await agentMessageRow.update({
+          chainOfThoughts: [
+            ...agentMessageRow.chainOfThoughts,
+            event.chainOfThought,
+          ],
+        });
         break;
 
       default:
-        ((event: never) => {
-          logger.error({ event }, "Unknown `streamRunAgentEvents` event type");
-        })(event);
-        return;
+        assertNever(event);
     }
   }
 }

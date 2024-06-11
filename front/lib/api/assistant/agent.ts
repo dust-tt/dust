@@ -4,6 +4,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -28,6 +29,7 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { escapeRegExp } from "lodash";
@@ -61,7 +63,8 @@ export async function* runAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -116,6 +119,7 @@ export async function* runMultiActionsAgentLoop(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent
 > {
   const now = Date.now();
 
@@ -218,6 +222,16 @@ export async function* runMultiActionsAgentLoop(
           } satisfies AgentGenerationCancelledEvent;
           return;
         case "generation_success":
+          if (event.chainOfThought.length) {
+            yield {
+              type: "agent_chain_of_thought",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              message: agentMessage,
+              chainOfThought: event.chainOfThought,
+            };
+          }
           yield {
             type: "agent_generation_success",
             created: event.created,
@@ -236,6 +250,10 @@ export async function* runMultiActionsAgentLoop(
             message: agentMessage,
           };
           return;
+
+        case "agent_chain_of_thought":
+          yield event;
+          break;
 
         default:
           assertNever(event);
@@ -267,6 +285,7 @@ export async function* runMultiActionsAgent(
   | GenerationCancelEvent
   | GenerationTokensEvent
   | AgentActionsEvent
+  | AgentChainOfThoughtEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -722,6 +741,28 @@ export async function* runMultiActionsAgent(
     });
   }
 
+  yield* tokenEmitter.flushTokens();
+
+  const chainOfThought = tokenEmitter.getChainOfThought();
+  const content = tokenEmitter.getContent();
+
+  if (chainOfThought.length || content.length) {
+    yield {
+      type: "agent_chain_of_thought",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+
+      // All content here was generated before a tool use and is not proper generation content
+      // and can therefore be safely assumed to be reflection from the model before using a tool.
+      // In practice, we should never have both chainOfThought and content.
+      // It is not completely impossible that eg Anthropic decides to emit part of the
+      // CoT between `<thinking>` XML tags and the rest outside of any tag.
+      chainOfThought: removeNulls([chainOfThought, content]).join("\n"),
+    };
+  }
+
   yield {
     type: "agent_actions",
     created: Date.now(),
@@ -1171,13 +1212,11 @@ class TokenEmitter {
       }
 
       if (isChainOfThought) {
-        this.chainOfToughtDelimitersOpened = Math.max(
-          0,
-          this.chainOfToughtDelimitersOpened + classification ===
-            "opening_delimiter"
-            ? 1
-            : -1
-        );
+        if (classification === "opening_delimiter") {
+          this.chainOfToughtDelimitersOpened += 1;
+        } else {
+          this.chainOfToughtDelimitersOpened -= 1;
+        }
       }
 
       // Emit the delimiter.
