@@ -193,10 +193,15 @@ export function AgentMessage({
         break;
       }
       case "generation_tokens": {
-        setStreamedAgentMessage((m) => {
-          const previousContent = m.content || "";
-          return { ...m, content: previousContent + event.text };
-        });
+        if (
+          event.classification !== "closing_delimiter" &&
+          event.classification !== "opening_delimiter"
+        ) {
+          setStreamedAgentMessage((m) => {
+            const previousContent = m.content || "";
+            return { ...m, content: previousContent + event.text };
+          });
+        }
         break;
       }
 
