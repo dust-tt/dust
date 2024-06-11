@@ -168,6 +168,15 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: { SEARCH: { provider_id: "serpapi", use_cache: false } },
   },
+  "assistant-v2-browse": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "96647d9723",
+      appHash:
+        "43ed68f445abed6a722b2f26c0b1bb47caa5abd6564216d71d6bc6379d851f8b",
+    },
+    config: { BROWSE: { provider_id: "browserless", use_cache: false } },
+  },
   "assistant-builder-instructions-suggestions": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,

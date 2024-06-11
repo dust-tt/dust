@@ -71,6 +71,7 @@ import {
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import logger from "@app/logger/logger";
+import { AgentBrowseAction, AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 
 async function main() {
   await sendInitDbMessage({
@@ -108,6 +109,7 @@ async function main() {
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
+  await AgentBrowseConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -125,6 +127,7 @@ async function main() {
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
+  await AgentBrowseAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
