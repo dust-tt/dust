@@ -80,6 +80,18 @@ export type ModelConfigurationType = {
   shortDescription: string;
   supportsMultiActions: boolean;
   isLegacy: boolean;
+
+  // Allows configuring parsing of special delimiters in the streamed model output.
+  delimitersConfiguration?: {
+    delimiters: Array<{
+      openingPattern: string;
+      closingPattern: string;
+      isChainOfThought: boolean;
+    }>;
+    // If this pattern is found at the end of a model event, we'll wait for the
+    // the next event before emitting tokens.
+    incompleteDelimiterRegex?: RegExp;
+  };
 };
 
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -136,6 +148,26 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's powerful model.",
   supportsMultiActions: true,
   isLegacy: false,
+  delimitersConfiguration: {
+    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    delimiters: [
+      {
+        openingPattern: "<thinking>",
+        closingPattern: "</thinking>",
+        isChainOfThought: true,
+      },
+      {
+        openingPattern: "<search_quality_reflection>",
+        closingPattern: "</search_quality_reflection>",
+        isChainOfThought: true,
+      },
+      {
+        openingPattern: "<result>",
+        closingPattern: "</result>",
+        isChainOfThought: false,
+      },
+    ],
+  },
 };
 export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

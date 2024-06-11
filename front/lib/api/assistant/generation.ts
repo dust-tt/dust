@@ -639,6 +639,7 @@ export async function* runGeneration(
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
           text: event.content.tokens.text,
+          classification: "tokens",
         };
       }
 
@@ -670,6 +671,7 @@ export async function* runGeneration(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: m.message.content,
+            chainOfThought: "",
           };
         }
       }

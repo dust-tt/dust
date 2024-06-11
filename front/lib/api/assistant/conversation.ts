@@ -28,7 +28,7 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import { assertNever, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -1748,8 +1748,20 @@ async function* streamRunAgentEvents(
         yield event;
         break;
       case "generation_tokens":
-        content += event.text;
-        yield event;
+        if (event.classification === "tokens") {
+          content += event.text;
+          yield event;
+        } else if (event.classification === "chain_of_thought") {
+          yield event;
+        } else if (
+          event.classification === "opening_delimiter" ||
+          event.classification === "closing_delimiter"
+        ) {
+          yield event;
+        } else {
+          assertNever(event.classification);
+        }
+
         break;
 
       default:

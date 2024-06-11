@@ -11,10 +11,12 @@ import type {
   AgentMessageSuccessEvent,
   AgentMessageType,
   ConversationType,
+  DustAppRunTokensEvent,
   GenerationCancelEvent,
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelConfigurationType,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -28,6 +30,7 @@ import {
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
+import { escapeRegExp } from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
@@ -516,6 +519,11 @@ export async function* runMultiActionsAgent(
   let lastCheckCancellation = Date.now();
   const redis = await redisClient();
   let isGeneration = true;
+  const tokenEmitter = new TokenEmitter(
+    agentConfiguration,
+    agentMessage,
+    model.delimitersConfiguration
+  );
 
   try {
     const _checkCancellation = async () => {
@@ -545,6 +553,7 @@ export async function* runMultiActionsAgent(
       }
 
       if (event.type === "error") {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "agent_error",
           created: Date.now(),
@@ -572,6 +581,7 @@ export async function* runMultiActionsAgent(
       }
 
       if (shouldYieldCancel) {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "generation_cancel",
           created: Date.now(),
@@ -582,18 +592,13 @@ export async function* runMultiActionsAgent(
       }
 
       if (event.type === "tokens" && isGeneration) {
-        yield {
-          type: "generation_tokens",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: event.content.tokens.text,
-        } satisfies GenerationTokensEvent;
+        yield* tokenEmitter.emitTokens(event);
       }
 
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
+          yield* tokenEmitter.flushTokens();
           yield {
             type: "agent_error",
             created: Date.now(),
@@ -608,18 +613,17 @@ export async function* runMultiActionsAgent(
         }
 
         if (event.content.block_name === "MODEL" && e.value && isGeneration) {
-          const m = e.value as {
-            message: {
-              content: string;
-            };
-          };
+          yield* tokenEmitter.flushTokens();
+
           yield {
             type: "generation_success",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            text: m.message.content,
+            text: tokenEmitter.getContent(),
+            chainOfThought: tokenEmitter.getChainOfThought(),
           } satisfies GenerationSuccessEvent;
+
           return;
         }
 
@@ -631,6 +635,8 @@ export async function* runMultiActionsAgent(
           if ("generation" in v) {
             output.generation = v.generation;
           }
+
+          yield* tokenEmitter.flushTokens();
 
           break;
         }
@@ -1032,5 +1038,171 @@ async function* runAction(
     }
   } else {
     assertNever(actionConfiguration);
+  }
+}
+
+class TokenEmitter {
+  private buffer: string = "";
+  private content: string = "";
+  private chainOfThought: string = "";
+  private chainOfToughtDelimitersOpened: number = 0;
+  private pattern?: RegExp;
+  private incompleteDelimiterPattern?: RegExp;
+  private specByDelimiter: Record<
+    string,
+    {
+      type: "opening_delimiter" | "closing_delimiter";
+      isChainOfThought: boolean;
+    }
+  >;
+
+  constructor(
+    private agentConfiguration: AgentConfigurationType,
+    private agentMessage: AgentMessageType,
+    delimitersConfiguration: ModelConfigurationType["delimitersConfiguration"]
+  ) {
+    this.buffer = "";
+    this.content = "";
+    this.chainOfThought = "";
+    this.chainOfToughtDelimitersOpened = 0;
+
+    // Ensure no duplicate delimiters.
+    const allDelimitersArray =
+      delimitersConfiguration?.delimiters.flatMap(
+        ({ openingPattern, closingPattern }) => [
+          escapeRegExp(openingPattern),
+          escapeRegExp(closingPattern),
+        ]
+      ) ?? [];
+
+    if (allDelimitersArray.length !== new Set(allDelimitersArray).size) {
+      throw new Error("Duplicate delimiters in the configuration");
+    }
+
+    // Store mapping of delimiters to their spec.
+    this.specByDelimiter =
+      delimitersConfiguration?.delimiters.reduce(
+        (acc, { openingPattern, closingPattern, isChainOfThought }) => {
+          acc[openingPattern] = {
+            type: "opening_delimiter" as const,
+            isChainOfThought,
+          };
+          acc[closingPattern] = {
+            type: "closing_delimiter" as const,
+            isChainOfThought,
+          };
+          return acc;
+        },
+        {} as TokenEmitter["specByDelimiter"]
+      ) ?? {};
+
+    // Store the regex pattern that match any of the delimiters.
+    this.pattern = allDelimitersArray.length
+      ? new RegExp(allDelimitersArray.join("|"))
+      : undefined;
+
+    // Store the regex pattern that match incomplete delimiters.
+    this.incompleteDelimiterPattern =
+      delimitersConfiguration?.incompleteDelimiterRegex;
+  }
+
+  async *flushTokens({
+    upTo,
+  }: {
+    upTo?: number;
+  } = {}): AsyncGenerator<GenerationTokensEvent> {
+    if (!this.buffer.length) {
+      return;
+    }
+
+    const text =
+      upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
+
+    yield {
+      type: "generation_tokens",
+      created: Date.now(),
+      configurationId: this.agentConfiguration.sId,
+      messageId: this.agentMessage.sId,
+      text,
+      classification: this.chainOfToughtDelimitersOpened
+        ? "chain_of_thought"
+        : "tokens",
+    };
+
+    if (this.chainOfToughtDelimitersOpened) {
+      this.chainOfThought += text;
+    } else {
+      this.content += text;
+    }
+
+    this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
+  }
+
+  async *emitTokens(
+    event: DustAppRunTokensEvent
+  ): AsyncGenerator<GenerationTokensEvent> {
+    // Add text of the new event to the buffer.
+    this.buffer += event.content.tokens.text;
+    if (!this.pattern) {
+      yield* this.flushTokens();
+      return;
+    }
+
+    if (this.incompleteDelimiterPattern?.test(this.buffer)) {
+      // Wait for the next event to complete the delimiter.
+      return;
+    }
+
+    let match: RegExpExecArray | null;
+    while ((match = this.pattern.exec(this.buffer))) {
+      const del = match[0];
+      const index = match.index;
+
+      // Emit text before the delimiter as 'text' or 'chain_of_thought'
+      if (index > 0) {
+        yield* this.flushTokens({ upTo: index });
+      }
+
+      const { type: classification, isChainOfThought } =
+        this.specByDelimiter[del];
+
+      if (!classification) {
+        throw new Error(`Unknown delimiter: ${del}`);
+      }
+
+      if (isChainOfThought) {
+        this.chainOfToughtDelimitersOpened = Math.max(
+          0,
+          this.chainOfToughtDelimitersOpened + classification ===
+            "opening_delimiter"
+            ? 1
+            : -1
+        );
+      }
+
+      // Emit the delimiter.
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: this.agentConfiguration.sId,
+        messageId: this.agentMessage.sId,
+        text: del,
+        classification,
+      } satisfies GenerationTokensEvent;
+
+      // Update the buffer
+      this.buffer = this.buffer.substring(index + del.length);
+    }
+
+    // Emit the remaining text/chain_of_thought.
+    yield* this.flushTokens();
+  }
+
+  getContent(): string {
+    return this.content;
+  }
+
+  getChainOfThought(): string {
+    return this.chainOfThought;
   }
 }
