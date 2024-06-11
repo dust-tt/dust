@@ -27,7 +27,6 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
 import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import ActionsScreen, {
   isActionValid,
@@ -57,6 +56,7 @@ import {
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
+import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
@@ -66,7 +66,6 @@ import {
 import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
 
 export default function AssistantBuilder({
   owner,
@@ -92,6 +91,17 @@ export default function AssistantBuilder({
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
 
+  const [edited, setEdited] = useState(defaultIsEdited ?? false);
+  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
+  const [submitEnabled, setSubmitEnabled] = useState(false);
+  const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
+    useState(false);
+  const [assistantHandleError, setAssistantHandleError] = useState<
+    string | null
+  >(null);
+  const [instructionsError, setInstructionsError] = useState<string | null>(
+    null
+  );
   const [builderState, setBuilderState] = useState<AssistantBuilderState>(
     initialBuilderState
       ? {
@@ -128,20 +138,21 @@ export default function AssistantBuilder({
     resetToTemplateActions,
   } = useTemplate(defaultTemplate);
 
-  const showSlackIntegration =
-    builderState.scope === "workspace" || builderState.scope === "published";
-
-  const [edited, setEdited] = useState(defaultIsEdited ?? false);
-  const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
-  const [submitEnabled, setSubmitEnabled] = useState(false);
-
-  const [assistantHandleError, setAssistantHandleError] = useState<
-    string | null
-  >(null);
-
-  const [instructionsError, setInstructionsError] = useState<string | null>(
-    null
-  );
+  const {
+    showSlackIntegration,
+    selectedSlackChannels,
+    slackChannelsLinkedWithAgent,
+    setSelectedSlackChannels,
+  } = useSlackChannel({
+    dataSources,
+    initialChannels: [],
+    workspaceId: owner.sId,
+    isPrivateAssistant: builderState.scope === "private",
+    isBuilder: isBuilder(owner),
+    isEdited: edited,
+    agentConfigurationId,
+  });
+  useNavigationLock(edited && !disableUnsavedChangesPrompt);
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -163,7 +174,6 @@ export default function AssistantBuilder({
       openedAt: null,
     });
   };
-
   const toggleRightPanel = () => {
     rightPanelStatus.tab !== null
       ? closeRightPanel()
@@ -182,53 +192,6 @@ export default function AssistantBuilder({
     }
   }, [builderState.avatarUrl]);
 
-  // This state stores the slack channels that should have the current agent as default.
-  const [selectedSlackChannels, setSelectedSlackChannels] = useState<
-    SlackChannel[] | null
-  >(null);
-
-  // Retrieve all the slack channels that are linked with an agent.
-  const { slackChannels: slackChannelsLinkedWithAgent } =
-    useSlackChannelsLinkedWithAgent({
-      workspaceId: owner.sId,
-      dataSourceName: slackDataSource?.name ?? undefined,
-      disabled: !isBuilder(owner),
-    });
-  const [slackChannelsInitialized, setSlackChannelsInitialized] =
-    useState(false);
-
-  const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
-    useState(false);
-
-  useNavigationLock(edited && !disableUnsavedChangesPrompt);
-
-  // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
-  useEffect(() => {
-    if (
-      slackChannelsLinkedWithAgent.length &&
-      agentConfigurationId &&
-      !edited &&
-      !slackChannelsInitialized
-    ) {
-      setSelectedSlackChannels(
-        slackChannelsLinkedWithAgent
-          .filter(
-            (channel) => channel.agentConfigurationId === agentConfigurationId
-          )
-          .map((channel) => ({
-            slackChannelId: channel.slackChannelId,
-            slackChannelName: channel.slackChannelName,
-          }))
-      );
-      setSlackChannelsInitialized(true);
-    }
-  }, [
-    slackChannelsLinkedWithAgent,
-    agentConfigurationId,
-    edited,
-    slackChannelsInitialized,
-  ]);
-
   const formValidation = useCallback(async () => {
     let valid = true;
 
@@ -241,13 +204,10 @@ export default function AssistantBuilder({
     valid = handleValid;
     setAssistantHandleError(handleErrorMessage);
 
-    // description
-    if (!builderState.description?.trim()) {
-      valid = false;
-    }
-
-    // instructions
-    if (!builderState.instructions?.trim()) {
+    if (
+      !builderState.description?.trim() ||
+      !builderState.instructions?.trim()
+    ) {
       valid = false;
     }
 
