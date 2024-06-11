@@ -1,5 +1,5 @@
 import type { WithAPIErrorReponse, WorkspaceType } from "@dust-tt/types";
-import { ioTsEnum, MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import { ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,9 +12,6 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
-
-const ModelProviderIdCodec =
-  ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
 
 const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,

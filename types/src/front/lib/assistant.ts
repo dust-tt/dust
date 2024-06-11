@@ -18,7 +18,8 @@ export const isModelProviderId = (
 ): providerId is ModelProviderIdType =>
   MODEL_PROVIDER_IDS.includes(providerId as ModelProviderIdType);
 
-export const ModelProviderIdCodec = ioTsEnum(MODEL_PROVIDER_IDS);
+export const ModelProviderIdCodec =
+  ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
 
 /**
  * MODEL IDS
