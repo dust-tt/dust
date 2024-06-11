@@ -395,7 +395,6 @@ pub struct InnerError {
     #[serde(alias = "type")]
     pub _type: String,
     pub param: Option<String>,
-    pub code: Option<usize>,
     pub internal_message: Option<String>,
 }
 
@@ -534,10 +533,17 @@ pub async fn streamed_completion(
     let mut stream = client.stream();
 
     let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -561,7 +567,7 @@ pub async fn streamed_completion(
                                         match error.retryable_streamed(StatusCode::OK) && index == 0
                                         {
                                             true => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -570,7 +576,7 @@ pub async fn streamed_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -679,11 +685,13 @@ pub async fn streamed_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
@@ -743,7 +751,7 @@ pub async fn streamed_completion(
         c
     };
 
-    Ok((completion, None))
+    Ok((completion, request_id))
 }
 
 pub async fn completion(
@@ -957,10 +965,17 @@ pub async fn streamed_chat_completion(
 
     let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
     let mut usage = None;
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -984,7 +999,7 @@ pub async fn streamed_chat_completion(
                                         match error.retryable_streamed(StatusCode::OK) && index == 0
                                         {
                                             true => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -993,7 +1008,7 @@ pub async fn streamed_chat_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -1114,11 +1129,13 @@ pub async fn streamed_chat_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
@@ -1269,7 +1286,7 @@ pub async fn streamed_chat_completion(
         };
     }
 
-    Ok((completion, None))
+    Ok((completion, request_id))
 }
 
 pub async fn chat_completion(

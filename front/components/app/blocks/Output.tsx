@@ -269,30 +269,48 @@ export function Execution({
   );
 }
 
+export function InnerLogs({ trace }: { trace: TraceType }) {
+  const meta =
+    (trace.meta as
+      | {
+          logs: any[];
+          provider_request_id?: string;
+          token_usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+          };
+        }
+      | undefined) || null;
+
+  const logs = [...(meta?.logs || [])];
+  if (meta && meta.provider_request_id) {
+    logs.push({ provider_request_id: meta.provider_request_id });
+  }
+  if (meta && meta.token_usage) {
+    logs.push(meta.token_usage);
+  }
+
+  return (
+    <div className="flex flex-row">
+      <div className="flex flex-initial">
+        <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
+      </div>
+      <div className="font-mono flex flex-1">
+        <ValueViewer value={logs} topLevel={true} k={null} block={null} />
+      </div>
+    </div>
+  );
+}
+
 export function Logs({ trace }: { trace: TraceType[] }) {
   return (
     <div className="flex flex-auto flex-col overflow-hidden">
-      {trace.map((trace, i) => {
-        const meta = (trace.meta as { logs: any[] } | undefined) || null;
-        if (meta && meta.logs) {
-          return (
-            <div key={i} className="flex-auto flex-col">
-              <div className="flex flex-row">
-                <div className="flex flex-initial">
-                  <InformationCircleIcon className="min-w-4 mt-0.5 h-4 w-4 text-gray-400" />
-                </div>
-                <div className="font-mono flex flex-1">
-                  <ValueViewer
-                    value={meta.logs}
-                    topLevel={true}
-                    k={null}
-                    block={null}
-                  />
-                </div>
-              </div>
-            </div>
-          );
-        }
+      {trace.map((t, i) => {
+        return (
+          <div key={i} className="flex-auto flex-col">
+            <InnerLogs trace={t} />
+          </div>
+        );
       })}
     </div>
   );
@@ -402,8 +420,18 @@ export default function Output({
         t.filter(
           (t) =>
             t.meta &&
-            (t.meta as { logs: any[] }).logs &&
-            (t.meta as { logs: any[] }).logs.length
+            (((t.meta as { logs: any[] }).logs &&
+              (t.meta as { logs: any[] }).logs.length) ||
+              (t.meta as { provider_request_id?: string })
+                .provider_request_id ||
+              (
+                t.meta as {
+                  token_usage?: {
+                    completion_tokes: number;
+                    prompt_tokens: number;
+                  };
+                }
+              ).token_usage)
         ).length
       );
     }, 0);
@@ -439,7 +467,20 @@ export default function Output({
                   if (
                     trace
                       .map((t) => t.meta)
-                      .some((e) => (e as { logs: any[] }).logs.length)
+                      .some(
+                        (e) =>
+                          (e as { logs: any[] }).logs.length ||
+                          (e as { provider_request_id?: string })
+                            .provider_request_id ||
+                          (
+                            e as {
+                              token_usage?: {
+                                completion_tokes: number;
+                                prompt_tokens: number;
+                              };
+                            }
+                          ).token_usage
+                      )
                   ) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">

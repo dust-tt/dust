@@ -1,6 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
   getIntercomSyncWorkflowId,
+  googleDriveIncrementalSyncWorkflowId,
   makeConfluenceSyncWorkflowId,
 } from "@dust-tt/types";
 import type { Client, WorkflowHandle } from "@temporalio/client";
@@ -31,6 +32,10 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   intercom: {
     makeIdFn: (connector: ConnectorBlob) =>
       getIntercomSyncWorkflowId(connector.id),
+  },
+  google_drive: {
+    makeIdFn: (connector: ConnectorBlob) =>
+      googleDriveIncrementalSyncWorkflowId(connector.id),
   },
 };
 

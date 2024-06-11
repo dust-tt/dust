@@ -1,6 +1,13 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 
-import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
+import {
+  App,
+  Clone,
+  Dataset,
+  Provider,
+  Run,
+  RunUsage,
+} from "@app/lib/models/apps";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -84,6 +91,7 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await Run.sync({ alter: true });
+  await RunUsage.sync({ alter: true });
   await TrackedDocument.sync({ alter: true });
   await DocumentTrackerChangeSuggestion.sync({ alter: true });
 
