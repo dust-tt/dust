@@ -10,8 +10,8 @@ use crate::providers::llm::{
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::run::Credentials;
+use crate::utils::ParseError;
 use crate::utils::{self, now};
-use crate::utils::{new_id, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
@@ -159,7 +159,7 @@ impl TryFrom<&ChatMessage> for MistralChatMessage {
     type Error = anyhow::Error;
 
     fn try_from(cm: &ChatMessage) -> Result<Self, Self::Error> {
-        let mut mistral_role = MistralChatMessageRole::try_from(&cm.role)
+        let mistral_role = MistralChatMessageRole::try_from(&cm.role)
             .map_err(|e| anyhow!("Error converting role: {:?}", e))?;
 
         Ok(MistralChatMessage {
