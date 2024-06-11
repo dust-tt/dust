@@ -8,7 +8,7 @@ import {
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
-import { MAX_CHUNK_SIZE } from "@dust-tt/types/src";
+import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import { fromMarkdown } from "mdast-util-from-markdown";
