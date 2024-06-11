@@ -395,7 +395,6 @@ pub struct InnerError {
     #[serde(alias = "type")]
     pub _type: String,
     pub param: Option<String>,
-    pub code: Option<usize>,
     pub internal_message: Option<String>,
 }
 
@@ -465,7 +464,7 @@ pub async fn streamed_completion(
     top_p: f32,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
-) -> Result<Completion> {
+) -> Result<(Completion, Option<String>)> {
     let url = uri.to_string();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -534,10 +533,17 @@ pub async fn streamed_completion(
     let mut stream = client.stream();
 
     let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -561,7 +567,7 @@ pub async fn streamed_completion(
                                         match error.retryable_streamed(StatusCode::OK) && index == 0
                                         {
                                             true => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -570,7 +576,7 @@ pub async fn streamed_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -679,11 +685,13 @@ pub async fn streamed_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
@@ -743,7 +751,7 @@ pub async fn streamed_completion(
         c
     };
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn completion(
@@ -762,7 +770,7 @@ pub async fn completion(
     presence_penalty: f32,
     top_p: f32,
     user: Option<String>,
-) -> Result<Completion> {
+) -> Result<(Completion, Option<String>)> {
     // let https = HttpsConnector::new();
     // let cli = Client::builder().build::<_, hyper::Body>(https);
 
@@ -814,11 +822,13 @@ pub async fn completion(
         Ok(Err(e)) => Err(e)?,
         Err(_) => Err(anyhow!("Timeout sending request to OpenAI after 180s"))?,
     };
+
     let res_headers = res.headers();
     let request_id = match res_headers.get("x-request-id") {
         Some(request_id) => Some(request_id.to_str()?.to_string()),
         None => None,
     };
+
     let body = match timeout(Duration::new(180, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
         Ok(Err(e)) => Err(e)?,
@@ -835,7 +845,7 @@ pub async fn completion(
             let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
-                    request_id,
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -844,7 +854,7 @@ pub async fn completion(
                     }),
                 }),
                 false => Err(ModelError {
-                    request_id,
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -856,7 +866,7 @@ pub async fn completion(
         }
     }?;
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn streamed_chat_completion(
@@ -877,7 +887,7 @@ pub async fn streamed_chat_completion(
     response_format: Option<String>,
     user: Option<String>,
     event_sender: Option<UnboundedSender<Value>>,
-) -> Result<OpenAIChatCompletion> {
+) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let url = uri.to_string();
 
     let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
@@ -955,10 +965,17 @@ pub async fn streamed_chat_completion(
 
     let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
     let mut usage = None;
+    let mut request_id: Option<String> = None;
 
     'stream: loop {
         match stream.try_next().await {
             Ok(e) => match e {
+                Some(es::SSE::Connected((_, headers))) => {
+                    request_id = match headers.get("x-request-id") {
+                        Some(v) => Some(v.to_string()),
+                        None => None,
+                    };
+                }
                 Some(es::SSE::Comment(_)) => {
                     println!("UNEXPECTED COMMENT");
                 }
@@ -982,7 +999,7 @@ pub async fn streamed_chat_completion(
                                         match error.retryable_streamed(StatusCode::OK) && index == 0
                                         {
                                             true => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: Some(ModelErrorRetryOptions {
                                                     sleep: Duration::from_millis(500),
@@ -991,7 +1008,7 @@ pub async fn streamed_chat_completion(
                                                 }),
                                             })?,
                                             false => Err(ModelError {
-                                                request_id: None,
+                                                request_id: request_id.clone(),
                                                 message: error.message(),
                                                 retryable: None,
                                             })?,
@@ -1112,11 +1129,13 @@ pub async fn streamed_chat_completion(
                                     }),
                                 }
                             }?,
-                            Err(_) => Err(anyhow!(
-                                "Error streaming tokens from OpenAI: status={} data={}",
-                                status,
-                                String::from_utf8_lossy(&b)
-                            ))?,
+                            Err(_) => {
+                                Err(anyhow!(
+                                    "Error streaming tokens from OpenAI: status={} data={}",
+                                    status,
+                                    String::from_utf8_lossy(&b)
+                                ))?;
+                            }
                         }
                     }
                     _ => {
@@ -1267,7 +1286,7 @@ pub async fn streamed_chat_completion(
         };
     }
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 pub async fn chat_completion(
@@ -1287,7 +1306,7 @@ pub async fn chat_completion(
     frequency_penalty: f32,
     response_format: Option<String>,
     user: Option<String>,
-) -> Result<OpenAIChatCompletion> {
+) -> Result<(OpenAIChatCompletion, Option<String>)> {
     let mut body = json!({
         "messages": messages,
         "temperature": temperature,
@@ -1364,7 +1383,7 @@ pub async fn chat_completion(
             let error: OpenAIError = serde_json::from_slice(c)?;
             match error.retryable() {
                 true => Err(ModelError {
-                    request_id,
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1373,7 +1392,7 @@ pub async fn chat_completion(
                     }),
                 }),
                 false => Err(ModelError {
-                    request_id,
+                    request_id: request_id.clone(),
                     message: error.message(),
                     retryable: Some(ModelErrorRetryOptions {
                         sleep: Duration::from_millis(500),
@@ -1393,7 +1412,7 @@ pub async fn chat_completion(
         };
     }
 
-    Ok(completion)
+    Ok((completion, request_id))
 }
 
 ///
@@ -1641,7 +1660,7 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 if n > 1 {
                     return Err(anyhow!(
@@ -1816,6 +1835,7 @@ impl LLM for OpenAILLM {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
+            provider_request_id: request_id,
         })
     }
 
@@ -1870,7 +1890,7 @@ impl LLM for OpenAILLM {
 
         let openai_messages = to_openai_messages(messages)?;
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
                     self.chat_uri()?,
@@ -1949,6 +1969,7 @@ impl LLM for OpenAILLM {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
+            provider_request_id: request_id,
         })
     }
 }

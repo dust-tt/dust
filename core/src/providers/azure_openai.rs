@@ -264,7 +264,7 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_completion(
                     self.uri()?,
@@ -420,6 +420,7 @@ impl LLM for AzureOpenAILLM {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
+            provider_request_id: request_id,
         })
     }
 
@@ -470,7 +471,7 @@ impl LLM for AzureOpenAILLM {
 
         let openai_messages = to_openai_messages(messages)?;
 
-        let c = match event_sender {
+        let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_chat_completion(
                     self.chat_uri()?,
@@ -551,6 +552,7 @@ impl LLM for AzureOpenAILLM {
                 prompt_tokens: usage.prompt_tokens,
                 completion_tokens: usage.completion_tokens.unwrap_or(0),
             }),
+            provider_request_id: request_id,
         })
     }
 }

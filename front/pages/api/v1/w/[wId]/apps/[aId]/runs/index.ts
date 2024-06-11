@@ -1,16 +1,25 @@
-import type { CredentialsType, WithAPIErrorReponse } from "@dust-tt/types";
+import type {
+  BlockType,
+  CredentialsType,
+  ModelIdType,
+  ModelProviderIdType,
+  TraceType,
+  WithAPIErrorReponse,
+} from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import {
+  assertNever,
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
+import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { Provider, Run } from "@app/lib/models/apps";
+import { Provider, Run, RunUsage } from "@app/lib/models/apps";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -24,58 +33,44 @@ export const config = {
   },
 };
 
-interface PoolCall {
-  fn: () => Promise<any>;
-  validate: (result: any) => boolean;
-  interval: number;
-  increment: number;
-  maxInterval: number;
-  maxAttempts: number;
-}
+type RunFlavor = "blocking" | "streaming" | "non-blocking";
 
-const poll = async ({
-  fn,
-  validate,
-  interval,
-  increment,
-  maxInterval,
-  maxAttempts,
-}: PoolCall) => {
-  let attempts = 0;
-
-  const executePoll = async (resolve: any, reject: any) => {
-    let result = null;
-    try {
-      result = await fn();
-    } catch (e) {
-      logger.error(
-        {
-          error: e,
-        },
-        "Caught error in executePoll"
-      );
-      return reject(e);
-    }
-    attempts++;
-    if (interval < maxInterval) {
-      interval += increment;
-    }
-
-    if (validate(result)) {
-      return resolve(result);
-    } else if (maxAttempts && attempts === maxAttempts) {
-      return reject(
-        new Error(
-          "The run took too long to complete, retry with `blocking=false` and direct polling of the runId"
-        )
-      );
-    } else {
-      setTimeout(executePoll, interval, resolve, reject);
-    }
-  };
-
-  return new Promise(executePoll);
+type Usage = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  promptTokens: number;
+  completionTokens: number;
 };
+
+type Trace = [[BlockType, string], TraceType[][]];
+
+function extractUsageFromExecutions(
+  block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
+  traces: TraceType[][],
+  usages: Usage[]
+) {
+  if (block) {
+    traces.forEach((tracesInner) => {
+      tracesInner.forEach((trace) => {
+        if (trace?.meta) {
+          const { token_usage } = trace.meta as {
+            token_usage: { prompt_tokens: number; completion_tokens: number };
+          };
+          if (token_usage) {
+            const promptTokens = token_usage.prompt_tokens;
+            const completionTokens = token_usage.completion_tokens;
+            usages.push({
+              providerId: block.provider_id,
+              modelId: block.model_id,
+              promptTokens,
+              completionTokens,
+            });
+          }
+        }
+      });
+    });
+  }
+}
 
 async function handler(
   req: NextApiRequest,
@@ -125,6 +120,11 @@ async function handler(
   // instead of our managed credentials when running an app with a system API key.
   const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
   const coreAPI = new CoreAPI(logger);
+  const runFlavor: RunFlavor = req.body.stream
+    ? "streaming"
+    : req.body.blocking
+    ? "blocking"
+    : "non-blocking";
 
   switch (req.method) {
     case "POST":
@@ -174,75 +174,7 @@ async function handler(
         "App run creation"
       );
 
-      // If `stream` is true, run in streaming mode.
-      if (req.body.stream) {
-        const runRes = await coreAPI.createRunStream({
-          projectId: app.dustAPIProjectId,
-          runAsWorkspaceId: keyWorkspaceId,
-          runType: "deploy",
-          specificationHash: specificationHash,
-          config: { blocks: config },
-          inputs,
-          credentials,
-          secrets,
-        });
-
-        if (runRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message: "There was an error running the app.",
-              run_error: runRes.error,
-            },
-          });
-        }
-        res.writeHead(200, {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        });
-
-        try {
-          for await (const chunk of runRes.value.chunkStream) {
-            res.write(chunk);
-            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
-            res.flush();
-          }
-        } catch (err) {
-          logger.error(
-            {
-              error: err,
-            },
-            "Error streaming from Dust API"
-          );
-        }
-        res.end();
-
-        let dustRunId: string;
-        try {
-          dustRunId = await runRes.value.dustRunId;
-        } catch (e) {
-          logger.error(
-            {
-              error: "No run ID received from Dust API after consuming stream",
-            },
-            "Error streaming from Dust API"
-          );
-          return;
-        }
-
-        await Run.create({
-          dustRunId,
-          appId: app.id,
-          runType: "deploy",
-          workspaceId: keyRes.value.workspaceId,
-        });
-
-        return;
-      }
-
-      const runRes = await coreAPI.createRun({
+      const runRes = await coreAPI.createRunStream({
         projectId: app.dustAPIProjectId,
         runAsWorkspaceId: keyWorkspaceId,
         runType: "deploy",
@@ -264,92 +196,187 @@ async function handler(
         });
       }
 
-      await Run.create({
-        dustRunId: runRes.value.run.run_id,
+      switch (runFlavor) {
+        case "streaming":
+          // Start SSE stream.
+          res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          });
+          break;
+        case "blocking":
+          // Blocking, nothing to do for now
+          break;
+
+        case "non-blocking":
+          // Non blocking, return a run object as soon as we get the runId.
+          void (async () => {
+            const dustRunId = await runRes.value.dustRunId;
+
+            const statusRunRes = await coreAPI.getRunStatus({
+              projectId: app.dustAPIProjectId,
+              runId: dustRunId,
+            });
+
+            if (statusRunRes.isErr()) {
+              return apiError(req, res, {
+                status_code: 500,
+                api_error: {
+                  type: "run_error",
+                  message: "There was an error getting the app run status.",
+                  run_error: statusRunRes.error,
+                },
+              });
+            }
+
+            const run: RunType = statusRunRes.value.run;
+            run.specification_hash = run.app_hash;
+            delete run.app_hash;
+
+            run.status.blocks = [];
+            run.results = null;
+
+            res.status(200).json({ run: run as RunType });
+          })();
+          break;
+
+        default:
+          assertNever(runFlavor);
+      }
+
+      const usages: Usage[] = [];
+      const traces: Trace[] = [];
+
+      try {
+        // Intercept block_execution events to store token usages.
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.type === "block_execution") {
+                  if (runFlavor === "blocking") {
+                    // Keep track of block executions for blocking requests.
+                    traces.push([
+                      [data.content.block_type, data.content.block_name],
+                      data.content.execution,
+                    ]);
+                  }
+                  const block = config[data.content.block_name];
+                  extractUsageFromExecutions(
+                    block,
+                    data.content.execution,
+                    usages
+                  );
+                }
+              } catch (err) {
+                logger.error(
+                  { error: err },
+                  "Error parsing run events while extracting usage from executions"
+                );
+              }
+            }
+          }
+        });
+
+        for await (const chunk of runRes.value.chunkStream) {
+          parser.feed(new TextDecoder().decode(chunk));
+          if (runFlavor === "streaming") {
+            res.write(chunk);
+            // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
+            res.flush();
+          }
+        }
+      } catch (err) {
+        logger.error(
+          {
+            error: err,
+          },
+          "Error streaming from Dust API"
+        );
+
+        if (runFlavor === "streaming") {
+          res.end();
+        }
+
+        throw err;
+      }
+
+      const dustRunId = await runRes.value.dustRunId;
+
+      const { id: runId } = await Run.create({
+        dustRunId,
         appId: app.id,
         runType: "deploy",
         workspaceId: keyRes.value.workspaceId,
       });
 
-      let run: RunType = runRes.value.run;
-      run.specification_hash = run.app_hash;
-      delete run.app_hash;
-
-      // If `blocking` is set, poll for run completion.
-      if (req.body.blocking) {
-        const runId = run.run_id;
-        try {
-          await poll({
-            fn: async () => {
-              const run = await coreAPI.getRunStatus({
-                projectId: app.dustAPIProjectId,
-                runId,
-              });
-              if (run.isErr()) {
-                return { status: "error" };
-              }
-              const r = run.value.run;
-              return { status: r.status.run };
-            },
-            validate: (r) => {
-              if (r && r.status == "running") {
-                return false;
-              }
-              return true;
-            },
-            interval: 128,
-            increment: 32,
-            maxInterval: 1024,
-            maxAttempts: 64,
-          });
-        } catch (e) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message: `There was an error polling the run status: runId=${runId} error=${e}`,
-            },
-          });
-        }
-
-        // Finally refresh the run object.
-        const runRes = await coreAPI.getRun({
-          projectId: app.dustAPIProjectId,
+      await RunUsage.bulkCreate(
+        usages.map((usage) => ({
           runId,
-        });
-        if (runRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "run_error",
-              message: "There was an error retrieving the run while polling.",
-              run_error: runRes.error,
-            },
+          ...usage,
+        }))
+      );
+
+      switch (runFlavor) {
+        case "streaming":
+          // End SSE stream.
+          res.end();
+          return;
+
+        case "blocking":
+          // Blocking, return the run status.
+          const statusRunRes = await coreAPI.getRunStatus({
+            projectId: app.dustAPIProjectId,
+            runId: dustRunId,
           });
-        }
-        run = runRes.value.run;
-        run.specification_hash = run.app_hash;
-        delete run.app_hash;
+
+          if (statusRunRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "run_error",
+                message: "There was an error getting the app run details.",
+                run_error: statusRunRes.error,
+              },
+            });
+          }
+
+          const run: RunType = statusRunRes.value.run;
+          run.specification_hash = run.app_hash;
+          delete run.app_hash;
+
+          run.traces = traces;
+
+          if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
+            run.traces = run.traces.filter((t: any) => {
+              return req.body.block_filter.includes(t[0][1]);
+            });
+
+            run.status.blocks = run.status.blocks.filter((c: any) => {
+              return req.body.block_filter.includes(c.name);
+            });
+          }
+
+          if (run.status.run === "succeeded" && run.traces.length > 0) {
+            run.results = run.traces[run.traces.length - 1][1];
+          } else {
+            run.results = null;
+          }
+
+          res.status(200).json({ run: run as RunType });
+          return;
+
+        case "non-blocking":
+          // Response already sent earlier in async block.
+          return;
+
+        default:
+          assertNever(runFlavor);
       }
 
-      if (req.body.block_filter && Array.isArray(req.body.block_filter)) {
-        run.traces = run.traces.filter((t: any) => {
-          return req.body.block_filter.includes(t[0][1]);
-        });
-        run.status.blocks = run.status.blocks.filter((c: any) => {
-          return req.body.block_filter.includes(c.name);
-        });
-      }
-
-      if (run.status.run === "succeeded" && run.traces.length > 0) {
-        run.results = run.traces[run.traces.length - 1][1];
-      } else {
-        run.results = null;
-      }
-
-      res.status(200).json({ run: run as RunType });
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,

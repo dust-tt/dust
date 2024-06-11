@@ -110,6 +110,7 @@ export async function getDrivesToSync(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+  const allSharedDrives = await getDrives(connectorId);
   const authCredentials = await getAuthObject(connector.connectionId);
   const drives: Record<string, LightGoogledrive> = {};
 
@@ -122,11 +123,16 @@ export async function getDrivesToSync(
       if (!remoteFolder.driveId) {
         throw new Error(`Folder ${folder.folderId} does not have a driveId.`);
       }
-      drives[remoteFolder.driveId] = {
-        id: remoteFolder.driveId,
-        name: remoteFolder.name,
-        isSharedDrive: remoteFolder.isInSharedDrive,
-      };
+      // A selected folder can be in a shared drive we don't have access to,
+      // so we need to filter them out.
+      // This is the case for files "shared with me" for example.
+      if (allSharedDrives.find((d) => d.id === remoteFolder.driveId)) {
+        drives[remoteFolder.driveId] = {
+          id: remoteFolder.driveId,
+          name: remoteFolder.name,
+          isSharedDrive: remoteFolder.isInSharedDrive,
+        };
+      }
     }
   }
 

@@ -45,6 +45,16 @@ export type AgentErrorEvent = {
   };
 };
 
+export type AgentDisabledErrorEvent = {
+  type: "agent_disabled_error";
+  created: number;
+  configurationId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
   | RetrievalParamsEvent

@@ -5,7 +5,6 @@ import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import {
   getLocalParents,
   isDriveObjectExpandable,
-  registerWebhooksForAllDrives,
 } from "@connectors/connectors/google_drive/lib";
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -21,6 +20,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 import { folderHasChildren, getDrives } from "./temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
+  launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleGarbageCollector,
 } from "./temporal/client";
 export type NangoConnectionId = string;
@@ -452,20 +452,19 @@ export async function retrieveGoogleDriveConnectorPermissions({
       );
       // Adding a fake "Shared with me" node, to allow the user to see their shared files
       // that are not living in a shared drive.
-      // Uncomment the following node to release the "Shared with me" feature.
-      // nodes.push({
-      //   provider: c.type,
-      //   internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
-      //   parentInternalId: null,
-      //   type: "folder" as const,
-      //   preventSelection: true,
-      //   title: "Shared with me",
-      //   sourceUrl: null,
-      //   dustDocumentId: null,
-      //   lastUpdatedAt: null,
-      //   expandable: true,
-      //   permission: "none",
-      // });
+      nodes.push({
+        provider: c.type,
+        internalId: GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
+        parentInternalId: null,
+        type: "folder" as const,
+        preventSelection: true,
+        title: "Shared with me",
+        sourceUrl: null,
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+        expandable: true,
+        permission: "none",
+      });
 
       nodes.sort((a, b) => {
         return a.title.localeCompare(b.title);
@@ -579,29 +578,18 @@ export async function setGoogleDriveConnectorPermissions(
       );
     }
   }
-  const maxRenewalTime = new Date().getTime();
-  const webhooksRes = await registerWebhooksForAllDrives({
-    connector,
-    maxRenewalTime,
-  });
-  if (webhooksRes.isErr()) {
-    const firstError = webhooksRes.error[0];
-    if (firstError) {
-      return new Err(
-        new Error(
-          "Error registering webhooks. First error message: " +
-            firstError.message
-        )
-      );
-    } else {
-      return new Err(new Error("Error registering webhooks."));
-    }
-  }
+
   if (shouldFullSync) {
     const res = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
     if (res.isErr()) {
       return res;
     }
+  }
+  const incrementalRes = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalRes.isErr()) {
+    return incrementalRes;
   }
 
   return new Ok(undefined);
@@ -886,6 +874,12 @@ export async function unpauseGoogleDriveConnector(connectorId: ModelId) {
   const r = await launchGoogleDriveFullSyncWorkflow(connectorId, null);
   if (r.isErr()) {
     return r;
+  }
+  const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
+    connectorId
+  );
+  if (incrementalSync.isErr()) {
+    return incrementalSync;
   }
   return new Ok(undefined);
 }

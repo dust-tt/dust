@@ -22,7 +22,7 @@ import {
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import { submitAssistantBuilderForm } from "@app/components/assistant_builder/AssistantBuilder";
+import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useUser } from "@app/lib/swr";

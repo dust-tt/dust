@@ -14,12 +14,13 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
-import AssistantBuilder, {
-  BUILDER_FLOWS,
-} from "@app/components/assistant_builder/AssistantBuilder";
+import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { buildInitialActions } from "@app/components/assistant_builder/server_side_props_helpers";
-import type { AssistantBuilderInitialState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderInitialState,
+  BuilderFlow,
+} from "@app/components/assistant_builder/types";
+import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
@@ -95,9 +96,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
   } else if (templateId) {
+    const isMultiActions = owner.flags.includes("multi_actions");
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
-      flow
+      flow,
+      isMultiActions
     );
 
     if (agentConfigRes.isErr()) {

@@ -9,7 +9,7 @@ import {
 import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { useAssistantTemplate } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
 

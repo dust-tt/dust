@@ -11,26 +11,31 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 
-import type { BuilderFlow } from "@app/components/assistant_builder/AssistantBuilder";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 
 export async function generateMockAgentConfigurationFromTemplate(
   templateId: string,
-  flow: BuilderFlow
+  flow: BuilderFlow,
+  isMultiActions: boolean
 ): Promise<Result<TemplateAgentConfigurationType, Error>> {
   const template = await TemplateResource.fetchByExternalId(templateId);
   if (!template) {
     return new Err(new Error("Template not found"));
   }
 
+  const actions = isMultiActions
+    ? []
+    : removeNulls([
+        getAgentActionConfigurationType(
+          template.presetAction,
+          template.timeFrameDuration,
+          template.timeFrameUnit
+        ),
+      ]);
+
   return new Ok({
-    actions: removeNulls([
-      getAgentActionConfigurationType(
-        template.presetAction,
-        template.timeFrameDuration,
-        template.timeFrameUnit
-      ),
-    ]),
+    actions,
     description: template.description ?? "",
     instructions: template.presetInstructions ?? "",
     model: {

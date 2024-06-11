@@ -570,7 +570,9 @@ impl Block for Chat {
                         // move tx to event_sender
                     });
                 }
-                request.execute(env.credentials.clone(), Some(tx)).await?
+                request
+                    .execute(env.credentials.clone(), Some(tx), env.run_id.clone())
+                    .await?
             }
             false => {
                 request
@@ -579,6 +581,7 @@ impl Block for Chat {
                         env.project.clone(),
                         env.store.clone(),
                         use_cache,
+                        env.run_id.clone(),
                     )
                     .await?
             }
@@ -596,6 +599,7 @@ impl Block for Chat {
             meta: Some(json!({
                 "logs": all_logs,
                 "token_usage": g.usage,
+                "provider_request_id": g.provider_request_id,
             })),
         })
     }

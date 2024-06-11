@@ -1,6 +1,7 @@
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -27,6 +28,7 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
@@ -564,6 +566,7 @@ export async function* postUserMessage(
   | UserMessageErrorEvent
   | UserMessageNewEvent
   | AgentMessageNewEvent
+  | AgentDisabledErrorEvent
   | AgentErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
@@ -644,6 +647,22 @@ export async function* postUserMessage(
     await createOrUpdateParticipation(),
   ]);
   const agentConfigurations = results[0];
+
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  for (const agentConfig of agentConfigurations) {
+    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "provider_disabled",
+          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+        },
+      };
+      return; // Stop processing if any agent uses a disabled provider
+    }
+  }
 
   // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
@@ -957,6 +976,7 @@ export async function* editUserMessage(
   | UserMessageNewEvent
   | UserMessageErrorEvent
   | AgentMessageNewEvent
+  | AgentDisabledErrorEvent
   | AgentErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
@@ -1060,6 +1080,22 @@ export async function* editUserMessage(
   ]);
 
   const agentConfigurations = results[0];
+
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  for (const agentConfig of agentConfigurations) {
+    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+      yield {
+        type: "agent_disabled_error",
+        created: Date.now(),
+        configurationId: agentConfig.sId,
+        error: {
+          code: "provider_disabled",
+          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+        },
+      };
+      return; // Stop processing if any agent uses a disabled provider
+    }
+  }
 
   try {
     // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
