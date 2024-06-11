@@ -24,21 +24,21 @@ export class ConfluenceCastKnownErrorsInterceptor
         switch (err.status) {
           case 500:
             throw new ProviderWorkflowError(
-              "Confluence Internal Error",
+              "500 - Internal Error",
               "confluence",
               err
             );
 
           case 502:
             throw new ProviderWorkflowError(
-              "Confluence: 502 Bad Gateway",
+              "502 - Bad Gateway",
               "confluence",
               err
             );
 
           case 504:
             throw new ProviderWorkflowError(
-              "Confluence: Request timed out",
+              "504 - Gateway Time Out",
               "confluence",
               err
             );

@@ -21,14 +21,14 @@ export class GoogleDriveCastKnownErrorsInterceptor
         switch (err.response?.status) {
           case 429:
             throw new ProviderWorkflowError(
-              "Google Drive Rate Limit Error",
+              "429: Rate Limit Error",
               "google_drive",
               err
             );
 
           case 500:
             throw new ProviderWorkflowError(
-              "Google Drive Internal Error",
+              "500 - Internal Error",
               "google_drive",
               err
             );

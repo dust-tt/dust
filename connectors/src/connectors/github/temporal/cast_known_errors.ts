@@ -19,7 +19,11 @@ export class GithubCastKnownErrorsInterceptor
     } catch (err: unknown) {
       if (err instanceof RequestError) {
         if (err.status === 403 && err.name === "HttpError") {
-          throw new ProviderWorkflowError("Github rate limited", "github", err);
+          throw new ProviderWorkflowError(
+            "403 - Rate Limit Error",
+            "github",
+            err
+          );
         }
       }
 

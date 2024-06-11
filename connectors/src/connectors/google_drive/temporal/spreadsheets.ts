@@ -418,7 +418,7 @@ export async function syncSpreadSheet(
     } catch (err) {
       if (isGAxiosServiceUnavailablError(err)) {
         throw new ProviderWorkflowError(
-          "Got 503 Service Unavailable from Google Sheets",
+          "503 - Service Unavailable from Google Sheets",
           "google_drive",
           err
         );

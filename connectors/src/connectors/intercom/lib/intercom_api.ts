@@ -97,7 +97,7 @@ async function queryIntercomAPI({
       const isCaptchaError = text.includes("captcha-container");
 
       throw new ProviderWorkflowError(
-        `Intercom 405: ${isCaptchaError ? "Captcha error" : text}`,
+        `405 - ${isCaptchaError ? "Captcha error" : text}`,
         "intercom"
       );
     } else {

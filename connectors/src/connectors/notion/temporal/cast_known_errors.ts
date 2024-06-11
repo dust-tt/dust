@@ -25,21 +25,17 @@ export class NotionCastKnownErrorsInterceptor
         switch (err.code) {
           case APIErrorCode.ServiceUnavailable:
             throw new ProviderWorkflowError(
-              "Notion service is unavailable",
+              "Service Unavailable",
               "notion",
               err
             );
 
           case APIErrorCode.RateLimited:
-            throw new ProviderWorkflowError(
-              "Notion rate limited",
-              "notion",
-              err
-            );
+            throw new ProviderWorkflowError("Rate Limit Error", "notion", err);
 
           case APIErrorCode.InternalServerError:
             throw new ProviderWorkflowError(
-              "Notion internal server error",
+              "Internal Server Error",
               "notion",
               err
             );
@@ -55,11 +51,7 @@ export class NotionCastKnownErrorsInterceptor
           );
         }
       } else if (RequestTimeoutError.isRequestTimeoutError(err)) {
-        throw new ProviderWorkflowError(
-          "Notion request timeout",
-          "notion",
-          err
-        );
+        throw new ProviderWorkflowError("Request Timeout", "notion", err);
       }
 
       throw err;
