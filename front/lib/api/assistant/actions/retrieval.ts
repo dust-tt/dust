@@ -862,8 +862,8 @@ export function retrievalMetaPrompt() {
 
 export function retrievalMetaPromptMutiActions() {
   return (
-    "Be factual and accurate. When documents are retrieved with a 2-letter REFERENCE, " +
-    "use the markdown directive :cite[REFERENCE] to cite them " +
+    "To cite documents retrieved with a 2-letter REFERENCE, " +
+    "use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
     "Ensure citations are placed as close as possible to the related information."
   );
