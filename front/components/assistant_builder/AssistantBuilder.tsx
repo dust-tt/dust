@@ -277,10 +277,9 @@ export default function AssistantBuilder({
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
       );
 
-      setIsSavingOrDeleting(false);
       // Redirect to the assistant list once saved.
       if (flow === "personal_assistants") {
-        await router.push(`/w/${owner.sId}/assistant/assistants`);
+        await router.push(`/w/${owner.sId}/assistant/new`);
       } else {
         await router.push(`/w/${owner.sId}/builder/assistants`);
       }
