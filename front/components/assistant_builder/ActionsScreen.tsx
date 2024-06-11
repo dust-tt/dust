@@ -442,7 +442,7 @@ function ActionCard({
             action.description ? "text-element-700" : "text-warning-500"
           )}
         >
-          {action.description || "Description missing."}
+          {action.description || "Missing description"}
         </div>
       </div>
     </CardButton>
