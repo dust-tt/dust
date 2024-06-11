@@ -62,7 +62,7 @@ export type ModelIdType = (typeof MODEL_IDS)[number];
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
-export const ModelIdCodec = ioTsEnum(MODEL_IDS);
+export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
 /**
  * MODEL CONFIGURATIONS
