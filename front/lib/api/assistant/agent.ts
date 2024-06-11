@@ -4,6 +4,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -61,7 +62,8 @@ export async function* runAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -116,6 +118,7 @@ export async function* runMultiActionsAgentLoop(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent
 > {
   const now = Date.now();
 
@@ -238,6 +241,10 @@ export async function* runMultiActionsAgentLoop(
           };
           return;
 
+        case "agent_chain_of_thought":
+          yield event;
+          break;
+
         default:
           assertNever(event);
       }
@@ -268,6 +275,7 @@ export async function* runMultiActionsAgent(
   | GenerationCancelEvent
   | GenerationTokensEvent
   | AgentActionsEvent
+  | AgentChainOfThoughtEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -721,6 +729,25 @@ export async function* runMultiActionsAgent(
       specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
+  }
+
+  yield* tokenEmitter.flushTokens();
+
+  const chainOfThought = tokenEmitter.getChainOfThought();
+  const content = tokenEmitter.getContent();
+
+  if (chainOfThought.length || content.length) {
+    yield {
+      type: "agent_chain_of_thought",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+      // In practice, we shouls never have both chainOfThought and content.
+      // It is not completely impossible that eg Anthropic decides to emit part of the
+      // CoT between `<thinking>` XML tags and the rest outside of any tag.
+      chainOfThought: [chainOfThought, content].join("\n"),
+    };
   }
 
   yield {

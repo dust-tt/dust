@@ -111,3 +111,12 @@ export type AgentActionsEvent = {
     functionCallId: string | null;
   }>;
 };
+
+export type AgentChainOfThoughtEvent = {
+  type: "agent_chain_of_thought";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  message: AgentMessageType;
+  chainOfThought: string;
+};
