@@ -192,6 +192,16 @@ export default function ActionsScreen({
           if (!pendingAction.action) {
             return;
           }
+
+          // Making sure the name is not used already.
+          let index = 1;
+          const suffixedName = () =>
+            index > 1 ? `${newAction.name}_${index}` : newAction.name;
+          while (builderState.actions.some((a) => a.name === suffixedName())) {
+            index += 1;
+          }
+          newAction.name = suffixedName();
+
           if (pendingAction.previousActionName) {
             updateAction({
               actionName: pendingAction.previousActionName,
@@ -234,7 +244,6 @@ export default function ActionsScreen({
               <div>
                 <AddAction
                   owner={owner}
-                  builderState={builderState}
                   onAddAction={(action) => {
                     setPendingAction({
                       action,
@@ -267,7 +276,6 @@ export default function ActionsScreen({
             >
               <AddAction
                 owner={owner}
-                builderState={builderState}
                 onAddAction={(action) => {
                   setPendingAction({
                     action,
@@ -773,24 +781,11 @@ function AdvancedSettings({
 
 function AddAction({
   owner,
-  builderState,
   onAddAction,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
 }) {
-  const onAddLocal = (action: AssistantBuilderActionConfiguration) => {
-    let index = 1;
-    const suffixedName = () =>
-      index > 1 ? `${action.name}_${index}` : action.name;
-    while (builderState.actions.some((a) => a.name === suffixedName())) {
-      index += 1;
-    }
-    action.name = suffixedName();
-    onAddAction(action);
-  };
-
   const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
     const flag = ACTION_SPECIFICATIONS[key].flag;
     return !flag || owner.flags.includes(flag);
@@ -816,7 +811,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}
@@ -836,7 +831,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}
@@ -855,7 +850,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}
