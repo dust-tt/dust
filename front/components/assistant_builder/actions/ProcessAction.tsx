@@ -532,8 +532,8 @@ export function ActionProcess({
             Clarify what the action should do and what data it should extract.
             For example:
             <span className="block text-element-600">
-              "Extract from the slack channel a list of books, including their
-              title, author, and publication date".
+              "Extract from the #reading slack channel a list of books,
+              including their title, author, and publication date".
             </span>
           </div>
           <TextArea

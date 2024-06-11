@@ -50,6 +50,7 @@ import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "./actions/DustAppRunAction";
+import { classNames } from "@app/lib/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -437,8 +438,13 @@ function ActionCard({
             }}
           />
         </div>
-        <div className="w-full truncate text-base text-element-700">
-          {_.capitalize(_.toLower(action.name).replace(/_/g, " "))}
+        <div
+          className={classNames(
+            "w-full truncate text-base",
+            action.description ? "text-element-700" : "text-warning-500"
+          )}
+        >
+          {action.description || "Description missing."}
         </div>
       </div>
     </CardButton>

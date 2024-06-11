@@ -237,9 +237,7 @@ export function getDefaultProcessActionConfiguration() {
       schema: [],
     } as AssistantBuilderProcessConfiguration,
     name: "extract_structured_data_from_data_sources",
-    description:
-      "Process data sources specified by the user over a specific time-frame by extracting" +
-      " structured blobs of information (complying to a fixed schema).",
+    description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
 
