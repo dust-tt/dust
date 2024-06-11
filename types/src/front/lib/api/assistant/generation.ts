@@ -70,6 +70,7 @@ export type GenerationTokensEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  classification: "tokens" | "chain_of_thought" | "opening_tag" | "closing_tag";
 };
 
 export type GenerationErrorEvent = {
@@ -89,6 +90,7 @@ export type GenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  chainOfThought: string;
 };
 
 export type GenerationCancelEvent = {
