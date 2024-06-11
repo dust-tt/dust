@@ -59,6 +59,7 @@ import {
 import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { TemplateResource } from "@app/lib/resources/template_resource";
 import { generateModelSId } from "@app/lib/utils";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -640,6 +641,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
       }
     }
 
+    let template: TemplateResource | null = null;
+    if (agent.templateId) {
+      template = await TemplateResource.fetchById(agent.templateId);
+    }
+
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -660,6 +666,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       actions,
       versionAuthorId: agent.authorId,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      templateId: template?.sId ?? null,
     };
 
     agentConfigurationType.userListStatus = agentUserListStatus({
@@ -855,6 +862,7 @@ export async function createAgentConfiguration(
     scope,
     model,
     agentConfigurationId,
+    templateId,
   }: {
     name: string;
     description: string;
@@ -865,6 +873,7 @@ export async function createAgentConfiguration(
     scope: Exclude<AgentConfigurationScope, "global">;
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
+    templateId: string | null;
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -895,6 +904,10 @@ export async function createAgentConfiguration(
   let listStatusOverride: AgentUserListStatus | null = null;
 
   try {
+    let template: TemplateResource | null = null;
+    if (templateId) {
+      template = await TemplateResource.fetchByExternalId(templateId);
+    }
     const agent = await frontSequelize.transaction(
       async (t): Promise<AgentConfiguration> => {
         if (agentConfigurationId) {
@@ -957,7 +970,6 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
         }
-
         // Create Agent config.
         return AgentConfiguration.create(
           {
@@ -975,6 +987,7 @@ export async function createAgentConfiguration(
             pictureUrl,
             workspaceId: owner.id,
             authorId: user.id,
+            templateId: template?.id,
           },
           {
             transaction: t,
@@ -1005,6 +1018,7 @@ export async function createAgentConfiguration(
       pictureUrl: agent.pictureUrl,
       status: agent.status,
       maxToolsUsePerRun: agent.maxToolsUsePerRun,
+      templateId: template?.sId ?? null,
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({
