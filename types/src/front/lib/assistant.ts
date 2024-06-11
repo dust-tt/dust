@@ -24,6 +24,10 @@ export const isModelProviderId = (
 export const ModelProviderIdCodec =
   ioTsEnum<(typeof MODEL_PROVIDER_IDS)[number]>(MODEL_PROVIDER_IDS);
 
+export const EmbeddingProviderCodec = ioTsEnum<
+  (typeof EMBEDDING_PROVIDER_IDS)[number]
+>(EMBEDDING_PROVIDER_IDS);
+
 /**
  * MODEL IDS
  */
