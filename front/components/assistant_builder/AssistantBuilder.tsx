@@ -16,17 +16,11 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  getAgentActionConfigurationType,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   isBuilder,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
-import _ from "lodash";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
@@ -54,7 +48,6 @@ import {
 } from "@app/components/assistant_builder/shared";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
-  AssistantBuilderActionType,
   AssistantBuilderProps,
   AssistantBuilderState,
   BuilderScreen,
@@ -64,6 +57,7 @@ import {
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
+import { useTemplate } from "@app/components/assistant_builder/useTemplate";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -73,7 +67,6 @@ import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export default function AssistantBuilder({
   owner,
@@ -127,69 +120,13 @@ export default function AssistantBuilder({
         }
   );
 
-  const [template, setTemplate] =
-    useState<FetchAssistantTemplateResponse | null>(defaultTemplate);
-
-  const resetTemplate = async () => {
-    setTemplate(null);
-    await router.replace(
-      {
-        pathname: router.pathname,
-        query: _.omit(router.query, "templateId"),
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const [instructionsResetAt, setInstructionsResetAt] = useState<number | null>(
-    null
-  );
-
-  const resetToTemplateInstructions = useCallback(async () => {
-    if (template === null) {
-      return;
-    }
-    setEdited(true);
-    setInstructionsResetAt(Date.now());
-    setBuilderState((builderState) => ({
-      ...builderState,
-      instructions: template.presetInstructions,
-    }));
-  }, [template]);
-
-  const resetToTemplateActions = useCallback(async () => {
-    if (template === null) {
-      return;
-    }
-
-    let actionType: AssistantBuilderActionType | null = null;
-    if (!multiActionsEnabled) {
-      const action = getAgentActionConfigurationType(template.presetAction);
-      if (isRetrievalConfiguration(action)) {
-        actionType = "RETRIEVAL_SEARCH";
-      } else if (isDustAppRunConfiguration(action)) {
-        actionType = "DUST_APP_RUN";
-      } else if (isTablesQueryConfiguration(action)) {
-        actionType = "TABLES_QUERY";
-      } else if (isProcessConfiguration(action)) {
-        actionType = "PROCESS";
-      }
-    }
-
-    if (actionType !== null) {
-      const defaultAssistantState = getDefaultAssistantState();
-
-      setEdited(true);
-      setBuilderState((builderState) => {
-        const newState = {
-          ...builderState,
-          actions: defaultAssistantState.actions,
-        };
-        return newState;
-      });
-    }
-  }, [template, multiActionsEnabled]);
+  const {
+    template,
+    instructionsResetAt,
+    removeTemplate,
+    resetToTemplateInstructions,
+    resetToTemplateActions,
+  } = useTemplate(defaultTemplate);
 
   const showSlackIntegration =
     builderState.scope === "workspace" || builderState.scope === "published";
@@ -578,9 +515,15 @@ export default function AssistantBuilder({
             <AssistantBuilderRightPanel
               screen={screen}
               template={template}
-              resetTemplate={resetTemplate}
-              resetToTemplateInstructions={resetToTemplateInstructions}
-              resetToTemplateActions={resetToTemplateActions}
+              removeTemplate={removeTemplate}
+              resetToTemplateInstructions={async () => {
+                resetToTemplateInstructions(setBuilderState);
+                setEdited(true);
+              }}
+              resetToTemplateActions={async () => {
+                resetToTemplateActions(setBuilderState, multiActionsEnabled);
+                setEdited(true);
+              }}
               owner={owner}
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
