@@ -115,10 +115,21 @@ export type AssistantBuilderActionConfiguration = (
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
->;
+> & {
+  help: string;
+};
 
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
+
+export type AssistantBuilderPendingAction =
+  | {
+      action: AssistantBuilderActionConfiguration;
+      previousActionName: string | null;
+    }
+  | {
+      action: null;
+    };
 
 export type AssistantBuilderState = {
   handle: string | null;

@@ -41,6 +41,7 @@ import {
 } from "@app/components/assistant_builder/actions/WebsearchAction";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderState,
@@ -103,6 +104,8 @@ export default function ActionsScreen({
   dataSources,
   setBuilderState,
   setEdited,
+  pendingAction,
+  setPendingAction,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -112,14 +115,9 @@ export default function ActionsScreen({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  pendingAction: AssistantBuilderPendingAction;
+  setPendingAction: (action: AssistantBuilderPendingAction) => void;
 }) {
-  const [newActionModalOpen, setNewActionModalOpen] = React.useState(false);
-
-  const [actionToEdit, setActionToEdit] =
-    React.useState<AssistantBuilderActionConfiguration | null>(null);
-  const [pendingAction, setPendingAction] =
-    React.useState<AssistantBuilderActionConfiguration | null>(null);
-
   const updateAction = useCallback(
     function _updateAction({
       actionName,
@@ -185,15 +183,18 @@ export default function ActionsScreen({
   return (
     <>
       <NewActionModal
-        isOpen={newActionModalOpen}
-        setOpen={setNewActionModalOpen}
+        isOpen={pendingAction.action !== null}
+        setOpen={() => {}} // Unused
         builderState={builderState}
-        initialAction={actionToEdit ?? pendingAction}
+        initialAction={pendingAction.action}
         onSave={(newAction) => {
           setEdited(true);
-          if (actionToEdit) {
+          if (!pendingAction.action) {
+            return;
+          }
+          if (pendingAction.previousActionName) {
             updateAction({
-              actionName: actionToEdit.name,
+              actionName: pendingAction.previousActionName,
               newActionName: newAction.name,
               newActionDescription: newAction.description,
               getNewActionConfig: () => newAction.configuration,
@@ -201,13 +202,12 @@ export default function ActionsScreen({
           } else {
             insertAction(newAction);
           }
-          setNewActionModalOpen(false);
-          setActionToEdit(null);
-          setPendingAction(null);
+          setPendingAction({
+            action: null,
+          });
         }}
         onClose={() => {
-          setActionToEdit(null);
-          setPendingAction(null);
+          setPendingAction({ action: null });
         }}
         updateAction={updateAction}
         owner={owner}
@@ -236,8 +236,10 @@ export default function ActionsScreen({
                   owner={owner}
                   builderState={builderState}
                   onAddAction={(action) => {
-                    setPendingAction(action);
-                    setNewActionModalOpen(true);
+                    setPendingAction({
+                      action,
+                      previousActionName: null,
+                    });
                   }}
                 />
               </div>
@@ -267,8 +269,10 @@ export default function ActionsScreen({
                 owner={owner}
                 builderState={builderState}
                 onAddAction={(action) => {
-                  setPendingAction(action);
-                  setNewActionModalOpen(true);
+                  setPendingAction({
+                    action,
+                    previousActionName: null,
+                  });
                 }}
               />
             </div>
@@ -280,8 +284,10 @@ export default function ActionsScreen({
                   action={a}
                   key={a.name}
                   editAction={() => {
-                    setActionToEdit(a);
-                    setNewActionModalOpen(true);
+                    setPendingAction({
+                      action: a,
+                      previousActionName: a.name,
+                    });
                   }}
                   deleteAction={() => {
                     deleteAction(a.name);

@@ -32,10 +32,12 @@ import {
   useTryAssistantCore,
 } from "@app/components/assistant/TryAssistant";
 import type {
+  AssistantBuilderPendingAction,
   AssistantBuilderState,
   BuilderScreen,
   TemplateActionType,
 } from "@app/components/assistant_builder/types";
+import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useUser } from "@app/lib/swr";
@@ -53,6 +55,7 @@ export default function AssistantBuilderRightPanel({
   openRightPanelTab,
   builderState,
   multiActionsMode,
+  setPendingAction,
 }: {
   screen: BuilderScreen;
   template: FetchAssistantTemplateResponse | null;
@@ -64,6 +67,7 @@ export default function AssistantBuilderRightPanel({
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
   multiActionsMode: boolean;
+  setPendingAction: (action: AssistantBuilderPendingAction) => void;
 }) {
   const tabsConfig = useMemo(
     () => [
@@ -241,16 +245,26 @@ export default function AssistantBuilderRightPanel({
                   template.presetActions.length > 0 && (
                     <div className="flex flex-col gap-6">
                       <Page.SectionHeader title="Add those actions" />
-                      {template.presetActions.map((action, index) => (
+                      {template.presetActions.map((presetAction, index) => (
                         <div className="flex flex-col gap-2" key={index}>
-                          {action.description}:
+                          {presetAction.help}
                           <TemplateActionCard
-                            action={action}
-                            addAction={() =>
-                              alert(
-                                "Add action for multi-actions not implemented yet"
-                              )
-                            }
+                            action={presetAction}
+                            addAction={(presetAction) => {
+                              const action = getDefaultActionConfiguration(
+                                presetAction.type
+                              );
+                              if (!action) {
+                                // Unreachable
+                                return;
+                              }
+                              action.name = presetAction.name;
+                              action.description = presetAction.description;
+                              setPendingAction({
+                                action,
+                                previousActionName: null,
+                              });
+                            }}
                           />
                         </div>
                       ))}
@@ -269,7 +283,7 @@ const TemplateActionCard = ({
   addAction,
 }: {
   action: TemplateActionType;
-  addAction: () => void;
+  addAction: (action: TemplateActionType) => void;
 }) => {
   const spec = ACTION_SPECIFICATIONS[action.type];
   if (!spec) {
@@ -279,7 +293,7 @@ const TemplateActionCard = ({
   return (
     <CardButton
       variant="primary"
-      onClick={addAction}
+      onClick={() => addAction(action)}
       className="inline-block w-72"
     >
       <div className="flex w-full flex-col gap-2 text-sm">
@@ -292,7 +306,7 @@ const TemplateActionCard = ({
             icon={PlusCircleStrokeIcon}
             variant="tertiary"
             size="sm"
-            onClick={addAction}
+            onClick={() => addAction(action)}
           />
         </div>
         <div className="w-full truncate text-base text-element-700">

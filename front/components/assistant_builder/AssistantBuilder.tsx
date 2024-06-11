@@ -47,6 +47,7 @@ import {
 } from "@app/components/assistant_builder/shared";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
+  AssistantBuilderPendingAction,
   AssistantBuilderProps,
   AssistantBuilderState,
   BuilderScreen,
@@ -130,6 +131,11 @@ export default function AssistantBuilder({
           },
         }
   );
+
+  const [pendingAction, setPendingAction] =
+    useState<AssistantBuilderPendingAction>({
+      action: null,
+    });
 
   const {
     template,
@@ -410,6 +416,8 @@ export default function AssistantBuilder({
                           dustApps={dustApps}
                           setBuilderState={setBuilderState}
                           setEdited={setEdited}
+                          pendingAction={pendingAction}
+                          setPendingAction={setPendingAction}
                         />
                       );
                     }
@@ -489,6 +497,7 @@ export default function AssistantBuilder({
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               multiActionsMode={multiActionsEnabled}
+              setPendingAction={setPendingAction}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}
