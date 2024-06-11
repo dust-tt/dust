@@ -715,7 +715,7 @@ function PrevNextButtons({
   setScreen: (screen: BuilderScreen) => void;
 }) {
   return (
-    <div className="flex pt-6">
+    <div className="flex py-6">
       {screen !== "instructions" && (
         <Button
           label="Previous"

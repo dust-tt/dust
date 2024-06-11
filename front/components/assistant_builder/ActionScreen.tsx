@@ -216,7 +216,7 @@ export default function ActionScreen({
 
   return (
     <>
-      <div className="flex min-h-96 flex-col gap-4 text-sm text-element-800">
+      <div className="flex flex-col gap-4 text-sm text-element-800">
         <div className="flex flex-col gap-2">
           <Page.Header title="Actions & Data sources" />
           <Page.P>
@@ -397,8 +397,10 @@ export default function ActionScreen({
           </>
         )}
 
-        <ActionModeSection show={!action}>
-          <div className="pb-16"></div>
+        <ActionModeSection
+          show={["WEBSEARCH", "REPLY_ONLY"].includes(actionCategory)}
+        >
+          <div className="pb-72"></div>
         </ActionModeSection>
 
         <ActionModeSection
