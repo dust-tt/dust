@@ -231,6 +231,7 @@ export async function* runMultiActionsAgentLoop(
               message: agentMessage,
               chainOfThought: event.chainOfThought,
             };
+            agentMessage.chainOfThoughts.push(event.chainOfThought);
           }
           yield {
             type: "agent_generation_success",
@@ -241,7 +242,6 @@ export async function* runMultiActionsAgentLoop(
           } satisfies AgentGenerationSuccessEvent;
 
           agentMessage.content = event.text;
-          agentMessage.chainOfThoughts.push(event.chainOfThought);
           agentMessage.status = "succeeded";
           yield {
             type: "agent_message_success",
@@ -253,6 +253,7 @@ export async function* runMultiActionsAgentLoop(
           return;
 
         case "agent_chain_of_thought":
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
           yield event;
           break;
 
@@ -640,8 +641,8 @@ export async function* runMultiActionsAgent(
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            text: tokenEmitter.getContent(),
-            chainOfThought: tokenEmitter.getChainOfThought(),
+            text: tokenEmitter.getContent() ?? "",
+            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           } satisfies GenerationSuccessEvent;
 
           return;
@@ -747,7 +748,7 @@ export async function* runMultiActionsAgent(
   const chainOfThought = tokenEmitter.getChainOfThought();
   const content = tokenEmitter.getContent();
 
-  if (chainOfThought.length || content.length) {
+  if (chainOfThought?.length || content?.length) {
     yield {
       type: "agent_chain_of_thought",
       created: Date.now(),
@@ -1238,11 +1239,11 @@ class TokenEmitter {
     yield* this.flushTokens();
   }
 
-  getContent(): string {
-    return this.content;
+  getContent(): string | null {
+    return this.content.length ? this.content : null;
   }
 
-  getChainOfThought(): string {
-    return this.chainOfThought;
+  getChainOfThought(): string | null {
+    return this.chainOfThought.length ? this.chainOfThought : null;
   }
 }

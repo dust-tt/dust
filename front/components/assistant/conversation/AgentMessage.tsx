@@ -46,7 +46,6 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { classNames } from "@app/lib/utils";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -207,10 +206,12 @@ export function AgentMessage({
         break;
 
       case "agent_message_success": {
-        setStreamedAgentMessage((m) => ({
-          ...m,
-          ...event.message,
-        }));
+        setStreamedAgentMessage((m) => {
+          return {
+            ...m,
+            ...event.message,
+          };
+        });
         break;
       }
 
@@ -257,16 +258,14 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        return streamedAgentMessage.status === "created"
-          ? { ...streamedAgentMessage, status: "cancelled" }
-          : message;
+        if (streamedAgentMessage.status === "created") {
+          return { ...streamedAgentMessage, status: "cancelled" };
+        }
+        return message;
       case "created":
         return streamedAgentMessage;
-
       default:
-        ((status: never) => {
-          throw new Error(`Unknown status: ${status}`);
-        })(message.status);
+        assertNever(message.status);
     }
   })();
 
@@ -439,26 +438,29 @@ export function AgentMessage({
       size={size}
     >
       <div>
-        {renderMessage(
-          agentMessageToRender,
-          references,
-          shouldStream,
-          lastTokenClassification
-        )}
+        {renderAgentMessage({
+          agentMessage: agentMessageToRender,
+          references: references,
+          streaming: shouldStream,
+          lastTokenClassification: lastTokenClassification,
+        })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
     </ConversationMessage>
   );
 
-  function renderMessage(
-    agentMessage: AgentMessageType,
-    references: { [key: string]: RetrievalDocumentType },
-    streaming: boolean,
-    lastTokenClassification: null | "tokens" | "chain_of_thought"
-  ) {
-    // Display the error to the user so they can report it to us (or some can be understandable
-    // directly to them)
+  function renderAgentMessage({
+    agentMessage,
+    references,
+    streaming,
+    lastTokenClassification,
+  }: {
+    agentMessage: AgentMessageType;
+    references: { [key: string]: RetrievalDocumentType };
+    streaming: boolean;
+    lastTokenClassification: null | "tokens" | "chain_of_thought";
+  }) {
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
@@ -474,6 +476,8 @@ export function AgentMessage({
     }
 
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
+
+    const chainOfThought = agentMessage.chainOfThoughts.join();
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
@@ -481,54 +485,33 @@ export function AgentMessage({
           agentMessageContent={agentMessage.content}
           size={size}
         />
-        {agentMessage.chainOfThoughts.map((cot, i) => (
-          <div
-            key={`${message.sId}-cot-${i}`}
-            className={classNames(
-              "w-full rounded-2xl p-4",
-              "flex gap-2 border",
-              "border-slate-200",
-              "bg-slate-100",
-              "w-full",
-              "items-left justify-start"
-            )}
-          >
-            <Icon
-              size="md"
-              visual={PuzzleIcon}
-              className={classNames("shrink-0", "text-slate-800")}
-            />
-            <div className="flex flex-col gap-2">
-              <div
-                className={classNames(
-                  "text-sm font-semibold",
-                  "text-slate-800"
-                )}
-              >
+
+        {chainOfThought.length ? (
+          <div className="relative flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4">
+            <div className="flex flex-row gap-2">
+              <Icon
+                size="sm"
+                visual={PuzzleIcon}
+                className="shrink-0 text-slate-800"
+              />
+              <div className="text-sm font-semibold text-slate-800">
                 Model thoughts
               </div>
-              <div
-                className={classNames(
-                  "text-sm",
-                  "items-left justify-start italic text-slate-950"
-                )}
-              >
-                {
-                  <RenderMessageMarkdown
-                    content={cot}
-                    isStreaming={
-                      streaming &&
-                      lastTokenClassification === "chain_of_thought"
-                    }
-                  />
-                }
-              </div>
+            </div>
+
+            <div className={"relative text-sm italic text-slate-950"}>
+              <RenderMessageMarkdown
+                content={chainOfThought}
+                isStreaming={false}
+              />
             </div>
           </div>
-        ))}
+        ) : null}
+
         {agentMessage.content !== null && (
           <div>
-            {agentMessage.content === "" ? (
+            {lastTokenClassification !== "chain_of_thought" &&
+            agentMessage.content === "" ? (
               <div className="blinking-cursor">
                 <span></span>
               </div>
