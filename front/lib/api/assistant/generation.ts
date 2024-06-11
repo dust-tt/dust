@@ -11,6 +11,7 @@ import type {
   GenerationTokensEvent,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
+  ModelProviderIdType,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -382,6 +383,27 @@ export async function constructPrompt(
   return `${context}${instructions}`;
 }
 
+export function metaPromptForProvider(
+  providerId: ModelProviderIdType
+): string | null {
+  switch (providerId) {
+    case "openai":
+      return "When using tools, generate valid and properly escaped JSON arguments.";
+    case "anthropic":
+      // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
+      return (
+        "Do not reflect on the quality of the returned search results in your response. " +
+        "Be concise in your thinking phases."
+      );
+    case "mistral":
+      return null;
+    case "google_ai_studio":
+      return null;
+    default:
+      assertNever(providerId);
+  }
+}
+
 export async function constructPromptMultiActions(
   auth: Authenticator,
   userMessage: UserMessageType,
@@ -391,32 +413,20 @@ export async function constructPromptMultiActions(
   const d = moment(new Date()).tz(userMessage.context.timezone);
   const owner = auth.workspace();
 
+  // CONTEXT section
   let context = "CONTEXT:\n";
-  context += `{\n`;
-  context += `  "assistant": "@${configuration.name}",\n`;
-  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
+  context += `assistant: @${configuration.name}\n`;
+  context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   if (owner) {
-    context += `  "workspace": "${owner.name}",\n`;
+    context += `workspace: ${owner.name}\n`;
   }
-  context += "}\n";
 
-  let instructions = "";
+  // INSTRUCTIONS section
+  let instructions = "INSTRUCTIONS:\n";
   if (configuration.instructions) {
-    instructions += `\n${configuration.instructions}`;
+    instructions += `${configuration.instructions}\n`;
   } else if (fallbackPrompt) {
-    instructions += `\n${fallbackPrompt}`;
-  }
-
-  // If one of the action is a retrieval action, we add the retrieval meta prompt.
-  const hasRetrievalAction = configuration.actions.some((action) =>
-    isRetrievalConfiguration(action)
-  );
-  if (hasRetrievalAction) {
-    instructions += `\n${retrievalMetaPromptMutiActions()}`;
-  }
-
-  if (instructions.length > 0) {
-    instructions = "\nINSTRUCTIONS:" + instructions;
+    instructions += `${fallbackPrompt}\n`;
   }
 
   // Replacement if instructions include "{USER_FULL_NAME}".
@@ -448,7 +458,30 @@ export async function constructPromptMultiActions(
     );
   }
 
-  return `${context}${instructions}`;
+  // ADDITIONAL INSTRUCTIONS section
+  let additionalInstructions = "ADDITIONAL INSTRUCTIONS:\n";
+  let hasAdditionalInstructions = false;
+
+  const hasRetrievalAction = configuration.actions.some((action) =>
+    isRetrievalConfiguration(action)
+  );
+  if (hasRetrievalAction) {
+    additionalInstructions += `${retrievalMetaPromptMutiActions()}\n`;
+    hasAdditionalInstructions = true;
+  }
+  const providerMetaPrompt = metaPromptForProvider(
+    configuration.model.providerId
+  );
+  if (providerMetaPrompt) {
+    additionalInstructions += `\n${providerMetaPrompt}\n`;
+    hasAdditionalInstructions = true;
+  }
+
+  let prompt = `${context}\n${instructions}`;
+  if (hasAdditionalInstructions) {
+    prompt += `\n${additionalInstructions}`;
+  }
+  return prompt;
 }
 
 // This function is in charge of running the generation of a message from the agent. It does not
