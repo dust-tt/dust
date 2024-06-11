@@ -83,7 +83,7 @@ export default function AssistantNew({
   const [planLimitReached, setPlanLimitReached] = useState<boolean>(false);
   const sendNotification = useContext(SendNotificationsContext);
 
-  const [helpDrawer, setHelpDrawer] = useState<boolean>(false);
+  const [isHelpDrawerOpen, setIsHelpDrawerOpen] = useState<boolean>(false);
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
@@ -250,8 +250,8 @@ export default function AssistantNew({
       <HelpDrawer
         owner={owner}
         user={user}
-        show={helpDrawer}
-        onClose={() => setHelpDrawer(false)}
+        show={isHelpDrawerOpen}
+        onClose={() => setIsHelpDrawerOpen(false)}
       />
       <QuickStartGuide
         owner={owner}
@@ -326,7 +326,7 @@ export default function AssistantNew({
           icon={HeartAltIcon}
           labelVisible={false}
           label="Quick Start Guide"
-          onClick={() => setHelpDrawer(true)}
+          onClick={() => setIsHelpDrawerOpen(true)}
           size="md"
           variant="primary"
           hasMagnifying={true}
