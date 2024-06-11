@@ -17,6 +17,7 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
+import { DustConnectorWorkflowError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -312,11 +313,11 @@ async function tokenize(text: string, ds: DataSourceConfig) {
       { error: tokensRes.error },
       `Error tokenizing text for ${ds.dataSourceName}`
     );
-    throw {
-      __is_dust_error: true,
-      message: `Error tokenizing text for ${ds.dataSourceName}`,
-      type: "tokenize_internal_server_error",
-    };
+    throw new DustConnectorWorkflowError(
+      `Error tokenizing text for ${ds.dataSourceName}`,
+      "transient_upstream_activity_error",
+      tokensRes.error
+    );
   }
   return tokensRes.value;
 }

@@ -6,8 +6,10 @@ import type {
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
 
-import type { WorkflowError } from "@connectors/lib/error";
-import { ExternalOauthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOauthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 const { NANGO_SLACK_CONNECTOR_ID } = process.env;
@@ -64,24 +66,24 @@ export async function getSlackClient(
           e instanceof Error &&
           e.message.startsWith("A rate limit was exceeded")
         ) {
-          throw {
-            __is_dust_error: true,
-            message: e.message,
-            triggeringError: e,
-            type: "connector_rate_limit_error",
-          };
+          throw new ProviderWorkflowError(
+            "slack",
+            `Rate limited: ${e.message}`,
+            "rate_limit_error",
+            e
+          );
         }
 
         const slackError = e as CodedError;
         if (slackError.code === ErrorCode.HTTPError) {
           const httpError = slackError as WebAPIHTTPError;
           if (httpError.statusCode === 503) {
-            const workflowError: WorkflowError = {
-              type: "upstream_is_down_activity_error",
-              message: `Slack is down: ${httpError.message}`,
-              __is_dust_error: true,
-            };
-            throw workflowError;
+            throw new ProviderWorkflowError(
+              "slack",
+              `Slack is down: ${httpError.message}`,
+              "transient_upstream_activity_error",
+              httpError
+            );
           }
         }
         if (slackError.code === ErrorCode.PlatformError) {

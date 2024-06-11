@@ -5,6 +5,8 @@ import type {
 } from "@temporalio/worker";
 import { GaxiosError } from "googleapis-common";
 
+import { ProviderWorkflowError } from "@connectors/lib/error";
+
 export class GoogleDriveCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -15,22 +17,26 @@ export class GoogleDriveCastKnownErrorsInterceptor
     try {
       return await next(input);
     } catch (err: unknown) {
-      if (err instanceof GaxiosError && err.response?.status === 500) {
-        throw {
-          __is_dust_error: true,
-          message: "Google Drive Internal Error",
-          type: "google_drive_internal_error",
-          error: err,
-        };
+      if (err instanceof GaxiosError) {
+        switch (err.response?.status) {
+          case 429:
+            throw new ProviderWorkflowError(
+              "google_drive",
+              "429: Rate Limit Error",
+              "rate_limit_error",
+              err
+            );
+
+          case 500:
+            throw new ProviderWorkflowError(
+              "google_drive",
+              "500 - Internal Error",
+              "transient_upstream_activity_error",
+              err
+            );
+        }
       }
-      if (err instanceof GaxiosError && err.response?.status === 429) {
-        throw {
-          __is_dust_error: true,
-          message: "Google Drive Rate Limit Error",
-          type: "google_drive_rate_limit_error",
-          error: err,
-        };
-      }
+
       throw err;
     }
   }

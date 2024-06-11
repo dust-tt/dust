@@ -31,7 +31,7 @@ import {
   renderDocumentTitleAndContent,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import type { WorkflowError } from "@connectors/lib/error";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
@@ -123,13 +123,11 @@ export async function getChannel(
   const res = await client.conversations.info({ channel: channelId });
   // Despite the typing, in practice `conversations.info` can be undefined at times.
   if (!res) {
-    const workflowError: WorkflowError = {
-      type: "transient_upstream_activity_error",
-      message:
-        "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
-      __is_dust_error: true,
-    };
-    throw workflowError;
+    throw new ProviderWorkflowError(
+      "slack",
+      "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
+      "transient_upstream_activity_error"
+    );
   }
   if (res.error) {
     throw new Error(res.error);
@@ -295,13 +293,11 @@ export async function getMessagesForChannel(
   });
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
-    const workflowError: WorkflowError = {
-      type: "transient_upstream_activity_error",
-      message:
-        "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
-      __is_dust_error: true,
-    };
-    throw workflowError;
+    throw new ProviderWorkflowError(
+      "slack",
+      "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
+      "transient_upstream_activity_error"
+    );
   }
   if (c.error) {
     throw new Error(

@@ -11,7 +11,7 @@ import type { Logger } from "@connectors/logger/logger";
 import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 
-import { ExternalOauthTokenError } from "./error";
+import { DustConnectorWorkflowError, ExternalOauthTokenError } from "./error";
 import { syncFailed } from "./sync_status";
 import { cancelWorkflow, getConnectorId } from "./temporal";
 
@@ -46,7 +46,7 @@ export class ActivityInboundLogInterceptor
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let error: any = undefined;
+    let error: Error | any = undefined;
     const startTime = new Date();
     const tags = [
       `activity_name:${this.context.info.activityType}`,
@@ -61,12 +61,11 @@ export class ActivityInboundLogInterceptor
     // ensures that the error is logged and the activity is marked as
     // failed.
     const startToCloseTimer = setTimeout(() => {
-      const error = {
-        __is_dust_error: true,
-        message:
-          "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
-        type: "starttoclose_timeout_failure",
-      };
+      const error = new DustConnectorWorkflowError(
+        "Activity execution exceeded startToClose timeout (note: the activity might still be running)",
+        "workflow_timeout_failure"
+      );
+
       this.logger.error(
         {
           error,
@@ -126,11 +125,12 @@ export class ActivityInboundLogInterceptor
           },
           "Got 5xx Bad Response from external API"
         );
-        error = {
-          __is_dust_error: true,
-          message: `Got ${err.status} Bad Response from Nango`,
-          type: "nango_5xx_bad_response",
-        };
+
+        error = new DustConnectorWorkflowError(
+          `Got ${err.status} Bad Response from Nango`,
+          "transient_nango_activity_error",
+          err
+        );
       }
 
       if (err instanceof ExternalOauthTokenError) {
@@ -153,8 +153,8 @@ export class ActivityInboundLogInterceptor
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
-        if (error.__is_dust_error !== undefined) {
-          // this is a dust error
+        if (error instanceof DustConnectorWorkflowError) {
+          // This is a Dust error.
           errorType = error.type;
           this.logger.error(
             {
@@ -166,7 +166,7 @@ export class ActivityInboundLogInterceptor
             "Activity failed"
           );
         } else {
-          // unknown error type
+          // Unknown error type.
           this.logger.error(
             {
               error,
