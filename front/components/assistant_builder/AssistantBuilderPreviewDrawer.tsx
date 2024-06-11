@@ -45,7 +45,7 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assi
 export default function AssistantBuilderRightPanel({
   screen,
   template,
-  resetTemplate,
+  removeTemplate,
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
@@ -56,7 +56,7 @@ export default function AssistantBuilderRightPanel({
 }: {
   screen: BuilderScreen;
   template: FetchAssistantTemplateResponse | null;
-  resetTemplate: () => Promise<void>;
+  removeTemplate: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
@@ -193,7 +193,7 @@ export default function AssistantBuilderRightPanel({
                 />
                 <TemplateDropDownMenu
                   screen={screen}
-                  resetTemplate={resetTemplate}
+                  removeTemplate={removeTemplate}
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
@@ -216,7 +216,7 @@ export default function AssistantBuilderRightPanel({
                 />
                 <TemplateDropDownMenu
                   screen={screen}
-                  resetTemplate={resetTemplate}
+                  removeTemplate={removeTemplate}
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
@@ -305,13 +305,13 @@ const TemplateActionCard = ({
 
 const TemplateDropDownMenu = ({
   screen,
-  resetTemplate,
+  removeTemplate,
   resetToTemplateInstructions,
   resetToTemplateActions,
   openRightPanelTab,
 }: {
   screen: BuilderScreen;
-  resetTemplate: () => Promise<void>;
+  removeTemplate: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
@@ -343,7 +343,7 @@ const TemplateDropDownMenu = ({
             });
             if (confirmed) {
               openRightPanelTab("Preview");
-              await resetTemplate();
+              await removeTemplate();
             }
           }}
           icon={XMarkIcon}

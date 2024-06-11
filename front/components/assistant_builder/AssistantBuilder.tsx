@@ -123,7 +123,7 @@ export default function AssistantBuilder({
   const {
     template,
     instructionsResetAt,
-    resetTemplate,
+    removeTemplate,
     resetToTemplateInstructions,
     resetToTemplateActions,
   } = useTemplate(defaultTemplate);
@@ -515,7 +515,7 @@ export default function AssistantBuilder({
             <AssistantBuilderRightPanel
               screen={screen}
               template={template}
-              resetTemplate={resetTemplate}
+              removeTemplate={removeTemplate}
               resetToTemplateInstructions={async () => {
                 resetToTemplateInstructions(setBuilderState);
                 setEdited(true);

@@ -23,7 +23,7 @@ export function useTemplate(
   );
   const router = useRouter();
 
-  const resetTemplate = useCallback(async () => {
+  const removeTemplate = useCallback(async () => {
     setTemplate(null);
     await router.replace(
       { pathname: router.pathname, query: _.omit(router.query, "templateId") },
@@ -92,7 +92,7 @@ export function useTemplate(
   return {
     template,
     instructionsResetAt,
-    resetTemplate,
+    removeTemplate,
     resetToTemplateInstructions,
     resetToTemplateActions,
   };
