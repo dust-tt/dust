@@ -218,48 +218,53 @@ export default function WorkspaceAdmin({
         topNavigationCurrent="admin"
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
-        <Page.Vertical align="stretch" gap="md">
+        <Page.Vertical align="stretch" gap="xl">
           <Page.Header
             title="Workspace"
             icon={PlanetIcon}
             description="Manage your workspace"
           />
-          <Page.SectionHeader title="Analytics" />
-          <div className="grid grid-cols-2 gap-3 pb-2">
-            <QuickInsights owner={owner} />
-            <ActivityReport
-              monthOptions={monthOptions}
-              selectedMonth={selectedMonth}
-              handleSelectedMonth={handleSelectMonth}
-              isLoading={isLoading}
-              handleDownload={handleDownload}
-            />
-          </div>
-          <Page.SectionHeader title="Settings" />
-          <Page.SectionHeader
-            title="Workspace name"
-            description="Think GitHub repository names, short and memorable."
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-row gap-1">
-              <Input
-                name="name"
-                placeholder="Workspace name"
-                value={workspaceName}
-                onChange={(x) => setWorkspaceName(x)}
-                error={workspaceNameError}
-                showErrorLabel={true}
-                className="flex-1"
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Analytics</Page.H>
+            <Page.Horizontal gap="lg">
+              <QuickInsights owner={owner} />
+              <ActivityReport
+                monthOptions={monthOptions}
+                selectedMonth={selectedMonth}
+                handleSelectedMonth={handleSelectMonth}
+                isLoading={isLoading}
+                handleDownload={handleDownload}
               />
-              <Button
-                variant="primary"
-                disabled={disable || updating}
-                onClick={handleUpdateWorkspace}
-                label={updating ? "Updating..." : "Update"}
-                className="grow-0"
-              />
+            </Page.Horizontal>
+          </Page.Vertical>
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Settings</Page.H>
+            <Page.H variant="h6">Workspace name</Page.H>
+            <Page.P variant="secondary">
+              Think GitHub repository names, short and memorable.
+            </Page.P>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-row gap-2">
+                <Input
+                  name="name"
+                  placeholder="Workspace name"
+                  value={workspaceName}
+                  onChange={(x) => setWorkspaceName(x)}
+                  error={workspaceNameError}
+                  showErrorLabel={true}
+                />
+                {!disable && (
+                  <Button
+                    variant="primary"
+                    disabled={disable || updating}
+                    onClick={handleUpdateWorkspace}
+                    label={updating ? "Saving..." : "Save"}
+                    className="grow-0"
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          </Page.Vertical>
         </Page.Vertical>
       </AppLayout>
     </>
