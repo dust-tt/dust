@@ -388,8 +388,9 @@ export function metaPromptForProvider(
 ): string | null {
   switch (providerId) {
     case "openai":
-      return "When generating tool calls, generate valid and properly escaped JSON.";
+      return "When using tools, generate valid and properly escaped JSON arguments.";
     case "anthropic":
+      // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
       return (
         "Do not reflect on the quality of the returned search results in your response. " +
         "Be concise in your thinking phases."
