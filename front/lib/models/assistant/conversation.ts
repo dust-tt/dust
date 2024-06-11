@@ -282,7 +282,7 @@ AgentMessage.init(
       allowNull: true,
     },
     chainOfThoughts: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
       defaultValue: [],
     },
