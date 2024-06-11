@@ -14,6 +14,7 @@ import { Icon } from "./Icon";
 const labelStyleClasses = {
   item: "s-font-normal",
   action: "s-font-semibold",
+  link: "s-font-semibold",
   warning: "s-font-semibold",
 };
 
@@ -21,6 +22,7 @@ const labelColorClasses = {
   item: "s-text-element-600 dark:s-text-element-500-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
   action:
     "s-text-element-800 dark:s-text-element-800-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  link: "s-text-element-800 dark:s-text-element-800-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
   warning:
     "s-text-warning-500 dark:s-text-warning-400-dark group-hover:s-text-warning-400 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark",
 };
@@ -28,12 +30,22 @@ const labelColorClasses = {
 const spacingClasses = {
   sm: "s-py-2 s-gap-x-2",
   md: "s-py-2.5 s-gap-x-3",
+  lg: "s-py-3 s-gap-x-3",
+};
+
+const iconClasses = {
+  item: "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  action:
+    "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  link: "s-text-brand group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  warning:
+    "s-text-warning-400 group-hover:s-text-warning-300 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark",
 };
 
 type ItemProps = {
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  style: "action" | "warning" | "item";
-  spacing?: "sm" | "md";
+  style: "action" | "warning" | "item" | "link";
+  spacing?: "sm" | "md" | "lg";
   selectable?: boolean;
   selected?: boolean;
   disabled?: boolean;
@@ -87,9 +99,7 @@ export function Item({
             ? "s-text-element-500 dark:s-text-element-500-dark"
             : selected
             ? "s-text-action-400 dark:s-text-action-600-dark"
-            : style === "action" || style === "item"
-            ? "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark"
-            : "s-text-warning-400 group-hover:s-text-warning-300 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark"
+            : iconClasses[style]
         )}
       />
     );
@@ -221,6 +231,29 @@ interface NavigationListItemProps {
 
 Item.Navigation = function (props: NavigationListItemProps) {
   return <Item {...props} style="action" spacing="md" />;
+};
+
+interface LinkItemProps {
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  label: string;
+  description?: string;
+  visual?: string | React.ReactNode;
+  icon?: ComponentType;
+  className?: string;
+  href?: string;
+}
+
+Item.Link = function ({ ...props }: LinkItemProps) {
+  return (
+    <Item
+      {...props}
+      // Pass down additional props as needed
+      style="link"
+      hasAction={false}
+      spacing="lg"
+      // Add any conditions or logic for additional props
+    />
+  );
 };
 
 interface DropdownListItemProps {
