@@ -31,7 +31,7 @@ export class GoogleDriveCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "google_drive",
               "500 - Internal Error",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
         }

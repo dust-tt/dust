@@ -126,7 +126,7 @@ export async function getChannel(
     throw new ProviderWorkflowError(
       "slack",
       "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
-      "transcient_upstream_activity_error"
+      "transient_upstream_activity_error"
     );
   }
   if (res.error) {
@@ -296,7 +296,7 @@ export async function getMessagesForChannel(
     throw new ProviderWorkflowError(
       "slack",
       "Received unexpected undefined replies from Slack API in getMessagesForChannel (generally transient)",
-      "transcient_upstream_activity_error"
+      "transient_upstream_activity_error"
     );
   }
   if (c.error) {

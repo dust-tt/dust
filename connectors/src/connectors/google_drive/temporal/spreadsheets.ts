@@ -420,7 +420,7 @@ export async function syncSpreadSheet(
         throw new ProviderWorkflowError(
           "google_drive",
           "503 - Service Unavailable from Google Sheets",
-          "transcient_upstream_activity_error",
+          "transient_upstream_activity_error",
           err
         );
       } else if (err instanceof Error && "code" in err && err.code === 500) {

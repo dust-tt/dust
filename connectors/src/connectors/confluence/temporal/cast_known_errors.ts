@@ -26,7 +26,7 @@ export class ConfluenceCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "confluence",
               "500 - Internal Error",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
 
@@ -34,7 +34,7 @@ export class ConfluenceCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "confluence",
               "502 - Bad Gateway",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
 
@@ -42,7 +42,7 @@ export class ConfluenceCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "confluence",
               "504 - Gateway Time Out",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
         }

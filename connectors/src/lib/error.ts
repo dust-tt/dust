@@ -14,7 +14,7 @@ export function errorFromAny(e: any): Error {
 // Generate dynamic error types.
 type ProviderErrorType =
   | "rate_limit_error"
-  | "transcient_upstream_activity_error";
+  | "transient_upstream_activity_error";
 
 // Define general workflow error types.
 type GeneralWorkflowErrorType =

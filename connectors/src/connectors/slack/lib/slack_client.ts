@@ -81,7 +81,7 @@ export async function getSlackClient(
             throw new ProviderWorkflowError(
               "slack",
               `Slack is down: ${httpError.message}`,
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               httpError
             );
           }

@@ -27,7 +27,7 @@ export class NotionCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "notion",
               "Service Unavailable",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
 
@@ -43,7 +43,7 @@ export class NotionCastKnownErrorsInterceptor
             throw new ProviderWorkflowError(
               "notion",
               "Internal Server Error",
-              "transcient_upstream_activity_error",
+              "transient_upstream_activity_error",
               err
             );
         }
@@ -54,7 +54,7 @@ export class NotionCastKnownErrorsInterceptor
           throw new ProviderWorkflowError(
             "notion",
             "Notion 5XX transient error",
-            "transcient_upstream_activity_error",
+            "transient_upstream_activity_error",
             err
           );
         }
@@ -62,7 +62,7 @@ export class NotionCastKnownErrorsInterceptor
         throw new ProviderWorkflowError(
           "notion",
           "Request Timeout",
-          "transcient_upstream_activity_error",
+          "transient_upstream_activity_error",
           err
         );
       }

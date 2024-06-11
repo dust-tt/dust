@@ -99,7 +99,7 @@ async function queryIntercomAPI({
       throw new ProviderWorkflowError(
         "intercom",
         `405 - ${isCaptchaError ? "Captcha error" : text}`,
-        "transcient_upstream_activity_error"
+        "transient_upstream_activity_error"
       );
     } else {
       logger.info(
