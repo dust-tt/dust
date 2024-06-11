@@ -53,11 +53,13 @@ export async function renderConversationForModelMultiActions({
   model,
   prompt,
   allowedTokenCount,
+  excludeActions,
 }: {
   conversation: ConversationType;
   model: { providerId: string; modelId: string };
   prompt: string;
   allowedTokenCount: number;
+  excludeActions?: boolean;
 }): Promise<
   Result<
     {
@@ -84,13 +86,15 @@ export async function renderConversationForModelMultiActions({
         Array<{ call: FunctionCallType; result: FunctionMessageTypeModel }>
       >;
 
-      for (const action of actions) {
-        const stepIndex = action.step;
-        steps[stepIndex] = steps[stepIndex] || [];
-        steps[stepIndex].push({
-          call: action.renderForFunctionCall(),
-          result: action.renderForMultiActionsModel(),
-        });
+      if (!excludeActions) {
+        for (const action of actions) {
+          const stepIndex = action.step;
+          steps[stepIndex] = steps[stepIndex] || [];
+          steps[stepIndex].push({
+            call: action.renderForFunctionCall(),
+            result: action.renderForMultiActionsModel(),
+          });
+        }
       }
 
       for (const step of steps) {

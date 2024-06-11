@@ -440,6 +440,7 @@ export async function generateConversationTitle(
     model,
     prompt: "", // There is no prompt for title generation.
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    excludeActions: true,
   });
 
   if (modelConversationRes.isErr()) {
