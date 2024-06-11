@@ -1089,6 +1089,7 @@ class TokenEmitter {
   private content: string = "";
   private chainOfThought: string = "";
   private chainOfToughtDelimitersOpened: number = 0;
+  private swallowDelimitersOpened: number = 0;
   private pattern?: RegExp;
   private incompleteDelimiterPattern?: RegExp;
   private specByDelimiter: Record<
@@ -1096,6 +1097,7 @@ class TokenEmitter {
     {
       type: "opening_delimiter" | "closing_delimiter";
       isChainOfThought: boolean;
+      swallow: boolean;
     }
   >;
 
@@ -1125,14 +1127,19 @@ class TokenEmitter {
     // Store mapping of delimiters to their spec.
     this.specByDelimiter =
       delimitersConfiguration?.delimiters.reduce(
-        (acc, { openingPattern, closingPattern, isChainOfThought }) => {
+        (
+          acc,
+          { openingPattern, closingPattern, isChainOfThought, swallow }
+        ) => {
           acc[openingPattern] = {
             type: "opening_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           acc[closingPattern] = {
             type: "closing_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           return acc;
         },
@@ -1172,10 +1179,12 @@ class TokenEmitter {
         : "tokens",
     };
 
-    if (this.chainOfToughtDelimitersOpened) {
-      this.chainOfThought += text;
-    } else {
-      this.content += text;
+    if (!this.swallowDelimitersOpened) {
+      if (this.chainOfToughtDelimitersOpened) {
+        this.chainOfThought += text;
+      } else {
+        this.content += text;
+      }
     }
 
     this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
@@ -1206,11 +1215,22 @@ class TokenEmitter {
         yield* this.flushTokens({ upTo: index });
       }
 
-      const { type: classification, isChainOfThought } =
-        this.specByDelimiter[del];
+      const {
+        type: classification,
+        isChainOfThought,
+        swallow,
+      } = this.specByDelimiter[del];
 
       if (!classification) {
         throw new Error(`Unknown delimiter: ${del}`);
+      }
+
+      if (swallow) {
+        if (classification === "opening_delimiter") {
+          this.swallowDelimitersOpened += 1;
+        } else {
+          this.swallowDelimitersOpened -= 1;
+        }
       }
 
       if (isChainOfThought) {
