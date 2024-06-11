@@ -70,7 +70,11 @@ export type GenerationTokensEvent = {
   configurationId: string;
   messageId: string;
   text: string;
-  classification: "tokens" | "chain_of_thought" | "opening_tag" | "closing_tag";
+  classification:
+    | "tokens"
+    | "chain_of_thought"
+    | "opening_delimiter"
+    | "closing_delimiter";
 };
 
 export type GenerationErrorEvent = {

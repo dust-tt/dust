@@ -1753,10 +1753,10 @@ async function* streamRunAgentEvents(
         } else if (event.classification === "chain_of_thought") {
           yield event;
         } else if (
-          event.classification === "opening_tag" ||
-          event.classification === "closing_tag"
+          event.classification === "opening_delimiter" ||
+          event.classification === "closing_delimiter"
         ) {
-          // Ignoring these for now.
+          yield event;
         } else {
           assertNever(event.classification);
         }

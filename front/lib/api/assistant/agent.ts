@@ -522,7 +522,7 @@ export async function* runMultiActionsAgent(
   const tokenEmitter = new TokenEmitter(
     agentConfiguration,
     agentMessage,
-    model.tagsConfiguration
+    model.delimitersConfiguration
   );
 
   try {
@@ -1045,59 +1045,65 @@ class TokenEmitter {
   private buffer: string = "";
   private content: string = "";
   private chainOfThought: string = "";
-  private chainOfToughtTagsOpened: number = 0;
+  private chainOfToughtDelimitersOpened: number = 0;
   private pattern?: RegExp;
-  private incompleteTagPattern?: RegExp;
-  private specByTag: Record<
+  private incompleteDelimiterPattern?: RegExp;
+  private specByDelimiter: Record<
     string,
-    { type: "opening_tag" | "closing_tag"; isChainOfThought: boolean }
+    {
+      type: "opening_delimiter" | "closing_delimiter";
+      isChainOfThought: boolean;
+    }
   >;
 
   constructor(
     private agentConfiguration: AgentConfigurationType,
     private agentMessage: AgentMessageType,
-    tagsConfiguration: ModelConfigurationType["tagsConfiguration"]
+    delimitersConfiguration: ModelConfigurationType["delimitersConfiguration"]
   ) {
     this.buffer = "";
     this.content = "";
     this.chainOfThought = "";
-    this.chainOfToughtTagsOpened = 0;
+    this.chainOfToughtDelimitersOpened = 0;
 
-    // Ensure no duplicate tags.
-    const allTagsArray =
-      tagsConfiguration?.tags.flatMap(({ openingPattern, closingPattern }) => [
-        escapeRegExp(openingPattern),
-        escapeRegExp(closingPattern),
-      ]) ?? [];
+    // Ensure no duplicate delimiters.
+    const allDelimitersArray =
+      delimitersConfiguration?.delimiters.flatMap(
+        ({ openingPattern, closingPattern }) => [
+          escapeRegExp(openingPattern),
+          escapeRegExp(closingPattern),
+        ]
+      ) ?? [];
 
-    if (allTagsArray.length !== new Set(allTagsArray).size) {
-      throw new Error("Duplicate tags in the configuration");
+    if (allDelimitersArray.length !== new Set(allDelimitersArray).size) {
+      throw new Error("Duplicate delimiters in the configuration");
     }
 
-    // Store mapping of tags to their spec.
-    this.specByTag =
-      tagsConfiguration?.tags.reduce(
+    // Store mapping of delimiters to their spec.
+    this.specByDelimiter =
+      delimitersConfiguration?.delimiters.reduce(
         (acc, { openingPattern, closingPattern, isChainOfThought }) => {
           acc[openingPattern] = {
-            type: "opening_tag" as const,
+            type: "opening_delimiter" as const,
             isChainOfThought,
           };
           acc[closingPattern] = {
-            type: "closing_tag" as const,
+            type: "closing_delimiter" as const,
             isChainOfThought,
           };
           return acc;
         },
-        {} as TokenEmitter["specByTag"]
+        {} as TokenEmitter["specByDelimiter"]
       ) ?? {};
 
     // Store the regex pattern that match any of the tags.
-    this.pattern = allTagsArray.length
-      ? new RegExp(allTagsArray.join("|"))
+    this.pattern = allDelimitersArray.length
+      ? new RegExp(allDelimitersArray.join("|"))
       : undefined;
 
     // Store the regex pattern that match incomplete tags.
-    this.incompleteTagPattern = tagsConfiguration?.incompleteTagRegex;
+    this.incompleteDelimiterPattern =
+      delimitersConfiguration?.incompleteDelimiterRegex;
   }
 
   async *flushTokens({
@@ -1118,12 +1124,12 @@ class TokenEmitter {
       configurationId: this.agentConfiguration.sId,
       messageId: this.agentMessage.sId,
       text,
-      classification: this.chainOfToughtTagsOpened
+      classification: this.chainOfToughtDelimitersOpened
         ? "chain_of_thought"
         : "tokens",
     };
 
-    if (this.chainOfToughtTagsOpened) {
+    if (this.chainOfToughtDelimitersOpened) {
       this.chainOfThought += text;
     } else {
       this.content += text;
@@ -1142,7 +1148,7 @@ class TokenEmitter {
       return;
     }
 
-    if (this.incompleteTagPattern?.test(this.buffer)) {
+    if (this.incompleteDelimiterPattern?.test(this.buffer)) {
       // Wait for the next event to complete the tag.
       return;
     }
@@ -1157,18 +1163,21 @@ class TokenEmitter {
         yield* this.flushTokens({ upTo: index });
       }
 
-      const { type: classification, isChainOfThought } = this.specByTag[tag];
+      const { type: classification, isChainOfThought } =
+        this.specByDelimiter[tag];
 
       if (!classification) {
         throw new Error(`Unknown tag: ${tag}`);
       }
 
       if (isChainOfThought) {
-        if (classification === "opening_tag") {
-          this.chainOfToughtTagsOpened += 1;
-        } else {
-          this.chainOfToughtTagsOpened -= 1;
-        }
+        this.chainOfToughtDelimitersOpened = Math.max(
+          0,
+          this.chainOfToughtDelimitersOpened + classification ===
+            "opening_delimiter"
+            ? 1
+            : -1
+        );
       }
 
       // Emit the tag

@@ -80,16 +80,16 @@ export type ModelConfigurationType = {
   supportsMultiActions: boolean;
   isLegacy: boolean;
 
-  // Allows configuring parsing of special tags in the streamed model output.
-  tagsConfiguration?: {
-    tags: Array<{
+  // Allows configuring parsing of special delimiters in the streamed model output.
+  delimitersConfiguration?: {
+    delimiters: Array<{
       openingPattern: string;
       closingPattern: string;
       isChainOfThought: boolean;
     }>;
     // If this pattern is found at the end of a model event, we'll wait for the
     // the next event before emitting tokens.
-    incompleteTagRegex?: RegExp;
+    incompleteDelimiterRegex?: RegExp;
   };
 };
 
@@ -147,9 +147,9 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's powerful model.",
   supportsMultiActions: true,
   isLegacy: false,
-  tagsConfiguration: {
-    incompleteTagRegex: /<\/?[a-zA-Z]*$/,
-    tags: [
+  delimitersConfiguration: {
+    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    delimiters: [
       {
         openingPattern: "<thinking>",
         closingPattern: "</thinking>",
