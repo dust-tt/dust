@@ -94,7 +94,7 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((m) => m.id === "text-embedding-ada-002");
+              f = mList.filter((m) => m.id.startsWith("text-embedding"));
             } else {
               f = mList.filter((m) => {
                 return (
@@ -152,7 +152,7 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((d) => d.model === "text-embedding-ada-002");
+              f = mList.filter((d) => d.model.startsWith("text-embedding"));
             } else {
               f = mList.filter((d) => {
                 return (

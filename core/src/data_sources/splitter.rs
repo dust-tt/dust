@@ -532,7 +532,7 @@ mod tests {
         splits_count: usize,
     ) -> Result<()> {
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
 
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
@@ -608,7 +608,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -661,7 +661,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -716,7 +716,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -814,7 +814,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -872,7 +872,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -903,7 +903,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -949,7 +949,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         let splitted = splitter(SplitterID::BaseV0)
@@ -996,7 +996,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         // Before the fix, this would fail (assertion failure in TokenizedSection.chunk).
@@ -1017,7 +1017,7 @@ mod tests {
         };
 
         let provider_id = ProviderID::OpenAI;
-        let model_id = "text-embedding-ada-002";
+        let model_id = "text-embedding-3-large-1536";
         let credentials = Credentials::from([("OPENAI_API_KEY".to_string(), "abc".to_string())]);
 
         splitter(SplitterID::BaseV0)

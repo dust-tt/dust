@@ -1,4 +1,4 @@
-use crate::{providers::provider::ProviderID, utils::ParseError};
+use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::fmt;
@@ -148,29 +148,13 @@ impl DustQdrantClient {
         Ok(h % SHARD_KEY_COUNT)
     }
 
-    fn shard_key(
-        &self,
-        embedder_config: &EmbedderConfig,
-        internal_id: &String,
-    ) -> Result<shard_key::Key> {
-        let key_id: u64 = match (
-            embedder_config.provider_id,
-            embedder_config.model_id.as_str(),
-        ) {
-            (ProviderID::OpenAI, "text-embedding-ada-002") => {
-                // The startegy below was a mistake as the last character is an hex encoding
-                // character so can only take values from 0-9 and a-f which does not cover the
-                // SHARD_KEY_COUNT range, leading to unbalanced shards:
-                //
-                // We use the last character of the internal_id to determine the key_id. This id is
-                // generated using new_id and is guaranteed random. Using the last character gives
-                // us a path to moving data sources across shard when needed.
-                internal_id.chars().last().unwrap() as u64 % SHARD_KEY_COUNT
-            }
-            _ => Self::shard_key_id_from_internal_id(internal_id)?,
-        };
-
-        Ok(format!("{}_{}", self.shard_key_prefix(), key_id).into())
+    fn shard_key(&self, internal_id: &String) -> Result<shard_key::Key> {
+        Ok(format!(
+            "{}_{}",
+            self.shard_key_prefix(),
+            Self::shard_key_id_from_internal_id(internal_id)?
+        )
+        .into())
     }
 
     // Inject the `data_source_internal_id` to the filter to ensure tenant separation. This
@@ -204,7 +188,7 @@ impl DustQdrantClient {
         self.client
             .delete_points(
                 self.collection_name(embedder_config),
-                Some(vec![self.shard_key(embedder_config, internal_id)?]),
+                Some(vec![self.shard_key(internal_id)?]),
                 &filter.into(),
                 None,
             )
@@ -234,7 +218,7 @@ impl DustQdrantClient {
         self.client
             .delete_points(
                 self.collection_name(embedder_config),
-                Some(vec![self.shard_key(embedder_config, internal_id)?]),
+                Some(vec![self.shard_key(internal_id)?]),
                 &filter.into(),
                 None,
             )
@@ -261,9 +245,7 @@ impl DustQdrantClient {
                 limit,
                 offset,
                 filter: Some(filter),
-                shard_key_selector: Some(
-                    vec![self.shard_key(embedder_config, internal_id)?].into(),
-                ),
+                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
                 ..Default::default()
             })
             .await
@@ -289,9 +271,7 @@ impl DustQdrantClient {
                 filter: Some(filter),
                 limit,
                 with_payload,
-                shard_key_selector: Some(
-                    vec![self.shard_key(embedder_config, internal_id)?].into(),
-                ),
+                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
                 ..Default::default()
             })
             .await
@@ -313,9 +293,7 @@ impl DustQdrantClient {
                 collection_name: self.collection_name(embedder_config),
                 filter: Some(filter),
                 exact: Some(exact),
-                shard_key_selector: Some(
-                    vec![self.shard_key(embedder_config, internal_id)?].into(),
-                ),
+                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
                 ..Default::default()
             })
             .await
@@ -330,7 +308,7 @@ impl DustQdrantClient {
         self.client
             .upsert_points(
                 self.collection_name(embedder_config),
-                Some(vec![self.shard_key(embedder_config, internal_id)?]),
+                Some(vec![self.shard_key(internal_id)?]),
                 points,
                 None,
             )
@@ -350,7 +328,7 @@ impl DustQdrantClient {
         self.client
             .set_payload(
                 self.collection_name(embedder_config),
-                Some(vec![self.shard_key(embedder_config, internal_id)?]),
+                Some(vec![self.shard_key(internal_id)?]),
                 &filter.into(),
                 payload,
                 None,

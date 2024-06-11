@@ -588,7 +588,6 @@ impl AzureOpenAIEmbedder {
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => cl100k_base_singleton(),
                 "text-embedding-3-small" => cl100k_base_singleton(),
                 "text-embedding-3-large-1536" => cl100k_base_singleton(),
                 _ => unimplemented!(),
@@ -645,7 +644,6 @@ impl Embedder for AzureOpenAIEmbedder {
 
         // We ensure at initialize that we only use supported models.
         match d.model.as_str() {
-            "text-embedding-ada-002" => (),
             "text-embedding-3-small" => (),
             "text-embedding-3-large-1536" => (),
             _ => Err(anyhow!("Unsupported model: {}", d.model))?,
@@ -659,7 +657,6 @@ impl Embedder for AzureOpenAIEmbedder {
     fn context_size(&self) -> usize {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => 8191,
                 "text-embedding-3-small" => 8191,
                 "text-embedding-3-large-1536" => 8191,
                 _ => unimplemented!(),
@@ -671,7 +668,6 @@ impl Embedder for AzureOpenAIEmbedder {
     fn embedding_size(&self) -> usize {
         match self.model_id.as_ref() {
             Some(model_id) => match model_id.as_str() {
-                "text-embedding-ada-002" => 1536,
                 "text-embedding-3-small" => 1536,
                 "text-embedding-3-large-1536" => 1536,
                 _ => unimplemented!(),
