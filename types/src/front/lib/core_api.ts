@@ -10,6 +10,7 @@ import {
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
 import { dustManagedCredentials } from "../../front/lib/api/credentials";
+import { EmbeddingProviderIdType } from "../../front/lib/assistant";
 import { Project } from "../../front/project";
 import { CredentialsType } from "../../front/provider";
 import {
@@ -21,7 +22,6 @@ import {
 } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
-import { EmbeddingProviderIdType } from "./assistant";
 
 const { CORE_API = "http://127.0.0.1:3001" } = process.env;
 
