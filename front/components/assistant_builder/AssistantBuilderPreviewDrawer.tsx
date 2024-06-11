@@ -31,9 +31,9 @@ import {
   usePreviewAssistant,
   useTryAssistantCore,
 } from "@app/components/assistant/TryAssistant";
-import type { BuilderScreen } from "@app/components/assistant_builder/AssistantBuilder";
 import type {
   AssistantBuilderState,
+  BuilderScreen,
   TemplateActionType,
 } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";

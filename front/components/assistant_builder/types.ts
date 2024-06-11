@@ -1,13 +1,19 @@
+import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
   ContentNode,
   DataSourceType,
+  PlanType,
   ProcessSchemaPropertyType,
+  SubscriptionType,
   SupportedModel,
   TimeframeUnit,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
+
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -268,3 +274,38 @@ export function getDefaultActionConfiguration(
       assertNever(actionType);
   }
 }
+
+export const BUILDER_FLOWS = [
+  "workspace_assistants",
+  "personal_assistants",
+] as const;
+export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
+
+export type AssistantBuilderProps = {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  plan: PlanType;
+  gaTrackingId: string;
+  dataSources: DataSourceType[];
+  dustApps: AppType[];
+  initialBuilderState: AssistantBuilderInitialState | null;
+  agentConfigurationId: string | null;
+  flow: BuilderFlow;
+  defaultIsEdited?: boolean;
+  baseUrl: string;
+  defaultTemplate: FetchAssistantTemplateResponse | null;
+  multiActionsEnabled: boolean;
+};
+
+export const BUILDER_SCREENS = {
+  instructions: {
+    label: "Instructions",
+    icon: CircleIcon,
+  },
+  actions: {
+    label: "Actions & Data sources",
+    icon: SquareIcon,
+  },
+  naming: { label: "Naming", icon: TriangleIcon },
+};
+export type BuilderScreen = keyof typeof BUILDER_SCREENS;
