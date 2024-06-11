@@ -14,10 +14,13 @@ import {
 } from "@dust-tt/sparkle";
 import type { AppType, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_TOOLS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
-import _ from "lodash";
 import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
+import {
+  ActionDustAppRun,
+  isActionDustAppRunValid,
+} from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
   ActionProcess,
   isActionProcessValid,
@@ -45,11 +48,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-
-import {
-  ActionDustAppRun,
-  isActionDustAppRunValid,
-} from "./actions/DustAppRunAction";
+import { classNames } from "@app/lib/utils";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -437,8 +436,13 @@ function ActionCard({
             }}
           />
         </div>
-        <div className="w-full truncate text-base text-element-700">
-          {_.capitalize(_.toLower(action.name).replace(/_/g, " "))}
+        <div
+          className={classNames(
+            "w-full truncate text-base",
+            action.description ? "text-element-700" : "text-warning-500"
+          )}
+        >
+          {action.description || "Missing description"}
         </div>
       </div>
     </CardButton>
