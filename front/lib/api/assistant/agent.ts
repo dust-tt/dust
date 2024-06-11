@@ -1096,12 +1096,12 @@ class TokenEmitter {
         {} as TokenEmitter["specByDelimiter"]
       ) ?? {};
 
-    // Store the regex pattern that match any of the tags.
+    // Store the regex pattern that match any of the delimiters.
     this.pattern = allDelimitersArray.length
       ? new RegExp(allDelimitersArray.join("|"))
       : undefined;
 
-    // Store the regex pattern that match incomplete tags.
+    // Store the regex pattern that match incomplete delimiters.
     this.incompleteDelimiterPattern =
       delimitersConfiguration?.incompleteDelimiterRegex;
   }
@@ -1149,25 +1149,25 @@ class TokenEmitter {
     }
 
     if (this.incompleteDelimiterPattern?.test(this.buffer)) {
-      // Wait for the next event to complete the tag.
+      // Wait for the next event to complete the delimiter.
       return;
     }
 
     let match: RegExpExecArray | null;
     while ((match = this.pattern.exec(this.buffer))) {
-      const tag = match[0];
+      const del = match[0];
       const index = match.index;
 
-      // Emit text before the tag as 'text' or 'chain_of_thought'
+      // Emit text before the delimiter as 'text' or 'chain_of_thought'
       if (index > 0) {
         yield* this.flushTokens({ upTo: index });
       }
 
       const { type: classification, isChainOfThought } =
-        this.specByDelimiter[tag];
+        this.specByDelimiter[del];
 
       if (!classification) {
-        throw new Error(`Unknown tag: ${tag}`);
+        throw new Error(`Unknown delimiter: ${del}`);
       }
 
       if (isChainOfThought) {
@@ -1180,18 +1180,18 @@ class TokenEmitter {
         );
       }
 
-      // Emit the tag
+      // Emit the delimiter.
       yield {
         type: "generation_tokens",
         created: Date.now(),
         configurationId: this.agentConfiguration.sId,
         messageId: this.agentMessage.sId,
-        text: tag,
+        text: del,
         classification,
       } satisfies GenerationTokensEvent;
 
       // Update the buffer
-      this.buffer = this.buffer.substring(index + tag.length);
+      this.buffer = this.buffer.substring(index + del.length);
     }
 
     // Emit the remaining text/chain_of_thought.
