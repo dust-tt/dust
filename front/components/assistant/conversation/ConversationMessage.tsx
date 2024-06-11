@@ -72,7 +72,7 @@ export function ConversationMessage({
   return (
     <div
       className={classNames(
-        "flex w-full flex-col justify-stretch gap-4 rounded-2xl",
+        "flex w-full max-w-4xl flex-col justify-center gap-4 rounded-2xl",
         messageTypeClasses[type],
         messageSizeClasses[size]
       )}

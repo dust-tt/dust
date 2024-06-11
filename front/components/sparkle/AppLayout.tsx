@@ -299,12 +299,12 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
-      <div className="light h-full">
-        {!hideSidebar && (
+      <div className="light flex h-full flex-row">
+        {/* {!hideSidebar && (
           <Transition.Root show={sidebarOpen} as={Fragment}>
             <Dialog
               as="div"
-              className="relative z-50 lg:hidden"
+              className="z-50 grow-0 lg:hidden"
               onClose={setSidebarOpen}
             >
               <Transition.Child
@@ -368,10 +368,10 @@ export default function AppLayout({
               </div>
             </Dialog>
           </Transition.Root>
-        )}
+        )} */}
 
         {!hideSidebar && isNavigationBarOpened && (
-          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+          <div className="hidden grow-0 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
             {loaded && (
               <NavigationBar
                 owner={owner}
@@ -387,11 +387,11 @@ export default function AppLayout({
 
         <div
           className={classNames(
-            "mt-0 h-full flex-1",
-            !hideSidebar ? (isNavigationBarOpened ? "lg:pl-80" : "lg:pl-0") : ""
+            "bg-red mt-0 h-full flex-1"
+            // !hideSidebar ? (isNavigationBarOpened ? "lg:pl-80" : "lg:pl-0") : ""
           )}
         >
-          <div
+          {/* <div
             className={classNames(
               "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
             )}
@@ -404,7 +404,7 @@ export default function AppLayout({
               <span className="sr-only">Open sidebar</span>
               <Bars3Icon className="h-5 w-5" aria-hidden="true" />
             </button>
-          </div>
+          </div> */}
           <div
             className={classNames(
               "fixed left-0 right-0 top-0 z-30 flex flex-col pl-12 lg:pl-0",
@@ -429,13 +429,13 @@ export default function AppLayout({
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
-              "h-full overflow-x-hidden pt-16",
+              "flex h-full flex-1 justify-center overflow-x-hidden pt-16",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
             <div
               className={classNames(
-                "mx-auto h-full w-full",
+                "flex h-full w-full flex-col items-center",
                 isWideMode ? "w-full" : "max-w-4xl"
               )}
             >

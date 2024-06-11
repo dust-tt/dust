@@ -48,7 +48,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     switch (type) {
       case "user_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            key={`message-id-${sId}`}
+            ref={ref}
+            className="flex justify-center"
+          >
             <UserMessage
               conversationId={conversationId}
               hideReactions={hideReactions}
@@ -66,7 +70,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
       case "agent_message":
         return (
-          <div key={`message-id-${sId}`} ref={ref}>
+          <div
+            key={`message-id-${sId}`}
+            ref={ref}
+            className="flex justify-center"
+          >
             <AgentMessage
               message={message}
               owner={owner}

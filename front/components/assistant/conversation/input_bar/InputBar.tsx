@@ -375,8 +375,8 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="4xl:px-0 fixed bottom-0 z-20 w-full flex-initial">
-      <div className="max-h-screen max-w-4xl pb-0 sm:pb-8">
+    <div className="4xl:px-0 bottom-0 z-20 flex w-full grow-0 justify-center">
+      <div className="max-h-screen w-full max-w-4xl pb-0 sm:pb-8">
         <AssistantInputBar
           owner={owner}
           onSubmit={onSubmit}
