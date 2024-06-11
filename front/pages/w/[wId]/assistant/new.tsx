@@ -19,6 +19,7 @@ import { AssistantInputBar } from "@app/components/assistant/conversation/input_
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 import { QuickStartGuide } from "@app/components/quick_start_guide";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -29,7 +30,6 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations, useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import { classNames } from "@app/lib/utils";
-import { HelpDrawer } from "@app/components/assistant/HelpDrawer";
 
 const { GA_TRACKING_ID = "" } = process.env;
 

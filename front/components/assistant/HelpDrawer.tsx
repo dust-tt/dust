@@ -8,21 +8,22 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import {
-  isBuilder,
-  type AgentMention,
-  type MentionType,
-  type UserType,
-  type WorkspaceType,
+import type {
+  AgentMention,
+  MentionType,
+  UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import { ComponentType, useCallback, useContext } from "react";
-
+import { isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
+import type { ComponentType } from "react";
+import { useCallback, useContext } from "react";
+
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 const topPicks = [
   {
