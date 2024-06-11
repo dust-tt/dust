@@ -239,9 +239,7 @@ export async function* runLegacyAgent(
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
           text: event.text,
-          chainOfThought: "",
         };
-
         agentMessage.content = event.text;
         break;
 

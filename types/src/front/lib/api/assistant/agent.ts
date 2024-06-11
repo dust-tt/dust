@@ -81,7 +81,6 @@ export type AgentGenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
-  chainOfThought: string;
 };
 
 // Event sent to stop the generation.

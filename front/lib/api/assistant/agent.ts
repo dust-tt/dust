@@ -222,13 +222,22 @@ export async function* runMultiActionsAgentLoop(
           } satisfies AgentGenerationCancelledEvent;
           return;
         case "generation_success":
+          if (event.chainOfThought.length) {
+            yield {
+              type: "agent_chain_of_thought",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              message: agentMessage,
+              chainOfThought: event.chainOfThought,
+            };
+          }
           yield {
             type: "agent_generation_success",
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: event.text,
-            chainOfThought: event.chainOfThought,
           } satisfies AgentGenerationSuccessEvent;
 
           agentMessage.content = event.text;
@@ -744,6 +753,9 @@ export async function* runMultiActionsAgent(
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       message: agentMessage,
+
+      // All content here was generated before a tool use and is not proper generation content
+      // and can therefore be safely assumed to be reflection from the model before using a tool.
       // In practice, we should never have both chainOfThought and content.
       // It is not completely impossible that eg Anthropic decides to emit part of the
       // CoT between `<thinking>` XML tags and the rest outside of any tag.

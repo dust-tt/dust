@@ -1718,18 +1718,9 @@ async function* streamRunAgentEvents(
 
       case "agent_generation_success":
         // Store message in database.
-        const updateParams: Parameters<typeof agentMessageRow.update>[0] = {
+        await agentMessageRow.update({
           content: event.text,
-        };
-
-        if (event.chainOfThought.length) {
-          updateParams.chainOfThoughts = [
-            ...agentMessageRow.chainOfThoughts,
-            event.chainOfThought,
-          ];
-        }
-
-        await agentMessageRow.update(updateParams);
+        });
         yield event;
         break;
 
