@@ -15,6 +15,7 @@ import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/connectors/google_drive/t
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -416,12 +417,11 @@ export async function syncSpreadSheet(
       break;
     } catch (err) {
       if (isGAxiosServiceUnavailablError(err)) {
-        throw {
-          error: err,
-          __is_dust_error: true,
-          message: "Got 503 Service Unavailable from Google Sheets",
-          type: "google_sheets_503_service_unavailable",
-        };
+        throw new ProviderWorkflowError(
+          "Got 503 Service Unavailable from Google Sheets",
+          "google_drive",
+          err
+        );
       } else if (err instanceof Error && "code" in err && err.code === 500) {
         internalErrorsCount++;
         if (internalErrorsCount > maxInternalErrors) {
@@ -557,6 +557,6 @@ export async function deleteSpreadsheet(
   }
 }
 
-function isGAxiosServiceUnavailablError(err: unknown): boolean {
+function isGAxiosServiceUnavailablError(err: unknown): err is Error {
   return err instanceof Error && "code" in err && err.code === 503;
 }

@@ -3,8 +3,8 @@ import { Err, Ok } from "@dust-tt/types";
 import { Nango } from "@nangohq/node";
 import axios from "axios";
 
-import type { WorkflowError } from "@connectors/lib/error";
 import {
+  DustConnectorWorkflowError,
   ExternalOauthTokenError,
   NANGO_ERROR_TYPES,
   NangoError,
@@ -46,12 +46,10 @@ class CustomNango extends Nango {
           }
         }
         if (e.status === 520 && e.code === "ERR_BAD_RESPONSE") {
-          const workflowError: WorkflowError = {
-            type: "transient_nango_activity_error",
-            message: `Nango transient 520 errors`,
-            __is_dust_error: true,
-          };
-          throw workflowError;
+          throw new DustConnectorWorkflowError(
+            "Nango transient 520 errors",
+            "transient_nango_activity_error"
+          );
         }
       }
       throw e;
