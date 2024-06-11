@@ -18,13 +18,13 @@ import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
-  ActionDustAppRun,
-  isActionDustAppRunValid,
-} from "@app/components/assistant_builder/actions/DustAppRunAction";
-import {
   ActionBrowse,
   isActionBrowseValid,
 } from "@app/components/assistant_builder/actions/BrowseAction";
+import {
+  ActionDustAppRun,
+  isActionDustAppRunValid,
+} from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
   ActionProcess,
   isActionProcessValid,
