@@ -144,11 +144,6 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       );
     }
 
-    console.log(
-      "==============run browse action=====================",
-      rawInputs
-    );
-
     const { actionConfiguration } = this;
 
     const rawUrls = rawInputs.urls;
