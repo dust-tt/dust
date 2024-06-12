@@ -9,3 +9,15 @@ export class AuthFlowError extends Error {
     super(message);
   }
 }
+
+export class UnverifiedEmailError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class WorkspaceIdentificationError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}

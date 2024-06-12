@@ -12,6 +12,7 @@ export type APIErrorType =
   | "internal_server_error"
   | "invalid_request_error"
   | "user_not_found"
+  | "unverified_email"
   | "data_source_error"
   | "data_source_not_found"
   | "data_source_auth_error"
