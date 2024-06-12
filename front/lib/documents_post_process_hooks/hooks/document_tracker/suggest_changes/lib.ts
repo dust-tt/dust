@@ -22,7 +22,6 @@ import mainLogger from "@app/logger/logger";
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
 import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";
 
-
 const { SENDGRID_API_KEY } = process.env;
 
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
