@@ -155,12 +155,14 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 
     const rawUrls = rawInputs.urls;
 
-    if (
-      !rawUrls ||
-      typeof rawUrls !== "string" ||
-      !isValidJSONArray(rawUrls) ||
-      JSON.parse(rawUrls).length === 0
-    ) {
+    const urls =
+      typeof rawUrls === "string"
+        ? isValidJSONArray(rawUrls)
+          ? JSON.parse(rawUrls)
+          : [rawUrls]
+        : [];
+
+    if (urls.length === 0) {
       yield {
         type: "browse_error",
         created: Date.now(),
@@ -174,8 +176,6 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       };
       return;
     }
-
-    const urls = JSON.parse(rawUrls);
 
     // Create the AgentBrowseAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
