@@ -13,6 +13,13 @@ export type BrowseConfigurationType = {
 
 export const BrowseResultSchema = t.type({
   content: t.string,
+  response: t.type({
+    code: t.number,
+    url: t.string,
+    status: t.string,
+    ip: t.string,
+    port: t.string,
+  }),
 });
 
 export const BrowseActionOutputSchema = t.union([

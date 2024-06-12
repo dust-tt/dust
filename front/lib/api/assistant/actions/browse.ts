@@ -175,20 +175,20 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       return;
     }
 
+    const urls = JSON.parse(rawUrls);
+
     // Create the AgentBrowseAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have outputs but the error will be stored on the parent agent
     // message.
     const action = await AgentBrowseAction.create({
-      urls: rawUrls,
+      urls: urls,
       browseConfigurationId: actionConfiguration.sId,
       functionCallId,
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
       step,
     });
-
-    const urls = JSON.parse(rawUrls);
 
     const now = Date.now();
 
@@ -368,7 +368,7 @@ export async function browseActionTypesFromAgentMessageIds(
     return new BrowseAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      urls: isValidJSONArray(action.urls) ? JSON.parse(action.urls) : [],
+      urls: action.urls,
       output: action.output,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,

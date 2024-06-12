@@ -90,7 +90,7 @@ export class AgentBrowseAction extends Model<
 
   declare browseConfigurationId: string;
 
-  declare urls: string;
+  declare urls: string[];
 
   declare output: BrowseActionOutputType | null;
   declare functionCallId: string | null;
@@ -123,7 +123,7 @@ AgentBrowseAction.init(
     },
 
     urls: {
-      type: DataTypes.TEXT,
+      type: DataTypes.ARRAY(DataTypes.TEXT),
       allowNull: false,
     },
 
