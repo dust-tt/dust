@@ -1,3 +1,4 @@
+import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
@@ -48,6 +49,50 @@ export function metaPromptForProvider(
     default:
       assertNever(providerId);
   }
+}
+
+export function isProviderWhitelisted(
+  owner: WorkspaceType,
+  providerId: ModelProviderIdType
+) {
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  return whiteListedProviders.includes(providerId);
+}
+
+export function getSmallWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_3_5_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  return null;
+}
+
+export function getLargeWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  return null;
 }
 
 /**

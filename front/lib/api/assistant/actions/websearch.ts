@@ -197,6 +197,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       }),
     };
 
+    // "assitsant-v2-websearch" has no model interaction.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-websearch"].config
     );
