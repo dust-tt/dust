@@ -58,7 +58,7 @@ interface AgentMessageProps {
   isInModal?: boolean;
   hideReactions?: boolean;
   size: MessageSizeType;
-  isAtBottomRef: React.MutableRefObject<boolean>;
+  isAtBottomRef?: React.MutableRefObject<boolean>;
 }
 
 /**
