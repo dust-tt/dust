@@ -98,7 +98,7 @@ async function handler(
         helpActions: body.helpActions ?? null,
         helpInstructions: body.helpInstructions ?? null,
         presetAction: body.presetAction,
-        presetActions: [], // @todo[daph] implement multi-actions templates in poké
+        presetActions: body.presetActions,
         presetDescription: null,
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
