@@ -25,6 +25,7 @@ import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
+import { sanitizeJSONOutput } from "@app/lib/utils";
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -401,9 +402,11 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       }
     }
 
+    const sanitizedOutput = sanitizeJSONOutput(output);
+
     // Updating action
     await action.update({
-      output,
+      output: sanitizedOutput,
     });
 
     yield {
@@ -414,7 +417,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       action: new TablesQueryAction({
         id: action.id,
         params: action.params as DustAppParameters,
-        output: action.output as Record<string, string | number | boolean>,
+        output: sanitizedOutput as Record<string, string | number | boolean>,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,

@@ -246,3 +246,21 @@ export function trimText(text: string, maxLength = 20, removeNewLines = true) {
   const t = removeNewLines ? text.replaceAll("\n", " ") : text;
   return t.length > maxLength ? t.substring(0, maxLength) + "..." : t;
 }
+
+export function sanitizeJSONOutput(obj: unknown): unknown {
+  if (typeof obj === "string") {
+    // eslint-disable-next-line no-control-regex
+    return obj.replace(/\x00/g, "");
+  } else if (Array.isArray(obj)) {
+    return obj.map((item) => sanitizeJSONOutput(item));
+  } else if (typeof obj === "object" && obj !== null) {
+    const sanitizedObj: Record<string, unknown> = {};
+    for (const key of Object.keys(obj)) {
+      sanitizedObj[key] = sanitizeJSONOutput(
+        (obj as Record<string, unknown>)[key] as unknown
+      );
+    }
+    return sanitizedObj;
+  }
+  return obj;
+}
