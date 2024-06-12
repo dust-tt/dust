@@ -487,19 +487,13 @@ export function AgentMessage({
         />
 
         {chainOfThought.length ? (
-          <div className="relative flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4">
+          <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
             <div className="flex flex-row gap-2">
-              <Icon
-                size="sm"
-                visual={PuzzleIcon}
-                className="shrink-0 text-slate-800"
-              />
-              <div className="text-sm font-semibold text-slate-800">
-                Model thoughts
-              </div>
+              <Icon size="sm" visual={PuzzleIcon} />
+              <div className="font-semibold">Model thoughts</div>
             </div>
 
-            <div className={"relative text-sm italic text-slate-950"}>
+            <div className={"italic"}>
               <RenderMessageMarkdown
                 content={chainOfThought}
                 isStreaming={false}
