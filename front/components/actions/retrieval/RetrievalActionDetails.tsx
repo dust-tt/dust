@@ -95,6 +95,10 @@ function makeQueryDescription(action: RetrievalActionType) {
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
 
+  if (!query) {
+    return `Searching ${timeFrameAsString}.`;
+  }
+
   return `Searching "${query}", ${timeFrameAsString}.`;
 }
 
