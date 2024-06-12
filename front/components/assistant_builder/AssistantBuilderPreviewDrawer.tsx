@@ -1,16 +1,12 @@
 import {
   Button,
-  CardButton,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
-  Icon,
-  IconButton,
   LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
   Page,
-  PlusCircleStrokeIcon,
   Spinner,
   Tab,
   XMarkIcon,
@@ -21,7 +17,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import _ from "lodash";
 import { useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -247,8 +242,8 @@ export default function AssistantBuilderRightPanel({
                       <Page.SectionHeader title="Add those actions" />
                       {template.presetActions.map((presetAction, index) => (
                         <div className="flex flex-col gap-2" key={index}>
-                          {presetAction.help}
-                          <TemplateActionCard
+                          <div>{presetAction.help}</div>
+                          <TemplateAddActionButton
                             action={presetAction}
                             addAction={(presetAction) => {
                               const action = getDefaultActionConfiguration(
@@ -278,7 +273,7 @@ export default function AssistantBuilderRightPanel({
   );
 }
 
-const TemplateActionCard = ({
+const TemplateAddActionButton = ({
   action,
   addAction,
 }: {
@@ -291,29 +286,15 @@ const TemplateActionCard = ({
     return null;
   }
   return (
-    <CardButton
-      variant="primary"
-      onClick={() => addAction(action)}
-      className="inline-block w-72"
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full gap-1 font-medium text-element-900">
-          <Icon visual={spec.cardIcon} size="sm" className="text-element-900" />
-          <div className="w-full truncate">
-            Add action &quot;{spec.label}&quot;
-          </div>
-          <IconButton
-            icon={PlusCircleStrokeIcon}
-            variant="tertiary"
-            size="sm"
-            onClick={() => addAction(action)}
-          />
-        </div>
-        <div className="w-full truncate text-base text-element-700">
-          {_.capitalize(_.toLower(action.name).replace(/_/g, " "))}
-        </div>
-      </div>
-    </CardButton>
+    <div className="w-auto">
+      <Button
+        icon={spec.cardIcon}
+        label={`Add action “${spec.label}”`}
+        size="sm"
+        variant="secondary"
+        onClick={() => addAction(action)}
+      />
+    </div>
   );
 };
 
