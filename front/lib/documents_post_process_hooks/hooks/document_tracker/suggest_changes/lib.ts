@@ -23,7 +23,7 @@ import mainLogger from "@app/logger/logger";
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
 import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";
 
-const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
+
 const { SENDGRID_API_KEY } = process.env;
 
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
@@ -61,7 +61,9 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     return false;
   }
 
-  const workspaceId = auth.workspace()?.sId;
+  const owner = auth.workspace();
+  const workspaceId = owner?.sId;
+
   if (!workspaceId) {
     throw new Error("Workspace not found.");
   }
@@ -72,15 +74,14 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     documentId,
   });
   localLogger.info(
-    "Checking if document_tracker_suggest_changes post process hook should run."
+    "Checking if document_tracker flag is enabled. If not, post process hook should not run."
   );
 
-  const whitelistedWorkspaceIds =
-    RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
+  const shouldRunDocumentTracker = owner?.flags?.includes("document_tracker");
 
-  if (!whitelistedWorkspaceIds.includes(workspaceId)) {
+  if (!shouldRunDocumentTracker) {
     localLogger.info(
-      "Workspace not whitelisted, document_tracker_suggest_changes post process hook should not run."
+      "Feature flag document_tracker is not enabled, document_tracker_suggest_changes post process hook should not run."
     );
     return false;
   }
