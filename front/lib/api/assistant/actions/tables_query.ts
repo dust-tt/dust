@@ -24,8 +24,8 @@ import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import logger from "@app/logger/logger";
 import { sanitizeJSONOutput } from "@app/lib/utils";
+import logger from "@app/logger/logger";
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
