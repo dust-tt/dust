@@ -50,7 +50,10 @@ export type AgentActionSpecification = {
   inputs: {
     name: string;
     description: string;
-    type: "string" | "number" | "boolean";
+    type: "string" | "number" | "boolean" | "array";
+    items?: {
+      type: "string" | "number" | "boolean";
+    };
   }[];
 };
 

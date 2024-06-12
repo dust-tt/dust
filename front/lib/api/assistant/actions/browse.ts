@@ -27,14 +27,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import logger from "@app/logger/logger";
 
-function isValidJSONArray(json: string): boolean {
-  try {
-    return Array.isArray(JSON.parse(json));
-  } catch (e) {
-    return false;
-  }
-}
-
 interface BrowseActionBlob {
   id: ModelId; // AgentBrowseAction
   agentMessageId: ModelId;
@@ -112,8 +104,11 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       inputs: [
         {
           name: "urls",
-          description: "List of urls to fetch, as a JSON array.",
-          type: "string",
+          description: "List of urls to fetch.",
+          type: "array",
+          items: {
+            type: "string",
+          },
         },
       ],
     });
@@ -153,14 +148,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 
     const { actionConfiguration } = this;
 
-    const rawUrls = rawInputs.urls;
-
-    const urls =
-      typeof rawUrls === "string"
-        ? isValidJSONArray(rawUrls)
-          ? JSON.parse(rawUrls)
-          : [rawUrls]
-        : [];
+    const urls = rawInputs.urls as string[];
 
     if (urls.length === 0) {
       yield {

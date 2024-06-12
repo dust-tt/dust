@@ -32,7 +32,10 @@ export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  rawInputs: Record<string, string | boolean | number>;
+  rawInputs: Record<
+    string,
+    string | boolean | number | string[] | boolean[] | number[]
+  >;
   functionCallId: string | null;
   step: number;
 }
