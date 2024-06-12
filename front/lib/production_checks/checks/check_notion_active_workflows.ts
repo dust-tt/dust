@@ -63,17 +63,31 @@ async function areTemporalWorkflowsRunning(
       return latest;
     });
 
+    const isRunning = descriptions.every(
+      ({ status: { name } }) => name === "RUNNING"
+    );
+
+    const error = isRunning
+      ? undefined
+      : new Error(
+          "Statuses of workflows are " +
+            descriptions
+              .map(
+                ({ status: { name }, workflowId }) => `${workflowId}: ${name}`
+              )
+              .join(", ")
+        );
+
     return {
-      isRunning: descriptions.every(
-        ({ status: { name } }) => name === "RUNNING"
-      ),
+      isRunning,
       isNotStalled: latests.every(
-        // Check `latest` is less than 1h old.
-        (d) => d && new Date().getTime() - d.getTime() < 60 * 60 * 1000
+        // Check `latest` is less than 2h old.
+        (d) => d && new Date().getTime() - d.getTime() < 2 * 60 * 60 * 1000
       ),
+      error,
     };
   } catch (err) {
-    return { isRunning: false, isNotStalled: false };
+    return { isRunning: false, isNotStalled: false, error: err };
   }
 }
 
@@ -99,15 +113,14 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
     }
     heartbeat();
 
-    const { isRunning, isNotStalled } = await areTemporalWorkflowsRunning(
-      client,
-      notionConnector
-    );
+    const { isRunning, isNotStalled, error } =
+      await areTemporalWorkflowsRunning(client, notionConnector);
 
     if (!isRunning) {
       missingActiveWorkflows.push({
         connectorId: notionConnector.id,
         workspaceId: notionConnector.workspaceId,
+        error,
       });
     } else {
       if (!isNotStalled) {
