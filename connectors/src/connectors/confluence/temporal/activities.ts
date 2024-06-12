@@ -388,8 +388,18 @@ export async function confluenceGetRootPageIdsActivity({
 
   localLogger.info("Fetching Confluence root page in space.");
 
-  const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
-  return rootPages.map((rp) => rp.id);
+  try {
+    const { pages: rootPages } = await client.getPagesInSpace(spaceId, "root");
+    return rootPages.map((rp) => rp.id);
+  } catch (err) {
+    if (err instanceof ConfluenceClientError && err.status === 404) {
+      localLogger.info(
+        "Confluence space pages API returned 404. Returning empty page set"
+      );
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function confluenceGetTopLevelPageIdsActivity({
