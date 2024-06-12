@@ -26,6 +26,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -275,6 +276,14 @@ export function AssistantDetails({
               <div className="flex items-center gap-2">
                 <Icon visual={PlanetIcon} size="xs" />
                 <div>assitant will use top results of web search to answer</div>
+              </div>
+            </div>
+          ) : isBrowseConfiguration(action) ? (
+            <div className="flex flex-col gap-2" key={`action-${index}`}>
+              <div className="text-lg font-bold text-element-800">Browse</div>
+              <div className="flex items-center gap-2">
+                <Icon visual={PlanetIcon} size="xs" />
+                <div>assitant will use page browse results</div>
               </div>
             </div>
           ) : (

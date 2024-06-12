@@ -1,5 +1,6 @@
 import type { AgentActionType } from "@dust-tt/types";
 
+import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -44,6 +45,10 @@ const actionsSpecification: ActionSpecifications = {
   websearch_action: {
     detailsComponent: WebsearchActionDetails,
     runningLabel: "Searching the web",
+  },
+  browse_action: {
+    detailsComponent: BrowseActionDetails,
+    runningLabel: "Browsing page",
   },
 };
 

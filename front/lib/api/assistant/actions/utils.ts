@@ -63,4 +63,11 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: PlanetIcon,
     flag: "websearch_action",
   },
+  BROWSE: {
+    label: "Browse",
+    description: "Get the content of a page",
+    cardIcon: PlanetIcon,
+    dropDownIcon: PlanetIcon,
+    flag: "browse_action",
+  },
 };

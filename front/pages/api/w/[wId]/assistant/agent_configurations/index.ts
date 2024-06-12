@@ -422,6 +422,18 @@ export async function createOrUpgradeAgentConfiguration({
             agentConfigurationRes.value
           )
         );
+      } else if (action.type === "browse_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "browse_configuration",
+              name: action.name ?? null,
+              description: action.description ?? null,
+            },
+            agentConfigurationRes.value
+          )
+        );
       } else {
         assertNever(action);
       }

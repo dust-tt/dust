@@ -6,7 +6,8 @@ type BaseActionType =
   | "tables_query_action"
   | "retrieval_action"
   | "process_action"
-  | "websearch_action";
+  | "websearch_action"
+  | "browse_action";
 
 export abstract class BaseAction {
   readonly id: ModelId;

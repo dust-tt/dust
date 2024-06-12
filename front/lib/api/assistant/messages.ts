@@ -14,6 +14,7 @@ import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
@@ -138,6 +139,7 @@ export async function batchRenderAgentMessages(
     agentTablesQueryActions,
     agentProcessActions,
     agentWebsearchActions,
+    agentBrowseActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -164,6 +166,7 @@ export async function batchRenderAgentMessages(
     (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   return agentMessages.map((message) => {
@@ -180,6 +183,7 @@ export async function batchRenderAgentMessages(
       agentTablesQueryActions,
       agentProcessActions,
       agentWebsearchActions,
+      agentBrowseActions,
     ]
       .flat()
       .filter((a) => a.agentMessageId === agentMessage.id)
@@ -330,7 +334,6 @@ async function fetchMessagesForPage(
       },
     ],
   });
-
   return {
     hasMore,
     messages,
@@ -346,7 +349,6 @@ async function batchRenderMessages(
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(messages),
   ]);
-
   const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
     (a, b) => a.rank - b.rank
   );

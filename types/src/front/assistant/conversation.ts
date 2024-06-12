@@ -5,6 +5,7 @@ import { TablesQueryActionType } from "../../front/assistant/actions/tables_quer
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
+import { BrowseActionType } from "./actions/browse";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -86,7 +87,8 @@ export type AgentActionType =
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
-  | WebsearchActionType;
+  | WebsearchActionType
+  | BrowseActionType;
 
 export type AgentMessageStatus =
   | "created"
