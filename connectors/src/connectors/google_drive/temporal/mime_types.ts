@@ -10,7 +10,11 @@ export function getMimeTypesToDownload({
 }: {
   pdfEnabled: boolean;
 }) {
-  const mimeTypes = ["text/plain"];
+  const mimeTypes = [
+    "text/plain",
+    // docx files hosted on Gdrive
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
   if (pdfEnabled) {
     mimeTypes.push("application/pdf");
   }
