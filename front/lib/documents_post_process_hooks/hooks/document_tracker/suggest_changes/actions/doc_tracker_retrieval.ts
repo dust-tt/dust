@@ -1,3 +1,4 @@
+import type { WorkspaceType } from "@dust-tt/types";
 import { cloneBaseConfig, DustProdActionRegistry } from "@dust-tt/types";
 import * as t from "io-ts";
 
@@ -8,20 +9,18 @@ import { getTrackableDataSources } from "@app/lib/documents_post_process_hooks/h
 // it takes {input_text: string} as input
 // and returns an array of DocTrackerRetrievalActionValue as output
 export async function callDocTrackerRetrievalAction(
-  workspaceId: string,
+  owner: WorkspaceType,
   inputText: string,
   targetDocumentTokens = 2000
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
 
-  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(
-    workspaceId
-  );
+  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(owner);
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
   const res = await callAction({
-    workspaceId,
+    owner,
     input: { input_text: inputText },
     action,
     config,

@@ -17,7 +17,6 @@ import {
   TrackedDocument,
 } from "@app/lib/models/doc_tracker";
 import { User } from "@app/lib/models/user";
-import { Workspace } from "@app/lib/models/workspace";
 import mainLogger from "@app/logger/logger";
 
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
@@ -62,14 +61,12 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   }
 
   const owner = auth.workspace();
-  const workspaceId = owner?.sId;
-
-  if (!workspaceId) {
+  if (!owner) {
     throw new Error("Workspace not found.");
   }
 
   const localLogger = logger.child({
-    workspaceId,
+    workspaceId: owner.sId,
     dataSourceName,
     documentId,
   });
@@ -96,7 +93,7 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     }
   }
 
-  const dataSource = await getDatasource(dataSourceName, workspaceId);
+  const dataSource = await getDatasource(owner, dataSourceName);
 
   const docIsTracked = !!(await TrackedDocument.count({
     where: {
@@ -155,13 +152,13 @@ export async function documentTrackerSuggestChangesOnUpsert({
   documentHash,
   documentSourceUrl,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
-  const workspaceId = auth.workspace()?.sId;
-  if (!workspaceId) {
+  const owner = auth.workspace();
+  if (!owner) {
     throw new Error("Workspace not found.");
   }
 
   const localLogger = logger.child({
-    workspaceId,
+    workspaceId: owner.sId,
     dataSourceName,
     documentId,
     documentHash,
@@ -177,14 +174,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Running document_tracker_suggest_changes post upsert hook."
   );
 
-  const workspace = await Workspace.findOne({
-    where: { sId: workspaceId },
-  });
-  if (!workspace) {
-    throw new Error(`Workspace not found: ${workspaceId}`);
-  }
-
-  const dataSource = await getDatasource(dataSourceName, workspaceId);
+  const dataSource = await getDatasource(owner, dataSourceName);
   const isDocTracked = !!(await TrackedDocument.count({
     where: {
       dataSourceId: dataSource.id,
@@ -199,8 +189,8 @@ export async function documentTrackerSuggestChangesOnUpsert({
     return;
   }
   const documentDiff = await getDocumentDiff({
+    owner,
     dataSourceName: dataSource.name,
-    workspaceId,
     documentId,
     hash: documentHash,
   });
@@ -254,7 +244,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Calling doc tracker retrieval action."
   );
   const retrievalResult = await callDocTrackerRetrievalAction(
-    workspaceId,
+    owner,
     diffText,
     targetDocumentTokens
   );
@@ -297,7 +287,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   localLogger.info({ score }, "Calling doc tracker suggest changes action.");
 
   const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-    workspaceId,
+    owner,
     diffText,
     top1.chunks.map((c) => c.text).join("\n-------\n")
   );
@@ -328,12 +318,12 @@ export async function documentTrackerSuggestChangesOnUpsert({
   const matchedDs = await DataSource.findOne({
     where: {
       name: matchedDsName,
-      workspaceId: workspace.id,
+      workspaceId: owner.id,
     },
   });
   if (!matchedDs) {
     throw new Error(
-      `Could not find data source with name ${matchedDsName} and workspaceId ${workspaceId}`
+      `Could not find data source with name ${matchedDsName} and workspace ${owner.sId}`
     );
   }
 

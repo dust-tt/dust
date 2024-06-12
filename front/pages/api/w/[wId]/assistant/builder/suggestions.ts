@@ -4,7 +4,9 @@ import type {
 } from "@dust-tt/types";
 import {
   BuilderSuggestionsResponseBodySchema,
+  cloneBaseConfig,
   DustProdActionRegistry,
+  getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -50,14 +52,33 @@ async function handler(
           },
         });
       }
+
+      const model = getSmallWhitelistedModel(owner);
+      if (!model) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `No whitelisted models were found for the workspace.`,
+          },
+        });
+      }
+
       const suggestionsType = bodyValidation.right.type;
       const suggestionsInputs = bodyValidation.right.inputs;
+
+      const config = cloneBaseConfig(
+        DustProdActionRegistry[
+          `assistant-builder-${suggestionsType}-suggestions`
+        ].config
+      );
+      config.CREATE_SUGGESTIONS.provider_id = model.providerId;
+      config.CREATE_SUGGESTIONS.model_id = model.modelId;
+
       const suggestionsResponse = await runAction(
         auth,
         `assistant-builder-${suggestionsType}-suggestions`,
-        DustProdActionRegistry[
-          `assistant-builder-${suggestionsType}-suggestions`
-        ].config,
+        config,
         [suggestionsInputs]
       );
 

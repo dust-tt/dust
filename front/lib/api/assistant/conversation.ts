@@ -29,13 +29,16 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import {
+  assertNever,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
   getTimeframeSecondsFromLiteral,
-  GPT_3_5_TURBO_MODEL_CONFIG,
   isAgentMention,
   isAgentMessageType,
   isUserMessageType,
@@ -427,20 +430,26 @@ export async function generateConversationTitle(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
-  const model = {
-    providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-    modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-  };
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return new Err(
+      new Error(`Failed to find a whitelisted model to generate title`)
+    );
+  }
 
   const MIN_GENERATION_TOKENS = 1024;
-  const contextSize = GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
-    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
     excludeActions: true,
   });
 
@@ -651,16 +660,18 @@ export async function* postUserMessage(
   ]);
   const agentConfigurations = results[0];
 
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   for (const agentConfig of agentConfigurations) {
-    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+          message:
+            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `by your workspace admin. Please edit the assistant to use another model ` +
+            `(advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
@@ -1086,16 +1097,18 @@ export async function* editUserMessage(
 
   const agentConfigurations = results[0];
 
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   for (const agentConfig of agentConfigurations) {
-    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+          message:
+            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `by your workspace admin. Please edit the assistant to use another model ` +
+            `(advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
