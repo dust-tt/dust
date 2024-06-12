@@ -1,4 +1,4 @@
-import { Citation, Collapsible, GlobeAltIcon, Page } from "@dust-tt/sparkle";
+import { Citation, GlobeAltIcon } from "@dust-tt/sparkle";
 import type { BrowseActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
