@@ -24,6 +24,8 @@ import { createConversationWithMessage } from "@app/components/assistant/convers
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { set } from "lodash";
 
 const topPicks = [
   {
@@ -85,6 +87,8 @@ export function HelpDrawer({
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
+  setSelectedAssistant(null);
 
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(
