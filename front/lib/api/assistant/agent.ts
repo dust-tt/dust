@@ -1164,22 +1164,21 @@ class TokenEmitter {
     if (!this.buffer.length) {
       return;
     }
-
-    const text =
-      upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
-
-    yield {
-      type: "generation_tokens",
-      created: Date.now(),
-      configurationId: this.agentConfiguration.sId,
-      messageId: this.agentMessage.sId,
-      text,
-      classification: this.chainOfToughtDelimitersOpened
-        ? "chain_of_thought"
-        : "tokens",
-    };
-
     if (!this.swallowDelimitersOpened) {
+      const text =
+        upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
+
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: this.agentConfiguration.sId,
+        messageId: this.agentMessage.sId,
+        text,
+        classification: this.chainOfToughtDelimitersOpened
+          ? "chain_of_thought"
+          : "tokens",
+      };
+
       if (this.chainOfToughtDelimitersOpened) {
         this.chainOfThought += text;
       } else {

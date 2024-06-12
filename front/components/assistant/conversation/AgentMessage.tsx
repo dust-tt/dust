@@ -477,7 +477,7 @@ export function AgentMessage({
 
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
 
-    const chainOfThought = agentMessage.chainOfThoughts.join();
+    const chainOfThought = agentMessage.chainOfThoughts.join("");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
