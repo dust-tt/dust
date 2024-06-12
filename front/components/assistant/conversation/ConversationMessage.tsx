@@ -74,7 +74,7 @@ export function ConversationMessage({
   return (
     <div
       className={classNames(
-        "flex w-full flex-col justify-stretch gap-4 rounded-2xl min-h-0 transition-[min-height] transition-[margin-bottom]",
+        "flex min-h-0 w-full flex-col justify-stretch gap-4 rounded-2xl transition-[margin-bottom] transition-[min-height]",
         messageTypeClasses[type],
         messageSizeClasses[size]
       )}

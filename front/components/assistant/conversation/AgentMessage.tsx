@@ -34,7 +34,14 @@ import {
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
@@ -42,7 +49,10 @@ import { AssistantEditionMenu } from "@app/components/assistant/conversation/Ass
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID, CONVERSATION_TITLE_ID, INPUT_BAR_CONTAINER_ID } from "@app/components/assistant/conversation/lib";
+import {
+  CONVERSATION_PARENT_SCROLL_DIV_ID,
+  INPUT_BAR_CONTAINER_ID,
+} from "@app/components/assistant/conversation/lib";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -273,7 +283,8 @@ export function AgentMessage({
   })();
 
   const getLastMessageMinHeight = () => {
-    const conversationElementId = CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"];
+    const conversationElementId =
+      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"];
     const conversationElement = document.getElementById(conversationElementId);
 
     if (!conversationElement) {
@@ -282,12 +293,19 @@ export function AgentMessage({
 
     const conversationElementHeight = conversationElement.clientHeight;
     const conversationTitleHeight = 4 * 16;
-    const textInputHeight = document.getElementById(INPUT_BAR_CONTAINER_ID)?.clientHeight || 11 * 16;
+    const textInputHeight =
+      document.getElementById(INPUT_BAR_CONTAINER_ID)?.clientHeight || 11 * 16;
 
     const inputPromptHeight = 10 * 16; // 11rem. This margin is equivalent to a two liner input prompt
     const smallTopMargin = 3 * 16; // 2rem. For display purposes
 
-    return `${conversationElementHeight - conversationTitleHeight - smallTopMargin - inputPromptHeight - textInputHeight}px`;
+    return `${
+      conversationElementHeight -
+      conversationTitleHeight -
+      smallTopMargin -
+      inputPromptHeight -
+      textInputHeight
+    }px`;
   };
 
   const messageMinHeight = useMemo(() => {
@@ -296,11 +314,7 @@ export function AgentMessage({
     } else {
       return "0";
     }
-  }, [
-    isInModal,
-    isLastMessage,
-    agentMessageToRender.status,
-  ]);
+  }, [isInModal, isLastMessage, agentMessageToRender.status]);
 
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
