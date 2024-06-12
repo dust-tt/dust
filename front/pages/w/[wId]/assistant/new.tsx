@@ -41,7 +41,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isBuilder: boolean;
     helper: LightAgentConfigurationType | null;
   }
->(async (context, auth) => {
+>(async (_context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
   const subscription = auth.subscription();
@@ -103,6 +103,7 @@ export default function AssistantNew({
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+    mutateAgentConfigurations,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "assistants-search",
@@ -313,6 +314,7 @@ export default function AssistantNew({
                 : "finished"
             }
             handleAssistantClick={handleAssistantClick}
+            mutateAgentConfigurations={mutateAgentConfigurations}
           />
         </div>
       </div>

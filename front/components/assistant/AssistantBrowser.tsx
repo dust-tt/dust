@@ -17,10 +17,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
+import type { KeyedMutator } from "swr";
 
+import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { subFilter } from "@app/lib/utils";
+import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 interface AssistantListProps {
   owner: WorkspaceType;
@@ -29,6 +31,7 @@ interface AssistantListProps {
   // can show a subset of the agents
   loadingStatus: "loading" | "partial" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
+  mutateAgentConfigurations: KeyedMutator<GetAgentConfigurationsResponseBody>;
 }
 
 const ALL_AGENTS_TABS = [
@@ -48,9 +51,12 @@ export function AssistantBrowser({
   agents,
   loadingStatus,
   handleAssistantClick,
+  mutateAgentConfigurations,
 }: AssistantListProps) {
-  const router = useRouter();
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [assistantIdToShow, setAssistantIdToShow] = useState<string | null>(
+    null
+  );
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents.filter(
@@ -99,6 +105,12 @@ export function AssistantBrowser({
 
   return (
     <>
+      <AssistantDetails
+        assistantId={assistantIdToShow}
+        onClose={() => setAssistantIdToShow(null)}
+        owner={owner}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+      />
       {/* Search bar */}
       <div
         id="search-container"
@@ -159,13 +171,6 @@ export function AssistantBrowser({
       {displayedTab && (
         <div className="grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
           {agentsByTab[displayedTab].map((agent) => {
-            const href = {
-              pathname: router.pathname,
-              query: {
-                ...router.query,
-                assistantDetails: agent.sId,
-              },
-            };
             return (
               <div
                 key={agent.sId}
@@ -184,10 +189,7 @@ export function AssistantBrowser({
                     description=""
                     variant="minimal"
                     onClick={() => handleAssistantClick(agent)}
-                    onActionClick={() => {
-                      // Shallow routing to avoid re-fetching the page
-                      void router.replace(href, undefined, { shallow: true });
-                    }}
+                    onActionClick={() => setAssistantIdToShow(agent.sId)}
                   />
                 </div>
               </div>
