@@ -184,7 +184,6 @@ export default function ActionsScreen({
     <>
       <NewActionModal
         isOpen={pendingAction.action !== null}
-        setOpen={() => {}} // Unused
         builderState={builderState}
         initialAction={pendingAction.action}
         onSave={(newAction) => {
@@ -312,7 +311,6 @@ export default function ActionsScreen({
 
 function NewActionModal({
   isOpen,
-  setOpen,
   initialAction,
   onSave,
   onClose,
@@ -323,7 +321,6 @@ function NewActionModal({
   builderState,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
   builderState: AssistantBuilderState;
   initialAction: AssistantBuilderActionConfiguration | null;
   onSave: (newAction: AssistantBuilderActionConfiguration) => void;
@@ -358,7 +355,6 @@ function NewActionModal({
 
   const onCloseLocal = () => {
     onClose();
-    setOpen(false);
     setTimeout(() => {
       setNewAction(null);
     }, 500);
