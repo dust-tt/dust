@@ -490,7 +490,7 @@ export function AgentMessage({
           <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
             <div className="flex flex-row gap-2">
               <Icon size="sm" visual={PuzzleIcon} />
-              <div className="font-semibold">Model thoughts</div>
+              <div className="font-semibold">Assistant thoughts</div>
             </div>
 
             <div className={"italic"}>
