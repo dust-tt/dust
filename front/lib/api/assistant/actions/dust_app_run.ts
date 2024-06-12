@@ -24,6 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 interface DustAppRunActionBlob {
@@ -390,9 +391,11 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
+    const output = sanitizeJSONOutput(lastBlockOutput);
+
     // Update DustAppRunAction with the output of the last block.
     await action.update({
-      output: lastBlockOutput,
+      output,
     });
 
     logger.info(
@@ -418,7 +421,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         functionCallId,
         functionCallName: actionConfiguration.name,
         runningBlock: null,
-        output: lastBlockOutput,
+        output,
         agentMessageId: agentMessage.agentMessageId,
         step: action.step,
       }),
