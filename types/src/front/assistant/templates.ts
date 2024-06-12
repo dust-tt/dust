@@ -4,6 +4,7 @@ import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
 
 import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { BrowseConfigurationType } from "./actions/browse";
 import { DustAppRunConfigurationType } from "./actions/dust_app_run";
 import { ProcessConfigurationType } from "./actions/process";
 import type { TimeframeUnit } from "./actions/retrieval";
@@ -15,6 +16,8 @@ import { TablesQueryConfigurationType } from "./actions/tables_query";
 import { WebsearchConfigurationType } from "./actions/websearch";
 import { AgentAction, AgentActionConfigurationType } from "./agent";
 import { AssistantCreativityLevelCodec } from "./builder";
+
+// TAGS
 
 export const TEMPLATES_TAG_CODES = [
   "CONTENT",
@@ -98,6 +101,12 @@ export function isTemplateTagCodeArray(
   );
 }
 
+const TemplateTagCodeTypeCodec = t.keyof({
+  ...TEMPLATES_TAGS_CONFIG,
+});
+
+// SINGLE ACTION MODE
+
 export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   reply: "Reply only",
   dust_app_run_configuration: "Run Dust app",
@@ -105,12 +114,44 @@ export const ACTION_PRESETS: Record<AgentAction | "reply", string> = {
   tables_query_configuration: "Query tables",
   process_configuration: "Extract data",
   websearch_configuration: "Web search",
+  browse_configuration: "Browse",
 } as const;
 export type ActionPreset = keyof typeof ACTION_PRESETS;
 export const ActionPresetCodec = ioTsEnum<ActionPreset>(
   Object.keys(ACTION_PRESETS),
   "ActionPreset"
 );
+
+// MULTI ACTION MODE
+
+type MultiActionType =
+  | "RETRIEVAL_SEARCH"
+  | "DUST_APP_RUN"
+  | "TABLES_QUERY"
+  | "PROCESS"
+  | "WEBSEARCH";
+export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
+  DUST_APP_RUN: "Run Dust app",
+  RETRIEVAL_SEARCH: "Search data sources",
+  TABLES_QUERY: "Query tables",
+  PROCESS: "Extract data",
+  WEBSEARCH: "Web search",
+} as const;
+export type MultiActionPreset = keyof typeof MULTI_ACTION_PRESETS;
+export const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
+  Object.keys(MULTI_ACTION_PRESETS),
+  "MultiActionPreset"
+);
+const TemplateActionTypePreset = t.type({
+  type: MultiActionPresetCodec,
+  name: NonEmptyString,
+  description: NonEmptyString,
+  help: NonEmptyString,
+});
+const TemplateActionsPreset = t.array(TemplateActionTypePreset);
+
+// VISIBILITY
+
 export const TEMPLATE_VISIBILITIES = [
   "draft",
   "published",
@@ -122,9 +163,7 @@ export const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
   "TemplateVisibility"
 );
 
-const TemplateTagCodeTypeCodec = t.keyof({
-  ...TEMPLATES_TAGS_CONFIG,
-});
+// FORM SCHEMA
 
 export const CreateTemplateFormSchema = t.type({
   backgroundColor: NonEmptyString,
@@ -136,6 +175,7 @@ export const CreateTemplateFormSchema = t.type({
   helpActions: t.union([t.string, t.undefined]),
   helpInstructions: t.union([t.string, t.undefined]),
   presetAction: ActionPresetCodec,
+  presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
   presetTemperature: AssistantCreativityLevelCodec,
@@ -212,6 +252,15 @@ export function getAgentActionConfigurationType(
         name: "web_search",
         description: "Search the web.",
       } satisfies WebsearchConfigurationType;
+
+    case "browse_configuration":
+      return {
+        id: -1,
+        sId: "template",
+        type: "browse_configuration",
+        name: "browse",
+        description: "Browse a page.",
+      } satisfies BrowseConfigurationType;
 
     default:
       assertNever(action);

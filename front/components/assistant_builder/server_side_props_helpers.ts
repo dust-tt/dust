@@ -11,6 +11,7 @@ import {
   assertNever,
   ConnectorsAPI,
   CoreAPI,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -25,6 +26,7 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import {
+  getDefaultBrowseActionConfiguration,
   getDefaultDustAppRunActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -204,6 +206,8 @@ export async function buildInitialActions({
       builderAction = processConfiguration;
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+    } else if (isBrowseConfiguration(action)) {
+      builderAction = getDefaultBrowseActionConfiguration();
     } else {
       assertNever(action);
     }

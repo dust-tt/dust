@@ -38,6 +38,7 @@ import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { App } from "@app/lib/models/apps";
+import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
@@ -372,6 +373,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tablesQueryConfigs,
     processConfigs,
     websearchConfigs,
+    browseConfigs,
     agentUserRelations,
   ] = await Promise.all([
     variant === "full"
@@ -405,6 +407,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
           },
         }).then(groupByAgentConfigurationId)
       : Promise.resolve({} as Record<number, AgentWebsearchConfiguration[]>),
+    variant === "full"
+      ? AgentBrowseConfiguration.findAll({
+          where: {
+            agentConfigurationId: { [Op.in]: configurationIds },
+          },
+        }).then(groupByAgentConfigurationId)
+      : Promise.resolve({} as Record<number, AgentBrowseConfiguration[]>),
     user && configurationIds.length > 0
       ? AgentUserRelation.findAll({
           where: {
@@ -586,6 +595,17 @@ async function fetchWorkspaceAgentConfigurationsForView(
           type: "websearch_configuration",
           name: websearchConfig.name,
           description: websearchConfig.description,
+        });
+      }
+
+      const browseConfigurations = browseConfigs[agent.id] ?? [];
+      for (const browseConfig of browseConfigurations) {
+        actions.push({
+          id: browseConfig.id,
+          sId: browseConfig.sId,
+          type: "browse_configuration",
+          name: browseConfig.name,
+          description: browseConfig.description,
         });
       }
 
@@ -1134,6 +1154,9 @@ export async function createAgentActionConfiguration(
     | {
         type: "websearch_configuration";
       }
+    | {
+        type: "browse_configuration";
+      }
   ) & {
     name: string | null;
     description: string | null;
@@ -1294,6 +1317,22 @@ export async function createAgentActionConfiguration(
         id: websearchConfig.id,
         sId: websearchConfig.sId,
         type: "websearch_configuration",
+        name: action.name,
+        description: action.description,
+      };
+    }
+    case "browse_configuration": {
+      const browseConfig = await AgentBrowseConfiguration.create({
+        sId: generateModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+      });
+
+      return {
+        id: browseConfig.id,
+        sId: browseConfig.sId,
+        type: "browse_configuration",
         name: action.name,
         description: action.description,
       };

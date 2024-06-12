@@ -8,6 +8,10 @@ import {
   Run,
   RunUsage,
 } from "@app/lib/models/apps";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -108,6 +112,7 @@ async function main() {
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
+  await AgentBrowseConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -125,6 +130,7 @@ async function main() {
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
+  await AgentBrowseAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });

@@ -84,6 +84,8 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration
 export type AssistantBuilderWebsearchConfiguration = Record<string, never>; // no relevant params identified yet
 
+export type AssistantBuilderBrowseConfiguration = Record<string, never>; // no relevant params identified yet
+
 // Builder State
 
 export type AssistantBuilderActionConfiguration = (
@@ -106,6 +108,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "WEBSEARCH";
       configuration: AssistantBuilderWebsearchConfiguration;
+    }
+  | {
+      type: "BROWSE";
+      configuration: AssistantBuilderBrowseConfiguration;
     }
 ) & {
   name: string;
@@ -264,6 +270,15 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
+export function getDefaultBrowseActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "BROWSE",
+    configuration: {},
+    name: "browse",
+    description: "Perform a browse.",
+  };
+}
+
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfiguration | null {
@@ -282,6 +297,8 @@ export function getDefaultActionConfiguration(
       return getDefaultProcessActionConfiguration();
     case "WEBSEARCH":
       return getDefaultWebsearchActionConfiguration();
+    case "BROWSE":
+      return getDefaultBrowseActionConfiguration();
     default:
       assertNever(actionType);
   }

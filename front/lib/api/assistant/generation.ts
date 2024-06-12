@@ -1,5 +1,7 @@
 import type {
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
+  AgentErrorEvent,
   AgentMessageType,
   ContentFragmentMessageTypeModel,
   ConversationType,
@@ -34,6 +36,7 @@ import {
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { TokenEmitter } from "@app/lib/api/assistant/agent";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -120,7 +123,7 @@ export async function renderConversationForModelMultiActions({
         }
       }
 
-      if (m.content) {
+      if (m.content?.trim()) {
         messages.push({
           role: "assistant" as const,
           name: m.configuration.name,
@@ -472,10 +475,12 @@ export async function* runGeneration(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
+  | AgentErrorEvent
   | GenerationErrorEvent
   | GenerationTokensEvent
   | GenerationSuccessEvent
-  | GenerationCancelEvent,
+  | GenerationCancelEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const owner = auth.workspace();
@@ -483,9 +488,23 @@ export async function* runGeneration(
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
-  const { model } = configuration;
+  const model = getSupportedModelConfig(configuration.model);
 
-  if (isLargeModel(model) && !auth.isUpgraded()) {
+  if (!model) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "model_not_found",
+        message: "The model selected was not found.",
+      },
+    };
+    return;
+  }
+
+  if (isLargeModel(configuration.model) && !auth.isUpgraded()) {
     yield {
       type: "generation_error",
       created: Date.now(),
@@ -499,13 +518,13 @@ export async function* runGeneration(
     return;
   }
 
-  const contextSize = getSupportedModelConfig(model).contextSize;
+  const contextSize = model.contextSize;
 
   const MIN_GENERATION_TOKENS = 2048;
 
   if (contextSize < MIN_GENERATION_TOKENS) {
     throw new Error(
-      `Model contextSize unexpectedly small for model: ${model.providerId} ${model.modelId}`
+      `Model contextSize unexpectedly small for model: ${configuration.model.providerId} ${configuration.model.modelId}`
     );
   }
 
@@ -514,7 +533,7 @@ export async function* runGeneration(
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
-    model,
+    model: configuration.model,
     prompt,
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
@@ -527,7 +546,7 @@ export async function* runGeneration(
       messageId: agentMessage.sId,
       error: {
         code: "internal_server_error",
-        message: `Failed tokenization for ${model.providerId} ${model.modelId}: ${modelConversationRes.error.message}`,
+        message: `Failed tokenization for ${configuration.model.providerId} ${configuration.model.modelId}: ${modelConversationRes.error.message}`,
       },
     };
     return;
@@ -536,17 +555,17 @@ export async function* runGeneration(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-generator"].config
   );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = model.temperature;
+  config.MODEL.provider_id = configuration.model.providerId;
+  config.MODEL.model_id = configuration.model.modelId;
+  config.MODEL.temperature = configuration.model.temperature;
 
   logger.info(
     {
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
-      providerId: model.providerId,
-      modelId: model.modelId,
-      temperature: model.temperature,
+      providerId: configuration.model.providerId,
+      modelId: configuration.model.modelId,
+      temperature: configuration.model.temperature,
     },
     "[ASSISTANT_TRACE] Generation exection"
   );
@@ -587,6 +606,11 @@ export async function* runGeneration(
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
   const redis = await redisClient();
+  const tokenEmitter = new TokenEmitter(
+    configuration,
+    agentMessage,
+    model.delimitersConfiguration
+  );
 
   try {
     const _checkCancellation = async () => {
@@ -612,6 +636,7 @@ export async function* runGeneration(
 
     for await (const event of eventStream) {
       if (event.type === "error") {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "generation_error",
           created: Date.now(),
@@ -635,6 +660,7 @@ export async function* runGeneration(
       }
 
       if (shouldYieldCancel) {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "generation_cancel",
           created: Date.now(),
@@ -645,19 +671,13 @@ export async function* runGeneration(
       }
 
       if (event.type === "tokens") {
-        yield {
-          type: "generation_tokens",
-          created: Date.now(),
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          text: event.content.tokens.text,
-          classification: "tokens",
-        };
+        yield* tokenEmitter.emitTokens(event);
       }
 
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
+          yield* tokenEmitter.flushTokens();
           yield {
             type: "generation_error",
             created: Date.now(),
@@ -672,22 +692,20 @@ export async function* runGeneration(
         }
 
         if (event.content.block_name === "MODEL" && e.value) {
-          const m = e.value as {
-            message: {
-              content: string;
-            };
-          };
+          yield* tokenEmitter.flushTokens();
           yield {
             type: "generation_success",
             created: Date.now(),
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
-            text: m.message.content,
-            chainOfThought: "",
+            text: tokenEmitter.getContent() ?? "",
+            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           };
         }
       }
     }
+
+    yield* tokenEmitter.flushTokens();
   } finally {
     await redis.quit();
   }

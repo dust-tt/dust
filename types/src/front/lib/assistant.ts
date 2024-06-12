@@ -1,3 +1,4 @@
+import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
@@ -48,6 +49,50 @@ export function metaPromptForProvider(
     default:
       assertNever(providerId);
   }
+}
+
+export function isProviderWhitelisted(
+  owner: WorkspaceType,
+  providerId: ModelProviderIdType
+) {
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  return whiteListedProviders.includes(providerId);
+}
+
+export function getSmallWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_3_5_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  return null;
+}
+
+export function getLargeWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  return null;
 }
 
 /**
@@ -116,6 +161,7 @@ export type ModelConfigurationType = {
       openingPattern: string;
       closingPattern: string;
       isChainOfThought: boolean;
+      swallow: boolean;
     }>;
     // If this pattern is found at the end of a model event, we'll wait for the
     // the next event before emitting tokens.
@@ -178,22 +224,31 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
     delimiters: [
       {
         openingPattern: "<thinking>",
         closingPattern: "</thinking>",
         isChainOfThought: true,
+        swallow: false,
       },
       {
         openingPattern: "<search_quality_reflection>",
         closingPattern: "</search_quality_reflection>",
         isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
+        isChainOfThought: true,
+        swallow: true,
       },
       {
         openingPattern: "<result>",
         closingPattern: "</result>",
         isChainOfThought: false,
+        swallow: false,
       },
     ],
   },

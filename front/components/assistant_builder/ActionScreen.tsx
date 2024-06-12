@@ -43,6 +43,7 @@ const BASIC_ACTION_CATEGORIES = [
   "REPLY_ONLY",
   "USE_DATA_SOURCES",
   "WEBSEARCH",
+  "BROWSE",
 ] as const;
 const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
 
@@ -92,6 +93,13 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     description: "Perform a web search",
     defaultActionType: "WEBSEARCH",
     flag: "websearch_action",
+  },
+  BROWSE: {
+    label: "Browse content",
+    icon: PlanetIcon,
+    description: "Browse a web page",
+    defaultActionType: "BROWSE",
+    flag: "browse_action",
   },
 };
 
@@ -175,6 +183,8 @@ export default function ActionScreen({
         return "RUN_DUST_APP";
       case "WEBSEARCH":
         return "WEBSEARCH";
+      case "BROWSE":
+        return "BROWSE";
       default:
         assertNever(actionType);
     }
@@ -193,6 +203,7 @@ export default function ActionScreen({
 
       case null:
       case "WEBSEARCH":
+      case "BROWSE":
       case "DUST_APP_RUN":
         // Unused for non data sources related actions.
         return "RETRIEVAL_SEARCH";

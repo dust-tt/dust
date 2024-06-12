@@ -14,7 +14,7 @@ export function DustAppRunActionDetails({
 }: ActionDetailsComponentBaseProps<DustAppRunActionType>) {
   return (
     <ActionDetailsWrapper
-      actionName="Run app"
+      actionName={`Run ${action.appName}`}
       defaultOpen={defaultOpen}
       visual={CommandLineIcon}
     >

@@ -18,6 +18,10 @@ import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
+  ActionBrowse,
+  isActionBrowseValid,
+} from "@app/components/assistant_builder/actions/BrowseAction";
+import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
@@ -58,9 +62,10 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const CAPABILITIES_ACTION_CATEGORIES = ["WEBSEARCH"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const CAPABILITIES_ACTION_CATEGORIES = [
+  "WEBSEARCH",
+  "BROWSE",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
   AssistantBuilderActionConfiguration["type"]
@@ -92,6 +97,8 @@ export function isActionValid(
       return isActionTablesQueryValid(action);
     case "WEBSEARCH":
       return isActionWebsearchValid(action);
+    case "BROWSE":
+      return isActionBrowseValid(action);
     default:
       assertNever(action);
   }
@@ -573,6 +580,8 @@ function ActionConfigEditor({
       );
     case "WEBSEARCH":
       return <ActionWebsearch />;
+    case "BROWSE":
+      return <ActionBrowse />;
     default:
       assertNever(action);
   }

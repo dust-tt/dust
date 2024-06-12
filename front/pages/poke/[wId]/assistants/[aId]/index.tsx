@@ -1,10 +1,7 @@
 import { ContextItem, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
-import {
-  isDustAppRunConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
+import { ACTION_PRESETS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -52,55 +49,48 @@ const DataSourcePage = ({
                 <ContextItem.Description>
                   <div className="flex flex-col gap-2">
                     <div className="ml-4 pt-2 text-sm text-element-700">
-                      <div>createdAt: {`${a.versionCreatedAt}`}</div>
-                      <div>
-                        scope: <b>{a.scope}</b>
-                      </div>
-                      <div>versionAuthorId: {a.versionAuthorId}</div>
+                      <div className="font-bold">Created At:</div>
+                      <div>{`${a.versionCreatedAt}`}</div>
+                    </div>
+                    <div className="ml-4 pt-2 text-sm text-element-700">
+                      <div className="font-bold">Scope:</div>
+                      <div>{a.scope}</div>
+                    </div>
+                    <div className="ml-4 pt-2 text-sm text-element-700">
+                      <div className="font-bold">versionAuthorId:</div>
+                      <div>{a.versionAuthorId}</div>
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
                       {a.instructions}
                     </div>
                     <div className="ml-4 text-sm text-element-700">
-                      <div className="font-bold">model:</div>
-                      {JSON.stringify(a.model, null, 2)}
+                      <div className="font-bold">
+                        Model:{" "}
+                        {SUPPORTED_MODEL_CONFIGS.find(
+                          (m) => m.modelId === a.model.modelId
+                        )?.displayName ?? `Unknown Model (${a.model.modelId})`}
+                      </div>
+                      <JsonViewer
+                        value={a.model}
+                        rootName={false}
+                        defaultInspectDepth={0}
+                      />
                     </div>
-                    {a.actions.map((action, index) =>
-                      isRetrievalConfiguration(action) ? (
-                        <div
-                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
-                          key={`action-${index}`}
-                        >
-                          <div className="font-bold">Data Sources:</div>
-                          {JSON.stringify(action.dataSources, null, 2)}
-                        </div>
-                      ) : isDustAppRunConfiguration(action) ? (
-                        <div
-                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
-                          key={`action-${index}`}
-                        >
-                          <div className="font-bold">Dust app:</div>
-                          <div>
-                            {action.appWorkspaceId}/{action.appId}
+                    <div className="ml-4 text-sm text-element-700">
+                      {a.actions.map((action, index) => (
+                        <div key={index}>
+                          <div className="font-bold">
+                            Action {index + 1}: {ACTION_PRESETS[action.type]}
                           </div>
+                          <JsonViewer
+                            value={action}
+                            rootName={false}
+                            defaultInspectDepth={0}
+                          />
                         </div>
-                      ) : isTablesQueryConfiguration(action) ? (
-                        <div
-                          className="mb-2 ml-4 flex-col text-sm text-gray-600"
-                          key={`action-${index}`}
-                        >
-                          <div className="font-bold">Tables:</div>
-                          {action.tables.map((t) => (
-                            <div
-                              key={`${t.workspaceId}/${t.dataSourceId}/${t.tableId}`}
-                            >
-                              {t.workspaceId}/{t.dataSourceId}/{t.tableId}
-                            </div>
-                          ))}
-                        </div>
-                      ) : null
-                    )}
+                      ))}
+                    </div>
                   </div>
                 </ContextItem.Description>
               </ContextItem>

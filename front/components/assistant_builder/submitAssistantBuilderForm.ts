@@ -118,6 +118,13 @@ export async function submitAssistantBuilderForm({
               description: a.description,
             };
 
+          case "BROWSE":
+            return {
+              type: "browse_configuration",
+              name: a.name,
+              description: a.description,
+            };
+
           case "PROCESS":
             return {
               type: "process_configuration",

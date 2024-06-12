@@ -3,6 +3,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -19,8 +20,9 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -52,6 +54,11 @@ async function generateActionInputs(
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
+  }
+
   // We inject the prompt of the model so that its input generation behavior can be modified by its
   // instructions. It also injects context about the local time. If there is no generation phase we
   // default to a generic prompt.
@@ -64,26 +71,19 @@ async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const model: { providerId: string; modelId: string } = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
-
-  const contextSize = auth.isUpgraded()
-    ? GPT_4_TURBO_MODEL_CONFIG.contextSize
-    : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
+  const model = !auth.isUpgraded()
+    ? getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
+  if (!model) {
+    return new Err(new Error("No whitelisted model found for the workspace."));
+  }
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,
-    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {
@@ -177,7 +177,8 @@ export async function* runLegacyAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const action = deprecatedGetFirstActionConfiguration(configuration);
@@ -233,6 +234,17 @@ export async function* runLegacyAgent(
         return;
 
       case "generation_success":
+        if (event.chainOfThought.length) {
+          yield {
+            type: "agent_chain_of_thought",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            message: agentMessage,
+            chainOfThought: event.chainOfThought,
+          };
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
+        }
         yield {
           type: "agent_generation_success",
           created: event.created,
@@ -241,13 +253,19 @@ export async function* runLegacyAgent(
           text: event.text,
         };
         agentMessage.content = event.text;
+        agentMessage.status = "succeeded";
+        break;
+
+      case "agent_error":
+        yield event;
+        break;
+
+      case "agent_chain_of_thought":
+        agentMessage.chainOfThoughts.push(event.chainOfThought);
         break;
 
       default:
-        ((event: never) => {
-          logger.error("Unknown `runAgent` event type", event);
-        })(event);
-        return;
+        assertNever(event);
     }
   }
 
@@ -594,6 +612,53 @@ async function* runAction(
           };
           return;
         case "websearch_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isBrowseConfiguration(action)) {
+    const runner = getRunnerforActionConfiguration(action);
+
+    const eventStream = runner.run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs,
+      functionCallId: null,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "browse_params":
+          yield event;
+          break;
+        case "browse_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "browse_success":
           yield {
             type: "agent_action_success",
             created: event.created,

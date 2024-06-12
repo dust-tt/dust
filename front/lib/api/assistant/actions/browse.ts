@@ -1,22 +1,22 @@
 import type {
   AgentActionSpecification,
+  BrowseActionOutputType,
+  BrowseActionType,
+  BrowseConfigurationType,
+  BrowseErrorEvent,
+  BrowseParamsEvent,
+  BrowseSuccessEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
   Result,
-  WebsearchActionOutputType,
-  WebsearchActionType,
-  WebsearchConfigurationType,
-  WebsearchErrorEvent,
-  WebsearchParamsEvent,
-  WebsearchSuccessEvent,
 } from "@dust-tt/types";
 import {
   BaseAction,
+  BrowseActionOutputSchema,
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
-  WebsearchActionOutputSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
@@ -24,33 +24,40 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
+import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import logger from "@app/logger/logger";
 
-interface WebsearchActionBlob {
-  id: ModelId; // AgentWebsearchAction
+function isValidJSONArray(json: string): boolean {
+  try {
+    return Array.isArray(JSON.parse(json));
+  } catch (e) {
+    return false;
+  }
+}
+
+interface BrowseActionBlob {
+  id: ModelId; // AgentBrowseAction
   agentMessageId: ModelId;
-  query: string;
-  output: WebsearchActionOutputType | null;
+  urls: string[];
+  output: BrowseActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
 }
 
-export class WebsearchAction extends BaseAction {
+export class BrowseAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly query: string;
-  readonly output: WebsearchActionOutputType | null;
+  readonly urls: string[];
+  readonly output: BrowseActionOutputType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
-  readonly type = "websearch_action";
+  readonly type = "browse_action";
 
-  constructor(blob: WebsearchActionBlob) {
-    super(blob.id, "websearch_action");
-
+  constructor(blob: BrowseActionBlob) {
+    super(blob.id, "browse_action");
     this.agentMessageId = blob.agentMessageId;
-    this.query = blob.query;
+    this.urls = blob.urls;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -60,22 +67,22 @@ export class WebsearchAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "web_search",
-      arguments: JSON.stringify({ query: this.query }),
+      name: this.functionCallName ?? "browse",
+      arguments: JSON.stringify({ urls: this.urls }),
     };
   }
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "WEBSEARCH OUTPUT:\n";
+    let content = "BROWSE OUTPUT:\n";
     if (this.output === null) {
-      content += "The web search failed.\n";
+      content += "The browse failed.\n";
     } else {
       content += `${JSON.stringify(this.output, null, 2)}\n`;
     }
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "web_search",
+      name: this.functionCallName ?? "browse",
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -86,7 +93,7 @@ export class WebsearchAction extends BaseAction {
  * Params generation.
  */
 
-export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
+export class BrowseConfigurationServerRunner extends BaseActionConfigurationServerRunner<BrowseConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
     {
@@ -96,19 +103,16 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
-      throw new Error(
-        "Unexpected unauthenticated call to `runWebsearchAction`"
-      );
+      throw new Error("Unexpected unauthenticated call to `runBrowseAction`");
     }
 
     return new Ok({
-      name: name ?? "web_search",
-      description:
-        description ?? "Perform a web search and return the top results.",
+      name: name ?? "browse",
+      description: description ?? "Get content of a page.",
       inputs: [
         {
-          name: "query",
-          description: "The query used to perform the web search.",
+          name: "urls",
+          description: "List of urls to fetch, as a JSON array.",
           type: "string",
         },
       ],
@@ -121,10 +125,10 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     return this.buildSpecification(auth, {});
   }
 
-  // This method is in charge of running the websearch and creating an AgentWebsearchAction object in
+  // This method is in charge of running the browse and creating an AgentBrowseAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
-  // for an AgentWebsearchAction to be stored (once the query params are infered) but for its execution
-  // to fail, in which case an error event will be emitted and the AgentWebsearchAction won't have any
+  // for an AgentBrowseAction to be stored (once the query params are infered) but for its execution
+  // to fail, in which case an error event will be emitted and the AgentBrowseAction won't have any
   // outputs associated. The error is expected to be stored by the caller on the parent agent message.
   async *run(
     auth: Authenticator,
@@ -137,42 +141,49 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       step,
     }: BaseActionRunParams
   ): AsyncGenerator<
-    WebsearchParamsEvent | WebsearchSuccessEvent | WebsearchErrorEvent,
+    BrowseParamsEvent | BrowseSuccessEvent | BrowseErrorEvent,
     void
   > {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
-        "Unexpected unauthenticated call to `run` for websearch action"
+        "Unexpected unauthenticated call to `run` for browse action"
       );
     }
 
     const { actionConfiguration } = this;
 
-    const query = rawInputs.query;
+    const rawUrls = rawInputs.urls;
 
-    if (!query || typeof query !== "string" || query.length === 0) {
+    const urls =
+      typeof rawUrls === "string"
+        ? isValidJSONArray(rawUrls)
+          ? JSON.parse(rawUrls)
+          : [rawUrls]
+        : [];
+
+    if (urls.length === 0) {
       yield {
-        type: "websearch_error",
+        type: "browse_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "websearch_parameters_generation_error",
+          code: "browse_parameters_generation_error",
           message:
-            "The query parameter is required and must be a non-empty string.",
+            "The urls parameter is required and must be a valid list of URLs.",
         },
       };
       return;
     }
 
-    // Create the AgentWebsearchAction object in the database and yield an event for the generation of
+    // Create the AgentBrowseAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs
     // later on, the action won't have outputs but the error will be stored on the parent agent
     // message.
-    const action = await AgentWebsearchAction.create({
-      query,
-      websearchConfigurationId: actionConfiguration.sId,
+    const action = await AgentBrowseAction.create({
+      urls: urls,
+      browseConfigurationId: actionConfiguration.sId,
       functionCallId,
       functionCallName: actionConfiguration.name,
       agentMessageId: agentMessage.agentMessageId,
@@ -182,14 +193,14 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     const now = Date.now();
 
     yield {
-      type: "websearch_params",
+      type: "browse_params",
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new WebsearchAction({
+      action: new BrowseAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        query,
+        urls,
         output: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -197,39 +208,38 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       }),
     };
 
-    // "assitsant-v2-websearch" has no model interaction.
     const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-websearch"].config
+      DustProdActionRegistry["assistant-v2-browse"].config
     );
 
-    // Execute the websearch action.
-    const websearchRes = await runActionStreamed(
+    // Execute the browse action.
+    const browseRes = await runActionStreamed(
       auth,
-      "assistant-v2-websearch",
+      "assistant-v2-browse",
       config,
-      [{ query }],
+      [{ urls }],
       {
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         agentMessageId: agentMessage.sId,
       }
     );
-    if (websearchRes.isErr()) {
+    if (browseRes.isErr()) {
       yield {
-        type: "websearch_error",
+        type: "browse_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "websearch_execution_error",
-          message: websearchRes.error.message,
+          code: "browse_execution_error",
+          message: browseRes.error.message,
         },
       };
       return;
     }
 
-    const { eventStream } = websearchRes.value;
-    let output: WebsearchActionOutputType | null = null;
+    const { eventStream } = browseRes.value;
+    let output: BrowseActionOutputType | null = null;
 
     for await (const event of eventStream) {
       if (event.type === "error") {
@@ -239,15 +249,15 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
             conversationId: conversation.id,
             error: event.content.message,
           },
-          "Error running websearch action"
+          "Error running browse action"
         );
         yield {
-          type: "websearch_error",
+          type: "browse_error",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "websearch_execution_error",
+            code: "browse_execution_error",
             message: event.content.message,
           },
         };
@@ -263,23 +273,23 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
               conversationId: conversation.id,
               error: e.error,
             },
-            "Error running websearch action"
+            "Error running browse action"
           );
           yield {
-            type: "websearch_error",
+            type: "browse_error",
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
             error: {
-              code: "websearch_execution_error",
+              code: "browse_execution_error",
               message: e.error,
             },
           };
           return;
         }
 
-        if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          const outputValidation = WebsearchActionOutputSchema.decode(e.value);
+        if (event.content.block_name === "BROWSE_FINAL" && e.value) {
+          const outputValidation = BrowseActionOutputSchema.decode(e.value);
           if (isLeft(outputValidation)) {
             logger.error(
               {
@@ -287,16 +297,16 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
                 conversationId: conversation.id,
                 error: outputValidation.left,
               },
-              "Error running websearch action"
+              "Error running browse action"
             );
             yield {
-              type: "websearch_error",
+              type: "browse_error",
               created: Date.now(),
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               error: {
-                code: "websearch_execution_error",
-                message: `Invalid output from websearch action: ${outputValidation.left}`,
+                code: "browse_execution_error",
+                message: `Invalid output from browse action: ${outputValidation.left}`,
               },
             };
             return;
@@ -317,18 +327,18 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         conversationId: conversation.sId,
         elapsed: Date.now() - now,
       },
-      "[ASSISTANT_TRACE] Finished websearch action run execution"
+      "[ASSISTANT_TRACE] Finished browse action run execution"
     );
 
     yield {
-      type: "websearch_success",
+      type: "browse_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new WebsearchAction({
+      action: new BrowseAction({
         id: action.id,
         agentMessageId: agentMessage.agentMessageId,
-        query,
+        urls,
         output,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -345,20 +355,20 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
 // Internal interface for the retrieval and rendering of a actions from AgentMessage ModelIds. This
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
-export async function websearchActionTypesFromAgentMessageIds(
+export async function browseActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
-): Promise<WebsearchActionType[]> {
-  const models = await AgentWebsearchAction.findAll({
+): Promise<BrowseActionType[]> {
+  const models = await AgentBrowseAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
     },
   });
 
   return models.map((action) => {
-    return new WebsearchAction({
+    return new BrowseAction({
       id: action.id,
       agentMessageId: action.agentMessageId,
-      query: action.query,
+      urls: action.urls,
       output: action.output,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
