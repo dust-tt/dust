@@ -4,7 +4,7 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import { literal, Op } from "sequelize";
+import { literal, Op, Sequelize } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
 import { getUsersWithAgentInListCount } from "@app/lib/api/assistant/user_relation";
@@ -17,10 +17,11 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient } from "@app/lib/redis";
+import { redisClient, safeRedisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 30 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
+const popularityComputationTimeframeSec = 2 * 60 * 60;
 
 function _getKeys({
   workspaceId,
@@ -319,4 +320,80 @@ export async function signalAgentUsage({
       await redis.quit();
     }
   }
+}
+
+export async function computeMostPopularAgents(
+  workspaceId: string,
+  limit: number
+): Promise<number[]> {
+  const agentsMentionCount = await Mention.findAll({
+    where: {
+      createdAt: {
+        [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+      },
+      agentConfigurationId: {
+        workspaceId: workspaceId,
+      },
+    },
+    attributes: [
+      "agentConfigurationId",
+      [Sequelize.fn("COUNT", Sequelize.col("agentConfigurationId")), "count"],
+    ],
+    group: "agentConfigurationId",
+    order: [["count", "DESC"]],
+    limit: limit,
+  });
+  return agentsMentionCount.map((mentionCount) => mentionCount.id);
+}
+
+function getPopularAgentsKey(workspaceId: string) {
+  return `popular_agents:${workspaceId}`;
+}
+
+export async function storePopularAgentsInRedis(
+  workspaceId: string,
+  agentIds: number[]
+) {
+  const key = getPopularAgentsKey(workspaceId);
+  const scoreValuePairs = agentIds.map((id, index) => ({
+    value: id.toString(),
+    score: -index,
+  }));
+  const currentTime = Date.now() / 1000;
+  scoreValuePairs.push({ value: "lastUpdated", score: currentTime });
+
+  await safeRedisClient(async (redis) => {
+    await redis.zAdd(key, scoreValuePairs, { GT: true });
+    await redis.expire(key, popularityComputationTimeframeSec);
+  });
+}
+
+export async function getMostPopularAgents(
+  workspaceId: string,
+  limit: number
+): Promise<number[]> {
+  const key = getPopularAgentsKey(workspaceId);
+  return safeRedisClient(async (redis) => {
+    const rawData = await redis.zRangeWithScores(key, 0, -1, {
+      BY: "SCORE",
+      REV: true,
+    });
+    const lastUpdatedEntry = rawData.find(
+      (data) => data.value === "lastUpdated"
+    );
+    const lastUpdated = lastUpdatedEntry ? lastUpdatedEntry.score : 0;
+    const currentTime = Date.now() / 1000;
+
+    if (lastUpdated < currentTime - popularityComputationTimeframeSec) {
+      // Run the update in the background
+      await computeMostPopularAgents(workspaceId, limit).then(
+        async (newAgentIds) => {
+          await storePopularAgentsInRedis(workspaceId, newAgentIds);
+        }
+      );
+    }
+    return rawData
+      .filter((data) => data.value !== "lastUpdated")
+      .map((data) => parseInt(data.value));
+  });
 }
