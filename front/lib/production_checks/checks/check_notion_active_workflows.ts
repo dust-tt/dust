@@ -5,6 +5,7 @@ import { QueryTypes } from "sequelize";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
+import { withRetries } from "@app/lib/utils/retries";
 
 interface NotionConnector {
   id: number;
@@ -26,27 +27,48 @@ async function listAllNotionConnectors() {
   return notionConnectors;
 }
 
+async function getDescriptionsAndHistories({
+  client,
+  notionConnector,
+}: {
+  client: Client;
+  notionConnector: NotionConnector;
+}) {
+  const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector, "never")
+  );
+  const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector, "always")
+  );
+
+  const descriptions = await Promise.all([
+    incrementalSyncHandle.describe(),
+    garbageCollectorHandle.describe(),
+  ]);
+
+  const histories = await Promise.all([
+    incrementalSyncHandle.fetchHistory(),
+    garbageCollectorHandle.fetchHistory(),
+  ]);
+
+  return {
+    descriptions,
+    histories,
+  };
+}
+
 async function areTemporalWorkflowsRunning(
   client: Client,
   notionConnector: NotionConnector
 ) {
   try {
-    const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
-      getNotionWorkflowId(notionConnector, "never")
-    );
-    const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
-      getNotionWorkflowId(notionConnector, "always")
-    );
-
-    const descriptions = await Promise.all([
-      incrementalSyncHandle.describe(),
-      garbageCollectorHandle.describe(),
-    ]);
-
-    const histories = await Promise.all([
-      incrementalSyncHandle.fetchHistory(),
-      garbageCollectorHandle.fetchHistory(),
-    ]);
+    const { descriptions, histories } = await withRetries(
+      getDescriptionsAndHistories,
+      { retries: 3 }
+    )({
+      client,
+      notionConnector,
+    });
 
     const latests: (Date | null)[] = histories.map((h) => {
       let latest: Date | null = null;
