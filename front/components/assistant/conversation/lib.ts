@@ -24,6 +24,8 @@ export const CONVERSATION_PARENT_SCROLL_DIV_ID = {
   page: "main-content",
 };
 
+export const INPUT_BAR_CONTAINER_ID = "input-bar-container";
+
 export type ConversationErrorType = {
   type:
     | "attachment_upload_error"

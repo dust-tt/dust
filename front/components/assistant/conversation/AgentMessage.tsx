@@ -31,7 +31,7 @@ import {
 } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
@@ -39,7 +39,7 @@ import { AssistantEditionMenu } from "@app/components/assistant/conversation/Ass
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID, CONVERSATION_TITLE_ID, INPUT_BAR_CONTAINER_ID } from "@app/components/assistant/conversation/lib";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -57,6 +57,7 @@ interface AgentMessageProps {
   reactions: MessageReactionType[];
   isInModal?: boolean;
   hideReactions?: boolean;
+  isLastMessage: boolean;
   size: MessageSizeType;
 }
 
@@ -74,6 +75,7 @@ export function AgentMessage({
   reactions,
   isInModal,
   hideReactions,
+  isLastMessage,
   size,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -233,6 +235,36 @@ export function AgentMessage({
     }
   })();
 
+  const getLastMessageMinHeight = () => {
+    const conversationElementId = CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"];
+    const conversationElement = document.getElementById(conversationElementId);
+
+    if (!conversationElement) {
+      return "0";
+    }
+
+    const conversationElementHeight = conversationElement.clientHeight;
+    const conversationTitleHeight = 4 * 16;
+    const textInputHeight = document.getElementById(INPUT_BAR_CONTAINER_ID)?.clientHeight || 11 * 16;
+
+    const inputPromptHeight = 10 * 16; // 11rem. This margin is equivalent to a two liner input prompt
+    const smallTopMargin = 3 * 16; // 2rem. For display purposes
+
+    return `${conversationElementHeight - conversationTitleHeight - smallTopMargin - inputPromptHeight - textInputHeight}px`;
+  };
+
+  const messageMinHeight = useMemo(() => {
+    if (isLastMessage && agentMessageToRender.status === "created") {
+      return getLastMessageMinHeight();
+    } else {
+      return "0";
+    }
+  }, [
+    isInModal,
+    isLastMessage,
+    agentMessageToRender.status,
+  ]);
+
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
   // start of the message, we do not want to scroll it back down.
@@ -242,48 +274,48 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  const isAtBottom = useRef(true);
+  // const isAtBottom = useRef(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isAtBottom.current = entry.isIntersecting;
-      },
-      { threshold: 1 }
-    );
+  // useEffect(() => {
+  //   const observer = new IntersectionObserver(
+  //     ([entry]) => {
+  //       isAtBottom.current = entry.isIntersecting;
+  //     },
+  //     { threshold: 1 }
+  //   );
 
-    const currentBottomRef = bottomRef.current;
+  //   const currentBottomRef = bottomRef.current;
 
-    if (currentBottomRef) {
-      observer.observe(currentBottomRef);
-    }
+  //   if (currentBottomRef) {
+  //     observer.observe(currentBottomRef);
+  //   }
 
-    return () => {
-      if (currentBottomRef) {
-        observer.unobserve(currentBottomRef);
-      }
-    };
-  }, []);
+  //   return () => {
+  //     if (currentBottomRef) {
+  //       observer.unobserve(currentBottomRef);
+  //     }
+  //   };
+  // }, []);
 
-  useEffect(() => {
-    const mainTag = document.getElementById(
-      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-    );
-    if (
-      mainTag &&
-      streamedAgentMessage.status === "created" &&
-      isAtBottom.current
-    ) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [
-    agentMessageToRender.content,
-    agentMessageToRender.status,
-    agentMessageToRender.actions.length,
-    streamedAgentMessage.status,
-    activeReferences.length,
-    isInModal,
-  ]);
+  // useEffect(() => {
+  //   const mainTag = document.getElementById(
+  //     CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+  //   );
+  //   if (
+  //     mainTag &&
+  //     streamedAgentMessage.status === "created" &&
+  //     isAtBottom.current
+  //   ) {
+  //     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  //   }
+  // }, [
+  //   agentMessageToRender.content,
+  //   agentMessageToRender.status,
+  //   agentMessageToRender.actions.length,
+  //   streamedAgentMessage.status,
+  //   activeReferences.length,
+  //   isInModal,
+  // ]);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
@@ -400,6 +432,9 @@ export function AgentMessage({
       }}
       type="agent"
       size={size}
+      style={{
+        minHeight: messageMinHeight,
+      }}
     >
       <div>{renderMessage(agentMessageToRender, references, shouldStream)}</div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}

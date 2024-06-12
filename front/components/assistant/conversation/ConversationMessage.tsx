@@ -46,6 +46,7 @@ export function ConversationMessage({
   type,
   size = "normal",
   citations,
+  style,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -68,14 +69,16 @@ export function ConversationMessage({
   size?: MessageSizeType;
   // TODO(2024-05-27 flav) Change type to support AgentMessage citations.
   citations?: ContentFragmentType[];
+  style?: React.CSSProperties;
 }) {
   return (
     <div
       className={classNames(
-        "flex w-full flex-col justify-stretch gap-4 rounded-2xl",
+        "flex w-full flex-col justify-stretch gap-4 rounded-2xl min-h-0 transition-[min-height] transition-[margin-bottom]",
         messageTypeClasses[type],
         messageSizeClasses[size]
       )}
+      style={style}
     >
       <MessageHeader
         avatarUrl={pictureUrl}

@@ -72,6 +72,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={owner}
               user={user}
               conversationId={conversationId}
+              isLastMessage={isLastMessage}
               reactions={messageReactions}
               isInModal={isInModal}
               hideReactions={hideReactions}

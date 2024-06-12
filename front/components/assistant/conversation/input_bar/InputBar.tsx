@@ -23,6 +23,7 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
+import { INPUT_BAR_CONTAINER_ID } from "@app/components/assistant/conversation/lib";
 
 // AGENT MENTION
 
@@ -378,7 +379,7 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
+    <div id={INPUT_BAR_CONTAINER_ID} className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
       <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">
         <AssistantInputBar
           owner={owner}
