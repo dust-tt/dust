@@ -11,7 +11,6 @@ import type {
   GenerationTokensEvent,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
-  ModelProviderIdType,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -24,6 +23,7 @@ import {
   isContentFragmentType,
   isRetrievalConfiguration,
   isUserMessageType,
+  metaPromptForProvider,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -381,27 +381,6 @@ export async function constructPrompt(
   }
 
   return `${context}${instructions}`;
-}
-
-export function metaPromptForProvider(
-  providerId: ModelProviderIdType
-): string | null {
-  switch (providerId) {
-    case "openai":
-      return "When using tools, generate valid and properly escaped JSON arguments.";
-    case "anthropic":
-      // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
-      return (
-        "Do not reflect on the quality of the returned search results in your response. " +
-        "Be concise in your thinking phases."
-      );
-    case "mistral":
-      return null;
-    case "google_ai_studio":
-      return null;
-    default:
-      assertNever(providerId);
-  }
 }
 
 export async function constructPromptMultiActions(
