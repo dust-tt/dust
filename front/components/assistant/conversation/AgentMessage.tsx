@@ -58,6 +58,7 @@ interface AgentMessageProps {
   isInModal?: boolean;
   hideReactions?: boolean;
   size: MessageSizeType;
+  isAtBottomRef: React.MutableRefObject<boolean>;
 }
 
 /**
@@ -75,6 +76,7 @@ export function AgentMessage({
   isInModal,
   hideReactions,
   size,
+  isAtBottomRef,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -242,28 +244,16 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  const isAtBottom = useRef(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isAtBottom.current = entry.isIntersecting;
-      },
-      { threshold: 1 }
-    );
 
-    const currentBottomRef = bottomRef.current;
-
-    if (currentBottomRef) {
-      observer.observe(currentBottomRef);
+  function scrollToBottom(element: HTMLElement | null) {
+    if (element && element.scrollHeight) {
+        element.scrollTo({
+            top: element.scrollHeight,
+            behavior: 'smooth'
+        });
     }
-
-    return () => {
-      if (currentBottomRef) {
-        observer.unobserve(currentBottomRef);
-      }
-    };
-  }, []);
+  }
 
   useEffect(() => {
     const mainTag = document.getElementById(
@@ -272,9 +262,9 @@ export function AgentMessage({
     if (
       mainTag &&
       streamedAgentMessage.status === "created" &&
-      isAtBottom.current
+      isAtBottomRef.current
     ) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      scrollToBottom(mainTag);
     }
   }, [
     agentMessageToRender.content,

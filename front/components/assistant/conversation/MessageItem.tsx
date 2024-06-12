@@ -19,6 +19,7 @@ interface MessageItemProps {
   owner: WorkspaceType;
   reactions: ConversationMessageReactions;
   user: UserType;
+  isAtBottomRef?: React.MutableRefObject<boolean>;
 }
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
@@ -33,6 +34,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       owner,
       reactions,
       user,
+      isAtBottomRef,
     }: MessageItemProps,
     ref
   ) {
@@ -76,6 +78,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isInModal={isInModal}
               hideReactions={hideReactions}
               size={isInModal ? "compact" : "normal"}
+              isAtBottomRef={isAtBottomRef}
             />
           </div>
         );

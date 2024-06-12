@@ -146,6 +146,36 @@ export default function ConversationViewer({
     }
   }, [isInModal, latestPage]);
 
+  const isAtBottomRef = useRef(true);
+  useEffect(() => {
+    const scrollElementId = CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"];
+    const scrollElement = document.getElementById(scrollElementId);
+
+    if (!scrollElement) {
+      return;
+    }
+
+    const onScrollCallback = (event: Event) => {
+      const hasReachedBottom = scrollElement.scrollHeight - scrollElement.clientHeight <= scrollElement.scrollTop;
+      if (hasReachedBottom) {
+        isAtBottomRef.current = true;
+        return;
+      }
+      
+      if (isAtBottomRef.current) {
+        isAtBottomRef.current = false;
+      }
+    }
+
+    scrollElement.addEventListener('scroll', onScrollCallback);
+
+    return () => {
+      scrollElement.removeEventListener('scroll', onScrollCallback);
+    }   
+  }, [
+    isInModal
+  ]);
+
   // Compute the latest mentions ordered by the most recents first.
   const latestMentions = useMemo(() => {
     const recentMentions = latestPage?.messages.reduce((acc, message) => {
@@ -397,6 +427,7 @@ export default function ConversationViewer({
               user={user}
               isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
               latestMentions={latestMentions}
+              isAtBottomRef={isAtBottomRef}
             />
           );
         });
