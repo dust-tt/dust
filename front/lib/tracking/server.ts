@@ -66,13 +66,27 @@ export class ServerSideTracking {
       // so we keep subscription info up to date.
       // The actual customer.io call is rate limited to 1 call per day with the same data.
       const workspacesToTrackOnCustomerIo = user.workspaces
-        .map((ws) => ({
-          ...ws,
-          planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
-          seats: seatsByWorkspaceId[ws.sId].seats,
-          subscriptionStartAt: subscriptionByWorkspaceId[ws.sId].startDate,
-          requestCancelAt: subscriptionByWorkspaceId[ws.sId].requestCancelAt,
-        }))
+        .map((ws) => {
+          const subscriptionStartInt =
+            subscriptionByWorkspaceId[ws.sId].startDate;
+          const subscriptionStartAt = subscriptionStartInt
+            ? new Date(subscriptionStartInt)
+            : null;
+
+          const requestCancelAtInt =
+            subscriptionByWorkspaceId[ws.sId].requestCancelAt;
+          const requestCancelAt = requestCancelAtInt
+            ? new Date(requestCancelAtInt)
+            : null;
+
+          return {
+            ...ws,
+            planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
+            seats: seatsByWorkspaceId[ws.sId].seats,
+            subscriptionStartAt,
+            requestCancelAt,
+          };
+        })
         .filter((ws) => ws.planCode !== FREE_TEST_PLAN_CODE);
       if (workspacesToTrackOnCustomerIo.length > 0) {
         promises.push(
@@ -205,7 +219,7 @@ export class ServerSideTracking {
     workspace: LightWorkspaceType;
     planCode: string;
     workspaceSeats: number;
-    subscriptionStartAt: number;
+    subscriptionStartAt: Date;
   }) {
     return Promise.all([
       AmplitudeServerSideTracking.trackSubscriptionCreated({
@@ -232,7 +246,7 @@ export class ServerSideTracking {
     requestCancelAt,
   }: {
     workspace: LightWorkspaceType;
-    requestCancelAt: number;
+    requestCancelAt: Date;
   }) {
     return CustomerioServerSideTracking.identifyWorkspaces({
       workspaces: [
