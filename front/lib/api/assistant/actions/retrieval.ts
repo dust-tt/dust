@@ -400,6 +400,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const now = Date.now();
 
+    // "assistant-v2-retrieval" has no model interaction.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-retrieval"].config
     );

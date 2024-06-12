@@ -20,8 +20,8 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -54,6 +54,11 @@ async function generateActionInputs(
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<Result<Record<string, string | boolean | number>, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
+  }
+
   // We inject the prompt of the model so that its input generation behavior can be modified by its
   // instructions. It also injects context about the local time. If there is no generation phase we
   // default to a generic prompt.
@@ -66,26 +71,19 @@ async function generateActionInputs(
 
   const MIN_GENERATION_TOKENS = 2048;
 
-  const model: { providerId: string; modelId: string } = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
-
-  const contextSize = auth.isUpgraded()
-    ? GPT_4_TURBO_MODEL_CONFIG.contextSize
-    : GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
+  const model = !auth.isUpgraded()
+    ? getSmallWhitelistedModel(owner)
+    : getLargeWhitelistedModel(owner);
+  if (!model) {
+    return new Err(new Error("No whitelisted model found for the workspace."));
+  }
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt,
-    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
   });
 
   if (modelConversationRes.isErr()) {

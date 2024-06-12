@@ -2,7 +2,12 @@ import type {
   ProcessSchemaPropertyType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
-import { cloneBaseConfig, ioTsParsePayload } from "@dust-tt/types";
+import {
+  cloneBaseConfig,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  ioTsParsePayload,
+} from "@dust-tt/types";
 import { InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema } from "@dust-tt/types";
 import { DustProdActionRegistry } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -53,11 +58,26 @@ async function handler(
         });
       }
 
+      const model = !auth.isUpgraded()
+        ? getSmallWhitelistedModel(owner)
+        : getLargeWhitelistedModel(owner);
+      if (!model) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `No whitelisted models were found for the workspace.`,
+          },
+        });
+      }
+
       const config = cloneBaseConfig(
         DustProdActionRegistry[
           "assistant-builder-process-action-schema-generator"
         ].config
       );
+      config.MODEL.provider_id = model.providerId;
+      config.MODEL.model_id = model.modelId;
 
       const actionRes = await runAction(
         auth,
