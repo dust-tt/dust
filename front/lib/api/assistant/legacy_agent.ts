@@ -3,6 +3,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -177,7 +178,8 @@ export async function* runLegacyAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const action = deprecatedGetFirstActionConfiguration(configuration);
@@ -233,6 +235,17 @@ export async function* runLegacyAgent(
         return;
 
       case "generation_success":
+        if (event.chainOfThought.length) {
+          yield {
+            type: "agent_chain_of_thought",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            message: agentMessage,
+            chainOfThought: event.chainOfThought,
+          };
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
+        }
         yield {
           type: "agent_generation_success",
           created: event.created,
@@ -241,13 +254,19 @@ export async function* runLegacyAgent(
           text: event.text,
         };
         agentMessage.content = event.text;
+        agentMessage.status = "succeeded";
+        break;
+
+      case "agent_error":
+        yield event;
+        break;
+
+      case "agent_chain_of_thought":
+        agentMessage.chainOfThoughts.push(event.chainOfThought);
         break;
 
       default:
-        ((event: never) => {
-          logger.error("Unknown `runAgent` event type", event);
-        })(event);
-        return;
+        assertNever(event);
     }
   }
 

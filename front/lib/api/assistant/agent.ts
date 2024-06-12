@@ -1084,7 +1084,7 @@ async function* runAction(
   }
 }
 
-class TokenEmitter {
+export class TokenEmitter {
   private buffer: string = "";
   private content: string = "";
   private chainOfThought: string = "";
