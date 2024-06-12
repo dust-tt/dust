@@ -231,6 +231,7 @@ export async function* runMultiActionsAgentLoop(
               message: agentMessage,
               chainOfThought: event.chainOfThought,
             };
+            agentMessage.chainOfThoughts.push(event.chainOfThought);
           }
           yield {
             type: "agent_generation_success",
@@ -252,6 +253,7 @@ export async function* runMultiActionsAgentLoop(
           return;
 
         case "agent_chain_of_thought":
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
           yield event;
           break;
 
@@ -639,8 +641,8 @@ export async function* runMultiActionsAgent(
             created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            text: tokenEmitter.getContent(),
-            chainOfThought: tokenEmitter.getChainOfThought(),
+            text: tokenEmitter.getContent() ?? "",
+            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           } satisfies GenerationSuccessEvent;
 
           return;
@@ -746,7 +748,7 @@ export async function* runMultiActionsAgent(
   const chainOfThought = tokenEmitter.getChainOfThought();
   const content = tokenEmitter.getContent();
 
-  if (chainOfThought.length || content.length) {
+  if (chainOfThought?.length || content?.length) {
     yield {
       type: "agent_chain_of_thought",
       created: Date.now(),
@@ -1082,11 +1084,12 @@ async function* runAction(
   }
 }
 
-class TokenEmitter {
+export class TokenEmitter {
   private buffer: string = "";
   private content: string = "";
   private chainOfThought: string = "";
   private chainOfToughtDelimitersOpened: number = 0;
+  private swallowDelimitersOpened: number = 0;
   private pattern?: RegExp;
   private incompleteDelimiterPattern?: RegExp;
   private specByDelimiter: Record<
@@ -1094,6 +1097,7 @@ class TokenEmitter {
     {
       type: "opening_delimiter" | "closing_delimiter";
       isChainOfThought: boolean;
+      swallow: boolean;
     }
   >;
 
@@ -1123,14 +1127,19 @@ class TokenEmitter {
     // Store mapping of delimiters to their spec.
     this.specByDelimiter =
       delimitersConfiguration?.delimiters.reduce(
-        (acc, { openingPattern, closingPattern, isChainOfThought }) => {
+        (
+          acc,
+          { openingPattern, closingPattern, isChainOfThought, swallow }
+        ) => {
           acc[openingPattern] = {
             type: "opening_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           acc[closingPattern] = {
             type: "closing_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           return acc;
         },
@@ -1155,25 +1164,26 @@ class TokenEmitter {
     if (!this.buffer.length) {
       return;
     }
+    if (!this.swallowDelimitersOpened) {
+      const text =
+        upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
 
-    const text =
-      upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: this.agentConfiguration.sId,
+        messageId: this.agentMessage.sId,
+        text,
+        classification: this.chainOfToughtDelimitersOpened
+          ? "chain_of_thought"
+          : "tokens",
+      };
 
-    yield {
-      type: "generation_tokens",
-      created: Date.now(),
-      configurationId: this.agentConfiguration.sId,
-      messageId: this.agentMessage.sId,
-      text,
-      classification: this.chainOfToughtDelimitersOpened
-        ? "chain_of_thought"
-        : "tokens",
-    };
-
-    if (this.chainOfToughtDelimitersOpened) {
-      this.chainOfThought += text;
-    } else {
-      this.content += text;
+      if (this.chainOfToughtDelimitersOpened) {
+        this.chainOfThought += text;
+      } else {
+        this.content += text;
+      }
     }
 
     this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
@@ -1204,11 +1214,22 @@ class TokenEmitter {
         yield* this.flushTokens({ upTo: index });
       }
 
-      const { type: classification, isChainOfThought } =
-        this.specByDelimiter[del];
+      const {
+        type: classification,
+        isChainOfThought,
+        swallow,
+      } = this.specByDelimiter[del];
 
       if (!classification) {
         throw new Error(`Unknown delimiter: ${del}`);
+      }
+
+      if (swallow) {
+        if (classification === "opening_delimiter") {
+          this.swallowDelimitersOpened += 1;
+        } else {
+          this.swallowDelimitersOpened -= 1;
+        }
       }
 
       if (isChainOfThought) {
@@ -1237,11 +1258,11 @@ class TokenEmitter {
     yield* this.flushTokens();
   }
 
-  getContent(): string {
-    return this.content;
+  getContent(): string | null {
+    return this.content.length ? this.content : null;
   }
 
-  getChainOfThought(): string {
-    return this.chainOfThought;
+  getChainOfThought(): string | null {
+    return this.chainOfThought.length ? this.chainOfThought : null;
   }
 }

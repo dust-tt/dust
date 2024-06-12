@@ -116,6 +116,7 @@ export type ModelConfigurationType = {
       openingPattern: string;
       closingPattern: string;
       isChainOfThought: boolean;
+      swallow: boolean;
     }>;
     // If this pattern is found at the end of a model event, we'll wait for the
     // the next event before emitting tokens.
@@ -178,22 +179,31 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
     delimiters: [
       {
         openingPattern: "<thinking>",
         closingPattern: "</thinking>",
         isChainOfThought: true,
+        swallow: false,
       },
       {
         openingPattern: "<search_quality_reflection>",
         closingPattern: "</search_quality_reflection>",
         isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
+        isChainOfThought: true,
+        swallow: true,
       },
       {
         openingPattern: "<result>",
         closingPattern: "</result>",
         isChainOfThought: false,
+        swallow: false,
       },
     ],
   },

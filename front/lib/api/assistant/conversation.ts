@@ -783,10 +783,11 @@ export async function* postUserMessage(
                   status: "created",
                   actions: [],
                   content: null,
+                  chainOfThoughts: [],
                   error: null,
                   configuration,
                   rank: messageRow.rank,
-                },
+                } satisfies AgentMessageWithRankType,
               };
             })();
           })
@@ -1258,6 +1259,7 @@ export async function* editUserMessage(
                 status: "created",
                 actions: [],
                 content: null,
+                chainOfThoughts: [],
                 error: null,
                 configuration,
                 rank: messageRow.rank,
@@ -1479,6 +1481,7 @@ export async function* retryAgentMessage(
         status: "created",
         actions: [],
         content: null,
+        chainOfThoughts: [],
         error: null,
         configuration: message.configuration,
         rank: m.rank,

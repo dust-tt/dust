@@ -7,11 +7,14 @@ import {
   DocumentDuplicateIcon,
   DropdownMenu,
   EyeIcon,
+  Icon,
+  PuzzleIcon,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentActionType,
+  AgentChainOfThoughtEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
@@ -107,6 +110,10 @@ export function AgentMessage({
     }
   })();
 
+  const [lastTokenClassification, setLastTokenClassification] = useState<
+    null | "tokens" | "chain_of_thought"
+  >(null);
+
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       if (!shouldStream) {
@@ -137,7 +144,8 @@ export function AgentMessage({
         | GenerationTokensEvent
         | AgentGenerationSuccessEvent
         | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
+        | AgentMessageSuccessEvent
+        | AgentChainOfThoughtEvent;
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
@@ -182,6 +190,15 @@ export function AgentMessage({
         });
         break;
 
+      case "agent_chain_of_thought":
+        setStreamedAgentMessage((m) => {
+          return {
+            ...m,
+            chainOfThoughts: [...m.chainOfThoughts, event.chainOfThought],
+          };
+        });
+        break;
+
       case "agent_generation_cancelled":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "cancelled" };
@@ -189,26 +206,47 @@ export function AgentMessage({
         break;
 
       case "agent_message_success": {
-        setStreamedAgentMessage(event.message);
+        setStreamedAgentMessage((m) => {
+          return {
+            ...m,
+            ...event.message,
+          };
+        });
         break;
       }
+
       case "generation_tokens": {
-        if (
-          event.classification !== "closing_delimiter" &&
-          event.classification !== "opening_delimiter"
-        ) {
-          setStreamedAgentMessage((m) => {
-            const previousContent = m.content || "";
-            return { ...m, content: previousContent + event.text };
-          });
+        switch (event.classification) {
+          case "closing_delimiter":
+          case "opening_delimiter":
+            break;
+          case "tokens":
+            setLastTokenClassification("tokens");
+            setStreamedAgentMessage((m) => {
+              const previousContent = m.content || "";
+              return { ...m, content: previousContent + event.text };
+            });
+            break;
+          case "chain_of_thought":
+            setLastTokenClassification("chain_of_thought");
+            setStreamedAgentMessage((m) => {
+              const currentChainOfThoughts = m.chainOfThoughts;
+              const lastChainOfThought = currentChainOfThoughts.pop() ?? "";
+              const chainOfThoughts = [
+                ...currentChainOfThoughts,
+                lastChainOfThought + event.text,
+              ];
+              return { ...m, chainOfThoughts };
+            });
+            break;
+          default:
+            assertNever(event.classification);
         }
         break;
       }
 
       default:
-        ((t: never) => {
-          console.error("Unknown event type", t);
-        })(event);
+        assertNever(event);
     }
   }, []);
 
@@ -220,16 +258,14 @@ export function AgentMessage({
       case "failed":
         return message;
       case "cancelled":
-        return streamedAgentMessage.status === "created"
-          ? { ...streamedAgentMessage, status: "cancelled" }
-          : message;
+        if (streamedAgentMessage.status === "created") {
+          return { ...streamedAgentMessage, status: "cancelled" };
+        }
+        return message;
       case "created":
         return streamedAgentMessage;
-
       default:
-        ((status: never) => {
-          throw new Error(`Unknown status: ${status}`);
-        })(message.status);
+        assertNever(message.status);
     }
   })();
 
@@ -401,19 +437,30 @@ export function AgentMessage({
       type="agent"
       size={size}
     >
-      <div>{renderMessage(agentMessageToRender, references, shouldStream)}</div>
+      <div>
+        {renderAgentMessage({
+          agentMessage: agentMessageToRender,
+          references: references,
+          streaming: shouldStream,
+          lastTokenClassification: lastTokenClassification,
+        })}
+      </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
     </ConversationMessage>
   );
 
-  function renderMessage(
-    agentMessage: AgentMessageType,
-    references: { [key: string]: RetrievalDocumentType },
-    streaming: boolean
-  ) {
-    // Display the error to the user so they can report it to us (or some can be understandable
-    // directly to them)
+  function renderAgentMessage({
+    agentMessage,
+    references,
+    streaming,
+    lastTokenClassification,
+  }: {
+    agentMessage: AgentMessageType;
+    references: { [key: string]: RetrievalDocumentType };
+    streaming: boolean;
+    lastTokenClassification: null | "tokens" | "chain_of_thought";
+  }) {
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
@@ -429,6 +476,8 @@ export function AgentMessage({
     }
 
     // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
+
+    const chainOfThought = agentMessage.chainOfThoughts.join("");
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
@@ -436,9 +485,27 @@ export function AgentMessage({
           agentMessageContent={agentMessage.content}
           size={size}
         />
+
+        {chainOfThought.length ? (
+          <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">
+            <div className="flex flex-row gap-2">
+              <Icon size="sm" visual={PuzzleIcon} />
+              <div className="font-semibold">Assistant thoughts</div>
+            </div>
+
+            <div className={"italic"}>
+              <RenderMessageMarkdown
+                content={chainOfThought}
+                isStreaming={false}
+              />
+            </div>
+          </div>
+        ) : null}
+
         {agentMessage.content !== null && (
           <div>
-            {agentMessage.content === "" ? (
+            {lastTokenClassification !== "chain_of_thought" &&
+            agentMessage.content === "" ? (
               <div className="blinking-cursor">
                 <span></span>
               </div>
@@ -446,7 +513,9 @@ export function AgentMessage({
               <>
                 <RenderMessageMarkdown
                   content={agentMessage.content}
-                  isStreaming={streaming}
+                  isStreaming={
+                    streaming && lastTokenClassification === "tokens"
+                  }
                   citationsContext={{
                     references,
                     updateActiveReferences,

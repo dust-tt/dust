@@ -114,6 +114,7 @@ export type AgentMessageType = {
   status: AgentMessageStatus;
   actions: AgentActionType[];
   content: string | null;
+  chainOfThoughts: string[];
   error: {
     code: string;
     message: string;
