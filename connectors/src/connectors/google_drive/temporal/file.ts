@@ -2,8 +2,10 @@ import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
+import mammoth from "mammoth";
 import os from "os";
 import type { CreationAttributes } from "sequelize";
+import turndown from "turndown";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
@@ -256,6 +258,36 @@ export async function syncOneFile(
         return false;
       } finally {
         await fs.unlink(pdf_path);
+      }
+    } else if (
+      file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      if (res.data instanceof ArrayBuffer) {
+        try {
+          const converted = await mammoth.convertToHtml({
+            buffer: Buffer.from(res.data),
+          });
+          const extracted = new turndown()
+            .remove(["style", "script", "iframe", "noscript", "form", "img"])
+            .turndown(converted.value);
+
+          documentContent = {
+            prefix: null,
+            content: extracted.trim(),
+            sections: [],
+          };
+        } catch (err) {
+          localLogger.warn(
+            {
+              error: err,
+            },
+            `Error while converting docx document to text`
+          );
+          // we don't know what to do with PDF files that fails to be converted to text.
+          // So we log the error and skip the file.
+          return false;
+        }
       }
     }
   } else if (isGoogleDriveSpreadSheetFile(file)) {
