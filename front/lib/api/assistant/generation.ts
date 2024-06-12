@@ -28,7 +28,6 @@ import {
   isUserMessageType,
   Ok,
   removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
@@ -510,11 +509,7 @@ export async function* runGeneration(
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === configuration.model.modelId &&
-      m.providerId === configuration.model.providerId
-  );
+  const model = getSupportedModelConfig(configuration.model);
 
   if (!model) {
     yield {
@@ -544,7 +539,7 @@ export async function* runGeneration(
     return;
   }
 
-  const contextSize = getSupportedModelConfig(configuration.model).contextSize;
+  const contextSize = model.contextSize;
 
   const MIN_GENERATION_TOKENS = 2048;
 
