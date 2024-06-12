@@ -20,12 +20,11 @@ import type { ComponentType } from "react";
 import { useCallback, useContext } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { set } from "lodash";
 
 const topPicks = [
   {
