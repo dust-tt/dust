@@ -69,6 +69,7 @@ export type APIErrorType =
   | "template_not_found"
   // Invitations:
   | "invitation_already_sent_recently"
+  | "invite_access_error"
   // DustAppSecrets:
   | "dust_app_secret_not_found"
   // Key:

@@ -10,12 +10,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { deleteUser } from "@app/lib/api/user";
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
 import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
-import {
-  AuthFlowError,
-  SSOEnforcedError,
-  UnverifiedEmailError,
-  WorkspaceIdentificationError,
-} from "@app/lib/iam/errors";
+import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForToken,
   markInvitationAsConsumed,
@@ -52,7 +47,8 @@ async function handleMembershipInvite(
   if (membershipInvite.inviteEmail !== user.email) {
     return new Err(
       new AuthFlowError(
-        "The invitation token is not intended for use with this email address."
+        "The invitation token is not intended for use with this email address.",
+        "invite_access_error"
       )
     );
   }
@@ -66,7 +62,8 @@ async function handleMembershipInvite(
   if (!workspace) {
     return new Err(
       new AuthFlowError(
-        "The invite token is invalid, please ask your admin to resend an invitation."
+        "The invite token is invalid, please ask your admin to resend an invitation.",
+        "invite_access_error"
       )
     );
   }
@@ -85,7 +82,8 @@ async function handleMembershipInvite(
   if (m?.isRevoked()) {
     return new Err(
       new AuthFlowError(
-        "Your access to the workspace has expired, please contact the workspace admin to update your role."
+        "Your access to the workspace has expired, please contact the workspace admin to update your role.",
+        "invite_access_error"
       )
     );
   }
@@ -190,7 +188,7 @@ async function handleRegularSignupFlow(
       flow: "no-auto-join" | "revoked" | null;
       workspace: Workspace | null;
     },
-    SSOEnforcedError | UnverifiedEmailError | WorkspaceIdentificationError
+    SSOEnforcedError | AuthFlowError
   >
 > {
   const activeMemberships = await MembershipResource.getActiveMemberships({
@@ -279,22 +277,26 @@ async function handleRegularSignupFlow(
 
     if (!memberships.length) {
       if (!session.user.email_verified) {
-        return new Err(new UnverifiedEmailError("unverified email"));
+        return new Err(
+          new AuthFlowError("User email is not verified", "unverified_email")
+        );
       }
 
       if (!existingWorkspace) {
         return new Err(
-          new WorkspaceIdentificationError(
-            "Workspace not found for user email " + session.user.email
+          new AuthFlowError(
+            "Workspace not found for user email " + session.user.email,
+            "workspace_not_found"
           )
         );
       }
 
       if (existingWorkspace.sId !== targetWorkspaceId) {
         return new Err(
-          new WorkspaceIdentificationError(
+          new AuthFlowError(
             "Existing workspace sId does not match target workspace id " +
-              targetWorkspaceId
+              targetWorkspaceId,
+            "workspace_not_found"
           )
         );
       }
@@ -386,27 +388,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
-      }
-
-      if (error instanceof UnverifiedEmailError) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "unverified_email",
-            message: error.message,
-          },
-        });
-      }
-
-      if (error instanceof WorkspaceIdentificationError) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "workspace_not_found",
+            type: error.type,
             message: error.message,
           },
         });

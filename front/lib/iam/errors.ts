@@ -5,19 +5,13 @@ export class SSOEnforcedError extends Error {
 }
 
 export class AuthFlowError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
-
-export class UnverifiedEmailError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
-
-export class WorkspaceIdentificationError extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly type:
+      | "unverified_email"
+      | "workspace_not_found"
+      | "invite_access_error"
+  ) {
     super(message);
   }
 }
