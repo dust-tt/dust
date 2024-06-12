@@ -13,13 +13,11 @@ import {
   SliderToggle,
   Tab,
 } from "@dust-tt/sparkle";
+import type { AgentConfigurationScope, SubscriptionType } from "@dust-tt/types";
 import type {
-  AgentConfigurationScope,
   LightAgentConfigurationType,
-  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -80,8 +78,6 @@ export default function WorkspaceAssistants({
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
 
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
-
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
       case "published":
@@ -113,16 +109,10 @@ export default function WorkspaceAssistants({
       workspaceId: owner.sId,
       agentsGetView: assistantSearch ? "assistants-search" : null,
     });
-  const prefilteredAgent = (
+
+  const filteredAgents = (
     assistantSearch ? searchableAgentConfigurations : agentConfigurations
   ).filter((a) => {
-    return (
-      (a.scope === "global" &&
-        whiteListedProviders.includes(a.model.providerId)) ||
-      a.scope !== "global"
-    );
-  });
-  const filteredAgents = prefilteredAgent.filter((a) => {
     return (
       // filter by tab only if no search
       (assistantSearch || a.scope === tabScope) &&

@@ -9,8 +9,9 @@ import type {
   AgentModelConfigurationType,
   ConnectorProvider,
   DataSourceType,
+  GlobalAgentStatus,
 } from "@dust-tt/types";
-import type { GlobalAgentStatus } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -1046,10 +1047,15 @@ export async function getGlobalAgents(
     )
   );
 
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   const globalAgents: AgentConfigurationType[] = [];
 
   for (const agentFetcherResult of agentCandidates) {
-    if (agentFetcherResult) {
+    if (
+      agentFetcherResult &&
+      agentFetcherResult.scope === "global" &&
+      whiteListedProviders.includes(agentFetcherResult.model.providerId)
+    ) {
       globalAgents.push(agentFetcherResult);
     }
   }

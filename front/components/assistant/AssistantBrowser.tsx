@@ -16,7 +16,6 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import type { KeyedMutator } from "swr";
@@ -58,17 +57,14 @@ export function AssistantBrowser({
   const [assistantIdToShow, setAssistantIdToShow] = useState<string | null>(
     null
   );
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
 
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents.filter(
       (a) =>
-        (a.status === "active" &&
-          a.scope !== "global" &&
-          (assistantSearch.trim() === "" ||
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))) ||
-        (whiteListedProviders.includes(a.model.providerId) &&
-          a.scope === "global")
+        a.status === "active" &&
+        // Filters on search query
+        (assistantSearch.trim() === "" ||
+          subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
     );
 
     return {
@@ -88,7 +84,7 @@ export function AssistantBrowser({
         )
         .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
     };
-  }, [agents, loadingStatus, assistantSearch, whiteListedProviders]);
+  }, [assistantSearch, loadingStatus, agents]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
