@@ -18,10 +18,6 @@ import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
-  ActionBrowse,
-  isActionBrowseValid,
-} from "@app/components/assistant_builder/actions/BrowseAction";
-import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
@@ -63,8 +59,7 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEBSEARCH",
-  "BROWSE",
+  "WEBSEARCH_AND_BROWSE",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -95,10 +90,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
-    case "WEBSEARCH":
+    case "WEBSEARCH_AND_BROWSE":
       return isActionWebsearchValid(action);
-    case "BROWSE":
-      return isActionBrowseValid(action);
     default:
       assertNever(action);
   }
@@ -163,6 +156,10 @@ export default function ActionsScreen({
 
   const insertAction = useCallback(
     (action: AssistantBuilderActionConfiguration) => {
+      if (builderState.actions.some((a) => a.name === action.name)) {
+        return;
+      }
+
       setEdited(true);
       setBuilderState((state) => {
         return {
@@ -171,7 +168,7 @@ export default function ActionsScreen({
         };
       });
     },
-    [setBuilderState, setEdited]
+    [builderState, setBuilderState, setEdited]
   );
 
   const deleteAction = useCallback(
@@ -251,10 +248,14 @@ export default function ActionsScreen({
                 <AddAction
                   owner={owner}
                   onAddAction={(action) => {
-                    setPendingAction({
-                      action,
-                      previousActionName: null,
-                    });
+                    if (action.noConfigurationRequired) {
+                      insertAction(action);
+                    } else {
+                      setPendingAction({
+                        action,
+                        previousActionName: null,
+                      });
+                    }
                   }}
                 />
               </div>
@@ -283,10 +284,14 @@ export default function ActionsScreen({
               <AddAction
                 owner={owner}
                 onAddAction={(action) => {
-                  setPendingAction({
-                    action,
-                    previousActionName: null,
-                  });
+                  if (action.noConfigurationRequired) {
+                    insertAction(action);
+                  } else {
+                    setPendingAction({
+                      action,
+                      previousActionName: null,
+                    });
+                  }
                 }}
               />
             </div>
@@ -578,10 +583,8 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
-    case "WEBSEARCH":
+    case "WEBSEARCH_AND_BROWSE":
       return <ActionWebsearch />;
-    case "BROWSE":
-      return <ActionBrowse />;
     default:
       assertNever(action);
   }

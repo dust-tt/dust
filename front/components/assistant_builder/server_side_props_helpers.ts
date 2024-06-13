@@ -26,7 +26,6 @@ import type {
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
 import {
-  getDefaultBrowseActionConfiguration,
   getDefaultDustAppRunActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -206,8 +205,12 @@ export async function buildInitialActions({
       builderAction = processConfiguration;
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+      // Websearch: use the default name/description
+      builderActions.push(builderAction);
+      continue;
     } else if (isBrowseConfiguration(action)) {
-      builderAction = getDefaultBrowseActionConfiguration();
+      // Ignore browse actions
+      continue;
     } else {
       assertNever(action);
     }

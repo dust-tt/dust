@@ -106,16 +106,14 @@ export type AssistantBuilderActionConfiguration = (
       configuration: AssistantBuilderProcessConfiguration;
     }
   | {
-      type: "WEBSEARCH";
+      type: "WEBSEARCH_AND_BROWSE";
       configuration: AssistantBuilderWebsearchConfiguration;
     }
-  | {
-      type: "BROWSE";
-      configuration: AssistantBuilderBrowseConfiguration;
-    }
 ) & {
+  //   } //     configuration: AssistantBuilderBrowseConfiguration; //     type: "BROWSE"; // | {
   name: string;
   description: string;
+  noConfigurationRequired?: boolean;
 };
 
 export type TemplateActionType = Omit<
@@ -263,19 +261,11 @@ export function getDefaultProcessActionConfiguration() {
 
 export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
-    type: "WEBSEARCH",
+    type: "WEBSEARCH_AND_BROWSE",
     configuration: {},
     name: "websearch",
-    description: "Perform a web search.",
-  };
-}
-
-export function getDefaultBrowseActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "BROWSE",
-    configuration: {},
-    name: "browse",
-    description: "Perform a browse.",
+    description: "Perform a web search and browse a page.",
+    noConfigurationRequired: true,
   };
 }
 
@@ -295,10 +285,8 @@ export function getDefaultActionConfiguration(
       return getDefaultTablesQueryActionConfiguration();
     case "PROCESS":
       return getDefaultProcessActionConfiguration();
-    case "WEBSEARCH":
+    case "WEBSEARCH_AND_BROWSE":
       return getDefaultWebsearchActionConfiguration();
-    case "BROWSE":
-      return getDefaultBrowseActionConfiguration();
     default:
       assertNever(actionType);
   }
