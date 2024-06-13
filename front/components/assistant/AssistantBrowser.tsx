@@ -59,13 +59,19 @@ export function AssistantBrowser({
   );
 
   const agentsByTab = useMemo(() => {
-    const filteredAgents: LightAgentConfigurationType[] = agents.filter(
-      (a) =>
-        a.status === "active" &&
-        // Filters on search query
-        (assistantSearch.trim() === "" ||
-          subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
-    );
+    const filteredAgents: LightAgentConfigurationType[] = agents
+      .filter(
+        (a) =>
+          a.status === "active" &&
+          // Filters on search query
+          (assistantSearch.trim() === "" ||
+            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
+      )
+      .sort((a, b) => {
+        return a.name
+          .toLocaleLowerCase()
+          .localeCompare(b.name.toLocaleLowerCase());
+      });
 
     return {
       // do not show the "all" tab while still loading all agents
