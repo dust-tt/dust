@@ -37,7 +37,7 @@ const {
   fetchConfluenceConfigurationActivity,
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "20 minutes",
+  startToCloseTimeout: "30 minutes",
 });
 
 // Set a conservative threshold to start a new workflow and
