@@ -22,7 +22,6 @@ import mainLogger from "@app/logger/logger";
 import { callDocTrackerRetrievalAction } from "./actions/doc_tracker_retrieval";
 import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_suggest_changes";
 
-const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
 const { SENDGRID_API_KEY } = process.env;
 
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
@@ -70,17 +69,8 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     dataSourceName,
     documentId,
   });
-  localLogger.info(
-    "Checking if document_tracker_suggest_changes post process hook should run."
-  );
 
-  const whitelistedWorkspaceIds =
-    RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
-
-  if (!whitelistedWorkspaceIds.includes(owner.sId)) {
-    localLogger.info(
-      "Workspace not whitelisted, document_tracker_suggest_changes post process hook should not run."
-    );
+  if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 
