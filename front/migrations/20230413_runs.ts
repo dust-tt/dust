@@ -84,7 +84,7 @@ async function main() {
       })
       .filter((r) => r.appId && r.userId);
 
-    await Run.bulkCreate(runsToCreate);
+    await RunModel.bulkCreate(runsToCreate);
   }
 }
 

@@ -307,7 +307,7 @@ async function handler(
         workspaceId: keyRes.value.workspaceId,
       });
 
-      await run.recordRunUsageType(usages);
+      await run.recordRunUsage(usages);
 
       switch (runFlavor) {
         case "streaming":
