@@ -1,10 +1,4 @@
-import {
-  Button,
-  Icon,
-  Logo,
-  LogoSquareColorLogo,
-  Page,
-} from "@dust-tt/sparkle";
+import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
