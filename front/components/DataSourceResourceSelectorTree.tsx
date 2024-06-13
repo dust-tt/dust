@@ -161,7 +161,7 @@ function DataSourceResourceSelectorChildren({
 
         const IconComponent = getIconForType(r.type);
         const checkable = !isTablesView || r.type === "database";
-        // const showCheckbox = checkable || checkStatus !== "unchecked";
+
         return (
           <Tree.Item
             key={r.internalId}

@@ -557,7 +557,6 @@ const PickTablesManaged = ({
               : []
           }
           selectedParents={[]}
-          fullySelected={false}
           filterPermission="read"
           viewType={"tables"}
           onSelectChange={onSelectionChange}
