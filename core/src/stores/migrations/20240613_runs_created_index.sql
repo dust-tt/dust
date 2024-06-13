@@ -1,1 +1,1 @@
-CREATE INDEX IF NOT EXISTS idx_specifications_project_hash ON specifications (project, hash);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_runs_created ON runs (created);
