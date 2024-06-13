@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_specifications_project_hash ON specifications (project, hash);
