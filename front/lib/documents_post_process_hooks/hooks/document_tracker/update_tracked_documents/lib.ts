@@ -36,7 +36,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     "Checking if document_tracker flag is enabled. If not, post process hook should not run."
   );
 
-  const shouldRunDocumentTracker = owner?.flags?.includes("document_tracker");
+  const shouldRunDocumentTracker = owner.flags.includes("document_tracker");
 
   if (!shouldRunDocumentTracker) {
     localLogger.info(
