@@ -1,11 +1,14 @@
 import type {
   BuilderSuggestionsType,
+  ModelConfigurationType,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import {
+  assertNever,
   BuilderSuggestionsResponseBodySchema,
   cloneBaseConfig,
   DustProdActionRegistry,
+  getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@dust-tt/types";
@@ -53,7 +56,22 @@ async function handler(
         });
       }
 
-      const model = getSmallWhitelistedModel(owner);
+      const suggestionsType = bodyValidation.right.type;
+      const suggestionsInputs = bodyValidation.right.inputs;
+
+      let model: ModelConfigurationType | null = null;
+      switch (suggestionsType) {
+        case "instructions":
+          model = getLargeWhitelistedModel(owner);
+          break;
+        case "name":
+        case "description":
+          model = getSmallWhitelistedModel(owner);
+          break;
+        default:
+          assertNever(suggestionsType);
+      }
+
       if (!model) {
         return apiError(req, res, {
           status_code: 400,
@@ -63,9 +81,6 @@ async function handler(
           },
         });
       }
-
-      const suggestionsType = bodyValidation.right.type;
-      const suggestionsInputs = bodyValidation.right.inputs;
 
       const config = cloneBaseConfig(
         DustProdActionRegistry[
