@@ -36,15 +36,6 @@ export function withLogging<T>(
     const session = await getSession(req, res);
     const sessionId = session?.user.sid || "unknown";
 
-    logger.info(
-      {
-        method: req.method,
-        url: req.url,
-        sessionId,
-      },
-      "Begin Request Processing."
-    );
-
     let route = req.url;
     if (route) {
       route = route.split("?")[0];
