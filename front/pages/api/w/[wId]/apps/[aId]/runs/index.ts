@@ -235,7 +235,6 @@ async function handler(
         { limit, offset }
       );
 
-      console.log(">> userRuns:", userRuns);
       const totalNumberOfRuns = await RunResource.countAllByWorkspace(owner, {
         appId: app.id,
         runType,
@@ -246,8 +245,6 @@ async function handler(
         projectId: app.dustAPIProjectId,
         dustRunIds: userDustRunIds,
       });
-
-      console.log(">> dustRuns:", dustRuns);
 
       if (dustRuns.isErr()) {
         return apiError(req, res, {

@@ -13,6 +13,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import { App } from "@app/lib/models/apps";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -21,6 +22,7 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 
 type RunResourceWithApp = RunResource & { app: App };
 
@@ -64,9 +66,9 @@ export class RunResource extends BaseResource<RunModel> {
       : [];
 
     const runs = await this.model.findAll({
-      where: {
+      where: addCreatedAtClause({
         workspaceId: workspace.id,
-      },
+      }),
       include,
     });
 
@@ -92,7 +94,7 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     const runs = await this.model.findAll({
-      where,
+      where: addCreatedAtClause(where),
       limit,
       offset,
       order: [["createdAt", "DESC"]],
@@ -115,7 +117,7 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     return this.model.count({
-      where,
+      where: addCreatedAtClause(where),
     });
   }
 
@@ -142,6 +144,15 @@ export class RunResource extends BaseResource<RunModel> {
       return new Err(err as Error);
     }
   }
+}
+
+// Runs are not deleted from front but may no longer exist in core.
+// Apply the cutoff date at runtime.
+function addCreatedAtClause(where: WhereOptions<RunModel>) {
+  return {
+    ...where,
+    createdAt: { [Op.gt]: getRunExecutionsDeletionCutoffDate() },
+  };
 }
 
 export interface RunUsageType {
