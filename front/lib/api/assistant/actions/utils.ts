@@ -65,7 +65,7 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   BROWSE: {
     label: "Browse",
-    description: "Get the content of a page",
+    description: "Get the content of a web page",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
     flag: "browse_action",

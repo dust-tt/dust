@@ -12,24 +12,16 @@ export type BrowseConfigurationType = {
 };
 
 export const BrowseResultSchema = t.type({
+  requestedUrl: t.string,
+  browsedUrl: t.string,
   content: t.string,
-  response: t.type({
-    code: t.string,
-    url: t.string,
-    ip: t.string,
-    port: t.string,
-  }),
+  responseCode: t.string,
+  errorMessage: t.string,
 });
 
-export const BrowseActionOutputSchema = t.union([
-  t.type({
-    results: t.array(BrowseResultSchema),
-  }),
-  t.type({
-    results: t.array(BrowseResultSchema),
-    error: t.string,
-  }),
-]);
+export const BrowseActionOutputSchema = t.type({
+  results: t.array(BrowseResultSchema),
+});
 
 export type BrowseActionOutputType = t.TypeOf<typeof BrowseActionOutputSchema>;
 
