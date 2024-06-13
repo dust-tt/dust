@@ -23,6 +23,7 @@ import {
   makeConfluencePageId,
 } from "@connectors/connectors/confluence/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
   renderDocumentTitleAndContent,
@@ -473,25 +474,30 @@ export async function confluenceUpdatePagesParentIdsActivity(
 
   // Utilize an in-memory map to cache page hierarchies, thereby reducing database queries.
   const cachedHierarchy = await getSpaceHierarchy(connectorId, spaceId);
-  for (const page of pages) {
-    // Retrieve parents using the internal ID, which aligns with the permissions
-    // view rendering and RAG requirements.
-    const parentIds = await getConfluencePageParentIds(
-      connectorId,
-      page,
-      cachedHierarchy
-    );
 
-    await updateDocumentParentsField({
-      dataSourceConfig: {
-        dataSourceName: connector.dataSourceName,
-        workspaceId: connector.workspaceId,
-        workspaceAPIKey: connector.workspaceAPIKey,
-      },
-      documentId: makeConfluencePageId(page.pageId),
-      parents: parentIds,
-    });
-  }
+  await concurrentExecutor(
+    pages,
+    async (page) => {
+      // Retrieve parents using the internal ID, which aligns with the permissions
+      // view rendering and RAG requirements.
+      const parentIds = await getConfluencePageParentIds(
+        connectorId,
+        page,
+        cachedHierarchy
+      );
+
+      await updateDocumentParentsField({
+        dataSourceConfig: {
+          dataSourceName: connector.dataSourceName,
+          workspaceId: connector.workspaceId,
+          workspaceAPIKey: connector.workspaceAPIKey,
+        },
+        documentId: makeConfluencePageId(page.pageId),
+        parents: parentIds,
+      });
+    },
+    { concurrency: 100 }
+  );
 
   logger.info({ connectorId }, "Done updating pages parent ids.");
 }
