@@ -11,7 +11,10 @@ import type {
   DataSourceType,
   GlobalAgentStatus,
 } from "@dust-tt/types";
-import { getSmallWhitelistedModel } from "@dust-tt/types";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+} from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -89,7 +92,9 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const modelConfiguration = getSmallWhitelistedModel(owner);
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
   if (!modelConfiguration) {
     throw new Error("No whitelisted models were found for the workspace.");
   }
@@ -531,7 +536,9 @@ async function _getManagedDataSourceAgent(
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const modelConfiguration = getSmallWhitelistedModel(owner);
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
   if (!modelConfiguration) {
     throw new Error("No whitelisted models were found for the workspace.");
   }
@@ -764,7 +771,9 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = getSmallWhitelistedModel(owner);
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
   if (!modelConfiguration) {
     throw new Error("No whitelisted models were found for the workspace.");
   }
