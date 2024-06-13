@@ -59,6 +59,7 @@ RunModel.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "appId", "runType", "createdAt"] },
+      { fields: ["workspaceId", "createdAt"] },
       { unique: true, fields: ["dustRunId"] },
     ],
   }

@@ -72,17 +72,14 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async listByAppAndRunType(
     workspace: LightWorkspaceType,
-    { appId, runType }: { appId: ModelId; runType?: string | string[] },
+    { appId, runType }: { appId: ModelId; runType: string | string[] },
     { limit, offset }: { limit?: number; offset?: number } = {}
   ): Promise<RunResource[]> {
     const where: WhereOptions<RunModel> = {
       appId,
+      runType,
       workspaceId: workspace.id,
     };
-
-    if (runType) {
-      where.runType = runType;
-    }
 
     const runs = await this.model.findAll({
       where: addCreatedAtClause(where),
@@ -94,18 +91,15 @@ export class RunResource extends BaseResource<RunModel> {
     return runs.map((r) => new this(this.model, r.get()));
   }
 
-  static async countAllByWorkspace(
+  static async countByAppAndRunType(
     workspace: LightWorkspaceType,
-    { appId, runType }: { appId: ModelId; runType?: string | string[] }
+    { appId, runType }: { appId: ModelId; runType: string | string[] }
   ) {
     const where: WhereOptions<RunModel> = {
       appId,
+      runType,
       workspaceId: workspace.id,
     };
-
-    if (runType) {
-      where.runType = runType;
-    }
 
     return this.model.count({
       where: addCreatedAtClause(where),

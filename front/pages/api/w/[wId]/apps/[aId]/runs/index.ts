@@ -235,7 +235,7 @@ async function handler(
         { limit, offset }
       );
 
-      const totalNumberOfRuns = await RunResource.countAllByWorkspace(owner, {
+      const totalNumberOfRuns = await RunResource.countByAppAndRunType(owner, {
         appId: app.id,
         runType,
       });
