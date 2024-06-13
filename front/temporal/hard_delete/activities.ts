@@ -79,34 +79,37 @@ async function deleteRunExecutionBatch(
     }
   );
 
-  await coreSequelize.query(
-    "DELETE FROM runs_joins WHERE id IN (:runsJoinsIds)",
-    {
-      replacements: {
-        runsJoinsIds: runsJoins.map((rj) => rj.id),
-      },
-    }
-  );
-
-  // TODO(2024-06-13 flav) Remove once the schedule has completed at least once.
-  // Previously, we had a cache shared between identical block executions.
-  // Ensure we delete distinct run block executions.
-  const blockExecutionIds = [
-    ...new Set(runsJoins.map((rj) => rj.block_execution)),
-  ];
-
-  try {
+  // For legacy rows, runsJoins may be empty.
+  if (runsJoins.length > 0) {
     await coreSequelize.query(
-      "DELETE FROM block_executions WHERE id IN (:blockExecutionIds)",
+      "DELETE FROM runs_joins WHERE id IN (:runsJoinsIds)",
       {
         replacements: {
-          blockExecutionIds,
+          runsJoinsIds: runsJoins.map((rj) => rj.id),
         },
       }
     );
-  } catch (err) {
-    if (isSequelizeForeignKeyConstraintError(err)) {
-      logger.info({}, "Failed to delete runs joins");
+
+    // TODO(2024-06-13 flav) Remove once the schedule has completed at least once.
+    // Previously, we had a cache shared between identical block executions.
+    // Ensure we delete distinct run block executions.
+    const blockExecutionIds = [
+      ...new Set(runsJoins.map((rj) => rj.block_execution)),
+    ];
+
+    try {
+      await coreSequelize.query(
+        "DELETE FROM block_executions WHERE id IN (:blockExecutionIds)",
+        {
+          replacements: {
+            blockExecutionIds,
+          },
+        }
+      );
+    } catch (err) {
+      if (isSequelizeForeignKeyConstraintError(err)) {
+        logger.info({}, "Failed to delete runs joins");
+      }
     }
   }
 
