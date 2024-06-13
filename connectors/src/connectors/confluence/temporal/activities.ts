@@ -496,7 +496,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
         parents: parentIds,
       });
     },
-    { concurrency: 100 }
+    { concurrency: 10 }
   );
 
   logger.info({ connectorId }, "Done updating pages parent ids.");
