@@ -14,6 +14,7 @@ import type {
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  isProviderWhitelisted
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
@@ -1065,7 +1066,11 @@ export async function getGlobalAgents(
   const globalAgents: AgentConfigurationType[] = [];
 
   for (const agentFetcherResult of agentCandidates) {
-    if (agentFetcherResult) {
+    if (
+      agentFetcherResult &&
+      agentFetcherResult.scope === "global" &&
+      isProviderWhitelisted(owner, agentFetcherResult.model.providerId)
+    ) {
       globalAgents.push(agentFetcherResult);
     }
   }

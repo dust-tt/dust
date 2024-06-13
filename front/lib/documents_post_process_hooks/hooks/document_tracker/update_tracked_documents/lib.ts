@@ -11,8 +11,6 @@ import { TRACKABLE_CONNECTOR_TYPES } from "@app/lib/documents_post_process_hooks
 import { TrackedDocument } from "@app/lib/models/doc_tracker";
 import mainLogger from "@app/logger/logger";
 
-const { RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS = "" } = process.env;
-
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_update_tracked_documents",
 });
@@ -21,6 +19,7 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
   const owner = params.auth.workspace();
+
   if (!owner) {
     logger.info(
       "Workspace not found, document_tracker_update_tracked_documents post process hook should not run."
@@ -33,17 +32,8 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     dataSourceName: params.dataSourceName,
     documentId: params.documentId,
   });
-  localLogger.info(
-    "Checking if document_tracker_update_tracked_documents post process hook should run."
-  );
 
-  const whitelistedWorkspaceIds =
-    RUN_DOCUMENT_TRACKER_FOR_WORKSPACE_IDS.split(",");
-
-  if (!whitelistedWorkspaceIds.includes(owner.sId)) {
-    localLogger.info(
-      "Workspace not whitelisted, document_tracker_update_tracked_documents post process hook should not run."
-    );
+  if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 

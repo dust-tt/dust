@@ -16,7 +16,7 @@ export function UserMenu({
   owner: WorkspaceType;
 }) {
   const hasBetaAccess =
-    owner.flags?.some((flag: string) => flag.startsWith("labs_")) ||
+    owner.flags.some((flag: string) => flag.startsWith("labs_")) ||
     isDevelopmentOrDustWorkspace(owner);
 
   return (
