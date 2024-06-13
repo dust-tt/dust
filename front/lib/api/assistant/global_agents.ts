@@ -116,11 +116,7 @@ async function _getHelperGlobalAgent(
     status: "active",
     userListStatus: "in-list",
     scope: "global",
-    model: {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      temperature: model.temperature,
-    },
+    model: model,
     actions: [],
     maxToolsUsePerRun: 0,
     templateId: null,
