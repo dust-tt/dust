@@ -32,16 +32,8 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
     dataSourceName: params.dataSourceName,
     documentId: params.documentId,
   });
-  localLogger.info(
-    "Checking if document_tracker flag is enabled. If not, post process hook should not run."
-  );
 
-  const shouldRunDocumentTracker = owner.flags.includes("document_tracker");
-
-  if (!shouldRunDocumentTracker) {
-    localLogger.info(
-      "Feature flag document_tracker is not enabled, document_tracker_update_tracked_documents post process hook should not run."
-    );
+  if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 
