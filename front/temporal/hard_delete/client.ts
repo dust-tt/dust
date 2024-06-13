@@ -31,8 +31,7 @@ export async function launchPurgeRunExecutionsSchedule(): Promise<
       },
       scheduleId,
       policies: {
-        catchupWindow: "1 day",
-        overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+        overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
         intervals: [{ every: "24h" }],

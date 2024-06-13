@@ -14,7 +14,7 @@ import {
 
 const BATCH_SIZE = 100;
 
-export async function purgeExpiredRunExecutions() {
+export async function purgeExpiredRunExecutionsActivity() {
   const primaryCoreDatabaseUri = config.getPrimaryCoreDatabaseUri();
   const coreSequelize = new Sequelize(primaryCoreDatabaseUri, {
     logging: false,
@@ -47,7 +47,7 @@ export async function purgeExpiredRunExecutions() {
 
     logger.info(
       { batchSize: BATCH_SIZE },
-      "Deleting batch of block exections."
+      "Deleting batch of block executions."
     );
 
     hasMoreRunsToPurge = batchToDelete.length === BATCH_SIZE;
