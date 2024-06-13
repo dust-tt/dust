@@ -23,7 +23,6 @@ export default function DataSourceResourceSelectorTree({
   selectedParents,
   selectedResourceIds,
   onSelectChange,
-  fullySelected,
   filterPermission = "read",
   viewType = "documents",
 }: {
@@ -38,7 +37,6 @@ export default function DataSourceResourceSelectorTree({
     parents: string[],
     selected: boolean
   ) => void;
-  fullySelected: boolean;
   filterPermission?: ConnectorPermission;
   viewType?: ContentNodesViewType;
 }) {
@@ -56,7 +54,6 @@ export default function DataSourceResourceSelectorTree({
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
-        fullySelected={fullySelected}
         filterPermission={filterPermission}
         viewType={viewType}
       />
@@ -97,7 +94,6 @@ function DataSourceResourceSelectorChildren({
   showExpand,
   selectedResourceIds,
   onSelectChange,
-  fullySelected,
   filterPermission,
   viewType = "documents",
 }: {
@@ -114,7 +110,6 @@ function DataSourceResourceSelectorChildren({
     parents: string[],
     selected: boolean
   ) => void;
-  fullySelected: boolean;
   filterPermission: ConnectorPermission;
   viewType: ContentNodesViewType;
 }) {
@@ -185,8 +180,8 @@ function DataSourceResourceSelectorChildren({
             checkbox={
               checkable && r.preventSelection !== true
                 ? {
-                    disabled: parentIsSelected || fullySelected,
-                    checked: isSelected || fullySelected,
+                    disabled: parentIsSelected,
+                    checked: Boolean(isSelected || parentIsSelected),
                     partialChecked: partialChecked,
                     onChange: (checked) => {
                       onSelectChange(r, parents, checked);
@@ -207,7 +202,6 @@ function DataSourceResourceSelectorChildren({
                 onSelectChange={onSelectChange}
                 parents={[...parents, r.internalId]}
                 parentIsSelected={parentIsSelected || isSelected}
-                fullySelected={fullySelected}
                 filterPermission={filterPermission}
                 viewType={viewType}
               />
