@@ -36,6 +36,13 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 
+// Used when returning an agent with status 'disabled_by_admin'
+const dummyModelConfiguration = {
+  providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+  modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+  temperature: 0,
+};
+
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
   private staticPrompt: string | null = null;
@@ -95,14 +102,15 @@ async function _getHelperGlobalAgent(
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)
     : getSmallWhitelistedModel(owner);
-  if (!modelConfiguration) {
-    throw new Error("No whitelisted models were found for the workspace.");
-  }
-  const model: AgentModelConfigurationType = {
-    providerId: modelConfiguration.providerId,
-    modelId: modelConfiguration.modelId,
-    temperature: 0.2,
-  };
+
+  const model: AgentModelConfigurationType = modelConfiguration
+    ? {
+        providerId: modelConfiguration?.providerId,
+        modelId: modelConfiguration?.modelId,
+        temperature: 0.2,
+      }
+    : dummyModelConfiguration;
+  const status = modelConfiguration ? "active" : "disabled_by_admin";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -113,7 +121,7 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-    status: "active",
+    status: status,
     userListStatus: "in-list",
     scope: "global",
     model: model,
@@ -535,17 +543,20 @@ async function _getManagedDataSourceAgent(
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)
     : getSmallWhitelistedModel(owner);
-  if (!modelConfiguration) {
-    throw new Error("No whitelisted models were found for the workspace.");
-  }
-  const model: AgentModelConfigurationType = {
-    providerId: modelConfiguration.providerId,
-    modelId: modelConfiguration.modelId,
-    temperature: 0.7,
-  };
+
+  const model: AgentModelConfigurationType = modelConfiguration
+    ? {
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
+        temperature: 0.7,
+      }
+    : dummyModelConfiguration;
 
   // Check if deactivated by an admin
-  if (settings && settings.status === "disabled_by_admin") {
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: agentId,
@@ -770,16 +781,19 @@ async function _getDustGlobalAgent(
   const modelConfiguration = auth.isUpgraded()
     ? getLargeWhitelistedModel(owner)
     : getSmallWhitelistedModel(owner);
-  if (!modelConfiguration) {
-    throw new Error("No whitelisted models were found for the workspace.");
-  }
-  const model: AgentModelConfigurationType = {
-    providerId: modelConfiguration.providerId,
-    modelId: modelConfiguration.modelId,
-    temperature: 0.7,
-  };
 
-  if (settings && settings.status === "disabled_by_admin") {
+  const model: AgentModelConfigurationType = modelConfiguration
+    ? {
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
+        temperature: 0.7,
+      }
+    : dummyModelConfiguration;
+
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST,
