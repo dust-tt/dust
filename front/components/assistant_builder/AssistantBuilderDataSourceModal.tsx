@@ -457,7 +457,7 @@ function DataSourceResourceSelector({
                   });
                   onSelectChange(node, selected);
                 }}
-                fullySelected={isSelectAll}
+                parentIsSelected={isSelectAll}
               />
             </div>
           </div>
@@ -610,7 +610,6 @@ function FolderOrWebsiteTree({
             onSelectChange(dataSource, selected, resource);
           }}
           selectedResourceIds={selectedResources.map((r) => r.internalId)}
-          fullySelected={currentConfig?.isSelectAll ?? false}
         />
       )}
     </Tree.Item>
