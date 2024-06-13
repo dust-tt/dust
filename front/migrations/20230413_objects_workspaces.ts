@@ -1,13 +1,14 @@
 // @ts-expect-error old migration code kept for reference
 
 import { personalWorkspace } from "@app/lib/auth";
-import { App, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { App, Dataset, Provider } from "@app/lib/models/apps";
 import { DataSource } from "@app/lib/models/data_source";
 import { User } from "@app/lib/models/user";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import type { RunModel } from "@app/lib/resources/storage/models/runs";
 
 async function addWorkspaceToObject(
-  object: App | Dataset | Provider | KeyModel | DataSource | Run
+  object: App | Dataset | Provider | KeyModel | DataSource | RunModel
 ) {
   if (object.workspaceId) {
     // @ts-expect-error old migration code kept for reference
