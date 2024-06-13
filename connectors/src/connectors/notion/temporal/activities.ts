@@ -811,16 +811,8 @@ export async function garbageCollect({
 
       if (x.skipReason) {
         if (x.resourceType === "page") {
-          iterationLogger.info(
-            { skipReason: x.skipReason },
-            "Page is marked as skipped, not deleting."
-          );
           skippedPagesCount++;
         } else if (x.resourceType === "database") {
-          iterationLogger.info(
-            { skipReason: x.skipReason },
-            "Database is marked as skipped, not deleting."
-          );
           skippedDatabasesCount++;
         } else {
           assertNever(x.resourceType);
