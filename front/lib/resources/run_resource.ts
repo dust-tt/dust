@@ -42,15 +42,6 @@ export class RunResource extends BaseResource<RunModel> {
     return new this(RunResource.model, run.get());
   }
 
-  async recordRunUsage(usages: RunUsageType[]) {
-    await RunUsageModel.bulkCreate(
-      usages.map((usage) => ({
-        runId: this.id,
-        ...usage,
-      }))
-    );
-  }
-
   static async listByWorkspace<T extends boolean>(
     workspace: LightWorkspaceType,
     { includeApp }: { includeApp: T }
@@ -143,6 +134,18 @@ export class RunResource extends BaseResource<RunModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  /**
+   * Run usage.
+   */
+  async recordRunUsage(usages: RunUsageType[]) {
+    await RunUsageModel.bulkCreate(
+      usages.map((usage) => ({
+        runId: this.id,
+        ...usage,
+      }))
+    );
   }
 }
 
