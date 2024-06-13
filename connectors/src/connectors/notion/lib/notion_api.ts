@@ -194,10 +194,6 @@ export async function getPagesAndDatabasesEditedSince(
           page_size: pageSize,
         });
       });
-      tryLogger.info(
-        { count: resultsPage.results.length },
-        "Received result page from Notion API."
-      );
     } catch (e) {
       tryLogger.error(
         { error: e },

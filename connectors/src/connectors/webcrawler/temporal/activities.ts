@@ -177,15 +177,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               req.userData?.depth >= WEBCRAWLER_MAX_DEPTH ||
               req.userData?.depth >= webCrawlerConfig.depth
             ) {
-              childLogger.info(
-                {
-                  depth: request.userData.depth,
-                  url: request.url,
-                  connectorId: connector.id,
-                  configId: webCrawlerConfig.id,
-                },
-                "reached max depth"
-              );
               return false;
             }
             return req;
