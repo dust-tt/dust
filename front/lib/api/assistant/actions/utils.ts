@@ -57,7 +57,7 @@ export const ACTION_SPECIFICATIONS: Record<
     flag: null,
   },
   WEBSEARCH_AND_BROWSE: {
-    label: "Web search",
+    label: "Web search and browse",
     description: "Perform a web search and browse the results",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,

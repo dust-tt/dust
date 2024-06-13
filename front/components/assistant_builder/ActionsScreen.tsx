@@ -104,6 +104,7 @@ export default function ActionsScreen({
   dataSources,
   setBuilderState,
   setEdited,
+  insertAction,
   pendingAction,
   setPendingAction,
 }: {
@@ -114,6 +115,7 @@ export default function ActionsScreen({
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
+  insertAction: (action: AssistantBuilderActionConfiguration) => void;
   setEdited: (edited: boolean) => void;
   pendingAction: AssistantBuilderPendingAction;
   setPendingAction: (action: AssistantBuilderPendingAction) => void;
@@ -152,23 +154,6 @@ export default function ActionsScreen({
       }));
     },
     [setBuilderState, setEdited]
-  );
-
-  const insertAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
-      if (builderState.actions.some((a) => a.name === action.name)) {
-        return;
-      }
-
-      setEdited(true);
-      setBuilderState((state) => {
-        return {
-          ...state,
-          actions: [...state.actions, action],
-        };
-      });
-    },
-    [builderState, setBuilderState, setEdited]
   );
 
   const deleteAction = useCallback(

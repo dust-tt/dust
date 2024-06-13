@@ -47,6 +47,7 @@ import {
 } from "@app/components/assistant_builder/shared";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
+  AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProps,
   AssistantBuilderState,
@@ -266,6 +267,23 @@ export default function AssistantBuilder({
     void formValidation();
   }, [formValidation]);
 
+  const insertAction = useCallback(
+    (action: AssistantBuilderActionConfiguration) => {
+      if (builderState.actions.some((a) => a.name === action.name)) {
+        return;
+      }
+
+      setEdited(true);
+      setBuilderState((state) => {
+        return {
+          ...state,
+          actions: [...state.actions, action],
+        };
+      });
+    },
+    [builderState, setBuilderState, setEdited]
+  );
+
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
@@ -416,6 +434,7 @@ export default function AssistantBuilder({
                           dustApps={dustApps}
                           setBuilderState={setBuilderState}
                           setEdited={setEdited}
+                          insertAction={insertAction}
                           pendingAction={pendingAction}
                           setPendingAction={setPendingAction}
                         />
@@ -497,6 +516,7 @@ export default function AssistantBuilder({
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               multiActionsMode={multiActionsEnabled}
+              insertAction={insertAction}
               setPendingAction={setPendingAction}
             />
           }
