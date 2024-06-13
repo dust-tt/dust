@@ -11,7 +11,11 @@ import type {
   DataSourceType,
   GlobalAgentStatus,
 } from "@dust-tt/types";
-import { isProviderWhitelisted } from "@dust-tt/types";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -32,6 +36,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
+
+// Used when returning an agent with status 'disabled_by_admin'
+const dummyModelConfiguration = {
+  providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+  modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+  temperature: 0,
+};
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -89,15 +100,18 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration?.providerId,
+        modelId: modelConfiguration?.modelId,
+        temperature: 0.2,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
+    : dummyModelConfiguration;
+  const status = modelConfiguration ? "active" : "disabled_by_admin";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -108,14 +122,10 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-    status: "active",
+    status: status,
     userListStatus: "in-list",
     scope: "global",
-    model: {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      temperature: 0.2,
-    },
+    model: model,
     actions: [],
     maxToolsUsePerRun: 0,
     templateId: null,
@@ -531,20 +541,23 @@ async function _getManagedDataSourceAgent(
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
         temperature: 0.7,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+    : dummyModelConfiguration;
 
   // Check if deactivated by an admin
-  if (settings && settings.status === "disabled_by_admin") {
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: agentId,
@@ -766,19 +779,22 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
         temperature: 0.7,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+    : dummyModelConfiguration;
 
-  if (settings && settings.status === "disabled_by_admin") {
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST,
