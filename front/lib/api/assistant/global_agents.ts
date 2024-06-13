@@ -14,7 +14,7 @@ import type {
 import {
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
-  isProviderWhitelisted
+  isProviderWhitelisted,
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
