@@ -3720,6 +3720,8 @@ const DISPOSABLE_EMAIL_DOMAINS = [
   "prontomail.com",
   "protestant.com",
   "protonmail.com",
+  "proton.me",
+  "pm.me",
   "prydirect.info",
   "psv-supporter.com",
   "ptd.net",
