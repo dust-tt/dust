@@ -457,6 +457,23 @@ export async function generateConversationTitle(
     return modelConversationRes;
   }
 
+  const c = modelConversationRes.value.modelConversation;
+  if (c.messages.length === 0) {
+    // It is possible that no message were selected if the context size of the small model was
+    // overflown by the initial user message. In that case we just skip title generation for now (it
+    // will get attempted again with follow-up messages being added to the conversation).
+    return new Err(
+      new Error(
+        `Error generating conversation title: rendered conversation is empty`
+      )
+    );
+  }
+
+  // Note: the last message is generally not a user message (though it can happen if no agent were
+  // mentioned) which, without stitching, will cause the title generation to fail since models
+  // expect a user message to be the last message. The stitching is done in the
+  // `assistant-v2-title-generator` app.
+
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-title-generator"].config
   );
@@ -469,7 +486,7 @@ export async function generateConversationTitle(
     config,
     [
       {
-        conversation: modelConversationRes.value.modelConversation,
+        conversation: c,
       },
     ],
     {
