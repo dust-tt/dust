@@ -285,8 +285,6 @@ export async function syncOneFile(
             },
             `Error while converting docx document to text`
           );
-          // we don't know what to do with PDF files that fails to be converted to text.
-          // So we log the error and skip the file.
           return false;
         }
       }
@@ -312,10 +310,8 @@ export async function syncOneFile(
             {
               error: err,
             },
-            `Error while converting docx document to text`
+            `Error while converting pptx document to text`
           );
-          // we don't know what to do with PDF files that fails to be converted to text.
-          // So we log the error and skip the file.
           return false;
         }
       }
