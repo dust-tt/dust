@@ -755,25 +755,10 @@ export async function garbageCollect({
   > = [];
   let loopIteration = 0;
   do {
-    // Temporary performance logging.
-    const startTime = performance.now();
-
     // Find the resources not seen in the GC run (using runTimestamp).
     resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
       connector.id,
       runTimestamp
-    );
-
-    const endTime = performance.now();
-    localLogger.info(
-      {
-        connectorId: connector.id,
-        loopIteration,
-        runTimestamp,
-        startTs,
-        tookMs: endTime - startTime,
-      },
-      "findResourcesNotSeenInGarbageCollectionRun duration"
     );
 
     const NOTION_UNHEALTHY_ERROR_CODES = [
