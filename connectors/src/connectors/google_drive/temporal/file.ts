@@ -31,6 +31,7 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
+import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -284,8 +285,33 @@ export async function syncOneFile(
             },
             `Error while converting docx document to text`
           );
-          // we don't know what to do with PDF files that fails to be converted to text.
-          // So we log the error and skip the file.
+          return false;
+        }
+      }
+    } else if (
+      file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ) {
+      if (res.data instanceof ArrayBuffer) {
+        try {
+          const converted = await PPTX2Text(Buffer.from(res.data));
+
+          documentContent = {
+            prefix: null,
+            content: null,
+            sections: converted.pages.map((page, i) => ({
+              prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
+              content: page.content,
+              sections: [],
+            })),
+          };
+        } catch (err) {
+          localLogger.warn(
+            {
+              error: err,
+            },
+            `Error while converting pptx document to text`
+          );
           return false;
         }
       }
