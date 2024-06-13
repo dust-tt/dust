@@ -13,7 +13,7 @@ import { purgeRunExecutionsCronWorkflow } from "@app/temporal/hard_delete/workfl
 import { QUEUE_NAME } from "./config";
 
 /**
- * This function starts a cron to clean up expired run executions.
+ * This function starts a schedule to purge expired run executions.
  */
 export async function launchPurgeRunExecutionsSchedule(): Promise<
   Result<undefined, Error>
