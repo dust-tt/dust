@@ -45,7 +45,12 @@ export default handleAuth({
 
       if (error instanceof CallbackHandlerError) {
         if (error.cause instanceof IdentityProviderError) {
-          reason = error.cause.error ?? null;
+          const { error: err, errorDescription } = error.cause;
+          if (err === "access_denied") {
+            reason = errorDescription ?? err;
+          } else {
+            reason = err ?? null;
+          }
         }
 
         return res.redirect(`/login-error?reason=${reason}`);

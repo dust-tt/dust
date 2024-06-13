@@ -1,4 +1,4 @@
-import { Button, Logo } from "@dust-tt/sparkle";
+import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
@@ -22,15 +22,26 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   };
 });
 
+const defaultErrorMessageClassName = "text-base font-normal text-slate-100";
+
 function getErrorMessage(domain: string | null, reason: string | null) {
+  const headerNode = (
+    <Page.Header
+      title={<span className="text-white">We couldn't log you in.</span>}
+    />
+  );
+
   if (domain) {
     return (
       <>
-        The domain @{domain} attached to your email address is not authorized to
-        join this workspace.
-        <br />
-        Please contact your workspace admin to get access or contact us at
-        team@dust.tt for assistance.
+        {headerNode}
+        <p className={defaultErrorMessageClassName}>
+          The domain @{domain} attached to your email address is not authorized
+          to join this workspace.
+          <br />
+          Please contact your workspace admin to get access or contact us at
+          team@dust.tt for assistance.
+        </p>
       </>
     );
   }
@@ -39,14 +50,52 @@ function getErrorMessage(domain: string | null, reason: string | null) {
     case "unauthorized":
       return (
         <>
-          Oops! Looks like you're not authorized to access this application yet.
-          To gain access, please ask your workspace administrator to add you or
-          your domain. Need more help? Email us at team@dust.tt.
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Oops! Looks like you're not authorized to access this application
+            yet.
+            <br />
+            To gain access, please ask your workspace administrator to add you
+            or, your domain. <br />
+            Need more help? Email us at team@dust.tt.
+          </p>
+        </>
+      );
+
+    case "email_not_verified":
+      return (
+        <>
+          <Page.Header
+            title={
+              <span className="text-white">
+                Keep an eye
+                <br />
+                on your inbox!
+              </span>
+            }
+          />
+          <p className={defaultErrorMessageClassName}>
+            For you security, we need to verify your email address.
+            <br />
+            Check your inbox for a verification email.
+          </p>
+          <p className="text-sm font-normal italic text-slate-300">
+            Not seeing it?
+            <br />
+            Check you spam folder.
+          </p>
         </>
       );
 
     default:
-      return <>Please contact us at team@dust.tt for assistance.</>;
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Please contact us at team@dust.tt for assistance.
+          </p>
+        </>
+      );
   }
 }
 
@@ -60,29 +109,14 @@ export default function LoginError({
     <>
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-800" />
       <main className="z-10 mx-6">
-        <div className="container mx-auto sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-          <div style={{ height: "10vh" }}></div>
-          <div className="grid grid-cols-1">
-            <div>
-              <Logo className="h-[48px] w-[192px] px-1" />
+        <div className="flex h-full flex-col items-center justify-center">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon visual={LogoSquareColorLogo} size="lg" />
+            <div className="flex flex-col items-center gap-6">
+              {errorMessage}
             </div>
-            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
-                Secure AI assistant
-              </span>{" "}
-              <br />
-              with your company’s knowledge
-              <br />
-            </p>
-          </div>
-          <div className="h-10"></div>
-          <div>
-            <p className="font-regular mb-8 text-slate-400">
-              We could not process your sign up request!
-            </p>
-            <p className="font-regular mb-8 text-slate-400">{errorMessage}</p>
             <Link href="/">
-              <Button variant="primary" label="Back to homepage" size="md" />
+              <Button variant="primary" label="Back to homepage" size="sm" />
             </Link>
           </div>
         </div>
