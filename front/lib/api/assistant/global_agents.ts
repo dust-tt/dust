@@ -9,8 +9,9 @@ import type {
   AgentModelConfigurationType,
   ConnectorProvider,
   DataSourceType,
+  GlobalAgentStatus,
 } from "@dust-tt/types";
-import type { GlobalAgentStatus } from "@dust-tt/types";
+import { getSmallWhitelistedModel } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -88,15 +89,15 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
+  const modelConfiguration = getSmallWhitelistedModel(owner);
+  if (!modelConfiguration) {
+    throw new Error("No whitelisted models were found for the workspace.");
+  }
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.2,
+  };
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -113,7 +114,7 @@ async function _getHelperGlobalAgent(
     model: {
       providerId: model.providerId,
       modelId: model.modelId,
-      temperature: 0.2,
+      temperature: model.temperature,
     },
     actions: [],
     maxToolsUsePerRun: 0,
@@ -530,17 +531,15 @@ async function _getManagedDataSourceAgent(
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+  const modelConfiguration = getSmallWhitelistedModel(owner);
+  if (!modelConfiguration) {
+    throw new Error("No whitelisted models were found for the workspace.");
+  }
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.7,
+  };
 
   // Check if deactivated by an admin
   if (settings && settings.status === "disabled_by_admin") {
@@ -765,17 +764,15 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+  const modelConfiguration = getSmallWhitelistedModel(owner);
+  if (!modelConfiguration) {
+    throw new Error("No whitelisted models were found for the workspace.");
+  }
+  const model: AgentModelConfigurationType = {
+    providerId: modelConfiguration.providerId,
+    modelId: modelConfiguration.modelId,
+    temperature: 0.7,
+  };
 
   if (settings && settings.status === "disabled_by_admin") {
     return {
