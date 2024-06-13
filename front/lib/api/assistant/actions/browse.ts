@@ -104,7 +104,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       inputs: [
         {
           name: "urls",
-          description: "List of urls to fetch.",
+          description: "List of urls to browse.",
           type: "array",
           items: {
             type: "string",
