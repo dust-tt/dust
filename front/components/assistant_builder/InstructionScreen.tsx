@@ -15,7 +15,7 @@ import type {
   SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import { isProviderWhitelisted } from "@dust-tt/types";
 import {
   ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
@@ -202,7 +202,6 @@ function AdvancedSettings({
   const supportedModelConfig = getSupportedModelConfig(
     generationSettings.modelSettings
   );
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   if (!supportedModelConfig) {
     // unreachable
     alert("Unsupported model");
@@ -242,7 +241,7 @@ function AdvancedSettings({
                   {USED_MODEL_CONFIGS.filter(
                     (m) =>
                       !(m.largeModel && !isUpgraded(plan)) &&
-                      whiteListedProviders.includes(m.providerId)
+                      isProviderWhitelisted(owner, m.providerId)
                   ).map((modelConfig) => (
                     <DropdownMenu.Item
                       key={modelConfig.modelId}
