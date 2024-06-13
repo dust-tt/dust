@@ -9,5 +9,5 @@ export function isActionBrowseValid(
 }
 
 export function ActionBrowse() {
-  return <div>This action will browse and get the content of a page.</div>;
+  return <div>This action will browse and get the content of a web page.</div>;
 }

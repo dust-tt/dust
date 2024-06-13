@@ -100,7 +100,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
 
     return new Ok({
       name: name ?? "browse",
-      description: description ?? "Get content of a page.",
+      description: description ?? "Get the content of a web page.",
       inputs: [
         {
           name: "urls",
