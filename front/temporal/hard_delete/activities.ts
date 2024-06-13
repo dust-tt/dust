@@ -63,6 +63,10 @@ async function deleteRunExecutionBatch(
   coreSequelize: Sequelize,
   runs: RunExecutionRow[]
 ) {
+  if (runs.length === 0) {
+    return;
+  }
+
   const runIds = runs.map((r) => r.id);
 
   const runsJoins = await coreSequelize.query<RunsJoinsRow>(
