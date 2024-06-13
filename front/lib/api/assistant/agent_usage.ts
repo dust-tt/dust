@@ -1,11 +1,9 @@
 import type {
   AgentUsageType,
   LightAgentConfigurationType,
-  ModelId,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
 import { getUsersWithAgentInListCount } from "@app/lib/api/assistant/user_relation";
 import { getMembersCount } from "@app/lib/api/workspace";
@@ -17,166 +15,94 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { Workspace } from "@app/lib/models/workspace";
-import { redisClient, safeRedisClient } from "@app/lib/redis";
+import { redisClient } from "@app/lib/redis";
 
 // Ranking of agents is done over a 30 days period.
 const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
-const popularityComputationTimeframeSec = 2 * 60 * 60;
 
-function _getKeys({
+// Computing agent mention count over a 2h period
+const popularityComputationTimeframeSec = 2 * 60 * 60;
+const agentPopularityLimit = 24;
+
+export type mentionCount = {
+  agentId: string;
+  count: number;
+  index: number;
+};
+
+function _getAgentInListCountKey({
   workspaceId,
   agentConfigurationId,
 }: {
   workspaceId: string;
   agentConfigurationId: string;
 }) {
-  // One sorted set per agent for counting the number of messages from the agent.
-  // score is: timestamp of each message of the agent
-  // value: random unique distinct value.
-  const agentMessageCountKey = `agent_usage_count_${workspaceId}_${agentConfigurationId}`;
-
-  // One sorted set per agent for counting the number of users that have mentioned the agent.
-  // score is: timestamp of last usage by a given user
-  // value: user_id
-  const agentUserCountKey = `agent_user_count_${workspaceId}_${agentConfigurationId}`;
-
   // One key to store the number of users who have this agent in their list.
-  const agentInListCountKey = `agent_in_list_count_${workspaceId}_${agentConfigurationId}`;
+  return `agent_in_list_count_${workspaceId}_${agentConfigurationId}`;
+}
+
+function _getUsageKeys(workspaceId: string) {
+  // One hash per workspace with keys the agent id and value the corresponding
+  // number of mentions
+  const agentMessageCountKey = `agent_usage_count_${workspaceId}`;
+
+  // One hash per workspace with keys agent id for counting the number of
+  // users that have mentioned the agent.
+  const agentUserCountKey = `agent_user_count_${workspaceId}`;
 
   return {
-    agentInListCountKey,
     agentMessageCountKey,
     agentUserCountKey,
   };
 }
 
-async function signalInRedis({
-  agentConfigurationId,
+export async function getAgentsUsage({
   workspaceId,
-  userId,
-  timestamp,
-  redis,
+  providedRedis,
 }: {
-  agentConfigurationId: string;
   workspaceId: string;
-  userId: string;
-  timestamp: number;
-  redis: Awaited<ReturnType<typeof redisClient>>;
-}) {
-  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    workspaceId,
-    agentConfigurationId,
-  });
-
-  await redis.zAdd(agentMessageCountKey, {
-    score: timestamp,
-    value: uuidv4(),
-  });
-  await redis.expire(agentMessageCountKey, rankingTimeframeSec);
-
-  await redis.zAdd(agentUserCountKey, {
-    score: timestamp,
-    value: userId,
-  });
-  await redis.expire(agentUserCountKey, rankingTimeframeSec);
-}
-
-async function populateUsageIfNeeded({
-  agentConfigurationId,
-  workspaceId,
-  messageModelId,
-  redis,
-}: {
-  agentConfigurationId: string;
-  workspaceId: string;
-  messageModelId: ModelId | null;
-  redis: Awaited<ReturnType<typeof redisClient>>;
-}) {
-  const owner = await Workspace.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+}): Promise<mentionCount[]> {
+  const owner = await Workspace.findOne({ where: { sId: workspaceId } });
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }
-  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationId,
-    workspaceId,
-  });
 
-  const existCount = await redis.exists([
-    agentMessageCountKey,
-    agentUserCountKey,
-  ]);
-  if (existCount === 0) {
-    // Sorted sets for this agent usage do not exist, we'll populate them
-    // by fetching the data from the database.
-    // We need to ensure that only one process is going through the populate code path
-    // so we are using redis.incr() to act as a non blocking lock.
-    const populateLockKey = `agent_usage_populate_${workspaceId}_${agentConfigurationId}`;
-    const needToPopulate = (await redis.incr(populateLockKey)) === 1;
+  const { agentMessageCountKey } = _getUsageKeys(workspaceId);
+  const redis = providedRedis ?? (await redisClient());
 
-    // Keeping the lock key around for 10 minutes, which essentially gives 10 minutes
-    // to create the sorted sets, before running the risk of a race conditions.
-    // A race condition in creating the sorted sets would result in double counting
-    // usage of the agent.
-    const populateTimeoutSec = 60 * 10; // 10 minutes
-    await redis.expire(populateLockKey, populateTimeoutSec);
-    if (!needToPopulate) {
-      return;
+  try {
+    // Fetch and parse last updated time
+    const lastUpdated = parseInt(
+      (await redis.get("usage_lastUpdatedAt")) || "0",
+      10
+    );
+    const currentTime = Date.now() / 1000;
+
+    // Update agent mention count if data is outdated
+    if (lastUpdated < currentTime - popularityComputationTimeframeSec) {
+      const [agentMessageCounts, userCounts] = await Promise.all([
+        agentMentionsCount(owner.id),
+        agentMentionsUserCount(owner.id),
+      ]);
+      await storeCountsInRedis(
+        workspaceId,
+        agentMessageCounts,
+        userCounts,
+        redis
+      );
     }
 
-    // We are safe to populate the sorted sets until the Redis populateLockKey expires.
-    // Get all mentions for this agent that have a messageId smaller than messageId
-    // and that happened within the last 30 days.
-    const mentions = await Mention.findAll({
-      where: {
-        ...{
-          agentConfigurationId: agentConfigurationId,
-          createdAt: {
-            [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
-          },
-        },
-        ...(messageModelId ? { messageId: { [Op.lt]: messageModelId } } : {}),
-      },
-      include: [
-        {
-          model: Message,
-          required: true,
-          include: [
-            {
-              model: UserMessage,
-              as: "userMessage",
-              required: true,
-            },
-            {
-              model: Conversation,
-              as: "conversation",
-              required: true,
-              where: {
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
+    // Retrieve and parse agents usage
+    const agentsUsage = await redis.hGetAll(agentMessageCountKey);
+    return Object.entries(agentsUsage).map(([agentId, jsonString]) => {
+      const { count, index } = JSON.parse(jsonString);
+      return { agentId, count, index };
     });
-    for (const mention of mentions) {
-      // No need to promise.all() here, as one Redis connection can only execute one command
-      // at a time.
-      if (mention.message?.userMessage) {
-        await signalInRedis({
-          agentConfigurationId,
-          workspaceId,
-          userId:
-            mention.message.userMessage.userId?.toString() ||
-            mention.message.userMessage.userContextEmail ||
-            mention.message.userMessage.userContextUsername,
-          timestamp: mention.createdAt.getTime(),
-          redis,
-        });
-      }
+  } finally {
+    // Close the redis connection if it was created locally
+    if (!providedRedis) {
+      await redis.quit();
     }
   }
 }
@@ -190,7 +116,7 @@ async function getAgentInListCount(
   workspaceId: string,
   agentConfiguration: LightAgentConfigurationType
 ) {
-  const { agentInListCountKey } = _getKeys({
+  const agentInListCountKey = _getAgentInListCountKey({
     agentConfigurationId: agentConfiguration.sId,
     workspaceId,
   });
@@ -241,38 +167,24 @@ export async function getAgentUsage(
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
-  const { agentMessageCountKey, agentUserCountKey } = _getKeys({
-    agentConfigurationId,
-    workspaceId,
-  });
+  const { agentMessageCountKey, agentUserCountKey } =
+    _getUsageKeys(workspaceId);
 
   try {
     redis = providedRedis ?? (await redisClient());
-    await populateUsageIfNeeded({
-      agentConfigurationId,
-      workspaceId,
-      messageModelId: null,
-      redis,
-    });
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 1000 * rankingTimeframeSec);
-    const messageCount = await redis.zCount(
-      agentMessageCountKey,
-      thirtyDaysAgo.getTime(),
-      now.getTime()
-    );
-    const userCount = await redis.zCount(
-      agentUserCountKey,
-      thirtyDaysAgo.getTime(),
-      now.getTime()
-    );
+
+    const [agentUsage, userUsage] = await Promise.all([
+      redis.hGet(agentMessageCountKey, agentConfigurationId),
+      redis.hGet(agentUserCountKey, agentConfigurationId),
+    ]);
+    const messageCount = agentUsage ? JSON.parse(agentUsage).count : 0;
+    const userCount = userUsage ? JSON.parse(userUsage).count : 0;
     const usersWithAgentInListCount = await getAgentInListCount(
       auth,
       redis,
       workspaceId,
       agentConfiguration
     );
-
     return {
       messageCount,
       userCount,
@@ -286,114 +198,150 @@ export async function getAgentUsage(
   }
 }
 
-export async function signalAgentUsage({
-  agentConfigurationId,
-  workspaceId,
-  userId,
-  timestamp,
-  messageModelId,
-}: {
-  agentConfigurationId: string;
-  workspaceId: string;
-  userId: string;
-  timestamp: number;
-  messageModelId: ModelId;
-}) {
-  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
-  try {
-    redis = await redisClient();
-    await populateUsageIfNeeded({
-      agentConfigurationId,
-      workspaceId,
-      messageModelId,
-      redis,
-    });
-    await signalInRedis({
-      agentConfigurationId,
-      workspaceId,
-      userId,
-      timestamp,
-      redis,
-    });
-  } finally {
-    if (redis) {
-      await redis.quit();
-    }
-  }
+export async function agentMentionsUserCount(
+  workspaceId: number
+): Promise<mentionCount[]> {
+  return Mention.findAll({
+    attributes: [
+      "agentConfigurationId",
+      [
+        Sequelize.fn(
+          "COUNT",
+          Sequelize.literal('DISTINCT "message->userMessage"."userId"')
+        ),
+        "count",
+      ],
+    ],
+    where: {
+      createdAt: {
+        [Op.gt]: Sequelize.literal("NOW() - INTERVAL '30 days'"),
+      },
+    },
+    include: [
+      {
+        model: Message,
+        required: true,
+        attributes: [],
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            attributes: [], // No attributes are necessary here for grouping
+            required: true,
+          },
+          {
+            model: Conversation,
+            as: "conversation",
+            attributes: [],
+            required: true,
+            where: {
+              workspaceId: workspaceId,
+            },
+          },
+        ],
+      },
+    ],
+    order: [["count", "DESC"]],
+    group: ["mention.agentConfigurationId"],
+    raw: true,
+  }).then((results) =>
+    results.map((mention, position) => ({
+      agentId: mention.agentConfigurationId as string,
+      count: (mention as unknown as { count: number }).count,
+      index: position,
+    }))
+  );
 }
 
-export async function computeMostPopularAgents(
-  workspaceId: string,
-  limit: number
-): Promise<number[]> {
-  const agentsMentionCount = await Mention.findAll({
+export async function agentMentionsCount(
+  workspaceId: number
+): Promise<mentionCount[]> {
+  return Mention.findAll({
+    attributes: [
+      "agentConfigurationId",
+      [Sequelize.fn("COUNT", Sequelize.col("mention.id")), "count"],
+    ],
     where: {
       createdAt: {
         [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
       },
-      agentConfigurationId: {
-        workspaceId: workspaceId,
-      },
     },
-    attributes: [
-      "agentConfigurationId",
-      [Sequelize.fn("COUNT", Sequelize.col("agentConfigurationId")), "count"],
+    include: [
+      {
+        model: Message,
+        required: true,
+        attributes: [],
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            attributes: [],
+            required: true,
+          },
+          {
+            model: Conversation,
+            as: "conversation",
+            attributes: [],
+            required: true,
+            where: {
+              workspaceId: workspaceId,
+            },
+          },
+        ],
+      },
     ],
-    group: "agentConfigurationId",
     order: [["count", "DESC"]],
-    limit: limit,
-  });
-  return agentsMentionCount.map((mentionCount) => mentionCount.id);
+    group: ["mention.agentConfigurationId"],
+    raw: true,
+  }).then((results) =>
+    results.map((mention, position) => ({
+      agentId: mention.agentConfigurationId as string,
+      count: (mention as unknown as { count: number }).count,
+      index: position,
+    }))
+  );
 }
 
-function getPopularAgentsKey(workspaceId: string) {
-  return `popular_agents:${workspaceId}`;
-}
-
-export async function storePopularAgentsInRedis(
+export async function storeCountsInRedis(
   workspaceId: string,
-  agentIds: number[]
+  agentMessageCounts: mentionCount[],
+  userCounts: mentionCount[],
+  redis: Awaited<ReturnType<typeof redisClient>>
 ) {
-  const key = getPopularAgentsKey(workspaceId);
-  const scoreValuePairs = agentIds.map((id, index) => ({
-    value: id.toString(),
-    score: -index,
-  }));
-  const currentTime = Date.now() / 1000;
-  scoreValuePairs.push({ value: "lastUpdated", score: currentTime });
-
-  await safeRedisClient(async (redis) => {
-    await redis.zAdd(key, scoreValuePairs, { GT: true });
-    await redis.expire(key, popularityComputationTimeframeSec);
+  const transaction = redis.multi();
+  const { agentMessageCountKey, agentUserCountKey } =
+    _getUsageKeys(workspaceId);
+  agentMessageCounts.forEach(({ agentId, count, index }) => {
+    transaction.hSet(
+      agentMessageCountKey,
+      agentId,
+      JSON.stringify({
+        count,
+        index,
+      })
+    );
   });
+  userCounts.forEach(({ agentId, count, index }) => {
+    transaction.hSet(
+      agentUserCountKey,
+      agentId,
+      JSON.stringify({
+        count,
+        index,
+      })
+    );
+  });
+  transaction.set("usage_lastUpdatedAt", Date.now() / 1000);
+
+  const results = await transaction.exec();
+  if (results.includes(null)) {
+    throw new Error("Transaction failed and was rolled back.");
+  }
 }
 
-export async function getMostPopularAgents(
-  workspaceId: string,
-  limit: number
-): Promise<number[]> {
-  const key = getPopularAgentsKey(workspaceId);
-  return safeRedisClient(async (redis) => {
-    const rawData = await redis.zRangeWithScores(key, 0, -1, {
-      BY: "SCORE",
-      REV: true,
-    });
-    const lastUpdatedEntry = rawData.find(
-      (data) => data.value === "lastUpdated"
-    );
-    const lastUpdated = lastUpdatedEntry ? lastUpdatedEntry.score : 0;
-    const currentTime = Date.now() / 1000;
-
-    if (lastUpdated < currentTime - popularityComputationTimeframeSec) {
-      // Run the update in the background
-      await computeMostPopularAgents(workspaceId, limit).then(
-        async (newAgentIds) => {
-          await storePopularAgentsInRedis(workspaceId, newAgentIds);
-        }
-      );
-    }
-    return rawData
-      .filter((data) => data.value !== "lastUpdated")
-      .map((data) => parseInt(data.value));
-  });
+export async function getMostPopularAgents(workspaceId: string) {
+  const agentsUsage = await getAgentsUsage({ workspaceId });
+  return agentsUsage
+    .slice(0, agentPopularityLimit)
+    .filter((mentionCount) => mentionCount.count > 0);
 }
