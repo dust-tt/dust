@@ -236,7 +236,8 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     for (const k of spec.inputs) {
       if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
-        params[k.name] = rawInputs[k.name];
+        // As defined in dustAppRunActionSpecification, type is either "string", "number" or "boolean"
+        params[k.name] = rawInputs[k.name] as string | number | boolean;
       } else {
         yield {
           type: "dust_app_run_error",

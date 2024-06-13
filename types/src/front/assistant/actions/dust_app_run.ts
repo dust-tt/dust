@@ -15,7 +15,7 @@ export type DustAppRunConfigurationType = {
 };
 
 export type DustAppParameters = {
-  [key: string]: string | number | boolean | string[] | number[] | boolean[];
+  [key: string]: string | number | boolean;
 };
 
 export interface DustAppRunActionType extends BaseAction {
