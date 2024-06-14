@@ -60,7 +60,7 @@ export class TablesQueryAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "query_tables",
+      name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       arguments: JSON.stringify(this.params),
     };
   }
@@ -77,7 +77,7 @@ export class TablesQueryAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "query_tables",
+      name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -143,24 +143,27 @@ async function tablesQueryActionSpecification({
 /**
  * Action execution.
  */
+export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
 
 export class TablesQueryConfigurationServerRunner extends BaseActionConfigurationServerRunner<TablesQueryConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
-    { name, description }: { name: string; description: string }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `runQueryTables`");
     }
 
-    const actionDescription =
+    let actionDescription =
       "Query data tables specificied by the user by executing a generated SQL query from a" +
-      " natural language question.\n" +
-      `Description of the data tables:\n${description}`;
+      " natural language question.";
+    if (description) {
+      actionDescription += `\nDescription of the data tables:\n${description}`;
+    }
 
     const spec = await tablesQueryActionSpecification({
-      name,
+      name: name,
       description: actionDescription,
     });
     return new Ok(spec);
@@ -179,7 +182,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       " natural language question.";
 
     const spec = await tablesQueryActionSpecification({
-      name: "query_tables",
+      name: DEFAULT_TABLES_QUERY_ACTION_NAME,
       description: actionDescription,
     });
     return new Ok(spec);

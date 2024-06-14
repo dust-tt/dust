@@ -6,8 +6,10 @@ import { BaseAction } from "../../lib/api/assistant/actions";
 export type BrowseConfigurationType = {
   id: ModelId;
   sId: string;
+
   type: "browse_configuration";
-  name: string | null;
+
+  name: string;
   description: string | null;
 };
 

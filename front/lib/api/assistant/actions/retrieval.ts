@@ -160,7 +160,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "search_data_sources",
+      name: this.functionCallName ?? DEFAULT_RETRIEVAL_ACTION_NAME,
       arguments: JSON.stringify(params),
     };
   }
@@ -196,7 +196,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "search_data_sources",
+      name: this.functionCallName ?? DEFAULT_RETRIEVAL_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -206,6 +206,7 @@ export class RetrievalAction extends BaseAction {
 /**
  * Params generation.
  */
+export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
 export class RetrievalConfigurationServerRunner extends BaseActionConfigurationServerRunner<RetrievalConfigurationType> {
   async buildSpecification(
@@ -215,7 +216,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       description,
     }: {
       name: string;
-      description?: string | undefined;
+      description: string | null;
     }
   ): Promise<Result<AgentActionSpecification, Error>> {
     // Generates the action specification for generation of rawInputs passed to `runRetrieval`.
@@ -249,11 +250,14 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     })();
 
-    const actionDescription = `${baseDescription}\nDescription of the data sources:\n${description}`;
+    let actionDescription = `${baseDescription}`;
+    if (description) {
+      actionDescription += `\nDescription of the data sources:\n${description}`;
+    }
 
     const spec = retrievalActionSpecification({
       actionConfiguration,
-      name,
+      name: name,
       description: actionDescription,
     });
 
@@ -273,7 +277,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const spec = retrievalActionSpecification({
       actionConfiguration,
-      name: "search_data_sources",
+      name: DEFAULT_RETRIEVAL_ACTION_NAME,
       description:
         "Search the data sources specified by the user." +
         " The search is based on semantic similarity between the query and chunks of information" +

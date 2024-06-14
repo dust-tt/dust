@@ -7,6 +7,7 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   AgentUserListStatus,
+  AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
@@ -28,6 +29,11 @@ import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/browse";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/process";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/retrieval";
+import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/tables_query";
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/websearch";
 import {
   getGlobalAgents,
   isGlobalAgentId,
@@ -560,7 +566,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
               },
             };
           }),
-          name: retrievalConfig.name,
+          name: retrievalConfig.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: retrievalConfig.description,
         });
       }
@@ -593,7 +599,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: websearchConfig.id,
           sId: websearchConfig.sId,
           type: "websearch_configuration",
-          name: websearchConfig.name,
+          name: websearchConfig.name || DEFAULT_WEBSEARCH_ACTION_NAME,
           description: websearchConfig.description,
         });
       }
@@ -604,7 +610,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           id: browseConfig.id,
           sId: browseConfig.sId,
           type: "browse_configuration",
-          name: browseConfig.name,
+          name: browseConfig.name || DEFAULT_BROWSE_ACTION_NAME,
           description: browseConfig.description,
         });
       }
@@ -622,7 +628,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
             workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
             tableId: tablesQueryConfigTable.tableId,
           })),
-          name: tablesQueryConfig.name,
+          name: tablesQueryConfig.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: tablesQueryConfig.description,
         });
       }
@@ -655,7 +661,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
                 }
               : null,
           schema: processConfig.schema,
-          name: processConfig.name,
+          name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
           description: processConfig.description,
         });
       }
@@ -1135,6 +1141,7 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration";
         appWorkspaceId: string;
         appId: string;
+        app: AppType;
       }
     | {
         type: "tables_query_configuration";
@@ -1206,7 +1213,7 @@ export async function createAgentActionConfiguration(
           relativeTimeFrame: action.relativeTimeFrame,
           topK: action.topK,
           dataSources: action.dataSources,
-          name: action.name,
+          name: action.name || DEFAULT_RETRIEVAL_ACTION_NAME,
           description: action.description,
         };
       });
@@ -1225,8 +1232,8 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
-        name: action.name,
-        description: action.description,
+        name: action.app.name,
+        description: action.app.description,
       };
     }
     case "tables_query_configuration": {
@@ -1259,7 +1266,7 @@ export async function createAgentActionConfiguration(
           sId: tablesQueryConfig.sId,
           type: "tables_query_configuration",
           tables: action.tables,
-          name: action.name,
+          name: action.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
           description: action.description,
         };
       });
@@ -1300,7 +1307,7 @@ export async function createAgentActionConfiguration(
           tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
-          name: action.name,
+          name: action.name || DEFAULT_PROCESS_ACTION_NAME,
           description: action.description,
         };
       });
@@ -1317,7 +1324,7 @@ export async function createAgentActionConfiguration(
         id: websearchConfig.id,
         sId: websearchConfig.sId,
         type: "websearch_configuration",
-        name: action.name,
+        name: action.name || DEFAULT_WEBSEARCH_ACTION_NAME,
         description: action.description,
       };
     }
@@ -1333,7 +1340,7 @@ export async function createAgentActionConfiguration(
         id: browseConfig.id,
         sId: browseConfig.sId,
         type: "browse_configuration",
-        name: action.name,
+        name: action.name || DEFAULT_BROWSE_ACTION_NAME,
         description: action.description,
       };
     }

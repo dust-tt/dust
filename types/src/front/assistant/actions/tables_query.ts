@@ -12,7 +12,7 @@ export type TablesQueryConfigurationType = {
     tableId: string;
   }>;
 
-  name: string | null;
+  name: string;
   description: string | null;
 };
 

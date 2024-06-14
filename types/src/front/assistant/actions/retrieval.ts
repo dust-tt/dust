@@ -62,7 +62,7 @@ export type RetrievalConfigurationType = {
   relativeTimeFrame: RetrievalTimeframe;
   topK: number | "auto";
 
-  name: string | null;
+  name: string;
   description: string | null;
 };
 

@@ -59,7 +59,7 @@ export class BrowseAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "browse",
+      name: this.functionCallName ?? DEFAULT_BROWSE_ACTION_NAME,
       arguments: JSON.stringify({ urls: this.urls }),
     };
   }
@@ -74,7 +74,7 @@ export class BrowseAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "browse",
+      name: this.functionCallName ?? DEFAULT_BROWSE_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -84,14 +84,17 @@ export class BrowseAction extends BaseAction {
 /**
  * Params generation.
  */
+export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 
 export class BrowseConfigurationServerRunner extends BaseActionConfigurationServerRunner<BrowseConfigurationType> {
+  // Default action name.
+  defaultActionName(): string {
+    return DEFAULT_BROWSE_ACTION_NAME;
+  }
+
   async buildSpecification(
     auth: Authenticator,
-    {
-      name,
-      description,
-    }: { name?: string | undefined; description?: string | undefined }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -99,7 +102,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     }
 
     return new Ok({
-      name: name ?? "browse",
+      name: name,
       description: description ?? "Get the content of a web page.",
       inputs: [
         {
@@ -117,7 +120,10 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
   async deprecatedBuildSpecificationForSingleActionAgent(
     auth: Authenticator
   ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
+    return this.buildSpecification(auth, {
+      name: this.defaultActionName(),
+      description: null,
+    });
   }
 
   // This method is in charge of running the browse and creating an AgentBrowseAction object in

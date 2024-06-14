@@ -81,8 +81,7 @@ export class ProcessAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name:
-        this.functionCallName ?? "extract_structured_data_from_data_sources",
+      name: this.functionCallName ?? DEFAULT_PROCESS_ACTION_NAME,
       arguments: JSON.stringify(this.params),
     };
   }
@@ -116,15 +115,14 @@ export class ProcessAction extends BaseAction {
 /**
  * Params generation.
  */
+export const DEFAULT_PROCESS_ACTION_NAME =
+  "extract_structured_data_from_data_sources";
 
 export class ProcessConfigurationServerRunner extends BaseActionConfigurationServerRunner<ProcessConfigurationType> {
   // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     auth: Authenticator,
-    {
-      name = "extract_structured_data_from_data_sources",
-      description,
-    }: { name?: string; description?: string }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -135,7 +133,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
 
     const spec = await processActionSpecification({
       actionConfiguration,
-      name,
+      name: name,
       description:
         description ??
         "Process data sources specified by the user over a specific time-frame by extracting" +
@@ -147,7 +145,10 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
   async deprecatedBuildSpecificationForSingleActionAgent(
     auth: Authenticator
   ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
+    return this.buildSpecification(auth, {
+      name: DEFAULT_PROCESS_ACTION_NAME,
+      description: null,
+    });
   }
 
   // This method is in charge of running the retrieval and creating an AgentProcessAction object in

@@ -58,7 +58,7 @@ export abstract class BaseActionConfigurationServerRunner<
   // Action rendering.
   abstract buildSpecification(
     auth: Authenticator,
-    { name, description }: { name?: string; description?: string }
+    { name, description }: { name: string | null; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>>;
 
   abstract deprecatedBuildSpecificationForSingleActionAgent(
