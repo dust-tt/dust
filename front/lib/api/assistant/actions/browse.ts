@@ -27,6 +27,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import logger from "@app/logger/logger";
 
+export const DEFAULT_BROWSE_ACTION_NAME = "browse";
+
 interface BrowseActionBlob {
   id: ModelId; // AgentBrowseAction
   agentMessageId: ModelId;
@@ -84,7 +86,6 @@ export class BrowseAction extends BaseAction {
 /**
  * Params generation.
  */
-export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 
 export class BrowseConfigurationServerRunner extends BaseActionConfigurationServerRunner<BrowseConfigurationType> {
   async buildSpecification(

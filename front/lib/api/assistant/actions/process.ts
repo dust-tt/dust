@@ -41,6 +41,9 @@ import {
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
 
+export const DEFAULT_PROCESS_ACTION_NAME =
+  "extract_structured_data_from_data_sources";
+
 interface ProcessActionBlob {
   id: ModelId; // AgentProcessAction.
   agentMessageId: ModelId;
@@ -115,8 +118,6 @@ export class ProcessAction extends BaseAction {
 /**
  * Params generation.
  */
-export const DEFAULT_PROCESS_ACTION_NAME =
-  "extract_structured_data_from_data_sources";
 
 export class ProcessConfigurationServerRunner extends BaseActionConfigurationServerRunner<ProcessConfigurationType> {
   // Generates the action specification for generation of rawInputs passed to `run`.

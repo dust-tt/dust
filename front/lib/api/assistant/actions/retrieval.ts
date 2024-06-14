@@ -39,6 +39,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { rand } from "@app/lib/utils/seeded_random";
 import logger from "@app/logger/logger";
 
+export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
+
 /**
  * TimeFrame parsing
  */
@@ -206,7 +208,6 @@ export class RetrievalAction extends BaseAction {
 /**
  * Params generation.
  */
-export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
 export class RetrievalConfigurationServerRunner extends BaseActionConfigurationServerRunner<RetrievalConfigurationType> {
   async buildSpecification(

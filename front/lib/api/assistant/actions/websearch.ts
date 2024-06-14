@@ -27,6 +27,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import logger from "@app/logger/logger";
 
+export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
+
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction
   agentMessageId: ModelId;
@@ -85,7 +87,6 @@ export class WebsearchAction extends BaseAction {
 /**
  * Params generation.
  */
-export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
 
 export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
   async buildSpecification(

@@ -27,6 +27,8 @@ import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
+export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
+
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
   agentMessageId: ModelId;
@@ -143,8 +145,6 @@ async function tablesQueryActionSpecification({
 /**
  * Action execution.
  */
-export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
-
 export class TablesQueryConfigurationServerRunner extends BaseActionConfigurationServerRunner<TablesQueryConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
