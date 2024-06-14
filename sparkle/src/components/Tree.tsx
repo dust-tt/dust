@@ -88,13 +88,11 @@ Tree.Item = function ({
     : () => setCollapsedState(!collapsedState);
 
   const getChildren = () => {
-    if (!effectiveCollapsed) {
-      return typeof renderTreeItems === "function"
-        ? renderTreeItems()
-        : children;
+    if (effectiveCollapsed) {
+      return [];
     }
 
-    return [];
+    return typeof renderTreeItems === "function" ? renderTreeItems() : children;
   };
 
   const childrenToRender = getChildren();
