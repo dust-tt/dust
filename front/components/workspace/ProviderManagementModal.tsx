@@ -1,5 +1,16 @@
-import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
-import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  ContextItem,
+  DropdownMenu,
+  Modal,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import type {
+  ModelProviderIdType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  EMBEDDING_PROVIDER_IDS
+} from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useContext, useMemo, useState } from "react";
@@ -51,6 +62,10 @@ export function ProviderManagementModal({
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
+  const [embeddingProvider, setDefaultEmbeddingProvider] = useState(
+    owner.defaultEmbeddingProvider
+  );
+
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),
     [providerStates]
@@ -162,6 +177,36 @@ export function ProviderManagementModal({
             );
           })}
         </ContextItem.List>
+      </div>
+      <div className="flex flex-row items-center gap-4 px-4 pt-4">
+        <div className="s-text-sm font-semibold">Embedding Provider:</div>
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              type="select"
+              labelVisible={true}
+              label={
+                embeddingProvider
+                  ? prettyfiedProviderNames[embeddingProvider]
+                  : prettyfiedProviderNames["openai"]
+              }
+              variant="secondary"
+              hasMagnifying={false}
+              size="sm"
+            />
+          </DropdownMenu.Button>
+          <DropdownMenu.Items origin="topRight">
+            {EMBEDDING_PROVIDER_IDS.map((provider) => (
+              <DropdownMenu.Item
+                key={provider}
+                label={prettyfiedProviderNames[provider]}
+                onClick={() => {
+                  setDefaultEmbeddingProvider(provider);
+                }}
+              />
+            ))}
+          </DropdownMenu.Items>
+        </DropdownMenu>
       </div>
     </Modal>
   );
