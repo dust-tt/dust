@@ -28,9 +28,6 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
 
 const WorkspaceProvidersUpdateBodySchema = t.type({
   whiteListedProviders: t.array(ModelProviderIdCodec),
-});
-
-const WorkspaceEmbedderUpdateBodySchema = t.type({
   defaultEmbeddingProvider: EmbeddingProviderCodec,
 });
 
@@ -39,7 +36,6 @@ const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
-  WorkspaceEmbedderUpdateBodySchema,
 ]);
 
 async function handler(
@@ -114,15 +110,15 @@ async function handler(
         });
 
         owner.ssoEnforced = body.ssoEnforced;
-      } else if ("whiteListedProviders" in body) {
+      } else if (
+        "whiteListedProviders" in body &&
+        "defaultEmbeddingProvider" in body
+      ) {
         await w.update({
           whiteListedProviders: body.whiteListedProviders,
-        });
-        owner.whiteListedProviders = w.whiteListedProviders;
-      } else if ("defaultEmbeddingProvider" in body) {
-        await w.update({
           defaultEmbeddingProvider: body.defaultEmbeddingProvider,
         });
+        owner.whiteListedProviders = body.whiteListedProviders;
         owner.defaultEmbeddingProvider = w.defaultEmbeddingProvider;
       } else {
         const { domain, domainAutoJoinEnabled } = body;

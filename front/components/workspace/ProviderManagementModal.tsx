@@ -5,12 +5,8 @@ import {
   Modal,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import type {
-  ModelProviderIdType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  EMBEDDING_PROVIDER_IDS
-} from "@dust-tt/types";
+import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
+import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useContext, useMemo, useState } from "react";
@@ -101,6 +97,7 @@ export function ProviderManagementModal({
           },
           body: JSON.stringify({
             whiteListedProviders: activeProviders,
+            defaultEmbeddingProvider: embeddingProvider,
           }),
         });
 
@@ -127,7 +124,10 @@ export function ProviderManagementModal({
     <Modal
       isOpen={showProviderModal}
       onClose={onClose}
-      hasChanged={!isEqual(providerStates, initialProviderStates)}
+      hasChanged={
+        !isEqual(providerStates, initialProviderStates) ||
+        embeddingProvider !== owner.defaultEmbeddingProvider
+      }
       title="Manage Providers"
       saveLabel="Update providers"
       onSave={handleSave}
