@@ -212,6 +212,11 @@ export function ProviderManagementModal({
         Embedding turns knowledge into a code, making it easy to search and find
         content.
       </div>
+      {embeddingProvider != owner.defaultEmbeddingProvider && (
+        <div className="s-text-sm px-4 pt-2 text-warning-600">
+          Note: This change will only affect newly created data sources.
+        </div>
+      )}
     </Modal>
   );
 }
