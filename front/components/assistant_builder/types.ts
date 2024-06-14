@@ -108,7 +108,6 @@ export type AssistantBuilderActionConfiguration = (
       configuration: AssistantBuilderWebNavigationConfiguration;
     }
 ) & {
-  //   } //     configuration: AssistantBuilderBrowseConfiguration; //     type: "BROWSE"; // | {
   name: string;
   description: string;
   noConfigurationRequired?: boolean;
