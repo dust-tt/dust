@@ -1,6 +1,7 @@
 import type {
   AgentUsageType,
   LightAgentConfigurationType,
+  ModelId,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
@@ -333,4 +334,20 @@ export async function storeCountsInRedis(
   if (results.includes(null)) {
     throw new Error("Transaction failed and was rolled back.");
   }
+}
+
+export async function signalAgentUsage({
+  agentConfigurationId,
+  workspaceId,
+  userId,
+  timestamp,
+  messageModelId,
+}: {
+  agentConfigurationId: string;
+  workspaceId: string;
+  userId: string;
+  timestamp: number;
+  messageModelId: ModelId;
+}) {
+  return;
 }
