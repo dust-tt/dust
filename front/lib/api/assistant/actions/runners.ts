@@ -71,8 +71,8 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
       CombinedMap[K]["configType"]
     >;
 } = {
-  dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
+  dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   tables_query_configuration: TablesQueryConfigurationServerRunner,
   websearch_configuration: WebsearchConfigurationServerRunner,
   browse_configuration: BrowseConfigurationServerRunner,

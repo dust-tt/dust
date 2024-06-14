@@ -22,6 +22,7 @@ import {
 import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -38,8 +39,6 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { rand } from "@app/lib/utils/seeded_random";
 import logger from "@app/logger/logger";
-
-export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
 /**
  * TimeFrame parsing

@@ -21,13 +21,12 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import logger from "@app/logger/logger";
-
-export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 
 interface BrowseActionBlob {
   id: ModelId; // AgentBrowseAction

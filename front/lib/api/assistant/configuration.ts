@@ -29,11 +29,13 @@ import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
-import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/browse";
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/process";
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/retrieval";
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/tables_query";
-import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/websearch";
+import {
+  DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/names";
 import {
   getGlobalAgents,
   isGlobalAgentId,

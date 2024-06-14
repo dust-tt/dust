@@ -24,6 +24,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import {
   parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
@@ -40,9 +41,6 @@ import {
 } from "@app/lib/development";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import logger from "@app/logger/logger";
-
-export const DEFAULT_PROCESS_ACTION_NAME =
-  "extract_structured_data_from_data_sources";
 
 interface ProcessActionBlob {
   id: ModelId; // AgentProcessAction.
