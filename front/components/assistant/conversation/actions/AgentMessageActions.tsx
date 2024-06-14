@@ -65,9 +65,9 @@ function ActionChip({ label }: { label?: string }) {
 
   return (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="pink" isBusy={true}>
+      <Chip size="sm" color="purple">
         <div className="flex flex-row items-center gap-x-2">
-          <Spinner variant="pink900" size="xs" />
+          <Spinner variant="purple900" size="xs" />
           {label}
         </div>
       </Chip>
