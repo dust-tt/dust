@@ -277,7 +277,7 @@ export function AssistantDetails({
                 <Icon visual={PlanetIcon} size="xs" />
                 <div>
                   Assistant can navigate the web (browse any provided links,
-                  make a google search, etc.) answer
+                  make a google search, etc.) to answer
                 </div>
               </div>
             </div>
