@@ -56,7 +56,7 @@ export async function submitAssistantBuilderForm({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >;
 
-  type ActionsType = BodyType["assistant"]["actions"];
+  type ActionsType = NonNullable<BodyType["assistant"]["actions"]>;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
     switch (a.type) {
@@ -171,8 +171,7 @@ export async function submitAssistantBuilderForm({
     }
   };
 
-  const actionParams: NonNullable<ActionsType> =
-    builderState.actions.flatMap(map);
+  const actionParams: ActionsType = builderState.actions.flatMap(map);
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {

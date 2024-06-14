@@ -126,6 +126,19 @@ export type TemplateActionType = Omit<
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
 
+export type AssistantBuilderSetActionType =
+  | {
+      action: AssistantBuilderActionConfiguration;
+      type: "insert" | "edit" | "pending";
+    }
+  | {
+      action: AssistantBuilderActionConfiguration;
+      type: "pending";
+    }
+  | {
+      type: "clear_pending";
+    };
+
 export type AssistantBuilderPendingAction =
   | {
       action: AssistantBuilderActionConfiguration;

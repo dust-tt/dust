@@ -50,6 +50,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProps,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
 } from "@app/components/assistant_builder/types";
@@ -267,19 +268,30 @@ export default function AssistantBuilder({
     void formValidation();
   }, [formValidation]);
 
-  const insertAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
-      if (builderState.actions.some((a) => a.name === action.name)) {
-        return;
-      }
+  const setAction = useCallback(
+    (p: AssistantBuilderSetActionType) => {
+      if (p.type === "pending") {
+        setPendingAction({ action: p.action, previousActionName: null });
+      } else if (p.type === "edit") {
+        setPendingAction({
+          action: p.action,
+          previousActionName: p.action.name,
+        });
+      } else if (p.type === "clear_pending") {
+        setPendingAction({ action: null });
+      } else if (p.type === "insert") {
+        if (builderState.actions.some((a) => a.name === p.action.name)) {
+          return;
+        }
 
-      setEdited(true);
-      setBuilderState((state) => {
-        return {
-          ...state,
-          actions: [...state.actions, action],
-        };
-      });
+        setEdited(true);
+        setBuilderState((state) => {
+          return {
+            ...state,
+            actions: [...state.actions, p.action],
+          };
+        });
+      }
     },
     [builderState, setBuilderState, setEdited]
   );
@@ -434,9 +446,8 @@ export default function AssistantBuilder({
                           dustApps={dustApps}
                           setBuilderState={setBuilderState}
                           setEdited={setEdited}
-                          insertAction={insertAction}
+                          setAction={setAction}
                           pendingAction={pendingAction}
-                          setPendingAction={setPendingAction}
                         />
                       );
                     }
@@ -516,8 +527,7 @@ export default function AssistantBuilder({
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               multiActionsMode={multiActionsEnabled}
-              insertAction={insertAction}
-              setPendingAction={setPendingAction}
+              setAction={setAction}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}

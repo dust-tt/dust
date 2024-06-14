@@ -87,7 +87,7 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     defaultActionType: "DUST_APP_RUN",
   },
   WEB_NAVIGATION: {
-    label: "Web search and browse",
+    label: "Web navigation",
     icon: PlanetIcon,
     description: "Perform a web search",
     defaultActionType: "WEB_NAVIGATION",

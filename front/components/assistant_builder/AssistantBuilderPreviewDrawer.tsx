@@ -27,8 +27,7 @@ import {
   useTryAssistantCore,
 } from "@app/components/assistant/TryAssistant";
 import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderPendingAction,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
   TemplateActionType,
@@ -51,8 +50,7 @@ export default function AssistantBuilderRightPanel({
   openRightPanelTab,
   builderState,
   multiActionsMode,
-  insertAction,
-  setPendingAction,
+  setAction,
 }: {
   screen: BuilderScreen;
   template: FetchAssistantTemplateResponse | null;
@@ -64,8 +62,7 @@ export default function AssistantBuilderRightPanel({
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
   multiActionsMode: boolean;
-  insertAction: (action: AssistantBuilderActionConfiguration) => void;
-  setPendingAction: (action: AssistantBuilderPendingAction) => void;
+  setAction: (action: AssistantBuilderSetActionType) => void;
 }) {
   const tabsConfig = useMemo(
     () => [
@@ -258,14 +255,12 @@ export default function AssistantBuilderRightPanel({
                               }
                               action.name = presetAction.name;
                               action.description = presetAction.description;
-                              if (action.noConfigurationRequired) {
-                                insertAction(action);
-                              } else {
-                                setPendingAction({
-                                  action,
-                                  previousActionName: null,
-                                });
-                              }
+                              setAction({
+                                type: action.noConfigurationRequired
+                                  ? "insert"
+                                  : "pending",
+                                action,
+                              });
                             }}
                           />
                         </div>

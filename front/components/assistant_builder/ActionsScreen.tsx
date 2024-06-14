@@ -44,6 +44,7 @@ import type {
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
@@ -104,9 +105,8 @@ export default function ActionsScreen({
   dataSources,
   setBuilderState,
   setEdited,
-  insertAction,
+  setAction,
   pendingAction,
-  setPendingAction,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -115,10 +115,9 @@ export default function ActionsScreen({
   setBuilderState: (
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
-  insertAction: (action: AssistantBuilderActionConfiguration) => void;
   setEdited: (edited: boolean) => void;
+  setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
-  setPendingAction: (action: AssistantBuilderPendingAction) => void;
 }) {
   const updateAction = useCallback(
     function _updateAction({
@@ -198,14 +197,12 @@ export default function ActionsScreen({
               getNewActionConfig: () => newAction.configuration,
             });
           } else {
-            insertAction(newAction);
+            setAction({ type: "insert", action: newAction });
           }
-          setPendingAction({
-            action: null,
-          });
+          setAction({ type: "clear_pending" });
         }}
         onClose={() => {
-          setPendingAction({ action: null });
+          setAction({ type: "clear_pending" });
         }}
         updateAction={updateAction}
         owner={owner}
@@ -233,14 +230,12 @@ export default function ActionsScreen({
                 <AddAction
                   owner={owner}
                   onAddAction={(action) => {
-                    if (action.noConfigurationRequired) {
-                      insertAction(action);
-                    } else {
-                      setPendingAction({
-                        action,
-                        previousActionName: null,
-                      });
-                    }
+                    setAction({
+                      type: action.noConfigurationRequired
+                        ? "insert"
+                        : "pending",
+                      action,
+                    });
                   }}
                 />
               </div>
@@ -269,14 +264,10 @@ export default function ActionsScreen({
               <AddAction
                 owner={owner}
                 onAddAction={(action) => {
-                  if (action.noConfigurationRequired) {
-                    insertAction(action);
-                  } else {
-                    setPendingAction({
-                      action,
-                      previousActionName: null,
-                    });
-                  }
+                  setAction({
+                    type: action.noConfigurationRequired ? "insert" : "pending",
+                    action,
+                  });
                 }}
               />
             </div>
@@ -288,9 +279,9 @@ export default function ActionsScreen({
                   action={a}
                   key={a.name}
                   editAction={() => {
-                    setPendingAction({
+                    setAction({
+                      type: "edit",
                       action: a,
-                      previousActionName: a.name,
                     });
                   }}
                   deleteAction={() => {
