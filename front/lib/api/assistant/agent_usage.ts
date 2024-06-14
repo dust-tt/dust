@@ -1,7 +1,6 @@
 import type {
   AgentUsageType,
   LightAgentConfigurationType,
-  ModelId,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
@@ -339,15 +338,11 @@ export async function storeCountsInRedis(
 export async function signalAgentUsage({
   agentConfigurationId,
   workspaceId,
-  userId,
-  timestamp,
-  messageModelId,
 }: {
   agentConfigurationId: string;
   workspaceId: string;
-  userId: string;
-  timestamp: number;
-  messageModelId: ModelId;
 }) {
-  return;
+  const redis = await redisClient();
+  const { agentMessageCountKey } = _getUsageKeys(workspaceId);
+  await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
 }

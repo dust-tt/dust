@@ -16,9 +16,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  getAgentsUsage
-} from "@app/lib/api/assistant/agent_usage";
+import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
