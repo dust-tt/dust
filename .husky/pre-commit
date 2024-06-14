@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Check if the current branch is 'main'
+current_branch=$(git symbolic-ref --short HEAD)
+if [ "$current_branch" = "main" ]; then
+    # Check if the flag is set
+    if [ -z "$ALLOW_MAIN_COMMIT" ]; then
+        echo "Error: Committing to 'main' is not allowed. Use ALLOW_MAIN_COMMIT=1 to override."
+        exit 1
+    fi
+fi
+
+# Allow commit
+exit 0
+
