@@ -21,6 +21,7 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -60,7 +61,7 @@ export class WebsearchAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "web_search",
+      name: this.functionCallName ?? DEFAULT_WEBSEARCH_ACTION_NAME,
       arguments: JSON.stringify({ query: this.query }),
     };
   }
@@ -75,7 +76,7 @@ export class WebsearchAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "web_search",
+      name: this.functionCallName ?? DEFAULT_WEBSEARCH_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -89,10 +90,7 @@ export class WebsearchAction extends BaseAction {
 export class WebsearchConfigurationServerRunner extends BaseActionConfigurationServerRunner<WebsearchConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
-    {
-      name,
-      description,
-    }: { name?: string | undefined; description?: string | undefined }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -102,9 +100,9 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     return new Ok({
-      name: name ?? "web_search",
+      name,
       description:
-        description ?? "Perform a web search and return the top results.",
+        description || "Perform a web search and return the top results.",
       inputs: [
         {
           name: "query",
@@ -118,7 +116,10 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
   async deprecatedBuildSpecificationForSingleActionAgent(
     auth: Authenticator
   ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
+    return this.buildSpecification(auth, {
+      name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      description: null,
+    });
   }
 
   // This method is in charge of running the websearch and creating an AgentWebsearchAction object in

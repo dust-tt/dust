@@ -10,7 +10,7 @@ export type DustAppRunConfigurationType = {
   appWorkspaceId: string;
   appId: string;
 
-  name: string | null;
+  name: string;
   description: string | null;
 };
 

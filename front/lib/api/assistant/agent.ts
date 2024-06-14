@@ -360,123 +360,59 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    if (a.name && a.description) {
-      // Normal case, it's a multi-actions agent.
+    const runner = getRunnerforActionConfiguration(a);
+    const specRes = await runner.buildSpecification(auth, {
+      name: a.name,
+      description: a.description,
+    });
 
-      const runner = getRunnerforActionConfiguration(a);
-      const specRes = await runner.buildSpecification(auth, {
-        name: a.name,
-        description: a.description,
-      });
+    if (specRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: specRes.error,
+        },
+        "Failed to build the specification for action."
+      );
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "build_spec_error",
+          message: `Failed to build the specification for action ${a.sId},`,
+        },
+      } satisfies AgentErrorEvent;
 
-      if (specRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: specRes.error,
-          },
-          "Failed to build the specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_spec_error",
-            message: `Failed to build the specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-      specifications.push(specRes.value);
-    } else {
-      // Special case for legacy single-action agents that have never been edited in
-      // multi-actions mode.
-      // We tolerate missing name/description to preserve support for legacy single-action agents.
-      // In those cases, we use the name/description from the legacy spec.
-
-      if (!a.name && availableActions.length > 1) {
-        // We can't allow not having a name if there are multiple actions.
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "missing_name",
-            message: `Action ${a.sId} is missing a name`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      const runner = getRunnerforActionConfiguration(a);
-      const legacySpecRes =
-        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
-      if (legacySpecRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: legacySpecRes.error,
-          },
-          "Failed to build the legacy specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_legacy_spec_error",
-            message: `Failed to build the legacy specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      const specRes = await runner.buildSpecification(auth, {
-        name: a.name ?? "",
-        description: a.description ?? "",
-      });
-
-      if (specRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: specRes.error,
-          },
-          "Failed to build the specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_spec_error",
-            message: `Failed to build the specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      const spec = specRes.value;
-      if (!a.name) {
-        spec.name = legacySpecRes.value.name;
-      }
-      if (!a.description) {
-        spec.description = legacySpecRes.value.description;
-      }
-      specifications.push(spec);
+      return;
     }
+    specifications.push(specRes.value);
+  }
+
+  // Check that specifications[].name are unique. This can happen if the user overrides two actions
+  // names with the same name (advanced settings). We return an actionable error if that's the case
+  // as we want to keep that as an invariant when interacting with models.
+  const seen = new Set<string>();
+  for (const spec of specifications) {
+    if (seen.has(spec.name)) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "duplicate_specification_name",
+          message:
+            `Duplicate action name in assistant configuration: ${spec.name}. ` +
+            "Your assistants actions must have unique names.",
+        },
+      } satisfies AgentErrorEvent;
+
+      return;
+    }
+    seen.add(spec.name);
   }
 
   const config = cloneBaseConfig(

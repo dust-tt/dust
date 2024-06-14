@@ -109,7 +109,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
   // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     auth: Authenticator,
-    { name, description }: { name?: string; description?: string }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -164,17 +164,54 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
+    if (name !== app.name) {
+      return new Err(
+        new Error("Unreachable: Dust app name and action name differ.")
+      );
+    }
+
     return dustAppRunActionSpecification({
       schema,
-      name: name ?? app.name,
-      description: description ?? app.description ?? "",
+      name,
+      description: description ?? app.description ?? `Run app ${app.name}`,
     });
   }
 
   async deprecatedBuildSpecificationForSingleActionAgent(
     auth: Authenticator
   ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
+    // We need to pull the app comply to the required name signature while not having a name in
+    // deprecatedBuildSpecificationForSingleActionAgent's signature which is wasteful but is bound
+    // to disapear.
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+    }
+
+    const { actionConfiguration } = this;
+
+    if (owner.sId !== actionConfiguration.appWorkspaceId) {
+      return new Err(
+        new Error(
+          "Runing Dust apps that are not part of your own workspace is not supported yet."
+        )
+      );
+    }
+
+    const app = await getApp(auth, actionConfiguration.appId);
+    if (!app) {
+      return new Err(
+        new Error(
+          "Failed to retrieve Dust app " +
+            `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId}`
+        )
+      );
+    }
+
+    return this.buildSpecification(auth, {
+      name: app.name,
+      description: app.description ?? null,
+    });
   }
 
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in

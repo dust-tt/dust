@@ -31,6 +31,7 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -632,7 +633,7 @@ async function _getManagedDataSourceAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
-        name: "search_data_sources",
+        name: DEFAULT_RETRIEVAL_ACTION_NAME,
         description: `Search the user's ${connectorProvider} data sources.`,
       },
     ],
@@ -877,7 +878,7 @@ async function _getDustGlobalAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
-        name: "search_data_sources",
+        name: DEFAULT_RETRIEVAL_ACTION_NAME,
         description: `Search the user's data sources.`,
       },
     ],

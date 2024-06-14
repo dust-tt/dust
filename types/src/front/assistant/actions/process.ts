@@ -55,7 +55,7 @@ export type ProcessConfigurationType = {
   tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
-  name: string | null;
+  name: string;
   description: string | null;
 };
 
