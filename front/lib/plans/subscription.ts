@@ -21,6 +21,7 @@ import {
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateModelSId } from "@app/lib/utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
@@ -468,14 +469,18 @@ export async function getPerSeatSubscriptionPricing(
     return null;
   }
 
-  const { unit_amount: unitAmount, currency, recurring } = item.price;
+  const { unit_amount: unitAmount, currency, recurring, metadata } = item.price;
 
   const isPricedPerSeat = unitAmount !== null;
   if (!isPricedPerSeat) {
     return null;
   }
 
-  if (!item.quantity || !recurring) {
+  if (
+    !item.quantity ||
+    !recurring ||
+    (metadata && metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT")
+  ) {
     return null;
   }
 
