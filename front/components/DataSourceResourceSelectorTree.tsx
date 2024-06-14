@@ -11,7 +11,7 @@ import type {
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { useConnectorPermissions } from "@app/lib/swr";
 
@@ -180,8 +180,7 @@ function DataSourceResourceSelectorChildren({
                   }
                 : undefined
             }
-          >
-            {() => (
+            renderTreeItems={() => (
               <DataSourceResourceSelectorChildren
                 owner={owner}
                 dataSource={dataSource}
@@ -197,7 +196,7 @@ function DataSourceResourceSelectorChildren({
                 viewType={viewType}
               />
             )}
-          </Tree.Item>
+          />
         );
       })}
     </Tree>
