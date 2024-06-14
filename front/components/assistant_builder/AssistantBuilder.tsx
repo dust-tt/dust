@@ -47,7 +47,6 @@ import {
 } from "@app/components/assistant_builder/shared";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type {
-  AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProps,
   AssistantBuilderSetActionType,
