@@ -58,7 +58,7 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   WEB_NAVIGATION: {
     label: "Web navigation",
-    description: "Perform a web search and browse the results",
+    description: "Perform a web search and/or browse a page content",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
     flag: "websearch_action",

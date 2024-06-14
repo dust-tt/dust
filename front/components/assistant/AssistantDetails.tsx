@@ -276,7 +276,8 @@ export function AssistantDetails({
               <div className="flex items-center gap-2">
                 <Icon visual={PlanetIcon} size="xs" />
                 <div>
-                  Assitant will do web search and browse page content to answer
+                  Assitant will do a web search and/or browse a page content to
+                  answer
                 </div>
               </div>
             </div>

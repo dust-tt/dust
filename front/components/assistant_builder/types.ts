@@ -82,9 +82,7 @@ export type AssistantBuilderProcessConfiguration = {
 };
 
 // Websearch configuration
-export type AssistantBuilderWebsearchConfiguration = Record<string, never>; // no relevant params identified yet
-
-export type AssistantBuilderBrowseConfiguration = Record<string, never>; // no relevant params identified yet
+export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
 
 // Builder State
 
@@ -107,7 +105,7 @@ export type AssistantBuilderActionConfiguration = (
     }
   | {
       type: "WEB_NAVIGATION";
-      configuration: AssistantBuilderWebsearchConfiguration;
+      configuration: AssistantBuilderWebNavigationConfiguration;
     }
 ) & {
   //   } //     configuration: AssistantBuilderBrowseConfiguration; //     type: "BROWSE"; // | {
@@ -277,7 +275,7 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
     type: "WEB_NAVIGATION",
     configuration: {},
     name: "websearch",
-    description: "Perform a web search and browse a page.",
+    description: "Perform a web search and/or browse a page content.",
     noConfigurationRequired: true,
   };
 }
