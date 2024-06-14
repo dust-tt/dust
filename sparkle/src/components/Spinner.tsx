@@ -13,7 +13,7 @@ import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
-  variant?: "color" | "light" | "dark" | "pink900";
+  variant?: "color" | "light" | "dark" | "pink900" | "purple900";
 }
 
 const pxSizeClasses = {
