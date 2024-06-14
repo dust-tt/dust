@@ -316,7 +316,6 @@ function DataSourcesSection({
   dataSources: DataSourceType[];
   dataSourceConfigurations: DataSourceConfiguration[];
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -357,15 +356,6 @@ function DataSourcesSection({
           return (
             <Tree.Item
               key={dsConfig.dataSourceId}
-              collapsed={!expanded[dsConfig.dataSourceId]}
-              onChevronClick={() => {
-                setExpanded((prev) => ({
-                  ...prev,
-                  [dsConfig.dataSourceId]: prev[dsConfig.dataSourceId]
-                    ? false
-                    : true,
-                }));
-              }}
               type={ds && ds.connectorId ? "node" : "leaf"}
               label={dataSourceName}
               visual={DsLogo ? <DsLogo className="s-h-5 s-w-5" /> : null}
@@ -416,8 +406,6 @@ function DataSourceSelectedNodes({
   setDataSourceToDisplay: (ds: DataSourceType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   const dataSourceSelectedNodes = useDataSourceContentNodes({
     owner,
     dataSource,
@@ -429,13 +417,6 @@ function DataSourceSelectedNodes({
       {dataSourceSelectedNodes.nodes.map((node: ContentNode) => (
         <Tree.Item
           key={node.internalId}
-          collapsed={!expanded[node.internalId]}
-          onChevronClick={() => {
-            setExpanded((prev) => ({
-              ...prev,
-              [node.internalId]: prev[node.internalId] ? false : true,
-            }));
-          }}
           label={node.titleWithParentsContext ?? node.title}
           type={node.expandable ? "node" : "leaf"}
           variant={node.type}
