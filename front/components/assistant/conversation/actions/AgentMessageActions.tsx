@@ -18,34 +18,27 @@ export function AgentMessageActions({
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
-  // Assuming the action step is complete if the agent message isn't empty.
-  // This workaround will be replaced by proper streaming events in the future.
-  // Note: This might fail if models send CoT beforehand.
-  const agentMessageIsEmpty = useMemo(
-    () => !agentMessage.content?.length,
-    [agentMessage.content]
+  // We're thinking or acting if the message status is still "created" and we don't have content
+  // yet. Despite our work on chain of thoughts events, it's still possible for content to be
+  // emitted before actions in which case we will think we're not thinking or acting until an action
+  // gets emitted in which case the content will get requalified as chain of thoughts and this will
+  // switch back to true.
+  const isThinkingOrActing = useMemo(
+    () => !agentMessage.content?.length && agentMessage.status === "created",
+    [agentMessage.content, agentMessage.status]
   );
 
   useEffect(() => {
-    const isThinking =
-      agentMessage.actions.length === 0 &&
-      agentMessageIsEmpty &&
-      // If the message is any status but created it means the agent is done thinking.
-      agentMessage.status === "created";
-
-    if (isThinking) {
-      setChipLabel("Thinking");
-    } else if (agentMessage.actions.length > 0 && agentMessageIsEmpty) {
-      setChipLabel(renderActionName(agentMessage.actions));
+    if (isThinkingOrActing) {
+      if (agentMessage.actions.length === 0) {
+        setChipLabel("Thinking");
+      } else {
+        setChipLabel(renderActionName(agentMessage.actions));
+      }
     } else {
       setChipLabel(undefined);
     }
-  }, [
-    agentMessage.actions,
-    agentMessage.content,
-    agentMessage.status,
-    agentMessageIsEmpty,
-  ]);
+  }, [isThinkingOrActing, agentMessage.actions]);
 
   return (
     <div className="flex flex-col items-start gap-y-4">
@@ -57,7 +50,7 @@ export function AgentMessageActions({
       <ActionChip label={chipLabel} />
       <ActionDetailsButton
         hasActions={agentMessage.actions.length !== 0}
-        isActionStepDone={!agentMessageIsEmpty}
+        isActionStepDone={!isThinkingOrActing}
         onClick={() => setIsActionDrawerOpened(true)}
         size={size}
       />
