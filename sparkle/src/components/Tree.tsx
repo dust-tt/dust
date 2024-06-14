@@ -53,13 +53,13 @@ interface TreeItemProps {
 }
 
 export interface TreeItemPropsWithChildren extends TreeItemProps {
-  renderTreeItems?: undefined;
+  renderTreeItems?: never;
   children?: React.ReactNode;
 }
 
 export interface TreeItemPropsWithRender extends TreeItemProps {
   renderTreeItems: () => React.ReactNode;
-  children?: undefined;
+  children?: never;
 }
 
 Tree.Item = function ({
@@ -77,10 +77,10 @@ Tree.Item = function ({
   children,
 }: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
   const [collapsedState, setCollapsedState] = useState<boolean>(
-    defaultCollapsed || true
+    defaultCollapsed ?? true
   );
 
-  const isControlledCollapse = typeof collapsed !== "undefined";
+  const isControlledCollapse = collapsed !== undefined;
 
   const effectiveCollapsed = isControlledCollapse ? collapsed : collapsedState;
   const effectiveOnChevronClick = isControlledCollapse

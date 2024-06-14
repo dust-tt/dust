@@ -79,7 +79,16 @@ export const TreeExample = () => {
               </Tree>
             </Tree.Item>
             <Tree.Item
-              label="item 5 (default collapsed)"
+              label="item 5 (forced expanded)"
+              variant="folder"
+              collapsed={false}
+            >
+              <Tree>
+                <Tree.Item label="item 1" />
+              </Tree>
+            </Tree.Item>
+            <Tree.Item
+              label="item 6 (default collapsed)"
               variant="folder"
               defaultCollapsed={true}
             >
@@ -130,6 +139,36 @@ export const TreeExample = () => {
                   checkbox={{
                     variant: "checkable",
                     checked: false,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+              </Tree>
+            </Tree.Item>
+
+            <Tree.Item
+              label="item 7 (default expanded)"
+              variant="folder"
+              defaultCollapsed={false}
+            >
+              <Tree>
+                <Tree.Item
+                  label="item 1"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: true,
+                    partialChecked: true,
+                    onChange: () => {
+                      return;
+                    },
+                  }}
+                />
+                <Tree.Item
+                  label="item 2"
+                  checkbox={{
+                    variant: "checkable",
+                    checked: true,
                     onChange: () => {
                       return;
                     },
