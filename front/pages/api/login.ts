@@ -47,6 +47,7 @@ async function handleMembershipInvite(
   if (membershipInvite.inviteEmail !== user.email) {
     return new Err(
       new AuthFlowError(
+        "invitation_token_email_mismatch",
         "The invitation token is not intended for use with this email address."
       )
     );
@@ -61,6 +62,7 @@ async function handleMembershipInvite(
   if (!workspace) {
     return new Err(
       new AuthFlowError(
+        "invalid_invitation_token",
         "The invite token is invalid, please ask your admin to resend an invitation."
       )
     );
@@ -80,6 +82,7 @@ async function handleMembershipInvite(
   if (m?.isRevoked()) {
     return new Err(
       new AuthFlowError(
+        "revoked",
         "Your access to the workspace has expired, please contact the workspace admin to update your role."
       )
     );
@@ -185,7 +188,7 @@ async function handleRegularSignupFlow(
       flow: "no-auto-join" | "revoked" | null;
       workspace: Workspace | null;
     },
-    SSOEnforcedError
+    AuthFlowError | SSOEnforcedError
   >
 > {
   const activeMemberships = await MembershipResource.getActiveMemberships({
@@ -267,6 +270,13 @@ async function handleRegularSignupFlow(
     });
 
     return new Ok({ flow: null, workspace });
+  } else if (targetWorkspaceId && !canJoinTargetWorkspace) {
+    return new Err(
+      new AuthFlowError(
+        "invalid_domain",
+        "The domain attached to your email address is not authorized to join this workspace."
+      )
+    );
   } else {
     // Redirect the user to their existing workspace if they are not allowed to join the target workspace.
     return new Ok({ flow: null, workspace: null });
@@ -348,13 +358,10 @@ async function handler(
       const { error } = result;
 
       if (error instanceof AuthFlowError) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
+        res.redirect(
+          `/api/auth/logout?returnTo=/login-error?reason=${error.code}`
+        );
+        return;
       }
 
       // Delete newly created user if SSO is mandatory.

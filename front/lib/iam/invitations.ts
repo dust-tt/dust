@@ -29,6 +29,7 @@ export async function getPendingMembershipInvitationForToken(
     if (!decodedToken) {
       return new Err(
         new AuthFlowError(
+          "invalid_invitation_token",
           "The invite token is invalid, please ask your admin to resend an invitation."
         )
       );
@@ -43,6 +44,7 @@ export async function getPendingMembershipInvitationForToken(
     if (!membershipInvite) {
       return new Err(
         new AuthFlowError(
+          "invalid_invitation_token",
           "The invite token is invalid, please ask your admin to resend an invitation."
         )
       );

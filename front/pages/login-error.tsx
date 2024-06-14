@@ -31,13 +31,13 @@ function getErrorMessage(domain: string | null, reason: string | null) {
     />
   );
 
-  if (domain) {
+  if (domain || reason === "invalid_domain") {
     return (
       <>
         {headerNode}
         <p className={defaultErrorMessageClassName}>
-          The domain @{domain} attached to your email address is not authorized
-          to join this workspace.
+          The domain {domain ? `@${domain}` : ""} attached to your email address
+          is not authorized to join this workspace.
           <br />
           Please contact your workspace admin to get access or contact us at
           team@dust.tt for assistance.
@@ -83,6 +83,51 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             Not seeing it?
             <br />
             Check you spam folder.
+          </p>
+        </>
+      );
+
+    case "invalid_invitation_token":
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            The invitation is no longer valid.
+            <br />
+            To gain access, please ask your workspace administrator to add you
+            or.
+            <br />
+            Need more help? Email us at team@dust.tt.
+          </p>
+        </>
+      );
+
+    case "invitation_token_email_mismatch":
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            It looks like there's a mismatch between the invitation and the
+            email address provided.
+            <br />
+            Please verify your email or contact your workspace administrator for
+            assistance.
+            <br />
+            Need more help? Email us at team@dust.tt.
+          </p>
+        </>
+      );
+
+    case "revoked":
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Your access to the workspace has expired!
+            <br />
+            Contact your workspace administrator to update your role.
+            <br />
+            Need more help? Email us at team@dust.tt.
           </p>
         </>
       );
