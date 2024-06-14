@@ -482,8 +482,7 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
-          actions={agentMessage.actions}
-          agentMessageContent={agentMessage.content}
+          agentMessage={agentMessage}
           size={size}
         />
 

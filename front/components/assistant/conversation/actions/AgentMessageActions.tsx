@@ -1,5 +1,5 @@
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, AgentMessageType } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
@@ -7,14 +7,12 @@ import { AgentMessageActionsDrawer } from "@app/components/assistant/conversatio
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 
 interface AgentMessageActionsProps {
-  actions: AgentActionType[];
-  agentMessageContent: string | null;
+  agentMessage: AgentMessageType;
   size?: MessageSizeType;
 }
 
 export function AgentMessageActions({
-  actions,
-  agentMessageContent,
+  agentMessage,
   size = "normal",
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
@@ -24,32 +22,41 @@ export function AgentMessageActions({
   // This workaround will be replaced by proper streaming events in the future.
   // Note: This might fail if models send CoT beforehand.
   const agentMessageIsEmpty = useMemo(
-    () => !agentMessageContent?.length,
-    [agentMessageContent]
+    () => !agentMessage.content?.length,
+    [agentMessage.content]
   );
 
   useEffect(() => {
-    const isThinking = actions.length === 0 && agentMessageIsEmpty;
+    const isThinking =
+      agentMessage.actions.length === 0 &&
+      agentMessageIsEmpty &&
+      // If the message is any status but created it means the agent is done thinking.
+      agentMessage.status === "created";
 
     if (isThinking) {
       setChipLabel("Thinking");
-    } else if (actions.length > 0 && agentMessageIsEmpty) {
-      setChipLabel(renderActionName(actions));
+    } else if (agentMessage.actions.length > 0 && agentMessageIsEmpty) {
+      setChipLabel(renderActionName(agentMessage.actions));
     } else {
       setChipLabel(undefined);
     }
-  }, [actions, agentMessageContent, agentMessageIsEmpty]);
+  }, [
+    agentMessage.actions,
+    agentMessage.content,
+    agentMessage.status,
+    agentMessageIsEmpty,
+  ]);
 
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        actions={actions}
+        actions={agentMessage.actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
       />
       <ActionChip label={chipLabel} />
       <ActionDetailsButton
-        hasActions={actions.length !== 0}
+        hasActions={agentMessage.actions.length !== 0}
         isActionStepDone={!agentMessageIsEmpty}
         onClick={() => setIsActionDrawerOpened(true)}
         size={size}
