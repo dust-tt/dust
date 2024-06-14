@@ -71,7 +71,6 @@ export function SlackIntegration({
           <DataSourceResourceSelectorTree
             owner={owner}
             dataSource={slackDataSource}
-            selectedParents={[]}
             selectedResourceIds={selectedChannelIds}
             onSelectChange={(node, parents, selected) => {
               setHasChanged(true);
