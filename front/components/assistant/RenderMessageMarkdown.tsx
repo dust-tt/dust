@@ -11,7 +11,8 @@ import type { RetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import remarkDirective from "remark-directive";
@@ -176,6 +177,79 @@ export function RenderMessageMarkdown({
   agentConfigurations?: LightAgentConfigurationType[];
   citationsContext?: CitationsContextType;
 }) {
+  // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
+  const markdownComponents: Components = useMemo(
+    () => ({
+      pre: ({ children }) => (
+        <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
+      ),
+      code: CodeBlockWithExtendedSupport,
+      a: LinkBlock,
+      ul: UlBlock,
+      ol: OlBlock,
+      li: LiBlock,
+      p: ParagraphBlock,
+      sup: CiteBlock,
+      table: TableBlock,
+      thead: TableHeadBlock,
+      tbody: TableBodyBlock,
+      th: TableHeaderBlock,
+      td: TableDataBlock,
+      h1: ({ children }) => (
+        <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
+          {children}
+        </h1>
+      ),
+      h2: ({ children }) => (
+        <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
+          {children}
+        </h2>
+      ),
+      h3: ({ children }) => (
+        <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
+          {children}
+        </h3>
+      ),
+      h4: ({ children }) => (
+        <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
+          {children}
+        </h4>
+      ),
+      h5: ({ children }) => (
+        <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
+          {children}
+        </h5>
+      ),
+      h6: ({ children }) => (
+        <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
+          {children}
+        </h6>
+      ),
+      strong: ({ children }) => (
+        <strong className="font-semibold text-element-900">{children}</strong>
+      ),
+      // @ts-expect-error - `mention` is a custom tag, currently refused by
+      // react-markdown types although the functionality is supported
+      mention: ({ agentName, agentSId }) => {
+        const agentConfiguration = agentConfigurations?.find(
+          (agentConfiguration) => agentConfiguration.sId === agentSId
+        );
+        return (
+          <MentionBlock
+            agentConfiguration={agentConfiguration}
+            agentName={agentName}
+          />
+        );
+      },
+    }),
+    [agentConfigurations, isStreaming]
+  );
+
+  const markdownPlugins = useMemo(
+    () => [remarkDirective, mentionDirective, citeDirective(), remarkGfm],
+    []
+  );
+
   return (
     <div className={isStreaming ? "blinking-cursor" : ""}>
       <CitationsContext.Provider
@@ -190,77 +264,8 @@ export function RenderMessageMarkdown({
         <MermaidDisplayProvider>
           <ReactMarkdown
             linkTarget="_blank"
-            components={{
-              pre: ({ children }) => (
-                <PreBlock isStreaming={isStreaming}>{children}</PreBlock>
-              ),
-              code: CodeBlockWithExtendedSupport,
-              a: LinkBlock,
-              ul: UlBlock,
-              ol: OlBlock,
-              li: LiBlock,
-              p: ParagraphBlock,
-              sup: CiteBlock,
-              table: TableBlock,
-              thead: TableHeadBlock,
-              tbody: TableBodyBlock,
-              th: TableHeaderBlock,
-              td: TableDataBlock,
-              h1: ({ children }) => (
-                <h1 className="pb-2 pt-4 text-5xl font-semibold text-element-900">
-                  {children}
-                </h1>
-              ),
-              h2: ({ children }) => (
-                <h2 className="pb-2 pt-4 text-4xl font-semibold text-element-900">
-                  {children}
-                </h2>
-              ),
-              h3: ({ children }) => (
-                <h3 className="pb-2 pt-4 text-2xl font-semibold text-element-900">
-                  {children}
-                </h3>
-              ),
-              h4: ({ children }) => (
-                <h4 className="pb-2 pt-3 text-lg font-bold text-element-900">
-                  {children}
-                </h4>
-              ),
-              h5: ({ children }) => (
-                <h5 className="pb-1.5 pt-2.5 text-lg font-medium text-element-900">
-                  {children}
-                </h5>
-              ),
-              h6: ({ children }) => (
-                <h6 className="pb-1.5 pt-2.5 text-base font-bold text-element-900">
-                  {children}
-                </h6>
-              ),
-              strong: ({ children }) => (
-                <strong className="font-semibold text-element-900">
-                  {children}
-                </strong>
-              ),
-              // @ts-expect-error - `mention` is a custom tag, currently refused by
-              // react-markdown types although the functionality is supported
-              mention: ({ agentName, agentSId }) => {
-                const agentConfiguration = agentConfigurations?.find(
-                  (agentConfiguration) => agentConfiguration.sId === agentSId
-                );
-                return (
-                  <MentionBlock
-                    agentConfiguration={agentConfiguration}
-                    agentName={agentName}
-                  />
-                );
-              },
-            }}
-            remarkPlugins={[
-              remarkDirective,
-              mentionDirective,
-              citeDirective(),
-              remarkGfm,
-            ]}
+            components={markdownComponents}
+            remarkPlugins={markdownPlugins}
           >
             {addClosingBackticks(content)}
           </ReactMarkdown>

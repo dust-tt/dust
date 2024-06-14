@@ -494,7 +494,7 @@ export function AgentMessage({
               <div className="font-semibold">Assistant thoughts</div>
             </div>
 
-            <div className={"italic"}>
+            <div className="italic">
               <RenderMessageMarkdown
                 content={chainOfThought}
                 isStreaming={false}
