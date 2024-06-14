@@ -4,12 +4,12 @@ export function isActionWebsearchValid(
   action: AssistantBuilderActionConfiguration
 ) {
   return (
-    action.type === "WEBSEARCH_AND_BROWSE" &&
+    action.type === "WEB_NAVIGATION" &&
     Object.keys(action.configuration).length === 0
   );
 }
 
-export function ActionWebsearch() {
+export function ActionWebNavigation() {
   return (
     <div>
       This action will perform a web search and return the top results (title,

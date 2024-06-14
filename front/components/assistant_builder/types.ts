@@ -106,7 +106,7 @@ export type AssistantBuilderActionConfiguration = (
       configuration: AssistantBuilderProcessConfiguration;
     }
   | {
-      type: "WEBSEARCH_AND_BROWSE";
+      type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebsearchConfiguration;
     }
 ) & {
@@ -261,7 +261,7 @@ export function getDefaultProcessActionConfiguration() {
 
 export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
-    type: "WEBSEARCH_AND_BROWSE",
+    type: "WEB_NAVIGATION",
     configuration: {},
     name: "websearch",
     description: "Perform a web search and browse a page.",
@@ -285,7 +285,7 @@ export function getDefaultActionConfiguration(
       return getDefaultTablesQueryActionConfiguration();
     case "PROCESS":
       return getDefaultProcessActionConfiguration();
-    case "WEBSEARCH_AND_BROWSE":
+    case "WEB_NAVIGATION":
       return getDefaultWebsearchActionConfiguration();
     default:
       assertNever(actionType);

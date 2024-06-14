@@ -56,7 +56,7 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: TableIcon,
     flag: null,
   },
-  WEBSEARCH_AND_BROWSE: {
+  WEB_NAVIGATION: {
     label: "Web search and browse",
     description: "Perform a web search and browse the results",
     cardIcon: PlanetIcon,

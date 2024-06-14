@@ -120,7 +120,7 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
-      case "WEBSEARCH_AND_BROWSE":
+      case "WEB_NAVIGATION":
         return [
           {
             type: "websearch_configuration",

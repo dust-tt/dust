@@ -36,9 +36,9 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
-  ActionWebsearch,
-  isActionWebsearchValid,
-} from "@app/components/assistant_builder/actions/WebsearchAction";
+  ActionWebNavigation,
+  isActionWebsearchValid as isActionWebNavigationValid,
+} from "@app/components/assistant_builder/actions/WebNavigationAction";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
@@ -59,7 +59,7 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEBSEARCH_AND_BROWSE",
+  "WEB_NAVIGATION",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -90,8 +90,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
-    case "WEBSEARCH_AND_BROWSE":
-      return isActionWebsearchValid(action);
+    case "WEB_NAVIGATION":
+      return isActionWebNavigationValid(action);
     default:
       assertNever(action);
   }
@@ -568,8 +568,8 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
-    case "WEBSEARCH_AND_BROWSE":
-      return <ActionWebsearch />;
+    case "WEB_NAVIGATION":
+      return <ActionWebNavigation />;
     default:
       assertNever(action);
   }

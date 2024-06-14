@@ -271,11 +271,13 @@ export function AssistantDetails({
           ) : isWebsearchConfiguration(action) ? (
             <div className="flex flex-col gap-2" key={`action-${index}`}>
               <div className="text-lg font-bold text-element-800">
-                Web search
+                Web navigation
               </div>
               <div className="flex items-center gap-2">
                 <Icon visual={PlanetIcon} size="xs" />
-                <div>assitant will use top results of web search to answer</div>
+                <div>
+                  Assitant will do web search and browse page content to answer
+                </div>
               </div>
             </div>
           ) : isBrowseConfiguration(action) ? (
