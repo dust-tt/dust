@@ -360,13 +360,11 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await getRunnerforActionConfiguration(a).buildSpecification(
-      auth,
-      {
-        name: a.name,
-        description: a.description,
-      }
-    );
+    const runner = getRunnerforActionConfiguration(a);
+    const specRes = await runner.buildSpecification(auth, {
+      name: a.name,
+      description: a.description,
+    });
 
     if (specRes.isErr()) {
       logger.error(

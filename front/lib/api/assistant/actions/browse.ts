@@ -87,11 +87,6 @@ export class BrowseAction extends BaseAction {
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 
 export class BrowseConfigurationServerRunner extends BaseActionConfigurationServerRunner<BrowseConfigurationType> {
-  // Default action name.
-  defaultActionName(): string {
-    return DEFAULT_BROWSE_ACTION_NAME;
-  }
-
   async buildSpecification(
     auth: Authenticator,
     { name, description }: { name: string; description: string | null }
@@ -121,7 +116,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     auth: Authenticator
   ): Promise<Result<AgentActionSpecification, Error>> {
     return this.buildSpecification(auth, {
-      name: this.defaultActionName(),
+      name: DEFAULT_BROWSE_ACTION_NAME,
       description: null,
     });
   }
