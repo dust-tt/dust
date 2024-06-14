@@ -1,11 +1,6 @@
-import type {
-  ContentNode,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
+import { ContentNode, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
-
-import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export function useParentResourcesById({
   owner,
@@ -45,7 +40,6 @@ export function useParentResourcesById({
         throw new Error("Failed to fetch parents");
       }
       const json: GetContentNodeParentsResponseBody = await res.json();
-
       setParentsById(
         json.nodes.reduce((acc, r) => {
           acc[r.internalId] = new Set(r.parents);
