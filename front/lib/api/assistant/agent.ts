@@ -360,11 +360,13 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const runner = getRunnerforActionConfiguration(a);
-    const specRes = await runner.buildSpecification(auth, {
-      name: a.name,
-      description: a.description,
-    });
+    const specRes = await getRunnerforActionConfiguration(a).buildSpecification(
+      auth,
+      {
+        name: a.name,
+        description: a.description,
+      }
+    );
 
     if (specRes.isErr()) {
       logger.error(
@@ -727,7 +729,9 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -801,7 +805,9 @@ async function* runAction(
       return;
     }
 
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -855,7 +861,9 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -900,7 +908,9 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       userMessage,
@@ -946,7 +956,9 @@ async function* runAction(
       }
     }
   } else if (isWebsearchConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -991,7 +1003,9 @@ async function* runAction(
       }
     }
   } else if (isBrowseConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
