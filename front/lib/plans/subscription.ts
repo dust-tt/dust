@@ -27,7 +27,6 @@ import { generateModelSId } from "@app/lib/utils";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
-import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 
 // Helper function to render PlanType from PlanAttributes
 export function renderPlanFromModel({
