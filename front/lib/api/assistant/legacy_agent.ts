@@ -307,10 +307,13 @@ async function* runAction(
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
 
-  specRes = await getRunnerforActionConfiguration(action).buildSpecification(auth, {
-    name: action.name,
-    description: action.description,
-  });
+  specRes = await getRunnerforActionConfiguration(action).buildSpecification(
+    auth,
+    {
+      name: action.name,
+      description: action.description,
+    }
+  );
 
   if (specRes.isErr()) {
     logger.error(
