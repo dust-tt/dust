@@ -28,8 +28,8 @@ export const TreeExample = () => {
         <div className="s-text-xl">Tree</div>
         <div>
           <Tree>
-            <Tree.Item label="item 1" variant="folder" />
-            <Tree.Item label="item 2" variant="folder">
+            <Tree.Item label="item 1 (no children)" variant="folder" />
+            <Tree.Item label="item 2 (loading)" variant="folder">
               <Tree isLoading />
             </Tree.Item>
             <Tree.Item label="item 3" variant="folder">
@@ -69,12 +69,20 @@ export const TreeExample = () => {
                 />
               </Tree>
             </Tree.Item>
-            <Tree.Item label="item 4" variant="folder" collapsed={true}>
+            <Tree.Item
+              label="item 4 (forced collapsed)"
+              variant="folder"
+              collapsed={true}
+            >
               <Tree>
                 <Tree.Item label="item 1" />
               </Tree>
             </Tree.Item>
-            <Tree.Item label="item 5" variant="folder">
+            <Tree.Item
+              label="item 5 (default collapsed)"
+              variant="folder"
+              defaultCollapsed={true}
+            >
               <Tree>
                 <Tree.Item
                   label="item 1"
@@ -265,14 +273,11 @@ const TreeItem = ({
   label: string;
   getLabel: () => string;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const n = Math.floor(Math.random() * 8) + 3;
   return (
     <Tree.Item
       label={label}
       variant="folder"
-      collapsed={!isOpen}
-      onChevronClick={() => setIsOpen(!isOpen)}
       actions={
         <div className="s-flex s-flex-row s-justify-center s-gap-2">
           <span className="s-text-xs s-text-element-700">
@@ -283,7 +288,7 @@ const TreeItem = ({
         </div>
       }
     >
-      {isOpen && <Tree>{createTreeItems(n, getLabel)}</Tree>}
+      {() => <Tree>{createTreeItems(n, getLabel)}</Tree>}
     </Tree.Item>
   );
 };

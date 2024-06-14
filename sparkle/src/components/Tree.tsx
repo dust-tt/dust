@@ -91,7 +91,11 @@ Tree.Item = function ({
       >
         {type === "node" && (
           <IconButton
-            icon={children && !effectiveCollapsed ? ChevronDown : ChevronRight}
+            icon={
+              childrenToRender && !effectiveCollapsed
+                ? ChevronDown
+                : ChevronRight
+            }
             size="sm"
             variant="secondary"
             onClick={effectiveOnChevronClick}
