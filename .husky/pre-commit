@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# .git/hooks/pre-commit
-
 # Check if the current branch is 'main'
 current_branch=$(git symbolic-ref --short HEAD)
 if [ "$current_branch" = "main" ]; then
@@ -14,3 +12,4 @@ fi
 
 # Allow commit
 exit 0
+

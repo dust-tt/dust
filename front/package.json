@@ -12,7 +12,7 @@
     "coverage": "jest --coverage",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh",
-    "prepare": "husky"
+    "prepare": "cd .. && husky .husky"
   },
   "dependencies": {
     "@amplitude/ampli": "^1.35.0",
