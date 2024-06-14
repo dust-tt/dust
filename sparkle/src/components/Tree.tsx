@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 import {
   ChatBubbleBottomCenterText,
@@ -47,9 +47,10 @@ export interface TreeItemProps {
   checkbox?: CheckboxProps;
   onChevronClick?: () => void;
   collapsed?: boolean;
+  defaultCollapsed?: boolean;
   className?: string;
   actions?: React.ReactNode;
-  children?: React.ReactNode;
+  children?: React.ReactNode | (() => React.ReactNode);
 }
 
 Tree.Item = function ({
@@ -61,9 +62,25 @@ Tree.Item = function ({
   checkbox,
   onChevronClick,
   collapsed,
-  children,
+  defaultCollapsed,
   actions,
+  children,
 }: TreeItemProps) {
+  const [collapsedState, setCollapsedState] = useState(defaultCollapsed);
+
+  const controlled = typeof collapsed !== "undefined";
+
+  const effectiveCollapsed = controlled ? collapsed : collapsedState;
+  const effectiveOnChevronClick = controlled
+    ? onChevronClick
+    : () => setCollapsedState(!collapsedState);
+
+  const childrenToRender = !effectiveCollapsed
+    ? typeof children === "function"
+      ? children()
+      : children
+    : [];
+
   return (
     <>
       <div
@@ -74,10 +91,10 @@ Tree.Item = function ({
       >
         {type === "node" && (
           <IconButton
-            icon={children && !collapsed ? ChevronDown : ChevronRight}
+            icon={children && !effectiveCollapsed ? ChevronDown : ChevronRight}
             size="sm"
             variant="secondary"
-            onClick={onChevronClick}
+            onClick={effectiveOnChevronClick}
           />
         )}
         {type === "leaf" && <div className="s-w-5"></div>}
@@ -100,8 +117,8 @@ Tree.Item = function ({
           </div>
         </div>
       </div>
-      {React.Children.count(children) > 0 && (
-        <div className="s-pl-5">{!collapsed && children}</div>
+      {React.Children.count(childrenToRender) > 0 && (
+        <div className="s-pl-5">{childrenToRender}</div>
       )}
     </>
   );
