@@ -132,7 +132,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
 
     const spec = await processActionSpecification({
       actionConfiguration,
-      name: name,
+      name,
       description:
         description ??
         "Process data sources specified by the user over a specific time-frame by extracting" +

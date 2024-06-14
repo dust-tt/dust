@@ -162,7 +162,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }
 
     const spec = await tablesQueryActionSpecification({
-      name: name,
+      name,
       description: actionDescription,
     });
     return new Ok(spec);

@@ -100,7 +100,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     return new Ok({
-      name: name,
+      name,
       description:
         description || "Perform a web search and return the top results.",
       inputs: [
