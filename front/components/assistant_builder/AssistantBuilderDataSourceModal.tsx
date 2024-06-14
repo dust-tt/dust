@@ -554,7 +554,6 @@ function FolderOrWebsiteTree({
     resource?: ContentNode
   ) => void;
 }) {
-  const [expanded, setExpanded] = useState<boolean>(false);
   const selectedResources = currentConfig?.selectedResources ?? [];
 
   const { parentsById, setParentsById } = useParentResourcesById({
@@ -569,10 +568,6 @@ function FolderOrWebsiteTree({
 
   return (
     <Tree.Item
-      collapsed={!expanded}
-      onChevronClick={() => {
-        setExpanded((prev) => !prev);
-      }}
       type={type === "folder" ? "leaf" : "node"}
       label={dataSource.name}
       variant="folder"

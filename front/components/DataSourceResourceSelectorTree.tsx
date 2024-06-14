@@ -123,8 +123,6 @@ function DataSourceResourceSelectorChildren({
       viewType,
     });
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
   if (isResourcesError) {
     return (
       <div className="text-warning text-sm">
@@ -165,13 +163,6 @@ function DataSourceResourceSelectorChildren({
         return (
           <Tree.Item
             key={r.internalId}
-            collapsed={!expanded[r.internalId]}
-            onChevronClick={() => {
-              setExpanded((prev) => ({
-                ...prev,
-                [r.internalId]: prev[r.internalId] ? false : true,
-              }));
-            }}
             visual={<IconComponent className="s-h-4 s-w-4" />}
             type={r.expandable && showExpand ? "node" : "leaf"}
             label={r.title}
@@ -190,7 +181,7 @@ function DataSourceResourceSelectorChildren({
                 : undefined
             }
           >
-            {expanded[r.internalId] && (
+            {() => (
               <DataSourceResourceSelectorChildren
                 owner={owner}
                 dataSource={dataSource}
