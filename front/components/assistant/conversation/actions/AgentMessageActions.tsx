@@ -1,5 +1,5 @@
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, AgentMessageType } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
@@ -7,50 +7,50 @@ import { AgentMessageActionsDrawer } from "@app/components/assistant/conversatio
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 
 interface AgentMessageActionsProps {
-  actions: AgentActionType[];
-  agentMessageContent: string | null;
+  agentMessage: AgentMessageType;
   size?: MessageSizeType;
 }
 
 export function AgentMessageActions({
-  actions,
-  agentMessageContent,
+  agentMessage,
   size = "normal",
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
   const [isActionDrawerOpened, setIsActionDrawerOpened] = useState(false);
 
-  // Assuming the action step is complete if the agent message isn't empty.
-  // This workaround will be replaced by proper streaming events in the future.
-  // Note: This might fail if models send CoT beforehand.
-  const agentMessageIsEmpty = useMemo(
-    () => !agentMessageContent?.length,
-    [agentMessageContent]
+  // We're thinking or acting if the message status is still "created" and we don't have content
+  // yet. Despite our work on chain of thoughts events, it's still possible for content to be
+  // emitted before actions in which case we will think we're not thinking or acting until an action
+  // gets emitted in which case the content will get requalified as chain of thoughts and this will
+  // switch back to true.
+  const isThinkingOrActing = useMemo(
+    () => !agentMessage.content?.length && agentMessage.status === "created",
+    [agentMessage.content, agentMessage.status]
   );
 
   useEffect(() => {
-    const isThinking = actions.length === 0 && agentMessageIsEmpty;
-
-    if (isThinking) {
-      setChipLabel("Thinking");
-    } else if (actions.length > 0 && agentMessageIsEmpty) {
-      setChipLabel(renderActionName(actions));
+    if (isThinkingOrActing) {
+      if (agentMessage.actions.length === 0) {
+        setChipLabel("Thinking");
+      } else {
+        setChipLabel(renderActionName(agentMessage.actions));
+      }
     } else {
       setChipLabel(undefined);
     }
-  }, [actions, agentMessageContent, agentMessageIsEmpty]);
+  }, [isThinkingOrActing, agentMessage.actions]);
 
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        actions={actions}
+        actions={agentMessage.actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
       />
       <ActionChip label={chipLabel} />
       <ActionDetailsButton
-        hasActions={actions.length !== 0}
-        isActionStepDone={!agentMessageIsEmpty}
+        hasActions={agentMessage.actions.length !== 0}
+        isActionStepDone={!isThinkingOrActing}
         onClick={() => setIsActionDrawerOpened(true)}
         size={size}
       />

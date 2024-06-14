@@ -481,11 +481,7 @@ export function AgentMessage({
     const chainOfThought = agentMessage.chainOfThoughts.join("");
     return (
       <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
-          actions={agentMessage.actions}
-          agentMessageContent={agentMessage.content}
-          size={size}
-        />
+        <AgentMessageActions agentMessage={agentMessage} size={size} />
 
         {chainOfThought.length ? (
           <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-sm text-slate-800">

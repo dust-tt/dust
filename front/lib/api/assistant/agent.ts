@@ -133,10 +133,12 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
+    const isLastGenerationIteration = i === configuration.maxToolsUsePerRun;
+
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
-      i === configuration.maxToolsUsePerRun
+      isLastGenerationIteration
         ? []
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
@@ -147,6 +149,7 @@ export async function* runMultiActionsAgentLoop(
       userMessage,
       agentMessage,
       availableActions: actions,
+      isLastGenerationIteration,
     });
 
     for await (const event of loopIterationStream) {
@@ -275,12 +278,14 @@ export async function* runMultiActionsAgent(
     userMessage,
     agentMessage,
     availableActions,
+    isLastGenerationIteration,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
+    isLastGenerationIteration: boolean;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -583,11 +588,7 @@ export async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "multi_actions_error",
-            message: `Error running multi-actions agent action: ${JSON.stringify(
-              event,
-              null,
-              2
-            )}`,
+            message: `Error running assistant: ${event.content.message}`,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -628,28 +629,16 @@ export async function* runMultiActionsAgent(
             messageId: agentMessage.sId,
             error: {
               code: "multi_actions_error",
-              message: `Error running multi-actions agent action: ${e.error}`,
+              message: `Error running assistant: ${e.error}`,
             },
           } satisfies AgentErrorEvent;
           return;
         }
 
-        if (event.content.block_name === "MODEL" && e.value && isGeneration) {
+        if (event.content.block_name === "OUTPUT" && e.value) {
+          // Flush early as we know the generation is terminated here.
           yield* tokenEmitter.flushTokens();
 
-          yield {
-            type: "generation_success",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: tokenEmitter.getContent() ?? "",
-            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
-          } satisfies GenerationSuccessEvent;
-
-          return;
-        }
-
-        if (event.content.block_name === "OUTPUT" && e.value) {
           const v = e.value as any;
           if ("actions" in v) {
             output.actions = v.actions;
@@ -657,9 +646,6 @@ export async function* runMultiActionsAgent(
           if ("generation" in v) {
             output.generation = v.generation;
           }
-
-          yield* tokenEmitter.flushTokens();
-
           break;
         }
       }
@@ -668,15 +654,45 @@ export async function* runMultiActionsAgent(
     await redis.quit();
   }
 
+  yield* tokenEmitter.flushTokens();
+
   if (!output.actions.length) {
+    if (typeof output.generation === "string") {
+      yield {
+        type: "generation_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: tokenEmitter.getContent() ?? "",
+        chainOfThought: tokenEmitter.getChainOfThought() ?? "",
+      } satisfies GenerationSuccessEvent;
+    } else {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "no_action_or_generation_found",
+          message: "No action or generation found",
+        },
+      } satisfies AgentErrorEvent;
+    }
+    return;
+  }
+
+  // We have actions.
+
+  if (isLastGenerationIteration) {
     yield {
       type: "agent_error",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "no_action_or_generation_found",
-        message: "No action or generation found",
+        code: "multi_actions_error",
+        message:
+          "Assistant failed to generate response after running `maxToolsUsePerRun`.",
       },
     } satisfies AgentErrorEvent;
     return;
