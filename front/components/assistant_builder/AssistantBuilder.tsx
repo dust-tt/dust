@@ -49,6 +49,7 @@ import { submitAssistantBuilderForm } from "@app/components/assistant_builder/su
 import type {
   AssistantBuilderPendingAction,
   AssistantBuilderProps,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
 } from "@app/components/assistant_builder/types";
@@ -266,6 +267,34 @@ export default function AssistantBuilder({
     void formValidation();
   }, [formValidation]);
 
+  const setAction = useCallback(
+    (p: AssistantBuilderSetActionType) => {
+      if (p.type === "pending") {
+        setPendingAction({ action: p.action, previousActionName: null });
+      } else if (p.type === "edit") {
+        setPendingAction({
+          action: p.action,
+          previousActionName: p.action.name,
+        });
+      } else if (p.type === "clear_pending") {
+        setPendingAction({ action: null });
+      } else if (p.type === "insert") {
+        if (builderState.actions.some((a) => a.name === p.action.name)) {
+          return;
+        }
+
+        setEdited(true);
+        setBuilderState((state) => {
+          return {
+            ...state,
+            actions: [...state.actions, p.action],
+          };
+        });
+      }
+    },
+    [builderState, setBuilderState, setEdited]
+  );
+
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
@@ -416,8 +445,8 @@ export default function AssistantBuilder({
                           dustApps={dustApps}
                           setBuilderState={setBuilderState}
                           setEdited={setEdited}
+                          setAction={setAction}
                           pendingAction={pendingAction}
-                          setPendingAction={setPendingAction}
                         />
                       );
                     }
@@ -497,7 +526,7 @@ export default function AssistantBuilder({
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
               multiActionsMode={multiActionsEnabled}
-              setPendingAction={setPendingAction}
+              setAction={setAction}
             />
           }
           isRightPanelOpen={rightPanelStatus.tab !== null}

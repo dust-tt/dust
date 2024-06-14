@@ -56,18 +56,12 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: TableIcon,
     flag: null,
   },
-  WEBSEARCH: {
-    label: "Web search",
-    description: "Perform a web search",
+  WEB_NAVIGATION: {
+    label: "Web navigation",
+    description:
+      "Navigate the web (browse any provided links, make a google search, etc.)",
     cardIcon: PlanetIcon,
     dropDownIcon: PlanetIcon,
     flag: "websearch_action",
-  },
-  BROWSE: {
-    label: "Browse",
-    description: "Get the content of a web page",
-    cardIcon: PlanetIcon,
-    dropDownIcon: PlanetIcon,
-    flag: "browse_action",
   },
 };

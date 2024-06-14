@@ -129,13 +129,13 @@ type MultiActionType =
   | "DUST_APP_RUN"
   | "TABLES_QUERY"
   | "PROCESS"
-  | "WEBSEARCH";
+  | "WEB_NAVIGATION";
 export const MULTI_ACTION_PRESETS: Record<MultiActionType, string> = {
   DUST_APP_RUN: "Run Dust app",
   RETRIEVAL_SEARCH: "Search data sources",
   TABLES_QUERY: "Query tables",
   PROCESS: "Extract data",
-  WEBSEARCH: "Web search",
+  WEB_NAVIGATION: "Web navigation",
 } as const;
 export type MultiActionPreset = keyof typeof MULTI_ACTION_PRESETS;
 export const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(

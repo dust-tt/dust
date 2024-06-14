@@ -18,10 +18,6 @@ import type { ReactNode } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import {
-  ActionBrowse,
-  isActionBrowseValid,
-} from "@app/components/assistant_builder/actions/BrowseAction";
-import {
   ActionDustAppRun,
   isActionDustAppRunValid,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
@@ -40,14 +36,15 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
-  ActionWebsearch,
-  isActionWebsearchValid,
-} from "@app/components/assistant_builder/actions/WebsearchAction";
+  ActionWebNavigation,
+  isActionWebsearchValid as isActionWebNavigationValid,
+} from "@app/components/assistant_builder/actions/WebNavigationAction";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
@@ -63,8 +60,7 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEBSEARCH",
-  "BROWSE",
+  "WEB_NAVIGATION",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
@@ -95,10 +91,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
-    case "WEBSEARCH":
-      return isActionWebsearchValid(action);
-    case "BROWSE":
-      return isActionBrowseValid(action);
+    case "WEB_NAVIGATION":
+      return isActionWebNavigationValid(action);
     default:
       assertNever(action);
   }
@@ -111,8 +105,8 @@ export default function ActionsScreen({
   dataSources,
   setBuilderState,
   setEdited,
+  setAction,
   pendingAction,
-  setPendingAction,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -122,8 +116,8 @@ export default function ActionsScreen({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
-  setPendingAction: (action: AssistantBuilderPendingAction) => void;
 }) {
   const updateAction = useCallback(
     function _updateAction({
@@ -157,19 +151,6 @@ export default function ActionsScreen({
             : action
         ),
       }));
-    },
-    [setBuilderState, setEdited]
-  );
-
-  const insertAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
-      setEdited(true);
-      setBuilderState((state) => {
-        return {
-          ...state,
-          actions: [...state.actions, action],
-        };
-      });
     },
     [setBuilderState, setEdited]
   );
@@ -216,14 +197,12 @@ export default function ActionsScreen({
               getNewActionConfig: () => newAction.configuration,
             });
           } else {
-            insertAction(newAction);
+            setAction({ type: "insert", action: newAction });
           }
-          setPendingAction({
-            action: null,
-          });
+          setAction({ type: "clear_pending" });
         }}
         onClose={() => {
-          setPendingAction({ action: null });
+          setAction({ type: "clear_pending" });
         }}
         updateAction={updateAction}
         owner={owner}
@@ -251,9 +230,11 @@ export default function ActionsScreen({
                 <AddAction
                   owner={owner}
                   onAddAction={(action) => {
-                    setPendingAction({
+                    setAction({
+                      type: action.noConfigurationRequired
+                        ? "insert"
+                        : "pending",
                       action,
-                      previousActionName: null,
                     });
                   }}
                 />
@@ -283,9 +264,9 @@ export default function ActionsScreen({
               <AddAction
                 owner={owner}
                 onAddAction={(action) => {
-                  setPendingAction({
+                  setAction({
+                    type: action.noConfigurationRequired ? "insert" : "pending",
                     action,
-                    previousActionName: null,
                   });
                 }}
               />
@@ -298,9 +279,9 @@ export default function ActionsScreen({
                   action={a}
                   key={a.name}
                   editAction={() => {
-                    setPendingAction({
+                    setAction({
+                      type: "edit",
                       action: a,
-                      previousActionName: a.name,
                     });
                   }}
                   deleteAction={() => {
@@ -578,10 +559,8 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
-    case "WEBSEARCH":
-      return <ActionWebsearch />;
-    case "BROWSE":
-      return <ActionBrowse />;
+    case "WEB_NAVIGATION":
+      return <ActionWebNavigation />;
     default:
       assertNever(action);
   }

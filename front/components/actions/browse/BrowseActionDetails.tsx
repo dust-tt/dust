@@ -10,7 +10,7 @@ export function BrowseActionDetails({
 }: ActionDetailsComponentBaseProps<BrowseActionType>) {
   return (
     <ActionDetailsWrapper
-      actionName="Browse"
+      actionName="Web navigation"
       defaultOpen={defaultOpen}
       visual={GlobeAltIcon}
     >

@@ -42,8 +42,7 @@ import { ActionDustAppRun } from "./actions/DustAppRunAction";
 const BASIC_ACTION_CATEGORIES = [
   "REPLY_ONLY",
   "USE_DATA_SOURCES",
-  "WEBSEARCH",
-  "BROWSE",
+  "WEB_NAVIGATION",
 ] as const;
 const ADVANCED_ACTION_CATEGORIES = ["RUN_DUST_APP"] as const;
 
@@ -87,19 +86,12 @@ const ACTION_CATEGORY_SPECIFICATIONS: Record<
     description: "Run a Dust app, then reply",
     defaultActionType: "DUST_APP_RUN",
   },
-  WEBSEARCH: {
-    label: "Web search",
+  WEB_NAVIGATION: {
+    label: "Web navigation",
     icon: PlanetIcon,
     description: "Perform a web search",
-    defaultActionType: "WEBSEARCH",
+    defaultActionType: "WEB_NAVIGATION",
     flag: "websearch_action",
-  },
-  BROWSE: {
-    label: "Browse content",
-    icon: PlanetIcon,
-    description: "Browse a web page",
-    defaultActionType: "BROWSE",
-    flag: "browse_action",
   },
 };
 
@@ -181,10 +173,8 @@ export default function ActionScreen({
         return "USE_DATA_SOURCES";
       case "DUST_APP_RUN":
         return "RUN_DUST_APP";
-      case "WEBSEARCH":
-        return "WEBSEARCH";
-      case "BROWSE":
-        return "BROWSE";
+      case "WEB_NAVIGATION":
+        return "WEB_NAVIGATION";
       default:
         assertNever(actionType);
     }
@@ -202,8 +192,7 @@ export default function ActionScreen({
         return "PROCESS";
 
       case null:
-      case "WEBSEARCH":
-      case "BROWSE":
+      case "WEB_NAVIGATION":
       case "DUST_APP_RUN":
         // Unused for non data sources related actions.
         return "RETRIEVAL_SEARCH";

@@ -9,7 +9,10 @@ import type * as t from "io-ts";
 
 import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import type {
+  AssistantBuilderActionConfiguration,
+  AssistantBuilderState,
+} from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
@@ -53,113 +56,122 @@ export async function submitAssistantBuilderForm({
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >;
 
-  const actionParams: NonNullable<BodyType["assistant"]["actions"]> =
-    removeNulls(
-      builderState.actions.map((a) => {
-        switch (a.type) {
-          case "RETRIEVAL_SEARCH":
-          case "RETRIEVAL_EXHAUSTIVE":
-            return {
-              type: "retrieval_configuration",
-              name: a.name,
-              description: a.description,
-              query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-              relativeTimeFrame:
-                a.type === "RETRIEVAL_EXHAUSTIVE"
+  type ActionsType = NonNullable<BodyType["assistant"]["actions"]>;
+
+  const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
+    switch (a.type) {
+      case "RETRIEVAL_SEARCH":
+      case "RETRIEVAL_EXHAUSTIVE":
+        return [
+          {
+            type: "retrieval_configuration",
+            name: a.name,
+            description: a.description,
+            query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
+            relativeTimeFrame:
+              a.type === "RETRIEVAL_EXHAUSTIVE"
+                ? {
+                    duration: a.configuration.timeFrame.value,
+                    unit: a.configuration.timeFrame.unit,
+                  }
+                : "auto",
+            topK: "auto",
+            dataSources: Object.values(
+              a.configuration.dataSourceConfigurations
+            ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+              dataSourceId: dataSource.name,
+              workspaceId: owner.sId,
+              filter: {
+                parents: !isSelectAll
                   ? {
-                      duration: a.configuration.timeFrame.value,
-                      unit: a.configuration.timeFrame.unit,
+                      in: selectedResources.map(
+                        (resource) => resource.internalId
+                      ),
+                      not: [],
                     }
-                  : "auto",
-              topK: "auto",
-              dataSources: Object.values(
-                a.configuration.dataSourceConfigurations
-              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-                dataSourceId: dataSource.name,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: null,
-                },
-              })),
-            };
-
-          case "DUST_APP_RUN":
-            if (!a.configuration.app) {
-              return null;
-            }
-            return {
-              type: "dust_app_run_configuration",
-              name: a.name,
-              description: a.description,
-              appWorkspaceId: owner.sId,
-              appId: a.configuration.app.sId,
-            };
-
-          case "TABLES_QUERY":
-            return {
-              type: "tables_query_configuration",
-              name: a.name,
-              description: a.description,
-              tables: Object.values(a.configuration),
-            };
-
-          case "WEBSEARCH":
-            return {
-              type: "websearch_configuration",
-              name: a.name,
-              description: a.description,
-            };
-
-          case "BROWSE":
-            return {
-              type: "browse_configuration",
-              name: a.name,
-              description: a.description,
-            };
-
-          case "PROCESS":
-            return {
-              type: "process_configuration",
-              name: a.name,
-              description: a.description,
-              dataSources: Object.values(
-                a.configuration.dataSourceConfigurations
-              ).map(({ dataSource, selectedResources, isSelectAll }) => ({
-                dataSourceId: dataSource.name,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: null,
-                },
-              })),
-              tagsFilter: a.configuration.tagsFilter,
-              relativeTimeFrame: {
-                duration: a.configuration.timeFrame.value,
-                unit: a.configuration.timeFrame.unit,
+                  : null,
+                tags: null,
               },
-              schema: a.configuration.schema,
-            };
+            })),
+          },
+        ];
 
-          default:
-            assertNever(a);
+      case "DUST_APP_RUN":
+        if (!a.configuration.app) {
+          return [];
         }
-      })
-    );
+        return [
+          {
+            type: "dust_app_run_configuration",
+            name: a.name,
+            description: a.description,
+            appWorkspaceId: owner.sId,
+            appId: a.configuration.app.sId,
+          },
+        ];
+
+      case "TABLES_QUERY":
+        return [
+          {
+            type: "tables_query_configuration",
+            name: a.name,
+            description: a.description,
+            tables: Object.values(a.configuration),
+          },
+        ];
+
+      case "WEB_NAVIGATION":
+        return [
+          {
+            type: "websearch_configuration",
+            name: "websearch",
+            description: "Perform a web search",
+          },
+          {
+            type: "browse_configuration",
+            name: "browse",
+            description: "Browse the content of a web page",
+          },
+        ];
+
+      case "PROCESS":
+        return [
+          {
+            type: "process_configuration",
+            name: a.name,
+            description: a.description,
+            dataSources: Object.values(
+              a.configuration.dataSourceConfigurations
+            ).map(({ dataSource, selectedResources, isSelectAll }) => ({
+              dataSourceId: dataSource.name,
+              workspaceId: owner.sId,
+              filter: {
+                parents: !isSelectAll
+                  ? {
+                      in: selectedResources.map(
+                        (resource) => resource.internalId
+                      ),
+                      not: [],
+                    }
+                  : null,
+                tags: null,
+              },
+            })),
+            tagsFilter: a.configuration.tagsFilter,
+            relativeTimeFrame: {
+              duration: a.configuration.timeFrame.value,
+              unit: a.configuration.timeFrame.unit,
+            },
+            schema: a.configuration.schema,
+          },
+        ];
+
+      default:
+        assertNever(a);
+    }
+  };
+
+  const actionParams: ActionsType = builderState.actions.flatMap(map);
 
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
