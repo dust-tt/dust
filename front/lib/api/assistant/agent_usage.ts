@@ -71,15 +71,10 @@ export async function getAgentsUsage({
   const redis = providedRedis ?? (await redisClient());
 
   try {
-    // Fetch and parse last updated time
-    const lastUpdated = parseInt(
-      (await redis.get("usage_lastUpdatedAt")) || "0",
-      10
-    );
-    const currentTime = Date.now() / 1000;
+    const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
-    // Update agent mention count if data is outdated
-    if (lastUpdated < currentTime - popularityComputationTimeframeSec) {
+    // agent mention count doesn't exist
+    if (agentMessageCountTTL === -2) {
       const [agentMessageCounts, userCounts] = await Promise.all([
         agentMentionsCount(owner.id),
         agentMentionsUserCount(owner.id),
@@ -90,6 +85,20 @@ export async function getAgentsUsage({
         userCounts,
         redis
       );
+      // agent mention count is stale
+    } else if (agentMessageCountTTL < popularityComputationTimeframeSec) {
+      void (async () => {
+        const [agentMessageCounts, userCounts] = await Promise.all([
+          agentMentionsCount(owner.id),
+          agentMentionsUserCount(owner.id),
+        ]);
+        void storeCountsInRedis(
+          workspaceId,
+          agentMessageCounts,
+          userCounts,
+          redis
+        );
+      })();
     }
 
     // Retrieve and parse agents usage
@@ -307,13 +316,19 @@ export async function storeCountsInRedis(
   const transaction = redis.multi();
   const { agentMessageCountKey, agentUserCountKey } =
     _getUsageKeys(workspaceId);
+
   agentMessageCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentMessageCountKey, agentId, count);
   });
+  transaction.expire(
+    agentMessageCountKey,
+    popularityComputationTimeframeSec * 2
+  );
+
   userCounts.forEach(({ agentId, count }) => {
     transaction.hSet(agentUserCountKey, agentId, count);
   });
-  transaction.set("usage_lastUpdatedAt", Date.now() / 1000);
+  transaction.expire(agentUserCountKey, popularityComputationTimeframeSec * 2);
 
   const results = await transaction.exec();
   if (results.includes(null)) {
