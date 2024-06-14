@@ -22,7 +22,6 @@ const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
 // Computing agent mention count over a 2h period
 const popularityComputationTimeframeSec = 2 * 60 * 60;
-const agentPopularityLimit = 24;
 
 export type mentionCount = {
   agentId: string;
@@ -334,11 +333,4 @@ export async function storeCountsInRedis(
   if (results.includes(null)) {
     throw new Error("Transaction failed and was rolled back.");
   }
-}
-
-export async function getMostPopularAgents(workspaceId: string) {
-  const agentsUsage = await getAgentsUsage({ workspaceId });
-  return agentsUsage
-    .slice(0, agentPopularityLimit)
-    .filter((mentionCount) => mentionCount.count > 0);
 }

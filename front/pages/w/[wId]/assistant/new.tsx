@@ -97,6 +97,7 @@ export default function AssistantNew({
     workspaceId: owner.sId,
     agentsGetView: "workspace",
     limit: 24,
+    includes: ["usage"],
   });
 
   // we load all assistants with authors in the background
@@ -107,7 +108,7 @@ export default function AssistantNew({
   } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "assistants-search",
-    includes: ["authors"],
+    includes: ["authors", "usage"],
   });
 
   const displayedAgentConfigurations = isAgentConfigurationsWithAuthorsLoading
