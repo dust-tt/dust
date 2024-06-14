@@ -1,10 +1,7 @@
 import {
   ChatBubbleLeftRightIcon,
-  Checkbox,
-  ChevronDownIcon,
-  ChevronRightIcon,
   DocumentTextIcon,
-  Spinner,
+  Tree,
 } from "@dust-tt/sparkle";
 import type {
   ContentNode,
@@ -14,33 +11,32 @@ import type {
 } from "@dust-tt/types";
 import type { ConnectorPermission, ContentNodeType } from "@dust-tt/types";
 import { CircleStackIcon, FolderIcon } from "@heroicons/react/20/solid";
-import { useCallback, useState } from "react";
+import { useEffect } from "react";
 
 import { useConnectorPermissions } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
 
 export default function DataSourceResourceSelectorTree({
   owner,
   dataSource,
-  expandable, //if not, it's flat
-  selectedParentIds,
+  showExpand, //if not, it's flat
+  parentIsSelected,
+  selectedParents = [],
+  selectedResourceIds,
   onSelectChange,
-  parentsById,
-  fullySelected,
   filterPermission = "read",
   viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  expandable: boolean;
-  selectedParentIds: Set<string>;
+  showExpand: boolean;
+  parentIsSelected?: boolean;
+  selectedParents?: string[];
+  selectedResourceIds: string[];
   onSelectChange: (
     resource: ContentNode,
     parents: string[],
     selected: boolean
   ) => void;
-  parentsById: Record<string, Set<string>>;
-  fullySelected: boolean;
   filterPermission?: ConnectorPermission;
   viewType?: ContentNodesViewType;
 }) {
@@ -50,13 +46,14 @@ export default function DataSourceResourceSelectorTree({
         owner={owner}
         dataSource={dataSource}
         parentId={null}
-        expandable={expandable}
-        selectedParentIds={selectedParentIds}
-        onSelectChange={onSelectChange}
-        parentsById={parentsById}
+        showExpand={showExpand}
         parents={[]}
-        isChecked={false}
-        fullySelected={fullySelected}
+        parentIsSelected={parentIsSelected}
+        selectedResourceIds={selectedResourceIds}
+        selectedParents={selectedParents}
+        onSelectChange={(resource, parents, selected) => {
+          onSelectChange(resource, parents, selected);
+        }}
         filterPermission={filterPermission}
         viewType={viewType}
       />
@@ -91,30 +88,28 @@ function DataSourceResourceSelectorChildren({
   owner,
   dataSource,
   parentId,
-  expandable,
-  isChecked,
-  selectedParentIds,
-  onSelectChange,
-  parentsById,
   parents,
-  fullySelected,
+  parentIsSelected,
+  selectedParents,
+  showExpand,
+  selectedResourceIds,
+  onSelectChange,
   filterPermission,
   viewType = "documents",
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
-  expandable: boolean;
-  isChecked: boolean;
-  selectedParentIds: Set<string>;
   parents: string[];
+  parentIsSelected?: boolean;
+  selectedParents: string[];
+  showExpand: boolean;
+  selectedResourceIds: string[];
   onSelectChange: (
     resource: ContentNode,
     parents: string[],
     selected: boolean
   ) => void;
-  parentsById: Record<string, Set<string>>;
-  fullySelected: boolean;
   filterPermission: ConnectorPermission;
   viewType: ContentNodesViewType;
 }) {
@@ -128,25 +123,6 @@ function DataSourceResourceSelectorChildren({
       viewType,
     });
 
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const getCheckStatus = useCallback(
-    (resourceId: string): "checked" | "unchecked" | "partial" => {
-      if (fullySelected || isChecked || selectedParentIds?.has(resourceId)) {
-        return "checked";
-      }
-
-      for (const x of selectedParentIds) {
-        if (parentsById?.[x]?.has(resourceId)) {
-          return "partial";
-        }
-      }
-
-      return "unchecked";
-    },
-    [fullySelected, isChecked, selectedParentIds, parentsById]
-  );
-
   if (isResourcesError) {
     return (
       <div className="text-warning text-sm">
@@ -155,104 +131,74 @@ function DataSourceResourceSelectorChildren({
     );
   }
 
+  useEffect(() => {
+    if (parentIsSelected) {
+      // Unselected previously selected children
+      resources
+        .filter((r) => selectedResourceIds.includes(r.internalId))
+        .forEach((r) => {
+          onSelectChange(r, parents, false);
+        });
+    }
+  }, [
+    resources,
+    parentIsSelected,
+    selectedResourceIds,
+    onSelectChange,
+    parents,
+  ]);
+
   const isTablesView = viewType === "tables";
-
   return (
-    <>
-      {isResourcesLoading ? (
-        <Spinner />
-      ) : (
-        <div className="flex-1 space-y-1">
-          {resources.map((r) => {
-            const IconComponent = getIconForType(r.type);
-            const checkStatus = getCheckStatus(r.internalId);
-            const checkable = !isTablesView || r.type === "database";
-            const showCheckbox = checkable || checkStatus !== "unchecked";
+    <Tree isLoading={isResourcesLoading}>
+      {resources.map((r) => {
+        const isSelected = selectedResourceIds.includes(r.internalId);
+        const partialChecked =
+          !isSelected &&
+          Boolean(selectedParents.find((id) => id === r.internalId));
 
-            return (
-              <div key={r.internalId}>
-                <div className="flex flex-row items-center rounded-md p-1 text-sm transition duration-200 hover:bg-structure-100">
-                  {expandable && (
-                    <div className="mr-4">
-                      {expanded[r.internalId] ? (
-                        <ChevronDownIcon
-                          className="h-5 w-5 cursor-pointer text-action-600"
-                          onClick={() => {
-                            setExpanded((prev) => ({
-                              ...prev,
-                              [r.internalId]: false,
-                            }));
-                          }}
-                        />
-                      ) : (
-                        <ChevronRightIcon
-                          className={classNames(
-                            "h-5 w-5",
-                            r.expandable
-                              ? "cursor-pointer text-action-600"
-                              : "cursor-not-allowed text-slate-300"
-                          )}
-                          onClick={() => {
-                            if (r.expandable) {
-                              setExpanded((prev) => ({
-                                ...prev,
-                                [r.internalId]: true,
-                              }));
-                            }
-                          }}
-                        />
-                      )}
-                    </div>
-                  )}
-                  <div>
-                    <IconComponent className="h-5 w-5 text-slate-300" />
-                  </div>
-                  <span className="ml-2 line-clamp-1 text-sm font-medium text-element-900">
-                    {r.title}
-                  </span>
-                  <div className="ml-32 flex-grow">
-                    {showCheckbox && (
-                      <Checkbox
-                        variant="checkable"
-                        className={classNames(
-                          "ml-auto",
-                          checkStatus === "partial" ? "bg-element-600" : ""
-                        )}
-                        checked={checkStatus === "checked"}
-                        partialChecked={checkStatus === "partial"}
-                        onChange={(checked) =>
-                          onSelectChange(r, parents, checked)
-                        }
-                        disabled={isChecked || fullySelected || !checkable}
-                      />
-                    )}
-                  </div>
-                </div>
-                {expanded[r.internalId] && (
-                  <div className="flex flex-row">
-                    <div className="ml-4" />
-                    <DataSourceResourceSelectorChildren
-                      owner={owner}
-                      dataSource={dataSource}
-                      parentId={r.internalId}
-                      expandable={expandable}
-                      // In table view, only manually selected nodes are considered and hierarchy does not apply.
-                      isChecked={checkStatus === "checked" && !isTablesView}
-                      selectedParentIds={selectedParentIds}
-                      onSelectChange={onSelectChange}
-                      parentsById={parentsById}
-                      parents={[...parents, r.internalId]}
-                      fullySelected={fullySelected}
-                      filterPermission={filterPermission}
-                      viewType={viewType}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
+        const IconComponent = getIconForType(r.type);
+        const checkable = !isTablesView || r.type === "database";
+
+        return (
+          <Tree.Item
+            key={r.internalId}
+            visual={<IconComponent className="s-h-4 s-w-4" />}
+            type={r.expandable && showExpand ? "node" : "leaf"}
+            label={r.title}
+            variant={r.type}
+            className="whitespace-nowrap"
+            checkbox={
+              checkable && r.preventSelection !== true
+                ? {
+                    disabled: parentIsSelected,
+                    checked: Boolean(isSelected || parentIsSelected),
+                    partialChecked: partialChecked,
+                    onChange: (checked) => {
+                      onSelectChange(r, parents, checked);
+                    },
+                  }
+                : undefined
+            }
+            renderTreeItems={() => (
+              <DataSourceResourceSelectorChildren
+                owner={owner}
+                dataSource={dataSource}
+                parentId={r.internalId}
+                showExpand={showExpand}
+                // In table view, only manually selected nodes are considered and hierarchy does not apply.
+                selectedParents={selectedParents}
+                selectedResourceIds={selectedResourceIds}
+                onSelectChange={onSelectChange}
+                parents={[...parents, r.internalId]}
+                parentIsSelected={parentIsSelected || isSelected}
+                filterPermission={filterPermission}
+                viewType={viewType}
+              />
+            )}
+          />
+        );
+      })}
+    </Tree>
   );
 }

@@ -32,9 +32,9 @@ export function SlackIntegration({
 
   const [hasChanged, setHasChanged] = useState(false);
 
-  const selectedChannelIds = new Set(
-    newSelection?.map((c) => c.slackChannelId) ?? []
-  );
+  const selectedChannelIds = [
+    ...new Set(newSelection?.map((c) => c.slackChannelId) ?? []),
+  ];
 
   useEffect(() => {
     if (existingSelection.length > 0 && newSelection === null) {
@@ -71,9 +71,8 @@ export function SlackIntegration({
           <DataSourceResourceSelectorTree
             owner={owner}
             dataSource={slackDataSource}
-            selectedParentIds={selectedChannelIds}
-            parentsById={{}}
-            onSelectChange={(node, selected) => {
+            selectedResourceIds={selectedChannelIds}
+            onSelectChange={(node, parents, selected) => {
               setHasChanged(true);
 
               if (selected) {
@@ -105,8 +104,7 @@ export function SlackIntegration({
                 });
               }
             }}
-            expandable={false}
-            fullySelected={false}
+            showExpand={false}
             // Write are the channels we're in. Builders can get write but cannot get "none"
             // (reserved to admins).
             filterPermission="write"

@@ -29,8 +29,6 @@ import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { subFilter } from "@app/lib/utils";
 
-import { WebsiteDataSourceSelectorTree } from "./WebsiteDataSourceSelectorTree";
-
 export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   ConnectorProvider,
   {
@@ -396,6 +394,10 @@ function DataSourceResourceSelector({
     selectedResources,
   });
 
+  const selectedParents = [
+    ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+  ];
+
   return (
     <Transition show={!!dataSource} className="mx-auto max-w-6xl pb-8">
       <Page>
@@ -417,7 +419,10 @@ function DataSourceResourceSelector({
                 Select all
                 <SliderToggle
                   selected={isSelectAll}
-                  onClick={toggleSelectAll}
+                  onClick={() => {
+                    toggleSelectAll();
+                    setParentsById({});
+                  }}
                   size="xs"
                 />
               </div>
@@ -433,17 +438,13 @@ function DataSourceResourceSelector({
               <DataSourceResourceSelectorTree
                 owner={owner}
                 dataSource={dataSource}
-                expandable={
+                showExpand={
                   CONNECTOR_CONFIGURATIONS[
                     dataSource.connectorProvider as ConnectorProvider
                   ]?.isNested
                 }
-                selectedParentIds={
-                  new Set(
-                    selectedResources.map((resource) => resource.internalId)
-                  )
-                }
-                parentsById={parentsById}
+                selectedResourceIds={selectedResources.map((r) => r.internalId)}
+                selectedParents={selectedParents}
                 onSelectChange={(node, parents, selected) => {
                   setParentsById((parentsById) => {
                     const newParentsById = { ...parentsById };
@@ -452,11 +453,11 @@ function DataSourceResourceSelector({
                     } else {
                       delete newParentsById[node.internalId];
                     }
-                    return parentsById;
+                    return newParentsById;
                   });
                   onSelectChange(node, selected);
                 }}
-                fullySelected={isSelectAll}
+                parentIsSelected={isSelectAll}
               />
             </div>
           </div>
@@ -553,7 +554,6 @@ function FolderOrWebsiteTree({
     resource?: ContentNode
   ) => void;
 }) {
-  const [expanded, setExpanded] = useState<boolean>(false);
   const selectedResources = currentConfig?.selectedResources ?? [];
 
   const { parentsById, setParentsById } = useParentResourcesById({
@@ -568,10 +568,6 @@ function FolderOrWebsiteTree({
 
   return (
     <Tree.Item
-      collapsed={!expanded}
-      onChevronClick={() => {
-        setExpanded((prev) => !prev);
-      }}
       type={type === "folder" ? "leaf" : "node"}
       label={dataSource.name}
       variant="folder"
@@ -590,7 +586,7 @@ function FolderOrWebsiteTree({
       }}
     >
       {type === "website" && (
-        <WebsiteDataSourceSelectorTree
+        <DataSourceResourceSelectorTree
           showExpand
           owner={owner}
           dataSource={dataSource}
@@ -608,7 +604,7 @@ function FolderOrWebsiteTree({
             });
             onSelectChange(dataSource, selected, resource);
           }}
-          selectedResources={selectedResources}
+          selectedResourceIds={selectedResources.map((r) => r.internalId)}
         />
       )}
     </Tree.Item>

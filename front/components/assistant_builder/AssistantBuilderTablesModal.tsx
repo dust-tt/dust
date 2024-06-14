@@ -531,7 +531,6 @@ const PickTablesManaged = ({
   dataSource,
   onSelectionChange,
   selectedNodes,
-  parentsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -551,13 +550,16 @@ const PickTablesManaged = ({
         <DataSourceResourceSelectorTree
           owner={owner}
           dataSource={dataSource}
-          expandable={true}
-          selectedParentIds={new Set(selectedNodes.map((n) => n.internalId))}
-          fullySelected={false}
+          showExpand={true}
+          selectedResourceIds={
+            selectedNodes
+              ? [...new Set(selectedNodes.map((n) => n.internalId))]
+              : []
+          }
+          selectedParents={[]}
           filterPermission="read"
           viewType={"tables"}
           onSelectChange={onSelectionChange}
-          parentsById={parentsById}
         />
       </Page>
     </Transition>
