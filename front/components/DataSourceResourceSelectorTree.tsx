@@ -20,7 +20,7 @@ export default function DataSourceResourceSelectorTree({
   dataSource,
   showExpand, //if not, it's flat
   parentIsSelected,
-  selectedParents,
+  selectedParents = [],
   selectedResourceIds,
   onSelectChange,
   filterPermission = "read",
@@ -30,7 +30,7 @@ export default function DataSourceResourceSelectorTree({
   dataSource: DataSourceType;
   showExpand: boolean;
   parentIsSelected?: boolean;
-  selectedParents: string[];
+  selectedParents?: string[];
   selectedResourceIds: string[];
   onSelectChange: (
     resource: ContentNode,
