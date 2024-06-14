@@ -695,6 +695,7 @@ export async function* runMultiActionsAgent(
           "Assistant failed to generate response after running `maxToolsUsePerRun`.",
       },
     } satisfies AgentErrorEvent;
+    return;
   }
 
   const actions: AgentActionsEvent["actions"] = [];
