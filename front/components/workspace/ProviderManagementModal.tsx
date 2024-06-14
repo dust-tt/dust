@@ -208,6 +208,10 @@ export function ProviderManagementModal({
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
+      <div className="px-4 pt-2 text-sm text-gray-500">
+        Embedding turns knowledge into a code, making it easy to search and find
+        content.
+      </div>
     </Modal>
   );
 }
