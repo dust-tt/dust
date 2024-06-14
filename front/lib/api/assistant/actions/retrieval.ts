@@ -264,29 +264,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok(spec);
   }
 
-  // This is deprecated and should only be used when running agents in "single action mode" (in legacy_agent.ts).
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `runRetrieval`");
-    }
-
-    const { actionConfiguration } = this;
-
-    const spec = retrievalActionSpecification({
-      actionConfiguration,
-      name: DEFAULT_RETRIEVAL_ACTION_NAME,
-      description:
-        "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
-    });
-
-    return new Ok(spec);
-  }
-
   // This method is in charge of running the retrieval and creating an AgentRetrievalAction object in
   // the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not
   // create any generic model related to the conversation. It is possible for an AgentRetrievalAction

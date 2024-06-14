@@ -177,43 +177,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     });
   }
 
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    // We need to pull the app comply to the required name signature while not having a name in
-    // deprecatedBuildSpecificationForSingleActionAgent's signature which is wasteful but is bound
-    // to disapear.
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `runRetrieval`");
-    }
-
-    const { actionConfiguration } = this;
-
-    if (owner.sId !== actionConfiguration.appWorkspaceId) {
-      return new Err(
-        new Error(
-          "Runing Dust apps that are not part of your own workspace is not supported yet."
-        )
-      );
-    }
-
-    const app = await getApp(auth, actionConfiguration.appId);
-    if (!app) {
-      return new Err(
-        new Error(
-          "Failed to retrieve Dust app " +
-            `${actionConfiguration.appWorkspaceId}/${actionConfiguration.appId}`
-        )
-      );
-    }
-
-    return this.buildSpecification(auth, {
-      name: app.name,
-      description: app.description ?? null,
-    });
-  }
-
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run

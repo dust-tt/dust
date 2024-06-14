@@ -637,38 +637,6 @@ export async function* runMultiActionsAgent(
   const actions: AgentActionsEvent["actions"] = [];
   const agentActions = agentConfiguration.actions;
 
-  if (agentActions.length === 1 && !agentActions[0].name) {
-    // Special case for legacy single-action agents that have never been edited in
-    // multi-actions mode.
-    // We must backfill the name from the legacy spec in order to match the action.
-    const runner = getRunnerforActionConfiguration(agentActions[0]);
-    const legacySpecRes =
-      await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
-    if (legacySpecRes.isErr()) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: legacySpecRes.error,
-        },
-        "Failed to build the legacy specification for action."
-      );
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "build_legacy_spec_error",
-          message: `Failed to build the legacy specification for action ${agentActions[0].sId},`,
-        },
-      } satisfies AgentErrorEvent;
-
-      return;
-    }
-    agentActions[0].name = legacySpecRes.value.name;
-  }
-
   for (const a of output.actions) {
     const action = agentActions.find((ac) => ac.name === a.name);
 
@@ -759,9 +727,7 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -834,9 +800,8 @@ async function* runAction(
       };
       return;
     }
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
 
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -890,9 +855,7 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -937,9 +900,7 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
       agentConfiguration: configuration,
       conversation,
       userMessage,
@@ -985,10 +946,7 @@ async function* runAction(
       }
     }
   } else if (isWebsearchConfiguration(actionConfiguration)) {
-    // TODO(pr) refactor the isXXX cases to avoid the duplication for process and websearch
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -1033,9 +991,7 @@ async function* runAction(
       }
     }
   } else if (isBrowseConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(actionConfiguration).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,

@@ -141,15 +141,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     return new Ok(spec);
   }
 
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {
-      name: DEFAULT_PROCESS_ACTION_NAME,
-      description: null,
-    });
-  }
-
   // This method is in charge of running the retrieval and creating an AgentProcessAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentProcessAction to be stored (once the query params are infered) but for its execution

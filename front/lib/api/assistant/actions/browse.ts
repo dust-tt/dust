@@ -112,15 +112,6 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     });
   }
 
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {
-      name: DEFAULT_BROWSE_ACTION_NAME,
-      description: null,
-    });
-  }
-
   // This method is in charge of running the browse and creating an AgentBrowseAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentBrowseAction to be stored (once the query params are infered) but for its execution
