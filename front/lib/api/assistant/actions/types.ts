@@ -61,10 +61,6 @@ export abstract class BaseActionConfigurationServerRunner<
     { name, description }: { name: string | null; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>>;
 
-  abstract deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>>;
-
   // Action execution.
   abstract run(
     auth: Authenticator,

@@ -168,25 +168,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     return new Ok(spec);
   }
 
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `runQueryTables`");
-    }
-
-    const actionDescription =
-      "Query data tables specified by the user by executing a generated SQL query from a" +
-      " natural language question.";
-
-    const spec = await tablesQueryActionSpecification({
-      name: DEFAULT_TABLES_QUERY_ACTION_NAME,
-      description: actionDescription,
-    });
-    return new Ok(spec);
-  }
-
   async *run(
     auth: Authenticator,
     {

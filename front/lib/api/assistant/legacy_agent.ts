@@ -307,8 +307,13 @@ async function* runAction(
 
   let specRes: Result<AgentActionSpecification, Error> | null = null;
 
-  const runner = getRunnerforActionConfiguration(action);
-  specRes = await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
+  specRes = await getRunnerforActionConfiguration(action).buildSpecification(
+    auth,
+    {
+      name: action.name,
+      description: action.description,
+    }
+  );
 
   if (specRes.isErr()) {
     logger.error(
@@ -380,9 +385,7 @@ async function* runAction(
   }
 
   if (isRetrievalConfiguration(action)) {
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(action).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -431,9 +434,7 @@ async function* runAction(
       }
     }
   } else if (isDustAppRunConfiguration(action)) {
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(action).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -487,9 +488,7 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(action)) {
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(action).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -534,9 +533,7 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(action)) {
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(action).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -583,9 +580,7 @@ async function* runAction(
     }
   } else if (isWebsearchConfiguration(action)) {
     // TODO(pr) refactor the isXXX cases to avoid the duplication for process and websearch?
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(action).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -630,9 +625,7 @@ async function* runAction(
       }
     }
   } else if (isBrowseConfiguration(action)) {
-    const runner = getRunnerforActionConfiguration(action);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(action).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
