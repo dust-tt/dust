@@ -10,7 +10,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  SubscriptionPerSeatPricing,
+  SubscriptionPricing,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -35,7 +35,7 @@ import {
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+import { getSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 
@@ -48,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   trialDaysRemaining: number | null;
   gaTrackingId: string;
   workspaceSeats: number;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
+  subscriptionPricing: SubscriptionPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -79,7 +79,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
+  const subscriptionPricing = await getSubscriptionPricing(subscription);
 
   return {
     props: {
@@ -89,7 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       gaTrackingId: GA_TRACKING_ID,
       user,
       workspaceSeats,
-      perSeatPricing,
+      subscriptionPricing,
     },
   };
 });
@@ -101,7 +101,7 @@ export default function Subscription({
   trialDaysRemaining,
   gaTrackingId,
   workspaceSeats,
-  perSeatPricing,
+  subscriptionPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -279,6 +279,30 @@ export default function Subscription({
       ? plan.name
       : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
 
+  const totalPriceInCents = (() => {
+    switch (subscriptionPricing?.type) {
+      case "fixed":
+        return subscriptionPricing.price * subscriptionPricing.quantity;
+      case "per-seat":
+        return workspaceSeats * subscriptionPricing.price;
+      default:
+        return 0;
+    }
+  })();
+
+  const perSeatPriceInCents = (() => {
+    switch (subscriptionPricing?.type) {
+      case "fixed":
+        return subscriptionPricing.price / workspaceSeats;
+      case "per-seat":
+        return subscriptionPricing.price;
+      default:
+        return 0;
+    }
+  })();
+
+  const memberPluralized = workspaceSeats > 1 ? "members" : "member";
+
   return (
     <AppLayout
       subscription={subscription}
@@ -287,7 +311,7 @@ export default function Subscription({
       topNavigationCurrent="admin"
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
-      {perSeatPricing && (
+      {subscriptionPricing && (
         <>
           <CancelFreeTrialDialog
             show={showCancelFreeTrialDialog}
@@ -304,7 +328,7 @@ export default function Subscription({
             }}
             onValidate={skipFreeTrial}
             workspaceSeats={workspaceSeats}
-            perSeatPricing={perSeatPricing}
+            subscriptionPricing={subscriptionPricing}
             isSaving={skipFreeTrialIsSubmitting}
           />
         </>
@@ -356,7 +380,7 @@ export default function Subscription({
               </>
             )}
           </div>
-          {perSeatPricing && subscription.trialing && (
+          {subscriptionPricing && subscription.trialing && (
             <Page.Vertical>
               <Page.Horizontal gap="sm">
                 <Button
@@ -375,38 +399,24 @@ export default function Subscription({
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
-              {perSeatPricing !== null && (
+              {subscriptionPricing !== null && (
                 <>
                   <Page.P>
-                    Estimated {perSeatPricing.billingPeriod} billing:{" "}
+                    Estimated {subscriptionPricing.billingPeriod} billing:{" "}
                     <span className="font-bold">
                       {getPriceAsString({
-                        currency: perSeatPricing.seatCurrency,
-                        priceInCents: perSeatPricing.seatPrice * workspaceSeats,
+                        currency: subscriptionPricing.currency,
+                        priceInCents: totalPriceInCents,
                       })}
                     </span>{" "}
                     (excluding taxes).
                   </Page.P>
                   <Page.P>
-                    {workspaceSeats === 1 ? (
-                      <>
-                        {workspaceSeats} member,{" "}
-                        {getPriceAsString({
-                          currency: perSeatPricing.seatCurrency,
-                          priceInCents: perSeatPricing.seatPrice,
-                        })}{" "}
-                        per member.
-                      </>
-                    ) : (
-                      <>
-                        {workspaceSeats} members,{" "}
-                        {getPriceAsString({
-                          currency: perSeatPricing.seatCurrency,
-                          priceInCents: perSeatPricing.seatPrice,
-                        })}{" "}
-                        per member.
-                      </>
-                    )}
+                    {`${workspaceSeats} ${memberPluralized}, 
+                    ${getPriceAsString({
+                      currency: subscriptionPricing.currency,
+                      priceInCents: perSeatPriceInCents,
+                    })} per ${memberPluralized}.`}
                   </Page.P>
                 </>
               )}
@@ -467,7 +477,7 @@ function SkipFreeTrialDialog({
   onClose,
   onValidate,
   workspaceSeats,
-  perSeatPricing,
+  subscriptionPricing,
   isSaving,
   plan,
 }: {
@@ -475,10 +485,21 @@ function SkipFreeTrialDialog({
   onClose: () => void;
   onValidate: () => void;
   workspaceSeats: number;
-  perSeatPricing: SubscriptionPerSeatPricing;
+  subscriptionPricing: SubscriptionPricing;
   isSaving: boolean;
   plan: SubscriptionType["plan"];
 }) {
+  const totalPriceInCents = (() => {
+    switch (subscriptionPricing.type) {
+      case "fixed":
+        return subscriptionPricing.price * subscriptionPricing.quantity;
+      case "per-seat":
+        return subscriptionPricing.price * workspaceSeats;
+      default:
+        return 0;
+    }
+  })();
+
   return (
     <Dialog
       isOpen={show}
@@ -497,33 +518,12 @@ function SkipFreeTrialDialog({
           {plan.limits.users.maxUsers} members to your workspace.
         </Page.P>
         <Page.P>
-          {(() => {
-            if (workspaceSeats === 1) {
-              return (
-                <>
-                  Billing will start immediately for your workspace. <br />
-                  Currently: {workspaceSeats} member,{" "}
-                  {getPriceAsString({
-                    currency: perSeatPricing.seatCurrency,
-                    priceInCents: perSeatPricing.seatPrice,
-                  })}
-                  monthly (excluding taxes).
-                </>
-              );
-            }
-            return (
-              <>
-                Billing will start immediately for your workspace:.
-                <br />
-                Currently: {workspaceSeats} members,{" "}
-                {getPriceAsString({
-                  currency: perSeatPricing.seatCurrency,
-                  priceInCents: perSeatPricing.seatPrice,
-                })}
-                monthly (excluding taxes).
-              </>
-            );
-          })()}
+          {`Billing will start immediately for your workspace.\n Currently: ${workspaceSeats} ${
+            workspaceSeats > 1 ? "members" : "member"
+          }, ${getPriceAsString({
+            currency: subscriptionPricing.currency,
+            priceInCents: totalPriceInCents,
+          })} monthly (excluding taxes).`}
         </Page.P>
       </Page.Vertical>
     </Dialog>

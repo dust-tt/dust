@@ -12,7 +12,7 @@ import type {
   ActiveRoleType,
   MembershipInvitationType,
   RoleType,
-  SubscriptionPerSeatPricing,
+  SubscriptionPricing,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -47,7 +47,7 @@ export function InviteEmailModal({
   owner: WorkspaceType;
   prefillText: string;
   members: UserTypeWithWorkspaces[];
-  perSeatPricing: SubscriptionPerSeatPricing | null;
+  perSeatPricing: SubscriptionPricing | null;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const [isSending, setIsSending] = useState(false);
@@ -253,9 +253,13 @@ export function InviteEmailModal({
               {ROLES_DATA[invitationRole]["description"]}
             </div>
           </div>
-          {perSeatPricing !== null && (
+          {perSeatPricing !== null && perSeatPricing.type === "per-seat" && (
             <div className="justify-self-end">
-              <ProPlanBillingNotice perSeatPricing={perSeatPricing} />
+              <ProPlanBillingNotice
+                perSeatPricing={
+                  perSeatPricing as SubscriptionPricing & { type: "per-seat" }
+                }
+              />
             </div>
           )}
         </div>
@@ -361,7 +365,7 @@ export function EditInvitationModal({
 function ProPlanBillingNotice({
   perSeatPricing,
 }: {
-  perSeatPricing: SubscriptionPerSeatPricing;
+  perSeatPricing: SubscriptionPricing & { type: "per-seat" };
 }) {
   return (
     <ContentMessage size="md" variant="amber" title="Note">
@@ -370,8 +374,8 @@ function ProPlanBillingNotice({
         <span className="font-semibold">
           {perSeatPricing.billingPeriod} fee of{" "}
           {getPriceAsString({
-            currency: perSeatPricing.seatCurrency,
-            priceInCents: perSeatPricing.seatPrice,
+            currency: perSeatPricing.currency,
+            priceInCents: perSeatPricing.price,
           })}
         </span>
         .{" "}

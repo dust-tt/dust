@@ -75,11 +75,12 @@ export type SubscriptionType = {
 
 export type BillingPeriod = "monthly" | "yearly";
 
-export type SubscriptionPerSeatPricing = {
-  seatPrice: number;
-  seatCurrency: string;
-  billingPeriod: BillingPeriod;
+export type SubscriptionPricing = {
+  price: number;
   quantity: number;
+  currency: string;
+  billingPeriod: BillingPeriod;
+  type: "per-seat" | "fixed";
 };
 
 export const CreatePlanFormSchema = t.type({

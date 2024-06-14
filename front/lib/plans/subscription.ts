@@ -2,6 +2,7 @@ import type {
   BillingPeriod,
   EnterpriseUpgradeFormType,
   PlanType,
+  SubscriptionPricing,
   SubscriptionType,
 } from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
@@ -439,14 +440,9 @@ export async function isSubscriptionOnProPlan(
   return isStripeSubscriptionOnProPlan(stripeSubscription);
 }
 
-export async function getPerSeatSubscriptionPricing(
+export async function getSubscriptionPricing(
   subscription: SubscriptionType
-): Promise<{
-  seatPrice: number;
-  seatCurrency: string;
-  billingPeriod: BillingPeriod;
-  quantity: number;
-} | null> {
+): Promise<SubscriptionPricing | null> {
   if (!subscription.stripeSubscriptionId) {
     return null;
   }
@@ -464,11 +460,12 @@ export async function getPerSeatSubscriptionPricing(
   }
 
   const [item] = items.data;
+
   if (!item || !item.price) {
     return null;
   }
 
-  const { unit_amount: unitAmount, currency, recurring } = item.price;
+  const { unit_amount: unitAmount, currency, recurring, metadata } = item.price;
 
   const isPricedPerSeat = unitAmount !== null;
   if (!isPricedPerSeat) {
@@ -479,9 +476,20 @@ export async function getPerSeatSubscriptionPricing(
     return null;
   }
 
+  if (metadata && metadata["REPORT_USAGE"] === "FIXED") {
+    return {
+      type: "fixed",
+      price: unitAmount,
+      currency,
+      quantity: item.quantity,
+      billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
+    };
+  }
+
   return {
-    seatPrice: unitAmount,
-    seatCurrency: currency,
+    type: "per-seat",
+    price: unitAmount,
+    currency: currency,
     billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
     quantity: item.quantity,
   };

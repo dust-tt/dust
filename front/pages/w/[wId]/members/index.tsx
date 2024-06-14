@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
-  SubscriptionPerSeatPricing,
+  SubscriptionPricing,
   SubscriptionType,
 } from "@dust-tt/types";
 import type {
@@ -48,7 +48,7 @@ import {
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+import { getSubscriptionPricing } from "@app/lib/plans/subscription";
 import { useMembers } from "@app/lib/swr";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -57,7 +57,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
+  subscriptionPricing: SubscriptionPricing | null;
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   gaTrackingId: string;
@@ -86,14 +86,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       strategy: "okta",
     };
 
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
+  const subscriptionPricing = await getSubscriptionPricing(subscription);
 
   return {
     props: {
       user,
       owner,
       subscription,
-      perSeatPricing,
+      subscriptionPricing,
       enterpriseConnectionStrategyDetails,
       plan,
       gaTrackingId: GA_TRACKING_ID,
@@ -107,7 +107,7 @@ export default function WorkspaceAdmin({
   user,
   owner,
   subscription,
-  perSeatPricing,
+  subscriptionPricing,
   enterpriseConnectionStrategyDetails,
   plan,
   gaTrackingId,
@@ -202,7 +202,7 @@ export default function WorkspaceAdmin({
           plan={plan}
           strategyDetails={enterpriseConnectionStrategyDetails}
         />
-        <MemberList perSeatPricing={perSeatPricing} />
+        <MemberList perSeatPricing={subscriptionPricing} />
       </Page.Vertical>
     </AppLayout>
   );
@@ -210,7 +210,7 @@ export default function WorkspaceAdmin({
   function MemberList({
     perSeatPricing,
   }: {
-    perSeatPricing: SubscriptionPerSeatPricing | null;
+    perSeatPricing: SubscriptionPricing | null;
   }) {
     const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
       useState<WorkspaceLimit | null>(null);
