@@ -287,9 +287,8 @@ const TreeItem = ({
           <IconButton icon={PlusCircleIcon} size="xs" />
         </div>
       }
-    >
-      {() => <Tree>{createTreeItems(n, getLabel)}</Tree>}
-    </Tree.Item>
+      renderTreeItems={() => <Tree>{createTreeItems(n, getLabel)}</Tree>}
+    />
   );
 };
 

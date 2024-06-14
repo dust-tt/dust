@@ -39,7 +39,7 @@ const visualTable = {
   channel: ChatBubbleBottomCenterText,
 };
 
-export interface TreeItemProps {
+interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
   variant?: "file" | "folder" | "database" | "channel";
@@ -50,7 +50,16 @@ export interface TreeItemProps {
   defaultCollapsed?: boolean;
   className?: string;
   actions?: React.ReactNode;
-  children?: React.ReactNode | (() => React.ReactNode);
+}
+
+export interface TreeItemPropsWithChildren extends TreeItemProps {
+  renderTreeItems?: undefined;
+  children?: React.ReactNode;
+}
+
+export interface TreeItemPropsWithRender extends TreeItemProps {
+  renderTreeItems: () => React.ReactNode;
+  children?: undefined;
 }
 
 Tree.Item = function ({
@@ -64,22 +73,31 @@ Tree.Item = function ({
   collapsed,
   defaultCollapsed,
   actions,
+  renderTreeItems,
   children,
-}: TreeItemProps) {
-  const [collapsedState, setCollapsedState] = useState(defaultCollapsed);
+}: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
+  const [collapsedState, setCollapsedState] = useState<boolean>(
+    defaultCollapsed || true
+  );
 
-  const controlled = typeof collapsed !== "undefined";
+  const isControlledCollapse = typeof collapsed !== "undefined";
 
-  const effectiveCollapsed = controlled ? collapsed : collapsedState;
-  const effectiveOnChevronClick = controlled
+  const effectiveCollapsed = isControlledCollapse ? collapsed : collapsedState;
+  const effectiveOnChevronClick = isControlledCollapse
     ? onChevronClick
     : () => setCollapsedState(!collapsedState);
 
-  const childrenToRender = !effectiveCollapsed
-    ? typeof children === "function"
-      ? children()
-      : children
-    : [];
+  const getChildren = () => {
+    if (!effectiveCollapsed) {
+      return typeof renderTreeItems === "function"
+        ? renderTreeItems()
+        : children;
+    }
+
+    return [];
+  };
+
+  const childrenToRender = getChildren();
 
   return (
     <>
