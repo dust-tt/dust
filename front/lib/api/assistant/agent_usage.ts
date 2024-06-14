@@ -27,7 +27,6 @@ const agentPopularityLimit = 24;
 export type mentionCount = {
   agentId: string;
   count: number;
-  index: number;
 };
 
 function _getAgentInListCountKey({
@@ -95,9 +94,8 @@ export async function getAgentsUsage({
 
     // Retrieve and parse agents usage
     const agentsUsage = await redis.hGetAll(agentMessageCountKey);
-    return Object.entries(agentsUsage).map(([agentId, jsonString]) => {
-      const { count, index } = JSON.parse(jsonString);
-      return { agentId, count, index };
+    return Object.entries(agentsUsage).map(([agentId, count]) => {
+      return { agentId, count: parseInt(count) };
     });
   } finally {
     // Close the redis connection if it was created locally
@@ -177,8 +175,8 @@ export async function getAgentUsage(
       redis.hGet(agentMessageCountKey, agentConfigurationId),
       redis.hGet(agentUserCountKey, agentConfigurationId),
     ]);
-    const messageCount = agentUsage ? JSON.parse(agentUsage).count : 0;
-    const userCount = userUsage ? JSON.parse(userUsage).count : 0;
+    const messageCount = agentUsage ? parseInt(agentUsage, 10) : 0;
+    const userCount = userUsage ? parseInt(userUsage, 10) : 0;
     const usersWithAgentInListCount = await getAgentInListCount(
       auth,
       redis,
@@ -245,10 +243,9 @@ export async function agentMentionsUserCount(
     group: ["mention.agentConfigurationId"],
     raw: true,
   }).then((results) =>
-    results.map((mention, position) => ({
+    results.map((mention) => ({
       agentId: mention.agentConfigurationId as string,
       count: (mention as unknown as { count: number }).count,
-      index: position,
     }))
   );
 }
@@ -294,10 +291,9 @@ export async function agentMentionsCount(
     group: ["mention.agentConfigurationId"],
     raw: true,
   }).then((results) =>
-    results.map((mention, position) => ({
+    results.map((mention) => ({
       agentId: mention.agentConfigurationId as string,
       count: (mention as unknown as { count: number }).count,
-      index: position,
     }))
   );
 }
@@ -311,25 +307,11 @@ export async function storeCountsInRedis(
   const transaction = redis.multi();
   const { agentMessageCountKey, agentUserCountKey } =
     _getUsageKeys(workspaceId);
-  agentMessageCounts.forEach(({ agentId, count, index }) => {
-    transaction.hSet(
-      agentMessageCountKey,
-      agentId,
-      JSON.stringify({
-        count,
-        index,
-      })
-    );
+  agentMessageCounts.forEach(({ agentId, count }) => {
+    transaction.hSet(agentMessageCountKey, agentId, count);
   });
-  userCounts.forEach(({ agentId, count, index }) => {
-    transaction.hSet(
-      agentUserCountKey,
-      agentId,
-      JSON.stringify({
-        count,
-        index,
-      })
-    );
+  userCounts.forEach(({ agentId, count }) => {
+    transaction.hSet(agentUserCountKey, agentId, count);
   });
   transaction.set("usage_lastUpdatedAt", Date.now() / 1000);
 
