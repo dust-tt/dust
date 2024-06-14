@@ -107,6 +107,8 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   static async deleteAllByAppId(appId: ModelId, transaction?: Transaction) {
+    // TODO: First, delete the run_usage before deleting the run.
+
     return this.model.destroy({
       where: {
         appId,
@@ -117,6 +119,15 @@ export class RunResource extends BaseResource<RunModel> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     try {
+      // Delete the run usage entry.
+      await RunUsageModel.destroy({
+        where: {
+          runId: this.id,
+        },
+        transaction,
+      });
+
+      // Then, delete the run.
       await this.model.destroy({
         where: {
           id: this.id,
