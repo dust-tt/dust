@@ -177,8 +177,7 @@ export function PermissionTreeChildren({
                 />
               </div>
             }
-          >
-            {() => (
+            renderTreeItems={() => (
               <PermissionTreeChildren
                 owner={owner}
                 dataSource={dataSource}
@@ -195,7 +194,7 @@ export function PermissionTreeChildren({
                 useConnectorPermissionsHook={useConnectorPermissionsHook}
               />
             )}
-          </Tree.Item>
+          />
         );
       })}
     </Tree>
