@@ -158,7 +158,9 @@ function DataSourceResourceSelectorChildren({
           Boolean(selectedParents.find((id) => id === r.internalId));
 
         const IconComponent = getIconForType(r.type);
-        const checkable = !isTablesView || r.type === "database";
+        const checkable =
+          (!isTablesView || r.type === "database") &&
+          r.preventSelection !== true;
 
         return (
           <Tree.Item
@@ -169,9 +171,9 @@ function DataSourceResourceSelectorChildren({
             variant={r.type}
             className="whitespace-nowrap"
             checkbox={
-              checkable && r.preventSelection !== true
+              checkable || partialChecked
                 ? {
-                    disabled: parentIsSelected,
+                    disabled: parentIsSelected || !checkable,
                     checked: Boolean(isSelected || parentIsSelected),
                     partialChecked: partialChecked,
                     onChange: (checked) => {

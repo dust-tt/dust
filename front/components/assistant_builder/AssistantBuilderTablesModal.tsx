@@ -357,11 +357,16 @@ export default function AssistantBuilderTablesModal({
               parents: string[],
               selected: boolean
             ) => {
+              setParentsById((parentsById) => {
+                const newParentsById = { ...parentsById };
+                if (selected) {
+                  newParentsById[node.internalId] = new Set(parents);
+                } else {
+                  delete newParentsById[node.internalId];
+                }
+                return newParentsById;
+              });
               if (selected) {
-                setParentsById({
-                  ...parentsById,
-                  [node.internalId]: new Set(parents),
-                });
                 setSelectedManagedTables([
                   ...selectedManagedTables.filter(
                     (r) => r.internalId !== node.internalId
@@ -369,10 +374,7 @@ export default function AssistantBuilderTablesModal({
                   node,
                 ]);
               } else {
-                const newParentsById = { ...parentsById };
-                delete newParentsById[node.internalId];
-                setParentsById(newParentsById);
-                setSelectedManagedTables(
+                setSelectedManagedTables((selectedManagedTables) =>
                   selectedManagedTables.filter(
                     (n) => n.internalId !== node.internalId
                   )
@@ -531,6 +533,7 @@ const PickTablesManaged = ({
   dataSource,
   onSelectionChange,
   selectedNodes,
+  parentsById,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
@@ -556,7 +559,9 @@ const PickTablesManaged = ({
               ? [...new Set(selectedNodes.map((n) => n.internalId))]
               : []
           }
-          selectedParents={[]}
+          selectedParents={[
+            ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+          ]}
           filterPermission="read"
           viewType={"tables"}
           onSelectChange={onSelectionChange}
