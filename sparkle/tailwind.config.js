@@ -70,6 +70,9 @@ module.exports = {
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),
+      gridTemplateRows: {
+        3: "repeat(3, minmax(0, 1fr))",
+      },
       keyframes: {
         "move-square": {
           "0%": {

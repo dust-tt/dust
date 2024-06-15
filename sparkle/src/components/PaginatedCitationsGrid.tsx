@@ -69,6 +69,8 @@ export function PaginatedCitationsGrid({
           icon={ChevronLeftIcon}
           onClick={() => setCurrentPage((prev) => Math.min(prev - 1, 1))}
           disabled={currentPage === 1}
+          variant="primary"
+          size="sm"
         />
         <IconButton
           icon={ChevronRightIcon}
@@ -76,6 +78,8 @@ export function PaginatedCitationsGrid({
             setCurrentPage((prev) => Math.min(prev + 1, totalPages))
           }
           disabled={currentPage === totalPages}
+          variant="primary"
+          size="sm"
         />
       </div>
     </div>
