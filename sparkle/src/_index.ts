@@ -40,6 +40,9 @@ export { AssistantPreview };
 import { Banner } from "./components/Banner";
 export { Banner };
 
+import { PaginatedCitationsGrid } from "./components/PaginatedCitationsGrid";
+export { PaginatedCitationsGrid };
+
 import { Notification } from "./components/Notification";
 export { Notification };
 
