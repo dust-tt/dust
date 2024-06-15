@@ -22,7 +22,8 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-axios.defaults.timeout = 60000;
+const axiosWithTimeout = axios.create();
+axiosWithTimeout.defaults.timeout = 60000;
 
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
@@ -107,7 +108,7 @@ async function _upsertToDatasource({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       dustRequestPayload,
       dustRequestConfig
@@ -174,7 +175,10 @@ export async function deleteFromDataSource(
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     localLogger.error({ error: e }, "Error deleting document from Dust.");
     throw e;
@@ -219,7 +223,7 @@ async function _updateDocumentParentsField({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       {
         parents: parents,
@@ -503,7 +507,7 @@ export async function upsertTableFromCsv({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.post(
+    dustRequestResult = await axiosWithTimeout.post(
       endpoint,
       dustRequestPayload,
       dustRequestConfig
@@ -634,7 +638,10 @@ export async function deleteTableRow({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(
@@ -729,7 +736,10 @@ export async function deleteTable({
 
   let dustRequestResult: AxiosResponse;
   try {
-    dustRequestResult = await axios.delete(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.delete(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const elapsed = new Date().getTime() - now.getTime();
     statsDClient.increment(
