@@ -274,7 +274,13 @@ export async function retrieveGithubConnectorPermissions({
     let nodes: ContentNode[] = [];
     let pageNumber = 1; // 1-indexed
     for (;;) {
-      const page = await getReposPage(githubInstallationId, pageNumber);
+      const pageRes = await getReposPage(githubInstallationId, pageNumber);
+
+      if (pageRes.isErr()) {
+        return new Err(pageRes.error);
+      }
+
+      const page = pageRes.value;
       pageNumber += 1;
       if (page.length === 0) {
         break;
