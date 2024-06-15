@@ -22,6 +22,8 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+axios.defaults.timeout = 60000;
+
 const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
   throw new Error("FRONT_API not set");
