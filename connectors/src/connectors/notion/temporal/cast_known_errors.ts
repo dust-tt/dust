@@ -46,6 +46,13 @@ export class NotionCastKnownErrorsInterceptor
               "transient_upstream_activity_error",
               err
             );
+          case APIErrorCode.ValidationError:
+            throw new ProviderWorkflowError(
+              "notion",
+              "Validation Error",
+              "transient_upstream_activity_error",
+              err
+            );
         }
       } else if (UnknownHTTPResponseError.isUnknownHTTPResponseError(err)) {
         if ([502, 504, 530].includes(err.status)) {
