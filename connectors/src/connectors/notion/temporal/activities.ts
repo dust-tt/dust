@@ -326,7 +326,7 @@ export async function getPagesAndDatabasesToSync({
       switch (e.code) {
         case "internal_server_error":
         case "validation_error":
-          if (Context.current().info.attempt > 20) {
+          if (Context.current().info.attempt > 14) {
             localLogger.error(
               {
                 error: e,
