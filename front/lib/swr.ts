@@ -3,6 +3,7 @@ import type {
   AgentsGetViewType,
   AppType,
   ConnectorPermission,
+  ContentNode,
   ContentNodesViewType,
   ConversationMessageReactions,
   ConversationType,
@@ -12,8 +13,8 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
-import useSWR from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -37,6 +38,8 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetContentNodeResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content_nodes";
+import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
+import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/slack/channels_linked_with_agent";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
@@ -49,20 +52,31 @@ import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers"
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 
+const resHandler = async (res: Response) => {
+  if (res.status >= 300) {
+    const errorText = await res.text();
+    console.error(
+      "Error returned by the front API: ",
+      res.status,
+      res.headers,
+      errorText
+    );
+    throw new Error(errorText);
+  }
+  return res.json();
+};
+
 export const fetcher = async (...args: Parameters<typeof fetch>) =>
-  fetch(...args).then(async (res) => {
-    if (res.status >= 300) {
-      const errorText = await res.text();
-      console.error(
-        "Error returned by the front API: ",
-        res.status,
-        res.headers,
-        errorText
-      );
-      throw new Error(errorText);
-    }
-    return res.json();
-  });
+  fetch(...args).then(resHandler);
+
+export const postFetcher = ([url, body]: [string, object]) =>
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  }).then(resHandler);
 
 export function useDatasets(owner: WorkspaceType, app: AppType) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
@@ -1026,6 +1040,83 @@ export function useWorkspaceEnterpriseConnection({
     isEnterpriseConnectionError: error,
     mutateEnterpriseConnection: mutate,
   };
+}
+
+type UseDataSourceKey = {
+  workspaceSid: string;
+  dataSourceName: string;
+  internalIds: string[];
+};
+
+export function useDataSourceNodes(
+  { workspaceSid, dataSourceName, internalIds }: UseDataSourceKey,
+  options?: SWRConfiguration<{
+    contentNodes: ContentNode[];
+    parentsById: Record<string, Set<string>>;
+  }>
+) {
+  const contentNodesFetcher: Fetcher<
+    { contentNodes: ContentNode[]; parentsById: Record<string, Set<string>> },
+    [string, string, string[]]
+  > = async ([workspaceSid, dataSourceName, internalIds]: [
+    string,
+    string,
+    string[]
+  ]) => {
+    if (internalIds.length === 0 || !dataSourceName) {
+      return { contentNodes: [], parentsById: {} };
+    }
+
+    const nodesUrl = `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
+      dataSourceName
+    )}/managed/content-nodes`;
+
+    const parentsUrl = `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
+      dataSourceName
+    )}/managed/parents`;
+
+    const [nodesData, parentsData]: [
+      GetContentNodesResponseBody,
+      GetContentNodeParentsResponseBody
+    ] = await Promise.all([
+      postFetcher([nodesUrl, { internalIds }]),
+      postFetcher([parentsUrl, { internalIds }]),
+    ]);
+
+    const { contentNodes } = nodesData;
+    if (contentNodes.length !== internalIds.length) {
+      throw new Error(
+        `Failed to fetch content nodes for all tables. Expected ${internalIds.length}, got ${contentNodes.length}.`
+      );
+    }
+
+    const parentsById = parentsData.nodes.reduce((acc, r) => {
+      acc[r.internalId] = new Set(r.parents);
+      return acc;
+    }, {} as Record<string, Set<string>>);
+
+    return { contentNodes, parentsById };
+  };
+
+  const { mutate: globalMutate } = useSWRConfig();
+
+  const preload = (
+    internalIds: string[],
+    contentNodes: ContentNode[],
+    parentsById: Record<string, Set<string>>
+  ) => {
+    void globalMutate([workspaceSid, dataSourceName, internalIds], {
+      contentNodes,
+      parentsById,
+    });
+  };
+
+  const res = useSWR(
+    [workspaceSid, dataSourceName, internalIds],
+    contentNodesFetcher,
+    options
+  );
+  return { ...res, preload };
 }
 
 // LABS - CAN BE REMOVED ANYTIME
