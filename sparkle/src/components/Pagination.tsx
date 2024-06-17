@@ -8,6 +8,8 @@ import { Button } from "./Button";
 
 type Size = "sm" | "xs";
 
+const pagesShownInControls = 7;
+
 interface PaginationProps {
   itemsCount: number;
   maxItemsPerPage: number;
@@ -15,6 +17,81 @@ interface PaginationProps {
   showDetails?: boolean;
   showPageButtons?: boolean;
 }
+
+export function Pagination({
+  itemsCount,
+  maxItemsPerPage,
+  size = "sm",
+  showDetails = true,
+  showPageButtons = true
+}: PaginationProps) {
+  const numPages = Math.ceil(itemsCount / maxItemsPerPage);
+  const controlsAreHidden = Boolean(numPages <= 1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const firstFileOnPageIndex = currentPage * maxItemsPerPage - maxItemsPerPage + 1;
+  const lastFileOnPageIndex = itemsCount > currentPage * maxItemsPerPage ? currentPage * maxItemsPerPage : itemsCount;
+  const pageButtons: React.ReactNode[] = getPageButtons(currentPage, numPages, pagesShownInControls, (pageNb: number) => setCurrentPage(pageNb), size);
+
+  return (
+    <div 
+      className={classNames(
+        "s-flex s-items-center s-w-full",
+        controlsAreHidden ? "s-justify-end" : "s-justify-between"
+      )}
+    > 
+      <div
+        className={classNames(
+          "s-flex",
+          controlsAreHidden ? "s-invisible" : "s-visible",
+          showPageButtons ? "s-gap-0" : "s-gap-2"
+        )}
+      >
+        <Button
+          variant="tertiary"
+          size={size === "xs" ? "xs" : "sm"}
+          label="previous"
+          labelVisible={false}
+          disabledTooltip={true}
+          disabled = {currentPage === 1 ? true : false}
+          icon={ChevronLeft}
+          onClick={() => setCurrentPage((prev) => prev - 1)}
+        />
+
+        <div className={classNames(
+          "s-items-center",
+          size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
+          showPageButtons ? "s-flex" : "s-hidden"
+        )}>
+          {pageButtons}
+        </div>
+
+        <Button
+          variant="tertiary"
+          size={size === "xs" ? "xs" : "sm"}
+          label="next"
+          labelVisible={false}
+          disabledTooltip={true}
+          disabled = {currentPage === numPages ? true : false}
+          icon={ChevronRight}
+          onClick={() => setCurrentPage((prev) => prev + 1)}
+        />
+      </div>
+
+      <span className={classNames(
+        "s-text-slate-400",
+        size === "xs" ? "s-text-xs" : "s-text-sm",
+        showDetails ? "s-visible" : "s-collapse"
+      )}>
+        {
+          controlsAreHidden ? 
+            `${itemsCount} items` : 
+            `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${itemsCount} items`
+        }
+      </span>
+    </div>
+  )
+}
+
 
 function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: (currentPage: number) => void, size: Size) {
   return (
@@ -95,79 +172,4 @@ function getPageButtons(currentPage: number, totalPages: number, slots: number, 
     pagination.push(renderPageNumber(totalPages, currentPage, onPageClick, size)); // Always show the last page
   
     return pagination;
-}
-
-export function Pagination({
-  itemsCount,
-  maxItemsPerPage,
-  size = "sm",
-  showDetails = true,
-  showPageButtons = true
-}: PaginationProps) {
-  const numPages = Math.ceil(itemsCount / maxItemsPerPage);
-  const controlsAreHidden = Boolean(numPages <= 1);
-  const pagesShownInControls = 7;
-  const [currentPage, setCurrentPage] = useState(1);
-  const firstFileOnPageIndex = currentPage * maxItemsPerPage - maxItemsPerPage + 1;
-  const lastFileOnPageIndex = itemsCount > currentPage * maxItemsPerPage ? currentPage * maxItemsPerPage : itemsCount;
-  const pageButtons: React.ReactNode[] = getPageButtons(currentPage, numPages, pagesShownInControls, (pageNb: number) => setCurrentPage(pageNb), size);
-
-  return (
-    <div 
-      className={classNames(
-        "s-flex s-items-center s-w-full",
-        controlsAreHidden ? "s-justify-end" : "s-justify-between"
-      )}
-    > 
-      <div
-        className={classNames(
-          "s-flex",
-          controlsAreHidden ? "s-invisible" : "s-visible",
-          showPageButtons ? "s-gap-0" : "s-gap-2"
-        )}
-      >
-        <Button
-          variant="tertiary"
-          size={size === "xs" ? "xs" : "sm"}
-          label="previous"
-          labelVisible={false}
-          disabledTooltip={true}
-          disabled = {currentPage === 1 ? true : false}
-          icon={ChevronLeft}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
-        />
-
-        <div className={classNames(
-          "s-items-center",
-          size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
-          showPageButtons ? "s-flex" : "s-hidden"
-        )}>
-          {pageButtons}
-        </div>
-
-        <Button
-          variant="tertiary"
-          size={size === "xs" ? "xs" : "sm"}
-          label="next"
-          labelVisible={false}
-          disabledTooltip={true}
-          disabled = {currentPage === numPages ? true : false}
-          icon={ChevronRight}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
-        />
-      </div>
-
-      <span className={classNames(
-        "s-text-slate-400",
-        size === "xs" ? "s-text-xs" : "s-text-sm",
-        showDetails ? "s-visible" : "s-collapse"
-      )}>
-        {
-          controlsAreHidden ? 
-            `${itemsCount} items` : 
-            `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${itemsCount} items`
-        }
-      </span>
-    </div>
-  )
 }
