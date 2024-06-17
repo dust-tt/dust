@@ -10,23 +10,34 @@ interface MessageGroupProps {
   children: React.ReactNode;
 }
 
+const OFFSET_FROM_WINDOW = 450;
+
 export default function MessageGroup({
   messages,
   isLastMessage,
   children,
 }: MessageGroupProps) {
   const lastMessageRef = useRef<HTMLDivElement>(null);
-  const screenHeight = window.innerHeight - 450;
-  let shouldMaximize = false;
-  if (!messages || !messages[0]) {
-    shouldMaximize = true;
-  } else {
-    const isGenerating = messages[0][0].status == "created";
-    const isLastMessageAgentMessage = messages[0][0].type === "agent_message";
-    shouldMaximize = isLastMessage && isLastMessageAgentMessage && isGenerating;
-  }
 
-  const dynamicMinHeight = shouldMaximize ? `${screenHeight}px` : "0px";
+  const shouldMaximize = React.useMemo(() => {
+    if (!messages || !messages[0] || !messages[0][0]) {
+      return true;
+    }
+    const firstMessage = messages[0][0];
+
+    if (firstMessage.type === "user_message") {
+      return false;
+    }
+
+    const isGenerating = firstMessage.status === "created";
+    const isLastMessageAgentMessage = firstMessage.type === "agent_message";
+
+    return isLastMessage && isLastMessageAgentMessage && isGenerating;
+  }, [messages, isLastMessage]);
+
+  const dynamicMinHeight = shouldMaximize
+    ? `${window.innerHeight - OFFSET_FROM_WINDOW}px`
+    : "0px";
 
   useEffect(() => {
     if (isLastMessage && lastMessageRef.current) {
