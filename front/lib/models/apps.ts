@@ -4,7 +4,6 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
-  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -256,121 +255,5 @@ Clone.belongsTo(App, {
 });
 Clone.belongsTo(App, {
   foreignKey: { name: "toId", allowNull: false },
-  onDelete: "CASCADE",
-});
-
-export class Run extends Model<
-  InferAttributes<Run>,
-  InferCreationAttributes<Run>
-> {
-  declare id: CreationOptional<number>;
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare dustRunId: string;
-  declare runType: string;
-
-  declare appId: ForeignKey<App["id"]>;
-  declare workspaceId: ForeignKey<Workspace["id"]>;
-
-  declare app: NonAttribute<App>;
-}
-
-Run.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    dustRunId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    runType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "run",
-    sequelize: frontSequelize,
-    indexes: [
-      { fields: ["workspaceId", "appId", "runType", "createdAt"] },
-      { unique: true, fields: ["dustRunId"] },
-    ],
-  }
-);
-App.hasMany(Run, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-Run.belongsTo(App, {
-  as: "app",
-  foreignKey: { name: "appId", allowNull: false },
-});
-Workspace.hasMany(Run, {
-  foreignKey: { allowNull: false },
-  onDelete: "CASCADE",
-});
-
-export class RunUsage extends Model<
-  InferAttributes<RunUsage>,
-  InferCreationAttributes<RunUsage>
-> {
-  declare id: CreationOptional<number>;
-
-  declare runId: ForeignKey<Run["id"]>;
-
-  declare providerId: string; //ModelProviderIdType;
-  declare modelId: string; //ModelIdType;
-
-  declare promptTokens: number;
-  declare completionTokens: number;
-}
-
-RunUsage.init(
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    providerId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    modelId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    promptTokens: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    completionTokens: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "run_usages",
-    sequelize: frontSequelize,
-    indexes: [{ fields: ["runId"] }, { fields: ["providerId", "modelId"] }],
-  }
-);
-
-Run.hasMany(RunUsage, {
-  foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });

@@ -1,10 +1,11 @@
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
+import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
-import { App, Clone, Dataset, Provider, Run } from "@app/lib/models/apps";
+import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -42,6 +43,7 @@ import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
 
@@ -372,13 +374,9 @@ export async function deleteAppsActivity({
     if (res.isErr()) {
       throw new Error(`Error deleting Project from Core: ${res.error.message}`);
     }
+
     await frontSequelize.transaction(async (t) => {
-      await Run.destroy({
-        where: {
-          appId: app.id,
-        },
-        transaction: t,
-      });
+      await RunResource.deleteAllByAppId(app.id, t);
       await Clone.destroy({
         where: {
           [Op.or]: [{ fromId: app.id }, { toId: app.id }],
@@ -421,24 +419,12 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const runs = await Run.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-    include: [
-      {
-        model: App,
-        as: "app",
-        required: true,
-      },
-    ],
+  const runs = await RunResource.listByWorkspace(workspace, {
+    includeApp: true,
   });
 
   const chunkSize = 8;
-  const chunks: Run[][] = [];
-  for (let i = 0; i < runs.length; i += chunkSize) {
-    chunks.push(runs.slice(i, i + chunkSize));
-  }
+  const chunks = chunk(runs, chunkSize);
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -457,7 +443,7 @@ export async function deleteRunOnDustAppsActivity({
               `Error deleting Run from Core: ${res.error.message}`
             );
           }
-          await run.destroy();
+          await run.delete();
         })();
       })
     );

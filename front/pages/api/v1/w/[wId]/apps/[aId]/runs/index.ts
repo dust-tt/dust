@@ -19,7 +19,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApp } from "@app/lib/api/app";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { Provider, Run, RunUsage } from "@app/lib/models/apps";
+import { Provider } from "@app/lib/models/apps";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -35,19 +37,12 @@ export const config = {
 
 type RunFlavor = "blocking" | "streaming" | "non-blocking";
 
-type Usage = {
-  providerId: ModelProviderIdType;
-  modelId: ModelIdType;
-  promptTokens: number;
-  completionTokens: number;
-};
-
 type Trace = [[BlockType, string], TraceType[][]];
 
 function extractUsageFromExecutions(
   block: { provider_id: ModelProviderIdType; model_id: ModelIdType },
   traces: TraceType[][],
-  usages: Usage[]
+  usages: RunUsageType[]
 ) {
   if (block) {
     traces.forEach((tracesInner) => {
@@ -245,7 +240,7 @@ async function handler(
           assertNever(runFlavor);
       }
 
-      const usages: Usage[] = [];
+      const usages: RunUsageType[] = [];
       const traces: Trace[] = [];
 
       try {
@@ -305,19 +300,14 @@ async function handler(
 
       const dustRunId = await runRes.value.dustRunId;
 
-      const { id: runId } = await Run.create({
+      const run = await RunResource.makeNew({
         dustRunId,
         appId: app.id,
         runType: "deploy",
         workspaceId: keyRes.value.workspaceId,
       });
 
-      await RunUsage.bulkCreate(
-        usages.map((usage) => ({
-          runId,
-          ...usage,
-        }))
-      );
+      await run.recordRunUsage(usages);
 
       switch (runFlavor) {
         case "streaming":

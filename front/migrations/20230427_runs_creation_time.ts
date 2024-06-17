@@ -1,7 +1,7 @@
 import { Sequelize } from "sequelize";
 
-import { Run } from "@app/lib/models/apps";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { RunModel } from "@app/lib/resources/storage/models/runs";
 
 const { CORE_DATABASE_URI } = process.env;
 
@@ -28,7 +28,7 @@ async function main() {
   });
 
   console.log("Retrieving front runs");
-  const frontRuns = await Run.findAll();
+  const frontRuns = await RunModel.findAll();
 
   console.log("Chunking");
   const chunkSize = 16;
