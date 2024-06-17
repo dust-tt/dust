@@ -398,8 +398,6 @@ export default function ConversationViewer({
             key={`typed-group-${index}`}
             messages={typedGroup}
             isLastMessage={isLastGroup}
-            messageType={"agent_message"}
-            children={undefined}
           >
             {typedGroup &&
               typedGroup.map((group) => {

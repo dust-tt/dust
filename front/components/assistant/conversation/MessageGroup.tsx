@@ -5,7 +5,7 @@ import type { MessageWithContentFragmentsType } from "@app/components/assistant/
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[][];
   isLastMessage: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const OFFSET_FROM_WINDOW = 450;
