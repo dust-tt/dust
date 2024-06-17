@@ -43,18 +43,21 @@ export type SlackMessageUpdate =
   | { isThinking?: never; text: string };
 
 export function makeMessageUpdateBlocksAndText(
-  conversationUrl: string,
+  conversationUrl: string | null,
   messageUpdate: SlackMessageUpdate
 ) {
   const { isThinking, text } = messageUpdate;
+  const conversationUrlBlocks = conversationUrl
+    ? [makeDividerBlock(), makeConversationLinkContextBlock(conversationUrl)]
+    : [];
 
   return {
     blocks: [
       isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
       // Bundle the conversation url in the context.
-      makeDividerBlock(),
-      makeConversationLinkContextBlock(conversationUrl),
+      ...conversationUrlBlocks,
     ],
+    // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
     text: isThinking ? "Thinking..." : text,
     mrkdwn: true,

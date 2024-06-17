@@ -17,7 +17,10 @@ import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { makeThinkingBlock } from "@connectors/connectors/slack/chat/blocks";
+import {
+  makeMessageUpdateBlocksAndText,
+  makeThinkingBlock,
+} from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
@@ -259,13 +262,12 @@ async function botAnswerMessage(
     }
   );
 
-  // TODO(2024-06-17 flav) Use all the block logic.
   const mainMessage = await slackClient.chat.postMessage({
+    ...makeMessageUpdateBlocksAndText(null, {
+      isThinking: true,
+    }),
     channel: slackChannel,
-    blocks: [makeThinkingBlock()],
-    text: "Thinking...",
     thread_ts: slackMessageTs,
-    mrkdwn: true,
   });
 
   // Slack sends the message with user ids when someone is mentionned (bot or user).
