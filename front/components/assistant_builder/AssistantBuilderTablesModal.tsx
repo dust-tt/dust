@@ -357,15 +357,22 @@ export default function AssistantBuilderTablesModal({
               parents: string[],
               selected: boolean
             ) => {
-              setParentsById((parentsById) => {
-                const newParentsById = { ...parentsById };
-                if (selected) {
-                  newParentsById[node.internalId] = new Set(parents);
-                } else {
-                  delete newParentsById[node.internalId];
-                }
-                return newParentsById;
-              });
+              setParentsById((parentsById) =>
+                Object.entries(parentsById).reduce(
+                  (acc, [key, value]) =>
+                    key === node.internalId
+                      ? acc
+                      : {
+                          ...acc,
+                          [key]: value,
+                        },
+                  selected
+                    ? {
+                        [node.internalId]: new Set(parents),
+                      }
+                    : {}
+                )
+              );
               if (selected) {
                 setSelectedManagedTables([
                   ...selectedManagedTables.filter(
