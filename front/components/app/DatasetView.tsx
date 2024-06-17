@@ -255,14 +255,14 @@ export default function DatasetView({
     }
 
     // Check that all types are valid
-    return datasetData.every((d) => {
+    return datasetData.every((d) =>
       datasetKeys.every((k) =>
         isTypeValidForDataset(
           getValueType(d[k]),
           datasetTypes[datasetKeys.indexOf(k)]
         )
-      );
-    });
+      )
+    );
   };
 
   // Export the dataset with correct types (post-editing and validation)
