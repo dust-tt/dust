@@ -11,7 +11,7 @@ import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
-import { makeMessageUpdateBlocks } from "@connectors/connectors/slack/chat/blocks";
+import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/mentions";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -53,8 +53,8 @@ export async function streamConversationToSlack(
 
   const postMessageUpdate = async (messageUpdate: SlackMessageUpdate) => {
     await slackClient.chat.update({
+      ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
-      blocks: makeMessageUpdateBlocks(conversationUrl, messageUpdate),
       thread_ts: slackMessageTs,
       ts: mainMessage.ts as string,
     });

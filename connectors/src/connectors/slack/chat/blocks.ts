@@ -42,16 +42,21 @@ export type SlackMessageUpdate =
   | { isThinking: true; text?: never }
   | { isThinking?: never; text: string };
 
-export function makeMessageUpdateBlocks(
-  conversationUrl: string,
+export function makeMessageUpdateBlocksAndText(
+  conversationUrl: string | undefined,
   messageUpdate: SlackMessageUpdate
 ) {
   const { isThinking, text } = messageUpdate;
 
-  return [
-    isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
-    // We always bundle the conversation url in the context.
-    makeDividerBlock(),
-    makeConversationLinkContextBlock(conversationUrl),
-  ];
+  return {
+    blocks: [
+      isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
+      // Bundle the conversation url in the context.
+      makeDividerBlock(),
+      makeConversationLinkContextBlock(conversationUrl),
+    ],
+    // Provide plain text for places where the content cannot be rendered (e.g push notifications).
+    text: isThinking ? "Thinking..." : text,
+    mrkdwn: true,
+  };
 }
