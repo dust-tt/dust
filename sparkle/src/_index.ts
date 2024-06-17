@@ -58,6 +58,9 @@ export { DropdownMenu };
 import { Page } from "./components/Page";
 export { Page };
 
+import { Pagination } from "./components/Pagination";
+export { Pagination };
+
 import { BarHeader } from "./components/BarHeader";
 export { BarHeader };
 
