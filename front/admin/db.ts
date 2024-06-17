@@ -98,6 +98,7 @@ async function main() {
 
   await Plan.sync({ alter: true });
   await Subscription.sync({ alter: true });
+  await TemplateModel.sync({ alter: true });
 
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
@@ -135,8 +136,6 @@ async function main() {
   await FeatureFlag.sync({ alter: true });
 
   await ConversationClassification.sync({ alter: true });
-
-  await TemplateModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
