@@ -1,31 +1,24 @@
 import type {
-  AgentActionType,
-  AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
   Result,
-  RetrievalDocumentType,
   UserMessageType,
 } from "@dust-tt/types";
 import type {
   AgentGenerationSuccessEvent,
   PublicPostContentFragmentRequestBodySchema,
 } from "@dust-tt/types";
-import {
-  Err,
-  isRetrievalActionType,
-  Ok,
-  sectionFullText,
-} from "@dust-tt/types";
+import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
-import slackifyMarkdown from "slackify-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
+import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
+import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
@@ -53,15 +46,7 @@ import {
   getUserName,
 } from "./temporal/activities";
 
-const { DUST_CLIENT_FACING_URL, DUST_FRONT_API } = process.env;
-
-/* After this length we start risking that the chat.update Slack API returns
- * "msg_too_long" error. This length is experimentally tested and was not found
- * in the slack documentation. Therefore, it is conservative and the actual
- * threshold might is more likely around 3800 characters. Since avoiding too
- * long messages in slack is a good thing nonetheless, we keep this lower threshold.
- */
-const MAX_SLACK_MESSAGE_LENGTH = 3000;
+const { DUST_FRONT_API } = process.env;
 
 export async function botAnswerMessageWithErrorHandling(
   message: string,
@@ -273,11 +258,13 @@ async function botAnswerMessage(
       urlOverride: DUST_FRONT_API,
     }
   );
+
   const mainMessage = await slackClient.chat.postMessage({
+    ...makeMessageUpdateBlocksAndText(null, {
+      isThinking: true,
+    }),
     channel: slackChannel,
-    text: "_Thinking..._",
     thread_ts: slackMessageTs,
-    mrkdwn: true,
   });
 
   // Slack sends the message with user ids when someone is mentionned (bot or user).
@@ -474,172 +461,14 @@ async function botAnswerMessage(
   slackChatBotMessage.conversationId = conversation.sId;
   await slackChatBotMessage.save();
 
-  const agentMessages = conversation.content
-    .map((versions) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessageType;
-
-  const streamRes = await dustAPI.streamAgentMessageEvents({
-    conversation: conversation,
-    message: agentMessage,
+  return streamConversationToSlack(dustAPI, {
+    assistantName: mentions[0]?.assistantName,
+    connector,
+    conversation,
+    mainMessage,
+    slack: { slackChannelId: slackChannel, slackClient, slackMessageTs },
+    userMessage,
   });
-
-  if (streamRes.isErr()) {
-    return new Err(new Error(streamRes.error.message));
-  }
-
-  const botIdentity = `@${mentions[0]?.assistantName}:\n`;
-  let fullAnswer = botIdentity;
-  let action: AgentActionType | null = null;
-  let lastSentDate = new Date();
-  for await (const event of streamRes.value.eventStream) {
-    switch (event.type) {
-      case "user_message_error": {
-        return new Err(
-          new Error(
-            `User message error: code: ${event.error.code} message: ${event.error.message}`
-          )
-        );
-      }
-
-      case "agent_error": {
-        return new Err(
-          new Error(
-            `Agent message error: code: ${event.error.code} message: ${event.error.message}`
-          )
-        );
-      }
-      case "generation_tokens": {
-        if (event.classification !== "tokens") {
-          continue;
-        }
-        fullAnswer += event.text;
-        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
-          continue;
-        }
-        lastSentDate = new Date();
-
-        let finalAnswer = slackifyMarkdown(
-          normalizeContentForSlack(_processCiteMention(fullAnswer, action))
-        );
-
-        // if the message is too long, we avoid the update entirely (to reduce
-        // rate limiting) the previous update will have shown the "..." and the
-        // link to continue the conversation so this is fine
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
-          break;
-        }
-
-        finalAnswer += `...\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
-
-        await slackClient.chat.update({
-          channel: slackChannel,
-          text: finalAnswer,
-          ts: mainMessage.ts as string,
-          thread_ts: slackMessageTs,
-        });
-        break;
-      }
-      case "agent_action_success": {
-        action = event.action;
-        break;
-      }
-      case "agent_generation_success": {
-        fullAnswer = `${botIdentity}${event.text}`;
-
-        let finalAnswer = slackifyMarkdown(
-          normalizeContentForSlack(_processCiteMention(fullAnswer, action))
-        );
-
-        // if the message is too long, when generation is finished we show it
-        // is truncated
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
-          finalAnswer =
-            finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
-            "... (message truncated)";
-        }
-
-        finalAnswer += `\n\n <${DUST_CLIENT_FACING_URL}/w/${connector.workspaceId}/assistant/${conversation.sId}|Continue this conversation on Dust>`;
-
-        await slackClient.chat.update({
-          channel: slackChannel,
-          text: finalAnswer,
-          ts: mainMessage.ts as string,
-          thread_ts: slackMessageTs,
-        });
-        return new Ok(event);
-      }
-      default:
-      // Nothing to do on unsupported events
-    }
-  }
-  return new Err(new Error("Failed to get the final answer from Dust"));
-}
-
-function normalizeContentForSlack(content: string): string {
-  // Remove language hint from code blocks.
-  return content.replace(/```[a-z\-_]*\n/g, "```\n");
-}
-
-function _processCiteMention(
-  content: string,
-  action: AgentActionType | null
-): string {
-  const references: { [key: string]: RetrievalDocumentType } = {};
-
-  if (action && isRetrievalActionType(action) && action.documents) {
-    action.documents.forEach((d) => {
-      references[d.reference] = d;
-    });
-  }
-
-  if (references) {
-    let counter = 0;
-    const refCounter: { [key: string]: number } = {};
-    return content.replace(/:cite\[[a-zA-Z0-9, ]+\]/g, (match) => {
-      const keys = match.slice(6, -1).split(","); // slice off ":cite[" and "]" then split by comma
-      return keys
-        .map((key) => {
-          const k = key.trim();
-          const ref = references[k];
-          if (ref) {
-            if (!refCounter[k]) {
-              counter++;
-              refCounter[k] = counter;
-            }
-            const link = ref.sourceUrl
-              ? ref.sourceUrl
-              : `${DUST_CLIENT_FACING_URL}/w/${
-                  ref.dataSourceWorkspaceId
-                }/builder/data-sources/${
-                  ref.dataSourceId
-                }/upsert?documentId=${encodeURIComponent(ref.documentId)}`;
-            return `[${refCounter[k]}](${link})`;
-          }
-          return "";
-        })
-        .join(" ");
-    });
-  }
-
-  return _removeCiteMention(content);
-}
-
-function _removeCiteMention(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
 }
 
 export async function getBotEnabled(
