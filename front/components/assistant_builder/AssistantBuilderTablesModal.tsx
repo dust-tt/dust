@@ -106,13 +106,15 @@ export default function AssistantBuilderTablesModal({
       };
 
   const [fallback, setFallback] = useState({});
-  const {
-    contentNodes: selectedManagedTables,
-    parentsById,
-    serializeKey: serializeUseDataSourceKey,
-  } = useDataSourceNodes(key, {
-    fallback,
-  });
+  const { nodes, serializeKey: serializeUseDataSourceKey } = useDataSourceNodes(
+    key,
+    {
+      fallback,
+    }
+  );
+
+  const selectedManagedTables = nodes.contentNodes;
+  const parentsById = nodes.parentsById;
 
   async function save() {
     if (!selectedDataSource || !selectedManagedTables) {
