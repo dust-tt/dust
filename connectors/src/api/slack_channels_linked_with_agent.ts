@@ -170,7 +170,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
-        message: `Missing required parameters: connector_id`,
+        message: "Missing required parameters: connector_id",
       },
       status_code: 400,
     });

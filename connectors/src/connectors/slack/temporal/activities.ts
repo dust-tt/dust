@@ -750,7 +750,7 @@ export async function fetchUsers(connectorId: ModelId) {
       throw new Error(`Failed to fetch users: ${res.error}`);
     }
     if (!res.members) {
-      throw new Error(`Failed to fetch users: members is undefined`);
+      throw new Error("Failed to fetch users: members is undefined");
     }
     for (const member of res.members) {
       if (member.id && member.name) {
@@ -771,7 +771,7 @@ export async function getBotUserId(connectorId: ModelId): Promise<string> {
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
   if (!authRes.user_id) {
-    throw new Error(`Failed to fetch auth info: user_id is undefined`);
+    throw new Error("Failed to fetch auth info: user_id is undefined");
   }
 
   return authRes.user_id;

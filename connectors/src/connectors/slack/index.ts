@@ -148,7 +148,7 @@ export async function updateSlackConnector(
             slackTeamId: newTeamId,
             nangoConnectionId: connectionId,
           },
-          `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
+          "Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]"
         );
         const uninstallRes = await uninstallSlack(connectionId);
 
@@ -164,7 +164,7 @@ export async function updateSlackConnector(
             slackTeamId: newTeamId,
             nangoConnectionId: connectionId,
           },
-          `Deactivated Slack app [updateSlackConnector/team_id_mismatch]`
+          "Deactivated Slack app [updateSlackConnector/team_id_mismatch]"
         );
       } else {
         logger.info(
@@ -172,7 +172,7 @@ export async function updateSlackConnector(
             slackTeamId: newTeamId,
             activeConfigurations: configurations.length,
           },
-          `Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]`
+          "Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]"
         );
       }
 
@@ -231,7 +231,7 @@ export async function uninstallSlack(nangoConnectionId: string) {
         {
           nangoConnectionId,
         },
-        `Slack auth is invalid, skipping uninstallation of the Slack app`
+        "Slack auth is invalid, skipping uninstallation of the Slack app"
       );
     } else {
       throw e;
@@ -245,7 +245,7 @@ export async function uninstallSlack(nangoConnectionId: string) {
   if (nangoRes.isErr()) {
     return nangoRes;
   }
-  logger.info({ nangoConnectionId }, `Deactivated the Slack app`);
+  logger.info({ nangoConnectionId }, "Deactivated the Slack app");
 
   return new Ok(undefined);
 }
@@ -281,7 +281,7 @@ export async function cleanupSlackConnector(
         slackTeamId: configuration.slackTeamId,
         nangoConnectionId: connector.connectionId,
       },
-      `Attempting Slack app deactivation [cleanupSlackConnector]`
+      "Attempting Slack app deactivation [cleanupSlackConnector]"
     );
 
     const uninstallRes = await uninstallSlack(connector.connectionId);
@@ -294,7 +294,7 @@ export async function cleanupSlackConnector(
         connectorId: connector.id,
         slackTeamId: configuration.slackTeamId,
       },
-      `Deactivated Slack app [cleanupSlackConnector]`
+      "Deactivated Slack app [cleanupSlackConnector]"
     );
   } else {
     logger.info(
@@ -303,7 +303,7 @@ export async function cleanupSlackConnector(
         slackTeamId: configuration.slackTeamId,
         activeConfigurations: configurations.length - 1,
       },
-      `Skipping deactivation of the Slack app [cleanupSlackConnector]`
+      "Skipping deactivation of the Slack app [cleanupSlackConnector]"
     );
   }
 

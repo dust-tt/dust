@@ -68,7 +68,7 @@ async function main() {
 
             if (LIVE) {
               return core_sequelize.query(
-                `UPDATE data_sources_documents SET "document_id" = :documentId WHERE id = :id`,
+                "UPDATE data_sources_documents SET \"document_id\" = :documentId WHERE id = :id",
                 {
                   replacements: {
                     documentId: newDocumentId,

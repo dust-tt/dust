@@ -58,7 +58,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -68,7 +68,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
@@ -107,7 +107,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -117,7 +117,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
@@ -148,7 +148,7 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -157,7 +157,7 @@ export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
@@ -198,7 +198,7 @@ export async function launchGoogleGarbageCollector(
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -207,7 +207,7 @@ export async function launchGoogleGarbageCollector(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }

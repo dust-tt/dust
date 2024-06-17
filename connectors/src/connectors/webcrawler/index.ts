@@ -78,7 +78,7 @@ export async function createWebcrawlerConnector(
   }
   logger.info(
     { connectorId: connector.id },
-    `Launched crawl website workflow for connector`
+    "Launched crawl website workflow for connector"
   );
 
   return new Ok(connector.id.toString());

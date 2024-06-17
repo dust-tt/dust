@@ -62,7 +62,7 @@ export async function launchCrawlWebsiteWorkflow(
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -71,7 +71,7 @@ export async function launchCrawlWebsiteWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
@@ -100,7 +100,7 @@ export async function stopCrawlWebsiteWorkflow(
         workflowId,
         error: e,
       },
-      `Failed stopping workflow.`
+      "Failed stopping workflow."
     );
     return new Err(e as Error);
   }
@@ -131,7 +131,7 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -140,7 +140,7 @@ export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }

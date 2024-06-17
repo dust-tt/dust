@@ -363,7 +363,7 @@ const _webhookSlackAPIHandler = async (
             return apiError(req, res, {
               api_error: {
                 type: "invalid_request_error",
-                message: `Webhook message without 'thread_ts' or message 'ts'.`,
+                message: "Webhook message without 'thread_ts' or message 'ts'.",
               },
               status_code: 400,
             });
@@ -387,7 +387,7 @@ const _webhookSlackAPIHandler = async (
                 user: event.user,
                 slackTeamId: teamId,
               },
-              `Successfully processed Slack Webhook`
+              "Successfully processed Slack Webhook"
             );
             return res.status(200).send();
           }
@@ -470,7 +470,7 @@ const _webhookSlackAPIHandler = async (
             {
               type: event.type,
             },
-            `Successfully processed Slack Webhook`
+            "Successfully processed Slack Webhook"
           );
           return res.status(200).send();
         }

@@ -169,7 +169,7 @@ export async function googleDriveRenewWebhooks() {
 }
 
 export function googleDriveRenewWebhooksWorkflowId() {
-  return `googleDrive-RenewWebhook`;
+  return "googleDrive-RenewWebhook";
 }
 
 export async function googleDriveGarbageCollectorWorkflow(

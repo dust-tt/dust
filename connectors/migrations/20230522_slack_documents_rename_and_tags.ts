@@ -108,7 +108,7 @@ async function main() {
 
             if (LIVE) {
               return core_sequelize.query(
-                `UPDATE data_sources_documents SET "document_id" = :documentId, "tags_json" = :tagsJson WHERE id = :id`,
+                "UPDATE data_sources_documents SET \"document_id\" = :documentId, \"tags_json\" = :tagsJson WHERE id = :id",
                 {
                   replacements: {
                     documentId: newDocumentId,
@@ -145,7 +145,7 @@ async function main() {
 
             if (LIVE) {
               return core_sequelize.query(
-                `UPDATE data_sources_documents SET "document_id" = :documentId, "tags_json" = :tagsJson WHERE id = :id`,
+                "UPDATE data_sources_documents SET \"document_id\" = :documentId, \"tags_json\" = :tagsJson WHERE id = :id",
                 {
                   replacements: {
                     documentId: newDocumentId,

@@ -68,5 +68,5 @@ export async function crawlWebsiteSchedulerWorkflow() {
 }
 
 export function crawlWebsiteSchedulerWorkflowId() {
-  return `webcrawler-scheduler`;
+  return "webcrawler-scheduler";
 }

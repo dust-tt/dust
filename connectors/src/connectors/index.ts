@@ -150,7 +150,7 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
   google_drive: updateGoogleDriveConnector,
   intercom: updateIntercomConnector,
   webcrawler: () => {
-    throw new Error(`Not implemented`);
+    throw new Error("Not implemented");
   },
 };
 
@@ -160,7 +160,7 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: stopConfluenceConnector,
   slack: async (connectorId: ModelId) => {
-    logger.info({ connectorId }, `Stopping Slack connector is a no-op.`);
+    logger.info({ connectorId }, "Stopping Slack connector is a no-op.");
     return new Ok(undefined);
   },
   github: stopGithubConnector,
@@ -192,7 +192,7 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: resumeConfluenceConnector,
   slack: async (connectorId: ModelId) => {
-    logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
+    logger.info({ connectorId }, "Resuming Slack connector is a no-op.");
     return new Ok(undefined);
   },
   notion: resumeNotionConnector,
@@ -243,19 +243,19 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   slack: setSlackConnectorPermissions,
   notion: async () => {
     return new Err(
-      new Error(`Setting Notion connector permissions is not implemented yet.`)
+      new Error("Setting Notion connector permissions is not implemented yet.")
     );
   },
   github: async () => {
     return new Err(
-      new Error(`Setting Github connector permissions is not implemented yet.`)
+      new Error("Setting Github connector permissions is not implemented yet.")
     );
   },
   google_drive: setGoogleDriveConnectorPermissions,
   intercom: setIntercomConnectorPermissions,
   webcrawler: async () => {
     return new Err(
-      new Error(`Setting Webcrawler connector permissions is not applicable.`)
+      new Error("Setting Webcrawler connector permissions is not applicable.")
     );
   },
 };

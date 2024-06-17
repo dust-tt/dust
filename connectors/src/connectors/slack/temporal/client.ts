@@ -65,7 +65,7 @@ export async function launchSlackSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started Slack sync workflow.`
+      "Started Slack sync workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -75,7 +75,7 @@ export async function launchSlackSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting the Slack sync.`
+      "Failed starting the Slack sync."
     );
     return new Err(e as Error);
   }
@@ -211,7 +211,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       {
         workflowId,
       },
-      `Started slackGarbageCollector workflow.`
+      "Started slackGarbageCollector workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -220,7 +220,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
         workflowId,
         error: e,
       },
-      `Failed starting slackGarbageCollector workflow.`
+      "Failed starting slackGarbageCollector workflow."
     );
     return new Err(e as Error);
   }

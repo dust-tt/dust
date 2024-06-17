@@ -165,7 +165,7 @@ export async function syncFiles(
       connectorId,
       dataSourceName: dataSourceConfig.dataSourceName,
     },
-    `[SyncFiles] Start sync.`
+    "[SyncFiles] Start sync."
   );
 
   const mimeTypesToSync = getMimeTypesToSync({
@@ -180,7 +180,7 @@ export async function syncFiles(
     // We got a 404 on this folder, we skip it.
     logger.info(
       { driveFolderId },
-      `Google Drive Folder unexpectedly not found (got 404)`
+      "Google Drive Folder unexpectedly not found (got 404)"
     );
     return {
       nextPageToken: null,
@@ -247,7 +247,7 @@ export async function syncFiles(
       folderId: driveFolderId,
       count: filesToSync.length,
     },
-    `[SyncFiles] Call syncOneFile.`
+    "[SyncFiles] Call syncOneFile."
   );
 
   const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
@@ -279,7 +279,7 @@ export async function syncFiles(
       folderId: driveFolderId,
       count,
     },
-    `[SyncFiles] Successful sync.`
+    "[SyncFiles] Successful sync."
   );
 
   return {
@@ -382,14 +382,14 @@ export async function incrementalSync(
     }
 
     if (changesRes.data.changes === undefined) {
-      throw new Error(`changes list is undefined`);
+      throw new Error("changes list is undefined");
     }
 
     localLogger.info(
       {
         nbChanges: changesRes.data.changes.length,
       },
-      `Got changes.`
+      "Got changes."
     );
     for (const change of changesRes.data.changes) {
       await heartbeat();
@@ -485,7 +485,7 @@ export async function incrementalSync(
         {
           error: e.message,
         },
-        `Looks like we lost access to this drive. Skipping`
+        "Looks like we lost access to this drive. Skipping"
       );
       return undefined;
     } else {
@@ -652,7 +652,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
     },
     limit: pageSize,
   });
-  logger.info({ count: webhooks.length }, `Renewing webhooks`);
+  logger.info({ count: webhooks.length }, "Renewing webhooks");
 
   for (const wh of webhooks) {
     const connector = await ConnectorResource.fetchById(wh.connectorId);
@@ -663,7 +663,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
           // We want to panic because this code branch is unexpected.
           panic: true,
         },
-        `Connector not found for webhook`
+        "Connector not found for webhook"
       );
       continue;
     }
@@ -688,7 +688,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
           connectorId: wh.connectorId,
           workspaceId: connector.workspaceId,
         },
-        `We are processing a webhook which have already expired, this should never happen. Investigation needed.`
+        "We are processing a webhook which have already expired, this should never happen. Investigation needed."
       );
     }
     try {
@@ -698,7 +698,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
       if (!remoteDrive) {
         logger.info(
           { driveId: wh.driveId, connectorId: connector.id },
-          `We lost access to the drive. Deleting the associated webhook.`
+          "We lost access to the drive. Deleting the associated webhook."
         );
         await wh.destroy();
         continue;
@@ -734,7 +734,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
             // We want to panic because this code branch is unexpected.
             panic: true,
           },
-          `Found a webhook to renew but did not proceed to the renewal process. Need to investigate.`
+          "Found a webhook to renew but did not proceed to the renewal process. Need to investigate."
         );
       }
     } catch (e) {
@@ -750,7 +750,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
             connectorId: wh.connectorId,
             workspaceId: connector.workspaceId,
           },
-          `Failed to renew webhook: Oauth token revoked .`
+          "Failed to renew webhook: Oauth token revoked ."
         );
         // Do not delete the webhook object but push it down the line in 2h so that it does not get
         // picked up by the loop calling rewnewOneWebhook.
@@ -764,7 +764,7 @@ export async function renewWebhooks(pageSize: number): Promise<number> {
             connectorId: wh.connectorId,
             workspaceId: connector.workspaceId,
           },
-          `Failed to renew webhook`
+          "Failed to renew webhook"
         );
         const tags = [
           `connector_id:${wh.connectorId}`,
@@ -876,7 +876,7 @@ async function deleteFile(googleDriveFile: GoogleDriveFiles) {
       driveFileId: googleDriveFile.driveFileId,
       connectorId,
     },
-    `Deleting Google Drive file.`
+    "Deleting Google Drive file."
   );
 
   if (isGoogleDriveSpreadSheetFile(googleDriveFile)) {
@@ -916,7 +916,7 @@ export async function markFolderAsVisited(
   if (!file) {
     logger.info(
       { driveFileId },
-      `Google Drive File unexpectedly not found (got 404)`
+      "Google Drive File unexpectedly not found (got 404)"
     );
     // We got a 404 on this folder, we skip it.
     return;
