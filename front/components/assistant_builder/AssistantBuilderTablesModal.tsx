@@ -357,11 +357,23 @@ export default function AssistantBuilderTablesModal({
               parents: string[],
               selected: boolean
             ) => {
+              setParentsById((parentsById) =>
+                Object.entries(parentsById).reduce(
+                  (acc, [key, value]) =>
+                    key === node.internalId
+                      ? acc
+                      : {
+                          ...acc,
+                          [key]: value,
+                        },
+                  selected
+                    ? {
+                        [node.internalId]: new Set(parents),
+                      }
+                    : {}
+                )
+              );
               if (selected) {
-                setParentsById({
-                  ...parentsById,
-                  [node.internalId]: new Set(parents),
-                });
                 setSelectedManagedTables([
                   ...selectedManagedTables.filter(
                     (r) => r.internalId !== node.internalId
@@ -369,10 +381,7 @@ export default function AssistantBuilderTablesModal({
                   node,
                 ]);
               } else {
-                const newParentsById = { ...parentsById };
-                delete newParentsById[node.internalId];
-                setParentsById(newParentsById);
-                setSelectedManagedTables(
+                setSelectedManagedTables((selectedManagedTables) =>
                   selectedManagedTables.filter(
                     (n) => n.internalId !== node.internalId
                   )
@@ -551,13 +560,18 @@ const PickTablesManaged = ({
         <DataSourceResourceSelectorTree
           owner={owner}
           dataSource={dataSource}
-          expandable={true}
-          selectedParentIds={new Set(selectedNodes.map((n) => n.internalId))}
-          fullySelected={false}
+          showExpand={true}
+          selectedResourceIds={
+            selectedNodes
+              ? [...new Set(selectedNodes.map((n) => n.internalId))]
+              : []
+          }
+          selectedParents={[
+            ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
+          ]}
           filterPermission="read"
           viewType={"tables"}
           onSelectChange={onSelectionChange}
-          parentsById={parentsById}
         />
       </Page>
     </Transition>
