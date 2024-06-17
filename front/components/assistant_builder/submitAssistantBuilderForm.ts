@@ -14,6 +14,10 @@ import type {
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
+import {
+  DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/names";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
@@ -103,10 +107,12 @@ export async function submitAssistantBuilderForm({
         return [
           {
             type: "dust_app_run_configuration",
-            name: a.name,
-            description: a.description,
             appWorkspaceId: owner.sId,
             appId: a.configuration.app.sId,
+            // `name` and `description` are ignored server side as the app name and description are
+            // used instaed.
+            name: null,
+            description: null,
           },
         ];
 
@@ -124,12 +130,12 @@ export async function submitAssistantBuilderForm({
         return [
           {
             type: "websearch_configuration",
-            name: "websearch",
+            name: DEFAULT_WEBSEARCH_ACTION_NAME,
             description: "Perform a web search",
           },
           {
             type: "browse_configuration",
-            name: "browse",
+            name: DEFAULT_BROWSE_ACTION_NAME,
             description: "Browse the content of a web page",
           },
         ];
