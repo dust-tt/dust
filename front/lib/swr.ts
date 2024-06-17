@@ -1066,7 +1066,7 @@ export function useDataSourceNodes(
     key: string
   ) => {
     const { workspaceid, dataSourceName, internalIds } = JSON.parse(key);
-    if (internalIds.length === 0 || !dataSourceName) {
+    if (internalIds.length === 0) {
       return { contentNodes: [], parentsById: {} };
     }
 
@@ -1112,8 +1112,10 @@ export function useDataSourceNodes(
   return {
     isNodesLoading: !error && !data,
     isNodesError: error,
-    contentNodes: data?.contentNodes,
-    parentsById: data?.parentsById,
+    nodes: {
+      contentNodes: data?.contentNodes,
+      parentsById: data?.parentsById,
+    },
     serializeKey,
   };
 }
