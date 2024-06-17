@@ -13,7 +13,6 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 import {
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
@@ -21,6 +20,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export const ACTION_MODES = [
   "GENERIC",
