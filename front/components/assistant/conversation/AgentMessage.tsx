@@ -595,9 +595,9 @@ function Citations({
             size="xs"
             sizing="fluid"
             isBlinking={lastHoveredReference === index}
-            type={documentCitation.provider}
+            type={documentCitation.type}
             title={documentCitation.title}
-            href={documentCitation.link}
+            href={documentCitation.href}
             index={index}
           />
         );
