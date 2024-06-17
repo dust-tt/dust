@@ -1,12 +1,10 @@
 import {
-  Citation,
   Collapsible,
   ContentMessage,
   GlobeAltIcon,
-  Page,
   PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
-import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
+import type { WebsearchActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
