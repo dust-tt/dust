@@ -129,7 +129,8 @@ export default function ConversationViewer({
 
   const latestMessageIdRef = useRef<string | null>(null);
 
-  const viewerRef = useRef(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (viewerRef.current) {
@@ -140,18 +141,26 @@ export default function ConversationViewer({
     }
   }, [messages]);
 
+  // useEffect(() => {
+  //   if (containerRef.current) {
+  //     const scrollHeight = containerRef.current.scrollHeight; // La hauteur totale du contenu
+  //     const height = containerRef.current.clientHeight; // La hauteur visible du conteneur de défilement
+  //     const scrollPositionFromBottom = scrollHeight - height; // Calcul de la position de départ du bas
+
+  //     containerRef.current.scrollTo({
+  //       top: scrollPositionFromBottom, // Utilisation de la position calculée pour commencer du bas
+  //       behavior: "smooth",
+  //     });
+  //   }
+  // }, [messages]);
+
   useEffect(() => {
     const lastestMessageId = latestPage?.messages.at(-1)?.sId;
 
-    // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
       const mainTag = document.getElementById(
         CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
       );
-
-      if (mainTag) {
-        // mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
 
       latestMessageIdRef.current = lastestMessageId;
     }
@@ -393,6 +402,7 @@ export default function ConversationViewer({
 
   return (
     <div
+      ref={containerRef}
       className={classNames(
         "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2 pb-44 pt-4",
         isFading ? "animate-fadeout" : "",
@@ -412,28 +422,23 @@ export default function ConversationViewer({
       {/* TODO: Ideally create a dedicated component */}
       {typedGroupedMessages.map((typedGroup, index) => {
         const isLastGroup = index === typedGroupedMessages.length - 1;
-        const screenHeight = 500;
-        const dynamicMinHeight = `${screenHeight}px`;
+        const screenHeight = window.innerHeight - 450;
 
-        let minHeightClass = "min-h-0";
         if (typedGroup.length === 0) {
           return null;
         }
-        // if (typedGroup[typedGroup.length - 1] === 0) {
-        //   minHeightClass = `min-h-[${dynamicMinHeight}]`;
-        // } else {
-        // }
+
         const lastMessage = typedGroup[typedGroup.length - 1][0];
         const isLastMessageAgentMessage = lastMessage.type === "agent_message";
 
-        minHeightClass =
+        const dynamicMinHeight =
           isLastGroup && isLastMessageAgentMessage
-            ? `min-h-[${dynamicMinHeight}]`
-            : "min-h-0";
+            ? `${screenHeight}px`
+            : "0px";
 
         return (
           <div
-            className={minHeightClass}
+            style={{ minHeight: dynamicMinHeight }}
             key={`typed-group-${index}`}
             ref={isLastGroup ? viewerRef : null}
           >
