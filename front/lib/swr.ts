@@ -14,7 +14,7 @@ import type {
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
-import useSWR, { useSWRConfig } from "swr";
+import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -66,17 +66,19 @@ const resHandler = async (res: Response) => {
   return res.json();
 };
 
-export const fetcher = async (...args: Parameters<typeof fetch>) =>
-  fetch(...args).then(resHandler);
+const fetcher = async (...args: Parameters<typeof fetch>) =>
+  resHandler(await fetch(...args));
 
-export const postFetcher = ([url, body]: [string, object]) =>
-  fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  }).then(resHandler);
+const postFetcher = async ([url, body]: [string, object]) =>
+  resHandler(
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
+  );
 
 export function useDatasets(owner: WorkspaceType, app: AppType) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
@@ -1042,14 +1044,14 @@ export function useWorkspaceEnterpriseConnection({
   };
 }
 
-type UseDataSourceKey = {
-  workspaceSid: string;
+interface UseDataSourceKey {
+  workspaceid: string;
   dataSourceName: string;
   internalIds: string[];
-};
+}
 
 export function useDataSourceNodes(
-  { workspaceSid, dataSourceName, internalIds }: UseDataSourceKey,
+  key: UseDataSourceKey,
   options?: SWRConfiguration<{
     contentNodes: ContentNode[];
     parentsById: Record<string, Set<string>>;
@@ -1057,12 +1059,9 @@ export function useDataSourceNodes(
 ) {
   const contentNodesFetcher: Fetcher<
     { contentNodes: ContentNode[]; parentsById: Record<string, Set<string>> },
-    [string, string, string[]]
-  > = async ([workspaceSid, dataSourceName, internalIds]: [
-    string,
-    string,
-    string[]
-  ]) => {
+    string
+  > = async (key: string) => {
+    const { workspaceSid, dataSourceName, internalIds } = JSON.parse(key);
     if (internalIds.length === 0 || !dataSourceName) {
       return { contentNodes: [], parentsById: {} };
     }
@@ -1098,25 +1097,23 @@ export function useDataSourceNodes(
     return { contentNodes, parentsById };
   };
 
-  const { mutate: globalMutate } = useSWRConfig();
+  const serializeKey = (k: UseDataSourceKey) => JSON.stringify(k);
 
-  const preload = (
-    internalIds: string[],
-    contentNodes: ContentNode[],
-    parentsById: Record<string, Set<string>>
-  ) => {
-    void globalMutate([workspaceSid, dataSourceName, internalIds], {
-      contentNodes,
-      parentsById,
-    });
-  };
-
-  const res = useSWR(
-    [workspaceSid, dataSourceName, internalIds],
+  const { data, error } = useSWR(
+    serializeKey(key),
     contentNodesFetcher,
     options
   );
-  return { ...res, preload };
+
+  return {
+    isNodesLoading: !error && !data,
+    isNodesError: error,
+    contentNodes: data?.contentNodes,
+    parentsById: data?.parentsById,
+    serializeKey,
+  };
+
+  // return { res: res.data., preload };
 }
 
 // LABS - CAN BE REMOVED ANYTIME

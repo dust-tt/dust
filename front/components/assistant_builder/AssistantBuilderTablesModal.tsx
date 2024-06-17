@@ -95,20 +95,24 @@ export default function AssistantBuilderTablesModal({
 
   const key = selectedDataSource
     ? {
-        workspaceSid: owner.sId,
+        workspaceid: owner.sId,
         dataSourceName: selectedDataSource.name,
         internalIds,
       }
     : {
-        workspaceSid: owner.sId,
+        workspaceid: owner.sId,
         dataSourceName: "",
         internalIds: [],
       };
-  const { data, preload } = useDataSourceNodes(key, {
-    keepPreviousData: true,
+
+  const [fallback, setFallback] = useState({});
+  const {
+    contentNodes: selectedManagedTables,
+    parentsById,
+    serializeKey: serializeUseDataSourceKey,
+  } = useDataSourceNodes(key, {
+    fallback,
   });
-  const selectedManagedTables = data?.contentNodes;
-  const parentsById = data?.parentsById;
 
   async function save() {
     if (!selectedDataSource || !selectedManagedTables) {
@@ -202,25 +206,48 @@ export default function AssistantBuilderTablesModal({
               selected: boolean
             ) => {
               setInternalIds((internalIds) => {
-                const newIds = [...internalIds];
-                const newNodes = [...selectedManagedTables];
-                const newParentsById = { ...parentsById };
+                const newIds = internalIds.filter(
+                  (id) => id !== node.internalId
+                );
+                const newNodes = selectedManagedTables.filter(
+                  (n) => n.internalId !== node.internalId
+                );
+                const newParentsById: Record<
+                  string,
+                  Set<string>
+                > = Object.entries(
+                  parentsById as Record<string, Set<string>>
+                ).reduce(
+                  (acc, [key, value]) =>
+                    key === node.internalId
+                      ? acc
+                      : {
+                          ...acc,
+                          [key]: value,
+                        },
+                  {}
+                );
+
                 if (selected) {
                   newIds.push(node.internalId);
                   newNodes.push(node);
                   newParentsById[node.internalId] = new Set(
                     [...parents, node.internalId].reverse()
                   );
-                } else {
-                  newIds.splice(newIds.indexOf(node.internalId), 1);
-                  newNodes.splice(
-                    newNodes.findIndex((n) => n.internalId === node.internalId),
-                    1
-                  );
-                  delete newParentsById[node.internalId];
                 }
                 // Optimistic update
-                void preload(newIds, newNodes, newParentsById);
+                const key = serializeUseDataSourceKey({
+                  workspaceid: owner.sId,
+                  dataSourceName: selectedDataSource.name,
+                  internalIds: newIds,
+                });
+                setFallback((prev) => ({
+                  ...prev,
+                  [key]: {
+                    contentNodes: newNodes,
+                    parentsById: newParentsById,
+                  },
+                }));
                 return newIds;
               });
             }}
