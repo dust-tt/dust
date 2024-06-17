@@ -350,6 +350,16 @@ export default function ConversationViewer({
   const eventIds = useRef<string[]>([]);
 
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  const typedGroupedMessages = groupedMessages.reduce<
+    MessageWithContentFragmentsType[][][]
+  >((acc, message) => {
+    if (!acc.length || message[0].type !== acc[acc.length - 1][0][0].type) {
+      acc.push([message]);
+    } else {
+      acc[acc.length - 1].push(message);
+    }
+    return acc;
+  }, []);
 
   if (isConversationLoading) {
     return null;
@@ -378,28 +388,48 @@ export default function ConversationViewer({
         </div>
       )}
 
-      {groupedMessages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversation.sId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
-              }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-              latestMentions={latestMentions}
-            />
-          );
-        });
+      {/* TODO: Ideally create a dedicated component */}
+      {typedGroupedMessages.map((typedGroup, index) => {
+        const isLastGroup = index === typedGroupedMessages.length - 1;
+        const lastMessage = typedGroup[typedGroup.length - 1][0];
+        const isLastMessageAgentMessage = lastMessage.type === "agent_message";
+
+        const screenHeight = Math.round(window.innerHeight) - 100;
+        const dynamicMinHeight = `${screenHeight}px`;
+        const minHeightClass =
+          isLastGroup && isLastMessageAgentMessage
+            ? `min-h-[${dynamicMinHeight}]`
+            : "";
+
+        return (
+          <div className={minHeightClass} key={`typed-group-${index}`}>
+            {typedGroup.map((group) => {
+              return group.map((message) => {
+                return (
+                  <MessageItem
+                    key={`message-${message.sId}`}
+                    conversationId={conversation.sId}
+                    hideReactions={hideReactions}
+                    isInModal={isInModal}
+                    message={message}
+                    owner={owner}
+                    reactions={reactions}
+                    ref={
+                      message.sId === prevFirstMessageId
+                        ? prevFirstMessageRef
+                        : undefined
+                    }
+                    user={user}
+                    isLastMessage={
+                      latestPage?.messages.at(-1)?.sId === message.sId
+                    }
+                    latestMentions={latestMentions}
+                  />
+                );
+              });
+            })}
+          </div>
+        );
       })}
     </div>
   );
