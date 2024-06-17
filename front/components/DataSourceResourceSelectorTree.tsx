@@ -153,7 +153,7 @@ function DataSourceResourceSelectorChildren({
     <Tree isLoading={isResourcesLoading}>
       {resources.map((r) => {
         const isSelected = selectedResourceIds.includes(r.internalId);
-        const partialChecked =
+        const partiallyChecked =
           !isSelected &&
           Boolean(selectedParents.find((id) => id === r.internalId));
 
@@ -171,11 +171,11 @@ function DataSourceResourceSelectorChildren({
             variant={r.type}
             className="whitespace-nowrap"
             checkbox={
-              checkable || partialChecked
+              checkable || partiallyChecked
                 ? {
                     disabled: parentIsSelected || !checkable,
                     checked: Boolean(isSelected || parentIsSelected),
-                    partialChecked: partialChecked,
+                    partialChecked: partiallyChecked,
                     onChange: (checked) => {
                       onSelectChange(r, parents, checked);
                     },
