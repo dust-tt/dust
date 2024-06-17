@@ -79,7 +79,7 @@ function getPageButtons(currentPage: number, totalPages: number, slots: number, 
   
     // Add ellipsis if there is a gap between the first page and the start of the range
     if (start > 2) {
-      pagination.push(renderElipses(size));
+      pagination.push(renderEllipses(size));
     }
   
     // Add the range of pages
@@ -89,7 +89,7 @@ function getPageButtons(currentPage: number, totalPages: number, slots: number, 
   
     // Add ellipsis if there is a gap between the end of the range and the last page
     if (end < totalPages - 1) {
-      pagination.push(renderElipses(size));
+      pagination.push(renderEllipses(size));
     }
   
     pagination.push(renderPageNumber(totalPages, currentPage, onPageClick, size)); // Always show the last page
