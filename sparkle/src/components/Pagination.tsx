@@ -9,6 +9,7 @@ interface PaginationProps {
   maxItemsPerPage: number;
   size?: "sm" | "xs";
   showDetails?: boolean;
+  showPageButtons?: boolean;
 }
 
 function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: (currentPage: number) => void, size: "sm" | "xs") {
@@ -97,6 +98,7 @@ export function Pagination({
   maxItemsPerPage,
   size = "sm",
   showDetails = true,
+  showPageButtons = true
 }: PaginationProps) {
   const numPages = Math.ceil(itemsCount / maxItemsPerPage);
   const controlsAreHidden = numPages <= 1 ? true : false;
@@ -116,7 +118,8 @@ export function Pagination({
       <div
         className={classNames(
           "s-flex",
-          controlsAreHidden ? "s-invisible" : "s-visible"
+          controlsAreHidden ? "s-invisible" : "s-visible",
+          showPageButtons ? "s-gap-0" : "s-gap-2"
         )}
       >
         <Button
@@ -131,8 +134,9 @@ export function Pagination({
         />
 
         <div className={classNames(
-          "s-flex s-items-center",
-          size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4"
+          "s-items-center",
+          size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
+          showPageButtons ? "s-flex" : "s-hidden"
         )}>
           {pageButtons}
         </div>

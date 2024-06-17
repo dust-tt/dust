@@ -22,3 +22,9 @@ export const PaginationXS = () => {
   )
 }
 
+export const PaginationNoPageButtons = () => {
+  return (
+    <Pagination itemsCount={960} maxItemsPerPage={50} size="xs" showDetails={false} showPageButtons={false} />
+  )
+}
+
