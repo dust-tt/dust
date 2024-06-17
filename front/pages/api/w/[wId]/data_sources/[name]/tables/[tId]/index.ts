@@ -28,7 +28,7 @@ async function handler(
   );
 
   const owner = auth.workspace();
-  if (!owner || !auth.isBuilder()) {
+  if (!owner || !auth.isUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -112,6 +112,16 @@ async function handler(
       return res.status(200).json({ table });
 
     case "DELETE":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
       return handleDeleteTableByIdRequest(req, res, {
         owner,
         dataSource,
