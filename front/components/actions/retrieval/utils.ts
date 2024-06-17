@@ -1,3 +1,4 @@
+import type { CitationType } from "@dust-tt/sparkle/dist/cjs/components/Citation";
 import type { ConnectorProvider, RetrievalDocumentType } from "@dust-tt/types";
 
 type ConnectorProviderDocumentType =
@@ -67,9 +68,9 @@ export function makeLinkForRetrievedDocument(
 }
 
 interface RetrievedDocumentCitation {
-  link: string;
-  provider: ConnectorProviderDocumentType;
+  href: string;
   title: string;
+  type: CitationType;
 }
 
 export function makeDocumentCitations(
@@ -77,9 +78,9 @@ export function makeDocumentCitations(
 ): RetrievedDocumentCitation[] {
   return documents.reduce((acc, doc) => {
     acc.push({
-      link: makeLinkForRetrievedDocument(doc),
-      provider: getProviderFromRetrievedDocument(doc),
+      href: makeLinkForRetrievedDocument(doc),
       title: getTitleFromRetrievedDocument(doc),
+      type: getProviderFromRetrievedDocument(doc),
     });
 
     return acc;

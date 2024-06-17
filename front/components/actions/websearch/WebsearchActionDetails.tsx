@@ -1,14 +1,14 @@
 import {
-  Citation,
   Collapsible,
   ContentMessage,
   GlobeAltIcon,
-  Page,
+  PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
-import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
+import type { WebsearchActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { makeWebsearchResultsCitations } from "@app/components/actions/websearch/utils";
 
 export function WebsearchActionDetails({
   action,
@@ -20,6 +20,8 @@ export function WebsearchActionDetails({
     !action.output.error.includes("Google hasn't returned any results")
       ? action.output.error
       : null;
+
+  const resultsCitations = makeWebsearchResultsCitations(action);
 
   return (
     <ActionDetailsWrapper
@@ -40,7 +42,7 @@ export function WebsearchActionDetails({
               <span className="text-sm font-bold text-slate-900">Results</span>
             </Collapsible.Button>
             <Collapsible.Panel>
-              <WebsearchResultsGrid results={action.output?.results} />
+              <PaginatedCitationsGrid items={resultsCitations} />
               {formattedError && (
                 <ContentMessage title="Error searching the web">
                   {formattedError}
@@ -67,36 +69,5 @@ function hasWebsearchError(
     !!action.output &&
     "error" in action.output &&
     typeof action.output.error === "string"
-  );
-}
-
-function WebsearchResultsGrid({
-  results,
-}: {
-  results?: WebsearchResultType[];
-}) {
-  if (!results) {
-    return null;
-  }
-
-  return (
-    <>
-      <Page.Separator />
-      <div className="grid max-h-60 grid-cols-3 gap-2 overflow-y-auto overflow-x-hidden py-1">
-        {results.map((r, idx) => {
-          return (
-            <Citation
-              size="xs"
-              sizing="fluid"
-              key={idx}
-              title={r.title}
-              description={r.snippet}
-              href={r.link}
-            />
-          );
-        })}
-      </div>
-      <Page.Separator />
-    </>
   );
 }
