@@ -1,23 +1,20 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMention,
+  AgentMessageNewEvent,
   AgentMessageType,
   ContentFragmentType,
+  ConversationTitleEvent,
+  UserMessageNewEvent,
   UserMessageType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import type { AgentMention } from "@dust-tt/types";
-import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -129,31 +126,11 @@ export default function ConversationViewer({
   }, [messages]);
 
   const latestMessageIdRef = useRef<string | null>(null);
-
-  const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // useEffect(() => {
-  //   if (containerRef.current) {
-  //     const scrollHeight = containerRef.current.scrollHeight; // La hauteur totale du contenu
-  //     const height = containerRef.current.clientHeight; // La hauteur visible du conteneur de défilement
-  //     const scrollPositionFromBottom = scrollHeight - height; // Calcul de la position de départ du bas
-
-  //     containerRef.current.scrollTo({
-  //       top: scrollPositionFromBottom, // Utilisation de la position calculée pour commencer du bas
-  //       behavior: "smooth",
-  //     });
-  //   }
-  // }, [messages]);
-
   useEffect(() => {
     const lastestMessageId = latestPage?.messages.at(-1)?.sId;
 
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-      );
-
       latestMessageIdRef.current = lastestMessageId;
     }
   }, [isInModal, latestPage]);
@@ -364,23 +341,26 @@ export default function ConversationViewer({
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
   const typedGroupedMessages = groupedMessages.reduce<
     MessageWithContentFragmentsType[][][]
-  >((typedGroupesAcc, message, index) => {
-    const lastTypedGroup = typedGroupesAcc[typedGroupesAcc.length - 1];
+  >((typedGroupsAcc, message, index) => {
+    const lastTypedGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+
     if (
-      !typedGroupesAcc.length ||
+      !typedGroupsAcc.length ||
       (lastTypedGroup.length && message[0].type !== lastTypedGroup[0][0].type)
     ) {
-      typedGroupesAcc.push([message]);
+      typedGroupsAcc.push([message]);
     } else {
       lastTypedGroup.push(message);
     }
+
     if (
       index === groupedMessages.length - 1 &&
       message[0].type === "user_message"
     ) {
-      typedGroupesAcc.push([]);
+      typedGroupsAcc.push([]);
     }
-    return typedGroupesAcc;
+
+    return typedGroupsAcc;
   }, []);
 
   if (isConversationLoading) {
@@ -411,15 +391,15 @@ export default function ConversationViewer({
         </div>
       )}
 
-      {/* TODO: Ideally create a dedicated component */}
       {typedGroupedMessages.map((typedGroup, index) => {
         const isLastGroup = index === typedGroupedMessages.length - 1;
-
         return (
           <MessageGroup
             key={`typed-group-${index}`}
             messages={typedGroup}
             isLastMessage={isLastGroup}
+            messageType={"agent_message"}
+            children={undefined}
           >
             {typedGroup &&
               typedGroup.map((group) => {

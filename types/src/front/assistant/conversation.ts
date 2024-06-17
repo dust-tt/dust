@@ -43,8 +43,6 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
-export type MessageTypeWithContent = "agent_message" | "user_message";
-
 export type WithRank<T> = T & {
   rank: number;
 };

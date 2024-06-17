@@ -19,14 +19,15 @@ import type {
   AgentGenerationCancelledEvent,
   AgentGenerationSuccessEvent,
   AgentMessageSuccessEvent,
+  AgentMessageType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  MessageReactionType,
   RetrievalActionType,
+  RetrievalDocumentType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { RetrievalDocumentType } from "@dust-tt/types";
-import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
@@ -42,7 +43,6 @@ import { AssistantEditionMenu } from "@app/components/assistant/conversation/Ass
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -58,7 +58,6 @@ interface AgentMessageProps {
   user: UserType;
   conversationId: string;
   reactions: MessageReactionType[];
-  isInModal?: boolean;
   hideReactions?: boolean;
   size: MessageSizeType;
 }
@@ -75,7 +74,6 @@ export function AgentMessage({
   user,
   conversationId,
   reactions,
-  isInModal,
   hideReactions,
   size,
 }: AgentMessageProps) {
@@ -301,26 +299,6 @@ export function AgentMessage({
       }
     };
   }, []);
-
-  useEffect(() => {
-    const mainTag = document.getElementById(
-      CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-    );
-    if (
-      mainTag &&
-      streamedAgentMessage.status === "created" &&
-      isAtBottom.current
-    ) {
-      // bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [
-    agentMessageToRender.content,
-    agentMessageToRender.status,
-    agentMessageToRender.actions.length,
-    streamedAgentMessage.status,
-    activeReferences.length,
-    isInModal,
-  ]);
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);

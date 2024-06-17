@@ -1,10 +1,8 @@
-import type { MessageTypeWithContent } from "@dust-tt/types";
 import React, { useEffect, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 
 interface MessageGroupProps {
-  messageType: MessageTypeWithContent;
   messages: MessageWithContentFragmentsType[][];
   isLastMessage: boolean;
   children: React.ReactNode;
