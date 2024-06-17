@@ -11,6 +11,7 @@ import {
 import { classNames } from "@sparkle/lib/utils";
 
 interface CitationItem {
+  description?: string;
   title: string;
   type: CitationType;
   href: string;
@@ -54,9 +55,10 @@ export function PaginatedCitationsGrid({
               size="xs"
               sizing="fluid"
               key={idx}
+              description={d.description}
+              href={d.href}
               title={d.title}
               type={d.type}
-              href={d.href}
             />
           );
         })}
