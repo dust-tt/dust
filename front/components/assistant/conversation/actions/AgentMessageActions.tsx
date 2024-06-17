@@ -46,11 +46,12 @@ export function AgentMessageActions({
         actions={agentMessage.actions}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
+        isStreaming={isThinkingOrActing || agentMessage.actions.length === 0}
       />
-      <ActionChip label={chipLabel} />
-      <ActionDetailsButton
+      <ActionDetails
         hasActions={agentMessage.actions.length !== 0}
         isActionStepDone={!isThinkingOrActing}
+        label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}
         size={size}
       />
@@ -58,39 +59,36 @@ export function AgentMessageActions({
   );
 }
 
-function ActionChip({ label }: { label?: string }) {
-  if (!label) {
-    return null;
-  }
-
-  return (
-    <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="purple">
-        <div className="flex flex-row items-center gap-x-2">
-          <Spinner variant="purple900" size="xs" />
-          {label}
-        </div>
-      </Chip>
-    </div>
-  );
-}
-
-function ActionDetailsButton({
+function ActionDetails({
   hasActions,
+  label,
   isActionStepDone,
   onClick,
   size,
 }: {
   hasActions: boolean;
+  label?: string;
   isActionStepDone: boolean;
   onClick: () => void;
   size: MessageSizeType;
 }) {
-  if (!isActionStepDone || !hasActions) {
-    return;
+  if (!label && (!isActionStepDone || !hasActions)) {
+    return null;
   }
 
-  return (
+  return label ? (
+    <div key={label} className="animate-fadeIn duration-1000 fade-out">
+      <Chip size="sm" color="purple">
+        <div
+          className="flex flex-row items-center gap-x-2"
+          onClick={hasActions ? onClick : undefined}
+        >
+          <Spinner variant="purple900" size="xs" />
+          {label}
+        </div>
+      </Chip>
+    </div>
+  ) : (
     <Button
       size={size === "normal" ? "sm" : "xs"}
       label="View Actions Details"
