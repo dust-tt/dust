@@ -124,26 +124,28 @@ async function handler(
       }
 
       if (search) {
-        let isSearchByEmail = false;
-        if (isEmailValid(search)) {
-          // We can have 2 users with the same email if a Google user and a Github user have the same email.
-          const users = await User.findAll({
-            where: {
-              email: search,
-            },
+        let isSearchByEmail = isEmailValid(search);
+
+        // We can have 2 users with the same email if a Google user and a Github user have the same email.
+        const users = await User.findAll({
+          where: isEmailValid(search)
+            ? {
+                email: search,
+              }
+            : { email: { [Op.iLike]: `%${search}%` } },
+        });
+
+        if (users.length > 0) {
+          const memberships = await MembershipResource.getLatestMemberships({
+            users: users.map((u) => renderUserType(u)),
           });
-          if (users.length) {
-            const memberships = await MembershipResource.getLatestMemberships({
-              users: users.map((u) => renderUserType(u)),
+          if (memberships.length) {
+            conditions.push({
+              id: {
+                [Op.in]: memberships.map((m) => m.workspaceId),
+              },
             });
-            if (memberships.length) {
-              conditions.push({
-                id: {
-                  [Op.in]: memberships.map((m) => m.workspaceId),
-                },
-              });
-              isSearchByEmail = true;
-            }
+            isSearchByEmail = true;
           }
         }
 
