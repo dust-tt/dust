@@ -3,6 +3,7 @@ import { setupGlobalErrorHandler } from "@dust-tt/types";
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runPostUpsertHooksWorker } from "@app/temporal/documents_post_process_hooks/worker";
+import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runLabsWorker } from "@app/temporal/labs/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
@@ -36,4 +37,8 @@ runScrubWorkspaceQueueWorker().catch((err) =>
 
 runLabsWorker().catch((err) =>
   logger.error({ error: err }, "Error running labs worker.")
+);
+
+runHardDeleteWorker().catch((err) =>
+  logger.error({ error: err }, "Error running hard delete worker.")
 );

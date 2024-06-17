@@ -9,8 +9,13 @@ import type {
   AgentModelConfigurationType,
   ConnectorProvider,
   DataSourceType,
+  GlobalAgentStatus,
 } from "@dust-tt/types";
-import type { GlobalAgentStatus } from "@dust-tt/types";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -26,11 +31,19 @@ import {
 } from "@dust-tt/types";
 import { DustAPI } from "@dust-tt/types";
 
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
+
+// Used when returning an agent with status 'disabled_by_admin'
+const dummyModelConfiguration = {
+  providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
+  modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+  temperature: 0,
+};
 
 class HelperAssistantPrompt {
   private static instance: HelperAssistantPrompt;
@@ -88,15 +101,18 @@ async function _getHelperGlobalAgent(
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
-  const model = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration?.providerId,
+        modelId: modelConfiguration?.modelId,
+        temperature: 0.2,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-      };
+    : dummyModelConfiguration;
+  const status = modelConfiguration ? "active" : "disabled_by_admin";
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.HELPER,
@@ -107,16 +123,13 @@ async function _getHelperGlobalAgent(
     description: "Help on how to use Dust",
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-    status: "active",
+    status: status,
     userListStatus: "in-list",
     scope: "global",
-    model: {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      temperature: 0.2,
-    },
+    model: model,
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -146,6 +159,7 @@ async function _getGPT35TurboGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -175,6 +189,7 @@ async function _getGPT4GlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -204,6 +219,7 @@ async function _getClaudeInstantGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -240,6 +256,7 @@ async function _getClaude2GlobalAgent({
 
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -277,6 +294,7 @@ async function _getClaude3HaikuGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -313,6 +331,7 @@ async function _getClaude3SonnetGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -349,6 +368,7 @@ async function _getClaude3OpusGlobalAgent({
 
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -384,6 +404,7 @@ async function _getMistralLargeGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -419,6 +440,7 @@ async function _getMistralMediumGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -448,6 +470,7 @@ async function _getMistralSmallGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -482,6 +505,7 @@ async function _getGeminiProGlobalAgent({
     },
     actions: [],
     maxToolsUsePerRun: 0,
+    templateId: null,
   };
 }
 
@@ -518,20 +542,23 @@ async function _getManagedDataSourceAgent(
 
   const prodCredentials = await prodAPICredentialsForOwner(owner);
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
         temperature: 0.7,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+    : dummyModelConfiguration;
 
   // Check if deactivated by an admin
-  if (settings && settings.status === "disabled_by_admin") {
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: agentId,
@@ -548,6 +575,7 @@ async function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxToolsUsePerRun: 0,
+      templateId: null,
     };
   }
 
@@ -572,6 +600,7 @@ async function _getManagedDataSourceAgent(
       model,
       actions: [],
       maxToolsUsePerRun: 0,
+      templateId: null,
     };
   }
 
@@ -604,11 +633,12 @@ async function _getManagedDataSourceAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
-        name: "search_data_sources",
-        description: `Search the user's ${connectorProvider} data sources.`,
+        name: DEFAULT_RETRIEVAL_ACTION_NAME,
+        description: `The user's ${connectorProvider} data source.`,
       },
     ],
     maxToolsUsePerRun: 1,
+    templateId: null,
   };
 }
 
@@ -750,19 +780,22 @@ async function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
+
+  const model: AgentModelConfigurationType = modelConfiguration
     ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
         temperature: 0.7,
       }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
+    : dummyModelConfiguration;
 
-  if (settings && settings.status === "disabled_by_admin") {
+  if (
+    (settings && settings.status === "disabled_by_admin") ||
+    !modelConfiguration
+  ) {
     return {
       id: -1,
       sId: GLOBAL_AGENTS_SID.DUST,
@@ -779,6 +812,7 @@ async function _getDustGlobalAgent(
       model,
       actions: [],
       maxToolsUsePerRun: 0,
+      templateId: null,
     };
   }
 
@@ -811,6 +845,7 @@ async function _getDustGlobalAgent(
       model,
       actions: [],
       maxToolsUsePerRun: 0,
+      templateId: null,
     };
   }
 
@@ -843,132 +878,12 @@ async function _getDustGlobalAgent(
           workspaceId: prodCredentials.workspaceId,
           filter: { tags: null, parents: null },
         })),
-        name: "search_data_sources",
-        description: `Search the user's data sources.`,
+        name: DEFAULT_RETRIEVAL_ACTION_NAME,
+        description: `The user's entire workspace data sources`,
       },
     ],
     maxToolsUsePerRun: 1,
-  };
-}
-
-async function _getDustNextGlobalAgent(
-  auth: Authenticator,
-  {
-    settings,
-  }: {
-    settings: GlobalAgentSettings | null;
-  }
-): Promise<AgentConfigurationType | null> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const name = "dust-next";
-  const description = "An assistant with context on your company data.";
-  const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-
-  const model: AgentModelConfigurationType = !auth.isUpgraded()
-    ? {
-        providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      }
-    : {
-        providerId: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        modelId: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        temperature: 0.7,
-      };
-
-  if (
-    !owner.flags.includes("multi_actions") ||
-    (settings && settings.status === "disabled_by_admin")
-  ) {
-    return {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name,
-      description,
-      instructions: null,
-      pictureUrl,
-      status: "disabled_by_admin",
-      scope: "global",
-      userListStatus: "not-in-list",
-      model,
-      actions: [],
-      maxToolsUsePerRun: 0,
-    };
-  }
-
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
-  const api = new DustAPI(prodCredentials, logger);
-
-  const dsRes = await api.getDataSources(prodCredentials.workspaceId);
-  if (dsRes.isErr()) {
-    return null;
-  }
-
-  const dataSources = dsRes.value.filter(
-    (d) => d.assistantDefaultSelected === true
-  );
-
-  if (dataSources.length === 0) {
-    return {
-      id: -1,
-      sId: GLOBAL_AGENTS_SID.DUST,
-      version: 0,
-      versionCreatedAt: null,
-      versionAuthorId: null,
-      name,
-      description,
-      instructions: null,
-      pictureUrl,
-      status: "disabled_missing_datasource",
-      scope: "global",
-      userListStatus: "not-in-list",
-      model,
-      actions: [],
-      maxToolsUsePerRun: 0,
-    };
-  }
-
-  return {
-    id: -1,
-    sId: GLOBAL_AGENTS_SID.DUST_NEXT,
-    version: 0,
-    versionCreatedAt: null,
-    versionAuthorId: null,
-    name,
-    description,
-    instructions:
-      "Assist the user based on the retrieved data from their workspace." +
-      `\n${BREVITY_PROMPT}`,
-    pictureUrl,
-    status: "active",
-    scope: "global",
-    userListStatus: "in-list",
-    model,
-    actions: [
-      {
-        id: -1,
-        sId: GLOBAL_AGENTS_SID.DUST + "-action",
-        type: "retrieval_configuration",
-        query: "auto",
-        relativeTimeFrame: "auto",
-        topK: "auto",
-        dataSources: dataSources.map((ds) => ({
-          dataSourceId: ds.name,
-          workspaceId: prodCredentials.workspaceId,
-          filter: { tags: null, parents: null },
-        })),
-        name: "search_data_sources",
-        description: `Search the user's data sources.`,
-      },
-    ],
-    maxToolsUsePerRun: 3,
+    templateId: null,
   };
 }
 
@@ -1086,9 +1001,6 @@ export async function getGlobalAgent(
     case GLOBAL_AGENTS_SID.DUST:
       agentConfiguration = await _getDustGlobalAgent(auth, { settings });
       break;
-    case GLOBAL_AGENTS_SID.DUST_NEXT:
-      agentConfiguration = await _getDustNextGlobalAgent(auth, { settings });
-      break;
     default:
       return null;
   }
@@ -1155,7 +1067,11 @@ export async function getGlobalAgents(
   const globalAgents: AgentConfigurationType[] = [];
 
   for (const agentFetcherResult of agentCandidates) {
-    if (agentFetcherResult) {
+    if (
+      agentFetcherResult &&
+      agentFetcherResult.scope === "global" &&
+      isProviderWhitelisted(owner, agentFetcherResult.model.providerId)
+    ) {
       globalAgents.push(agentFetcherResult);
     }
   }

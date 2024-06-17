@@ -82,7 +82,7 @@ export type AssistantBuilderProcessConfiguration = {
 };
 
 // Websearch configuration
-export type AssistantBuilderWebsearchConfiguration = Record<string, never>; // no relevant params identified yet
+export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
 
 // Builder State
 
@@ -104,21 +104,46 @@ export type AssistantBuilderActionConfiguration = (
       configuration: AssistantBuilderProcessConfiguration;
     }
   | {
-      type: "WEBSEARCH";
-      configuration: AssistantBuilderWebsearchConfiguration;
+      type: "WEB_NAVIGATION";
+      configuration: AssistantBuilderWebNavigationConfiguration;
     }
 ) & {
   name: string;
   description: string;
+  noConfigurationRequired?: boolean;
 };
 
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
->;
+> & {
+  help: string;
+};
 
 export type AssistantBuilderActionType =
   AssistantBuilderActionConfiguration["type"];
+
+export type AssistantBuilderSetActionType =
+  | {
+      action: AssistantBuilderActionConfiguration;
+      type: "insert" | "edit" | "pending";
+    }
+  | {
+      action: AssistantBuilderActionConfiguration;
+      type: "pending";
+    }
+  | {
+      type: "clear_pending";
+    };
+
+export type AssistantBuilderPendingAction =
+  | {
+      action: AssistantBuilderActionConfiguration;
+      previousActionName: string | null;
+    }
+  | {
+      action: null;
+    };
 
 export type AssistantBuilderState = {
   handle: string | null;
@@ -132,6 +157,7 @@ export type AssistantBuilderState = {
   };
   actions: Array<AssistantBuilderActionConfiguration>;
   maxToolsUsePerRun: number | null;
+  templateId: string | null;
 };
 
 export type AssistantBuilderInitialState = {
@@ -146,6 +172,7 @@ export type AssistantBuilderInitialState = {
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxToolsUsePerRun: number | null;
+  templateId: string | null;
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
@@ -165,6 +192,7 @@ export function getDefaultAssistantState() {
       temperature: 0.7,
     },
     maxToolsUsePerRun: 3,
+    templateId: null,
   } satisfies AssistantBuilderState;
 }
 
@@ -243,10 +271,11 @@ export function getDefaultProcessActionConfiguration() {
 
 export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
-    type: "WEBSEARCH",
+    type: "WEB_NAVIGATION",
     configuration: {},
     name: "websearch",
-    description: "Perform a web search.",
+    description: "Perform a web search and/or browse a page content.",
+    noConfigurationRequired: true,
   };
 }
 
@@ -266,7 +295,7 @@ export function getDefaultActionConfiguration(
       return getDefaultTablesQueryActionConfiguration();
     case "PROCESS":
       return getDefaultProcessActionConfiguration();
-    case "WEBSEARCH":
+    case "WEB_NAVIGATION":
       return getDefaultWebsearchActionConfiguration();
     default:
       assertNever(actionType);

@@ -37,13 +37,13 @@ const {
   fetchConfluenceConfigurationActivity,
   getSpaceIdsToSyncActivity,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "20 minutes",
+  startToCloseTimeout: "30 minutes",
 });
 
 // Set a conservative threshold to start a new workflow and
 // avoid exceeding Temporal's max workflow size limit,
 // since a Confluence page can have an unbounded number of pages.
-const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 30_000;
+const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 
 export async function confluenceSyncWorkflow({
   connectorId,

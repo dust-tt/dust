@@ -20,6 +20,7 @@ import type { ComponentType } from "react";
 import { useCallback, useContext } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -85,6 +86,8 @@ export function HelpDrawer({
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+  const { setSelectedAssistant } = useContext(InputBarContext);
+  setSelectedAssistant(null);
 
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(

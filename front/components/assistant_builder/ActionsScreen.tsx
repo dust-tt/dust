@@ -36,13 +36,15 @@ import {
   isActionTablesQueryValid,
 } from "@app/components/assistant_builder/actions/TablesQueryAction";
 import {
-  ActionWebsearch,
-  isActionWebsearchValid,
-} from "@app/components/assistant_builder/actions/WebsearchAction";
+  ActionWebNavigation,
+  isActionWebsearchValid as isActionWebNavigationValid,
+} from "@app/components/assistant_builder/actions/WebNavigationAction";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
+  AssistantBuilderSetActionType,
   AssistantBuilderState,
   AssistantBuilderTablesQueryConfiguration,
 } from "@app/components/assistant_builder/types";
@@ -57,9 +59,9 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const CAPABILITIES_ACTION_CATEGORIES = ["WEBSEARCH"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const CAPABILITIES_ACTION_CATEGORIES = [
+  "WEB_NAVIGATION",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
   AssistantBuilderActionConfiguration["type"]
@@ -89,8 +91,8 @@ export function isActionValid(
       return isActionDustAppRunValid(action);
     case "TABLES_QUERY":
       return isActionTablesQueryValid(action);
-    case "WEBSEARCH":
-      return isActionWebsearchValid(action);
+    case "WEB_NAVIGATION":
+      return isActionWebNavigationValid(action);
     default:
       assertNever(action);
   }
@@ -103,6 +105,8 @@ export default function ActionsScreen({
   dataSources,
   setBuilderState,
   setEdited,
+  setAction,
+  pendingAction,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -112,14 +116,9 @@ export default function ActionsScreen({
     stateFn: (state: AssistantBuilderState) => AssistantBuilderState
   ) => void;
   setEdited: (edited: boolean) => void;
+  setAction: (action: AssistantBuilderSetActionType) => void;
+  pendingAction: AssistantBuilderPendingAction;
 }) {
-  const [newActionModalOpen, setNewActionModalOpen] = React.useState(false);
-
-  const [actionToEdit, setActionToEdit] =
-    React.useState<AssistantBuilderActionConfiguration | null>(null);
-  const [pendingAction, setPendingAction] =
-    React.useState<AssistantBuilderActionConfiguration | null>(null);
-
   const updateAction = useCallback(
     function _updateAction({
       actionName,
@@ -156,19 +155,6 @@ export default function ActionsScreen({
     [setBuilderState, setEdited]
   );
 
-  const insertAction = useCallback(
-    (action: AssistantBuilderActionConfiguration) => {
-      setEdited(true);
-      setBuilderState((state) => {
-        return {
-          ...state,
-          actions: [...state.actions, action],
-        };
-      });
-    },
-    [setBuilderState, setEdited]
-  );
-
   const deleteAction = useCallback(
     (name: string) => {
       setEdited(true);
@@ -185,29 +171,38 @@ export default function ActionsScreen({
   return (
     <>
       <NewActionModal
-        isOpen={newActionModalOpen}
-        setOpen={setNewActionModalOpen}
+        isOpen={pendingAction.action !== null}
         builderState={builderState}
-        initialAction={actionToEdit ?? pendingAction}
+        initialAction={pendingAction.action}
         onSave={(newAction) => {
           setEdited(true);
-          if (actionToEdit) {
+          if (!pendingAction.action) {
+            return;
+          }
+
+          // Making sure the name is not used already.
+          let index = 1;
+          const suffixedName = () =>
+            index > 1 ? `${newAction.name}_${index}` : newAction.name;
+          while (builderState.actions.some((a) => a.name === suffixedName())) {
+            index += 1;
+          }
+          newAction.name = suffixedName();
+
+          if (pendingAction.previousActionName) {
             updateAction({
-              actionName: actionToEdit.name,
+              actionName: pendingAction.previousActionName,
               newActionName: newAction.name,
               newActionDescription: newAction.description,
               getNewActionConfig: () => newAction.configuration,
             });
           } else {
-            insertAction(newAction);
+            setAction({ type: "insert", action: newAction });
           }
-          setNewActionModalOpen(false);
-          setActionToEdit(null);
-          setPendingAction(null);
+          setAction({ type: "clear_pending" });
         }}
         onClose={() => {
-          setActionToEdit(null);
-          setPendingAction(null);
+          setAction({ type: "clear_pending" });
         }}
         updateAction={updateAction}
         owner={owner}
@@ -234,10 +229,13 @@ export default function ActionsScreen({
               <div>
                 <AddAction
                   owner={owner}
-                  builderState={builderState}
                   onAddAction={(action) => {
-                    setPendingAction(action);
-                    setNewActionModalOpen(true);
+                    setAction({
+                      type: action.noConfigurationRequired
+                        ? "insert"
+                        : "pending",
+                      action,
+                    });
                   }}
                 />
               </div>
@@ -265,10 +263,11 @@ export default function ActionsScreen({
             >
               <AddAction
                 owner={owner}
-                builderState={builderState}
                 onAddAction={(action) => {
-                  setPendingAction(action);
-                  setNewActionModalOpen(true);
+                  setAction({
+                    type: action.noConfigurationRequired ? "insert" : "pending",
+                    action,
+                  });
                 }}
               />
             </div>
@@ -280,8 +279,10 @@ export default function ActionsScreen({
                   action={a}
                   key={a.name}
                   editAction={() => {
-                    setActionToEdit(a);
-                    setNewActionModalOpen(true);
+                    setAction({
+                      type: "edit",
+                      action: a,
+                    });
                   }}
                   deleteAction={() => {
                     deleteAction(a.name);
@@ -298,7 +299,6 @@ export default function ActionsScreen({
 
 function NewActionModal({
   isOpen,
-  setOpen,
   initialAction,
   onSave,
   onClose,
@@ -309,7 +309,6 @@ function NewActionModal({
   builderState,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
   builderState: AssistantBuilderState;
   initialAction: AssistantBuilderActionConfiguration | null;
   onSave: (newAction: AssistantBuilderActionConfiguration) => void;
@@ -344,7 +343,6 @@ function NewActionModal({
 
   const onCloseLocal = () => {
     onClose();
-    setOpen(false);
     setTimeout(() => {
       setNewAction(null);
     }, 500);
@@ -561,8 +559,8 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
-    case "WEBSEARCH":
-      return <ActionWebsearch />;
+    case "WEB_NAVIGATION":
+      return <ActionWebNavigation />;
     default:
       assertNever(action);
   }
@@ -767,24 +765,11 @@ function AdvancedSettings({
 
 function AddAction({
   owner,
-  builderState,
   onAddAction,
 }: {
   owner: WorkspaceType;
-  builderState: AssistantBuilderState;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
 }) {
-  const onAddLocal = (action: AssistantBuilderActionConfiguration) => {
-    let index = 1;
-    const suffixedName = () =>
-      index > 1 ? `${action.name}_${index}` : action.name;
-    while (builderState.actions.some((a) => a.name === suffixedName())) {
-      index += 1;
-    }
-    action.name = suffixedName();
-    onAddAction(action);
-  };
-
   const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
     const flag = ACTION_SPECIFICATIONS[key].flag;
     return !flag || owner.flags.includes(flag);
@@ -810,7 +795,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}
@@ -830,7 +815,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}
@@ -849,7 +834,7 @@ function AddAction({
               label={spec.label}
               icon={spec.dropDownIcon}
               description={spec.description}
-              onClick={() => onAddLocal(defaultAction)}
+              onClick={() => onAddAction(defaultAction)}
             />
           );
         })}

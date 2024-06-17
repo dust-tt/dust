@@ -241,7 +241,7 @@ async function handler(
                 workspace: renderLightWorkspaceType({ workspace }),
                 planCode,
                 workspaceSeats,
-                subscriptionStartAt: now.getTime(),
+                subscriptionStartAt: now,
               });
             }
             await unpauseAllConnectorsAndCancelScrub(
@@ -478,7 +478,7 @@ async function handler(
                 workspace: renderLightWorkspaceType({
                   workspace: subscription.workspace,
                 }),
-                requestCancelAt: now.getTime(),
+                requestCancelAt: now,
               }).catch((e) => {
                 logger.error(
                   {

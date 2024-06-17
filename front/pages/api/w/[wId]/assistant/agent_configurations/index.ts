@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  Err,
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -16,6 +17,7 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getApp } from "@app/lib/api/app";
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -340,6 +342,7 @@ export async function createOrUpgradeAgentConfiguration({
     scope: assistant.scope,
     model: assistant.model,
     agentConfigurationId,
+    templateId: assistant.templateId ?? null,
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -367,11 +370,17 @@ export async function createOrUpgradeAgentConfiguration({
           )
         );
       } else if (action.type === "dust_app_run_configuration") {
+        const app = await getApp(auth, action.appId);
+        if (!app) {
+          return new Err(new Error(`App ${action.appId} not found`));
+        }
+
         actionConfigs.push(
           await createAgentActionConfiguration(
             auth,
             {
               type: "dust_app_run_configuration",
+              app,
               appWorkspaceId: action.appWorkspaceId,
               appId: action.appId,
               name: action.name ?? null,
@@ -415,6 +424,18 @@ export async function createOrUpgradeAgentConfiguration({
             auth,
             {
               type: "websearch_configuration",
+              name: action.name ?? null,
+              description: action.description ?? null,
+            },
+            agentConfigurationRes.value
+          )
+        );
+      } else if (action.type === "browse_configuration") {
+        actionConfigs.push(
+          await createAgentActionConfiguration(
+            auth,
+            {
+              type: "browse_configuration",
               name: action.name ?? null,
               description: action.description ?? null,
             },

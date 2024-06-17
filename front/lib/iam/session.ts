@@ -1,5 +1,4 @@
 import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
-import { isEnterpriseConnectionSub } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -9,6 +8,7 @@ import type { ParsedUrlQuery } from "querystring";
 
 import { renderUserType } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import {
@@ -117,7 +117,7 @@ export function statisfiesEnforceEntrepriseConnection(
   }
 
   if (owner.ssoEnforced) {
-    return isEnterpriseConnectionSub(session.user.sub);
+    return isEnterpriseConnection(session.user);
   }
 
   return true;

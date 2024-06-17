@@ -27,12 +27,6 @@ export async function upsertDocumentActivity(
   }
 
   let logger = mainLogger.child({ upsertQueueId });
-  logger.info(
-    {
-      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
-    },
-    "[UpsertQueue] Retrieving item"
-  );
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
@@ -48,6 +42,7 @@ export async function upsertDocumentActivity(
   const upsertQueueItem = itemValidation.right;
 
   logger = logger.child({
+    upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
     dataSourceName: upsertQueueItem.dataSourceName,
     documentId: upsertQueueItem.documentId,
@@ -150,6 +145,4 @@ export async function upsertDocumentActivity(
     sourceUrl: upsertQueueItem.sourceUrl,
     upsertContext: upsertQueueItem.upsertContext || undefined,
   });
-
-  logger.info({}, "[UpsertQueue] Successful runPostUpsertHooks");
 }

@@ -184,6 +184,7 @@ export default function EditAssistant({
         maxToolsUsePerRun: isMultiActionsAgent
           ? agentConfiguration.maxToolsUsePerRun
           : null,
+        templateId: agentConfiguration.templateId,
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}

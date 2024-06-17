@@ -1,5 +1,7 @@
 import type {
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
+  AgentErrorEvent,
   AgentMessageType,
   ContentFragmentMessageTypeModel,
   ConversationType,
@@ -23,6 +25,7 @@ import {
   isContentFragmentType,
   isRetrievalConfiguration,
   isUserMessageType,
+  metaPromptForProvider,
   Ok,
   removeNulls,
 } from "@dust-tt/types";
@@ -33,6 +36,7 @@ import {
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { TokenEmitter } from "@app/lib/api/assistant/agent";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -119,7 +123,7 @@ export async function renderConversationForModelMultiActions({
         }
       }
 
-      if (m.content) {
+      if (m.content?.trim()) {
         messages.push({
           role: "assistant" as const,
           name: m.configuration.name,
@@ -391,32 +395,20 @@ export async function constructPromptMultiActions(
   const d = moment(new Date()).tz(userMessage.context.timezone);
   const owner = auth.workspace();
 
+  // CONTEXT section
   let context = "CONTEXT:\n";
-  context += `{\n`;
-  context += `  "assistant": "@${configuration.name}",\n`;
-  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
+  context += `assistant: @${configuration.name}\n`;
+  context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
   if (owner) {
-    context += `  "workspace": "${owner.name}",\n`;
+    context += `workspace: ${owner.name}\n`;
   }
-  context += "}\n";
 
-  let instructions = "";
+  // INSTRUCTIONS section
+  let instructions = "INSTRUCTIONS:\n";
   if (configuration.instructions) {
-    instructions += `\n${configuration.instructions}`;
+    instructions += `${configuration.instructions}\n`;
   } else if (fallbackPrompt) {
-    instructions += `\n${fallbackPrompt}`;
-  }
-
-  // If one of the action is a retrieval action, we add the retrieval meta prompt.
-  const hasRetrievalAction = configuration.actions.some((action) =>
-    isRetrievalConfiguration(action)
-  );
-  if (hasRetrievalAction) {
-    instructions += `\n${retrievalMetaPromptMutiActions()}`;
-  }
-
-  if (instructions.length > 0) {
-    instructions = "\nINSTRUCTIONS:" + instructions;
+    instructions += `${fallbackPrompt}\n`;
   }
 
   // Replacement if instructions include "{USER_FULL_NAME}".
@@ -448,7 +440,30 @@ export async function constructPromptMultiActions(
     );
   }
 
-  return `${context}${instructions}`;
+  // ADDITIONAL INSTRUCTIONS section
+  let additionalInstructions = "ADDITIONAL INSTRUCTIONS:\n";
+  let hasAdditionalInstructions = false;
+
+  const hasRetrievalAction = configuration.actions.some((action) =>
+    isRetrievalConfiguration(action)
+  );
+  if (hasRetrievalAction) {
+    additionalInstructions += `${retrievalMetaPromptMutiActions()}\n`;
+    hasAdditionalInstructions = true;
+  }
+  const providerMetaPrompt = metaPromptForProvider(
+    configuration.model.providerId
+  );
+  if (providerMetaPrompt) {
+    additionalInstructions += `\n${providerMetaPrompt}\n`;
+    hasAdditionalInstructions = true;
+  }
+
+  let prompt = `${context}\n${instructions}`;
+  if (hasAdditionalInstructions) {
+    prompt += `\n${additionalInstructions}`;
+  }
+  return prompt;
 }
 
 // This function is in charge of running the generation of a message from the agent. It does not
@@ -460,10 +475,12 @@ export async function* runGeneration(
   userMessage: UserMessageType,
   agentMessage: AgentMessageType
 ): AsyncGenerator<
+  | AgentErrorEvent
   | GenerationErrorEvent
   | GenerationTokensEvent
   | GenerationSuccessEvent
-  | GenerationCancelEvent,
+  | GenerationCancelEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const owner = auth.workspace();
@@ -471,9 +488,23 @@ export async function* runGeneration(
     throw new Error("Unexpected unauthenticated call to `runGeneration`");
   }
 
-  const { model } = configuration;
+  const model = getSupportedModelConfig(configuration.model);
 
-  if (isLargeModel(model) && !auth.isUpgraded()) {
+  if (!model) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "model_not_found",
+        message: "The model selected was not found.",
+      },
+    };
+    return;
+  }
+
+  if (isLargeModel(configuration.model) && !auth.isUpgraded()) {
     yield {
       type: "generation_error",
       created: Date.now(),
@@ -487,13 +518,13 @@ export async function* runGeneration(
     return;
   }
 
-  const contextSize = getSupportedModelConfig(model).contextSize;
+  const contextSize = model.contextSize;
 
   const MIN_GENERATION_TOKENS = 2048;
 
   if (contextSize < MIN_GENERATION_TOKENS) {
     throw new Error(
-      `Model contextSize unexpectedly small for model: ${model.providerId} ${model.modelId}`
+      `Model contextSize unexpectedly small for model: ${configuration.model.providerId} ${configuration.model.modelId}`
     );
   }
 
@@ -502,7 +533,7 @@ export async function* runGeneration(
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
-    model,
+    model: configuration.model,
     prompt,
     allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
   });
@@ -515,7 +546,7 @@ export async function* runGeneration(
       messageId: agentMessage.sId,
       error: {
         code: "internal_server_error",
-        message: `Failed tokenization for ${model.providerId} ${model.modelId}: ${modelConversationRes.error.message}`,
+        message: `Failed tokenization for ${configuration.model.providerId} ${configuration.model.modelId}: ${modelConversationRes.error.message}`,
       },
     };
     return;
@@ -524,17 +555,17 @@ export async function* runGeneration(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-generator"].config
   );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = model.temperature;
+  config.MODEL.provider_id = configuration.model.providerId;
+  config.MODEL.model_id = configuration.model.modelId;
+  config.MODEL.temperature = configuration.model.temperature;
 
   logger.info(
     {
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
-      providerId: model.providerId,
-      modelId: model.modelId,
-      temperature: model.temperature,
+      providerId: configuration.model.providerId,
+      modelId: configuration.model.modelId,
+      temperature: configuration.model.temperature,
     },
     "[ASSISTANT_TRACE] Generation exection"
   );
@@ -575,6 +606,11 @@ export async function* runGeneration(
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
   const redis = await redisClient();
+  const tokenEmitter = new TokenEmitter(
+    configuration,
+    agentMessage,
+    model.delimitersConfiguration
+  );
 
   try {
     const _checkCancellation = async () => {
@@ -600,6 +636,7 @@ export async function* runGeneration(
 
     for await (const event of eventStream) {
       if (event.type === "error") {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "generation_error",
           created: Date.now(),
@@ -623,6 +660,7 @@ export async function* runGeneration(
       }
 
       if (shouldYieldCancel) {
+        yield* tokenEmitter.flushTokens();
         yield {
           type: "generation_cancel",
           created: Date.now(),
@@ -633,19 +671,13 @@ export async function* runGeneration(
       }
 
       if (event.type === "tokens") {
-        yield {
-          type: "generation_tokens",
-          created: Date.now(),
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          text: event.content.tokens.text,
-          classification: "tokens",
-        };
+        yield* tokenEmitter.emitTokens(event);
       }
 
       if (event.type === "block_execution") {
         const e = event.content.execution[0][0];
         if (e.error) {
+          yield* tokenEmitter.flushTokens();
           yield {
             type: "generation_error",
             created: Date.now(),
@@ -660,22 +692,20 @@ export async function* runGeneration(
         }
 
         if (event.content.block_name === "MODEL" && e.value) {
-          const m = e.value as {
-            message: {
-              content: string;
-            };
-          };
+          yield* tokenEmitter.flushTokens();
           yield {
             type: "generation_success",
             created: Date.now(),
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
-            text: m.message.content,
-            chainOfThought: "",
+            text: tokenEmitter.getContent() ?? "",
+            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           };
         }
       }
     }
+
+    yield* tokenEmitter.flushTokens();
   } finally {
     await redis.quit();
   }

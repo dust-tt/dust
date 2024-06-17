@@ -2,8 +2,10 @@ import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { uuid4 } from "@temporalio/workflow";
 import fs from "fs/promises";
 import type { OAuth2Client } from "googleapis-common";
+import mammoth from "mammoth";
 import os from "os";
 import type { CreationAttributes } from "sequelize";
+import turndown from "turndown";
 
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
@@ -29,6 +31,7 @@ import {
   GoogleDriveConfig,
   GoogleDriveFiles,
 } from "@connectors/lib/models/google_drive";
+import { PPTX2Text } from "@connectors/lib/pptx2text";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
@@ -256,6 +259,61 @@ export async function syncOneFile(
         return false;
       } finally {
         await fs.unlink(pdf_path);
+      }
+    } else if (
+      file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ) {
+      if (res.data instanceof ArrayBuffer) {
+        try {
+          const converted = await mammoth.convertToHtml({
+            buffer: Buffer.from(res.data),
+          });
+          const extracted = new turndown()
+            .remove(["style", "script", "iframe", "noscript", "form", "img"])
+            .turndown(converted.value);
+
+          documentContent = {
+            prefix: null,
+            content: extracted.trim(),
+            sections: [],
+          };
+        } catch (err) {
+          localLogger.warn(
+            {
+              error: err,
+            },
+            `Error while converting docx document to text`
+          );
+          return false;
+        }
+      }
+    } else if (
+      file.mimeType ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ) {
+      if (res.data instanceof ArrayBuffer) {
+        try {
+          const converted = await PPTX2Text(Buffer.from(res.data));
+
+          documentContent = {
+            prefix: null,
+            content: null,
+            sections: converted.pages.map((page, i) => ({
+              prefix: `\n$Page: ${i + 1}/${converted.pages.length}\n`,
+              content: page.content,
+              sections: [],
+            })),
+          };
+        } catch (err) {
+          localLogger.warn(
+            {
+              error: err,
+            },
+            `Error while converting pptx document to text`
+          );
+          return false;
+        }
       }
     }
   } else if (isGoogleDriveSpreadSheetFile(file)) {

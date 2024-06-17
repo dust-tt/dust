@@ -179,7 +179,6 @@ export async function getPagesAndDatabasesEditedSince(
       tries,
       maxTries: retry.retries,
     });
-    tryLogger.info("Fetching result page from Notion API.");
 
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
@@ -194,10 +193,6 @@ export async function getPagesAndDatabasesEditedSince(
           page_size: pageSize,
         });
       });
-      tryLogger.info(
-        { count: resultsPage.results.length },
-        "Received result page from Notion API."
-      );
     } catch (e) {
       tryLogger.error(
         { error: e },
@@ -514,7 +509,6 @@ export async function getParsedDatabase(
   let database: GetDatabaseResponse | null = null;
 
   try {
-    localLogger.info("Fetching database from Notion API.");
     database = await wrapNotionAPITokenErrors(async () =>
       notionClient.databases.retrieve({
         database_id: databaseId,
@@ -613,7 +607,6 @@ export async function retrievePage({
 
   let page: GetPageResponse | null = null;
   try {
-    localLogger.info("Fetching page from Notion API.");
     page = await wrapNotionAPITokenErrors(async () =>
       notionClient.pages.retrieve({ page_id: pageId })
     );
@@ -666,9 +659,6 @@ export async function retrieveBlockChildrenResultPage({
   });
 
   try {
-    localLogger.info(
-      "Fetching block or page children result page from Notion API."
-    );
     const resultPage = await wrapNotionAPITokenErrors(async () =>
       notionClient.blocks.children.list({
         block_id: blockOrPageId,

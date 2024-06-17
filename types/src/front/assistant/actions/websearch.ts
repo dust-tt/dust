@@ -6,8 +6,10 @@ import { BaseAction } from "../../lib/api/assistant/actions";
 export type WebsearchConfigurationType = {
   id: ModelId;
   sId: string;
+
   type: "websearch_configuration";
-  name: string | null;
+
+  name: string;
   description: string | null;
 };
 

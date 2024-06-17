@@ -97,6 +97,10 @@ const WebsearchActionConfigurationSchema = t.type({
   type: t.literal("websearch_configuration"),
 });
 
+const BrowseActionConfigurationSchema = t.type({
+  type: t.literal("browse_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -153,6 +157,7 @@ const ActionConfigurationSchema = t.intersection([
     TablesQueryActionConfigurationSchema,
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
+    BrowseActionConfigurationSchema,
   ]),
   t.partial(multiActionsCommonFields),
 ]);
@@ -195,6 +200,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
           IsSupportedModelSchema,
         ]),
         actions: t.array(ActionConfigurationSchema),
+        templateId: t.union([t.string, t.null, t.undefined]),
       }),
       t.partial({
         maxToolsUsePerRun: t.number,

@@ -522,6 +522,9 @@ async function botAnswerMessage(
         );
       }
       case "generation_tokens": {
+        if (event.classification !== "tokens") {
+          continue;
+        }
         fullAnswer += event.text;
         if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
           continue;

@@ -901,7 +901,7 @@ impl DataSource {
     ) -> Result<Document> {
         let qdrant_client = self.main_qdrant_client(qdrant_clients);
 
-        let now = utils::now();
+        let upsert_start = utils::now();
 
         // ChunkInfo is used to store the chunk text and associated hash to avoid recomputing the
         // hash multiple time.
@@ -934,14 +934,7 @@ impl DataSource {
             })
             .collect::<Vec<_>>();
 
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            split_counts = splits.len(),
-            duration = utils::now() - now,
-            collection = qdrant_client.collection_name(embedder_config),
-            "Splitted document"
-        );
+        let split_duration = utils::now() - upsert_start;
 
         let now = utils::now();
         let mut embeddings: HashMap<String, EmbedderVector> = HashMap::new();
@@ -1006,19 +999,13 @@ impl DataSource {
 
                 page_offset = scroll_results.next_page_offset;
                 if page_offset.is_none() {
-                    info!(
-                        data_source_internal_id = self.internal_id(),
-                        document_id = document_id,
-                        chunk_count = embeddings.len(),
-                        duration = utils::now() - now,
-                        collection = qdrant_client.collection_name(embedder_config),
-                        "Finished retrieving cache from Qdrant"
-                    );
-
                     break;
                 }
             }
         }
+
+        let cache_duration = utils::now() - now;
+        let cache_chunk_count = embeddings.len();
 
         let now = utils::now();
 
@@ -1052,14 +1039,8 @@ impl DataSource {
             }
         }
 
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            chunk_count = splits_to_embbed.len(),
-            duration = utils::now() - now,
-            collection = qdrant_client.collection_name(embedder_config),
-            "Finished embedding chunks"
-        );
+        let embeddding_duration = utils::now() - now;
+        let embedding_chunk_count = splits_to_embbed.len();
 
         // Final ordered results with (offset, string, vector). `splits_with_hash` is the original
         // list of splits, including all chunks. We go retrieve in embeddings their vector which
@@ -1144,12 +1125,7 @@ impl DataSource {
             .delete_points(embedder_config, &self.internal_id, filter)
             .await?;
 
-        info!(
-            data_source_internal_id = self.internal_id(),
-            document_id = document_id,
-            duration = utils::now() - now,
-            "Deleted previous document in Qdrant"
-        );
+        let deletion_duration = utils::now() - now;
 
         // Insert new chunks (vector search db).
         let points = document
@@ -1184,7 +1160,7 @@ impl DataSource {
 
         const MAX_QDRANT_VECTOR_PER_UPSERT: usize = 128;
 
-        let start = utils::now();
+        let now = utils::now();
         let points_len = points.len();
 
         if points.len() > 0 {
@@ -1203,9 +1179,6 @@ impl DataSource {
             }
 
             for chunk in chunked_points {
-                let now = utils::now();
-                let chunk_len = chunk.len();
-
                 match self.shadow_write_qdrant_client(&qdrant_clients) {
                     Some(qdrant_client) => {
                         match qdrant_client
@@ -1237,24 +1210,26 @@ impl DataSource {
                 qdrant_client
                     .upsert_points(embedder_config, &self.internal_id, chunk)
                     .await?;
-
-                info!(
-                    data_source_internal_id = self.internal_id(),
-                    points_count = chunk_len,
-                    duration = utils::now() - now,
-                    collection = qdrant_client.collection_name(embedder_config),
-                    "Success upserting chunk in Qdrant"
-                );
             }
         }
+
+        let qdrant_upsert_duration = utils::now() - now;
 
         info!(
             data_source_internal_id = self.internal_id(),
             document_id = document_id,
-            points_count = points_len,
-            duration = utils::now() - start,
+            split_chunk_count = splits.len(),
+            split_duration = split_duration,
+            cache_chunk_count = cache_chunk_count,
+            cache_duration = cache_duration,
+            embedding_chunk_count = embedding_chunk_count,
+            embedding_duration = embeddding_duration,
+            deletion_duration = deletion_duration,
+            qdrant_upsert_chunk_count = points_len,
+            qdrant_upsert_duration = qdrant_upsert_duration,
+            total_duration = utils::now() - upsert_start,
             collection = qdrant_client.collection_name(embedder_config),
-            "Inserted vectors in Qdrant"
+            "Successful upsert for embedder"
         );
 
         Ok(document)
@@ -1273,6 +1248,8 @@ impl DataSource {
         full_text: bool,
         target_document_tokens: Option<usize>,
     ) -> Result<Vec<Document>> {
+        let time_search_start = utils::now();
+
         let qdrant_client = self.main_qdrant_client(&qdrant_clients);
 
         // We ensure that we have not left a `parents.is_in_map`` in the filter.
@@ -1287,7 +1264,9 @@ impl DataSource {
             return Err(anyhow!("top_k must be <= {}", DataSource::MAX_TOP_K_SEARCH));
         }
 
-        let time_embedding_start = utils::now();
+        let time_qdrant_start = utils::now();
+        let mut embedding_duration: u64 = 0;
+        let qdrant_search_duration: u64;
 
         let query = match query {
             Some(q) => match q.len() {
@@ -1308,11 +1287,7 @@ impl DataSource {
                 let chunks = self
                     .retrieve_chunks_without_query(store, qdrant_client.clone(), top_k, &filter)
                     .await?;
-                info!(
-                    data_source_internal_id = self.internal_id(),
-                    duration = utils::now() - time_embedding_start,
-                    "DSSTAT Finished retrieving chunks without query"
-                );
+                qdrant_search_duration = utils::now() - time_qdrant_start;
                 chunks
             }
             Some(q) => {
@@ -1325,16 +1300,12 @@ impl DataSource {
                 let v = r.execute(credentials).await?;
                 assert!(v.len() == 1);
 
-                info!(
-                    data_source_internal_id = self.internal_id(),
-                    duration = utils::now() - time_embedding_start,
-                    "DSSTAT Finished embedding query"
-                );
+                embedding_duration = utils::now() - time_qdrant_start;
 
                 // Construct the filters for the search query if specified.
                 let f = build_qdrant_filter(&filter);
 
-                let time_search_start = utils::now();
+                let time_qdrant_search_start = utils::now();
                 let results = qdrant_client
                     .search_points(
                         self.embedder_config(),
@@ -1346,15 +1317,6 @@ impl DataSource {
                     )
                     .await?;
 
-                info!(
-                    data_source_internal_id = self.internal_id(),
-                    collection_name = qdrant_client.collection_name(self.embedder_config()),
-                    duration = utils::now() - time_search_start,
-                    results_count = results.result.len(),
-                    "DSSTAT Finished searching Qdrant documents"
-                );
-
-                let time_chunk_start = utils::now();
                 let chunks = parse_points_into_chunks(
                     &self.data_source_id,
                     &self.internal_id,
@@ -1365,13 +1327,7 @@ impl DataSource {
                         .collect()),
                 )?;
 
-                info!(
-                    data_source_internal_id = self.internal_id(),
-                    collection_name = qdrant_client.collection_name(self.embedder_config()),
-                    duration = utils::now() - time_chunk_start,
-                    chunk_length = chunks.len(),
-                    "DSSTAT Finished chunking documents"
-                );
+                qdrant_search_duration = utils::now() - time_qdrant_search_start;
 
                 chunks
             }
@@ -1434,12 +1390,7 @@ impl DataSource {
             .try_collect::<Vec<_>>()
             .await?;
 
-        info!(
-            data_source_internal_id = self.internal_id(),
-            duration = utils::now() - time_store_start,
-            document_len = documents.len(),
-            "DSSTAT Finished fetching documents from the store"
-        );
+        let store_duration = utils::now() - time_store_start;
 
         // Qdrant client implements the sync and send traits, so we just need
         // to wrap it in an Arc so that it can be cloned.
@@ -1631,12 +1582,7 @@ impl DataSource {
                 .collect::<Vec<_>>(),
         };
 
-        info!(
-            data_source_internal_id = self.internal_id(),
-            duration = utils::now() - time_qdrant_scroll_start,
-            results_count = documents.len(),
-            "DSSTAT Finished scrolling documents"
-        );
+        let qdrant_scroll_duration = utils::now() - time_qdrant_scroll_start;
 
         if !query.is_none() {
             // Sort the documents by the score of the first chunk (guaranteed ordered).
@@ -1662,8 +1608,13 @@ impl DataSource {
             data_source_internal_id = self.internal_id(),
             document_count = documents.len(),
             chunk_count = documents.iter().map(|d| d.chunks.len()).sum::<usize>(),
-            duration = utils::now() - time_embedding_start,
-            "Searched data source"
+            with_query = query.is_some(),
+            embedding_duration = embedding_duration,
+            qdrant_search_duration = qdrant_search_duration,
+            store_duration = store_duration,
+            qdrant_scroll_duration = qdrant_scroll_duration,
+            toral_duration = utils::now() - time_search_start,
+            "Successful data source search"
         );
 
         Ok(documents)

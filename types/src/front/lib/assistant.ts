@@ -1,4 +1,6 @@
+import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
+import { assertNever } from "../../shared/utils/assert_never";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
 
 /**
@@ -27,6 +29,71 @@ export const ModelProviderIdCodec =
 export const EmbeddingProviderCodec = ioTsEnum<
   (typeof EMBEDDING_PROVIDER_IDS)[number]
 >(EMBEDDING_PROVIDER_IDS);
+
+export function metaPromptForProvider(
+  providerId: ModelProviderIdType
+): string | null {
+  switch (providerId) {
+    case "openai":
+      return "When using tools, generate valid and properly escaped JSON arguments.";
+    case "anthropic":
+      // see https://docs.anthropic.com/en/docs/tool-use#tool-use-best-practices-and-limitations
+      return (
+        "Do not reflect on the quality of the returned search results in your response. " +
+        "Be extremely concise in your thinking phases."
+      );
+    case "mistral":
+      return null;
+    case "google_ai_studio":
+      return null;
+    default:
+      assertNever(providerId);
+  }
+}
+
+export function isProviderWhitelisted(
+  owner: WorkspaceType,
+  providerId: ModelProviderIdType
+) {
+  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  return whiteListedProviders.includes(providerId);
+}
+
+export function getSmallWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_3_5_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  return null;
+}
+
+export function getLargeWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4_TURBO_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  return null;
+}
 
 /**
  * MODEL IDS
@@ -94,6 +161,7 @@ export type ModelConfigurationType = {
       openingPattern: string;
       closingPattern: string;
       isChainOfThought: boolean;
+      swallow: boolean;
     }>;
     // If this pattern is found at the end of a model event, we'll wait for the
     // the next event before emitting tokens.
@@ -156,22 +224,37 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z]*$/,
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
     delimiters: [
       {
         openingPattern: "<thinking>",
         closingPattern: "</thinking>",
         isChainOfThought: true,
+        swallow: false,
       },
       {
         openingPattern: "<search_quality_reflection>",
         closingPattern: "</search_quality_reflection>",
         isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<reflecting>",
+        closingPattern: "</reflecting>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
+        isChainOfThought: true,
+        swallow: true,
       },
       {
         openingPattern: "<result>",
         closingPattern: "</result>",
         isChainOfThought: false,
+        swallow: false,
       },
     ],
   },
@@ -189,6 +272,41 @@ export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's balanced model.",
   supportsMultiActions: true,
   isLegacy: false,
+  delimitersConfiguration: {
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
+    delimiters: [
+      {
+        openingPattern: "<thinking>",
+        closingPattern: "</thinking>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_reflection>",
+        closingPattern: "</search_quality_reflection>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<reflecting>",
+        closingPattern: "</reflecting>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
+        isChainOfThought: true,
+        swallow: true,
+      },
+      {
+        openingPattern: "<result>",
+        closingPattern: "</result>",
+        isChainOfThought: false,
+        swallow: false,
+      },
+    ],
+  },
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",

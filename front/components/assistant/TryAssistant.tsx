@@ -243,6 +243,7 @@ export function usePreviewAssistant({
         generationSettings: builderState.generationSettings,
         actions: builderState.actions,
         maxToolsUsePerRun: builderState.maxToolsUsePerRun,
+        templateId: builderState.templateId,
       },
       agentConfigurationId: null,
       slackData: {
@@ -261,16 +262,17 @@ export function usePreviewAssistant({
       setHasChanged(false);
     }, animationLength / 2);
   }, [
-    owner,
-    draftAssistant,
     isPreviewOpened,
+    draftAssistant,
     hasChanged,
+    owner,
     builderState.handle,
     builderState.instructions,
     builderState.avatarUrl,
     builderState.generationSettings,
-    builderState.maxToolsUsePerRun,
     builderState.actions,
+    builderState.maxToolsUsePerRun,
+    builderState.templateId,
     multiActionsMode,
   ]);
 

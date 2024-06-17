@@ -4,6 +4,7 @@ import type {
   AgentActionSpecification,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -23,11 +24,13 @@ import {
   assertNever,
   cloneBaseConfig,
   DustProdActionRegistry,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
+  removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { escapeRegExp } from "lodash";
@@ -61,7 +64,8 @@ export async function* runAgent(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const fullConfiguration = await getAgentConfiguration(
@@ -116,6 +120,7 @@ export async function* runMultiActionsAgentLoop(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent
 > {
   const now = Date.now();
 
@@ -128,10 +133,12 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
+    const isLastGenerationIteration = i === configuration.maxToolsUsePerRun;
+
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
-      i === configuration.maxToolsUsePerRun
+      isLastGenerationIteration
         ? []
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
@@ -142,6 +149,7 @@ export async function* runMultiActionsAgentLoop(
       userMessage,
       agentMessage,
       availableActions: actions,
+      isLastGenerationIteration,
     });
 
     for await (const event of loopIterationStream) {
@@ -218,6 +226,17 @@ export async function* runMultiActionsAgentLoop(
           } satisfies AgentGenerationCancelledEvent;
           return;
         case "generation_success":
+          if (event.chainOfThought.length) {
+            yield {
+              type: "agent_chain_of_thought",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              message: agentMessage,
+              chainOfThought: event.chainOfThought,
+            };
+            agentMessage.chainOfThoughts.push(event.chainOfThought);
+          }
           yield {
             type: "agent_generation_success",
             created: event.created,
@@ -237,6 +256,11 @@ export async function* runMultiActionsAgentLoop(
           };
           return;
 
+        case "agent_chain_of_thought":
+          agentMessage.chainOfThoughts.push(event.chainOfThought);
+          yield event;
+          break;
+
         default:
           assertNever(event);
       }
@@ -254,12 +278,14 @@ export async function* runMultiActionsAgent(
     userMessage,
     agentMessage,
     availableActions,
+    isLastGenerationIteration,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
+    isLastGenerationIteration: boolean;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -267,6 +293,7 @@ export async function* runMultiActionsAgent(
   | GenerationCancelEvent
   | GenerationTokensEvent
   | AgentActionsEvent
+  | AgentChainOfThoughtEvent
 > {
   const prompt = await constructPromptMultiActions(
     auth,
@@ -333,123 +360,61 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    if (a.name && a.description) {
-      // Normal case, it's a multi-actions agent.
-
-      const runner = getRunnerforActionConfiguration(a);
-      const specRes = await runner.buildSpecification(auth, {
+    const specRes = await getRunnerforActionConfiguration(a).buildSpecification(
+      auth,
+      {
         name: a.name,
         description: a.description,
-      });
-
-      if (specRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: specRes.error,
-          },
-          "Failed to build the specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_spec_error",
-            message: `Failed to build the specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
       }
-      specifications.push(specRes.value);
-    } else {
-      // Special case for legacy single-action agents that have never been edited in
-      // multi-actions mode.
-      // We tolerate missing name/description to preserve support for legacy single-action agents.
-      // In those cases, we use the name/description from the legacy spec.
+    );
 
-      if (!a.name && availableActions.length > 1) {
-        // We can't allow not having a name if there are multiple actions.
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "missing_name",
-            message: `Action ${a.sId} is missing a name`,
-          },
-        } satisfies AgentErrorEvent;
+    if (specRes.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: specRes.error,
+        },
+        "Failed to build the specification for action."
+      );
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "build_spec_error",
+          message: `Failed to build the specification for action ${a.sId},`,
+        },
+      } satisfies AgentErrorEvent;
 
-        return;
-      }
-
-      const runner = getRunnerforActionConfiguration(a);
-      const legacySpecRes =
-        await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
-      if (legacySpecRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: legacySpecRes.error,
-          },
-          "Failed to build the legacy specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_legacy_spec_error",
-            message: `Failed to build the legacy specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      const specRes = await runner.buildSpecification(auth, {
-        name: a.name ?? "",
-        description: a.description ?? "",
-      });
-
-      if (specRes.isErr()) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            error: specRes.error,
-          },
-          "Failed to build the specification for action."
-        );
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_spec_error",
-            message: `Failed to build the specification for action ${a.sId},`,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      const spec = specRes.value;
-      if (!a.name) {
-        spec.name = legacySpecRes.value.name;
-      }
-      if (!a.description) {
-        spec.description = legacySpecRes.value.description;
-      }
-      specifications.push(spec);
+      return;
     }
+    specifications.push(specRes.value);
+  }
+
+  // Check that specifications[].name are unique. This can happen if the user overrides two actions
+  // names with the same name (advanced settings). We return an actionable error if that's the case
+  // as we want to keep that as an invariant when interacting with models.
+  const seen = new Set<string>();
+  for (const spec of specifications) {
+    if (seen.has(spec.name)) {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "duplicate_specification_name",
+          message:
+            `Duplicate action name in assistant configuration: ${spec.name}. ` +
+            "Your assistants actions must have unique names.",
+        },
+      } satisfies AgentErrorEvent;
+
+      return;
+    }
+    seen.add(spec.name);
   }
 
   const config = cloneBaseConfig(
@@ -561,11 +526,7 @@ export async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "multi_actions_error",
-            message: `Error running multi-actions agent action: ${JSON.stringify(
-              event,
-              null,
-              2
-            )}`,
+            message: `Error running assistant: ${event.content.message}`,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -606,28 +567,16 @@ export async function* runMultiActionsAgent(
             messageId: agentMessage.sId,
             error: {
               code: "multi_actions_error",
-              message: `Error running multi-actions agent action: ${e.error}`,
+              message: `Error running assistant: ${e.error}`,
             },
           } satisfies AgentErrorEvent;
           return;
         }
 
-        if (event.content.block_name === "MODEL" && e.value && isGeneration) {
+        if (event.content.block_name === "OUTPUT" && e.value) {
+          // Flush early as we know the generation is terminated here.
           yield* tokenEmitter.flushTokens();
 
-          yield {
-            type: "generation_success",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: tokenEmitter.getContent(),
-            chainOfThought: tokenEmitter.getChainOfThought(),
-          } satisfies GenerationSuccessEvent;
-
-          return;
-        }
-
-        if (event.content.block_name === "OUTPUT" && e.value) {
           const v = e.value as any;
           if ("actions" in v) {
             output.actions = v.actions;
@@ -635,9 +584,6 @@ export async function* runMultiActionsAgent(
           if ("generation" in v) {
             output.generation = v.generation;
           }
-
-          yield* tokenEmitter.flushTokens();
-
           break;
         }
       }
@@ -646,15 +592,45 @@ export async function* runMultiActionsAgent(
     await redis.quit();
   }
 
+  yield* tokenEmitter.flushTokens();
+
   if (!output.actions.length) {
+    if (typeof output.generation === "string") {
+      yield {
+        type: "generation_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: tokenEmitter.getContent() ?? "",
+        chainOfThought: tokenEmitter.getChainOfThought() ?? "",
+      } satisfies GenerationSuccessEvent;
+    } else {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "no_action_or_generation_found",
+          message: "No action or generation found",
+        },
+      } satisfies AgentErrorEvent;
+    }
+    return;
+  }
+
+  // We have actions.
+
+  if (isLastGenerationIteration) {
     yield {
       type: "agent_error",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       error: {
-        code: "no_action_or_generation_found",
-        message: "No action or generation found",
+        code: "multi_actions_error",
+        message:
+          "Assistant failed to generate response after running `maxToolsUsePerRun`.",
       },
     } satisfies AgentErrorEvent;
     return;
@@ -662,38 +638,6 @@ export async function* runMultiActionsAgent(
 
   const actions: AgentActionsEvent["actions"] = [];
   const agentActions = agentConfiguration.actions;
-
-  if (agentActions.length === 1 && !agentActions[0].name) {
-    // Special case for legacy single-action agents that have never been edited in
-    // multi-actions mode.
-    // We must backfill the name from the legacy spec in order to match the action.
-    const runner = getRunnerforActionConfiguration(agentActions[0]);
-    const legacySpecRes =
-      await runner.deprecatedBuildSpecificationForSingleActionAgent(auth);
-    if (legacySpecRes.isErr()) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: legacySpecRes.error,
-        },
-        "Failed to build the legacy specification for action."
-      );
-      yield {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "build_legacy_spec_error",
-          message: `Failed to build the legacy specification for action ${agentActions[0].sId},`,
-        },
-      } satisfies AgentErrorEvent;
-
-      return;
-    }
-    agentActions[0].name = legacySpecRes.value.name;
-  }
 
   for (const a of output.actions) {
     const action = agentActions.find((ac) => ac.name === a.name);
@@ -720,6 +664,28 @@ export async function* runMultiActionsAgent(
       specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
+  }
+
+  yield* tokenEmitter.flushTokens();
+
+  const chainOfThought = tokenEmitter.getChainOfThought();
+  const content = tokenEmitter.getContent();
+
+  if (chainOfThought?.length || content?.length) {
+    yield {
+      type: "agent_chain_of_thought",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+
+      // All content here was generated before a tool use and is not proper generation content
+      // and can therefore be safely assumed to be reflection from the model before using a tool.
+      // In practice, we should never have both chainOfThought and content.
+      // It is not completely impossible that eg Anthropic decides to emit part of the
+      // CoT between `<thinking>` XML tags and the rest outside of any tag.
+      chainOfThought: removeNulls([chainOfThought, content]).join("\n"),
+    };
   }
 
   yield {
@@ -763,9 +729,9 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -838,9 +804,10 @@ async function* runAction(
       };
       return;
     }
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
 
-    const eventStream = runner.run(
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(
       auth,
       {
         agentConfiguration: configuration,
@@ -894,9 +861,9 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -941,9 +908,9 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       userMessage,
@@ -989,10 +956,9 @@ async function* runAction(
       }
     }
   } else if (isWebsearchConfiguration(actionConfiguration)) {
-    // TODO(pr) refactor the isXXX cases to avoid the duplication for process and websearch
-    const runner = getRunnerforActionConfiguration(actionConfiguration);
-
-    const eventStream = runner.run(auth, {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
       agentConfiguration: configuration,
       conversation,
       agentMessage,
@@ -1036,16 +1002,64 @@ async function* runAction(
           assertNever(event);
       }
     }
+  } else if (isBrowseConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerforActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId: null,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "browse_params":
+          yield event;
+          break;
+        case "browse_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "browse_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
   } else {
     assertNever(actionConfiguration);
   }
 }
 
-class TokenEmitter {
+export class TokenEmitter {
   private buffer: string = "";
   private content: string = "";
   private chainOfThought: string = "";
   private chainOfToughtDelimitersOpened: number = 0;
+  private swallowDelimitersOpened: number = 0;
   private pattern?: RegExp;
   private incompleteDelimiterPattern?: RegExp;
   private specByDelimiter: Record<
@@ -1053,6 +1067,7 @@ class TokenEmitter {
     {
       type: "opening_delimiter" | "closing_delimiter";
       isChainOfThought: boolean;
+      swallow: boolean;
     }
   >;
 
@@ -1082,14 +1097,19 @@ class TokenEmitter {
     // Store mapping of delimiters to their spec.
     this.specByDelimiter =
       delimitersConfiguration?.delimiters.reduce(
-        (acc, { openingPattern, closingPattern, isChainOfThought }) => {
+        (
+          acc,
+          { openingPattern, closingPattern, isChainOfThought, swallow }
+        ) => {
           acc[openingPattern] = {
             type: "opening_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           acc[closingPattern] = {
             type: "closing_delimiter" as const,
             isChainOfThought,
+            swallow,
           };
           return acc;
         },
@@ -1114,25 +1134,26 @@ class TokenEmitter {
     if (!this.buffer.length) {
       return;
     }
+    if (!this.swallowDelimitersOpened) {
+      const text =
+        upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
 
-    const text =
-      upTo === undefined ? this.buffer : this.buffer.substring(0, upTo);
+      yield {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: this.agentConfiguration.sId,
+        messageId: this.agentMessage.sId,
+        text,
+        classification: this.chainOfToughtDelimitersOpened
+          ? "chain_of_thought"
+          : "tokens",
+      };
 
-    yield {
-      type: "generation_tokens",
-      created: Date.now(),
-      configurationId: this.agentConfiguration.sId,
-      messageId: this.agentMessage.sId,
-      text,
-      classification: this.chainOfToughtDelimitersOpened
-        ? "chain_of_thought"
-        : "tokens",
-    };
-
-    if (this.chainOfToughtDelimitersOpened) {
-      this.chainOfThought += text;
-    } else {
-      this.content += text;
+      if (this.chainOfToughtDelimitersOpened) {
+        this.chainOfThought += text;
+      } else {
+        this.content += text;
+      }
     }
 
     this.buffer = upTo === undefined ? "" : this.buffer.substring(upTo);
@@ -1163,21 +1184,30 @@ class TokenEmitter {
         yield* this.flushTokens({ upTo: index });
       }
 
-      const { type: classification, isChainOfThought } =
-        this.specByDelimiter[del];
+      const {
+        type: classification,
+        isChainOfThought,
+        swallow,
+      } = this.specByDelimiter[del];
 
       if (!classification) {
         throw new Error(`Unknown delimiter: ${del}`);
       }
 
+      if (swallow) {
+        if (classification === "opening_delimiter") {
+          this.swallowDelimitersOpened += 1;
+        } else {
+          this.swallowDelimitersOpened -= 1;
+        }
+      }
+
       if (isChainOfThought) {
-        this.chainOfToughtDelimitersOpened = Math.max(
-          0,
-          this.chainOfToughtDelimitersOpened + classification ===
-            "opening_delimiter"
-            ? 1
-            : -1
-        );
+        if (classification === "opening_delimiter") {
+          this.chainOfToughtDelimitersOpened += 1;
+        } else {
+          this.chainOfToughtDelimitersOpened -= 1;
+        }
       }
 
       // Emit the delimiter.
@@ -1198,11 +1228,11 @@ class TokenEmitter {
     yield* this.flushTokens();
   }
 
-  getContent(): string {
-    return this.content;
+  getContent(): string | null {
+    return this.content.length ? this.content : null;
   }
 
-  getChainOfThought(): string {
-    return this.chainOfThought;
+  getChainOfThought(): string | null {
+    return this.chainOfThought.length ? this.chainOfThought : null;
   }
 }

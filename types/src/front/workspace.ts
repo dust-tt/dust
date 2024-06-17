@@ -10,13 +10,3 @@ export interface WorkspaceEnterpriseConnection {
 export type SupportedEnterpriseConnectionStrategies = "okta";
 export const supportedEnterpriseConnectionStrategies: SupportedEnterpriseConnectionStrategies[] =
   ["okta"];
-
-export function isEnterpriseConnectionSub(
-  sub: string
-): sub is SupportedEnterpriseConnectionStrategies {
-  const [provider] = sub.split("|");
-
-  return supportedEnterpriseConnectionStrategies.includes(
-    provider as SupportedEnterpriseConnectionStrategies
-  );
-}

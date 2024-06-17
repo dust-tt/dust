@@ -24,6 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 interface DustAppRunActionBlob {
@@ -108,7 +109,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
   // Generates the action specification for generation of rawInputs passed to `run`.
   async buildSpecification(
     auth: Authenticator,
-    { name, description }: { name?: string; description?: string }
+    { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -163,17 +164,17 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
+    if (name !== app.name) {
+      return new Err(
+        new Error("Unreachable: Dust app name and action name differ.")
+      );
+    }
+
     return dustAppRunActionSpecification({
       schema,
-      name: name ?? app.name,
-      description: description ?? app.description ?? "",
+      name,
+      description: description ?? app.description ?? `Run app ${app.name}`,
     });
-  }
-
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    return this.buildSpecification(auth, {});
   }
 
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
@@ -235,7 +236,8 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     for (const k of spec.inputs) {
       if (rawInputs[k.name] && typeof rawInputs[k.name] === k.type) {
-        params[k.name] = rawInputs[k.name];
+        // As defined in dustAppRunActionSpecification, type is either "string", "number" or "boolean"
+        params[k.name] = rawInputs[k.name] as string | number | boolean;
       } else {
         yield {
           type: "dust_app_run_error",
@@ -390,9 +392,11 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       }
     }
 
+    const output = sanitizeJSONOutput(lastBlockOutput);
+
     // Update DustAppRunAction with the output of the last block.
     await action.update({
-      output: lastBlockOutput,
+      output,
     });
 
     logger.info(
@@ -418,7 +422,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         functionCallId,
         functionCallName: actionConfiguration.name,
         runningBlock: null,
-        output: lastBlockOutput,
+        output,
         agentMessageId: agentMessage.agentMessageId,
         step: action.step,
       }),

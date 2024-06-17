@@ -1,6 +1,7 @@
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -28,13 +29,16 @@ import type {
   UserMessageWithRankType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import {
+  assertNever,
+  getSmallWhitelistedModel,
+  isProviderWhitelisted,
+} from "@dust-tt/types";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Err,
   getTimeframeSecondsFromLiteral,
-  GPT_3_5_TURBO_MODEL_CONFIG,
   isAgentMention,
   isAgentMessageType,
   isUserMessageType,
@@ -426,26 +430,49 @@ export async function generateConversationTitle(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
-  const model = {
-    providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-    modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
-  };
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const model = getSmallWhitelistedModel(owner);
+  if (!model) {
+    return new Err(
+      new Error(`Failed to find a whitelisted model to generate title`)
+    );
+  }
 
   const MIN_GENERATION_TOKENS = 1024;
-  const contextSize = GPT_3_5_TURBO_MODEL_CONFIG.contextSize;
 
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModelMultiActions({
     conversation,
     model,
     prompt: "", // There is no prompt for title generation.
-    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
     excludeActions: true,
   });
 
   if (modelConversationRes.isErr()) {
     return modelConversationRes;
   }
+
+  const c = modelConversationRes.value.modelConversation;
+  if (c.messages.length === 0) {
+    // It is possible that no message were selected if the context size of the small model was
+    // overflown by the initial user message. In that case we just skip title generation for now (it
+    // will get attempted again with follow-up messages being added to the conversation).
+    return new Err(
+      new Error(
+        `Error generating conversation title: rendered conversation is empty`
+      )
+    );
+  }
+
+  // Note: the last message is generally not a user message (though it can happen if no agent were
+  // mentioned) which, without stitching, will cause the title generation to fail since models
+  // expect a user message to be the last message. The stitching is done in the
+  // `assistant-v2-title-generator` app.
 
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-title-generator"].config
@@ -459,7 +486,7 @@ export async function generateConversationTitle(
     config,
     [
       {
-        conversation: modelConversationRes.value.modelConversation,
+        conversation: c,
       },
     ],
     {
@@ -575,7 +602,8 @@ export async function* postUserMessage(
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | ConversationTitleEvent,
+  | ConversationTitleEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const user = auth.user();
@@ -649,16 +677,18 @@ export async function* postUserMessage(
   ]);
   const agentConfigurations = results[0];
 
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   for (const agentConfig of agentConfigurations) {
-    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+          message:
+            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `by your workspace admin. Please edit the assistant to use another model ` +
+            `(advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
@@ -781,10 +811,11 @@ export async function* postUserMessage(
                   status: "created",
                   actions: [],
                   content: null,
+                  chainOfThoughts: [],
                   error: null,
                   configuration,
                   rank: messageRow.rank,
-                },
+                } satisfies AgentMessageWithRankType,
               };
             })();
           })
@@ -984,7 +1015,8 @@ export async function* editUserMessage(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   const user = auth.user();
@@ -1082,16 +1114,18 @@ export async function* editUserMessage(
 
   const agentConfigurations = results[0];
 
-  const whiteListedProviders = owner.whiteListedProviders ?? MODEL_PROVIDER_IDS;
   for (const agentConfig of agentConfigurations) {
-    if (!whiteListedProviders.includes(agentConfig.model.providerId)) {
+    if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
       yield {
         type: "agent_disabled_error",
         created: Date.now(),
         configurationId: agentConfig.sId,
         error: {
           code: "provider_disabled",
-          message: `Assistant ${agentConfig.name} is based on a model that was disabled by your workspace admin. Please edit the assistant to use another model (advanced settings in the Instructions panel).`,
+          message:
+            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `by your workspace admin. Please edit the assistant to use another model ` +
+            `(advanced settings in the Instructions panel).`,
         },
       };
       return; // Stop processing if any agent uses a disabled provider
@@ -1255,6 +1289,7 @@ export async function* editUserMessage(
                 status: "created",
                 actions: [],
                 content: null,
+                chainOfThoughts: [],
                 error: null,
                 configuration,
                 rank: messageRow.rank,
@@ -1398,7 +1433,8 @@ export async function* retryAgentMessage(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   class AgentMessageError extends Error {}
@@ -1475,6 +1511,7 @@ export async function* retryAgentMessage(
         status: "created",
         actions: [],
         content: null,
+        chainOfThoughts: [],
         error: null,
         configuration: message.configuration,
         rank: m.rank,
@@ -1668,7 +1705,8 @@ async function* streamRunAgentEvents(
     | GenerationTokensEvent
     | AgentGenerationSuccessEvent
     | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent,
+    | AgentMessageSuccessEvent
+    | AgentChainOfThoughtEvent,
     void
   >,
   agentMessage: AgentMessageType,
@@ -1680,7 +1718,8 @@ async function* streamRunAgentEvents(
   | GenerationTokensEvent
   | AgentGenerationSuccessEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
+  | AgentMessageSuccessEvent
+  | AgentChainOfThoughtEvent,
   void
 > {
   let content = "";
@@ -1745,6 +1784,7 @@ async function* streamRunAgentEvents(
       case "tables_query_output":
       case "process_params":
       case "websearch_params":
+      case "browse_params":
         yield event;
         break;
       case "generation_tokens":
@@ -1761,14 +1801,19 @@ async function* streamRunAgentEvents(
         } else {
           assertNever(event.classification);
         }
+        break;
 
+      case "agent_chain_of_thought":
+        await agentMessageRow.update({
+          chainOfThoughts: [
+            ...agentMessageRow.chainOfThoughts,
+            event.chainOfThought,
+          ],
+        });
         break;
 
       default:
-        ((event: never) => {
-          logger.error({ event }, "Unknown `streamRunAgentEvents` event type");
-        })(event);
-        return;
+        assertNever(event);
     }
   }
 }

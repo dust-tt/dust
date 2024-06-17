@@ -438,19 +438,19 @@ impl Block for Chat {
                                             parameters: Some(p.clone()),
                                         }),
                                         _ => Err(anyhow!(
-                                "Invalid functions code output, expecting an array of objects with
+                                "Invalid functions code output, expecting an array of objects with \
                                  fields `name`, `description`, and `parameters`."
                             )),
                                     }
                                 }
                                 _ => Err(anyhow!(
-                                "Invalid functions code output, expecting an array of objects with
+                                "Invalid functions code output, expecting an array of objects with \
                                  fields `name`, `description`, and `parameters`."
                             )),
                             })
                             .collect::<Result<Vec<ChatFunction>>>()?,
                         _ => Err(anyhow!(
-                            "Invalid functions code output, expecting an array of objects with
+                            "Invalid functions code output, expecting an array of objects with \
                              fields `name`, `description`, and `parameters`."
                         ))?,
                     },
@@ -467,7 +467,7 @@ impl Block for Chat {
                 s => {
                     functions.iter().find(|f| f.name == s).ok_or(anyhow!(
                         "Invalid `function_call` in configuration for chat block `{}`: \
-                         function name `{}` not found in functions. Possible values are
+                         function name `{}` not found in functions. Possible values are \
                          'auto', 'none' or the name of one of the functions.",
                         name,
                         s

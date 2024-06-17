@@ -1,8 +1,4 @@
 import { DustAppType } from "../../../front/lib/dust_api";
-import {
-  GPT_3_5_TURBO_MODEL_CONFIG,
-  GPT_4_TURBO_MODEL_CONFIG,
-} from "../assistant";
 
 const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 
@@ -16,6 +12,22 @@ const createActionRegistry = <K extends string, R extends Record<K, Action>>(
 ) => registry;
 
 export const DustProdActionRegistry = createActionRegistry({
+  "assistant-v2-multi-actions-agent": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "0e9889c787",
+      appHash:
+        "4e896f08ef6c2c69c97610c861cd444e3d34c839eab44f9b4fd7dd1d166c40a2",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "auto",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
   "assistant-v2-inputs-generator": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -25,8 +37,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "auto",
         use_cache: false,
       },
@@ -37,12 +48,11 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "84dfc1d4f7",
       appHash:
-        "c0f71a1ee28895b3c6adb7d78b40a21bb934faa24ec4035bb86921d35788c5e9",
+        "6ea231add2ae690ee959c5d8d5d06420ea2feae7dd32ac13a4e655910087e313",
     },
     config: {
       MODEL: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "update_title",
         use_cache: false,
       },
@@ -79,8 +89,7 @@ export const DustProdActionRegistry = createActionRegistry({
         use_cache: false,
       },
       MODEL: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "extract_data",
         use_cache: false,
       },
@@ -95,8 +104,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: null,
         use_cache: false,
         use_stream: true,
@@ -136,8 +144,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       SUGGEST_CHANGES: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         function_call: "suggest_changes",
       },
@@ -152,8 +159,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         function_call: "execute_sql_query",
       },
@@ -168,6 +174,21 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: { SEARCH: { provider_id: "serpapi", use_cache: false } },
   },
+  "assistant-v2-browse": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "21092925b9",
+      appHash:
+        "766618e57ff6600cac27d170395c74f4067e8671ef5bf36db5a820fb411f044b",
+    },
+    config: {
+      WEBCONTENT: {
+        provider_id: "browserlessapi",
+        use_cache: true,
+        error_as_output: true,
+      },
+    },
+  },
   "assistant-builder-instructions-suggestions": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -177,8 +198,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_ranked_suggestions",
         use_cache: false,
       },
@@ -193,8 +213,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -209,8 +228,7 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       CREATE_SUGGESTIONS: {
-        provider_id: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "send_suggestions",
         use_cache: false,
       },
@@ -225,27 +243,9 @@ export const DustProdActionRegistry = createActionRegistry({
     },
     config: {
       MODEL: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
+        // `provider_id` and `model_id` must be set by caller.
         function_call: "set_extraction_schema",
         use_cache: false,
-      },
-    },
-  },
-  "assistant-v2-multi-actions-agent": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "0e9889c787",
-      appHash:
-        "c80417243b780b7076a4269d3dcda67eb5775cedf19147020825f804156e9d0f",
-    },
-    config: {
-      MODEL: {
-        provider_id: GPT_4_TURBO_MODEL_CONFIG.providerId,
-        model_id: GPT_4_TURBO_MODEL_CONFIG.modelId,
-        function_call: "auto",
-        use_cache: false,
-        use_stream: true,
       },
     },
   },

@@ -17,6 +17,7 @@ import {
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { AgentActionConfigurationType } from "../agent";
+import { BrowseActionType, BrowseConfigurationType } from "./browse";
 import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
 export function isTablesQueryConfiguration(
@@ -108,6 +109,23 @@ export function isWebsearchActionType(
   arg: AgentActionType
 ): arg is WebsearchActionType {
   return arg.type === "websearch_action";
+}
+
+export function isBrowseConfiguration(
+  arg: unknown
+): arg is BrowseConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "browse_configuration"
+  );
+}
+
+export function isBrowseActionType(
+  arg: AgentActionType
+): arg is BrowseActionType {
+  return arg.type === "browse_action";
 }
 
 export function isAgentActionConfigurationType(

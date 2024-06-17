@@ -22,6 +22,7 @@ import {
 import { Ok } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -160,7 +161,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? "search_data_sources",
+      name: this.functionCallName ?? DEFAULT_RETRIEVAL_ACTION_NAME,
       arguments: JSON.stringify(params),
     };
   }
@@ -196,7 +197,7 @@ export class RetrievalAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? "search_data_sources",
+      name: this.functionCallName ?? DEFAULT_RETRIEVAL_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -215,7 +216,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       description,
     }: {
       name: string;
-      description?: string | undefined;
+      description: string | null;
     }
   ): Promise<Result<AgentActionSpecification, Error>> {
     // Generates the action specification for generation of rawInputs passed to `runRetrieval`.
@@ -249,35 +250,15 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     })();
 
-    const actionDescription = `${baseDescription}\nDescription of the data sources:\n${description}`;
-
-    const spec = retrievalActionSpecification({
-      actionConfiguration,
-      name,
-      description: actionDescription,
-    });
-
-    return new Ok(spec);
-  }
-
-  // This is deprecated and should only be used when running agents in "single action mode" (in legacy_agent.ts).
-  async deprecatedBuildSpecificationForSingleActionAgent(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `runRetrieval`");
+    let actionDescription = `${baseDescription}`;
+    if (description) {
+      actionDescription += `\nDescription of the data sources:\n${description}`;
     }
 
-    const { actionConfiguration } = this;
-
     const spec = retrievalActionSpecification({
       actionConfiguration,
-      name: "search_data_sources",
-      description:
-        "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
+      name: name,
+      description: actionDescription,
     });
 
     return new Ok(spec);
@@ -400,6 +381,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const now = Date.now();
 
+    // "assistant-v2-retrieval" has no model interaction.
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-retrieval"].config
     );
@@ -862,10 +844,10 @@ export function retrievalMetaPrompt() {
 
 export function retrievalMetaPromptMutiActions() {
   return (
-    "Focus on being factual and accurate. When data is retrieved from sources, " +
-    "use the markdown directive :cite[REFERENCE] to cite documents (eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
-    "Ensure citations are placed as close as possible to the related information. " +
-    "If data retrieval isn't applicable, maintain clarity and precision in your statements."
+    "To cite documents retrieved with a 2-letter REFERENCE, " +
+    "use the markdown directive :cite[REFERENCE] " +
+    "(eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
+    "Ensure citations are placed as close as possible to the related information."
   );
 }
 

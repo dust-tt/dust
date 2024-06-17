@@ -11,6 +11,7 @@ import {
   assertNever,
   ConnectorsAPI,
   CoreAPI,
+  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -204,6 +205,12 @@ export async function buildInitialActions({
       builderAction = processConfiguration;
     } else if (isWebsearchConfiguration(action)) {
       builderAction = getDefaultWebsearchActionConfiguration();
+      // Websearch: use the default name/description
+      builderActions.push(builderAction);
+      continue;
+    } else if (isBrowseConfiguration(action)) {
+      // Ignore browse actions
+      continue;
     } else {
       assertNever(action);
     }

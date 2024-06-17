@@ -23,7 +23,7 @@ export function getConnectorReplicaDbConnection() {
 export function getCoreReplicaDbConnection() {
   if (!coreReplicaDbInstance) {
     coreReplicaDbInstance = new Sequelize(
-      config.getCoreDatabaseReadReplicaUri() as string,
+      config.getReadReplicaCoreDatabaseUri() as string,
       {
         logging: false,
       }
