@@ -1,15 +1,11 @@
 import {
   Chip,
-  Citation,
   Collapsible,
   MagnifyingGlassIcon,
-  Page,
+  PaginatedCitationsGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  RetrievalActionType,
-  RetrievalDocumentType,
-} from "@dust-tt/types";
+import type { RetrievalActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
@@ -19,6 +15,8 @@ export function RetrievalActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<RetrievalActionType>) {
+  const documentCitations = makeDocumentCitations(action.documents ?? []);
+
   return (
     <ActionDetailsWrapper
       actionName="Search data"
@@ -38,9 +36,7 @@ export function RetrievalActionDetails({
               <span className="text-sm font-bold text-slate-900">Results</span>
             </Collapsible.Button>
             <Collapsible.Panel>
-              <RetrievedDocumentsGrid
-                documents={action.documents ?? undefined}
-              />
+              <PaginatedCitationsGrid items={documentCitations} />
             </Collapsible.Panel>
           </Collapsible>
         </div>
@@ -100,36 +96,4 @@ function makeQueryDescription(action: RetrievalActionType) {
   }
 
   return `Searching "${query}", ${timeFrameAsString}.`;
-}
-
-function RetrievedDocumentsGrid({
-  documents,
-}: {
-  documents?: RetrievalDocumentType[];
-}) {
-  if (!documents) {
-    return null;
-  }
-
-  const documentCitations = makeDocumentCitations(documents);
-  return (
-    <>
-      <Page.Separator />
-      <div className="grid max-h-60 grid-cols-3 gap-2 overflow-y-auto overflow-x-hidden py-1">
-        {documentCitations.map((d, idx) => {
-          return (
-            <Citation
-              size="xs"
-              sizing="fluid"
-              key={idx}
-              title={d.title}
-              type={d.provider}
-              href={d.link}
-            />
-          );
-        })}
-      </div>
-      <Page.Separator />
-    </>
-  );
 }
