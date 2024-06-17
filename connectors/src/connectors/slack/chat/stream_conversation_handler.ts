@@ -51,7 +51,7 @@ export async function streamConversationToSlack(
 ): Promise<Result<undefined, Error>> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
 
-  const postMessageUpdate = async (messageUpdate: SlackMessageUpdate) => {
+  const postSlackMessageUpdate = async (messageUpdate: SlackMessageUpdate) => {
     await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
@@ -64,9 +64,8 @@ export async function streamConversationToSlack(
     `/w/${connector.workspaceId}/assistant/${conversation.sId}`
   );
 
-  // Post an empty message as soon as the message is being created.
-  // Slack does not support empty text block.
-  await postMessageUpdate({ isThinking: true });
+  // Immediately post the conversation URL once available.
+  await postSlackMessageUpdate({ isThinking: true });
 
   const agentMessages = conversation.content
     .map((versions) => {
@@ -137,7 +136,7 @@ export async function streamConversationToSlack(
           break;
         }
 
-        await postMessageUpdate({ text: finalAnswer });
+        await postSlackMessageUpdate({ text: finalAnswer });
 
         break;
       }
@@ -162,7 +161,7 @@ export async function streamConversationToSlack(
             "... (message truncated)";
         }
 
-        await postMessageUpdate({ text: finalAnswer });
+        await postSlackMessageUpdate({ text: finalAnswer });
 
         return new Ok(undefined);
       }
