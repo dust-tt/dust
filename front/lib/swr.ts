@@ -1050,6 +1050,11 @@ interface UseDataSourceKey {
   internalIds: string[];
 }
 
+interface UseDataSourceResult {
+  contentNodes: ContentNode[];
+  parentsById: Record<string, Set<string>>;
+}
+
 export function useDataSourceNodes(
   key: UseDataSourceKey,
   options?: SWRConfiguration<{
@@ -1057,20 +1062,19 @@ export function useDataSourceNodes(
     parentsById: Record<string, Set<string>>;
   }>
 ) {
-  const contentNodesFetcher: Fetcher<
-    { contentNodes: ContentNode[]; parentsById: Record<string, Set<string>> },
-    string
-  > = async (key: string) => {
-    const { workspaceSid, dataSourceName, internalIds } = JSON.parse(key);
+  const contentNodesFetcher: Fetcher<UseDataSourceResult, string> = async (
+    key: string
+  ) => {
+    const { workspaceid, dataSourceName, internalIds } = JSON.parse(key);
     if (internalIds.length === 0 || !dataSourceName) {
       return { contentNodes: [], parentsById: {} };
     }
 
-    const nodesUrl = `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
+    const nodesUrl = `/api/w/${workspaceid}/data_sources/${encodeURIComponent(
       dataSourceName
     )}/managed/content-nodes`;
 
-    const parentsUrl = `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
+    const parentsUrl = `/api/w/${workspaceid}/data_sources/${encodeURIComponent(
       dataSourceName
     )}/managed/parents`;
 
@@ -1112,8 +1116,6 @@ export function useDataSourceNodes(
     parentsById: data?.parentsById,
     serializeKey,
   };
-
-  // return { res: res.data., preload };
 }
 
 // LABS - CAN BE REMOVED ANYTIME
