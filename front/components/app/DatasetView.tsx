@@ -18,7 +18,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { checkDatasetData } from "@app/lib/datasets";
+import type { DatasetDataType } from "@app/lib/datasets";
+import { checkDatasetData, DATASET_DATA_TYPES } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
@@ -206,7 +207,7 @@ export default function DatasetView({
   const [datasetKeyDescriptions, setDatasetKeyDescriptions] = useState<
     string[]
   >((schema || []).map((s) => s.description || ""));
-  const [datasetTypes, setDatasetTypes] = useState<string[]>([]);
+  const [datasetTypes, setDatasetTypes] = useState<DatasetDataType[]>([]);
   const [datasetInitializing, setDatasetInitializing] = useState(true);
 
   const datasetNameValidation = () => {
@@ -237,6 +238,16 @@ export default function DatasetView({
     return valid;
   };
 
+  function isTypeValidForDataset(
+    enteredType: DatasetDataType,
+    desiredType: DatasetDataType
+  ): boolean {
+    if (desiredType === "string") {
+      return true;
+    }
+    return enteredType === desiredType;
+  }
+
   const datasetTypesValidation = () => {
     // Initial inference of types
     if (datasetTypes.length == 0) {
@@ -244,16 +255,14 @@ export default function DatasetView({
     }
 
     // Check that all types are valid
-    let valid = true;
-    datasetData.map((d) => {
-      datasetKeys.map((k) => {
-        if (getValueType(d[k]) !== datasetTypes[datasetKeys.indexOf(k)]) {
-          valid = false;
-        }
-      });
+    return datasetData.every((d) => {
+      datasetKeys.every((k) =>
+        isTypeValidForDataset(
+          getValueType(d[k]),
+          datasetTypes[datasetKeys.indexOf(k)]
+        )
+      );
     });
-
-    return valid;
   };
 
   // Export the dataset with correct types (post-editing and validation)
@@ -625,28 +634,26 @@ export default function DatasetView({
                         </span>
                       ) : (
                         <div className="inline-flex" role="group">
-                          {["string", "number", "boolean", "json"].map(
-                            (type) => (
-                              <button
-                                key={type}
-                                type="button"
-                                disabled={readOnly}
-                                className={classNames(
-                                  datasetTypes && datasetTypes[j] == type
-                                    ? "font-semibold text-gray-900 underline underline-offset-4"
-                                    : "font-normal text-gray-700 hover:text-gray-900",
-                                  "font-mono px-1 py-1 text-[13px]"
-                                )}
-                                onClick={() => {
-                                  const types = [...datasetTypes];
-                                  types[j] = type;
-                                  setDatasetTypes(types);
-                                }}
-                              >
-                                {type == "json" ? "JSON" : type}
-                              </button>
-                            )
-                          )}
+                          {DATASET_DATA_TYPES.map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              disabled={readOnly}
+                              className={classNames(
+                                datasetTypes && datasetTypes[j] == type
+                                  ? "font-semibold text-gray-900 underline underline-offset-4"
+                                  : "font-normal text-gray-700 hover:text-gray-900",
+                                "font-mono px-1 py-1 text-[13px]"
+                              )}
+                              onClick={() => {
+                                const types = [...datasetTypes];
+                                types[j] = type;
+                                setDatasetTypes(types);
+                              }}
+                            >
+                              {type == "json" ? "JSON" : type}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -719,8 +726,10 @@ export default function DatasetView({
                             "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px]",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
-                              getValueType(d[k]) ===
+                              isTypeValidForDataset(
+                                getValueType(d[k]),
                                 datasetTypes[datasetKeys.indexOf(k)]
+                              )
                               ? "border-slate-100"
                               : "border-red-500"
                           )}
