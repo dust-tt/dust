@@ -66,7 +66,7 @@ const resHandler = async (res: Response) => {
   return res.json();
 };
 
-const fetcher = async (...args: Parameters<typeof fetch>) =>
+export const fetcher = async (...args: Parameters<typeof fetch>) =>
   resHandler(await fetch(...args));
 
 const postFetcher = async ([url, body]: [string, object]) =>
