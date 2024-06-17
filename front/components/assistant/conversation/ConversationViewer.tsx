@@ -127,8 +127,19 @@ export default function ConversationViewer({
     };
   }, [messages]);
 
-  // Handle scroll to bottom on new message input.
   const latestMessageIdRef = useRef<string | null>(null);
+
+  const viewerRef = useRef(null);
+
+  useEffect(() => {
+    if (viewerRef.current) {
+      viewerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [messages]);
+
   useEffect(() => {
     const lastestMessageId = latestPage?.messages.at(-1)?.sId;
 
@@ -139,7 +150,7 @@ export default function ConversationViewer({
       );
 
       if (mainTag) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
+        // mainTag.scrollTo(0, mainTag.scrollHeight);
       }
 
       latestMessageIdRef.current = lastestMessageId;
@@ -352,13 +363,23 @@ export default function ConversationViewer({
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
   const typedGroupedMessages = groupedMessages.reduce<
     MessageWithContentFragmentsType[][][]
-  >((acc, message) => {
-    if (!acc.length || message[0].type !== acc[acc.length - 1][0][0].type) {
-      acc.push([message]);
+  >((typedGroupesAcc, message, index) => {
+    const lastTypedGroup = typedGroupesAcc[typedGroupesAcc.length - 1];
+    if (
+      !typedGroupesAcc.length ||
+      (lastTypedGroup.length && message[0].type !== lastTypedGroup[0][0].type)
+    ) {
+      typedGroupesAcc.push([message]);
     } else {
-      acc[acc.length - 1].push(message);
+      lastTypedGroup.push(message);
     }
-    return acc;
+    if (
+      index === groupedMessages.length - 1 &&
+      message[0].type === "user_message"
+    ) {
+      typedGroupesAcc.push([]);
+    }
+    return typedGroupesAcc;
   }, []);
 
   if (isConversationLoading) {
@@ -391,18 +412,31 @@ export default function ConversationViewer({
       {/* TODO: Ideally create a dedicated component */}
       {typedGroupedMessages.map((typedGroup, index) => {
         const isLastGroup = index === typedGroupedMessages.length - 1;
+        const screenHeight = 500;
+        const dynamicMinHeight = `${screenHeight}px`;
+
+        let minHeightClass = "min-h-0";
+        if (typedGroup.length === 0) {
+          return null;
+        }
+        // if (typedGroup[typedGroup.length - 1] === 0) {
+        //   minHeightClass = `min-h-[${dynamicMinHeight}]`;
+        // } else {
+        // }
         const lastMessage = typedGroup[typedGroup.length - 1][0];
         const isLastMessageAgentMessage = lastMessage.type === "agent_message";
 
-        const screenHeight = Math.round(window.innerHeight) - 100;
-        const dynamicMinHeight = `${screenHeight}px`;
-        const minHeightClass =
+        minHeightClass =
           isLastGroup && isLastMessageAgentMessage
             ? `min-h-[${dynamicMinHeight}]`
-            : "";
+            : "min-h-0";
 
         return (
-          <div className={minHeightClass} key={`typed-group-${index}`}>
+          <div
+            className={minHeightClass}
+            key={`typed-group-${index}`}
+            ref={isLastGroup ? viewerRef : null}
+          >
             {typedGroup.map((group) => {
               return group.map((message) => {
                 return (

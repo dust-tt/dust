@@ -311,7 +311,7 @@ export function AgentMessage({
       streamedAgentMessage.status === "created" &&
       isAtBottom.current
     ) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      // bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [
     agentMessageToRender.content,
