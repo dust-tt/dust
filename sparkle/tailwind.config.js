@@ -234,5 +234,11 @@ module.exports = {
   plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
-  safelist: safeColorlist,
+  safelist: [
+    ...safeColorlist,
+    "s-grid-rows-2",
+    "s-grid-rows-3",
+    "s-grid-rows-4",
+    "s-grid-rows-5",
+  ],
 };

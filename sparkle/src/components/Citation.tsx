@@ -13,15 +13,17 @@ import {
 
 import { Avatar, CardButton, Icon, IconButton, Tooltip, XCircleIcon } from "..";
 
+export type CitationType =
+  | "confluence"
+  | "document"
+  | "github"
+  | "google_drive"
+  | "intercom"
+  | "notion"
+  | "slack";
+
 interface CitationProps {
-  type?:
-    | "confluence"
-    | "slack"
-    | "google_drive"
-    | "github"
-    | "notion"
-    | "intercom"
-    | "document";
+  type?: CitationType;
   title: string;
   description?: string;
   index?: ReactNode;
