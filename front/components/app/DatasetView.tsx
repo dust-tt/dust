@@ -255,13 +255,12 @@ export default function DatasetView({
     }
 
     // Check that all types are valid
-    return datasetData.some((d) => {
-      datasetKeys.some(
-        (k) =>
-          !isTypeValidForDataset(
-            getValueType(d[k]),
-            datasetTypes[datasetKeys.indexOf(k)]
-          )
+    return datasetData.every((d) => {
+      datasetKeys.every((k) =>
+        isTypeValidForDataset(
+          getValueType(d[k]),
+          datasetTypes[datasetKeys.indexOf(k)]
+        )
       );
     });
   };
