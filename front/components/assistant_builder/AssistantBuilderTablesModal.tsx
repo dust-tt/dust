@@ -21,73 +21,17 @@ import {
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { AssistantBuilderTableConfiguration } from "@app/components/assistant_builder/types";
 import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
 import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { useTables } from "@app/lib/swr";
+import { useDataSourceNodes, useTables } from "@app/lib/swr";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
-import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = ["google_drive", "notion"];
-
-const getContentNodes = async (
-  workspaceSid: string,
-  dataSourceName: string,
-  internalIds: string[]
-): Promise<ContentNode[]> => {
-  const res = await fetch(
-    `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
-      dataSourceName
-    )}/managed/content-nodes`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ internalIds }),
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch content nodes: ${res.statusText}`);
-  }
-
-  const { contentNodes } = await res.json();
-
-  return contentNodes;
-};
-
-// Returns a map where the keys are the internalIds passed and the values are the
-// a set of internalIDs that are parents of the key.
-const getParents = async (
-  workspaceSid: string,
-  dataSourceName: string,
-  internalIds: string[]
-): Promise<Record<string, Set<string>>> => {
-  const res = await fetch(
-    `/api/w/${workspaceSid}/data_sources/${encodeURIComponent(
-      dataSourceName
-    )}/managed/parents`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        internalIds,
-      }),
-    }
-  );
-  const json: GetContentNodeParentsResponseBody = await res.json();
-  return json.nodes.reduce((acc, r) => {
-    acc[r.internalId] = new Set(r.parents);
-    return acc;
-  }, {} as Record<string, Set<string>>);
-};
 
 export default function AssistantBuilderTablesModal({
   isOpen,
@@ -99,7 +43,10 @@ export default function AssistantBuilderTablesModal({
 }: {
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
-  onSave: (params: AssistantBuilderTableConfiguration[]) => void;
+  onSave: (
+    params: AssistantBuilderTableConfiguration[],
+    dataSource: DataSourceType
+  ) => void;
   owner: WorkspaceType;
   dataSources: DataSourceType[];
   tablesQueryConfiguration: Record<string, AssistantBuilderTableConfiguration>;
@@ -117,154 +64,60 @@ export default function AssistantBuilderTablesModal({
 
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
-
-  const [selectedManagedTables, setSelectedManagedTables] = useState<
-    ContentNode[]
-  >([]);
+  const [internalIds, setInternalIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [isInitializingNodes, setIsInitializingNodes] = useState(false);
-  const [nodeIntializationError, setNodeIntializationError] =
-    useState<boolean>(false);
-
-  const [parentsById, setParentsById] = useState<Record<string, Set<string>>>(
-    {}
-  );
-  const [isInitializingParents, setIsInitializingParents] = useState(false);
-  const [parentsIntializationError, setParentsIntializationError] =
-    useState<boolean>(false);
-
-  const initializeManagedTables = useCallback(
-    async (
-      dataSource: DataSourceType,
-      tableConfigs: AssistantBuilderTableConfiguration[]
-    ) => {
-      // const tableIds = tableConfigs.map((config) => config.tableId);
-      const internalIds = tableConfigs.map((c) => {
-        switch (dataSource.connectorProvider) {
-          case "google_drive":
-            return getGoogleSheetContentNodeInternalIdFromTableId(c.tableId);
-          case "notion":
-            return getNotionDatabaseContentNodeInternalIdFromTableId(c.tableId);
-          default:
-            throw new Error(
-              `Unsupported connector provider: ${dataSource.connectorProvider}`
-            );
-        }
-      });
-
-      const contentNodes = await getContentNodes(
-        owner.sId,
-        dataSource.name,
-        internalIds
-      );
-
-      if (contentNodes.length !== internalIds.length) {
-        throw new Error(
-          `Failed to fetch content nodes for all tables. Expected ${internalIds.length}, got ${contentNodes.length}.`
-        );
-      }
-
-      setSelectedManagedTables((prev) => [
-        ...prev.filter(
-          (n) => !contentNodes.some((c) => c.internalId === n.internalId)
-        ),
-        ...contentNodes,
-      ]);
-    },
-    [owner.sId, setSelectedManagedTables]
-  );
-
-  const initializeParents = useCallback(
-    async (internalIds: string[], dataSource: DataSourceType) => {
-      const parents = await getParents(owner.sId, dataSource.name, [
-        ...internalIds,
-      ]);
-      setParentsById(parents);
-    },
-    [owner.sId]
-  );
-
-  useEffect(() => {
-    // When coming back to the modal, if the user selects a data source that
-    // is a connection and there are already tables selected, we need to
-    // fetch the content nodes for those tables and add them to the selected
-    // managed tables.
-
-    const hasSelectedTables = !!selectedManagedTables.length;
-    const selectedDataSourceIsConnector = !!selectedDataSource?.connectorId;
-    const hasExistingTablesQueryConfiguration = !!Object.keys(
-      tablesQueryConfiguration
-    ).length;
-
-    if (
-      !selectedDataSource ||
-      !selectedDataSourceIsConnector ||
-      isInitializingNodes ||
-      hasSelectedTables ||
-      !hasExistingTablesQueryConfiguration ||
-      nodeIntializationError
-    ) {
-      return;
+  const loadedInternalIds = useMemo(() => {
+    if (!selectedDataSource || !selectedDataSource?.connectorId) {
+      return [];
     }
+
     const tableConfigs = Object.values(tablesQueryConfiguration).filter(
       (c) => c.dataSourceId === selectedDataSource.name
     );
-    if (!tableConfigs.length) {
-      return;
-    }
-    setIsInitializingNodes(true);
-    void initializeManagedTables(selectedDataSource, tableConfigs)
-      .catch((e) => {
-        setNodeIntializationError(true);
-        throw e;
-      })
-      .finally(() => {
-        setIsInitializingNodes(false);
-      });
-  }, [
-    selectedDataSource,
-    tablesQueryConfiguration,
-    isInitializingNodes,
-    selectedManagedTables.length,
-    initializeManagedTables,
-    nodeIntializationError,
-  ]);
+    return tableConfigs.map((c) => {
+      switch (selectedDataSource.connectorProvider) {
+        case "google_drive":
+          return getGoogleSheetContentNodeInternalIdFromTableId(c.tableId);
+        case "notion":
+          return getNotionDatabaseContentNodeInternalIdFromTableId(c.tableId);
+        default:
+          throw new Error(
+            `Unsupported connector provider: ${selectedDataSource.connectorProvider}`
+          );
+      }
+    });
+  }, [selectedDataSource, tablesQueryConfiguration]);
 
   useEffect(() => {
-    if (
-      !selectedDataSource ||
-      !selectedDataSource.connectorId ||
-      isInitializingParents ||
-      !!parentsIntializationError ||
-      !!Object.keys(parentsById).length ||
-      !selectedManagedTables.length
-    ) {
-      return;
+    setInternalIds(loadedInternalIds);
+  }, [loadedInternalIds]);
+
+  const key = selectedDataSource
+    ? {
+        workspaceId: owner.sId,
+        dataSourceName: selectedDataSource.name,
+        internalIds,
+      }
+    : {
+        workspaceId: owner.sId,
+        dataSourceName: "",
+        internalIds: [],
+      };
+
+  const [fallback, setFallback] = useState({});
+  const { nodes, serializeKey: serializeUseDataSourceKey } = useDataSourceNodes(
+    key,
+    {
+      fallback,
     }
-    setIsInitializingParents(true);
-    void initializeParents(
-      selectedManagedTables.map((n) => n.internalId),
-      selectedDataSource
-    )
-      .catch((e) => {
-        setParentsIntializationError(true);
-        throw e;
-      })
-      .finally(() => {
-        setIsInitializingParents(false);
-      });
-  }, [
-    selectedDataSource,
-    selectedManagedTables,
-    parentsById,
-    initializeParents,
-    isInitializingParents,
-    parentsIntializationError,
-  ]);
+  );
+
+  const selectedManagedTables = nodes.contentNodes;
+  const parentsById = nodes.parentsById;
 
   async function save() {
-    if (!selectedDataSource) {
+    if (!selectedDataSource || !selectedManagedTables) {
       return;
     }
     setIsSaving(true);
@@ -290,7 +143,7 @@ export default function AssistantBuilderTablesModal({
         tableName: table.name,
       }));
 
-      onSave(configs);
+      onSave(configs, selectedDataSource);
     } finally {
       setIsSaving(false);
     }
@@ -300,10 +153,7 @@ export default function AssistantBuilderTablesModal({
     setOpen(false);
     setTimeout(() => {
       setSelectedDataSource(null);
-      setSelectedManagedTables([]);
       setIsSaving(false);
-      setIsInitializingNodes(false);
-      setNodeIntializationError(false);
     }, 200);
   };
 
@@ -315,12 +165,12 @@ export default function AssistantBuilderTablesModal({
       onSave={() => {
         void save().then(onClose);
       }}
-      hasChanged={!!selectedManagedTables.length}
+      hasChanged={loadedInternalIds !== internalIds}
       variant="full-screen"
       title="Select Tables"
     >
       <div className="w-full pt-12">
-        {isInitializingNodes || isInitializingParents ? (
+        {!selectedManagedTables ? (
           <Spinner />
         ) : !selectedDataSource ? (
           <PickDataSource
@@ -340,7 +190,7 @@ export default function AssistantBuilderTablesModal({
                 tableId: table.table_id,
                 tableName: table.name,
               };
-              onSave([config]);
+              onSave([config], selectedDataSource);
               onClose();
             }}
             onBack={() => {
@@ -357,8 +207,16 @@ export default function AssistantBuilderTablesModal({
               parents: string[],
               selected: boolean
             ) => {
-              setParentsById((parentsById) =>
-                Object.entries(parentsById).reduce(
+              setInternalIds((internalIds) => {
+                const newIds = internalIds.filter(
+                  (id) => id !== node.internalId
+                );
+                const newNodes = selectedManagedTables.filter(
+                  (n) => n.internalId !== node.internalId
+                );
+                const newParentsById = Object.entries(
+                  parentsById as Record<string, Set<string>>
+                ).reduce(
                   (acc, [key, value]) =>
                     key === node.internalId
                       ? acc
@@ -366,33 +224,38 @@ export default function AssistantBuilderTablesModal({
                           ...acc,
                           [key]: value,
                         },
-                  selected
-                    ? {
-                        [node.internalId]: new Set(parents),
-                      }
-                    : {}
-                )
-              );
-              if (selected) {
-                setSelectedManagedTables([
-                  ...selectedManagedTables.filter(
-                    (r) => r.internalId !== node.internalId
-                  ),
-                  node,
-                ]);
-              } else {
-                setSelectedManagedTables((selectedManagedTables) =>
-                  selectedManagedTables.filter(
-                    (n) => n.internalId !== node.internalId
-                  )
+                  {} as Record<string, Set<string>>
                 );
-              }
+
+                if (selected) {
+                  newIds.push(node.internalId);
+                  newNodes.push(node);
+                  newParentsById[node.internalId] = new Set(
+                    // This is to get the same structure/order in the fallback as the endpoint return, from leaf to root, including leaf.
+                    [...parents, node.internalId].reverse()
+                  );
+                }
+                // Optimistic update
+                const key = serializeUseDataSourceKey({
+                  workspaceId: owner.sId,
+                  dataSourceName: selectedDataSource.name,
+                  internalIds: newIds,
+                });
+                setFallback((prev) => ({
+                  ...prev,
+                  [key]: {
+                    contentNodes: newNodes,
+                    parentsById: newParentsById,
+                  },
+                }));
+                return newIds;
+              });
             }}
             selectedNodes={selectedManagedTables}
             onBack={() => {
               setSelectedDataSource(null);
             }}
-            parentsById={parentsById}
+            parentsById={parentsById || {}}
           />
         )}
       </div>
