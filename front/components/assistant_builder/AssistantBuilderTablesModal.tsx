@@ -95,12 +95,12 @@ export default function AssistantBuilderTablesModal({
 
   const key = selectedDataSource
     ? {
-        workspaceid: owner.sId,
+        workspaceId: owner.sId,
         dataSourceName: selectedDataSource.name,
         internalIds,
       }
     : {
-        workspaceid: owner.sId,
+        workspaceId: owner.sId,
         dataSourceName: "",
         internalIds: [],
       };
@@ -214,10 +214,7 @@ export default function AssistantBuilderTablesModal({
                 const newNodes = selectedManagedTables.filter(
                   (n) => n.internalId !== node.internalId
                 );
-                const newParentsById: Record<
-                  string,
-                  Set<string>
-                > = Object.entries(
+                const newParentsById = Object.entries(
                   parentsById as Record<string, Set<string>>
                 ).reduce(
                   (acc, [key, value]) =>
@@ -227,19 +224,20 @@ export default function AssistantBuilderTablesModal({
                           ...acc,
                           [key]: value,
                         },
-                  {}
+                  {} as Record<string, Set<string>>
                 );
 
                 if (selected) {
                   newIds.push(node.internalId);
                   newNodes.push(node);
                   newParentsById[node.internalId] = new Set(
+                    // This is to get the same structure/order in the fallback as the endpoint return, from leaf to root, including leaf.
                     [...parents, node.internalId].reverse()
                   );
                 }
                 // Optimistic update
                 const key = serializeUseDataSourceKey({
-                  workspaceid: owner.sId,
+                  workspaceId: owner.sId,
                   dataSourceName: selectedDataSource.name,
                   internalIds: newIds,
                 });

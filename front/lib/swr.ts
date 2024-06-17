@@ -1045,7 +1045,7 @@ export function useWorkspaceEnterpriseConnection({
 }
 
 interface UseDataSourceKey {
-  workspaceid: string;
+  workspaceId: string;
   dataSourceName: string;
   internalIds: string[];
 }
@@ -1065,16 +1065,16 @@ export function useDataSourceNodes(
   const contentNodesFetcher: Fetcher<UseDataSourceResult, string> = async (
     key: string
   ) => {
-    const { workspaceid, dataSourceName, internalIds } = JSON.parse(key);
+    const { workspaceId, dataSourceName, internalIds } = JSON.parse(key);
     if (internalIds.length === 0) {
       return { contentNodes: [], parentsById: {} };
     }
 
-    const nodesUrl = `/api/w/${workspaceid}/data_sources/${encodeURIComponent(
+    const nodesUrl = `/api/w/${workspaceId}/data_sources/${encodeURIComponent(
       dataSourceName
     )}/managed/content-nodes`;
 
-    const parentsUrl = `/api/w/${workspaceid}/data_sources/${encodeURIComponent(
+    const parentsUrl = `/api/w/${workspaceId}/data_sources/${encodeURIComponent(
       dataSourceName
     )}/managed/parents`;
 
