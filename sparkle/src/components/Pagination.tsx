@@ -6,15 +6,17 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
+type Size = "sm" | "xs";
+
 interface PaginationProps {
   itemsCount: number;
   maxItemsPerPage: number;
-  size?: "sm" | "xs";
+  size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
 }
 
-function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: (currentPage: number) => void, size: "sm" | "xs") {
+function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: (currentPage: number) => void, size: Size) {
   return (
     <button
       key={pageNumber}
@@ -43,7 +45,7 @@ function renderElipses(size: "sm" | "xs") {
   );
 }
 
-function getPageButtons(currentPage: number, totalPages: number, slots: number, onPageClick: (currentPage: number) => void, size: "sm" | "xs") {
+function getPageButtons(currentPage: number, totalPages: number, slots: number, onPageClick: (currentPage: number) => void, size: Size) {
     const pagination: React.ReactNode[] = [];
   
     // If total pages are less than or equal to slots, show all pages
