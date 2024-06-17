@@ -126,6 +126,7 @@ export async function streamConversationToSlack(
         lastSentDate = new Date();
 
         const finalAnswer = safelyPrepareAnswer(fullAnswer, action);
+        // If the answer cannot be prepared safely, skip processing these tokens.
         if (!finalAnswer) {
           break;
         }
