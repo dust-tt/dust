@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -129,17 +130,8 @@ export default function ConversationViewer({
 
   const latestMessageIdRef = useRef<string | null>(null);
 
-  const viewerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (viewerRef.current) {
-      viewerRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }, [messages]);
 
   // useEffect(() => {
   //   if (containerRef.current) {
@@ -422,52 +414,40 @@ export default function ConversationViewer({
       {/* TODO: Ideally create a dedicated component */}
       {typedGroupedMessages.map((typedGroup, index) => {
         const isLastGroup = index === typedGroupedMessages.length - 1;
-        const screenHeight = window.innerHeight - 450;
-
-        if (typedGroup.length === 0) {
-          return null;
-        }
-
-        const lastMessage = typedGroup[typedGroup.length - 1][0];
-        const isLastMessageAgentMessage = lastMessage.type === "agent_message";
-
-        const dynamicMinHeight =
-          isLastGroup && isLastMessageAgentMessage
-            ? `${screenHeight}px`
-            : "0px";
 
         return (
-          <div
-            style={{ minHeight: dynamicMinHeight }}
+          <MessageGroup
             key={`typed-group-${index}`}
-            ref={isLastGroup ? viewerRef : null}
+            messages={typedGroup}
+            isLastMessage={isLastGroup}
           >
-            {typedGroup.map((group) => {
-              return group.map((message) => {
-                return (
-                  <MessageItem
-                    key={`message-${message.sId}`}
-                    conversationId={conversation.sId}
-                    hideReactions={hideReactions}
-                    isInModal={isInModal}
-                    message={message}
-                    owner={owner}
-                    reactions={reactions}
-                    ref={
-                      message.sId === prevFirstMessageId
-                        ? prevFirstMessageRef
-                        : undefined
-                    }
-                    user={user}
-                    isLastMessage={
-                      latestPage?.messages.at(-1)?.sId === message.sId
-                    }
-                    latestMentions={latestMentions}
-                  />
-                );
-              });
-            })}
-          </div>
+            {typedGroup &&
+              typedGroup.map((group) => {
+                return group.map((message) => {
+                  return (
+                    <MessageItem
+                      key={`message-${message.sId}`}
+                      conversationId={conversation.sId}
+                      hideReactions={hideReactions}
+                      isInModal={isInModal}
+                      message={message}
+                      owner={owner}
+                      reactions={reactions}
+                      ref={
+                        message.sId === prevFirstMessageId
+                          ? prevFirstMessageRef
+                          : undefined
+                      }
+                      user={user}
+                      isLastMessage={
+                        latestPage?.messages.at(-1)?.sId === message.sId
+                      }
+                      latestMentions={latestMentions}
+                    />
+                  );
+                });
+              })}
+          </MessageGroup>
         );
       })}
     </div>
