@@ -30,7 +30,7 @@ function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: 
   );
 }
 
-function renderElipses(size: "sm" | "xs") {
+function renderEllipses(size: "sm" | "xs") {
   return (
     <span
       className={classNames(
