@@ -13,6 +13,13 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, GPT_4_TURBO_MODEL_CONFIG } from "@dust-tt/types";
 
+import {
+  DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+  DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/names";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
 export const ACTION_MODES = [
@@ -206,7 +213,7 @@ export function getDefaultRetrievalSearchActionConfiguration() {
         unit: "month",
       },
     } as AssistantBuilderRetrievalConfiguration,
-    name: "search_data_sources",
+    name: DEFAULT_RETRIEVAL_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
@@ -221,7 +228,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
         unit: "month",
       },
     } as AssistantBuilderRetrievalConfiguration,
-    name: "recent_data_sources",
+    name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
@@ -247,7 +254,7 @@ export function getDefaultTablesQueryActionConfiguration() {
   return {
     type: "TABLES_QUERY",
     configuration: {} as AssistantBuilderTablesQueryConfiguration,
-    name: "query_tables",
+    name: DEFAULT_TABLES_QUERY_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
@@ -264,7 +271,7 @@ export function getDefaultProcessActionConfiguration() {
       tagsFilter: null,
       schema: [],
     } as AssistantBuilderProcessConfiguration,
-    name: "extract_structured_data_from_data_sources",
+    name: DEFAULT_PROCESS_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;
 }
@@ -273,7 +280,7 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   return {
     type: "WEB_NAVIGATION",
     configuration: {},
-    name: "websearch",
+    name: DEFAULT_WEBSEARCH_ACTION_NAME,
     description: "Perform a web search and/or browse a page content.",
     noConfigurationRequired: true,
   };
