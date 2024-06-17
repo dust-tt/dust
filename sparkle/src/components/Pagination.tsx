@@ -32,7 +32,7 @@ function renderPageNumber(pageNumber: number, currentPage: number, onPageClick: 
   );
 }
 
-function renderElipses(size: "sm" | "xs") {
+function renderEllipses(size: "sm" | "xs") {
   return (
     <span
       className={classNames(
@@ -105,7 +105,7 @@ export function Pagination({
   showPageButtons = true
 }: PaginationProps) {
   const numPages = Math.ceil(itemsCount / maxItemsPerPage);
-  const controlsAreHidden = numPages <= 1 ? true : false;
+  const controlsAreHidden = Boolean(numPages <= 1);
   const pagesShownInControls = 7;
   const [currentPage, setCurrentPage] = useState(1);
   const firstFileOnPageIndex = currentPage * maxItemsPerPage - maxItemsPerPage + 1;
