@@ -2,6 +2,7 @@ import {
   Button,
   CardButton,
   DropdownMenu,
+  Hoverable,
   Icon,
   IconButton,
   Input,
@@ -217,10 +218,21 @@ export default function ActionsScreen({
             <Page.Header title="Actions & Data sources" />
             <Page.P>
               <span className="text-sm text-element-700">
-                Before replying, the assistant can perform actions like{" "}
-                <span className="font-bold">searching information</span> from
-                your <span className="font-bold">Data sources</span>{" "}
-                (Connections and Folders).
+                Before replying, the assistant can perform multiple actions such
+                as <span className="font-bold">searching</span> in your Data
+                Sources or <span className="font-bold">navigate</span> the Web.
+                Learn more about mutli-actions assistants in the{" "}
+                <Hoverable
+                  onClick={() => {
+                    window.open(
+                      "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
+                      "_blank"
+                    );
+                  }}
+                  className="cursor-pointer font-bold text-action-500"
+                >
+                  documentation
+                </Hoverable>
               </span>
             </Page.P>
           </div>
@@ -624,7 +636,7 @@ function ActionEditor({
                     variant="tertiary"
                   />
                 </DropdownMenu.Button>
-                <DropdownMenu.Items width={240} overflow="visible">
+                <DropdownMenu.Items width={320} overflow="visible">
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col items-end gap-2">
                       <div className="w-full grow text-sm font-bold text-element-800">
