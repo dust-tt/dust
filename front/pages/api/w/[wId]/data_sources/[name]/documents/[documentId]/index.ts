@@ -188,7 +188,7 @@ async function handler(
               type: "data_source_quota_error",
               message:
                 `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-                `documents on your current plan. Contact team@dust.tt if you want to increase this limit.`,
+                "documents on your current plan. Contact team@dust.tt if you want to increase this limit.",
             },
           });
         }
@@ -204,10 +204,10 @@ async function handler(
           api_error: {
             type: "data_source_quota_error",
             message:
-              `Data sources document upload size is limited to ` +
+              "Data sources document upload size is limited to " +
               `${plan.limits.dataSources.documents.sizeMb}MB on your current plan. ` +
               `You are attempting to upload ${fullText.length} bytes. ` +
-              `Contact team@dust.tt if you want to increase it.`,
+              "Contact team@dust.tt if you want to increase it.",
           },
         });
       }

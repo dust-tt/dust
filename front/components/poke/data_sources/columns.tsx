@@ -141,7 +141,7 @@ async function deleteDataSource(
     return;
   }
 
-  if (!window.confirm(`really, Really, REALLY sure ?`)) {
+  if (!window.confirm("really, Really, REALLY sure ?")) {
     return;
   }
 

@@ -323,7 +323,7 @@ export async function createOrUpgradeAgentConfiguration({
     for (const action of actions) {
       if (!action.name) {
         // To please the type system.
-        throw new Error(`unreachable: action.name is required.`);
+        throw new Error("unreachable: action.name is required.");
       }
       if (actionNames.has(action.name)) {
         throw new Error(`Duplicate action name: ${action.name}`);

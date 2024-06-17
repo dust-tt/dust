@@ -69,7 +69,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Failed to create internal project for the app.`,
+            message: "Failed to create internal project for the app.",
             data_source_error: p.error,
           },
         });

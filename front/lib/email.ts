@@ -29,7 +29,7 @@ export async function sendGithubDeletionEmail(email: string): Promise<void> {
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Github connection deleted - important information`,
+    subject: "[Dust] Github connection deleted - important information",
     html: `<p>Hello from Dust,</p>
     <p>Your Dust connection to Github was deleted, along with all the related data on Dust servers.</p>
     <p>You can now uninstall the Dust app from your Github account to revoke authorizations initially granted to Dust when you connected the Github account.</p>
@@ -57,7 +57,7 @@ export async function sendCancelSubscriptionEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Subscription canceled - important information`,
+    subject: "[Dust] Subscription canceled - important information",
     html: `<p>Hello from Dust,</p>
     <p>You just canceled your subscription. It will be terminated at the end of your current billing period (${formattedDate}). You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will then be switched back to our free plan:</p>
     <ul>
@@ -82,7 +82,7 @@ export async function sendReactivateSubscriptionEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Your subscription has been reactivated`,
+    subject: "[Dust] Your subscription has been reactivated",
     html: `<p>You have requested to reactivate your subscription.</p>
     <p>Therefore, your subscription will not be canceled at the end of the billing period, no downgrade actions will take place, and you can continue using Dust as usual.</p>
     <p>We really appreciate you renewing your trust in us.</p>
@@ -102,7 +102,7 @@ export async function sendOpsDowngradeTooMuchDataEmail(
       name: "System",
       email: "ops@dust.tt",
     },
-    subject: `[OPS - Eng runner] A subscription has been canceled`,
+    subject: "[OPS - Eng runner] A subscription has been canceled",
     html: `<p>Hi Dust ops,</p>
     <p>The subscription of workspace '${workspaceSId}' was just canceled. They have datasource(s) with more than 50MB data: ${datasourcesTooBig.join(
       ", "
@@ -123,7 +123,7 @@ export async function sendAdminDowngradeTooMuchDataEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Your subscription has ended - important information`,
+    subject: "[Dust] Your subscription has ended - important information",
     html: `<p>Hello from Dust,</p>
     <p>Your paying subsciption has ended. While you can still access Dust as a free user, the following datasources will be deleted in 7 days because they contain more than 50MB of data: ${datasourcesTooBig.join(
       ", "
@@ -145,7 +145,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Your payment has failed`,
+    subject: "[Dust] Your payment has failed",
     html: `<p>Hello from Dust,</p>
     <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
     <p>

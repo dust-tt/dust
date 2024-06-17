@@ -237,7 +237,7 @@ export async function deleteDataSource(
       if (connDeleteRes.error.type !== "connector_not_found") {
         return new Err({
           type: "internal_server_error",
-          message: `Error deleting connector`,
+          message: "Error deleting connector",
           connectors_error: connDeleteRes.error,
         });
       }

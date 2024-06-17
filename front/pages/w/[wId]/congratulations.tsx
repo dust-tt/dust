@@ -68,7 +68,7 @@ export default function Congratulations({
       >
         <ConfettiBackground variant="confetti" referentSize={referentRef} />
         <div className="z-10 flex h-full flex-col gap-6 pt-4 md:justify-center md:pt-0">
-          <Page.Header title={`You are all set!`} icon={SparklesIcon} />
+          <Page.Header title={"You are all set!"} icon={SparklesIcon} />
           <Page.P>
             We're glad to have you onboard.
             <br />

@@ -213,7 +213,7 @@ export default function Block({
                 <Spinner size="xs" variant="color" />
               </div>
             </div>
-            {` 0 successes 0 errors`}
+            {" 0 successes 0 errors"}
           </div>
         ) : null}
         {status && status.status != "running" && run ? (

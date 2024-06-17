@@ -438,7 +438,7 @@ export async function generateConversationTitle(
   const model = getSmallWhitelistedModel(owner);
   if (!model) {
     return new Err(
-      new Error(`Failed to find a whitelisted model to generate title`)
+      new Error("Failed to find a whitelisted model to generate title")
     );
   }
 
@@ -464,7 +464,7 @@ export async function generateConversationTitle(
     // will get attempted again with follow-up messages being added to the conversation).
     return new Err(
       new Error(
-        `Error generating conversation title: rendered conversation is empty`
+        "Error generating conversation title: rendered conversation is empty"
       )
     );
   }
@@ -533,7 +533,7 @@ export async function generateConversationTitle(
 
   if (title === null) {
     return new Err(
-      new Error(`Error generating conversation title: malformed output`)
+      new Error("Error generating conversation title: malformed output")
     );
   }
 
@@ -687,8 +687,8 @@ export async function* postUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
-            `(advanced settings in the Instructions panel).`,
+            "by your workspace admin. Please edit the assistant to use another model " +
+            "(advanced settings in the Instructions panel).",
         },
       };
       return; // Stop processing if any agent uses a disabled provider
@@ -1124,8 +1124,8 @@ export async function* editUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
-            `(advanced settings in the Instructions panel).`,
+            "by your workspace admin. Please edit the assistant to use another model " +
+            "(advanced settings in the Instructions panel).",
         },
       };
       return; // Stop processing if any agent uses a disabled provider

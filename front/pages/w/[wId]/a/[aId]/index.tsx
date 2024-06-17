@@ -151,11 +151,11 @@ export default function AppView({
   const { mutate } = useSWRConfig();
 
   const [spec, setSpec] = useState(
-    JSON.parse(app.savedSpecification || `[]`) as SpecificationType
+    JSON.parse(app.savedSpecification || "[]") as SpecificationType
   );
 
   const [config, setConfig] = useState(
-    extractConfig(JSON.parse(app.savedSpecification || `{}`))
+    extractConfig(JSON.parse(app.savedSpecification || "{}"))
   );
   const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
   const [runRequested, setRunRequested] = useState(false);

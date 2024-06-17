@@ -359,7 +359,7 @@ export function ActionProcess({
         sendNotification({
           title: "Failed to generate schema.",
           type: "error",
-          description: `An error occured while generating the schema. Please contact us if the error persists.`,
+          description: "An error occured while generating the schema. Please contact us if the error persists.",
         });
       } finally {
         setIsGeneratingSchema(false);

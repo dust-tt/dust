@@ -31,7 +31,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
   const deletedDocumentsData = await core_sequelize.query(
-    `SELECT * FROM data_sources_documents WHERE status = 'deleted'`
+    "SELECT * FROM data_sources_documents WHERE status = 'deleted'"
   );
 
   const deletedDocuments = deletedDocumentsData[0] as {
@@ -149,7 +149,7 @@ async function scrubDocument({
   }
 
   const moreRecentSameHash = await core_sequelize.query(
-    `SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :deletedAt LIMIT 1`,
+    "SELECT id FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status != 'deleted' AND created >= :deletedAt LIMIT 1",
     {
       replacements: {
         data_source: data_source,
@@ -166,7 +166,7 @@ async function scrubDocument({
   }
 
   const dataSourceData = await core_sequelize.query(
-    `SELECT * FROM data_sources WHERE id = :data_source`,
+    "SELECT * FROM data_sources WHERE id = :data_source",
     {
       replacements: {
         data_source: data_source,
@@ -210,7 +210,7 @@ async function scrubDocument({
   await deleteAllFilesFromFolder(localLogger, bucket, seen, path);
 
   await core_sequelize.query(
-    `DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'`,
+    "DELETE FROM data_sources_documents WHERE data_source = :data_source AND document_id = :document_id AND hash = :hash AND status = 'deleted'",
     {
       replacements: {
         data_source: data_source,

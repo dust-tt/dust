@@ -83,7 +83,7 @@ export default function ConversationLayout({
           pageTitle={
             conversation?.title
               ? `Dust - ${conversation?.title}`
-              : `Dust - New Conversation`
+              : "Dust - New Conversation"
           }
           gaTrackingId={gaTrackingId}
           topNavigationCurrent="conversations"

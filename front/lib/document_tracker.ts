@@ -87,7 +87,7 @@ export async function updateTrackedDocuments(
   const emails = Array.from(allEmails);
   let users = emails.length
     ? await User.findAll({
-        where: literal(`lower(email) IN (:emails)`),
+        where: literal("lower(email) IN (:emails)"),
         replacements: {
           emails,
         },

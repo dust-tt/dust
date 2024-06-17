@@ -420,7 +420,7 @@ function DatasourceDocumentsTabView({
                   // uploading files only
                   isSaving={true}
                   isOpen={bulkFilesUploading !== null}
-                  title={`Uploading files`}
+                  title={"Uploading files"}
                 >
                   {bulkFilesUploading && (
                     <>
@@ -473,7 +473,7 @@ function DatasourceDocumentsTabView({
                           sendNotification({
                             type: "error",
                             title: "Error uploading document",
-                            description: `An error occurred while uploading your documents.`,
+                            description: "An error occurred while uploading your documents.",
                           });
                         }
                       }
@@ -931,8 +931,8 @@ function IntercomConfigView({
 }
 
 const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<ConnectorProvider, string> = {
-  confluence: `You cannot select another Confluence Domain.\nPlease contact us at team@dust.tt if you initially selected the wrong Domain.`,
-  slack: `You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.`,
+  confluence: "You cannot select another Confluence Domain.\nPlease contact us at team@dust.tt if you initially selected the wrong Domain.",
+  slack: "You cannot select another Slack Team.\nPlease contact us at team@dust.tt if you initially selected the wrong Team.",
   notion:
     "You cannot select another Notion Workspace.\nPlease contact us at team@dust.tt if you initially selected a wrong Workspace.",
   github:
@@ -1163,7 +1163,7 @@ function ManagedDataSourceView({
     }
     return {
       success: false,
-      error: `Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)`,
+      error: "Failed to update the permissions of the Data Source: (contact team@dust.tt for assistance)",
     };
   };
 
@@ -1228,7 +1228,7 @@ function ManagedDataSourceView({
                 case "intercom":
                   return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
-                  return `Manage Website`;
+                  return "Manage Website";
                 default:
                   assertNever(connectorProvider);
               }

@@ -134,7 +134,7 @@ async function populateUsageIfNeeded({
         ...{
           agentConfigurationId: agentConfigurationId,
           createdAt: {
-            [Op.gt]: literal(`NOW() - INTERVAL '30 days'`),
+            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
           },
         },
         ...(messageModelId ? { messageId: { [Op.lt]: messageModelId } } : {}),

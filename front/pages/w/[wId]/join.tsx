@@ -134,7 +134,7 @@ export default function Join({
     >
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
-          title={`Hello there!`}
+          title={"Hello there!"}
           icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
         />
         <div className="flex flex-col gap-4">

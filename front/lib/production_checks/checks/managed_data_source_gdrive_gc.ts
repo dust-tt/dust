@@ -18,7 +18,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   const frontSequelize = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
     await frontSequelize.query(
-      `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
+      "SELECT id, \"connectorId\" FROM data_sources WHERE \"connectorProvider\" = 'google_drive'",
       { type: QueryTypes.SELECT }
     );
 

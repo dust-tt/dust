@@ -543,7 +543,7 @@ async function handleCheckNotionUrl(
   url: string,
   wId: string
 ): Promise<NotionCheckUrlResponseType | null> {
-  const res = await fetch(`/api/poke/admin`, {
+  const res = await fetch("/api/poke/admin", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

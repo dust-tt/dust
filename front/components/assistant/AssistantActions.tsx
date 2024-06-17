@@ -38,7 +38,7 @@ export function DeleteAssistantDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Deleting the assistant`}
+      title={"Deleting the assistant"}
       onCancel={onClose}
       validateLabel={
         isPrivateAssistant ? "Delete the assistant" : "Delete for everyone"
@@ -120,7 +120,7 @@ export function RemoveAssistantFromListDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Remove from my list`}
+      title={"Remove from my list"}
       onCancel={onClose}
       validateLabel="Remove"
       validateVariant="primaryWarning"
@@ -133,13 +133,13 @@ export function RemoveAssistantFromListDialog({
 
         if (success) {
           sendNotification({
-            title: `Assistant removed from your list`,
+            title: "Assistant removed from your list",
             type: "success",
           });
           onRemove();
         } else {
           sendNotification({
-            title: `Error removing Assistant`,
+            title: "Error removing Assistant",
             description: errorMessage,
             type: "error",
           });
@@ -179,7 +179,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Remove from Company assistants`}
+      title={"Remove from Company assistants"}
       onCancel={onClose}
       validateLabel="Remove"
       validateVariant="primaryWarning"
@@ -214,13 +214,13 @@ export function RemoveAssistantFromWorkspaceDialog({
         if (!res.ok) {
           const data = await res.json();
           sendNotification({
-            title: `Error removing from Company assistants`,
+            title: "Error removing from Company assistants",
             description: data.error.message,
             type: "error",
           });
         } else {
           sendNotification({
-            title: `Assistant removed from Company assistants`,
+            title: "Assistant removed from Company assistants",
             type: "success",
           });
           onRemove();

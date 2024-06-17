@@ -106,7 +106,7 @@ async function handler(
 
       const csvData = await unsafeGetUsageData(startDate, endDate, owner.sId);
       res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename="usage.csv"`);
+      res.setHeader("Content-Disposition", "attachment; filename=\"usage.csv\"");
       res.status(200).send(csvData);
       return;
 

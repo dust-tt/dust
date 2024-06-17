@@ -75,6 +75,7 @@ export async function botAnswerMessageWithErrorHandling(
   const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
     slackTeamId
   );
+
   if (!slackConfig) {
     return new Err(
       new Error(
@@ -82,10 +83,12 @@ export async function botAnswerMessageWithErrorHandling(
       )
     );
   }
+
   const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
+
   try {
     const res = await botAnswerMessage(
       message,
@@ -115,7 +118,8 @@ export async function botAnswerMessageWithErrorHandling(
       if (res.error instanceof SlackExternalUserError) {
         errorMessage = res.error.message;
       } else {
-        errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
+        errorMessage =
+          "An error occured. Our team has been notified and will work on it as soon as possible.";
       }
 
       const slackClient = await getSlackClient(connector.id);
@@ -134,7 +138,7 @@ export async function botAnswerMessageWithErrorHandling(
           slackUserId: slackUserId,
           slackMessageTs: slackMessageTs,
         },
-        `Successfully answered to Slack Chat Bot message`
+        `Successfully ${"test"} answered to Slack Chat Bot message`
       );
     }
 
@@ -146,16 +150,16 @@ export async function botAnswerMessageWithErrorHandling(
         connectorId: connector.id,
         slackTeamId,
       },
-      `Unexpected exception answering to Slack Chat Bot message`
+      "Unexpected exception answering to Slack Chat Bot message"
     );
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: `An unexpected error occured. Our team has been notified.`,
+      text: "An unexpected error occured. Our team has been notified.",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error(`An unexpected error occured`));
+    return new Err(new Error("An unexpected error occured"));
   }
 }
 

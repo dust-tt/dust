@@ -727,7 +727,7 @@ export async function prodAPICredentialsForOwner(
       },
       "Could not create system API key for workspace"
     );
-    throw new Error(`Could not create system API key for workspace`);
+    throw new Error("Could not create system API key for workspace");
   }
 
   return {

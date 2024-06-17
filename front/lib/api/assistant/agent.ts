@@ -319,7 +319,7 @@ export async function* runMultiActionsAgent(
         code: "model_does_not_support_multi_actions",
         message:
           `The model you selected (${agentConfiguration.model.modelId}) ` +
-          `does not support multi-actions.`,
+          "does not support multi-actions.",
       },
     };
     return;

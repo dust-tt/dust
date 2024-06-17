@@ -6,6 +6,11 @@ module.exports = {
   ],
   plugins: ["import", "simple-import-sort"],
   rules: {
+    quotes: [
+      "error",
+      "double",
+      { avoidEscape: true, allowTemplateLiterals: false },
+    ],
     curly: ["error", "all"],
     "simple-import-sort/imports": [
       "error",
