@@ -1786,23 +1786,11 @@ impl DataSource {
 
         let document_id_hash = make_document_id_hash(document_id);
 
-        // GCP retrieve raw text and document_id.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
+        let stored_doc =
+            FileStorageDocument::get_stored_document(&self, d.created, &document_id_hash, &d.hash)
+                .await?;
 
-        let bucket_path = format!(
-            "{}/{}/{}",
-            self.project.project_id(),
-            self.internal_id,
-            document_id_hash
-        );
-        let content_path = format!("{}/{}/content.txt", bucket_path, d.hash);
-        let bytes = Object::download(&bucket, &content_path).await?;
-        let text = String::from_utf8(bytes)?;
-
-        d.text = Some(text.clone());
+        d.text = Some(stored_doc.full_text.clone());
 
         Ok(Some(d))
     }
