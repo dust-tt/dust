@@ -43,7 +43,7 @@ export type SlackMessageUpdate =
   | { isThinking?: never; text: string };
 
 export function makeMessageUpdateBlocksAndText(
-  conversationUrl: string | undefined,
+  conversationUrl: string,
   messageUpdate: SlackMessageUpdate
 ) {
   const { isThinking, text } = messageUpdate;
