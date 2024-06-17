@@ -2,12 +2,8 @@ import { useState } from "react";
 import React from "react";
 
 import { CitationType } from "@sparkle/components/Citation";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Citation,
-  IconButton,
-} from "@sparkle/index";
+import { Pagination } from "@sparkle/components/Pagination";
+import { Citation } from "@sparkle/index";
 import { classNames } from "@sparkle/lib/utils";
 
 interface CitationItem {
@@ -38,7 +34,6 @@ export function PaginatedCitationsGrid({
   const startIndex = (currentPage - 1) * maxItemsPerPage;
   // Slice items for current page.
   const paginatedItems = items.slice(startIndex, startIndex + maxItemsPerPage);
-  const totalPages = Math.ceil(items.length / maxItemsPerPage);
 
   return (
     <div className="s-flex s-w-full s-flex-col">
@@ -63,25 +58,19 @@ export function PaginatedCitationsGrid({
           );
         })}
       </div>
-      <div className="s-mt-4 s-flex s-justify-end">
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <IconButton
-          icon={ChevronLeftIcon}
-          onClick={() => setCurrentPage((prev) => Math.min(prev - 1, 1))}
-          disabled={currentPage === 1}
-          variant="primary"
-          size="sm"
-        />
-        <IconButton
-          icon={ChevronRightIcon}
-          onClick={() =>
-            setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-          }
-          disabled={currentPage === totalPages}
-          variant="primary"
-          size="sm"
+
+      
+      <div className={classNames(
+        "s-pt-3",
+        items.length > maxItemsPerPage ? "s-visible" : "s-collapse",
+      )}>
+        <Pagination
+          itemsCount={items.length}
+          maxItemsPerPage={maxItemsPerPage}
+          size="xs"
+          showDetails={false}
+          showPageButtons={false}
+          onButtonClick={(pageNb) => setCurrentPage(pageNb)}
         />
       </div>
     </div>
