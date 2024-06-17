@@ -17,10 +17,7 @@ import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import {
-  makeMessageUpdateBlocksAndText,
-  makeThinkingBlock,
-} from "@connectors/connectors/slack/chat/blocks";
+import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
