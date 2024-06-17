@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import React, { useState } from "react";
+import React from "react";
 
 import { Pagination } from "../index_with_tw_base";
 

@@ -1,8 +1,10 @@
 import React from "react";
-import { useState, useEffect } from "react";
-import { Button } from "./Button";
+import { useState } from "react";
+
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
+
+import { Button } from "./Button";
 
 interface PaginationProps {
   itemsCount: number;
