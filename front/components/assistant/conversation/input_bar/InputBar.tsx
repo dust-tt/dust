@@ -389,6 +389,5 @@ export function FixedAssistantInputBar({
         disableAutoFocus={disableAutoFocus}
       />
     </div>
-    // </div>
   );
 }

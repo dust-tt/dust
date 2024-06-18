@@ -356,7 +356,7 @@ export default function AppLayout({
             </Transition.Root>
           )}
 
-          {/* // TODO */}
+          {/* TODO: This logic should be handled by the navigation bar itself. */}
           {!hideSidebar && (
             <div className="hidden lg:visible lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
               {loaded && (
@@ -377,7 +377,7 @@ export default function AppLayout({
           id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
           className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
         >
-          {/* TODO: This should be handled by the navigation bar itself!! */}
+          {/* TODO: This logic should be handled by the navigation bar itself. */}
           <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
             <button
               type="button"
@@ -398,7 +398,7 @@ export default function AppLayout({
               titleChildren ? "" : "lg:pt-8"
             )}
           >
-            {/* TODO: Move to a top bar component */}
+            {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
                 "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
