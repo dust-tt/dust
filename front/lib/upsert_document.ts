@@ -49,10 +49,14 @@ export const EnqueueUpsertTable = t.type({
   truncate: t.boolean,
 });
 
+type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
+
+type EnqueueUpsertTableType = t.TypeOf<typeof EnqueueUpsertTable>;
+
 export async function enqueueUpsertDocument({
   upsertDocument,
 }: {
-  upsertDocument: t.TypeOf<typeof EnqueueUpsertDocument>;
+  upsertDocument: EnqueueUpsertDocumentType;
 }): Promise<Result<string, Error>> {
   const upsertQueueId = uuidv4();
 
@@ -77,7 +81,7 @@ export async function enqueueUpsertDocument({
 export async function enqueueUpsertTable({
   upsertTable,
 }: {
-  upsertTable: t.TypeOf<typeof EnqueueUpsertTable>;
+  upsertTable: EnqueueUpsertTableType;
 }): Promise<Result<string, Error>> {
   const upsertQueueId = uuidv4();
 
