@@ -219,14 +219,9 @@ export function ProviderManagementModal({
         </DropdownMenu>
       </div>
       <div className="px-4 pt-2 text-sm text-gray-500">
-        Embedding turns knowledge into a code, making it easy to search and find
-        content.
+        Embedding models are used to create numerical representations of your
+        data powering the semantic search capabilities of your assistants.
       </div>
-      {embeddingProvider != owner.defaultEmbeddingProvider && (
-        <div className="s-text-sm px-4 pt-2 text-warning-600">
-          Note: This change will only affect newly created data sources.
-        </div>
-      )}
     </Modal>
   );
 }
