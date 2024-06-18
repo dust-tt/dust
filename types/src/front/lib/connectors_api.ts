@@ -532,23 +532,24 @@ export class ConnectorsAPI {
   }
 
   private async _fetchWithError(
-    input: RequestInfo,
+    url: string,
     init?: RequestInit
   ): Promise<
     Result<{ response: Response; duration: number }, ConnectorsAPIError>
   > {
     const now = Date.now();
     try {
-      const res = await fetch(input, init);
+      const res = await fetch(url, init);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
       const err: ConnectorsAPIError = {
         type: "unexpected_network_error",
-        message: "Unexpected network error from ConnectorAPI",
+        message: `Unexpected network error from ConnectorsAPI: ${e}`,
       };
       this._logger.error(
         {
+          url,
           duration,
           connectorsError: err,
           error: e,
