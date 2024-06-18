@@ -2,6 +2,15 @@ import { truncate } from "@dust-tt/types";
 
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 
+/*
+ * This length threshold is set to prevent the "msg_too_long" error
+ * from the Slack API's chat.update method.
+ * According to previous incidents, the maximum length for a message is 3000 characters.
+ * We adopt a conservative approach by setting a lower threshold
+ * to accommodate ellipses and ensure buffer space.
+ */
+export const MAX_SLACK_MESSAGE_LENGTH = 2950;
+
 function makeConversationLinkContextBlock(conversationUrl: string) {
   return {
     type: "context",
@@ -37,7 +46,7 @@ function makeMarkdownBlock(text: string) {
     type: "section",
     text: {
       type: "mrkdwn",
-      text,
+      text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     },
   };
 }
@@ -96,7 +105,7 @@ export function makeMessageUpdateBlocksAndText(
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
-    text: isThinking ? "Thinking..." : text,
+    text: isThinking ? "Thinking..." : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
   };
 }

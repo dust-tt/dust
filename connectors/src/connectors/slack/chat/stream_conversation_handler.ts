@@ -11,19 +11,13 @@ import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
-import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
+import {
+  makeMessageUpdateBlocksAndText,
+  MAX_SLACK_MESSAGE_LENGTH,
+} from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-/*
- * After this length we start risking that the chat.update Slack API returns
- * "msg_too_long" error. This length is experimentally tested and was not found
- * in the slack documentation. Therefore, it is conservative and the actual
- * threshold might is more likely around 3800 characters. Since avoiding too
- * long messages in slack is a good thing nonetheless, we keep this lower threshold.
- */
-const MAX_SLACK_MESSAGE_LENGTH = 3000;
 
 interface StreamConversationToSlackParams {
   assistantName: string | undefined;
@@ -38,6 +32,10 @@ interface StreamConversationToSlackParams {
   userMessage: UserMessageType;
 }
 
+// Adding linear backoff mechanism.
+const maxBackoffTime = 10_000; // Maximum backoff time.
+const initialBackoffTime = 1_000;
+
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
   {
@@ -51,7 +49,28 @@ export async function streamConversationToSlack(
 ): Promise<Result<undefined, Error>> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
 
-  const postSlackMessageUpdate = async (messageUpdate: SlackMessageUpdate) => {
+  let lastSentDate = new Date();
+  let backoffTime = initialBackoffTime;
+
+  const postSlackMessageUpdate = async (
+    messageUpdate: SlackMessageUpdate,
+    { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
+      adhereToRateLimit: true,
+    }
+  ) => {
+    if (
+      lastSentDate.getTime() + backoffTime > new Date().getTime() &&
+      adhereToRateLimit
+    ) {
+      return;
+    }
+
+    lastSentDate = new Date();
+    if (adhereToRateLimit) {
+      // Linear increase of backoff time.
+      backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+    }
+
     await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
@@ -65,7 +84,10 @@ export async function streamConversationToSlack(
   );
 
   // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate({ isThinking: true });
+  await postSlackMessageUpdate(
+    { isThinking: true },
+    { adhereToRateLimit: false }
+  );
 
   const agentMessages = conversation.content
     .map((versions) => {
@@ -96,7 +118,6 @@ export async function streamConversationToSlack(
   const botIdentity = assistantName ? `@${assistantName}:\n` : "";
   let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
-  let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "user_message_error": {
@@ -121,10 +142,6 @@ export async function streamConversationToSlack(
         }
 
         fullAnswer += event.text;
-        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
-          continue;
-        }
-        lastSentDate = new Date();
 
         const { formattedContent, footnotes } = annotateCitations(
           fullAnswer,
@@ -137,9 +154,9 @@ export async function streamConversationToSlack(
           break;
         }
 
-        // if the message is too long, we avoid the update entirely (to reduce
+        // If the message is too long, we avoid the update entirely (to reduce
         // rate limiting) the previous update will have shown the "..." and the
-        // link to continue the conversation so this is fine
+        // link to continue the conversation so this is fine.
         if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
@@ -162,25 +179,20 @@ export async function streamConversationToSlack(
           action
         );
 
-        let finalAnswer = slackifyMarkdown(
+        const finalAnswer = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
         );
 
-        // if the message is too long, when generation is finished we show it
-        // is truncated
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
-          finalAnswer =
-            finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
-            "... (message truncated)";
-        }
-
-        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
+        await postSlackMessageUpdate(
+          { text: finalAnswer, footnotes },
+          { adhereToRateLimit: false }
+        );
 
         return new Ok(undefined);
       }
 
       default:
-      // Nothing to do on unsupported events
+      // Nothing to do on unsupported events.
     }
   }
 
