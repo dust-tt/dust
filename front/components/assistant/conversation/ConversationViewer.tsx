@@ -1,23 +1,21 @@
 import { Spinner } from "@dust-tt/sparkle";
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMention,
+  AgentMessageNewEvent,
   AgentMessageType,
   ContentFragmentType,
+  ConversationTitleEvent,
+  UserMessageNewEvent,
   UserMessageType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import type { AgentMention } from "@dust-tt/types";
-import type { AgentGenerationCancelledEvent } from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageNewEvent,
 } from "@dust-tt/types";
 import { isAgentMention, isUserMessageType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
@@ -127,21 +125,12 @@ export default function ConversationViewer({
     };
   }, [messages]);
 
-  // Handle scroll to bottom on new message input.
   const latestMessageIdRef = useRef<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const lastestMessageId = latestPage?.messages.at(-1)?.sId;
 
-    // If latest message Id has changed, scroll to bottom of conversation.
     if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-      );
-
-      if (mainTag) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
-
       latestMessageIdRef.current = lastestMessageId;
     }
   }, [isInModal, latestPage]);
@@ -350,6 +339,29 @@ export default function ConversationViewer({
   const eventIds = useRef<string[]>([]);
 
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  const typedGroupedMessages = groupedMessages.reduce<
+    MessageWithContentFragmentsType[][][]
+  >((typedGroupsAcc, message, index) => {
+    const lastTypedGroup = typedGroupsAcc[typedGroupsAcc.length - 1];
+
+    if (
+      !typedGroupsAcc.length ||
+      (lastTypedGroup.length && message[0].type !== lastTypedGroup[0][0].type)
+    ) {
+      typedGroupsAcc.push([message]);
+    } else {
+      lastTypedGroup.push(message);
+    }
+
+    if (
+      index === groupedMessages.length - 1 &&
+      message[0].type === "user_message"
+    ) {
+      typedGroupsAcc.push([]);
+    }
+
+    return typedGroupsAcc;
+  }, []);
 
   if (isConversationLoading) {
     return null;
@@ -362,6 +374,7 @@ export default function ConversationViewer({
 
   return (
     <div
+      ref={containerRef}
       className={classNames(
         "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2 pb-44 pt-4",
         isFading ? "animate-fadeout" : "",
@@ -378,28 +391,42 @@ export default function ConversationViewer({
         </div>
       )}
 
-      {groupedMessages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversation.sId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
-              }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-              latestMentions={latestMentions}
-            />
-          );
-        });
+      {typedGroupedMessages.map((typedGroup, index) => {
+        const isLastGroup = index === typedGroupedMessages.length - 1;
+        return (
+          <MessageGroup
+            key={`typed-group-${index}`}
+            messages={typedGroup}
+            isLastMessage={isLastGroup}
+          >
+            {typedGroup &&
+              typedGroup.map((group) => {
+                return group.map((message) => {
+                  return (
+                    <MessageItem
+                      key={`message-${message.sId}`}
+                      conversationId={conversation.sId}
+                      hideReactions={hideReactions}
+                      isInModal={isInModal}
+                      message={message}
+                      owner={owner}
+                      reactions={reactions}
+                      ref={
+                        message.sId === prevFirstMessageId
+                          ? prevFirstMessageRef
+                          : undefined
+                      }
+                      user={user}
+                      isLastMessage={
+                        latestPage?.messages.at(-1)?.sId === message.sId
+                      }
+                      latestMentions={latestMentions}
+                    />
+                  );
+                });
+              })}
+          </MessageGroup>
+        );
       })}
     </div>
   );
