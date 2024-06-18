@@ -56,6 +56,7 @@ export type APIErrorType =
   // Used in the DustAPI client:
   | "unexpected_error_format"
   | "unexpected_response_format"
+  | "unexpected_network_error"
   // Used by callAction client:
   | "action_failed"
   | "unexpected_action_response"

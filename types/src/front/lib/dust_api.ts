@@ -19,7 +19,6 @@ import { RunType } from "../../front/run";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { WhitelistableFeature } from "../feature_flags";
-import { WorkspaceDomain } from "../workspace";
 import {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -364,7 +363,7 @@ export class DustAPI {
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
-    const res = await fetch(url, {
+    const res = await this._fetchWithError(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -379,13 +378,7 @@ export class DustAPI {
       }),
     });
 
-    const r: DustAPIResponse<{ run: RunType }> = await this._resultFromResponse(
-      res
-    );
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.run);
+    return this._resultFromResponse(res);
   }
 
   /**
@@ -410,7 +403,7 @@ export class DustAPI {
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
-    const res = await fetch(url, {
+    const res = await this._fetchWithError(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -425,7 +418,11 @@ export class DustAPI {
       }),
     });
 
-    return processStreamedRunResponse(res, this._logger);
+    if (res.isErr()) {
+      return res;
+    }
+
+    return processStreamedRunResponse(res.value.response, this._logger);
   }
 
   /**
@@ -437,7 +434,7 @@ export class DustAPI {
   async getDataSources(
     workspaceId: string
   ): Promise<DustAPIResponse<DataSourceType[]>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${workspaceId}/data_sources`,
       {
         method: "GET",
@@ -447,18 +444,13 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ data_sources: DataSourceType[] }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.data_sources);
+    return this._resultFromResponse(res);
   }
 
   async getAgentConfigurations(): Promise<
     DustAPIResponse<LightAgentConfigurationType[]>
   > {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
       {
         method: "GET",
@@ -469,13 +461,7 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{
-      agentConfigurations: LightAgentConfigurationType[];
-    }> = await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.agentConfigurations);
+    return this._resultFromResponse(res);
   }
 
   async postContentFragment({
@@ -485,7 +471,7 @@ export class DustAPI {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
   }): Promise<DustAPIResponse<ContentFragmentType>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
       {
         method: "POST",
@@ -499,12 +485,7 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ contentFragment: ContentFragmentType }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.contentFragment);
+    return this._resultFromResponse(res);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
@@ -533,7 +514,7 @@ export class DustAPI {
       headers["x-api-user-email"] = userEmailHeader;
     }
 
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
       {
         method: "POST",
@@ -569,7 +550,7 @@ export class DustAPI {
       headers["x-api-user-email"] = userEmailHeader;
     }
 
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
@@ -580,12 +561,7 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ message: UserMessageType }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.message);
+    return this._resultFromResponse(res);
   }
 
   async streamAgentMessageEvents({
@@ -600,7 +576,7 @@ export class DustAPI {
       Authorization: `Bearer ${this._credentials.apiKey}`,
     };
 
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
         conversation.sId
       }/messages/${message.sId}/events`,
@@ -610,12 +586,16 @@ export class DustAPI {
       }
     );
 
-    if (!res.ok || !res.body) {
+    if (res.isErr()) {
+      return res;
+    }
+
+    if (!res.value.response.ok || !res.value.response.body) {
       return new Err({
         type: "dust_api_error",
         message: `Error running streamed app: status_code=${
-          res.status
-        }  - message=${await res.text()}`,
+          res.value.response.status
+        }  - message=${await res.value.response.text()}`,
       });
     }
 
@@ -664,7 +644,7 @@ export class DustAPI {
       }
     });
 
-    const reader = res.body.getReader();
+    const reader = res.value.response.body.getReader();
     const logger = this._logger;
 
     const streamEvents = async function* () {
@@ -709,7 +689,7 @@ export class DustAPI {
   }: {
     conversationId: string;
   }): Promise<DustAPIResponse<ConversationType>> {
-    const res = await fetch(
+    const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
         method: "GET",
@@ -720,12 +700,7 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ conversation: ConversationType }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.conversation);
+    return this._resultFromResponse(res);
   }
 
   async tokenize(
@@ -735,7 +710,7 @@ export class DustAPI {
     const urlSafeName = encodeURIComponent(dataSourceName);
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${urlSafeName}/tokenize`;
 
-    const res = await fetch(endpoint, {
+    const res = await this._fetchWithError(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -746,18 +721,13 @@ export class DustAPI {
       }),
     });
 
-    const r: DustAPIResponse<{ tokens: CoreAPITokenType[] }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(r.value.tokens);
+    return this._resultFromResponse(res);
   }
 
   async getActiveMemberEmailsInWorkspace() {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
 
-    const res = await fetch(endpoint, {
+    const res = await this._fetchWithError(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -765,19 +735,13 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ emails: string[] }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(r.value.emails);
+    return this._resultFromResponse(res);
   }
 
   async getWorkspaceVerifiedDomains() {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
 
-    const res = await fetch(endpoint, {
+    const res = await this._fetchWithError(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -785,13 +749,7 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ verified_domains: WorkspaceDomain[] }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(r.value.verified_domains);
+    return this._resultFromResponse(res);
   }
 
   async getWorkspaceFeatureFlags(): Promise<
@@ -799,7 +757,7 @@ export class DustAPI {
   > {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/feature_flags`;
 
-    const res = await fetch(endpoint, {
+    const res = await this._fetchWithError(endpoint, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -807,21 +765,52 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ feature_flags: WhitelistableFeature[] }> =
-      await this._resultFromResponse(res);
-    if (r.isErr()) {
-      return r;
-    }
+    return this._resultFromResponse(res);
+  }
 
-    return new Ok(r.value.feature_flags);
+  private async _fetchWithError(
+    url: string,
+    init?: RequestInit
+  ): Promise<Result<{ response: Response; duration: number }, APIError>> {
+    const now = Date.now();
+    try {
+      const res = await fetch(url, init);
+      return new Ok({ response: res, duration: Date.now() - now });
+    } catch (e) {
+      const duration = Date.now() - now;
+      const err: APIError = {
+        type: "unexpected_network_error",
+        message: "Unexpected network error from ConnectorAPI",
+      };
+      this._logger.error(
+        {
+          url,
+          duration,
+          connectorsError: err,
+          error: e,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
+    }
   }
 
   private async _resultFromResponse<T>(
-    response: Response
+    res: Result<
+      {
+        response: Response;
+        duration: number;
+      },
+      APIError
+    >
   ): Promise<DustAPIResponse<T>> {
+    if (res.isErr()) {
+      return res;
+    }
+
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await response.text();
+    const text = await res.value.response.text();
 
     let json = null;
     try {
@@ -836,19 +825,25 @@ export class DustAPI {
           dustError: err,
           parseError: e,
           rawText: text,
-          status: response.status,
-          url: response.url,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
         },
         "DustAPI error"
       );
       return new Err(err);
     }
 
-    if (!response.ok) {
+    if (!res.value.response.ok) {
       const err = json?.error;
       if (isAPIError(err)) {
         this._logger.error(
-          { dustError: err, status: response.status },
+          {
+            dustError: err,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "DustAPI error"
         );
         return new Err(err);
@@ -858,7 +853,13 @@ export class DustAPI {
           message: "Unexpected error format from DustAPI",
         };
         this._logger.error(
-          { dustError: err, json, status: response.status },
+          {
+            dustError: err,
+            json,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "DustAPI error"
         );
         return new Err(err);
