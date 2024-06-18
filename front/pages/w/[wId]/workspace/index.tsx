@@ -10,6 +10,7 @@ import {
   ActivityReport,
   QuickInsights,
 } from "@app/components/workspace/Analytics";
+import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "" } = process.env;
@@ -49,6 +50,7 @@ export default function WorkspaceAdmin({
   const [workspaceNameError, setWorkspaceNameError] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showProviderModal, setShowProviderModal] = useState(false);
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -211,6 +213,11 @@ export default function WorkspaceAdmin({
 
   return (
     <>
+      <ProviderManagementModal
+        owner={owner}
+        showProviderModal={showProviderModal}
+        onClose={() => setShowProviderModal(false)}
+      />
       <AppLayout
         subscription={subscription}
         owner={owner}
@@ -239,10 +246,19 @@ export default function WorkspaceAdmin({
           </Page.Vertical>
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h4">Settings</Page.H>
-            <Page.H variant="h6">Workspace name</Page.H>
-            <Page.P variant="secondary">
-              Think GitHub repository names, short and memorable.
-            </Page.P>
+            <div className="grid grid-cols-2 gap-2">
+              <Page.H variant="h6">Workspace name</Page.H>
+              <Page.H variant="h6">Model Selection</Page.H>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Page.P variant="secondary">
+                Think GitHub repository names, short and memorable.
+              </Page.P>
+              <Page.P variant="secondary">
+                Select the models you want available to your workspace for the
+                creation of AI Assistants.
+              </Page.P>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-row gap-2">
                 <Input
@@ -262,6 +278,14 @@ export default function WorkspaceAdmin({
                     className="grow-0"
                   />
                 )}
+              </div>
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={() => setShowProviderModal(true)}
+                  label="Manage providers"
+                  className="grow-0"
+                />
               </div>
             </div>
           </Page.Vertical>
