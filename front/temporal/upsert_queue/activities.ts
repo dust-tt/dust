@@ -1,6 +1,6 @@
 import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
-import { isRight } from "fp-ts/lib/Either";
+import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
@@ -38,14 +38,14 @@ export async function upsertDocumentActivity(
   const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
   const tableItemValidation = EnqueueUpsertTableFromCsv.decode(upsertDocument);
 
-  if (isRight(documentItemValidation)) {
+  if (!isLeft(documentItemValidation)) {
     return upsertDocumentItem(
       documentItemValidation.right,
       upsertQueueId,
       enqueueTimestamp
     );
   }
-  if (isRight(tableItemValidation)) {
+  if (!isLeft(tableItemValidation)) {
     return upsertTableItem(
       tableItemValidation.right,
       upsertQueueId,
@@ -224,7 +224,7 @@ async function upsertTableItem(
   const upsertTimestamp = Date.now();
 
   const tableRes = await upsertTableFromCsv({
-    owner,
+    auth,
     projectId: dataSource.dustAPIProjectId,
     dataSourceName: dataSource.name,
     tableName: upsertQueueItem.tableName,
