@@ -87,6 +87,22 @@ import type {
   SyncConnector,
 } from "@connectors/connectors/interface";
 import {
+  cleanupMicrosoftConnector,
+  createMicrosoftConnector,
+  fullResyncMicrosoftConnector,
+  getMicrosoftConfig,
+  pauseMicrosoftConnector,
+  resumeMicrosoftConnector,
+  retrieveMicrosoftConnectorPermissions,
+  retrieveMicrosoftContentNodeParents,
+  retrieveMicrosoftContentNodes,
+  setMicrosoftConfig,
+  setMicrosoftConnectorPermissions,
+  stopMicrosoftConnector,
+  unpauseMicrosoftConnector,
+  updateMicrosoftConnector,
+} from "@connectors/connectors/microsoft";
+import {
   cleanupNotionConnector,
   createNotionConnector,
   fullResyncNotionConnector,
@@ -134,6 +150,8 @@ export const CREATE_CONNECTOR_BY_TYPE: ConnectorProviderCreateConnectorMapping =
     github: createGithubConnector,
     google_drive: createGoogleDriveConnector,
     intercom: createIntercomConnector,
+    ms_sharepoint: createMicrosoftConnector("ms_sharepoint"),
+    ms_teams: createMicrosoftConnector("ms_teams"),
     notion: createNotionConnector,
     slack: createSlackConnector,
     webcrawler: createWebcrawlerConnector,
@@ -145,6 +163,8 @@ export const UPDATE_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: updateConfluenceConnector,
   slack: updateSlackConnector,
+  ms_sharepoint: updateMicrosoftConnector("ms_sharepoint"),
+  ms_teams: updateMicrosoftConnector("ms_teams"),
   notion: updateNotionConnector,
   github: updateGithubConnector,
   google_drive: updateGoogleDriveConnector,
@@ -164,6 +184,8 @@ export const STOP_CONNECTOR_BY_TYPE: Record<
     return new Ok(undefined);
   },
   github: stopGithubConnector,
+  ms_sharepoint: stopMicrosoftConnector("ms_sharepoint"),
+  ms_teams: stopMicrosoftConnector("ms_teams"),
   notion: stopNotionConnector,
   google_drive: async (connectorId: ModelId) => {
     await terminateAllWorkflowsForConnectorId(connectorId);
@@ -179,6 +201,8 @@ export const DELETE_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: cleanupConfluenceConnector,
   slack: cleanupSlackConnector,
+  ms_sharepoint: cleanupMicrosoftConnector("ms_sharepoint"),
+  ms_teams: cleanupMicrosoftConnector("ms_teams"),
   notion: cleanupNotionConnector,
   github: cleanupGithubConnector,
   google_drive: cleanupGoogleDriveConnector,
@@ -195,6 +219,8 @@ export const RESUME_CONNECTOR_BY_TYPE: Record<
     logger.info({ connectorId }, `Resuming Slack connector is a no-op.`);
     return new Ok(undefined);
   },
+  ms_sharepoint: resumeMicrosoftConnector("ms_sharepoint"),
+  ms_teams: resumeMicrosoftConnector("ms_teams"),
   notion: resumeNotionConnector,
   github: resumeGithubConnector,
   google_drive: async (connectorId: ModelId) => {
@@ -215,6 +241,8 @@ export const SYNC_CONNECTOR_BY_TYPE: Record<ConnectorProvider, SyncConnector> =
   {
     confluence: launchConfluenceSyncWorkflow,
     slack: launchSlackSyncWorkflow,
+    ms_sharepoint: fullResyncMicrosoftConnector("ms_sharepoint"),
+    ms_teams: fullResyncMicrosoftConnector("ms_teams"),
     notion: fullResyncNotionConnector,
     github: fullResyncGithubConnector,
     google_drive: launchGoogleDriveFullSyncWorkflow,
@@ -229,6 +257,8 @@ export const RETRIEVE_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
   confluence: retrieveConfluenceConnectorPermissions,
   slack: retrieveSlackConnectorPermissions,
   github: retrieveGithubConnectorPermissions,
+  ms_sharepoint: retrieveMicrosoftConnectorPermissions("ms_sharepoint"),
+  ms_teams: retrieveMicrosoftConnectorPermissions("ms_teams"),
   notion: retrieveNotionConnectorPermissions,
   google_drive: retrieveGoogleDriveConnectorPermissions,
   intercom: retrieveIntercomConnectorPermissions,
@@ -241,6 +271,8 @@ export const SET_CONNECTOR_PERMISSIONS_BY_TYPE: Record<
 > = {
   confluence: setConfluenceConnectorPermissions,
   slack: setSlackConnectorPermissions,
+  ms_sharepoint: setMicrosoftConnectorPermissions("ms_sharepoint"),
+  ms_teams: setMicrosoftConnectorPermissions("ms_teams"),
   notion: async () => {
     return new Err(
       new Error(`Setting Notion connector permissions is not implemented yet.`)
@@ -266,6 +298,8 @@ export const BATCH_RETRIEVE_CONTENT_NODES_BY_TYPE: Record<
 > = {
   confluence: retrieveConfluenceContentNodes,
   slack: retrieveSlackContentNodes,
+  ms_sharepoint: retrieveMicrosoftContentNodes("ms_sharepoint"),
+  ms_teams: retrieveMicrosoftContentNodes("ms_teams"),
   notion: retrieveNotionContentNodes,
   github: retrieveGithubReposContentNodes,
   google_drive: retrieveGoogleDriveContentNodes,
@@ -278,6 +312,8 @@ export const RETRIEVE_CONTENT_NODE_PARENTS_BY_TYPE: Record<
   ContentNodeParentsRetriever
 > = {
   confluence: retrieveConfluenceContentNodeParents,
+  ms_sharepoint: retrieveMicrosoftContentNodeParents("ms_sharepoint"),
+  ms_teams: retrieveMicrosoftContentNodeParents("ms_teams"),
   notion: retrieveNotionContentNodeParents,
   google_drive: retrieveGoogleDriveContentNodeParents,
   slack: async () => new Ok([]), // Slack is flat
@@ -295,6 +331,8 @@ export const SET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   slack: setSlackConfig,
+  ms_sharepoint: setMicrosoftConfig("ms_sharepoint"),
+  ms_teams: setMicrosoftConfig("ms_teams"),
   notion: async () => {
     throw new Error("Not implemented");
   },
@@ -315,6 +353,8 @@ export const GET_CONNECTOR_CONFIG_BY_TYPE: Record<
     throw new Error("Not implemented");
   },
   slack: getSlackConfig,
+  ms_sharepoint: getMicrosoftConfig("ms_sharepoint"),
+  ms_teams: getMicrosoftConfig("ms_teams"),
   notion: async () => {
     throw new Error("Not implemented");
   },
@@ -336,6 +376,12 @@ export const SET_CONNECTOR_CONFIGURATION_BY_TYPE: ConnectorProviderUpdateConfigu
       throw new Error("Not implemented");
     },
     slack: () => {
+      throw new Error("Not implemented");
+    },
+    ms_sharepoint: () => {
+      throw new Error("Not implemented");
+    },
+    ms_teams: () => {
       throw new Error("Not implemented");
     },
     notion: () => {
@@ -362,6 +408,12 @@ export const GARBAGE_COLLECT_BY_TYPE: Record<
   slack: () => {
     throw new Error("Not implemented");
   },
+  ms_sharepoint: async () => {
+    throw new Error("Not implemented");
+  },
+  ms_teams: () => {
+    throw new Error("Not implemented");
+  },
   notion: async () => {
     throw new Error("Not implemented");
   },
@@ -386,6 +438,8 @@ export const PAUSE_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: pauseConfluenceConnector,
   slack: pauseSlackConnector,
+  ms_sharepoint: pauseMicrosoftConnector("ms_sharepoint"),
+  ms_teams: pauseMicrosoftConnector("ms_teams"),
   notion: pauseNotionConnector,
   github: pauseGithubConnector,
   google_drive: pauseGoogleDriveConnector,
@@ -401,6 +455,8 @@ export const UNPAUSE_CONNECTOR_BY_TYPE: Record<
 > = {
   confluence: unpauseConfluenceConnector,
   slack: unpauseSlackConnector,
+  ms_sharepoint: unpauseMicrosoftConnector("ms_sharepoint"),
+  ms_teams: unpauseMicrosoftConnector("ms_teams"),
   notion: unpauseNotionConnector,
   github: unpauseGithubConnector,
   google_drive: unpauseGoogleDriveConnector,

@@ -91,6 +91,8 @@ async function handler(
     case "google_drive":
     case "intercom":
     case "notion":
+    case "ms_sharepoint":
+    case "ms_teams":
     case "slack":
       if (!auth.isAdmin()) {
         return apiError(req, res, {

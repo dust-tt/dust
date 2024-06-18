@@ -58,6 +58,8 @@ export type ConnectorConfigurations = {
   google_drive: null;
   github: null;
   confluence: null;
+  ms_sharepoint: null;
+  ms_teams: null;
   intercom: null;
 };
 
