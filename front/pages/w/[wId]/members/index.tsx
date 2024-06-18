@@ -291,7 +291,6 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             <div className="space-y-2 pt-4">
-              <Page.H variant="h5">Invitations</Page.H>
               <InvitationsList owner={owner} searchText={searchText} />
             </div>
             <div className="space-y-2 pb-3 pt-4">
