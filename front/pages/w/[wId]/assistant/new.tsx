@@ -95,7 +95,7 @@ export default function AssistantNew({
     isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: "workspace",
+    agentsGetView: "assistants-search",
     limit: 24,
     includes: ["usage"],
   });
