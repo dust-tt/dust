@@ -1,7 +1,5 @@
 import * as t from "io-ts";
 
-import { ParsedNotionDatabaseSchema } from "../notion";
-
 export const ConnectorsCommandSchema = t.type({
   majorCommand: t.literal("connectors"),
   command: t.union([
