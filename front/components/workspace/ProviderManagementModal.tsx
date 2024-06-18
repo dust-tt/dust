@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   Modal,
   SliderToggle,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
@@ -182,18 +183,21 @@ export function ProviderManagementModal({
         <div className="s-text-sm font-semibold">Embedding Provider:</div>
         <DropdownMenu>
           <DropdownMenu.Button>
-            <Button
-              type="select"
-              labelVisible={true}
-              label={
-                embeddingProvider
-                  ? prettyfiedProviderNames[embeddingProvider]
-                  : prettyfiedProviderNames["openai"]
-              }
-              variant="secondary"
-              hasMagnifying={false}
-              size="sm"
-            />
+            <Tooltip label="Please contact us if you are willing to change this setting.">
+              <Button
+                type="select"
+                labelVisible={true}
+                label={
+                  embeddingProvider
+                    ? prettyfiedProviderNames[embeddingProvider]
+                    : prettyfiedProviderNames["openai"]
+                }
+                variant="secondary"
+                hasMagnifying={false}
+                size="sm"
+                disabled={true}
+              />
+            </Tooltip>
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight">
             {EMBEDDING_PROVIDER_IDS.map((provider) => (
