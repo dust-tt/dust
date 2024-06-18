@@ -11,19 +11,13 @@ import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
-import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
+import {
+  makeMessageUpdateBlocksAndText,
+  MAX_SLACK_MESSAGE_LENGTH,
+} from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-
-/*
- * After this length we start risking that the chat.update Slack API returns
- * "msg_too_long" error. This length is experimentally tested and was not found
- * in the slack documentation. Therefore, it is conservative and the actual
- * threshold might is more likely around 3800 characters. Since avoiding too
- * long messages in slack is a good thing nonetheless, we keep this lower threshold.
- */
-const MAX_SLACK_MESSAGE_LENGTH = 3000;
 
 interface StreamConversationToSlackParams {
   assistantName: string | undefined;
@@ -137,9 +131,9 @@ export async function streamConversationToSlack(
           break;
         }
 
-        // if the message is too long, we avoid the update entirely (to reduce
+        // If the message is too long, we avoid the update entirely (to reduce
         // rate limiting) the previous update will have shown the "..." and the
-        // link to continue the conversation so this is fine
+        // link to continue the conversation so this is fine.
         if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
@@ -162,17 +156,9 @@ export async function streamConversationToSlack(
           action
         );
 
-        let finalAnswer = slackifyMarkdown(
+        const finalAnswer = slackifyMarkdown(
           normalizeContentForSlack(formattedContent)
         );
-
-        // if the message is too long, when generation is finished we show it
-        // is truncated
-        if (finalAnswer.length > MAX_SLACK_MESSAGE_LENGTH) {
-          finalAnswer =
-            finalAnswer.slice(0, MAX_SLACK_MESSAGE_LENGTH) +
-            "... (message truncated)";
-        }
 
         await postSlackMessageUpdate({ text: finalAnswer, footnotes });
 
@@ -180,7 +166,7 @@ export async function streamConversationToSlack(
       }
 
       default:
-      // Nothing to do on unsupported events
+      // Nothing to do on unsupported events.
     }
   }
 
