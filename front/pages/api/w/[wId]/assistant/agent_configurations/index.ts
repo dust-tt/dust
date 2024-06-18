@@ -15,10 +15,10 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
-import type { mentionCount } from "@app/lib/api/assistant/agent_usage";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -123,18 +123,18 @@ async function handler(
           return getAgentsUsage({
             providedRedis: redis,
             workspaceId: owner.sId,
+            limit:
+              typeof req.query.limit === "string"
+                ? parseInt(req.query.limit, 10)
+                : -1,
           });
         });
-        const usageMap = new Map<string, mentionCount>();
-        mentionCounts.forEach((mentionCount) => {
-          usageMap.set(mentionCount.agentId, mentionCount);
-        });
+        const usageMap = _.keyBy(mentionCounts, "agentId");
         agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
           ...agentConfiguration,
           usage: {
-            messageCount: usageMap.get(agentConfiguration.sId)?.count || 0,
-            timePeriodSec:
-              usageMap.get(agentConfiguration.sId)?.timePeriodSec || 0,
+            messageCount: usageMap[agentConfiguration.sId]?.count || 0,
+            timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
           },
         }));
       }

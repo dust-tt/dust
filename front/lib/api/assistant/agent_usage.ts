@@ -58,9 +58,11 @@ function _getUsageKeys(workspaceId: string) {
 export async function getAgentsUsage({
   workspaceId,
   providedRedis,
+  limit,
 }: {
   workspaceId: string;
   providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+  limit?: number;
 }): Promise<mentionCount[]> {
   const owner = await Workspace.findOne({ where: { sId: workspaceId } });
   if (!owner) {
@@ -103,13 +105,14 @@ export async function getAgentsUsage({
 
     // Retrieve and parse agents usage
     const agentsUsage = await redis.hGetAll(agentMessageCountKey);
-    return Object.entries(agentsUsage).map(([agentId, count]) => {
-      return {
+    return Object.entries(agentsUsage)
+      .map(([agentId, count]) => ({
         agentId,
         count: parseInt(count),
         timePeriodSec: rankingTimeframeSec,
-      };
-    });
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
   } finally {
     // Close the redis connection if it was created locally
     if (!providedRedis) {

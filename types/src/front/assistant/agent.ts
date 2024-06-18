@@ -190,7 +190,6 @@ export type LightAgentConfigurationType = {
 
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
-  // Usage is expensive to compute, so we only compute it when needed.
   usage?: AgentUsageType | LightAgentUsageType;
 
   maxToolsUsePerRun: number;
