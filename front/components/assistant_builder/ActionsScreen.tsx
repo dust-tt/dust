@@ -1,8 +1,8 @@
 import {
+  BookOpenIcon,
   Button,
   CardButton,
   DropdownMenu,
-  Hoverable,
   Icon,
   IconButton,
   Input,
@@ -215,28 +215,21 @@ export default function ActionsScreen({
       <div className="flex flex-col gap-8 text-sm text-element-700">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Page.Header title="Actions & Data sources" />
+            <Page.Header title="Tools & Data sources" />
             <Page.P>
               <span className="text-sm text-element-700">
-                Before replying, the assistant can perform multiple actions such
-                as <span className="font-bold">searching</span> in your Data
-                Sources or <span className="font-bold">navigate</span> the Web.
-                Learn more about mutli-actions assistants in the{" "}
-                <Hoverable
-                  onClick={() => {
-                    window.open(
-                      "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
-                      "_blank"
-                    );
-                  }}
-                  className="cursor-pointer font-bold text-action-500"
-                >
-                  documentation
-                </Hoverable>
+                Configure the tools that your assistant is able to use, such as{" "}
+                <span className="font-bold">searching</span> in your Data
+                Sources or <span className="font-bold">navigating</span> the
+                Web.
+                <br />
+                Before replying, the assistant can use multiple of those tools
+                to gather information and provide you with the best possible
+                answer.
               </span>
             </Page.P>
           </div>
-          <div className="flex flex-row">
+          <div className="flex flex-row gap-2">
             {builderState.actions.length > 0 && (
               <div>
                 <AddAction
@@ -253,6 +246,18 @@ export default function ActionsScreen({
               </div>
             )}
             <div className="flex-grow" />
+            <Button
+              label="Read our guide"
+              size="sm"
+              variant="secondary"
+              icon={BookOpenIcon}
+              onClick={() => {
+                window.open(
+                  "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
+                  "_blank"
+                );
+              }}
+            />
             <AdvancedSettings
               maxToolsUsePerRun={builderState.maxToolsUsePerRun}
               setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
@@ -640,12 +645,12 @@ function ActionEditor({
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col items-end gap-2">
                       <div className="w-full grow text-sm font-bold text-element-800">
-                        Name of the action
+                        Name of the tool
                       </div>
                     </div>
                     <Input
                       name="actionName"
-                      placeholder="My action name.."
+                      placeholder="My tool name…"
                       value={action.name}
                       onChange={(v) => {
                         updateAction({
@@ -654,7 +659,11 @@ function ActionEditor({
                           getNewActionConfig: (old) => old,
                         });
                       }}
-                      error={!titleValid ? "Name already exists" : null}
+                      error={
+                        !titleValid
+                          ? "This name is already used for another tool. Please use a different name."
+                          : null
+                      }
                       className="text-sm"
                     />
                   </div>
@@ -696,14 +705,12 @@ function ActionEditor({
             </div>
           ) : (
             <div className="font-semibold text-element-800">
-              Action description
+              What is this tool about?
             </div>
           )}
           <TextArea
             placeholder={
-              isDataSourceAction
-                ? "This data contains...."
-                : "Action description.."
+              isDataSourceAction ? "This data contains…" : "This tool is about…"
             }
             value={action.description}
             onChange={(v) => {
@@ -743,7 +750,7 @@ function AdvancedSettings({
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
               <div className="w-full grow text-sm font-bold text-element-800">
-                Max actions per run
+                Max tools per run
               </div>
               <div className="w-full grow text-sm text-element-600">
                 up to {MAX_TOOLS_USE_PER_RUN_LIMIT}
@@ -790,7 +797,7 @@ function AddAction({
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
-        <Button variant="primary" label="Add an action" icon={PlusIcon} />
+        <Button variant="primary" label="Add a tool" icon={PlusIcon} />
       </DropdownMenu.Button>
       <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
         <DropdownMenu.SectionHeader label="DATA SOURCES" />

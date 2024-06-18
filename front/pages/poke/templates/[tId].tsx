@@ -284,14 +284,14 @@ function PresetActionsField({
                   control={control}
                   // @ts-expect-error - TS doesn't like the dynamic key
                   name={`presetActions.${index}.name`}
-                  title="Action Name"
-                  placeholder="Action Name"
+                  title="Tool Name"
+                  placeholder="Tool Name"
                 />
                 <SelectField
                   control={control}
                   // @ts-expect-error - TS doesn't like the dynamic key
                   name={`presetActions.${index}.type`}
-                  title="Action Type"
+                  title="Tool Type"
                   options={Object.entries(MULTI_ACTION_PRESETS).map(
                     ([value, display]) => ({
                       value,
@@ -303,7 +303,7 @@ function PresetActionsField({
                   control={control}
                   // @ts-expect-error - TS doesn't like the dynamic key
                   name={`presetActions.${index}.description`}
-                  title="Action Description"
+                  title="Tool Description"
                   placeholder="Description of the action"
                   rows={5}
                 />
@@ -311,8 +311,8 @@ function PresetActionsField({
                   control={control}
                   // @ts-expect-error - TS doesn't like the dynamic key
                   name={`presetActions.${index}.help`}
-                  title="Help content for template"
-                  placeholder="Help text for the action"
+                  title="Tool Help content"
+                  placeholder="This is the text displayed on the template's sidebar just on top of the button to add the tool."
                   rows={5}
                 />
                 <PokeFormItem>
@@ -325,7 +325,7 @@ function PresetActionsField({
                         remove(index);
                       }}
                     >
-                      Remove Action
+                      Remove Tool
                     </PokeButton>
                   </div>
                 </PokeFormItem>
@@ -345,7 +345,7 @@ function PresetActionsField({
                 append(pendingAction);
               }}
             >
-              Add Action
+              Add Tool
             </PokeButton>
             <PokeFormMessage />
           </PokeFormItem>
@@ -764,7 +764,7 @@ function TemplatesPage({
             <PresetActionsField
               control={form.control}
               name="presetActions"
-              title="Preset Actions"
+              title="Preset Tools"
             />
 
             <div className="space flex gap-2">

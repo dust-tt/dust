@@ -333,14 +333,16 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
-        label,
-        current: screen === key,
-        onClick: () => {
-          setScreen(key as BuilderScreen);
-        },
-        icon,
-      })),
+      Object.entries(BUILDER_SCREENS).map(
+        ([key, { label, labelMultiActions, icon }]) => ({
+          label: multiActionsEnabled ? labelMultiActions : label,
+          current: screen === key,
+          onClick: () => {
+            setScreen(key as BuilderScreen);
+          },
+          icon,
+        })
+      ),
     [screen]
   );
   const modalTitle = agentConfigurationId

@@ -29,7 +29,7 @@ export function AgentMessageActionsDrawer({
     <Modal
       isOpen={isOpened}
       onClose={onClose}
-      title="Actions Details"
+      title="Breakdown of the tools used"
       variant="side-md"
       hasChanged={false}
     >
