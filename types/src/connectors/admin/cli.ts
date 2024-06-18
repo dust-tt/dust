@@ -1,7 +1,5 @@
 import * as t from "io-ts";
 
-import { ParsedNotionDatabaseSchema } from "../notion";
-
 export const ConnectorsCommandSchema = t.type({
   majorCommand: t.literal("connectors"),
   command: t.union([
@@ -35,6 +33,7 @@ export const NotionCommandSchema = t.type({
     t.literal("upsert-database"),
     t.literal("search-pages"),
     t.literal("check-url"),
+    t.literal("find-url"),
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
@@ -220,22 +219,21 @@ export type NotionSearchPagesResponseType = t.TypeOf<
   typeof NotionSearchPagesResponseSchema
 >;
 
-export const NotionCheckUrlResponseSchema = t.union([
-  t.type({
-    page: t.UnknownRecord, // notion type, can't be iots'd
-    db: t.null,
-  }),
-  t.type({
-    page: t.null,
-    db: ParsedNotionDatabaseSchema,
-  }),
-  t.type({
-    page: t.null,
-    db: t.null,
-  }),
-]);
+export const NotionCheckUrlResponseSchema = t.type({
+  page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+  db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+});
 
 export type NotionCheckUrlResponseType = t.TypeOf<
+  typeof NotionCheckUrlResponseSchema
+>;
+
+export const NotionFindUrlResponseSchema = t.type({
+  page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+  db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+});
+
+export type NotionFindUrlResponseType = t.TypeOf<
   typeof NotionCheckUrlResponseSchema
 >;
 
