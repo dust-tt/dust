@@ -2,6 +2,7 @@ import {
   AssistantPreview,
   Button,
   ListAddIcon,
+  LockIcon,
   PlanetIcon,
   PlusIcon,
   RobotIcon,
@@ -10,7 +11,6 @@ import {
   Tab,
   Tooltip,
   UserGroupIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -39,7 +39,7 @@ const ALL_AGENTS_TABS = [
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: UserIcon, id: "personal" },
+  { label: "Personal", icon: LockIcon, id: "personal" },
   { label: "In my list", icon: ListAddIcon, id: "list" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
