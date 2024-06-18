@@ -64,7 +64,7 @@ export async function enqueueUpsertDocument({
       documentId: upsertDocument.documentId,
       enqueueTimestamp: Date.now(),
     },
-    "[UpsertQueue] Enqueueing item"
+    "[UpsertQueue] Enqueueing document"
   );
 
   return enqueueUpsert({
@@ -89,7 +89,7 @@ export async function enqueueUpsertTable({
       documentId: upsertTable.tableId,
       enqueueTimestamp: Date.now(),
     },
-    "[UpsertQueue] Enqueueing item"
+    "[UpsertQueue] Enqueueing table"
   );
 
   return enqueueUpsert({
