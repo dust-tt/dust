@@ -1,4 +1,4 @@
-import { Avatar, ChevronRightIcon, Chip, Icon } from "@dust-tt/sparkle";
+import { Avatar, ChevronRightIcon, Chip, Icon, Page } from "@dust-tt/sparkle";
 import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
@@ -16,7 +16,6 @@ export function InvitationsList({
   const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner);
   const [selectedInvite, setSelectedInvite] =
     useState<MembershipInvitationType | null>(null);
-
   const filteredInvitations = invitations
     .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
     .filter((i) => i.status === "pending")
@@ -34,12 +33,10 @@ export function InvitationsList({
           onClose={() => setSelectedInvite(null)}
         />
       )}
+      {filteredInvitations.length > 0 && (
+        <Page.H variant="h5">Invitations</Page.H>
+      )}
       <div className="s-w-full">
-        {!isInvitationsLoading && filteredInvitations.length == 0 && (
-          <div className="border-t border-structure-200 p-2 text-sm text-gray-500">
-            Your workspace has no pending invitation.
-          </div>
-        )}
         {!isInvitationsLoading &&
           filteredInvitations.length > 0 &&
           filteredInvitations.map((invitation: MembershipInvitationType) => (
