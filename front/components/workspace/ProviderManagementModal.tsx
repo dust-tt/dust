@@ -68,6 +68,11 @@ export function ProviderManagementModal({
     [providerStates]
   );
 
+  const masterToggleDisabled = useMemo(
+    () => Object.values(providerStates).every((state) => state),
+    [providerStates]
+  );
+
   const handleToggleChange = useCallback(
     (provider: ModelProviderIdType) => {
       setProviderStates((prevStates) => ({
@@ -141,6 +146,7 @@ export function ProviderManagementModal({
           <SliderToggle
             size="sm"
             selected={allToggleEnabled}
+            disabled={masterToggleDisabled}
             onClick={() => {
               setProviderStates(
                 MODEL_PROVIDER_IDS.reduce((acc, provider) => {
