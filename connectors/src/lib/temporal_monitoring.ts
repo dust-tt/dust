@@ -153,7 +153,12 @@ export class ActivityInboundLogInterceptor
       const durationMs = new Date().getTime() - startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
-        if (error instanceof DustConnectorWorkflowError) {
+        if (
+          error instanceof DustConnectorWorkflowError ||
+          // temporary swallow during fix
+          // TODO(pr, 2024-06-18) remove the temporary swallow
+          error.message.includes("Error uploading structured data to Dust")
+        ) {
           // This is a Dust error.
           errorType = error.type;
           this.logger.error(
