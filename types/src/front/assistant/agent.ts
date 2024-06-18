@@ -140,6 +140,23 @@ export type AgentUsageType = {
   timePeriodSec: number;
 };
 
+export type LightAgentUsageType = {
+  messageCount: number;
+  timePeriodSec: number;
+}
+export function isAgentUsageType(
+  usage: unknown
+): usage is AgentUsageType {
+  return (
+    typeof usage === "object" &&
+    usage !== null &&
+    "messageCount" in usage &&
+    "timePeriodSec" in usage &&
+    "usersWithAgentInListCount" in usage &&
+    "userCount" in usage
+  );
+}
+
 export type AgentRecentAuthors = readonly string[];
 
 export type AgentModelConfigurationType = {
@@ -176,7 +193,7 @@ export type LightAgentConfigurationType = {
   // `lastAuthors` is expensive to compute, so we only compute it when needed.
   lastAuthors?: AgentRecentAuthors;
   // Usage is expensive to compute, so we only compute it when needed.
-  usage?: AgentUsageType;
+  usage?: AgentUsageType | LightAgentUsageType;
 
   maxToolsUsePerRun: number;
 
