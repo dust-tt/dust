@@ -1,9 +1,11 @@
 import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
-import { isLeft, isRight } from "fp-ts/lib/Either";
+import { isRight } from "fp-ts/lib/Either";
+import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import * as t from "io-ts";
+
 import { getDataSource } from "@app/lib/api/data_sources";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
@@ -13,7 +15,6 @@ import {
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
-import { upsertTableFromCsv } from "@app/lib/api/tables";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -38,14 +39,14 @@ export async function upsertDocumentActivity(
   const tableItemValidation = EnqueueUpsertTableFromCsv.decode(upsertDocument);
 
   if (isRight(documentItemValidation)) {
-    return await upsertDocumentItem(
+    return upsertDocumentItem(
       documentItemValidation.right,
       upsertQueueId,
       enqueueTimestamp
     );
   }
   if (isRight(tableItemValidation)) {
-    return await upsertTableItem(
+    return upsertTableItem(
       tableItemValidation.right,
       upsertQueueId,
       enqueueTimestamp

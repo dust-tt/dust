@@ -7,9 +7,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { enqueueUpsertDocument } from "@app/lib/upsert_document";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import { enqueueUpsertDocument } from "@app/lib/upsert_document";
 
 export const config = {
   api: {
