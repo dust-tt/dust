@@ -129,9 +129,9 @@ async function upsertDocumentItem(
       },
       "[UpsertQueue] Failed upsert"
     );
-    statsDClient.increment("upsert_queue_error.count", 1, statsDTags);
+    statsDClient.increment("upsert_queue_document_error.count", 1, statsDTags);
     statsDClient.distribution(
-      "upsert_queue_upsert_error.duration.distribution",
+      "upsert_queue_upsert_document_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
     );
@@ -139,7 +139,7 @@ async function upsertDocumentItem(
     const error: WorkflowError = {
       __is_dust_error: true,
       message: `Upsert error: ${upsertRes.error.message}`,
-      type: "upsert_queue_upsert_error",
+      type: "upsert_queue_upsert_document_error",
     };
 
     throw error;
@@ -152,14 +152,14 @@ async function upsertDocumentItem(
     },
     "[UpsertQueue] Successful upsert"
   );
-  statsDClient.increment("upsert_queue_success.count", 1, statsDTags);
+  statsDClient.increment("upsert_queue_document_success.count", 1, statsDTags);
   statsDClient.distribution(
-    "upsert_queue_upsert_success.duration.distribution",
+    "upsert_queue_upsert_document_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
   statsDClient.distribution(
-    "upsert_queue.duration.distribution",
+    "upsert_queue_document.duration.distribution",
     Date.now() - enqueueTimestamp,
     []
   );
@@ -243,9 +243,9 @@ async function upsertTableItem(
       },
       "[UpsertQueue] Failed upsert"
     );
-    statsDClient.increment("upsert_queue_error.count", 1, statsDTags);
+    statsDClient.increment("upsert_queue_table_error.count", 1, statsDTags);
     statsDClient.distribution(
-      "upsert_queue_upsert_error.duration.distribution",
+      "upsert_queue_upsert_table_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
     );
@@ -253,7 +253,7 @@ async function upsertTableItem(
     const error: WorkflowError = {
       __is_dust_error: true,
       message: `Upsert error: ${JSON.stringify(tableRes.error)}`,
-      type: "upsert_queue_upsert_error",
+      type: "upsert_queue_upsert_table_error",
     };
 
     throw error;
@@ -266,14 +266,14 @@ async function upsertTableItem(
     },
     "[UpsertQueue] Successful upsert"
   );
-  statsDClient.increment("upsert_queue_success.count", 1, statsDTags);
+  statsDClient.increment("upsert_queue_table_success.count", 1, statsDTags);
   statsDClient.distribution(
-    "upsert_queue_upsert_success.duration.distribution",
+    "upsert_queue_upsert_table_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
   statsDClient.distribution(
-    "upsert_queue.duration.distribution",
+    "upsert_queue_table.duration.distribution",
     Date.now() - enqueueTimestamp,
     []
   );
