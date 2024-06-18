@@ -33,8 +33,8 @@ interface StreamConversationToSlackParams {
 }
 
 // Adding linear backoff mechanism.
-const maxBackoffTime = 10000; // Maximum backoff time.
-const initialBackoffTime = 1000;
+const maxBackoffTime = 10_000; // Maximum backoff time.
+const initialBackoffTime = 1_000;
 
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
@@ -54,18 +54,22 @@ export async function streamConversationToSlack(
 
   const postSlackMessageUpdate = async (
     messageUpdate: SlackMessageUpdate,
-    { ignoreRateLimit }: { ignoreRateLimit: boolean }
+    { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
+      adhereToRateLimit: true,
+    }
   ) => {
     if (
       lastSentDate.getTime() + backoffTime > new Date().getTime() &&
-      !ignoreRateLimit
+      adhereToRateLimit
     ) {
       return;
     }
 
     lastSentDate = new Date();
-    // Linear increase of backoff time.
-    backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+    if (adhereToRateLimit) {
+      // Linear increase of backoff time.
+      backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+    }
 
     await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
@@ -80,7 +84,10 @@ export async function streamConversationToSlack(
   );
 
   // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate({ isThinking: true }, { ignoreRateLimit: true });
+  await postSlackMessageUpdate(
+    { isThinking: true },
+    { adhereToRateLimit: false }
+  );
 
   const agentMessages = conversation.content
     .map((versions) => {
@@ -154,10 +161,7 @@ export async function streamConversationToSlack(
           break;
         }
 
-        await postSlackMessageUpdate(
-          { text: finalAnswer, footnotes },
-          { ignoreRateLimit: false }
-        );
+        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
 
         break;
       }
@@ -181,7 +185,7 @@ export async function streamConversationToSlack(
 
         await postSlackMessageUpdate(
           { text: finalAnswer, footnotes },
-          { ignoreRateLimit: true }
+          { adhereToRateLimit: false }
         );
 
         return new Ok(undefined);
