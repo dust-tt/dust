@@ -37,10 +37,23 @@ export const EnqueueUpsertDocument = t.type({
   upsertContext: t.union([UpsertContextSchema, t.null]),
 });
 
+export const EnqueueUpsertTableFromCsv = t.type({
+  workspaceId: t.string,
+  projectId: t.string,
+  dataSourceName: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
+  tableId: t.string,
+  csv: t.union([t.string, t.null]),
+  truncate: t.boolean,
+});
+
 export async function enqueueUpsertDocument({
   upsertDocument,
 }: {
-  upsertDocument: t.TypeOf<typeof EnqueueUpsertDocument>;
+  upsertDocument:
+    | t.TypeOf<typeof EnqueueUpsertDocument>
+    | t.TypeOf<typeof EnqueueUpsertTableFromCsv>;
 }): Promise<Result<string, Error>> {
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
@@ -66,7 +79,12 @@ export async function enqueueUpsertDocument({
         upsertQueueId,
         workspaceId: upsertDocument.workspaceId,
         dataSourceName: upsertDocument.dataSourceName,
-        documentId: upsertDocument.documentId,
+        documentId: EnqueueUpsertDocument.is(upsertDocument)
+          ? upsertDocument.documentId
+          : undefined,
+        tableId: EnqueueUpsertTableFromCsv.is(upsertDocument)
+          ? upsertDocument.tableId
+          : undefined,
         enqueueTimestamp: now,
       },
       "[UpsertQueue] Enqueueing item"
