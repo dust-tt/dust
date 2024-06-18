@@ -373,7 +373,7 @@ export default function AppLayout({
           )}
         </div>
 
-        <div className="relative h-full max-w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <div className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
           {/* TODO: This should be handled by the navigation bar itself!! */}
           <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
             <button
@@ -386,36 +386,36 @@ export default function AppLayout({
             </button>
           </div>
 
-          {/* TODO: Move to a top bar component */}
-          <div
-            className={classNames(
-              "sticky left-0 top-0 z-30 mb-4 flex flex-col",
-              !hideSidebar
-                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
-                : "",
-              titleChildren ? "" : "lg:hidden"
-            )}
-          >
-            <div className="h-16 grow px-6">
-              {loaded && titleChildren && titleChildren}
-            </div>
-            {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
-          </div>
-
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
-              "flex h-full w-full justify-center",
+              "flex h-full w-full flex-col items-center",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
+            {/* TODO: Move to a top bar component */}
             <div
               className={classNames(
-                "h-full w-full",
-                isWideMode ? "" : "max-w-4xl px-6"
+                "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
+                !hideSidebar
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
+                  : "",
+                titleChildren ? "" : "lg:hidden"
+              )}
+            >
+              <div className="h-16 grow px-6">
+                {loaded && titleChildren && titleChildren}
+              </div>
+              {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
+            </div>
+
+            <div
+              className={classNames(
+                "flex h-full w-full flex-col",
+                isWideMode ? "items-center" : "max-w-4xl px-6"
               )}
             >
               {loaded && children}
