@@ -24,6 +24,7 @@ export const UpsertTableFromCsvSchema = t.intersection([
     name: SlugifiedString,
     description: t.string,
     truncate: t.boolean,
+    async: t.boolean,
   }),
   // csv is optional when editing an existing table.
   t.union([
