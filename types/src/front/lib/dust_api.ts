@@ -379,7 +379,13 @@ export class DustAPI {
       }),
     });
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ run: RunType }> = await this._resultFromResponse(
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.run);
   }
 
   /**
@@ -445,7 +451,12 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ data_sources: DataSourceType[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.data_sources);
   }
 
   async getAgentConfigurations(): Promise<
@@ -462,7 +473,13 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{
+      agentConfigurations: LightAgentConfigurationType[];
+    }> = await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.agentConfigurations);
   }
 
   async postContentFragment({
@@ -486,7 +503,12 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ contentFragment: ContentFragmentType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.contentFragment);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
@@ -562,7 +584,12 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ message: UserMessageType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.message);
   }
 
   async streamAgentMessageEvents({
@@ -701,7 +728,12 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ conversation: ConversationType }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.conversation);
   }
 
   async tokenize(
@@ -722,7 +754,12 @@ export class DustAPI {
       }),
     });
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ tokens: CoreAPITokenType[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.tokens);
   }
 
   async getActiveMemberEmailsInWorkspace(): Promise<DustAPIResponse<string[]>> {
@@ -736,11 +773,17 @@ export class DustAPI {
       },
     });
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ emails: string[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.emails);
   }
 
   async getWorkspaceVerifiedDomains(): Promise<
-    DustAPIResponse<{ verified_domains: WorkspaceDomain[] }>
+    DustAPIResponse<WorkspaceDomain[]>
   > {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
 
@@ -752,7 +795,13 @@ export class DustAPI {
       },
     });
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ verified_domains: WorkspaceDomain[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.verified_domains);
   }
 
   async getWorkspaceFeatureFlags(): Promise<
@@ -768,7 +817,13 @@ export class DustAPI {
       },
     });
 
-    return this._resultFromResponse(res);
+    const r: DustAPIResponse<{ feature_flags: WhitelistableFeature[] }> =
+      await this._resultFromResponse(res);
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(r.value.feature_flags);
   }
 
   private async _fetchWithError(
