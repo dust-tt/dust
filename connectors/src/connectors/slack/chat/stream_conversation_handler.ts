@@ -119,13 +119,19 @@ export async function streamConversationToSlack(
         if (event.classification !== "tokens") {
           continue;
         }
+
         fullAnswer += event.text;
         if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
           continue;
         }
         lastSentDate = new Date();
 
-        const finalAnswer = safelyPrepareAnswer(fullAnswer, action);
+        const { formattedContent, footnotes } = annotateCitations(
+          fullAnswer,
+          action
+        );
+
+        const finalAnswer = safelyPrepareAnswer(formattedContent);
         // If the answer cannot be prepared safely, skip processing these tokens.
         if (!finalAnswer) {
           break;
@@ -138,7 +144,7 @@ export async function streamConversationToSlack(
           break;
         }
 
-        await postSlackMessageUpdate({ text: finalAnswer });
+        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
 
         break;
       }
@@ -151,8 +157,13 @@ export async function streamConversationToSlack(
       case "agent_generation_success": {
         fullAnswer = `${botIdentity}${event.text}`;
 
+        const { formattedContent, footnotes } = annotateCitations(
+          fullAnswer,
+          action
+        );
+
         let finalAnswer = slackifyMarkdown(
-          normalizeContentForSlack(annotateCitations(fullAnswer, action))
+          normalizeContentForSlack(formattedContent)
         );
 
         // if the message is too long, when generation is finished we show it
@@ -163,7 +174,7 @@ export async function streamConversationToSlack(
             "... (message truncated)";
         }
 
-        await postSlackMessageUpdate({ text: finalAnswer });
+        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
 
         return new Ok(undefined);
       }
@@ -182,11 +193,8 @@ export async function streamConversationToSlack(
  * This function handles such errors gracefully, ensuring that the full text will be displayed
  * once a valid URL is available.
  */
-function safelyPrepareAnswer(
-  text: string,
-  action: AgentActionType | null
-): string | null {
-  const rawAnswer = normalizeContentForSlack(annotateCitations(text, action));
+function safelyPrepareAnswer(text: string): string | null {
+  const rawAnswer = normalizeContentForSlack(text);
 
   try {
     return slackifyMarkdown(rawAnswer);
