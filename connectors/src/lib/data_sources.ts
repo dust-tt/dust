@@ -497,6 +497,7 @@ export async function upsertTableFromCsv({
     csv: tableCsv,
     tableId,
     truncate,
+    async: true,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

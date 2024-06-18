@@ -4,10 +4,12 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { getDataSource } from "@app/lib/api/data_sources";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
   EnqueueUpsertDocument,
+  EnqueueUpsertTable,
   runPostUpsertHooks,
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
@@ -26,22 +28,24 @@ export async function upsertDocumentActivity(
     throw new Error("SERVICE_ACCOUNT is not set");
   }
 
-  let logger = mainLogger.child({ upsertQueueId });
-
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
   const content = await bucket.file(`${upsertQueueId}.json`).download();
 
   const upsertDocument = JSON.parse(content.toString());
 
-  const itemValidation = EnqueueUpsertDocument.decode(upsertDocument);
-  if (isLeft(itemValidation)) {
-    const pathError = reporter.formatValidationErrors(itemValidation.left);
-    throw new Error(`Invalid upsertQueue item: ${pathError}`);
-  }
-  const upsertQueueItem = itemValidation.right;
+  const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
 
-  logger = logger.child({
+  if (isLeft(documentItemValidation)) {
+    const pathErrorDocument = reporter.formatValidationErrors(
+      documentItemValidation.left
+    );
+    throw new Error(`Invalid upsertQueue document: ${pathErrorDocument}`);
+  }
+
+  const upsertQueueItem = documentItemValidation.right;
+
+  const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
     dataSourceName: upsertQueueItem.dataSourceName,
@@ -101,9 +105,9 @@ export async function upsertDocumentActivity(
       },
       "[UpsertQueue] Failed upsert"
     );
-    statsDClient.increment("upsert_queue_error.count", 1, statsDTags);
+    statsDClient.increment("upsert_queue_document_error.count", 1, statsDTags);
     statsDClient.distribution(
-      "upsert_queue_upsert_error.duration.distribution",
+      "upsert_queue_upsert_document_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
     );
@@ -111,7 +115,7 @@ export async function upsertDocumentActivity(
     const error: WorkflowError = {
       __is_dust_error: true,
       message: `Upsert error: ${upsertRes.error.message}`,
-      type: "upsert_queue_upsert_error",
+      type: "upsert_queue_upsert_document_error",
     };
 
     throw error;
@@ -124,14 +128,14 @@ export async function upsertDocumentActivity(
     },
     "[UpsertQueue] Successful upsert"
   );
-  statsDClient.increment("upsert_queue_success.count", 1, statsDTags);
+  statsDClient.increment("upsert_queue_document_success.count", 1, statsDTags);
   statsDClient.distribution(
-    "upsert_queue_upsert_success.duration.distribution",
+    "upsert_queue_upsert_document_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
   statsDClient.distribution(
-    "upsert_queue.duration.distribution",
+    "upsert_queue_document.duration.distribution",
     Date.now() - enqueueTimestamp,
     []
   );
@@ -145,4 +149,130 @@ export async function upsertDocumentActivity(
     sourceUrl: upsertQueueItem.sourceUrl,
     upsertContext: upsertQueueItem.upsertContext || undefined,
   });
+}
+
+export async function upsertTableActivity(
+  upsertQueueId: string,
+  enqueueTimestamp: number
+) {
+  if (!DUST_UPSERT_QUEUE_BUCKET) {
+    throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
+  }
+  if (!SERVICE_ACCOUNT) {
+    throw new Error("SERVICE_ACCOUNT is not set");
+  }
+
+  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+  const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
+  const content = await bucket.file(`${upsertQueueId}.json`).download();
+
+  const upsertDocument = JSON.parse(content.toString());
+
+  const tableItemValidation = EnqueueUpsertTable.decode(upsertDocument);
+
+  if (isLeft(tableItemValidation)) {
+    const pathErrorTable = reporter.formatValidationErrors(
+      tableItemValidation.left
+    );
+    throw new Error(`Invalid upsertQueue table: ${pathErrorTable}`);
+  }
+
+  const upsertQueueItem = tableItemValidation.right;
+  const logger = mainLogger.child({
+    upsertQueueId,
+    workspaceId: upsertQueueItem.workspaceId,
+    dataSourceName: upsertQueueItem.dataSourceName,
+    tableId: upsertQueueItem.tableId,
+  });
+
+  const auth = await Authenticator.internalBuilderForWorkspace(
+    upsertQueueItem.workspaceId
+  );
+
+  const owner = auth.workspace();
+  if (!owner) {
+    logger.error(
+      {
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Giving up: Workspace not found"
+    );
+    return;
+  }
+
+  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceName);
+
+  if (!dataSource) {
+    // If the data source was not found, we simply give up and remove the item from the queue as it
+    // means that the data source was deleted.
+    logger.info(
+      {
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Giving up: DataSource not found"
+    );
+    return;
+  }
+
+  const statsDTags = [
+    `data_source_name:${dataSource.name}`,
+    `workspace_id:${upsertQueueItem.workspaceId}`,
+  ];
+
+  const upsertTimestamp = Date.now();
+
+  const tableRes = await upsertTableFromCsv({
+    auth,
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceName: dataSource.name,
+    tableName: upsertQueueItem.tableName,
+    tableDescription: upsertQueueItem.tableDescription,
+    tableId: upsertQueueItem.tableId,
+    csv: upsertQueueItem.csv,
+    truncate: upsertQueueItem.truncate,
+  });
+
+  if (tableRes.isErr()) {
+    logger.error(
+      {
+        error: tableRes.error,
+        latencyMs: Date.now() - upsertTimestamp,
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Failed upsert"
+    );
+    statsDClient.increment("upsert_queue_table_error.count", 1, statsDTags);
+    statsDClient.distribution(
+      "upsert_queue_upsert_table_error.duration.distribution",
+      Date.now() - upsertTimestamp,
+      []
+    );
+
+    const error: WorkflowError = {
+      __is_dust_error: true,
+      message: `Upsert error: ${JSON.stringify(tableRes.error)}`,
+      type: "upsert_queue_upsert_table_error",
+    };
+
+    throw error;
+  }
+
+  logger.info(
+    {
+      latencyMs: Date.now() - upsertTimestamp,
+      delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+    },
+    "[UpsertQueue] Successful upsert"
+  );
+  statsDClient.increment("upsert_queue_table_success.count", 1, statsDTags);
+  statsDClient.distribution(
+    "upsert_queue_upsert_table_success.duration.distribution",
+    Date.now() - upsertTimestamp,
+    []
+  );
+  statsDClient.distribution(
+    "upsert_queue_table.duration.distribution",
+    Date.now() - enqueueTimestamp,
+    []
+  );
 }

@@ -244,6 +244,7 @@ export default function TableUpsert({
           csv: fileContent,
           tableId: loadTableId ?? undefined,
           truncate: true,
+          async: false,
         };
       } else if (tableId) {
         body = {
@@ -252,6 +253,7 @@ export default function TableUpsert({
           tableId: tableId,
           csv: undefined,
           truncate: false,
+          async: false,
         };
       } else {
         throw new Error("Unreachable: fileContent is null");

@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { enqueueUpsertTable } from "@app/lib/upsert_document";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -23,6 +24,7 @@ export const UpsertTableFromCsvSchema = t.intersection([
     name: SlugifiedString,
     description: t.string,
     truncate: t.boolean,
+    async: t.union([t.boolean, t.undefined]),
   }),
   // csv is optional when editing an existing table.
   t.union([
@@ -146,7 +148,7 @@ export async function handlePostTableCsvUpsertRequest(
     });
   }
 
-  const { name, description, csv, truncate } = bodyValidation.right;
+  const { name, description, csv, truncate, async } = bodyValidation.right;
   if (!csv && truncate) {
     return apiError(req, res, {
       api_error: {
@@ -158,8 +160,43 @@ export async function handlePostTableCsvUpsertRequest(
   }
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
 
+  if (async) {
+    const enqueueRes = await enqueueUpsertTable({
+      upsertTable: {
+        workspaceId: owner.sId,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName,
+        tableName: name,
+        tableDescription: description,
+        tableId,
+        csv: csv ?? null,
+        truncate,
+      },
+    });
+    if (enqueueRes.isErr()) {
+      return apiError(
+        req,
+        res,
+        {
+          status_code: 500,
+          api_error: {
+            type: "data_source_error",
+            message:
+              "There was an error enqueueing the the document for asynchronous upsert.",
+          },
+        },
+        enqueueRes.error
+      );
+    }
+    return res.status(200).json({
+      table: {
+        table_id: tableId,
+      },
+    });
+  }
+
   const tableRes = await upsertTableFromCsv({
-    owner,
+    auth,
     projectId: dataSource.dustAPIProjectId,
     dataSourceName,
     tableName: name,

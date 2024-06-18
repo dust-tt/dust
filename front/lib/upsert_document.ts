@@ -21,7 +21,10 @@ import { getDocumentsPostUpsertHooksToRun } from "@app/lib/documents_post_proces
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import { launchRunPostUpsertHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
-import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
+import {
+  launchUpsertDocumentWorkflow,
+  launchUpsertTableWorkflow,
+} from "@app/temporal/upsert_queue/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -37,11 +40,86 @@ export const EnqueueUpsertDocument = t.type({
   upsertContext: t.union([UpsertContextSchema, t.null]),
 });
 
+export const EnqueueUpsertTable = t.type({
+  workspaceId: t.string,
+  projectId: t.string,
+  dataSourceName: t.string,
+  tableName: t.string,
+  tableDescription: t.string,
+  tableId: t.string,
+  csv: t.union([t.string, t.null]),
+  truncate: t.boolean,
+});
+
+type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;
+
+type EnqueueUpsertTableType = t.TypeOf<typeof EnqueueUpsertTable>;
+
 export async function enqueueUpsertDocument({
   upsertDocument,
 }: {
-  upsertDocument: t.TypeOf<typeof EnqueueUpsertDocument>;
+  upsertDocument: EnqueueUpsertDocumentType;
 }): Promise<Result<string, Error>> {
+  const upsertQueueId = uuidv4();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertDocument.workspaceId,
+      dataSourceName: upsertDocument.dataSourceName,
+      documentId: upsertDocument.documentId,
+      enqueueTimestamp: Date.now(),
+    },
+    "[UpsertQueue] Enqueueing document"
+  );
+
+  return enqueueUpsert({
+    upsertItem: upsertDocument,
+    upsertQueueId,
+    launchWorkflowFn: launchUpsertDocumentWorkflow,
+  });
+}
+
+export async function enqueueUpsertTable({
+  upsertTable,
+}: {
+  upsertTable: EnqueueUpsertTableType;
+}): Promise<Result<string, Error>> {
+  const upsertQueueId = uuidv4();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertTable.workspaceId,
+      dataSourceName: upsertTable.dataSourceName,
+      documentId: upsertTable.tableId,
+      enqueueTimestamp: Date.now(),
+    },
+    "[UpsertQueue] Enqueueing table"
+  );
+
+  return enqueueUpsert({
+    upsertItem: upsertTable,
+    upsertQueueId,
+    launchWorkflowFn: launchUpsertTableWorkflow,
+  });
+}
+
+async function enqueueUpsert({
+  upsertItem,
+  upsertQueueId,
+  launchWorkflowFn,
+}:
+  | {
+      upsertItem: EnqueueUpsertDocumentType;
+      upsertQueueId: string;
+      launchWorkflowFn: typeof launchUpsertDocumentWorkflow;
+    }
+  | {
+      upsertItem: EnqueueUpsertTableType;
+      upsertQueueId: string;
+      launchWorkflowFn: typeof launchUpsertTableWorkflow;
+    }): Promise<Result<string, Error>> {
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
@@ -49,7 +127,6 @@ export async function enqueueUpsertDocument({
     throw new Error("SERVICE_ACCOUNT is not set");
   }
 
-  const upsertQueueId = uuidv4();
   const now = Date.now();
 
   try {
@@ -57,24 +134,13 @@ export async function enqueueUpsertDocument({
     const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
     await bucket
       .file(`${upsertQueueId}.json`)
-      .save(JSON.stringify(upsertDocument), {
+      .save(JSON.stringify(upsertItem), {
         contentType: "application/json",
       });
 
-    logger.info(
-      {
-        upsertQueueId,
-        workspaceId: upsertDocument.workspaceId,
-        dataSourceName: upsertDocument.dataSourceName,
-        documentId: upsertDocument.documentId,
-        enqueueTimestamp: now,
-      },
-      "[UpsertQueue] Enqueueing item"
-    );
-
-    const launchRes = await launchUpsertDocumentWorkflow({
-      workspaceId: upsertDocument.workspaceId,
-      dataSourceName: upsertDocument.dataSourceName,
+    const launchRes = await launchWorkflowFn({
+      workspaceId: upsertItem.workspaceId,
+      dataSourceName: upsertItem.dataSourceName,
       upsertQueueId,
       enqueueTimestamp: now,
     });
