@@ -16,6 +16,7 @@ import {
 import { DataSourceType } from "../../front/data_source";
 import { CoreAPITokenType } from "../../front/lib/core_api";
 import { RunType } from "../../front/run";
+import { WorkspaceDomain } from "../../front/workspace";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 import { WhitelistableFeature } from "../feature_flags";
@@ -724,7 +725,7 @@ export class DustAPI {
     return this._resultFromResponse(res);
   }
 
-  async getActiveMemberEmailsInWorkspace() {
+  async getActiveMemberEmailsInWorkspace(): Promise<DustAPIResponse<string[]>> {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
 
     const res = await this._fetchWithError(endpoint, {
@@ -738,7 +739,9 @@ export class DustAPI {
     return this._resultFromResponse(res);
   }
 
-  async getWorkspaceVerifiedDomains() {
+  async getWorkspaceVerifiedDomains(): Promise<
+    DustAPIResponse<{ verified_domains: WorkspaceDomain[] }>
+  > {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
 
     const res = await this._fetchWithError(endpoint, {
