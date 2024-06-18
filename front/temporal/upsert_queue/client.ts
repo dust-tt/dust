@@ -37,7 +37,7 @@ export async function launchUpsertDocumentWorkflow({
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -46,7 +46,7 @@ export async function launchUpsertDocumentWorkflow({
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
@@ -82,7 +82,7 @@ export async function launchUpsertTableWorkflow({
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -91,7 +91,7 @@ export async function launchUpsertTableWorkflow({
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(e as Error);
   }
