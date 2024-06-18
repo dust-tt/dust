@@ -838,7 +838,7 @@ export class DustAPI {
       const duration = Date.now() - now;
       const err: APIError = {
         type: "unexpected_network_error",
-        message: "Unexpected network error from ConnectorAPI",
+        message: `Unexpected network error from DustAPI: ${e}`,
       };
       this._logger.error(
         {

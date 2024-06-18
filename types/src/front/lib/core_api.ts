@@ -1226,7 +1226,7 @@ export class CoreAPI {
       const duration = Date.now() - now;
       const err: CoreAPIError = {
         code: "unexpected_network_error",
-        message: "Unexpected network error from ConnectorAPI",
+        message: `Unexpected network error from CoreAPI: ${e}`,
       };
       this._logger.error(
         {

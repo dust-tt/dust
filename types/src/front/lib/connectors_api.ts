@@ -545,7 +545,7 @@ export class ConnectorsAPI {
       const duration = Date.now() - now;
       const err: ConnectorsAPIError = {
         type: "unexpected_network_error",
-        message: "Unexpected network error from ConnectorAPI",
+        message: `Unexpected network error from ConnectorsAPI: ${e}`,
       };
       this._logger.error(
         {
