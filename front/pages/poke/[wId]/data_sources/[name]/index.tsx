@@ -388,8 +388,7 @@ const DataSourcePage = ({
           )}
           {dataSource.connectorProvider === "notion" && (
             <>
-              <NotionUrlCheckOrFind owner={owner} command={"check-url"} />
-              <NotionUrlCheckOrFind owner={owner} command={"find-url"} />
+              <NotionUrlCheckOrFind owner={owner} />
             </>
           )}
           {dataSource.connectorProvider === "google_drive" && (
@@ -464,16 +463,14 @@ const DataSourcePage = ({
             </div>
           )}
 
-          <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-            {dataSource.connectorProvider === "slack" && (
-              <>
-                <SlackChannelPatternInput
-                  initialValue={features.autoReadChannelPattern || ""}
-                  owner={owner}
-                />
-              </>
-            )}
-          </div>
+          {dataSource.connectorProvider === "slack" && (
+            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+              <SlackChannelPatternInput
+                initialValue={features.autoReadChannelPattern || ""}
+                owner={owner}
+              />
+            </div>
+          )}
 
           <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
             {!dataSource.connectorId ? (
@@ -569,13 +566,7 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
-function NotionUrlCheckOrFind({
-  owner,
-  command,
-}: {
-  owner: WorkspaceType;
-  command: "check-url" | "find-url";
-}) {
+function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
   const [notionUrl, setNotionUrl] = useState("");
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
@@ -583,7 +574,7 @@ function NotionUrlCheckOrFind({
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="flex items-center gap-2 ">
-        <div>Check Notion URL</div>
+        <div>Notion URL</div>
         <div className="grow">
           <Input
             placeholder="Notion URL"
@@ -594,21 +585,28 @@ function NotionUrlCheckOrFind({
         </div>
         <Button
           variant="secondary"
-          label="Check"
+          label={"Check"}
           onClick={async () =>
             setUrlDetails(
-              await handleCheckOrFindNotionUrl(notionUrl, owner.sId, command)
+              await handleCheckOrFindNotionUrl(
+                notionUrl,
+                owner.sId,
+                "check-url"
+              )
+            )
+          }
+        />
+        <Button
+          variant="secondary"
+          label={"Find"}
+          onClick={async () =>
+            setUrlDetails(
+              await handleCheckOrFindNotionUrl(notionUrl, owner.sId, "find-url")
             )
           }
         />
       </div>
       <div className="text-gray-800">
-        <p>
-          {command === "check-url" &&
-            "Check if we have access to the Notion URL"}
-          {command === "find-url" &&
-            "Find the DB records associated with a Notion URL"}
-        </p>
         {urlDetails && (
           <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
             <span
