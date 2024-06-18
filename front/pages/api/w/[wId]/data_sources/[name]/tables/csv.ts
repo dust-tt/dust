@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { enqueueUpsertDocument } from "@app/lib/upsert_document";
+import { enqueueUpsertTable } from "@app/lib/upsert_document";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -161,8 +161,8 @@ export async function handlePostTableCsvUpsertRequest(
   const tableId = bodyValidation.right.tableId ?? generateModelSId();
 
   if (async) {
-    const enqueueRes = await enqueueUpsertDocument({
-      upsertDocument: {
+    const enqueueRes = await enqueueUpsertTable({
+      upsertTable: {
         workspaceId: owner.sId,
         projectId: dataSource.dustAPIProjectId,
         dataSourceName,

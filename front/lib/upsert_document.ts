@@ -21,7 +21,10 @@ import { getDocumentsPostUpsertHooksToRun } from "@app/lib/documents_post_proces
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import { launchRunPostUpsertHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
-import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
+import {
+  launchUpsertDocumentWorkflow,
+  launchUpsertTableWorkflow,
+} from "@app/temporal/upsert_queue/client";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
@@ -37,7 +40,7 @@ export const EnqueueUpsertDocument = t.type({
   upsertContext: t.union([UpsertContextSchema, t.null]),
 });
 
-export const EnqueueUpsertTableFromCsv = t.type({
+export const EnqueueUpsertTable = t.type({
   workspaceId: t.string,
   projectId: t.string,
   dataSourceName: t.string,
@@ -51,10 +54,68 @@ export const EnqueueUpsertTableFromCsv = t.type({
 export async function enqueueUpsertDocument({
   upsertDocument,
 }: {
-  upsertDocument:
-    | t.TypeOf<typeof EnqueueUpsertDocument>
-    | t.TypeOf<typeof EnqueueUpsertTableFromCsv>;
+  upsertDocument: t.TypeOf<typeof EnqueueUpsertDocument>;
 }): Promise<Result<string, Error>> {
+  const upsertQueueId = uuidv4();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertDocument.workspaceId,
+      dataSourceName: upsertDocument.dataSourceName,
+      documentId: upsertDocument.documentId,
+      enqueueTimestamp: Date.now(),
+    },
+    "[UpsertQueue] Enqueueing item"
+  );
+
+  return enqueueUpsert({
+    upsertItem: upsertDocument,
+    upsertQueueId,
+    launchWorkflowFn: launchUpsertDocumentWorkflow,
+  });
+}
+
+export async function enqueueUpsertTable({
+  upsertTable,
+}: {
+  upsertTable: t.TypeOf<typeof EnqueueUpsertTable>;
+}): Promise<Result<string, Error>> {
+  const upsertQueueId = uuidv4();
+
+  logger.info(
+    {
+      upsertQueueId,
+      workspaceId: upsertTable.workspaceId,
+      dataSourceName: upsertTable.dataSourceName,
+      documentId: upsertTable.tableId,
+      enqueueTimestamp: Date.now(),
+    },
+    "[UpsertQueue] Enqueueing item"
+  );
+
+  return enqueueUpsert({
+    upsertItem: upsertTable,
+    upsertQueueId,
+    launchWorkflowFn: launchUpsertDocumentWorkflow,
+  });
+}
+
+async function enqueueUpsert({
+  upsertItem,
+  upsertQueueId,
+  launchWorkflowFn,
+}:
+  | {
+      upsertItem: t.TypeOf<typeof EnqueueUpsertDocument>;
+      upsertQueueId: string;
+      launchWorkflowFn: typeof launchUpsertDocumentWorkflow;
+    }
+  | {
+      upsertItem: t.TypeOf<typeof EnqueueUpsertTable>;
+      upsertQueueId: string;
+      launchWorkflowFn: typeof launchUpsertTableWorkflow;
+    }): Promise<Result<string, Error>> {
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
@@ -62,7 +123,6 @@ export async function enqueueUpsertDocument({
     throw new Error("SERVICE_ACCOUNT is not set");
   }
 
-  const upsertQueueId = uuidv4();
   const now = Date.now();
 
   try {
@@ -70,29 +130,13 @@ export async function enqueueUpsertDocument({
     const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
     await bucket
       .file(`${upsertQueueId}.json`)
-      .save(JSON.stringify(upsertDocument), {
+      .save(JSON.stringify(upsertItem), {
         contentType: "application/json",
       });
 
-    logger.info(
-      {
-        upsertQueueId,
-        workspaceId: upsertDocument.workspaceId,
-        dataSourceName: upsertDocument.dataSourceName,
-        documentId: EnqueueUpsertDocument.is(upsertDocument)
-          ? upsertDocument.documentId
-          : undefined,
-        tableId: EnqueueUpsertTableFromCsv.is(upsertDocument)
-          ? upsertDocument.tableId
-          : undefined,
-        enqueueTimestamp: now,
-      },
-      "[UpsertQueue] Enqueueing item"
-    );
-
-    const launchRes = await launchUpsertDocumentWorkflow({
-      workspaceId: upsertDocument.workspaceId,
-      dataSourceName: upsertDocument.dataSourceName,
+    const launchRes = await launchWorkflowFn({
+      workspaceId: upsertItem.workspaceId,
+      dataSourceName: upsertItem.dataSourceName,
       upsertQueueId,
       enqueueTimestamp: now,
     });

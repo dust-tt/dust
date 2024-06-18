@@ -9,7 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
   EnqueueUpsertDocument,
-  EnqueueUpsertTableFromCsv,
+  EnqueueUpsertTable,
   runPostUpsertHooks,
 } from "@app/lib/upsert_document";
 import mainLogger from "@app/logger/logger";
@@ -168,7 +168,7 @@ export async function upsertTableActivity(
 
   const upsertDocument = JSON.parse(content.toString());
 
-  const tableItemValidation = EnqueueUpsertTableFromCsv.decode(upsertDocument);
+  const tableItemValidation = EnqueueUpsertTable.decode(upsertDocument);
 
   if (isLeft(tableItemValidation)) {
     const pathErrorTable = reporter.formatValidationErrors(
