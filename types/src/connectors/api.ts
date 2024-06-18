@@ -4,6 +4,7 @@ export type ConnectorsAPIErrorType =
   | "internal_server_error"
   | "unexpected_error_format"
   | "unexpected_response_format"
+  | "unexpected_network_error"
   | "unknown_connector_provider"
   | "invalid_request_error"
   | "connector_not_found"
