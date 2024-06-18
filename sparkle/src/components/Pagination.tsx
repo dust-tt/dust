@@ -35,7 +35,6 @@ export function Pagination({
 
   const onPaginationButtonClick = useCallback((pageNb: number) => {
     setCurrentPage(pageNb);
-    console.log('>> pageNb:', pageNb);
     onButtonClick(pageNb);
   }, [onButtonClick, setCurrentPage]);
 
