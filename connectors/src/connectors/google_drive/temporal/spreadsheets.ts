@@ -156,7 +156,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   } catch (err) {
     logger.info(
       { ...loggerArgs, err },
-      `[Spreadsheet] Failed to retrieve valid rows.`
+      "[Spreadsheet] Failed to retrieve valid rows."
     );
 
     // If the headers are invalid, return an empty array to ignore it.

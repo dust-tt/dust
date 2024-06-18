@@ -874,7 +874,7 @@ export const google_drive = async ({
           // for the other ones.
           logger.error(
             { connectorId: connector.id, error: res.error },
-            `Failed to register webhooks for connector`
+            "Failed to register webhooks for connector"
           );
         }
       }
@@ -1286,7 +1286,7 @@ export const temporal = async ({
       const openWfRes = await c.workflowService.listWorkflowExecutions({
         namespace: process.env.TEMPORAL_NAMESPACE || "default",
         pageSize: 5000,
-        query: `ExecutionStatus="Running"`,
+        query: "ExecutionStatus=\"Running\"",
       });
       if (openWfRes.executions?.length) {
         logger.info(`[Admin] got ${openWfRes.executions.length} results`);

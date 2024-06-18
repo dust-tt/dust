@@ -48,7 +48,7 @@ export async function markAsCrawled(connectorId: ModelId) {
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
 
   // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
@@ -66,7 +66,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
   const childLogger = logger.child({
     connectorId: connector.id,
@@ -98,7 +98,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               {
                 url: crawlingContext.request.url,
               },
-              `IP address is not IPv4. Skipping.`
+              "IP address is not IPv4. Skipping."
             );
           }
           if (isPrivateIp(address)) {
@@ -107,7 +107,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               {
                 url: crawlingContext.request.url,
               },
-              `Private IP address detected. Skipping.`
+              "Private IP address detected. Skipping."
             );
           }
 
@@ -275,7 +275,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                 title: pageTitle,
                 url,
               },
-              `Document is empty or too big to be upserted. Skipping`
+              "Document is empty or too big to be upserted. Skipping"
             );
             return;
           }
@@ -399,7 +399,7 @@ export async function webCrawlerGarbageCollector(
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pagesToDelete: WebCrawlerPage[] = [];

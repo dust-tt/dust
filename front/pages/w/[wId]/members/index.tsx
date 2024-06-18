@@ -356,7 +356,7 @@ function DomainAutoJoinModal({
       sendNotification({
         type: "error",
         title: "Update failed",
-        description: `Failed to enable auto-add for whitelisted domain.`,
+        description: "Failed to enable auto-add for whitelisted domain.",
       });
     } else {
       // We perform a full refresh so that the Workspace name updates and we get a fresh owner

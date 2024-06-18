@@ -273,7 +273,7 @@ export async function getManagedDataSourcePermissionsHandler(
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: `An error occurred while retrieving the data source permissions.`,
+        message: "An error occurred while retrieving the data source permissions.",
       },
     });
   }

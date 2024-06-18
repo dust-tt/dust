@@ -205,7 +205,7 @@ export async function renderConversationForModelMultiActions({
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageTypeMultiActions[] = [];
-  const truncationMessage = `... (content truncated)`;
+  const truncationMessage = "... (content truncated)";
   const approxTruncMsgTokenCount = truncationMessage.length / 3;
 
   // Selection loop.
@@ -330,7 +330,7 @@ export async function constructPrompt(
   const owner = auth.workspace();
 
   let context = "CONTEXT:\n";
-  context += `{\n`;
+  context += "{\n";
   context += `  "assistant": "@${configuration.name}",\n`;
   context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
   if (owner) {
@@ -512,7 +512,7 @@ export async function* runGeneration(
       messageId: agentMessage.sId,
       error: {
         code: "free_plan_error",
-        message: `Free plan does not support large models. Please upgrade to a paid plan to use this model.`,
+        message: "Free plan does not support large models. Please upgrade to a paid plan to use this model.",
       },
     };
     return;

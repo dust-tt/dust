@@ -33,8 +33,8 @@ export const withLogging = (handler: any) => {
       const tags = [
         `method:${req.method}`,
         // `url:${req.url}`,
-        `status_code:500`,
-        `error_type:unhandled_internal_server_error`,
+        "status_code:500",
+        "error_type:unhandled_internal_server_error",
       ];
 
       statsDClient.increment("api_errors.count", 1, tags);

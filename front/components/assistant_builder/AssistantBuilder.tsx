@@ -250,7 +250,7 @@ export default function AssistantBuilder({
           modelConfig.contextSize * 0.9
         }`
       );
-      setInstructionsError(`Instructions may exceed context size window.`);
+      setInstructionsError("Instructions may exceed context size window.");
       valid = false;
     } else {
       setInstructionsError(null);

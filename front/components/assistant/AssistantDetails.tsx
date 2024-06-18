@@ -104,7 +104,7 @@ export function AssistantDetails({
 
     if (success) {
       sendNotification({
-        title: `Assistant sharing updated.`,
+        title: "Assistant sharing updated.",
         type: "success",
       });
       if (mutateAgentConfigurations) {
@@ -113,7 +113,7 @@ export function AssistantDetails({
       await mutateCurrentAgentConfiguration();
     } else {
       sendNotification({
-        title: `Error updating assistant sharing.`,
+        title: "Error updating assistant sharing.",
         description: errorMessage,
         type: "error",
       });

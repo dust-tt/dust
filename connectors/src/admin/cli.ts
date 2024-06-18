@@ -42,7 +42,7 @@ const main = async () => {
 main()
   .then((res) => {
     console.log(JSON.stringify(res, null, 2));
-    console.error("\x1b[32m%s\x1b[0m", `Done`);
+    console.error("\x1b[32m%s\x1b[0m", "Done");
     process.exit(0);
   })
   .catch((err) => {

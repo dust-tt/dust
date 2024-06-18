@@ -66,7 +66,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `No whitelisted models were found for the workspace.`,
+            message: "No whitelisted models were found for the workspace.",
           },
         });
       }
@@ -112,7 +112,7 @@ async function handler(
           status_code: 500,
           api_error: {
             type: "internal_server_error",
-            message: `Error generating schema: no result returned by model.`,
+            message: "Error generating schema: no result returned by model.",
           },
         });
       }

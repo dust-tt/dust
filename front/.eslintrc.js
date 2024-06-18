@@ -16,6 +16,11 @@ module.exports = {
       }
     ],
     */
+    quotes: [
+      "error",
+      "double",
+      { avoidEscape: true, allowTemplateLiterals: false },
+    ],
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
     "@typescript-eslint/consistent-type-imports": "error",

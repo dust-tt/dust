@@ -82,7 +82,7 @@ export const SCOPE_INFO: Record<
     text: "Only I can view and edit.",
     confirmationModalData: {
       title: "Moving to Personal Assistants",
-      text: `The assistant is only editable, viewable and usable by you.`,
+      text: "The assistant is only editable, viewable and usable by you.",
       confirmText: "Move to Personal",
       variant: "primaryWarning",
       showUsage: true,
@@ -497,7 +497,7 @@ function SlackIntegrationDrawer({
       />
       <Modal
         isOpen={show}
-        title={`Slack Integration`}
+        title={"Slack Integration"}
         onClose={onClose}
         hasChanged={false}
         variant="side-sm"

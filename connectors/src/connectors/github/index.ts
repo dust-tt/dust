@@ -762,7 +762,7 @@ export async function retrieveGithubContentNodeParents(
     );
   }
 
-  if (internalId.startsWith(`github-code-`)) {
+  if (internalId.startsWith("github-code-")) {
     const repoId = parseInt(internalId.split("-")[2] || "", 10);
     if (internalId.split("-").length > 3) {
       const parents = await getGithubCodeOrDirectoryParentIds(

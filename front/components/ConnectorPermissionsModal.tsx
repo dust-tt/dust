@@ -117,7 +117,7 @@ export default function ConnectorPermissionsModal({
           <Page.Vertical align="stretch" gap="xl">
             <Page.Header
               title="Make available to the workspace"
-              description={`Selected resources will be accessible to all members of the workspace.`}
+              description={"Selected resources will be accessible to all members of the workspace."}
             />
             <div className="mx-2 mb-16 w-full">
               <PermissionTree

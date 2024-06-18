@@ -275,7 +275,7 @@ export async function fetchIntercomTeams(
 ): Promise<IntercomTeamType[]> {
   const response = await queryIntercomAPI({
     nangoConnectionId,
-    path: `teams`,
+    path: "teams",
     method: "GET",
   });
 
@@ -355,7 +355,7 @@ export async function fetchIntercomConversations({
 
   const response = await queryIntercomAPI({
     nangoConnectionId,
-    path: `conversations/search`,
+    path: "conversations/search",
     method: "POST",
     body: {
       query: {
@@ -399,7 +399,7 @@ export async function fetchIntercomConversationsForDay({
 }> {
   const response = await queryIntercomAPI({
     nangoConnectionId,
-    path: `conversations/search`,
+    path: "conversations/search",
     method: "POST",
     body: {
       query: {

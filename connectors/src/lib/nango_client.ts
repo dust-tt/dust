@@ -103,6 +103,6 @@ export async function nangoDeleteConnection(
       );
     }
 
-    return new Err(new Error(`Could not delete connection.`));
+    return new Err(new Error("Could not delete connection."));
   }
 }

@@ -115,7 +115,7 @@ async function handler(
           status_code: 404,
           api_error: {
             type: "data_source_error",
-            message: `Failed to retrieve config for data source.`,
+            message: "Failed to retrieve config for data source.",
             connectors_error: configRes.error,
           },
         });

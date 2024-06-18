@@ -113,7 +113,7 @@ async function getSynchronizedSpaces(
   });
 
   if (!parentSpace) {
-    return new Err(new Error(`Confluence space not found.`));
+    return new Err(new Error("Confluence space not found."));
   }
 
   const pagesWithinSpace = await ConfluencePage.findAll({
@@ -160,7 +160,7 @@ async function getSynchronizedChildrenPages(
   });
 
   if (!parentPage) {
-    return new Err(new Error(`Confluence page not found.`));
+    return new Err(new Error("Confluence page not found."));
   }
 
   const pagesWithinSpace = await ConfluencePage.findAll({

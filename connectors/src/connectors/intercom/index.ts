@@ -230,12 +230,12 @@ export async function cleanupIntercomConnector(
       useCache: true,
     });
 
-    const resp = await fetch(`https://api.intercom.io/auth/uninstall`, {
+    const resp = await fetch("https://api.intercom.io/auth/uninstall", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        Accept: `application/json`,
-        ContentType: `application/json`,
+        Accept: "application/json",
+        ContentType: "application/json",
       },
     });
 

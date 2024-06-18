@@ -118,5 +118,5 @@ export async function joinChannel(
     }
   }
 
-  return new Err(new Error(`Can't join the channel`));
+  return new Err(new Error("Can't join the channel"));
 }

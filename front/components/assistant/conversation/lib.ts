@@ -311,6 +311,6 @@ function uploadRawContentFragment({
       body: formData,
     }
   ).catch((e) => {
-    console.error(`Error uploading raw content for file`, e);
+    console.error("Error uploading raw content for file", e);
   });
 }

@@ -77,7 +77,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `No whitelisted models were found for the workspace.`,
+            message: "No whitelisted models were found for the workspace.",
           },
         });
       }

@@ -40,7 +40,7 @@ export async function getCoreDocuments(
   }
   const ds = managedDs[0];
   const coreDsData = await core_sequelize.query(
-    `SELECT id FROM data_sources WHERE "project" = :dustAPIProjectId`,
+    "SELECT id FROM data_sources WHERE \"project\" = :dustAPIProjectId",
     {
       replacements: {
         dustAPIProjectId: ds.dustAPIProjectId,
@@ -55,7 +55,7 @@ export async function getCoreDocuments(
     );
   }
   const coreDocumentsData = await core_sequelize.query(
-    `SELECT id, document_id, parents FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
+    "SELECT id, document_id, parents FROM data_sources_documents WHERE \"data_source\" = :coreDsId AND status = 'latest'",
     {
       replacements: {
         coreDsId: coreDs[0].id,

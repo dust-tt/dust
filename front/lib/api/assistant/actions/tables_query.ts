@@ -68,7 +68,7 @@ export class TablesQueryAction extends BaseAction {
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
     let content = "";
-    content += `OUTPUT:\n`;
+    content += "OUTPUT:\n";
 
     if (this.output === null) {
       content += "(query failed)\n";
@@ -199,7 +199,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         messageId: agentMessage.sId,
         error: {
           code: "tables_query_parameters_generation_error",
-          message: `Error generating parameters for tables query: failed to generate a valid question.`,
+          message: "Error generating parameters for tables query: failed to generate a valid question.",
         },
       };
       return;
@@ -333,7 +333,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
             e.error === "too_many_result_rows"
               ? {
                   code: "too_many_result_rows" as const,
-                  message: `The query returned too many rows. Please refine your query.`,
+                  message: "The query returned too many rows. Please refine your query.",
                 }
               : {
                   code: "tables_query_error" as const,

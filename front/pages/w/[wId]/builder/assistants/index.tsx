@@ -388,7 +388,7 @@ function AgentViewForScope({
         <Popup
           show={showDisabledFreeWorkspacePopup === agent.sId}
           className="absolute bottom-8 right-0"
-          chipLabel={`Free plan`}
+          chipLabel={"Free plan"}
           description={`@${agent.name} is only available on our paid plans.`}
           buttonLabel="Check Dust plans"
           buttonClick={() => {

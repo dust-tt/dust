@@ -352,7 +352,7 @@ export async function handleMembershipInvitations(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Too many pending invitations. Please ask your members to consume their invitations before sending more.`,
+        message: "Too many pending invitations. Please ask your members to consume their invitations before sending more.",
       },
     });
   }
@@ -385,7 +385,7 @@ export async function handleMembershipInvitations(
       status_code: 400,
       api_error: {
         type: "invitation_already_sent_recently",
-        message: `These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.`,
+        message: "These emails have already received an invitation in the last 24 hours. Please wait before sending another invitation.",
       },
     });
   }

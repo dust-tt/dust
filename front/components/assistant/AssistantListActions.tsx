@@ -52,13 +52,13 @@ export default function AssistantListActions({
     if (success) {
       setIsAdded(listStatus === "in-list");
       sendNotification({
-        title: `Assistant sharing updated.`,
+        title: "Assistant sharing updated.",
         type: "success",
       });
       onAssistantListUpdate && onAssistantListUpdate();
     } else {
       sendNotification({
-        title: `Error updating assistant sharing.`,
+        title: "Error updating assistant sharing.",
         description: errorMessage,
         type: "error",
       });

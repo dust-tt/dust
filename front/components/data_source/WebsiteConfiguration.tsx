@@ -282,7 +282,7 @@ export default function WebsiteConfiguration({
     >
       <Modal
         isOpen={advancedSettingsOpened}
-        title={`Advanced settings`}
+        title={"Advanced settings"}
         onClose={() => {
           setAdvancedSettingsOpened(false);
         }}

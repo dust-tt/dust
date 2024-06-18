@@ -193,7 +193,7 @@ export async function updateGoogleDriveConnector(
         {
           error: e,
         },
-        `Error checking Google domain of user who is updating the connector - lets update the connector regardless`
+        "Error checking Google domain of user who is updating the connector - lets update the connector regardless"
       );
     }
 
@@ -479,9 +479,9 @@ export async function retrieveGoogleDriveConnectorPermissions({
       // Depending on the view the user is requesting, the way of querying changes.
       // The "Shared with me" view requires to look for folders
       // with the flag `sharedWithMe=true`, but there is no need to check for the parents.
-      let gdriveQuery = `mimeType='application/vnd.google-apps.folder'`;
+      let gdriveQuery = "mimeType='application/vnd.google-apps.folder'";
       if (parentInternalId === GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID) {
-        gdriveQuery += ` and sharedWithMe=true`;
+        gdriveQuery += " and sharedWithMe=true";
       } else {
         gdriveQuery += ` and '${parentInternalId}' in parents`;
       }

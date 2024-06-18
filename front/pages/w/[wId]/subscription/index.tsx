@@ -482,7 +482,7 @@ function SkipFreeTrialDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`End trial`}
+      title={"End trial"}
       onCancel={onClose}
       validateLabel="End trial & get full access"
       validateVariant="primary"
@@ -544,7 +544,7 @@ function CancelFreeTrialDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Cancel subscription`}
+      title={"Cancel subscription"}
       onCancel={onClose}
       validateLabel="Yes, cancel subscription"
       validateVariant="primaryWarning"

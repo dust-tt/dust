@@ -58,7 +58,7 @@ async function main() {
     console.log(`Found dustAPIProjectId: ${dustAPIProjectId}`);
 
     const coreDsData = await core_sequelize.query(
-      `SELECT * FROM data_sources WHERE "project" = :dustAPIProjectId`,
+      "SELECT * FROM data_sources WHERE \"project\" = :dustAPIProjectId",
       {
         replacements: {
           dustAPIProjectId: dustAPIProjectId,
@@ -79,7 +79,7 @@ async function main() {
     );
 
     const coreDocumentsData = await core_sequelize.query(
-      `SELECT * FROM data_sources_documents WHERE "data_source" = :coreDsId AND status = 'latest'`,
+      "SELECT * FROM data_sources_documents WHERE \"data_source\" = :coreDsId AND status = 'latest'",
       {
         replacements: {
           coreDsId: coreDsId,

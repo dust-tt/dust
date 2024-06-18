@@ -41,7 +41,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   const connectors: ConnectorBlob[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
+    "SELECT id, \"dataSourceName\", \"workspaceId\", \"pausedAt\" FROM connectors WHERE \"type\" = :provider and  \"errorType\" IS NULL",
     {
       type: QueryTypes.SELECT,
       replacements: {

@@ -84,7 +84,7 @@ export default function Input({
       );
       if (res.ok) {
         sendNotification({
-          title: `Dataset updated`,
+          title: "Dataset updated",
           description: `The data of ${block.config.dataset} was successfully updated.`,
           type: "success",
         });

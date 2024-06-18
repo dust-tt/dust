@@ -159,7 +159,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "connector_update_error",
-              message: `An error occured while updating the connector's configuration`,
+              message: "An error occured while updating the connector's configuration",
             },
           },
           new Error(updateRes.error.message)

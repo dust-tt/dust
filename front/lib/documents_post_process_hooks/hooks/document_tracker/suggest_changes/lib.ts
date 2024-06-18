@@ -455,7 +455,7 @@ async function sendSuggestionEmail({
       `We have a suggestion for you to update the document ${matchedDocumentLink} ` +
       `based on the new document ${incomingDocumentLink}:<br>` +
       `${htmlSuggestion}<br>` +
-      `The Dust team`,
+      "The Dust team",
   };
   await sgMail.send(msg);
 }

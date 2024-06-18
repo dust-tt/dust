@@ -262,7 +262,7 @@ async function rowsFromCsv(
   if (!delimiter) {
     return new Err({
       type: "invalid_delimiter",
-      message: `Could not detect delimiter.`,
+      message: "Could not detect delimiter.",
     });
   }
 
@@ -290,7 +290,7 @@ async function rowsFromCsv(
         if (firstRecordCells.slice(firstEmptyCellIndex).some((c) => c !== "")) {
           return new Err({
             type: "invalid_header",
-            message: `Invalid header: found non-empty cell after empty cell.`,
+            message: "Invalid header: found non-empty cell after empty cell.",
           });
         }
       }
@@ -337,7 +337,7 @@ async function rowsFromCsv(
   if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
     return new Err({
       type: "empty_csv",
-      message: `CSV is empty.`,
+      message: "CSV is empty.",
     });
   }
 

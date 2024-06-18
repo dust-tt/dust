@@ -406,7 +406,7 @@ export function dumpSpecification(
         out += `data ${block.name} {\n`;
         out += `  dataset_id: ${block.spec.dataset}\n`;
         out += `  hash: ${latestDatasets[block.spec.dataset]}\n`;
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -449,7 +449,7 @@ export function dumpSpecification(
             block.spec.prompt
           )}\n\`\`\`\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -484,14 +484,14 @@ export function dumpSpecification(
             block.spec.functions_code
           )}\n\`\`\`\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
       case "code": {
         out += `code ${block.name} {\n`;
         out += `  code: \n\`\`\`\n${block.spec.code}\n\`\`\`\n`;
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -506,7 +506,7 @@ export function dumpSpecification(
             block.spec.filter_code
           )}\n\`\`\`\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -520,7 +520,7 @@ export function dumpSpecification(
         ) {
           out += `  repeat: ${block.spec.repeat}\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -541,7 +541,7 @@ export function dumpSpecification(
         ) {
           out += `  max_iterations: ${block.spec.max_iterations}\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -556,7 +556,7 @@ export function dumpSpecification(
         if (block.spec.num) {
           out += `  num: ${block.spec.num}\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -566,7 +566,7 @@ export function dumpSpecification(
         out += `  url: \n\`\`\`\n${block.spec.scheme}://${block.spec.url}\n\`\`\`\n`;
         out += `  headers_code: \n\`\`\`\n${block.spec.headers_code}\n\`\`\`\n`;
         out += `  body_code: \n\`\`\`\n${block.spec.body_code}\n\`\`\`\n`;
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -583,7 +583,7 @@ export function dumpSpecification(
         if (block.spec.wait_for) {
           out += `  wait_for: \n\`\`\`\n${block.spec.wait_for}\n\`\`\`\n`;
         }
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }
@@ -597,7 +597,7 @@ export function dumpSpecification(
         out += `  query: \n\`\`\`\n${escapeTripleBackticks(
           block.spec.query
         )}\n\`\`\`\n`;
-        out += `}\n`;
+        out += "}\n";
         out += "\n";
         break;
       }

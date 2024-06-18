@@ -178,7 +178,7 @@ async function handler(
           return;
         case "serper":
           const testSearchSerper = await fetch(
-            `https://google.serper.dev/search`,
+            "https://google.serper.dev/search",
             {
               method: "POST",
               headers: {

@@ -420,7 +420,7 @@ function ToggleEnforceEnterpriseConnectionModal({
     },
     remove: {
       title: "Disable Single Sign On Enforcement",
-      content: `By disabling SSO enforcement, users will have the flexibility to login with social media.`,
+      content: "By disabling SSO enforcement, users will have the flexibility to login with social media.",
       validateLabel: "Disable Single Sign-On Enforcement",
     },
   };
@@ -441,7 +441,7 @@ function ToggleEnforceEnterpriseConnectionModal({
         sendNotification({
           type: "error",
           title: "Update failed",
-          description: `Failed to enforce sso on workspace.`,
+          description: "Failed to enforce sso on workspace.",
         });
       } else {
         onClose(true);

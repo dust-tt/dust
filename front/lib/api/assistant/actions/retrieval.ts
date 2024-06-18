@@ -187,7 +187,7 @@ export class RetrievalAction extends BaseAction {
 
         content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
         content += `REFERENCE: ${d.reference}\n`;
-        content += `EXTRACTS:\n`;
+        content += "EXTRACTS:\n";
         for (const c of d.chunks) {
           content += `${c.text}\n`;
         }
@@ -311,7 +311,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           messageId: agentMessage.sId,
           error: {
             code: "retrieval_parameters_generation_error",
-            message: `Error generating parameters for retrieval: failed to generate a valid query.`,
+            message: "Error generating parameters for retrieval: failed to generate a valid query.",
           },
         };
         return;

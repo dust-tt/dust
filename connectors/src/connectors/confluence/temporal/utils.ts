@@ -26,7 +26,7 @@ export function makeConfluenceRemoveSpaceWorkflowIdFromParentId(
 }
 
 export function makeConfluencePersonalDataWorkflowId() {
-  return `confluence-personal-data-reporting`;
+  return "confluence-personal-data-reporting";
 }
 
 export function makeConfluencePageId(pageId: string) {

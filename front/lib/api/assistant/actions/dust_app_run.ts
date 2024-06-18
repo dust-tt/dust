@@ -89,7 +89,7 @@ export class DustAppRunAction extends BaseAction {
     let content = "";
 
     // Note action.output can be any valid JSON including null.
-    content += `OUTPUT:\n`;
+    content += "OUTPUT:\n";
     content += `${JSON.stringify(this.output, null, 2)}\n`;
 
     return {
@@ -229,7 +229,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       return;
     }
 
-    const appConfig = extractConfig(JSON.parse(app.savedSpecification || `{}`));
+    const appConfig = extractConfig(JSON.parse(app.savedSpecification || "{}"));
 
     // Check that all inputs are accounted for.
     const params: DustAppParameters = {};
@@ -458,7 +458,7 @@ async function dustAppRunActionSpecification({
     if (k.type === "json") {
       return new Err(
         new Error(
-          `JSON type for Dust app parameters is not supported, string, number and boolean are.`
+          "JSON type for Dust app parameters is not supported, string, number and boolean are."
         )
       );
     }

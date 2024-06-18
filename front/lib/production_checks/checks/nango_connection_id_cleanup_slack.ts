@@ -24,7 +24,7 @@ export const nangoConnectionIdCleanupSlack: CheckFunction = async (
   const connectorsSequelize = getConnectorReplicaDbConnection();
   const dbSlackConfigurationsData: { id: number; slackTeamId: string }[] =
     await connectorsSequelize.query(
-      `SELECT id, "slackTeamId" FROM "slack_configurations"`,
+      "SELECT id, \"slackTeamId\" FROM \"slack_configurations\"",
       { type: QueryTypes.SELECT }
     );
   const dbSlackConfigurations = new Set(
