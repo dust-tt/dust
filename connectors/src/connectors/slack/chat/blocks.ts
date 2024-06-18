@@ -1,3 +1,5 @@
+import { truncate } from "@dust-tt/types";
+
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 
 function makeConversationLinkContextBlock(conversationUrl: string) {
@@ -43,8 +45,12 @@ function makeMarkdownBlock(text: string) {
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
   const elements = footnotes.map((f) => ({
     type: "mrkdwn",
-    text: `<${f.link}|[${f.index}] ${f.text}>`,
+    text: `<${f.link}|[${f.index}] ${truncate(f.text, 20)}>`,
   }));
+
+  if (elements.length === 0) {
+    return undefined;
+  }
 
   return {
     type: "context",
@@ -59,7 +65,10 @@ function makeContextSectionBlocks(
   const blocks = [];
 
   if (footnotes && footnotes.length > 0) {
-    blocks.push(makeFootnotesBlock(footnotes));
+    const footnotesBlock = makeFootnotesBlock(footnotes);
+    if (footnotesBlock) {
+      blocks.push(footnotesBlock);
+    }
   }
 
   // Bundle the conversation url in the context.
