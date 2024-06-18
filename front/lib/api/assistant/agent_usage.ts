@@ -26,6 +26,7 @@ const popularityComputationTimeframeSec = 2 * 60 * 60;
 export type mentionCount = {
   agentId: string;
   count: number;
+  timePeriodSec: number;
 };
 
 function _getAgentInListCountKey({
@@ -103,7 +104,11 @@ export async function getAgentsUsage({
     // Retrieve and parse agents usage
     const agentsUsage = await redis.hGetAll(agentMessageCountKey);
     return Object.entries(agentsUsage).map(([agentId, count]) => {
-      return { agentId, count: parseInt(count) };
+      return {
+        agentId,
+        count: parseInt(count),
+        timePeriodSec: rankingTimeframeSec,
+      };
     });
   } finally {
     // Close the redis connection if it was created locally
@@ -254,6 +259,7 @@ export async function agentMentionsUserCount(
     results.map((mention) => ({
       agentId: mention.agentConfigurationId as string,
       count: (mention as unknown as { count: number }).count,
+      timePeriodSec: rankingTimeframeSec,
     }))
   );
 }
@@ -302,6 +308,7 @@ export async function agentMentionsCount(
     results.map((mention) => ({
       agentId: mention.agentConfigurationId as string,
       count: (mention as unknown as { count: number }).count,
+      timePeriodSec: rankingTimeframeSec,
     }))
   );
 }

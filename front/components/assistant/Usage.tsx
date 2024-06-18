@@ -1,4 +1,5 @@
-import type { AgentUsageType } from "@dust-tt/types";
+import type { AgentUsageType, LightAgentUsageType } from "@dust-tt/types";
+import { isAgentUsageType } from "@dust-tt/types";
 import { pluralize } from "@dust-tt/types";
 import type { ReactNode } from "react";
 
@@ -11,7 +12,7 @@ export function assistantUsageMessage({
   boldVersion,
 }: {
   assistantName: string | null;
-  usage: AgentUsageType | null;
+  usage: AgentUsageType | LightAgentUsageType | null;
   isLoading: boolean;
   isError: boolean;
   shortVersion?: boolean;
@@ -43,27 +44,28 @@ export function assistantUsageMessage({
         </>
       );
     }
+    if (isAgentUsageType(usage)) {
+      const usersWithAgentInListCount = boldIfRequested(
+        `${usage.usersWithAgentInListCount} member${pluralize(
+          usage.usersWithAgentInListCount
+        )}`
+      );
+      const messageCount = boldIfRequested(
+        `${usage.messageCount} time${pluralize(usage.messageCount)}`
+      );
+      const userCount = boldIfRequested(
+        `${usage.userCount} member${pluralize(usage.userCount)}`
+      );
 
-    const usersWithAgentInListCount = boldIfRequested(
-      `${usage.usersWithAgentInListCount} member${pluralize(
-        usage.usersWithAgentInListCount
-      )}`
-    );
-    const messageCount = boldIfRequested(
-      `${usage.messageCount} time${pluralize(usage.messageCount)}`
-    );
-    const userCount = boldIfRequested(
-      `${usage.userCount} member${pluralize(usage.userCount)}`
-    );
-
-    return (
-      <>
-        {`${
-          assistantName ? "@" + assistantName : "This assistant"
-        } is active for`}{" "}
-        {usersWithAgentInListCount} and has been used {messageCount} by{" "}
-        {userCount} in the last {usage.timePeriodSec / (60 * 60 * 24)} days.
-      </>
-    );
+      return (
+        <>
+          {`${
+            assistantName ? "@" + assistantName : "This assistant"
+          } is active for`}{" "}
+          {usersWithAgentInListCount} and has been used {messageCount} by{" "}
+          {userCount} in the last {usage.timePeriodSec / (60 * 60 * 24)} days.
+        </>
+      );
+    }
   }
 }

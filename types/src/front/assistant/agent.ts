@@ -143,10 +143,8 @@ export type AgentUsageType = {
 export type LightAgentUsageType = {
   messageCount: number;
   timePeriodSec: number;
-}
-export function isAgentUsageType(
-  usage: unknown
-): usage is AgentUsageType {
+};
+export function isAgentUsageType(usage: unknown): usage is AgentUsageType {
   return (
     typeof usage === "object" &&
     usage !== null &&

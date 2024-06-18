@@ -16,7 +16,11 @@ import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import type {
+  mentionCount} from "@app/lib/api/assistant/agent_usage";
+import {
+  getAgentsUsage
+} from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
@@ -122,16 +126,15 @@ async function handler(
             workspaceId: owner.sId,
           });
         });
-        const usageMap = new Map(
-          mentionCounts.map(({ agentId, count }) => [agentId, count])
-        );
+        const usageMap = new Map<string, mentionCount>();
+        mentionCounts.forEach((mentionCount) => {
+          usageMap.set(mentionCount.agentId, mentionCount);
+        });
         agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
           ...agentConfiguration,
           usage: {
-            userCount: 0,
-            messageCount: usageMap.get(agentConfiguration.sId) || 0,
-            usersWithAgentInListCount: 0,
-            timePeriodSec: 0,
+            messageCount: usageMap.get(agentConfiguration.sId)?.count || 0,
+            timePeriodSec: usageMap.get(agentConfiguration.sId)?.timePeriodSec || 0,
           },
         }));
       }
