@@ -234,7 +234,7 @@ export const NotionFindUrlResponseSchema = t.type({
 });
 
 export type NotionFindUrlResponseType = t.TypeOf<
-  typeof NotionCheckUrlResponseSchema
+  typeof NotionFindUrlResponseSchema
 >;
 
 export const NotionMeResponseSchema = t.type({
