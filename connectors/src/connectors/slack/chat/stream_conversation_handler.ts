@@ -125,9 +125,11 @@ export async function streamConversationToSlack(
         }
         lastSentDate = new Date();
 
-        const finalAnswer = slackifyMarkdown(
-          normalizeContentForSlack(annotateCitations(fullAnswer, action))
-        );
+        const finalAnswer = safelyPrepareAnswer(fullAnswer, action);
+        // If the answer cannot be prepared safely, skip processing these tokens.
+        if (!finalAnswer) {
+          break;
+        }
 
         // if the message is too long, we avoid the update entirely (to reduce
         // rate limiting) the previous update will have shown the "..." and the
@@ -172,6 +174,26 @@ export async function streamConversationToSlack(
   }
 
   return new Err(new Error("Failed to get the final answer from Dust"));
+}
+
+/**
+ * Safely prepare the answer by normalizing the content for Slack and converting it to Markdown.
+ * In streaming mode, partial links might trigger errors in the `slackifyMarkdown` function.
+ * This function handles such errors gracefully, ensuring that the full text will be displayed
+ * once a valid URL is available.
+ */
+function safelyPrepareAnswer(
+  text: string,
+  action: AgentActionType | null
+): string | null {
+  const rawAnswer = normalizeContentForSlack(annotateCitations(text, action));
+
+  try {
+    return slackifyMarkdown(rawAnswer);
+  } catch (err) {
+    // It's safe to swallow the error as we'll catch up once a valid URL is fully received.
+    return null;
+  }
 }
 
 function normalizeContentForSlack(content: string): string {
