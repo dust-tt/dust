@@ -4,6 +4,7 @@ import {
   GithubLogo,
   GlobeAltIcon,
   IntercomLogo,
+  MicrosoftLogo,
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
@@ -99,6 +100,28 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     guideLink:
       "https://dust-tt.notion.site/Intercom-connection-on-Dust-193f0670d39a44de85cd472c6035ea84",
     logoComponent: IntercomLogo,
+    isNested: true,
+  },
+  ms_sharepoint: {
+    name: "Microsoft Sharepoint",
+    connectorProvider: "ms_sharepoint",
+    status: "built",
+    hide: false,
+    description: "Microsoft",
+    limitations: "?.",
+    guideLink: "https://dust-tt.notion.site/",
+    logoComponent: MicrosoftLogo,
+    isNested: true,
+  },
+  ms_teams: {
+    name: "Microsoft Teams",
+    connectorProvider: "ms_teams",
+    status: "built",
+    hide: false,
+    description: "Microsoft",
+    limitations: "?.",
+    guideLink: "https://dust-tt.notion.site/",
+    logoComponent: MicrosoftLogo,
     isNested: true,
   },
   webcrawler: {
