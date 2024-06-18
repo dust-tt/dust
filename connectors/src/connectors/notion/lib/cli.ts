@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, NotionFindUrlResponseType } from "@dust-tt/types";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
@@ -62,7 +62,7 @@ export async function findNotionUrl({
 }: {
   connectorId: ModelId;
   url: string;
-}) {
+}): Promise<NotionFindUrlResponseType> {
   // parse URL
   const u = new URL(url);
   const last = u.pathname.split("/").pop();
@@ -94,7 +94,8 @@ export async function findNotionUrl({
 
   if (page) {
     logger.info({ pageOrDbId, url, page }, "Page found");
-    return { page, db: null };
+    page._model;
+    return { page: page.dataValues, db: null };
   } else {
     logger.info({ pageOrDbId, url }, "Page not found");
   }
@@ -108,7 +109,7 @@ export async function findNotionUrl({
 
   if (db) {
     logger.info({ pageOrDbId, url, db }, "Database found");
-    return { page: null, db };
+    return { page: null, db: db.dataValues };
   } else {
     logger.info({ pageOrDbId, url }, "Database not found");
   }
