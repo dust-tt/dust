@@ -116,21 +116,3 @@ export async function setAgentUserListStatus({
     listStatus,
   });
 }
-
-export async function getUsersWithAgentInListCount(
-  auth: Authenticator,
-  agentId: string
-) {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    throw new Error("Workspace not found.");
-  }
-
-  return AgentUserRelation.count({
-    where: {
-      workspaceId: owner.id,
-      agentConfiguration: agentId,
-      listStatusOverride: "in-list",
-    },
-  });
-}

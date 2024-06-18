@@ -1,13 +1,6 @@
-import type {
-  AgentUsageType,
-  LightAgentConfigurationType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
 
-import { getUsersWithAgentInListCount } from "@app/lib/api/assistant/user_relation";
-import { getMembersCount } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
 import {
   Conversation,
   Mention,
@@ -23,22 +16,18 @@ const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 // Computing agent mention count over a 2h period
 const popularityComputationTimeframeSec = 2 * 60 * 60;
 
-export type mentionCount = {
+type agentUsage = {
+  agentId: string;
+  messageCount: number;
+  userCount: number;
+  timePeriodSec: number;
+};
+
+type mentionCount = {
   agentId: string;
   count: number;
   timePeriodSec: number;
 };
-
-function _getAgentInListCountKey({
-  workspaceId,
-  agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
-  // One key to store the number of users who have this agent in their list.
-  return `agent_in_list_count_${workspaceId}_${agentConfigurationId}`;
-}
 
 function _getUsageKeys(workspaceId: string) {
   // One hash per workspace with keys the agent id and value the corresponding
@@ -63,13 +52,14 @@ export async function getAgentsUsage({
   workspaceId: string;
   providedRedis?: Awaited<ReturnType<typeof redisClient>>;
   limit?: number;
-}): Promise<mentionCount[]> {
+}): Promise<agentUsage[]> {
   const owner = await Workspace.findOne({ where: { sId: workspaceId } });
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }
 
-  const { agentMessageCountKey } = _getUsageKeys(workspaceId);
+  const { agentMessageCountKey, agentUserCountKey } =
+    _getUsageKeys(workspaceId);
   const redis = providedRedis ?? (await redisClient());
 
   try {
@@ -105,13 +95,15 @@ export async function getAgentsUsage({
 
     // Retrieve and parse agents usage
     const agentsUsage = await redis.hGetAll(agentMessageCountKey);
+    const userCount = await redis.hGetAll(agentUserCountKey);
     return Object.entries(agentsUsage)
       .map(([agentId, count]) => ({
         agentId,
-        count: parseInt(count),
+        messageCount: parseInt(count),
         timePeriodSec: rankingTimeframeSec,
+        userCount: parseInt(userCount[agentId]) ?? 1,
       }))
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => b.messageCount - a.messageCount)
       .slice(0, limit);
   } finally {
     // Close the redis connection if it was created locally
@@ -121,63 +113,15 @@ export async function getAgentsUsage({
   }
 }
 
-// We don't need real-time accuracy on the number of members
-// that added the agent in their list.
-// Best-effort, we cache the result for a day.
-async function getAgentInListCount(
-  auth: Authenticator,
-  redis: Awaited<ReturnType<typeof redisClient>>,
-  workspaceId: string,
-  agentConfiguration: LightAgentConfigurationType
-) {
-  const agentInListCountKey = _getAgentInListCountKey({
-    agentConfigurationId: agentConfiguration.sId,
-    workspaceId,
-  });
-
-  const cachedCount = await redis.get(agentInListCountKey);
-  if (cachedCount !== null) {
-    return parseInt(cachedCount, 10);
-  }
-
-  const calculateAndCacheCount = async (countPromise: Promise<number>) => {
-    const count = await countPromise;
-    await redis.set(agentInListCountKey, count.toString(), {
-      EX: 86400, // Cache for 1 day.
-    });
-    return count;
-  };
-
-  // Determine the count based on the scope and cache the result.
-  switch (agentConfiguration.scope) {
-    case "published":
-      return calculateAndCacheCount(
-        getUsersWithAgentInListCount(auth, agentConfiguration.sId)
-      );
-    case "workspace":
-      return calculateAndCacheCount(
-        getMembersCount(auth, { activeOnly: true })
-      );
-    case "global":
-    case "private":
-      return 0;
-    default:
-      assertNever(agentConfiguration.scope);
-  }
-}
-
-export async function getAgentUsage(
-  auth: Authenticator,
-  {
-    workspaceId,
-    agentConfiguration,
-    providedRedis,
-  }: {
-    workspaceId: string;
-    agentConfiguration: LightAgentConfigurationType;
-    providedRedis?: Awaited<ReturnType<typeof redisClient>>;
-  }
-): Promise<AgentUsageType> {
+export async function getAgentUsage({
+  workspaceId,
+  agentConfiguration,
+  providedRedis,
+}: {
+  workspaceId: string;
+  agentConfiguration: AgentConfigurationType;
+  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+}): Promise<AgentUsageType> {
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
@@ -193,17 +137,10 @@ export async function getAgentUsage(
     ]);
     const messageCount = agentUsage ? parseInt(agentUsage, 10) : 0;
     const userCount = userUsage ? parseInt(userUsage, 10) : 0;
-    const usersWithAgentInListCount = await getAgentInListCount(
-      auth,
-      redis,
-      workspaceId,
-      agentConfiguration
-    );
     return {
       messageCount,
       userCount,
       timePeriodSec: rankingTimeframeSec,
-      usersWithAgentInListCount,
     };
   } finally {
     if (redis && !providedRedis) {

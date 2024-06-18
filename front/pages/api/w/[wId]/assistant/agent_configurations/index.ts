@@ -133,7 +133,8 @@ async function handler(
         agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
           ...agentConfiguration,
           usage: {
-            messageCount: usageMap[agentConfiguration.sId]?.count || 0,
+            messageCount: usageMap[agentConfiguration.sId]?.messageCount || 0,
+            userCount: usageMap[agentConfiguration.sId]?.userCount || 0,
             timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
           },
         }));
