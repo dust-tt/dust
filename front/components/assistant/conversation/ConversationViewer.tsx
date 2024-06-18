@@ -363,7 +363,7 @@ export default function ConversationViewer({
   return (
     <div
       className={classNames(
-        "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2 pb-44 pt-4",
+        "flex w-full max-w-4xl flex-col justify-center gap-2 pb-44",
         isFading ? "animate-fadeout" : "",
         isInModal ? "" : "sm:px-4"
       )}
