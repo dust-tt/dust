@@ -373,7 +373,10 @@ export default function AppLayout({
           )}
         </div>
 
-        <div className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
+        <div
+          id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
+          className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
+        >
           {/* TODO: This should be handled by the navigation bar itself!! */}
           <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
             <button
@@ -390,7 +393,6 @@ export default function AppLayout({
             <IncidentBanner className="relative" />
           )}
           <main
-            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center",
               titleChildren ? "" : "lg:pt-8"
