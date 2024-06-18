@@ -32,6 +32,10 @@ interface StreamConversationToSlackParams {
   userMessage: UserMessageType;
 }
 
+// Adding linear backoff mechanism.
+const maxBackoffTime = 10000; // Maximum backoff time.
+const initialBackoffTime = 1000;
+
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
   {
@@ -45,7 +49,24 @@ export async function streamConversationToSlack(
 ): Promise<Result<undefined, Error>> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
 
-  const postSlackMessageUpdate = async (messageUpdate: SlackMessageUpdate) => {
+  let lastSentDate = new Date();
+  let backoffTime = initialBackoffTime;
+
+  const postSlackMessageUpdate = async (
+    messageUpdate: SlackMessageUpdate,
+    { ignoreRateLimit }: { ignoreRateLimit: boolean }
+  ) => {
+    if (
+      lastSentDate.getTime() + backoffTime > new Date().getTime() &&
+      !ignoreRateLimit
+    ) {
+      return;
+    }
+
+    lastSentDate = new Date();
+    // Linear increase of backoff time.
+    backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+
     await slackClient.chat.update({
       ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
       channel: slackChannelId,
@@ -59,7 +80,7 @@ export async function streamConversationToSlack(
   );
 
   // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate({ isThinking: true });
+  await postSlackMessageUpdate({ isThinking: true }, { ignoreRateLimit: true });
 
   const agentMessages = conversation.content
     .map((versions) => {
@@ -90,7 +111,6 @@ export async function streamConversationToSlack(
   const botIdentity = assistantName ? `@${assistantName}:\n` : "";
   let fullAnswer = botIdentity;
   let action: AgentActionType | null = null;
-  let lastSentDate = new Date();
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "user_message_error": {
@@ -115,10 +135,6 @@ export async function streamConversationToSlack(
         }
 
         fullAnswer += event.text;
-        if (lastSentDate.getTime() + 1500 > new Date().getTime()) {
-          continue;
-        }
-        lastSentDate = new Date();
 
         const { formattedContent, footnotes } = annotateCitations(
           fullAnswer,
@@ -138,7 +154,10 @@ export async function streamConversationToSlack(
           break;
         }
 
-        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
+        await postSlackMessageUpdate(
+          { text: finalAnswer, footnotes },
+          { ignoreRateLimit: false }
+        );
 
         break;
       }
@@ -160,7 +179,10 @@ export async function streamConversationToSlack(
           normalizeContentForSlack(formattedContent)
         );
 
-        await postSlackMessageUpdate({ text: finalAnswer, footnotes });
+        await postSlackMessageUpdate(
+          { text: finalAnswer, footnotes },
+          { ignoreRateLimit: true }
+        );
 
         return new Ok(undefined);
       }
