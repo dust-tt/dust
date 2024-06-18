@@ -1220,7 +1220,7 @@ export class CoreAPI {
   ): Promise<Result<{ response: Response; duration: number }, CoreAPIError>> {
     const now = Date.now();
     try {
-      const res = await this._fetchWithError(url, init);
+      const res = await fetch(url, init);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {
       const duration = Date.now() - now;
