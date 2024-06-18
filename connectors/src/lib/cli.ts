@@ -64,6 +64,7 @@ import {
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
   checkNotionUrl,
+  findNotionUrl,
   searchNotionPagesForQuery,
 } from "@connectors/connectors/notion/lib/cli";
 import { getNotionAccessToken } from "@connectors/connectors/notion/temporal/activities";
@@ -620,6 +621,26 @@ export const notion = async ({
       const r = await checkNotionUrl({
         connectorId: connector.id,
         connectionId: connector.connectionId,
+        url,
+      });
+
+      return r;
+    }
+
+    case "find-url": {
+      const { url, wId } = args;
+
+      if (!url) {
+        throw new Error("Missing --url argument");
+      }
+
+      const connector = await getConnectorOrThrow({
+        connectorType: "notion",
+        workspaceId: wId,
+      });
+
+      const r = await findNotionUrl({
+        connectorId: connector.id,
         url,
       });
 
