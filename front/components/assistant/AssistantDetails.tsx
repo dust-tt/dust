@@ -481,7 +481,7 @@ function DustAppSection({
   const { app } = useApp({ workspaceId: owner.sId, appId: dustApp.appId });
   return (
     <div className="flex flex-col gap-2">
-      <div>The following action is run before answering:</div>
+      <div>The following tool is run before answering:</div>
       <div className="flex items-center gap-2 capitalize">
         <div>
           <CommandLineIcon />

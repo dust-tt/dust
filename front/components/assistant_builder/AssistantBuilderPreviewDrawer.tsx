@@ -196,6 +196,7 @@ export default function AssistantBuilderRightPanel({
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
+                  multiActionsMode={multiActionsMode}
                 />
               </div>
               <Page.Separator />
@@ -211,7 +212,11 @@ export default function AssistantBuilderRightPanel({
               <div className="flex items-end justify-between pt-2">
                 <Page.Header
                   icon={LightbulbIcon}
-                  title="Template's Actions manual"
+                  title={
+                    multiActionsMode
+                      ? "Template's Tools manual"
+                      : "Template's Actions manual"
+                  }
                 />
                 <TemplateDropDownMenu
                   screen={screen}
@@ -219,6 +224,7 @@ export default function AssistantBuilderRightPanel({
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
+                  multiActionsMode={multiActionsMode}
                 />
               </div>
               <Page.Separator />
@@ -239,7 +245,7 @@ export default function AssistantBuilderRightPanel({
                   multiActionsMode &&
                   template.presetActions.length > 0 && (
                     <div className="flex flex-col gap-6">
-                      <Page.SectionHeader title="Add those actions" />
+                      <Page.SectionHeader title="Add those tools" />
                       {template.presetActions.map((presetAction, index) => (
                         <div className="flex flex-col gap-2" key={index}>
                           <div>{presetAction.help}</div>
@@ -291,7 +297,7 @@ const TemplateAddActionButton = ({
     <div className="w-auto">
       <Button
         icon={spec.cardIcon}
-        label={`Add action “${spec.label}”`}
+        label={`Add tool “${spec.label}”`}
         size="sm"
         variant="secondary"
         onClick={() => addAction(action)}
@@ -306,12 +312,14 @@ const TemplateDropDownMenu = ({
   resetToTemplateInstructions,
   resetToTemplateActions,
   openRightPanelTab,
+  multiActionsMode,
 }: {
   screen: BuilderScreen;
   removeTemplate: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  multiActionsMode: boolean;
 }) => {
   const confirm = useContext(ConfirmContext);
 
@@ -365,13 +373,18 @@ const TemplateDropDownMenu = ({
         )}
         {screen === "actions" && (
           <DropdownMenu.Item
-            label="Reset actions"
-            description="Set actions back to template's default"
+            label={multiActionsMode ? "Reset tools" : "Reset actions"}
+            description={
+              multiActionsMode
+                ? "Remove all tools"
+                : "Set actions back to template's default"
+            }
             onClick={async () => {
               const confirmed = await confirm({
                 title: "Are you sure?",
-                message:
-                  "You will lose the changes you have made to the assistant's actions and go back to the template's default settings.",
+                message: multiActionsMode
+                  ? "You will lose the changes you have made to the assistant's tools."
+                  : "You will lose the changes you have made to the assistant's actions and go back to the template's default settings.",
                 validateVariant: "primaryWarning",
               });
               if (confirmed) {
