@@ -1,7 +1,6 @@
 import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getDataSource } from "@app/lib/api/data_sources";
@@ -36,39 +35,16 @@ export async function upsertDocumentActivity(
   const upsertDocument = JSON.parse(content.toString());
 
   const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
-  const tableItemValidation = EnqueueUpsertTableFromCsv.decode(upsertDocument);
 
-  if (!isLeft(documentItemValidation)) {
-    return upsertDocumentItem(
-      documentItemValidation.right,
-      upsertQueueId,
-      enqueueTimestamp
+  if (isLeft(documentItemValidation)) {
+    const pathErrorDocument = reporter.formatValidationErrors(
+      documentItemValidation.left
     );
-  }
-  if (!isLeft(tableItemValidation)) {
-    return upsertTableItem(
-      tableItemValidation.right,
-      upsertQueueId,
-      enqueueTimestamp
-    );
+    throw new Error(`Invalid upsertQueue document: ${pathErrorDocument}`);
   }
 
-  const pathErrorDocument = reporter.formatValidationErrors(
-    documentItemValidation.left
-  );
-  const pathErrorTable = reporter.formatValidationErrors(
-    tableItemValidation.left
-  );
-  throw new Error(
-    `Invalid upsertQueue item;\ninvalid path for document: ${pathErrorDocument}\ninvalid path for table: ${pathErrorTable}`
-  );
-}
+  const upsertQueueItem = documentItemValidation.right;
 
-async function upsertDocumentItem(
-  upsertQueueItem: t.TypeOf<typeof EnqueueUpsertDocument>,
-  upsertQueueId: string,
-  enqueueTimestamp: number
-) {
   const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
@@ -175,11 +151,33 @@ async function upsertDocumentItem(
   });
 }
 
-async function upsertTableItem(
-  upsertQueueItem: t.TypeOf<typeof EnqueueUpsertTableFromCsv>,
+export async function upsertTableActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
 ) {
+  if (!DUST_UPSERT_QUEUE_BUCKET) {
+    throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
+  }
+  if (!SERVICE_ACCOUNT) {
+    throw new Error("SERVICE_ACCOUNT is not set");
+  }
+
+  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+  const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
+  const content = await bucket.file(`${upsertQueueId}.json`).download();
+
+  const upsertDocument = JSON.parse(content.toString());
+
+  const tableItemValidation = EnqueueUpsertTableFromCsv.decode(upsertDocument);
+
+  if (isLeft(tableItemValidation)) {
+    const pathErrorTable = reporter.formatValidationErrors(
+      tableItemValidation.left
+    );
+    throw new Error(`Invalid upsertQueue table: ${pathErrorTable}`);
+  }
+
+  const upsertQueueItem = tableItemValidation.right;
   const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
