@@ -302,8 +302,15 @@ export async function signalAgentUsage({
   agentConfigurationId: string;
   workspaceId: string;
 }) {
-  const redis = await redisClient();
-  const { agentMessageCountKey } = _getUsageKeys(workspaceId);
-  await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
-  await redis.quit();
+  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+
+  try {
+    redis = await redisClient();
+    const { agentMessageCountKey } = _getUsageKeys(workspaceId);
+    await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
+  } finally {
+    if (redis) {
+      await redis.quit();
+    }
+  }
 }
