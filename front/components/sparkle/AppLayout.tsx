@@ -284,103 +284,101 @@ export default function AppLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1"
         />
       </Head>
-      <div className="light h-full">
-        {!hideSidebar && (
-          <Transition.Root show={sidebarOpen} as={Fragment}>
-            <Dialog
-              as="div"
-              className="relative z-50 lg:hidden"
-              onClose={setSidebarOpen}
-            >
-              <Transition.Child
-                as={Fragment}
-                enter="transition-opacity ease-linear duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="transition-opacity ease-linear duration-300"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
+      <div className="light flex h-full flex-row">
+        <div className="flex shrink-0 overflow-x-hidden">
+          {!hideSidebar && (
+            <Transition.Root show={sidebarOpen} as={Fragment}>
+              <Dialog
+                as="div"
+                className="relative z-50 lg:hidden"
+                onClose={setSidebarOpen}
               >
-                <div className="fixed inset-0 bg-gray-900/80" />
-              </Transition.Child>
-
-              <div className="fixed inset-0 flex">
                 <Transition.Child
                   as={Fragment}
-                  enter="transition ease-in-out duration-300 transform"
-                  enterFrom="-translate-x-full"
-                  enterTo="translate-x-0"
-                  leave="transition ease-in-out duration-300 transform"
-                  leaveFrom="translate-x-0"
-                  leaveTo="-translate-x-full"
+                  enter="transition-opacity ease-linear duration-300"
+                  enterFrom="opacity-0"
+                  enterTo="opacity-100"
+                  leave="transition-opacity ease-linear duration-300"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
                 >
-                  <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                    <Transition.Child
-                      as={Fragment}
-                      enter="ease-in-out duration-300"
-                      enterFrom="opacity-0"
-                      enterTo="opacity-100"
-                      leave="ease-in-out duration-300"
-                      leaveFrom="opacity-100"
-                      leaveTo="opacity-0"
-                    >
-                      <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                        <button
-                          type="button"
-                          className="-m-2.5 p-2.5"
-                          onClick={() => setSidebarOpen(false)}
-                        >
-                          <span className="sr-only">Close sidebar</span>
-                          <XMarkIcon
-                            className="h-6 w-6 text-white"
-                            aria-hidden="true"
-                          />
-                        </button>
-                      </div>
-                    </Transition.Child>
-                    {loaded && (
-                      <NavigationBar
-                        subscription={subscription}
-                        owner={owner}
-                        subNavigation={subNavigation}
-                        topNavigationCurrent={topNavigationCurrent}
-                      >
-                        {navChildren && navChildren}
-                      </NavigationBar>
-                    )}
-                  </Dialog.Panel>
+                  <div className="fixed inset-0 bg-gray-900/80" />
                 </Transition.Child>
-              </div>
-            </Dialog>
-          </Transition.Root>
-        )}
 
-        {!hideSidebar && (
-          <div className="hidden lg:fixed lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-            {loaded && (
-              <NavigationBar
-                owner={owner}
-                subscription={subscription}
-                subNavigation={subNavigation}
-                topNavigationCurrent={topNavigationCurrent}
-              >
-                {loaded && navChildren && navChildren}
-              </NavigationBar>
-            )}
-          </div>
-        )}
+                <div className="fixed inset-0 flex">
+                  <Transition.Child
+                    as={Fragment}
+                    enter="transition ease-in-out duration-300 transform"
+                    enterFrom="-translate-x-full"
+                    enterTo="translate-x-0"
+                    leave="transition ease-in-out duration-300 transform"
+                    leaveFrom="translate-x-0"
+                    leaveTo="-translate-x-full"
+                  >
+                    <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
+                      <Transition.Child
+                        as={Fragment}
+                        enter="ease-in-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in-out duration-300"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                      >
+                        <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
+                          <button
+                            type="button"
+                            className="-m-2.5 p-2.5"
+                            onClick={() => setSidebarOpen(false)}
+                          >
+                            <span className="sr-only">Close sidebar</span>
+                            <XMarkIcon
+                              className="h-6 w-6 text-white"
+                              aria-hidden="true"
+                            />
+                          </button>
+                        </div>
+                      </Transition.Child>
+                      {loaded && (
+                        <NavigationBar
+                          subscription={subscription}
+                          owner={owner}
+                          subNavigation={subNavigation}
+                          topNavigationCurrent={topNavigationCurrent}
+                        >
+                          {navChildren && navChildren}
+                        </NavigationBar>
+                      )}
+                    </Dialog.Panel>
+                  </Transition.Child>
+                </div>
+              </Dialog>
+            </Transition.Root>
+          )}
+
+          {/* TODO: This logic should be handled by the navigation bar itself. */}
+          {!hideSidebar && (
+            <div className="hidden lg:visible lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+              {loaded && (
+                <NavigationBar
+                  owner={owner}
+                  subscription={subscription}
+                  subNavigation={subNavigation}
+                  topNavigationCurrent={topNavigationCurrent}
+                >
+                  {loaded && navChildren && navChildren}
+                </NavigationBar>
+              )}
+            </div>
+          )}
+        </div>
 
         <div
-          className={classNames(
-            "mt-0 h-full flex-1",
-            !hideSidebar ? "lg:pl-80" : ""
-          )}
+          id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
+          className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
         >
-          <div
-            className={classNames(
-              "fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6"
-            )}
-          >
+          {/* TODO: This logic should be handled by the navigation bar itself. */}
+          <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
             <button
               type="button"
               className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
@@ -390,37 +388,36 @@ export default function AppLayout({
               <Bars3Icon className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
-          <div
-            className={classNames(
-              "fixed left-0 right-0 top-0 z-30 flex flex-col pl-12 lg:pl-0",
-              !hideSidebar
-                ? "border-b border-structure-300/30 bg-white/80 backdrop-blur lg:left-80"
-                : "",
-              titleChildren ? "fixed" : "lg:hidden"
-            )}
-          >
-            <div className="h-16 grow">
-              <div className="mx-auto h-full grow px-6">
-                {loaded && titleChildren && titleChildren}
-              </div>
-            </div>
-            {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
-          </div>
 
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
           <main
-            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
-              "h-full overflow-x-hidden pt-16",
+              "flex h-full w-full flex-col items-center",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
+            {/* TODO: This should be moved to a TopBar component. */}
             <div
               className={classNames(
-                "mx-auto h-full",
-                isWideMode ? "w-full" : "max-w-4xl px-6"
+                "sticky left-0 top-0 z-30 mb-4 flex w-full flex-col pl-12 lg:pl-0",
+                !hideSidebar
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur"
+                  : "",
+                titleChildren ? "" : "lg:hidden"
+              )}
+            >
+              <div className="h-16 grow px-6">
+                {loaded && titleChildren && titleChildren}
+              </div>
+              {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
+            </div>
+
+            <div
+              className={classNames(
+                "flex h-full w-full flex-col",
+                isWideMode ? "items-center" : "max-w-4xl px-6"
               )}
             >
               {loaded && children}

@@ -352,20 +352,20 @@ export default function ConversationViewer({
   const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
   if (isConversationLoading) {
-    return null;
+    return <div className="flex flex-1"></div>;
   } else if (isConversationError) {
-    return <div>Error loading conversation</div>;
+    return <div className="flex flex-1">Error loading conversation</div>;
   }
   if (!conversation) {
-    return <div>No conversation here</div>;
+    return <div className="flex flex-1">No conversation here</div>;
   }
 
   return (
     <div
       className={classNames(
-        "mx-auto flex w-full max-w-4xl flex-col justify-center gap-2 pb-44 pt-4",
+        "flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4",
         isFading ? "animate-fadeout" : "",
-        isInModal ? "" : "sm:px-4"
+        isInModal ? "pt-4" : "sm:px-4"
       )}
     >
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
