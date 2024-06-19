@@ -1,15 +1,13 @@
 import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
-import type {
-  ProcessActionOutputsType,
-  ProcessActionType,
-} from "@dust-tt/types";
+import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import { ClipboardBanner } from "@app/components/misc/ClipboardBanner";
+import type { GetContentToDownloadFunction } from "@app/components/misc/CodeBlockBanner";
+import { CodeBlockBanner } from "@app/components/misc/CodeBlockBanner";
 
 export function ProcessActionDetails({
   action,
@@ -32,9 +30,7 @@ export function ProcessActionDetails({
               <span className="text-sm font-bold text-slate-900">Results</span>
             </Collapsible.Button>
             <Collapsible.Panel>
-              <ProcessActionOutputDetails
-                extracted={action.outputs ?? undefined}
-              />
+              <ProcessActionOutputDetails action={action} />
             </Collapsible.Panel>
           </Collapsible>
         </div>
@@ -89,28 +85,37 @@ function makeQueryDescription(action: ProcessActionType) {
   return `Extracted from ${timeFrameAsString}.`;
 }
 
-function ProcessActionOutputDetails({
-  extracted,
-}: {
-  extracted?: ProcessActionOutputsType;
-}) {
-  if (!extracted) {
+function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
+  const { outputs } = action;
+
+  if (!outputs) {
     return null;
   }
 
   const stringifiedOutput = useMemo(
-    () => JSON.stringify(extracted.data, null, 2),
-    [extracted]
+    () => JSON.stringify(outputs.data, null, 2),
+    [outputs]
   );
 
+  const getContentToDownload: GetContentToDownloadFunction = async () => {
+    return {
+      content: stringifiedOutput,
+      filename: `process_action_outputs_${action.id}`,
+      type: "application/json",
+    };
+  };
+
   return (
-    <ClipboardBanner content={stringifiedOutput}>
+    <CodeBlockBanner
+      content={stringifiedOutput}
+      getContentToDownload={getContentToDownload}
+    >
       <CodeBlock
         className="language-json max-h-60 overflow-y-auto"
         wrapLongLines={true}
       >
         {stringifiedOutput}
       </CodeBlock>
-    </ClipboardBanner>
+    </CodeBlockBanner>
   );
 }

@@ -15,10 +15,11 @@ import {
 import { isLeft } from "fp-ts/lib/Either";
 import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getApp } from "@app/lib/api/app";
-import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
+import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
@@ -118,26 +119,26 @@ async function handler(
         sort,
       });
       if (withUsage === "true") {
-        agentConfigurations = await safeRedisClient(async (redis) => {
-          return Promise.all(
-            agentConfigurations.map(
-              async (
-                agentConfiguration
-              ): Promise<LightAgentConfigurationType> => {
-                return {
-                  ...agentConfiguration,
-                  usage: await getAgentUsage(auth, {
-                    providedRedis: redis,
-                    agentConfiguration,
-                    workspaceId: owner.sId,
-                  }),
-                };
-              }
-            )
-          );
+        const mentionCounts = await safeRedisClient(async (redis) => {
+          return getAgentsUsage({
+            providedRedis: redis,
+            workspaceId: owner.sId,
+            limit:
+              typeof req.query.limit === "string"
+                ? parseInt(req.query.limit, 10)
+                : -1,
+          });
         });
+        const usageMap = _.keyBy(mentionCounts, "agentId");
+        agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          usage: {
+            messageCount: usageMap[agentConfiguration.sId]?.messageCount || 0,
+            userCount: usageMap[agentConfiguration.sId]?.userCount || 0,
+            timePeriodSec: usageMap[agentConfiguration.sId]?.timePeriodSec || 0,
+          },
+        }));
       }
-
       if (withAuthors === "true") {
         const recentAuthors = await getAgentsRecentAuthors({
           auth,

@@ -6,7 +6,8 @@ import { useMemo } from "react";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import { ClipboardBanner } from "@app/components/misc/ClipboardBanner";
+import type { GetContentToDownloadFunction } from "@app/components/misc/CodeBlockBanner";
+import { CodeBlockBanner } from "@app/components/misc/CodeBlockBanner";
 
 export function DustAppRunActionDetails({
   action,
@@ -65,14 +66,25 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
     [action.output]
   );
 
+  const getContentToDownload: GetContentToDownloadFunction = async () => {
+    return {
+      content: stringifiedOutput,
+      filename: `app_runs_outputs_${action.id}`,
+      type: "application/json",
+    };
+  };
+
   return (
-    <ClipboardBanner content={stringifiedOutput}>
+    <CodeBlockBanner
+      content={stringifiedOutput}
+      getContentToDownload={getContentToDownload}
+    >
       <CodeBlock
         className="language-json max-h-60 overflow-y-auto"
         wrapLongLines={true}
       >
         {stringifiedOutput}
       </CodeBlock>
-    </ClipboardBanner>
+    </CodeBlockBanner>
   );
 }

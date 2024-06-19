@@ -1,3 +1,4 @@
+import type { ConversationType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
@@ -43,5 +44,30 @@ export function usePokeAssistantTemplate({
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
     mutateAssistantTemplate: mutate,
+  };
+}
+
+export function useConversation({
+  workspaceId,
+  conversationId,
+}: {
+  workspaceId: string;
+  conversationId: string | null;
+}) {
+  const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
+    fetcher;
+
+  const { data, error, mutate } = useSWR(
+    conversationId
+      ? `/api/poke/workspaces/${workspaceId}/conversations/${conversationId}`
+      : null,
+    conversationFetcher
+  );
+
+  return {
+    conversation: data ? data.conversation : null,
+    isConversationLoading: !error && !data,
+    isConversationError: error,
+    mutateConversation: mutate,
   };
 }

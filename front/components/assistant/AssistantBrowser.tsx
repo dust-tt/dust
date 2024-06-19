@@ -82,20 +82,17 @@ export function AssistantBrowser({
       list: filteredAgents.filter(
         (a) => a.scope === "published" && a.userListStatus === "in-list"
       ),
-      // TODO: Implement most popular agents (upcoming PR for issue #5454)
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
-          (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
-        )
-        .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
+          (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+        ),
     };
   }, [assistantSearch, loadingStatus, agents]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
-
   const [selectedTab, setSelectedTab] = useState<TabId | null>(
     visibleTabs[0]?.id || null
   );

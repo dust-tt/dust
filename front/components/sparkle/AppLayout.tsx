@@ -159,14 +159,12 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div
-          id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-          className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
-        >
+        <div className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
           <main
+            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
               titleChildren ? "" : "lg:pt-8"
