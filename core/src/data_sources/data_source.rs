@@ -9,7 +9,6 @@ use crate::run::Credentials;
 use crate::stores::store::Store;
 use crate::utils;
 use anyhow::{anyhow, Result};
-use cloud_storage::Object;
 use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
@@ -1339,11 +1338,7 @@ impl DataSource {
             .map(|(document_id, _)| document_id.clone())
             .collect::<std::collections::HashSet<_>>();
 
-        // GCP retrieve raw text and document_id.
-        let bucket = match std::env::var("DUST_DATA_SOURCES_BUCKET") {
-            Ok(bucket) => bucket,
-            Err(_) => Err(anyhow!("DUST_DATA_SOURCES_BUCKET is not set"))?,
-        };
+        let data_source = self.clone();
 
         // Retrieve the documents from the store.
         let time_store_start = utils::now();
@@ -1353,8 +1348,8 @@ impl DataSource {
                 let document_id = document_id.clone();
                 let data_source_id = self.data_source_id.clone();
                 let project = self.project.clone();
-                let bucket = bucket.clone();
-                let internal_id = self.internal_id.clone();
+                let data_source = data_source.clone();
+
                 tokio::spawn(async move {
                     let mut d: Document = match store
                         .load_data_source_document(&project, &data_source_id, &document_id, &None)
@@ -1367,17 +1362,15 @@ impl DataSource {
                     if full_text {
                         let document_id_hash = make_document_id_hash(&document_id);
 
-                        let bucket_path = format!(
-                            "{}/{}/{}",
-                            project.project_id(),
-                            internal_id,
-                            document_id_hash
-                        );
-                        let content_path = format!("{}/{}/content.txt", bucket_path, d.hash);
-                        let bytes = Object::download(&bucket, &content_path).await?;
-                        let text = String::from_utf8(bytes)?;
+                        let stored_doc = FileStorageDocument::get_stored_document(
+                            &data_source,
+                            d.created,
+                            &document_id_hash,
+                            &d.hash,
+                        )
+                        .await?;
 
-                        d.text = Some(text.clone());
+                        d.text = Some(stored_doc.full_text.clone());
                     }
                     Ok::<Document, anyhow::Error>(d)
                 })
