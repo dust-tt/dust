@@ -3,10 +3,7 @@ import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useContext } from "react";
 
-import type {
-  SidebarNavigation,
-  TopNavigationId,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { NavigationSidebar } from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 
@@ -15,7 +12,6 @@ interface NavigationBarProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   navChildren?: React.ReactNode;
-  topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
 }
 
@@ -24,7 +20,6 @@ export function NavigationBar({
   owner,
   subscription,
   navChildren,
-  topNavigationCurrent,
   subNavigation,
 }: NavigationBarProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
@@ -92,7 +87,6 @@ export function NavigationBar({
                   subscription={subscription}
                   owner={owner}
                   subNavigation={subNavigation}
-                  topNavigationCurrent={topNavigationCurrent}
                 >
                   {navChildren && navChildren}
                 </NavigationSidebar>
@@ -108,7 +102,6 @@ export function NavigationBar({
           owner={owner}
           subscription={subscription}
           subNavigation={subNavigation}
-          topNavigationCurrent={topNavigationCurrent}
         >
           {navChildren && navChildren}
         </NavigationSidebar>

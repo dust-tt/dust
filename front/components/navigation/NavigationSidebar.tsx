@@ -2,12 +2,9 @@ import { Item, Logo, Tab } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import type {
-  SidebarNavigation,
-  TopNavigationId,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { topNavigation } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
@@ -19,20 +16,31 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
-  topNavigationCurrent: TopNavigationId;
 }
 
 export function NavigationSidebar({
   owner,
   subscription,
-  topNavigationCurrent,
   subNavigation,
   children,
 }: NavigationSidebarProps) {
   const router = useRouter();
   const { user } = useUser();
 
-  const nav = topNavigation({ owner, current: topNavigationCurrent });
+  const [activePath, setActivePath] = useState("");
+
+  useEffect(() => {
+    if (router.isReady && router.route) {
+      // Update activePath once router is ready.
+      setActivePath(router.route);
+    }
+  }, [router.route, router.isReady]);
+
+  const nav = useMemo(() => {
+    return topNavigation({ owner, current: activePath });
+  }, [activePath, owner]);
+
+  // TODO(2024-06-19 flav) Fix blinking effect on tabs.
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">

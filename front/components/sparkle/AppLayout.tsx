@@ -8,10 +8,7 @@ import Script from "next/script";
 import React, { Fragment, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import type {
-  SidebarNavigation,
-  TopNavigationId,
-} from "@app/components/navigation/config";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import { NavigationBar } from "@app/components/navigation/NavigationBar";
 import { useUser } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
@@ -67,7 +64,6 @@ export default function AppLayout({
   subscription,
   isWideMode = false,
   hideSidebar = false,
-  topNavigationCurrent,
   subNavigation,
   pageTitle,
   gaTrackingId,
@@ -79,7 +75,6 @@ export default function AppLayout({
   subscription: SubscriptionType;
   isWideMode?: boolean;
   hideSidebar?: boolean;
-  topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
   pageTitle?: string;
   gaTrackingId: string;
@@ -163,7 +158,6 @@ export default function AppLayout({
           owner={owner}
           subscription={subscription}
           navChildren={navChildren}
-          topNavigationCurrent={topNavigationCurrent}
           subNavigation={subNavigation}
         />
         <div

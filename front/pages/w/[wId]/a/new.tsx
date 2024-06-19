@@ -102,7 +102,6 @@ export default function NewApp({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <div className="flex flex-col">

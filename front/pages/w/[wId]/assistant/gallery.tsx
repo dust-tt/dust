@@ -239,7 +239,6 @@ export default function AssistantsGallery({
       owner={owner}
       hideSidebar
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="conversations"
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Assistant Gallery"

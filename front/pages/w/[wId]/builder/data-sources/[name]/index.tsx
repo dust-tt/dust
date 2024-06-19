@@ -1401,7 +1401,6 @@ export default function DataSourceView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: dataSource.connectorId

@@ -313,7 +313,6 @@ export default function AppView({
       hideSidebar
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

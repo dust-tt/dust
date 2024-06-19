@@ -357,7 +357,6 @@ export default function AssistantBuilder({
         isWideMode
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",

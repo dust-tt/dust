@@ -190,7 +190,6 @@ export default function WorkspaceAssistants({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",

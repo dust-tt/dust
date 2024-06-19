@@ -222,7 +222,6 @@ export default function WorkspaceAdmin({
         subscription={subscription}
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="admin"
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">

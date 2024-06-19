@@ -69,12 +69,20 @@ export type SidebarNavigation = {
   menus: SparkleAppLayoutNavigation[];
 };
 
+// const menuConfig: Record<string, any> = {
+//   "/w/[wId]/assistant/[cId]": {},
+// };
+
+// export function getMenuConfigForCurrentRoute(currentRoute: string) {
+//   return menuConfig[currentRoute];
+// }
+
 export const topNavigation = ({
   owner,
   current,
 }: {
   owner: WorkspaceType;
-  current: TopNavigationId;
+  current: string;
 }) => {
   const nav: SparkleAppLayoutNavigation[] = [];
 
@@ -84,7 +92,9 @@ export const topNavigation = ({
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
     sizing: "expand",
-    current: current === "conversations",
+    current: ["/w/[wId]/assistant/new", "/w/[wId]/assistant/[cId]"].includes(
+      current
+    ),
   });
 
   if (isBuilder(owner)) {
@@ -93,7 +103,8 @@ export const topNavigation = ({
       label: "Build",
       icon: PuzzleIcon,
       href: `/w/${owner.sId}/builder/assistants`,
-      current: current === "assistants",
+      current:
+        current.startsWith("/w/[wId]/builder/") || current === "/w/[wId]/a",
       sizing: "expand",
     });
   }
@@ -104,7 +115,11 @@ export const topNavigation = ({
       hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
-      current: current === "admin",
+      current: [
+        "/w/[wId]/members",
+        "/w/[wId]/workspace",
+        "/w/[wId]/subscription",
+      ].includes(current),
       sizing: "hug",
     });
   }

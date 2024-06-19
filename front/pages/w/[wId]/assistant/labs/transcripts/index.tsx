@@ -409,7 +409,6 @@ export default function LabsTranscriptsIndex({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="conversations"
       pageTitle="Dust - Transcripts processing"
       navChildren={<AssistantSidebarMenu owner={owner} />}
     >
