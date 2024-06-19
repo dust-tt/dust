@@ -24,6 +24,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
@@ -45,6 +46,8 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
+
+const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 100_000;
 
 export const CREATIVITY_LEVELS = Object.entries(
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
@@ -99,7 +102,15 @@ export function InstructionScreen({
   instructionsError: string | null;
 }) {
   const editor = useEditor({
-    extensions: [Document, Text, ParagraphExtension, History],
+    extensions: [
+      Document,
+      Text,
+      ParagraphExtension,
+      History,
+      CharacterCount.configure({
+        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+      }),
+    ],
     content: tipTapContentFromPlainText(builderState.instructions || ""),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
@@ -165,11 +176,27 @@ export function InstructionScreen({
           />
         </div>
       </div>
-      <div className="relative h-full min-h-[240px] grow gap-1 p-px">
-        <EditorContent
-          editor={editor}
-          className="absolute bottom-0 left-0 right-0 top-0"
-        />
+      <div className="flex h-full flex-col gap-1">
+        <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+          <EditorContent
+            editor={editor}
+            className="absolute bottom-0 left-0 right-0 top-0"
+          />
+        </div>
+        {editor && (
+          <span
+            className={classNames(
+              "text-end text-xs",
+              editor.storage.characterCount.characters() >=
+                INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
+                ? "text-red-500"
+                : "text-slate-500"
+            )}
+          >
+            {editor.storage.characterCount.characters()} /{" "}
+            {INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT} characters
+          </span>
+        )}
       </div>
       {instructionsError && (
         <div className="-mt-3 ml-2 text-sm text-warning-500">

@@ -46,6 +46,7 @@
     "@temporalio/worker": "^1.9.3",
     "@temporalio/workflow": "^1.9.3",
     "@textea/json-viewer": "^3.1.1",
+    "@tiptap/extension-character-count": "^2.4.0",
     "@tiptap/extension-mention": "^2.1.13",
     "@tiptap/extension-placeholder": "^2.1.13",
     "@tiptap/pm": "^2.1.13",
