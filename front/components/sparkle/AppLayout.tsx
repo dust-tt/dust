@@ -8,7 +8,7 @@ import React, { Fragment, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
-import { NavigationBar } from "@app/components/navigation/NavigationBar";
+import { Navigation } from "@app/components/navigation/Navigation";
 import { useUser } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -152,7 +152,7 @@ export default function AppLayout({
         />
       </Head>
       <div className="light flex h-full flex-row">
-        <NavigationBar
+        <Navigation
           hideSidebar={hideSidebar}
           owner={owner}
           subscription={subscription}

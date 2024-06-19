@@ -8,7 +8,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { NavigationSidebar } from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 
-interface NavigationBarProps {
+interface NavigationProps {
   hideSidebar: boolean;
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -16,13 +16,13 @@ interface NavigationBarProps {
   subNavigation?: SidebarNavigation[] | null;
 }
 
-export function NavigationBar({
+export function Navigation({
   hideSidebar,
   owner,
   subscription,
   navChildren,
   subNavigation,
-}: NavigationBarProps) {
+}: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
   if (hideSidebar) {
