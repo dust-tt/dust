@@ -387,9 +387,7 @@ const DataSourcePage = ({
             </div>
           )}
           {dataSource.connectorProvider === "notion" && (
-            <>
-              <NotionUrlCheckOrFind owner={owner} />
-            </>
+            <NotionUrlCheckOrFind owner={owner} />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
@@ -571,6 +569,10 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
   >(null);
+  const [command, setCommand] = useState<"check-url" | "find-url" | null>(
+    "check-url"
+  );
+
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="flex items-center gap-2 ">
@@ -586,24 +588,26 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
         <Button
           variant="secondary"
           label={"Check"}
-          onClick={async () =>
+          onClick={async () => {
+            setCommand("check-url");
             setUrlDetails(
               await handleCheckOrFindNotionUrl(
                 notionUrl,
                 owner.sId,
                 "check-url"
               )
-            )
-          }
+            );
+          }}
         />
         <Button
           variant="secondary"
           label={"Find"}
-          onClick={async () =>
+          onClick={async () => {
+            setCommand("find-url");
             setUrlDetails(
               await handleCheckOrFindNotionUrl(notionUrl, owner.sId, "find-url")
-            )
-          }
+            );
+          }}
         />
       </div>
       <div className="text-gray-800">
@@ -632,9 +636,69 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
                 <span className="font-bold">Details:</span>{" "}
                 <span>
                   {urlDetails.page ? (
-                    <JsonViewer value={urlDetails.page} rootName={false} />
+                    <>
+                      <JsonViewer value={urlDetails.page} rootName={false} />
+                      {command === "find-url" && (
+                        <div>
+                          {urlDetails.page.parentType === "page" && (
+                            <>
+                              <span className="font-bold text-emerald-800">
+                                Parent URL:
+                              </span>
+                              <span className="pl-2">
+                                {` https://www.notion.so/${(
+                                  urlDetails.page.parentId as string
+                                ).replaceAll("-", "")}`}
+                              </span>
+                            </>
+                          )}
+                          {urlDetails.page.parentType === "database" && (
+                            <>
+                              <span className="font-bold text-emerald-800">
+                                Parent URL:
+                              </span>
+                              <span className="pl-2">
+                                {` https://www.notion.so/${(
+                                  urlDetails.page.parentId as string
+                                ).replaceAll("-", "")}`}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    <JsonViewer value={urlDetails.db} rootName={false} />
+                    <>
+                      <JsonViewer value={urlDetails.db} rootName={false} />
+                      {command === "find-url" && (
+                        <div>
+                          {urlDetails.db?.parentType === "page" && (
+                            <>
+                              <span className="font-bold text-emerald-800">
+                                Parent URL:
+                              </span>
+                              <span className="pl-2">
+                                {`https://www.notion.so/${(
+                                  urlDetails.db?.parentId as string
+                                ).replaceAll("-", "")}`}
+                              </span>
+                            </>
+                          )}
+                          {urlDetails.db?.parentType === "database" && (
+                            <>
+                              <span className="font-bold text-emerald-800">
+                                Parent URL:
+                              </span>
+                              <span className="pl-2">
+                                {` https://www.notion.so/${(
+                                  urlDetails.db?.parentId as string
+                                ).replaceAll("-", "")}`}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
                   )}
                 </span>
               </div>
