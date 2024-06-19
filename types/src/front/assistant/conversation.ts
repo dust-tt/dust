@@ -52,12 +52,15 @@ export type MessageWithRankType = WithRank<MessageType>;
  * User messages
  */
 
+export type UserMessageOrigin = "slack" | "web" | "api";
+
 export type UserMessageContext = {
   username: string;
   timezone: string;
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
+  origin: UserMessageOrigin | null;
 };
 
 export type UserMessageType = {
