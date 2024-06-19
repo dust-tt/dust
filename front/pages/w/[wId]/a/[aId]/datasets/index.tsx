@@ -9,12 +9,12 @@ import { useRouter } from "next/router";
 import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationApp,
   subNavigationBuild,
-} from "@app/components/sparkle/navigation";
+} from "@app/components/navigation/config";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";

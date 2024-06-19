@@ -4,8 +4,8 @@ import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
+import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationAdmin } from "@app/components/sparkle/navigation";
 import {
   ActivityReport,
   QuickInsights,

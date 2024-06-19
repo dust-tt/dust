@@ -19,9 +19,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";

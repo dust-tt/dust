@@ -21,8 +21,8 @@ import { useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";

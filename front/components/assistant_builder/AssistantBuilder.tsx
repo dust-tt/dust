@@ -60,12 +60,12 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 
