@@ -22,6 +22,8 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
+export type InputBarAction = "attachment" | "quick-actions";
+
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
@@ -30,8 +32,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
-  hideQuickActions: boolean;
-  hideAttachment: boolean;
+  actionsList: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
 }
@@ -44,8 +45,7 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
-  hideQuickActions,
-  hideAttachment,
+  actionsList,
   disableAutoFocus,
   disableSendButton,
 }: InputBarContainerProps) => {
@@ -117,13 +117,11 @@ const InputBarContainer = ({
         <div
           className={classNames(
             "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
-            // when both are hidden, hide the border (but keep the div for the flex layout to work)
-            !hideAttachment || !hideQuickActions
-              ? "border border-structure-200/60"
-              : ""
+            // Hide border when there are no actions.
+            actionsList.length === 0 ? "" : "border border-structure-200/60"
           )}
         >
-          {!hideAttachment && (
+          {actionsList.includes("attachment") && (
             <>
               <input
                 accept=".txt,.pdf,.md,.csv"
@@ -149,7 +147,7 @@ const InputBarContainer = ({
               />
             </>
           )}
-          {!hideQuickActions && (
+          {actionsList.includes("quick-actions") && (
             <>
               <AssistantPicker
                 owner={owner}

@@ -55,8 +55,7 @@ export function AssistantInputBar({
   conversationId,
   stickyMentions,
   additionalAgentConfiguration,
-  hideQuickActions,
-  hideAttachment,
+  actions,
   disableAutoFocus = false,
   isFloating = true,
 }: {
@@ -69,8 +68,7 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions: boolean;
-  hideAttachment?: boolean;
+  actions: InputBarContainerProps["actionsList"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
 }) {
@@ -336,8 +334,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                hideQuickActions={hideQuickActions}
-                hideAttachment={!!hideAttachment}
+                actionsList={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
@@ -362,7 +359,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  hideQuickActions = false,
+  actions = ["attachment", "quick-actions"],
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
@@ -374,7 +371,7 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions?: boolean;
+  actions?: InputBarContainerProps["actionsList"];
   disableAutoFocus?: boolean;
 }) {
   return (
@@ -385,7 +382,7 @@ export function FixedAssistantInputBar({
         conversationId={conversationId}
         stickyMentions={stickyMentions}
         additionalAgentConfiguration={additionalAgentConfiguration}
-        hideQuickActions={hideQuickActions}
+        actions={actions}
         disableAutoFocus={disableAutoFocus}
       />
     </div>

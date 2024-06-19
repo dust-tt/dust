@@ -93,7 +93,7 @@ export function TryAssistantModal({
               stickyMentions={stickyMentions}
               conversationId={conversation?.sId || null}
               additionalAgentConfiguration={assistant}
-              hideQuickActions
+              actions={["attachment"]}
             />
           </div>
         </GenerationContextProvider>
@@ -165,7 +165,7 @@ export function TryAssistant({
               stickyMentions={stickyMentions}
               conversationId={conversation?.sId || null}
               additionalAgentConfiguration={assistant}
-              hideQuickActions
+              actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
             />
