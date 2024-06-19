@@ -152,8 +152,8 @@ export default function WebsiteConfiguration({
 
   const handleCreate = async () => {
     setIsSubmitted(true);
-    validateForm();
-    if (!isValid) {
+
+    if (!validateForm()) {
       return;
     }
 
