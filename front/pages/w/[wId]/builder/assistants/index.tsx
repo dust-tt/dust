@@ -8,7 +8,7 @@ import {
   Page,
   PlusIcon,
   Popup,
-  RobotSharedIcon,
+  RobotIcon,
   Searchbar,
   SliderToggle,
   Tab,
@@ -231,7 +231,7 @@ export default function WorkspaceAssistants({
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Manage Assistants" icon={RobotSharedIcon} />
+        <Page.Header title="Manage Assistants" icon={RobotIcon} />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <Searchbar
@@ -262,7 +262,7 @@ export default function WorkspaceAssistants({
               </Link>
             </Button.List>
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-3">
             <div className="flex flex-row gap-2">
               <Tab
                 tabs={tabs}
@@ -270,7 +270,7 @@ export default function WorkspaceAssistants({
                   assistantSearch ? disabledTablineClass : ""
                 )}
               />
-              <div className="flex grow justify-end">
+              <div className="flex grow items-end justify-end">
                 <SearchOrderDropdown
                   orderBy={orderBy}
                   setOrderBy={setOrderBy}
