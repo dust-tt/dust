@@ -22,7 +22,9 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
-export type InputBarAction = "attachment" | "quick-actions";
+export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
+
+export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -32,7 +34,7 @@ export interface InputBarContainerProps {
   owner: WorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions: AgentMention[] | undefined;
-  actionsList: InputBarAction[];
+  actions: InputBarAction[];
   disableAutoFocus: boolean;
   disableSendButton: boolean;
 }
@@ -45,7 +47,7 @@ const InputBarContainer = ({
   owner,
   selectedAssistant,
   stickyMentions,
-  actionsList,
+  actions,
   disableAutoFocus,
   disableSendButton,
 }: InputBarContainerProps) => {
@@ -118,10 +120,10 @@ const InputBarContainer = ({
           className={classNames(
             "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
             // Hide border when there are no actions.
-            actionsList.length === 0 ? "" : "border border-structure-200/60"
+            actions.length === 0 ? "" : "border border-structure-200/60"
           )}
         >
-          {actionsList.includes("attachment") && (
+          {actions.includes("attachment") && (
             <>
               <input
                 accept=".txt,.pdf,.md,.csv"
@@ -147,7 +149,7 @@ const InputBarContainer = ({
               />
             </>
           )}
-          {actionsList.includes("quick-actions") && (
+          {actions.includes("quick-actions") && (
             <>
               <AssistantPicker
                 owner={owner}

@@ -14,7 +14,9 @@ import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer, {
+  INPUT_BAR_ACTIONS,
+} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -55,7 +57,7 @@ export function AssistantInputBar({
   conversationId,
   stickyMentions,
   additionalAgentConfiguration,
-  actions,
+  actions = INPUT_BAR_ACTIONS.slice(),
   disableAutoFocus = false,
   isFloating = true,
 }: {
@@ -68,7 +70,7 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions: InputBarContainerProps["actionsList"];
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
 }) {
@@ -334,7 +336,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                actionsList={actions}
+                actions={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
@@ -371,7 +373,7 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions?: InputBarContainerProps["actionsList"];
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
 }) {
   return (

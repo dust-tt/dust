@@ -168,7 +168,7 @@ export default function AssistantBuilderRightPanel({
                       stickyMentions={stickyMentions}
                       conversationId={conversation?.sId || null}
                       additionalAgentConfiguration={draftAssistant}
-                      hideQuickActions
+                      actions={["attachment"]}
                       disableAutoFocus
                       isFloating={false}
                     />

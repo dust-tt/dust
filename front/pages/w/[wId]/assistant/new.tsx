@@ -286,7 +286,6 @@ export default function AssistantNew({
               owner={owner}
               onSubmit={handleMessageSubmit}
               conversationId={null}
-              hideQuickActions={false}
               disableAutoFocus={false}
             />
           </div>
