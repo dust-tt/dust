@@ -291,11 +291,7 @@ export default function WorkspaceAdmin({
           </div>
           <div className="s-w-full">
             <div className="space-y-2 pt-4">
-              <InvitationsList
-                owner={owner}
-                searchText={searchText}
-                isHandledByIDP={Boolean(enterpriseConnectionStrategyDetails)}
-              />
+              <InvitationsList owner={owner} searchText={searchText} />
             </div>
             <div className="space-y-2 pb-3 pt-4">
               <Page.H variant="h5">Members</Page.H>
