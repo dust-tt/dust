@@ -1,6 +1,7 @@
 import type { AgentConfigurationType, AgentUsageType } from "@dust-tt/types";
 import { literal, Op, Sequelize } from "sequelize";
 
+import type { Authenticator } from "@app/lib/auth";
 import {
   Conversation,
   Mention,
@@ -58,11 +59,13 @@ export async function getAgentsUsage({
     throw new Error(`Workspace ${workspaceId} not found`);
   }
 
+  let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
+
   const { agentMessageCountKey, agentUserCountKey } =
     _getUsageKeys(workspaceId);
-  const redis = providedRedis ?? (await redisClient());
 
   try {
+    redis = providedRedis ?? (await redisClient());
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
     // agent mention count doesn't exist
@@ -106,22 +109,32 @@ export async function getAgentsUsage({
       .sort((a, b) => b.messageCount - a.messageCount)
       .slice(0, limit);
   } finally {
-    // Close the redis connection if it was created locally
-    if (!providedRedis) {
+    if (redis && !providedRedis) {
       await redis.quit();
     }
   }
 }
 
-export async function getAgentUsage({
-  workspaceId,
-  agentConfiguration,
-  providedRedis,
-}: {
-  workspaceId: string;
-  agentConfiguration: AgentConfigurationType;
-  providedRedis?: Awaited<ReturnType<typeof redisClient>>;
-}): Promise<AgentUsageType> {
+export async function getAgentUsage(
+  auth: Authenticator,
+  {
+    workspaceId,
+    agentConfiguration,
+    providedRedis,
+  }: {
+    workspaceId: string;
+    agentConfiguration: AgentConfigurationType;
+    providedRedis?: Awaited<ReturnType<typeof redisClient>>;
+  }
+): Promise<AgentUsageType> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected unauthenticated call");
+  }
+  if (owner.sId !== workspaceId) {
+    throw new Error("Provided workspace and owner workspace do not match.");
+  }
+
   let redis: Awaited<ReturnType<typeof redisClient>> | null = null;
   const { sId: agentConfigurationId } = agentConfiguration;
 
@@ -152,7 +165,7 @@ export async function getAgentUsage({
 export async function agentMentionsUserCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  return Mention.findAll({
+  const mentions = await Mention.findAll({
     attributes: [
       "agentConfigurationId",
       [
@@ -195,19 +208,18 @@ export async function agentMentionsUserCount(
     order: [["count", "DESC"]],
     group: ["mention.agentConfigurationId"],
     raw: true,
-  }).then((results) =>
-    results.map((mention) => ({
-      agentId: mention.agentConfigurationId as string,
-      count: (mention as unknown as { count: number }).count,
-      timePeriodSec: rankingTimeframeSec,
-    }))
-  );
+  });
+  return mentions.map((mention) => ({
+    agentId: mention.agentConfigurationId as string,
+    count: (mention as unknown as { count: number }).count,
+    timePeriodSec: rankingTimeframeSec,
+  }));
 }
 
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
-  return Mention.findAll({
+  const mentions = await Mention.findAll({
     attributes: [
       "agentConfigurationId",
       [Sequelize.fn("COUNT", Sequelize.col("mention.id")), "count"],
@@ -244,13 +256,12 @@ export async function agentMentionsCount(
     order: [["count", "DESC"]],
     group: ["mention.agentConfigurationId"],
     raw: true,
-  }).then((results) =>
-    results.map((mention) => ({
-      agentId: mention.agentConfigurationId as string,
-      count: (mention as unknown as { count: number }).count,
-      timePeriodSec: rankingTimeframeSec,
-    }))
-  );
+  });
+  return mentions.map((mention) => ({
+    agentId: mention.agentConfigurationId as string,
+    count: (mention as unknown as { count: number }).count,
+    timePeriodSec: rankingTimeframeSec,
+  }));
 }
 
 export async function storeCountsInRedis(
@@ -292,4 +303,5 @@ export async function signalAgentUsage({
   const redis = await redisClient();
   const { agentMessageCountKey } = _getUsageKeys(workspaceId);
   await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
+  await redis.quit();
 }
