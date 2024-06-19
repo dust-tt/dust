@@ -361,7 +361,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  actions = ["attachment", "quick-actions"],
+  actions = INPUT_BAR_ACTIONS.slice(),
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
