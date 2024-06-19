@@ -84,7 +84,9 @@ export function AssistantBrowser({
       ),
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
-        .sort((a, b) => b.usage.messageCount - a.usage.messageCount),
+        .sort(
+          (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+        ),
     };
   }, [assistantSearch, loadingStatus, agents]);
 
