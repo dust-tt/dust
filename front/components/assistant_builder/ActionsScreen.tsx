@@ -183,8 +183,11 @@ export default function ActionsScreen({
 
           // Making sure the name is not used already.
           let index = 1;
+          const newNameWithoutSuffix = newAction.name.replace(/_\d+$/, "");
           const suffixedName = () =>
-            index > 1 ? `${newAction.name}_${index}` : newAction.name;
+            index > 1
+              ? `${newNameWithoutSuffix}_${index}`
+              : newNameWithoutSuffix;
           while (builderState.actions.some((a) => a.name === suffixedName())) {
             index += 1;
           }
