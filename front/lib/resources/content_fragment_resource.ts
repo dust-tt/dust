@@ -196,7 +196,9 @@ export function fileAttachmentLocation({
   const filePath = `content_fragments/w/${workspaceId}/assistant/conversations/${conversationId}/content_fragment/${messageId}/${contentFormat}`;
   return {
     filePath,
-    internalUrl: `https://storage.googleapis.com/${privateUploadGcs.name}/${filePath}`,
+    internalUrl: `https://storage.googleapis.com/${
+      getPrivateUploadBucket().name
+    }/${filePath}`,
     downloadUrl: `${appConfig.getAppUrl()}/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/raw_content_fragment`,
   };
 }
