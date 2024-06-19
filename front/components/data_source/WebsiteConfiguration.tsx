@@ -52,7 +52,6 @@ export default function WebsiteConfiguration({
   gaTrackingId: string;
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  const [isValid, setIsValid] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const [dataSourceUrl, setDataSourceUrl] = useState(
@@ -138,7 +137,6 @@ export default function WebsiteConfiguration({
 
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
-    setIsValid(!urlError && !nameError);
     return !urlError && !nameError;
   }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
 
@@ -267,8 +265,7 @@ export default function WebsiteConfiguration({
           title="Add a Website"
           onSave={() => {
             setIsSubmitted(true);
-            const formValid = validateForm();
-            if (formValid && !isSaving) {
+            if (!isSaving) {
               void handleCreate();
             }
           }}
