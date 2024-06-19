@@ -1,8 +1,5 @@
 import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
-import type {
-  ProcessActionOutputsType,
-  ProcessActionType,
-} from "@dust-tt/types";
+import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
