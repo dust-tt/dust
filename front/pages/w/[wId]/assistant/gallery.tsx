@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
-import type { SearchOrder } from "@app/components/assistant/SearchOrderDropdown";
+import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
 import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
 import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
@@ -71,7 +71,7 @@ export default function AssistantsGallery({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [orderBy, setOrderBy] = useState<SearchOrder>("name");
+  const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
 
   const [agentsGetView, setAgentsGetView] = useState<AgentsGetViewType>("all");
 
