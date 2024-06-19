@@ -139,6 +139,7 @@ export default function WebsiteConfiguration({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     setIsValid(!urlError && !nameError);
+    return !urlError && !nameError;
   }, [dataSourceName, dataSources, dataSourceUrl, dataSource?.id]);
 
   useEffect(() => {
@@ -266,8 +267,8 @@ export default function WebsiteConfiguration({
           title="Add a Website"
           onSave={() => {
             setIsSubmitted(true);
-            validateForm();
-            if (isValid && !isSaving) {
+            const formValid = validateForm();
+            if (formValid && !isSaving) {
               void handleCreate();
             }
           }}
