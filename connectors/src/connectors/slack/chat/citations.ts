@@ -1,14 +1,8 @@
-import type {
-  AgentActionType,
-  RetrievalDocumentType,
-  WebsearchResultType,
-} from "@dust-tt/types";
+import type { AgentActionType } from "@dust-tt/types";
 import {
   getTitleFromRetrievedDocument,
   isRetrievalActionType,
-  isRetrievalDocumentType,
   isWebsearchActionType,
-  isWebsearchResultType,
 } from "@dust-tt/types";
 
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
@@ -26,12 +20,22 @@ export function annotateCitations(
   action: AgentActionType | null
 ): { formattedContent: string; footnotes: SlackMessageFootnotes } {
   const references: {
-    [key: string]: RetrievalDocumentType | WebsearchResultType;
+    [key: string]: {
+      link: string;
+      text: string;
+    };
   } = {};
 
   if (action && isRetrievalActionType(action) && action.documents) {
     action.documents.forEach((d) => {
-      references[d.reference] = d;
+      references[d.reference] = {
+        link: makeDustAppUrl(
+          `/w/${d.dataSourceWorkspaceId}/builder/data-sources/${
+            d.dataSourceId
+          }/upsert?documentId=${encodeURIComponent(d.documentId)}`
+        ),
+        text: getTitleFromRetrievedDocument(d),
+      };
     });
   } else if (
     action &&
@@ -40,7 +44,10 @@ export function annotateCitations(
   ) {
     action.output.results.forEach((r) => {
       if (r.reference) {
-        references[r.reference] = r;
+        references[r.reference] = {
+          link: r.sourceUrl,
+          text: r.title,
+        };
       }
     });
   }
@@ -65,29 +72,10 @@ export function annotateCitations(
                 counter++;
                 refCounter[k] = counter;
 
-                let title = "";
-                let link = "";
-
-                if (isRetrievalDocumentType(ref)) {
-                  title = getTitleFromRetrievedDocument(ref);
-                  link = ref.sourceUrl
-                    ? ref.sourceUrl
-                    : makeDustAppUrl(
-                        `/w/${ref.dataSourceWorkspaceId}/builder/data-sources/${
-                          ref.dataSourceId
-                        }/upsert?documentId=${encodeURIComponent(
-                          ref.documentId
-                        )}`
-                      );
-                } else if (isWebsearchResultType(ref)) {
-                  title = ref.title;
-                  link = ref.sourceUrl;
-                }
-
                 footnotes.push({
                   index: counter,
-                  link,
-                  text: title,
+                  link: ref.link,
+                  text: ref.text,
                 });
 
                 return `[${refCounter[k]}]`;

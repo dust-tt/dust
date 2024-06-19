@@ -11,7 +11,7 @@ import type {
   LightAgentConfigurationType,
   WebsearchResultType,
 } from "@dust-tt/types";
-import { isRetrievalDocumentType, isWebsearchResultType } from "@dust-tt/types";
+import { isRetrievalDocumentType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
@@ -342,13 +342,8 @@ function CiteBlock(props: ReactMarkdownProps) {
 
           if (isRetrievalDocumentType(document)) {
             link = makeLinkForRetrievedDocument(document);
-          } else if (isWebsearchResultType(document)) {
+          } else {
             link = document.sourceUrl;
-          }
-
-          if (!link) {
-            // Unreachable
-            return null;
           }
 
           return (

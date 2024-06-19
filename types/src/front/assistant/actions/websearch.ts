@@ -17,6 +17,7 @@ const WebsearchRunOutputResultSchema = t.type({
   title: t.string,
   snippet: t.string,
   sourceUrl: t.string,
+  link: t.union([t.string, t.undefined]), // @todo[daph] 2024-07-19 Remove the fallback on link.
 });
 export const WebsearchRunOutputSchema = t.union([
   t.type({

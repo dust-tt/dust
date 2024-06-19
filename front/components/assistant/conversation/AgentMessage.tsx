@@ -34,7 +34,6 @@ import {
   isRetrievalActionType,
   isRetrievalDocumentType,
   isWebsearchActionType,
-  isWebsearchResultType,
   removeNulls,
 } from "@dust-tt/types";
 import Link from "next/link";
@@ -619,12 +618,8 @@ function Citations({
 
         if (isRetrievalDocumentType(document)) {
           citation = makeDocumentCitations([document])[0];
-        } else if (isWebsearchResultType(document)) {
+        } else {
           citation = makeWebsearchResultsCitations([document])[0];
-        }
-
-        if (!citation) {
-          return null;
         }
 
         return (
