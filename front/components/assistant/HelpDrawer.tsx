@@ -203,8 +203,7 @@ export function HelpDrawer({
             owner={owner}
             onSubmit={handleHelpSubmit}
             conversationId={null}
-            hideAttachment={true}
-            hideQuickActions={true}
+            actions={[]}
             disableAutoFocus={true}
           />
         </div>
