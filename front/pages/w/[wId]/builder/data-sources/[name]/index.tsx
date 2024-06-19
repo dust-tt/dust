@@ -40,9 +40,9 @@ import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import DataSourceDetailsModal from "@app/components/data_source/DataSourceDetailsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -1401,7 +1401,6 @@ export default function DataSourceView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: dataSource.connectorId

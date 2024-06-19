@@ -1,22 +1,14 @@
-import { Banner, Item, Logo, Tab, XMarkIcon } from "@dust-tt/sparkle";
+import { Banner } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { Dialog, Transition } from "@headlessui/react";
-import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
-import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import React, { Fragment, useContext, useEffect, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import type {
-  SidebarNavigation,
-  TopNavigationId,
-} from "@app/components/sparkle/navigation";
-import { topNavigation } from "@app/components/sparkle/navigation";
-import { UserMenu } from "@app/components/UserMenu";
-import WorkspacePicker from "@app/components/WorkspacePicker";
+import type { SidebarNavigation } from "@app/components/navigation/config";
+import { Navigation } from "@app/components/navigation/Navigation";
 import { useUser } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -25,128 +17,6 @@ import { classNames } from "@app/lib/utils";
  * IncidentBanner component at bottom of the page)
  */
 const SHOW_INCIDENT_BANNER = false;
-
-function NavigationBar({
-  owner,
-  subscription,
-  topNavigationCurrent,
-  subNavigation,
-  children,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  topNavigationCurrent: TopNavigationId;
-  subNavigation?: SidebarNavigation[] | null;
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
-  const nav = topNavigation({ owner, current: topNavigationCurrent });
-  const { user } = useUser();
-
-  return (
-    <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
-      <div className="flex flex-col">
-        <div className="flex flex-row p-3">
-          <div className="flex flex-col gap-2">
-            <div className="pt-3">
-              <Link
-                href={`/w/${owner.sId}/assistant/new`}
-                className="inline-flex"
-              >
-                <Logo className="h-4 w-16" />
-              </Link>
-            </div>
-            {user && user.workspaces.length > 1 ? (
-              <div className="flex flex-row gap-2">
-                <div className="text-sm text-slate-500">Workspace:</div>
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  readOnly={false}
-                  displayDropDownOrigin="topLeft"
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
-              </div>
-            ) : null}
-          </div>
-          <div className="flex flex-1"></div>
-          {user && <UserMenu user={user} owner={owner} />}
-        </div>
-
-        {subscription.endDate && (
-          <SubscriptionEndBanner endDate={subscription.endDate} />
-        )}
-        {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
-        {nav.length > 1 && (
-          <div className="pt-2">
-            <Tab tabs={nav} />
-          </div>
-        )}
-        {subNavigation && (
-          <div className="pt-3">
-            {subNavigation.map((nav) => {
-              return (
-                <div key={nav.id} className="grow py-1 pl-4 pr-3">
-                  <Item.List>
-                    {nav.label && (
-                      <Item.SectionHeader
-                        label={nav.label}
-                        variant={nav.variant}
-                        className="!pt-4"
-                      />
-                    )}
-                    {nav.menus.map((menu) => {
-                      return (
-                        <React.Fragment key={menu.id}>
-                          <Item.Navigation
-                            selected={menu.current}
-                            label={menu.label}
-                            icon={menu.icon}
-                            href={menu.href}
-                          />
-                          {menu.subMenuLabel && (
-                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
-                              {menu.subMenuLabel}
-                            </div>
-                          )}
-                          {menu.subMenu && (
-                            <div className="mb-2 flex flex-col">
-                              {menu.subMenu.map((nav) => {
-                                return (
-                                  <div key={nav.id} className="flex grow">
-                                    <Item.Entry
-                                      selected={nav.current}
-                                      label={nav.label}
-                                      icon={nav.icon}
-                                      className="TEST grow pl-14 pr-4"
-                                      href={nav.href}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </Item.List>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      <div className="flex grow flex-col">{children}</div>
-    </div>
-  );
-}
 
 export const SidebarContext = React.createContext<{
   sidebarOpen: boolean;
@@ -193,7 +63,6 @@ export default function AppLayout({
   subscription,
   isWideMode = false,
   hideSidebar = false,
-  topNavigationCurrent,
   subNavigation,
   pageTitle,
   gaTrackingId,
@@ -205,7 +74,6 @@ export default function AppLayout({
   subscription: SubscriptionType;
   isWideMode?: boolean;
   hideSidebar?: boolean;
-  topNavigationCurrent: TopNavigationId;
   subNavigation?: SidebarNavigation[] | null;
   pageTitle?: string;
   gaTrackingId: string;
@@ -213,7 +81,6 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -285,107 +152,14 @@ export default function AppLayout({
         />
       </Head>
       <div className="light flex h-full flex-row">
-        <div className="flex shrink-0 overflow-x-hidden">
-          {!hideSidebar && (
-            <Transition.Root show={sidebarOpen} as={Fragment}>
-              <Dialog
-                as="div"
-                className="relative z-50 lg:hidden"
-                onClose={setSidebarOpen}
-              >
-                <Transition.Child
-                  as={Fragment}
-                  enter="transition-opacity ease-linear duration-300"
-                  enterFrom="opacity-0"
-                  enterTo="opacity-100"
-                  leave="transition-opacity ease-linear duration-300"
-                  leaveFrom="opacity-100"
-                  leaveTo="opacity-0"
-                >
-                  <div className="fixed inset-0 bg-gray-900/80" />
-                </Transition.Child>
-
-                <div className="fixed inset-0 flex">
-                  <Transition.Child
-                    as={Fragment}
-                    enter="transition ease-in-out duration-300 transform"
-                    enterFrom="-translate-x-full"
-                    enterTo="translate-x-0"
-                    leave="transition ease-in-out duration-300 transform"
-                    leaveFrom="translate-x-0"
-                    leaveTo="-translate-x-full"
-                  >
-                    <Dialog.Panel className="relative mr-16 flex w-full max-w-xs flex-1">
-                      <Transition.Child
-                        as={Fragment}
-                        enter="ease-in-out duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="ease-in-out duration-300"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                      >
-                        <div className="absolute left-full top-0 flex w-16 justify-center pt-5">
-                          <button
-                            type="button"
-                            className="-m-2.5 p-2.5"
-                            onClick={() => setSidebarOpen(false)}
-                          >
-                            <span className="sr-only">Close sidebar</span>
-                            <XMarkIcon
-                              className="h-6 w-6 text-white"
-                              aria-hidden="true"
-                            />
-                          </button>
-                        </div>
-                      </Transition.Child>
-                      {loaded && (
-                        <NavigationBar
-                          subscription={subscription}
-                          owner={owner}
-                          subNavigation={subNavigation}
-                          topNavigationCurrent={topNavigationCurrent}
-                        >
-                          {navChildren && navChildren}
-                        </NavigationBar>
-                      )}
-                    </Dialog.Panel>
-                  </Transition.Child>
-                </div>
-              </Dialog>
-            </Transition.Root>
-          )}
-
-          {/* TODO: This logic should be handled by the navigation bar itself. */}
-          {!hideSidebar && (
-            <div className="hidden lg:visible lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-              {loaded && (
-                <NavigationBar
-                  owner={owner}
-                  subscription={subscription}
-                  subNavigation={subNavigation}
-                  topNavigationCurrent={topNavigationCurrent}
-                >
-                  {loaded && navChildren && navChildren}
-                </NavigationBar>
-              )}
-            </div>
-          )}
-        </div>
-
+        <Navigation
+          hideSidebar={hideSidebar}
+          owner={owner}
+          subscription={subscription}
+          navChildren={navChildren}
+          subNavigation={subNavigation}
+        />
         <div className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden">
-          {/* TODO: This logic should be handled by the navigation bar itself. */}
-          <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
-            <button
-              type="button"
-              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <span className="sr-only">Open sidebar</span>
-              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
@@ -439,56 +213,6 @@ export default function AppLayout({
         </Script>
       </>
     </>
-  );
-}
-
-function SubscriptionEndBanner({ endDate }: { endDate: number }) {
-  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  return (
-    <div className="border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
-      <div className="font-bold">Subscription ending on {formattedEndDate}</div>
-      <div className="font-normal">
-        Connections will be deleted and members will be revoked. Details{" "}
-        <Link
-          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
-          target="_blank"
-          className="underline"
-        >
-          here
-        </Link>
-        .
-      </div>
-    </div>
-  );
-}
-
-function SubscriptionPastDueBanner() {
-  return (
-    <div className="border-y border-warning-200 bg-warning-100 px-3 py-3 text-xs text-warning-900">
-      <div className="font-bold">Your payment has failed!</div>
-      <div className="font-normal">
-        <br />
-        Please make sure to update your payment method in the Admin section to
-        maintain access to your workspace. We will retry in a few days.
-        <br />
-        <br />
-        After 3 attempts, your workspace will be downgraded to the free plan.
-        Connections will be deleted and members will be revoked. Details{" "}
-        <Link
-          href="https://dust-tt.notion.site/What-happens-when-we-cancel-our-Dust-subscription-59aad3866dcc4bbdb26a54e1ce0d848a?pvs=4"
-          target="_blank"
-          className="underline"
-        >
-          here
-        </Link>
-        .
-      </div>
-    </div>
   );
 }
 

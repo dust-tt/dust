@@ -10,12 +10,12 @@ import { useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationApp,
   subNavigationBuild,
-} from "@app/components/sparkle/navigation";
+} from "@app/components/navigation/config";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
@@ -161,7 +161,6 @@ export default function SettingsView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

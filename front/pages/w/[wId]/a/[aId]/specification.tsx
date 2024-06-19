@@ -4,12 +4,12 @@ import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationApp,
   subNavigationBuild,
-} from "@app/components/sparkle/navigation";
+} from "@app/components/navigation/config";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { dumpSpecification } from "@app/lib/specification";
@@ -90,7 +90,6 @@ export default function Specification({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

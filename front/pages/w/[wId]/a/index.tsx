@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { useContext } from "react";
 import { useSWRConfig } from "swr";
 
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AnthropicSetup from "@app/components/providers/AnthropicSetup";
 import AzureOpenAISetup from "@app/components/providers/AzureOpenAISetup";
 import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
@@ -31,7 +32,6 @@ import OpenAISetup from "@app/components/providers/OpenAISetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getApps } from "@app/lib/api/app";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -744,7 +744,6 @@ export default function Developers({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

@@ -204,7 +204,6 @@ export default function CreateAssistant({
       hideSidebar
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={"Create an Assistant"}

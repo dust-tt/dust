@@ -86,7 +86,6 @@ export default function ConversationLayout({
               : `Dust - New Conversation`
           }
           gaTrackingId={gaTrackingId}
-          topNavigationCurrent="conversations"
           titleChildren={
             // TODO: Improve so we don't re-render everytime.
             conversation && (
