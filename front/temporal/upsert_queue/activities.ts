@@ -103,7 +103,7 @@ export async function upsertDocumentActivity(
         latencyMs: Date.now() - upsertTimestamp,
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
       },
-      "[UpsertQueue] Failed upsert"
+      "[UpsertQueue] Failed document upsert"
     );
     statsDClient.increment("upsert_queue_document_error.count", 1, statsDTags);
     statsDClient.distribution(
@@ -126,7 +126,7 @@ export async function upsertDocumentActivity(
       latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
     },
-    "[UpsertQueue] Successful upsert"
+    "[UpsertQueue] Successful document upsert"
   );
   statsDClient.increment("upsert_queue_document_success.count", 1, statsDTags);
   statsDClient.distribution(
@@ -238,8 +238,9 @@ export async function upsertTableActivity(
         error: tableRes.error,
         latencyMs: Date.now() - upsertTimestamp,
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+        csvSize: upsertQueueItem.csv?.length || 0,
       },
-      "[UpsertQueue] Failed upsert"
+      "[UpsertQueue] Failed table upsert"
     );
     statsDClient.increment("upsert_queue_table_error.count", 1, statsDTags);
     statsDClient.distribution(
@@ -261,8 +262,9 @@ export async function upsertTableActivity(
     {
       latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      csvSize: upsertQueueItem.csv?.length || 0,
     },
-    "[UpsertQueue] Successful upsert"
+    "[UpsertQueue] Successful table upsert"
   );
   statsDClient.increment("upsert_queue_table_success.count", 1, statsDTags);
   statsDClient.distribution(
