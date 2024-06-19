@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useMemo, useState } from "react";
 
-import type { SidebarNavigation } from "@app/components/navigation/config";
-import { topNavigation } from "@app/components/navigation/config";
+import type {
+  AppLayoutNavigation,
+  SidebarNavigation,
+} from "@app/components/navigation/config";
+import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useUser } from "@app/lib/swr";
@@ -36,11 +39,28 @@ export function NavigationSidebar({
     }
   }, [router.route, router.isReady]);
 
-  const nav = useMemo(() => {
-    return topNavigation({ owner, current: activePath });
-  }, [activePath, owner]);
+  const nav = useMemo(() => getTopNavigationTabs(owner), [owner]);
 
-  // TODO(2024-06-19 flav) Fix blinking effect on tabs.
+  const [navs, setNavs] = useState<AppLayoutNavigation[]>([]);
+
+  // TODO(2024-06-19 flav): Fix issue with AppLayout changing between pages
+  useEffect(() => {
+    setNavs((prevNavs) => {
+      const newNavs = nav.map((n) => {
+        const current = n.isCurrent(activePath);
+        return { ...n, current };
+      });
+
+      // Only update navs if the current tab actually changes to prevent blinking effect.
+      const isSameCurrent =
+        prevNavs.length === newNavs.length &&
+        prevNavs.every((prevNav, index) => {
+          return prevNav.current === newNavs[index].current;
+        });
+
+      return isSameCurrent ? prevNavs : newNavs;
+    });
+  }, [nav, activePath]);
 
   return (
     <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
@@ -84,7 +104,7 @@ export function NavigationSidebar({
         {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
         {nav.length > 1 && (
           <div className="pt-2">
-            <Tab tabs={nav} />
+            <Tab tabs={navs} />
           </div>
         )}
         {subNavigation && (

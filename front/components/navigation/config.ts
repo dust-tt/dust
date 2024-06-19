@@ -44,7 +44,7 @@ export type SubNavigationAppId =
   | "runs"
   | "settings";
 
-export type SparkleAppLayoutNavigation = {
+export type AppLayoutNavigation = {
   id:
     | TopNavigationId
     | SubNavigationConversationsId
@@ -59,32 +59,37 @@ export type SparkleAppLayoutNavigation = {
   hasSeparator?: boolean;
   current: boolean;
   subMenuLabel?: string;
-  subMenu?: SparkleAppLayoutNavigation[];
+  subMenu?: AppLayoutNavigation[];
+};
+
+export type TabAppLayoutNavigation = {
+  id:
+    | TopNavigationId
+    | SubNavigationConversationsId
+    | SubNavigationAssistantsId
+    | SubNavigationAdminId
+    | SubNavigationAppId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href?: string;
+  hideLabel?: boolean;
+  sizing?: "hug" | "expand";
+  hasSeparator?: boolean;
+  current?: never;
+  isCurrent: (currentRoute: string) => boolean;
+  subMenuLabel?: string;
+  subMenu?: AppLayoutNavigation[];
 };
 
 export type SidebarNavigation = {
   id: "assistants" | "data_sources" | "workspace" | "developers" | "beta";
   label: string | null;
   variant: "primary" | "secondary";
-  menus: SparkleAppLayoutNavigation[];
+  menus: AppLayoutNavigation[];
 };
 
-// const menuConfig: Record<string, any> = {
-//   "/w/[wId]/assistant/[cId]": {},
-// };
-
-// export function getMenuConfigForCurrentRoute(currentRoute: string) {
-//   return menuConfig[currentRoute];
-// }
-
-export const topNavigation = ({
-  owner,
-  current,
-}: {
-  owner: WorkspaceType;
-  current: string;
-}) => {
-  const nav: SparkleAppLayoutNavigation[] = [];
+export const getTopNavigationTabs = (owner: WorkspaceType) => {
+  const nav: TabAppLayoutNavigation[] = [];
 
   nav.push({
     id: "conversations",
@@ -92,9 +97,10 @@ export const topNavigation = ({
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
     sizing: "expand",
-    current: ["/w/[wId]/assistant/new", "/w/[wId]/assistant/[cId]"].includes(
-      current
-    ),
+    isCurrent: (currentRoute) =>
+      ["/w/[wId]/assistant/new", "/w/[wId]/assistant/[cId]"].includes(
+        currentRoute
+      ),
   });
 
   if (isBuilder(owner)) {
@@ -103,8 +109,9 @@ export const topNavigation = ({
       label: "Build",
       icon: PuzzleIcon,
       href: `/w/${owner.sId}/builder/assistants`,
-      current:
-        current.startsWith("/w/[wId]/builder/") || current === "/w/[wId]/a",
+      isCurrent: (currentRoute: string) =>
+        currentRoute.startsWith("/w/[wId]/builder/") ||
+        currentRoute === "/w/[wId]/a",
       sizing: "expand",
     });
   }
@@ -115,11 +122,12 @@ export const topNavigation = ({
       hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
-      current: [
-        "/w/[wId]/members",
-        "/w/[wId]/workspace",
-        "/w/[wId]/subscription",
-      ].includes(current),
+      isCurrent: (currentRoute) =>
+        [
+          "/w/[wId]/members",
+          "/w/[wId]/workspace",
+          "/w/[wId]/subscription",
+        ].includes(currentRoute),
       sizing: "hug",
     });
   }
@@ -136,11 +144,11 @@ export const subNavigationBuild = ({
   owner: WorkspaceType;
   current: SubNavigationAssistantsId;
   subMenuLabel?: string;
-  subMenu?: SparkleAppLayoutNavigation[];
+  subMenu?: AppLayoutNavigation[];
 }) => {
   const nav: SidebarNavigation[] = [];
 
-  const assistantMenus: SparkleAppLayoutNavigation[] = [];
+  const assistantMenus: AppLayoutNavigation[] = [];
 
   assistantMenus.push({
     id: "workspace_assistants",
@@ -159,7 +167,7 @@ export const subNavigationBuild = ({
     menus: assistantMenus,
   });
 
-  const dataSourceItems: SparkleAppLayoutNavigation[] = [
+  const dataSourceItems: AppLayoutNavigation[] = [
     {
       id: "data_sources_managed",
       label: "Connections",
@@ -226,7 +234,7 @@ export const subNavigationAdmin = ({
   owner: WorkspaceType;
   current: SubNavigationAdminId;
   subMenuLabel?: string;
-  subMenu?: SparkleAppLayoutNavigation[];
+  subMenu?: AppLayoutNavigation[];
 }) => {
   const nav: SidebarNavigation[] = [];
 
@@ -283,7 +291,7 @@ export const subNavigationApp = ({
   app: AppType;
   current: SubNavigationAppId;
 }) => {
-  let nav: SparkleAppLayoutNavigation[] = [
+  let nav: AppLayoutNavigation[] = [
     {
       id: "specification",
       label: "Specification",
