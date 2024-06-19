@@ -2,19 +2,19 @@ import { Page } from "@dust-tt/sparkle";
 import type {
   AgentMessageType,
   ContentFragmentType,
-  ConversationType,
   UserMessageType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { getConversation } from "@app/lib/api/assistant/conversation";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { useConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  conversation: string;
-}>(async (context, auth) => {
+  workspaceId: string;
+  conversationId: string;
+}>(async (context) => {
   const cId = context.params?.cId;
   if (!cId || typeof cId !== "string") {
     return {
@@ -22,8 +22,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const conversation = await getConversation(auth, cId, true);
-  if (!conversation) {
+  const wId = context.params?.wId;
+  if (!wId || typeof wId !== "string") {
     return {
       notFound: true,
     };
@@ -31,7 +31,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   return {
     props: {
-      conversation: JSON.stringify(conversation),
+      workspaceId: wId,
+      conversationId: cId,
     },
   };
 });
@@ -73,52 +74,56 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
 };
 
 const ConversationPage = ({
-  conversation,
+  workspaceId,
+  conversationId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  const c = JSON.parse(conversation) as ConversationType;
+  const { conversation } = useConversation({ workspaceId, conversationId });
+
   return (
     <div className="min-h-screen bg-structure-50">
       <PokeNavbar />
-      <div className="mx-auto max-w-4xl pt-8">
-        <Page.Vertical align="stretch">
-          {c.content.map((messages, i) => {
-            return (
-              <div key={`messages-${i}`}>
-                {messages.map((m, j) => {
-                  switch (m.type) {
-                    case "agent_message": {
-                      return (
-                        <AgentMessageView
-                          message={m}
-                          key={`message-${i}-${j}`}
-                        />
-                      );
+      {conversation && (
+        <div className="mx-auto max-w-4xl pt-8">
+          <Page.Vertical align="stretch">
+            {conversation.content.map((messages, i) => {
+              return (
+                <div key={`messages-${i}`}>
+                  {messages.map((m, j) => {
+                    switch (m.type) {
+                      case "agent_message": {
+                        return (
+                          <AgentMessageView
+                            message={m}
+                            key={`message-${i}-${j}`}
+                          />
+                        );
+                      }
+                      case "user_message": {
+                        return (
+                          <UserMessageView
+                            message={m}
+                            key={`message-${i}-${j}`}
+                          />
+                        );
+                      }
+                      case "content_fragment": {
+                        return (
+                          <ContentFragmentView
+                            message={m}
+                            key={`message-${i}-${j}`}
+                          />
+                        );
+                      }
+                      default:
+                        assertNever(m);
                     }
-                    case "user_message": {
-                      return (
-                        <UserMessageView
-                          message={m}
-                          key={`message-${i}-${j}`}
-                        />
-                      );
-                    }
-                    case "content_fragment": {
-                      return (
-                        <ContentFragmentView
-                          message={m}
-                          key={`message-${i}-${j}`}
-                        />
-                      );
-                    }
-                    default:
-                      assertNever(m);
-                  }
-                })}
-              </div>
-            );
-          })}
-        </Page.Vertical>
-      </div>
+                  })}
+                </div>
+              );
+            })}
+          </Page.Vertical>
+        </div>
+      )}
     </div>
   );
 };
