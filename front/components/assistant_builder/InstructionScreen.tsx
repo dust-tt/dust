@@ -24,6 +24,7 @@ import {
   Ok,
 } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
@@ -46,6 +47,8 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
+export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 100_000;
+
 export const CREATIVITY_LEVELS = Object.entries(
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
 ).map(([k, v]) => ({
@@ -53,8 +56,6 @@ export const CREATIVITY_LEVELS = Object.entries(
     ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
   value: v,
 }));
-
-export const MAX_INSTRUCTIONS_LENGTH = 1_000_000;
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -99,7 +100,15 @@ export function InstructionScreen({
   instructionsError: string | null;
 }) {
   const editor = useEditor({
-    extensions: [Document, Text, ParagraphExtension, History],
+    extensions: [
+      Document,
+      Text,
+      ParagraphExtension,
+      History,
+      CharacterCount.configure({
+        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+      }),
+    ],
     content: tipTapContentFromPlainText(builderState.instructions || ""),
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
@@ -113,6 +122,8 @@ export function InstructionScreen({
   });
   const editorService = useInstructionEditorService(editor);
 
+  const currentCharacterCount = editor?.storage.characterCount.characters();
+
   useEffect(() => {
     editor?.setOptions({
       editorProps: {
@@ -120,13 +131,14 @@ export function InstructionScreen({
           class:
             "overflow-auto min-h-[240px] h-full border bg-structure-50 transition-all " +
             "duration-200 rounded-xl " +
-            (instructionsError
+            (instructionsError ||
+            currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
               ? "border-warning-500 focus:ring-warning-500 p-2 focus:outline-warning-500 focus:border-warning-500"
               : "border-structure-200 focus:ring-action-300 p-2 focus:outline-action-200 focus:border-action-300"),
         },
       },
     });
-  }, [editor, instructionsError]);
+  }, [editor, instructionsError, currentCharacterCount]);
 
   useEffect(() => {
     if (resetAt != null) {
@@ -165,11 +177,19 @@ export function InstructionScreen({
           />
         </div>
       </div>
-      <div className="relative h-full min-h-[240px] grow gap-1 p-px">
-        <EditorContent
-          editor={editor}
-          className="absolute bottom-0 left-0 right-0 top-0"
-        />
+      <div className="flex h-full flex-col gap-1">
+        <div className="relative h-full min-h-[240px] grow gap-1 p-px">
+          <EditorContent
+            editor={editor}
+            className="absolute bottom-0 left-0 right-0 top-0"
+          />
+        </div>
+        {editor && (
+          <InstructionsCharacterCount
+            count={currentCharacterCount}
+            maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
+          />
+        )}
       </div>
       {instructionsError && (
         <div className="-mt-3 ml-2 text-sm text-warning-500">
@@ -185,6 +205,30 @@ export function InstructionScreen({
     </div>
   );
 }
+
+const InstructionsCharacterCount = ({
+  count,
+  maxCount,
+}: {
+  count: number;
+  maxCount: number;
+}) => {
+  // Display character count only when it exceeds half of the maximum limit.
+  if (count <= maxCount / 2) {
+    return null;
+  }
+
+  return (
+    <span
+      className={classNames(
+        "text-end text-xs",
+        count >= maxCount ? "text-red-500" : "text-slate-500"
+      )}
+    >
+      {count} / {maxCount} characters
+    </span>
+  );
+};
 
 function AdvancedSettings({
   owner,

@@ -34,8 +34,8 @@ import ActionsScreen, {
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
+  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
-  MAX_INSTRUCTIONS_LENGTH,
 } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
   validateHandle,
@@ -221,10 +221,10 @@ export default function AssistantBuilder({
 
     if (
       builderState.instructions &&
-      builderState.instructions.length > MAX_INSTRUCTIONS_LENGTH
+      builderState.instructions.length > INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
     ) {
       setInstructionsError(
-        `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
+        `Instructions must be less than ${INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT} characters.`
       );
       valid = false;
     } else {
