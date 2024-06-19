@@ -25,7 +25,9 @@ export async function getServerSideProps() {
         If you have something to render, use the html div with the id "mainview".
           The code can be interactive since it runs in the web browser. 
           The code will be running in a sandboxed iframe which won't have access to the internet, 
-          but you will have the following set of libraries pre-loaded: d3js v 7.9.0. 
+          but you will have the following set of libraries pre-loaded: 
+          - d3js v 7.9.0. 
+          - pixi.js v 7.x.
           You can also decide to fetch files from the context using the folling preloaded functions: 
          - getFile(fileId) or getFile(http_url) 
          -  You can also save a file as the result of the execution using saveFile(fileName, content)
@@ -34,7 +36,7 @@ export async function getServerSideProps() {
       {
         role: "user",
         content: `
-        Can you generate a random CSV with 10 names and ages and save it please?
+        I want to play a little car racing game in my web browser.
           
           `,
       },
@@ -72,16 +74,13 @@ function Arico({ code }: { code: string }) {
   return (
     <html>
       <head>
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflaree.com;"
-        />
         <script
           src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.js"
           integrity="sha512-iiZOijMkLFQSa43AyuzD6p176GJlnhWXEv7loEZFkCDpFQvZCijZLE6U8IRpAIb53KagIIwhSwHWTgsDlci/jw=="
           crossOrigin="anonymous"
           referrerPolicy="no-referrer"
         ></script>
+        <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/pixi.min.js"></script>
         <script
           dangerouslySetInnerHTML={{
             __html: `
