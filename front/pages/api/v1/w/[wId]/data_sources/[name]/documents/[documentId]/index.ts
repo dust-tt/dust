@@ -21,7 +21,7 @@ import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_proces
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
-} from "@app/lib/upsert_document";
+} from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";

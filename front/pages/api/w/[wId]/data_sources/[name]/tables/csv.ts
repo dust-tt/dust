@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator, getSession } from "@app/lib/auth";
-import { enqueueUpsertTable } from "@app/lib/upsert_document";
+import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { generateModelSId } from "@app/lib/utils";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
