@@ -21,7 +21,9 @@ export function WebsearchActionDetails({
       ? action.output.error
       : null;
 
-  const resultsCitations = makeWebsearchResultsCitations(action);
+  const resultsCitations = action.output?.results
+    ? makeWebsearchResultsCitations(action.output?.results)
+    : [];
 
   return (
     <ActionDetailsWrapper

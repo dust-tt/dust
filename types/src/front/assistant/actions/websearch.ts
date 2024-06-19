@@ -13,27 +13,32 @@ export type WebsearchConfigurationType = {
   description: string | null;
 };
 
-export const WebsearchResultSchema = t.type({
+const WebsearchRunOutputResultSchema = t.type({
   title: t.string,
   snippet: t.string,
-  link: t.string,
+  sourceUrl: t.string,
 });
-
-export const WebsearchActionOutputSchema = t.union([
+export const WebsearchRunOutputSchema = t.union([
   t.type({
-    results: t.array(WebsearchResultSchema),
+    results: t.array(WebsearchRunOutputResultSchema),
   }),
   t.type({
-    results: t.array(WebsearchResultSchema),
+    results: t.array(WebsearchRunOutputResultSchema),
     error: t.string,
   }),
 ]);
 
-export type WebsearchActionOutputType = t.TypeOf<
-  typeof WebsearchActionOutputSchema
->;
+export type WebsearchResultType = t.TypeOf<
+  typeof WebsearchRunOutputResultSchema
+> & {
+  type: "websearch_result";
+  reference: string;
+};
 
-export type WebsearchResultType = t.TypeOf<typeof WebsearchResultSchema>;
+export type WebsearchActionOutputType = {
+  results: WebsearchResultType[];
+  error?: string | null;
+};
 
 export interface WebsearchActionType extends BaseAction {
   agentMessageId: ModelId;

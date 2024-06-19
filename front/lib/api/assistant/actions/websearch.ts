@@ -9,6 +9,7 @@ import type {
   WebsearchConfigurationType,
   WebsearchErrorEvent,
   WebsearchParamsEvent,
+  WebsearchResultType,
   WebsearchSuccessEvent,
 } from "@dust-tt/types";
 import {
@@ -16,12 +17,13 @@ import {
   cloneBaseConfig,
   DustProdActionRegistry,
   Ok,
-  WebsearchActionOutputSchema,
+  WebsearchRunOutputSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { getRefs } from "@app/lib/api/assistant/actions/retrieval";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -271,7 +273,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         }
 
         if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          const outputValidation = WebsearchActionOutputSchema.decode(e.value);
+          const outputValidation = WebsearchRunOutputSchema.decode(e.value);
           if (isLeft(outputValidation)) {
             logger.error(
               {
@@ -293,12 +295,25 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
             };
             return;
           }
-          output = outputValidation.right;
+          const rawResults = outputValidation.right.results;
+          const formattedResults: WebsearchResultType[] = [];
+          if (rawResults) {
+            const refs = getRefs().slice(0, rawResults.length ?? 0);
+            rawResults.forEach((result) => {
+              formattedResults.push({
+                ...result,
+                type: "websearch_result",
+                reference: refs.shift() as string,
+              });
+            });
+
+            output = { results: formattedResults };
+          }
         }
       }
     }
 
-    // Update ProcessAction with the output of the last block.
+    // Update ProcessAction with the output of the last block, formatted to manage references.
     await action.update({
       output,
     });
@@ -357,4 +372,13 @@ export async function websearchActionTypesFromAgentMessageIds(
       step: action.step,
     });
   });
+}
+
+export function websearchMetaPrompt() {
+  return (
+    "Always cite documents retrieved with a 2-letter REFERENCE the markdown directive :cite[REFERENCE] " +
+    "(eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
+    "Ensure citations are placed as close as possible to the related information." +
+    "It is better to use the :cite[XX] directive over just the link."
+  );
 }

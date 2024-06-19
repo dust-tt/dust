@@ -73,6 +73,7 @@ export type RetrievalConfigurationType = {
 
 export type RetrievalDocumentType = {
   id: ModelId;
+  type: "retrieval_document";
   dataSourceWorkspaceId: string;
   dataSourceId: string;
   sourceUrl: string | null;

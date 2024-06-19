@@ -23,6 +23,8 @@ import type {
   LightAgentConfigurationType,
   RetrievalActionType,
   UserType,
+  WebsearchActionType,
+  WebsearchResultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
@@ -30,6 +32,9 @@ import type { AgentMessageType, MessageReactionType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
+  isRetrievalDocumentType,
+  isWebsearchActionType,
+  isWebsearchResultType,
   removeNulls,
 } from "@dust-tt/types";
 import Link from "next/link";
@@ -37,6 +42,7 @@ import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
+import { makeWebsearchResultsCitations } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
@@ -86,11 +92,11 @@ export function AgentMessage({
     useState<boolean>(false);
 
   const [references, setReferences] = useState<{
-    [key: string]: RetrievalDocumentType;
+    [key: string]: RetrievalDocumentType | WebsearchResultType;
   }>({});
 
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievalDocumentType }[]
+    { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
   >([]);
 
   const shouldStream = (() => {
@@ -374,7 +380,7 @@ export function AgentMessage({
         ];
 
   function updateActiveReferences(
-    document: RetrievalDocumentType,
+    document: RetrievalDocumentType | WebsearchResultType,
     index: number
   ) {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -387,6 +393,7 @@ export function AgentMessage({
     number | null
   >(null);
   useEffect(() => {
+    // Getting references from retrieval actions with documents
     const retrievalActionsWithDocs = agentMessageToRender.actions
       .filter((a) => isRetrievalActionType(a) && a.documents)
       .sort((a, b) => a.id - b.id) as RetrievalActionType[];
@@ -394,13 +401,31 @@ export function AgentMessage({
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
+    const allDocsReferences = allDocs.reduce((acc, d) => {
+      acc[d.reference] = d;
+      return acc;
+    }, {} as { [key: string]: RetrievalDocumentType });
 
-    setReferences(
-      allDocs.reduce((acc, d) => {
-        acc[d.reference] = d;
-        return acc;
-      }, {} as { [key: string]: RetrievalDocumentType })
+    // Getting references from websearch actions with output results
+    const websearchActionsWithDocs = agentMessageToRender.actions
+      .filter(
+        (a) =>
+          isWebsearchActionType(a) &&
+          a.output?.results &&
+          a.output.results.length > 0
+      )
+      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
+
+    const allLinks = removeNulls(
+      websearchActionsWithDocs.map((a) => a.output?.results).flat()
     );
+    const allLinksReferences = allLinks.reduce((acc, l) => {
+      acc[l.reference] = l;
+      return acc;
+    }, {} as { [key: string]: WebsearchResultType });
+
+    // Merging all references
+    setReferences({ ...allDocsReferences, ...allLinksReferences });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,
@@ -458,7 +483,7 @@ export function AgentMessage({
     lastTokenClassification,
   }: {
     agentMessage: AgentMessageType;
-    references: { [key: string]: RetrievalDocumentType };
+    references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
@@ -577,7 +602,10 @@ function Citations({
   activeReferences,
   lastHoveredReference,
 }: {
-  activeReferences: { index: number; document: RetrievalDocumentType }[];
+  activeReferences: {
+    index: number;
+    document: RetrievalDocumentType | WebsearchResultType;
+  }[];
   lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
@@ -587,7 +615,17 @@ function Citations({
       // ref={citationContainer}
     >
       {activeReferences.map(({ document, index }) => {
-        const [documentCitation] = makeDocumentCitations([document]);
+        let citation;
+
+        if (isRetrievalDocumentType(document)) {
+          citation = makeDocumentCitations([document])[0];
+        } else if (isWebsearchResultType(document)) {
+          citation = makeWebsearchResultsCitations([document])[0];
+        }
+
+        if (!citation) {
+          return null;
+        }
 
         return (
           <Citation
@@ -595,9 +633,9 @@ function Citations({
             size="xs"
             sizing="fluid"
             isBlinking={lastHoveredReference === index}
-            type={documentCitation.type}
-            title={documentCitation.title}
-            href={documentCitation.href}
+            type={citation.type}
+            title={citation.title}
+            href={citation.href}
             index={index}
           />
         );

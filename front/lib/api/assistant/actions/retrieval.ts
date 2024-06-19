@@ -552,6 +552,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
             const reference = refs[i % refs.length];
             return {
               id: 0, // dummy pending database insertion
+              type: "retrieval_document",
               dataSourceWorkspaceId:
                 dataSourcesIdToWorkspaceId[d.data_source_id],
               dataSourceId: d.data_source_id,
@@ -785,6 +786,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
       return {
         id: d.id,
+        type: "retrieval_document",
         dataSourceWorkspaceId: d.dataSourceWorkspaceId,
         dataSourceId: d.dataSourceId,
         sourceUrl: d.sourceUrl,
@@ -858,7 +860,7 @@ export function retrievalMetaPromptMutiActions() {
 let REFS: string[] | null = null;
 const getRand = rand("chawarma");
 
-const getRefs = () => {
+export const getRefs = () => {
   if (REFS === null) {
     REFS = "abcdefghijklmnopqrstuvwxyz"
       .split("")

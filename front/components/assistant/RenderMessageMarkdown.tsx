@@ -6,8 +6,12 @@ import {
   Tooltip,
   WrenchIcon,
 } from "@dust-tt/sparkle";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type { RetrievalDocumentType } from "@dust-tt/types";
+import type {
+  LightAgentConfigurationType,
+  WebsearchResultType,
+} from "@dust-tt/types";
+import { isRetrievalDocumentType, isWebsearchResultType } from "@dust-tt/types";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
@@ -154,9 +158,12 @@ function addClosingBackticks(str: string): string {
 
 type CitationsContextType = {
   references: {
-    [key: string]: RetrievalDocumentType;
+    [key: string]: RetrievalDocumentType | WebsearchResultType;
   };
-  updateActiveReferences: (doc: RetrievalDocumentType, index: number) => void;
+  updateActiveReferences: (
+    doc: RetrievalDocumentType | WebsearchResultType,
+    index: number
+  ) => void;
   setHoveredReference: (index: number | null) => void;
 };
 
@@ -331,7 +338,18 @@ function CiteBlock(props: ReactMarkdownProps) {
       <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const link = makeLinkForRetrievedDocument(document);
+          let link: string | null = null;
+
+          if (isRetrievalDocumentType(document)) {
+            link = makeLinkForRetrievedDocument(document);
+          } else if (isWebsearchResultType(document)) {
+            link = document.sourceUrl;
+          }
+
+          if (!link) {
+            // Unreachable
+            return null;
+          }
 
           return (
             <sup key={`${r.ref}-${i}`}>

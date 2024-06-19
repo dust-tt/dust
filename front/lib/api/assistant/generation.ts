@@ -25,6 +25,7 @@ import {
   isContentFragmentType,
   isRetrievalConfiguration,
   isUserMessageType,
+  isWebsearchConfiguration,
   metaPromptForProvider,
   Ok,
   removeNulls,
@@ -36,6 +37,7 @@ import {
   retrievalMetaPrompt,
   retrievalMetaPromptMutiActions,
 } from "@app/lib/api/assistant/actions/retrieval";
+import { websearchMetaPrompt } from "@app/lib/api/assistant/actions/websearch";
 import { TokenEmitter } from "@app/lib/api/assistant/agent";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
@@ -451,6 +453,15 @@ export async function constructPromptMultiActions(
     additionalInstructions += `${retrievalMetaPromptMutiActions()}\n`;
     hasAdditionalInstructions = true;
   }
+
+  const hasWebsearch = configuration.actions.some((action) =>
+    isWebsearchConfiguration(action)
+  );
+  if (hasWebsearch) {
+    additionalInstructions += `${websearchMetaPrompt()}\n`;
+    hasAdditionalInstructions = true;
+  }
+
   const providerMetaPrompt = metaPromptForProvider(
     configuration.model.providerId
   );

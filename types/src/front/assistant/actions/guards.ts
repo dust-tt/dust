@@ -9,16 +9,21 @@ import {
 import {
   RetrievalActionType,
   RetrievalConfigurationType,
+  RetrievalDocumentType,
 } from "../../../front/assistant/actions/retrieval";
 import {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "../../../front/assistant/actions/tables_query";
+import {
+  WebsearchActionType,
+  WebsearchConfigurationType,
+  WebsearchResultType,
+} from "../../../front/assistant/actions/websearch";
 import { AgentActionType } from "../../../front/assistant/conversation";
 import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { AgentActionConfigurationType } from "../agent";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
-import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -136,5 +141,27 @@ export function isAgentActionConfigurationType(
     isDustAppRunConfiguration(arg) ||
     isRetrievalConfiguration(arg) ||
     isProcessConfiguration(arg)
+  );
+}
+
+export function isWebsearchResultType(
+  arg: unknown
+): arg is WebsearchResultType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "websearch_result"
+  );
+}
+
+export function isRetrievalDocumentType(
+  arg: unknown
+): arg is RetrievalDocumentType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "retrieval_document"
   );
 }
