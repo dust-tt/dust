@@ -17,6 +17,8 @@ const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 // Computing agent mention count over a 2h period
 const popularityComputationTimeframeSec = 2 * 60 * 60;
 
+const TTL_KEY_NOT_EXIST = -2;
+
 type agentUsage = {
   agentId: string;
   messageCount: number;
@@ -69,7 +71,7 @@ export async function getAgentsUsage({
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
     // agent mention count doesn't exist
-    if (agentMessageCountTTL === -2) {
+    if (agentMessageCountTTL === TTL_KEY_NOT_EXIST) {
       const [agentMessageCounts, userCounts] = await Promise.all([
         agentMentionsCount(owner.id),
         agentMentionsUserCount(owner.id),

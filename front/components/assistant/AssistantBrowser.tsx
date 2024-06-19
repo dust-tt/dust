@@ -82,9 +82,9 @@ export function AssistantBrowser({
       list: filteredAgents.filter(
         (a) => a.scope === "published" && a.userListStatus === "in-list"
       ),
-      most_popular: filteredAgents.filter(
-        (a) => a.usage && a.usage.messageCount > 0
-      ),
+      most_popular: filteredAgents
+        .filter((a) => a.usage && a.usage.messageCount > 0)
+        .sort((a, b) => b.usage.messageCount - a.usage.messageCount),
     };
   }, [assistantSearch, loadingStatus, agents]);
 
