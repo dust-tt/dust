@@ -11,7 +11,7 @@ import {
   EnqueueUpsertDocument,
   EnqueueUpsertTable,
   runPostUpsertHooks,
-} from "@app/lib/upsert_document";
+} from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 

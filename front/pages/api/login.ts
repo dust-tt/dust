@@ -161,15 +161,14 @@ async function handleEnterpriseSignUpFlow(
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
-  // Create membership if it does not exist.
-  if (!membership) {
+  // Initialize membership if it's not present or has been previously revoked.
+  // In the case of enterprise connections, Dust access is overridden by the identity management service.
+  if (!membership || membership.isRevoked()) {
     await createAndLogMembership({
       workspace,
       user,
       role: "user",
     });
-  } else if (membership.isRevoked()) {
-    return { flow: "unauthorized", workspace: null };
   }
 
   return { flow: null, workspace };
