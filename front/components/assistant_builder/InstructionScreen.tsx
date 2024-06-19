@@ -47,7 +47,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
-const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 100_000;
+export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 100_000;
 
 export const CREATIVITY_LEVELS = Object.entries(
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
@@ -56,8 +56,6 @@ export const CREATIVITY_LEVELS = Object.entries(
     ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
   value: v,
 }));
-
-export const MAX_INSTRUCTIONS_LENGTH = 1_000_000;
 
 const getCreativityLevelFromTemperature = (temperature: number) => {
   const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
@@ -124,6 +122,8 @@ export function InstructionScreen({
   });
   const editorService = useInstructionEditorService(editor);
 
+  const currentCharacterCount = editor?.storage.characterCount.characters();
+
   useEffect(() => {
     editor?.setOptions({
       editorProps: {
@@ -131,13 +131,14 @@ export function InstructionScreen({
           class:
             "overflow-auto min-h-[240px] h-full border bg-structure-50 transition-all " +
             "duration-200 rounded-xl " +
-            (instructionsError
+            (instructionsError ||
+            currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
               ? "border-warning-500 focus:ring-warning-500 p-2 focus:outline-warning-500 focus:border-warning-500"
               : "border-structure-200 focus:ring-action-300 p-2 focus:outline-action-200 focus:border-action-300"),
         },
       },
     });
-  }, [editor, instructionsError]);
+  }, [editor, instructionsError, currentCharacterCount]);
 
   useEffect(() => {
     if (resetAt != null) {
@@ -185,7 +186,7 @@ export function InstructionScreen({
         </div>
         {editor && (
           <InstructionsCharacterCount
-            count={editor.storage.characterCount.characters()}
+            count={currentCharacterCount}
             maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
           />
         )}
