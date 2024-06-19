@@ -376,9 +376,9 @@ export async function websearchActionTypesFromAgentMessageIds(
 
 export function websearchMetaPrompt() {
   return (
-    "Always cite documents retrieved with a 2-letter REFERENCE the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[XX] or :cite[XX,XX] but not :cite[XX][XX]). " +
-    "Ensure citations are placed as close as possible to the related information." +
-    "It is better to use the :cite[XX] directive over just the link."
+    "You have to cite the pages retrieved using their reference identifier with the markdown directive :cite[reference] (e.g., :cite[e4] or :cite[a9,d7]. " +
+    "Place citations as close as possible to the related information. " +
+    "Always use the :cite[XX] directive instead of hyperlinks for better readability. " +
+    "For example, if you find the answer '42' on reference 'g9' then you must cite it as is:  The answer is 42 :cite[g9]."
   );
 }

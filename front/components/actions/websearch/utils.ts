@@ -13,7 +13,9 @@ export function makeWebsearchResultsCitations(
   return results.map((r) => {
     return {
       description: r.snippet,
-      href: r.sourceUrl,
+      // @todo[daph] 2024-07-19 Remove the fallback on link.
+      // @ts-expect-error Property 'link' does not exist on type 'WebsearchResultType'.
+      href: r.sourceUrl ?? r.link,
       title: r.title,
       type: "document",
     };
