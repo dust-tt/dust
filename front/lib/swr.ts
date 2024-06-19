@@ -640,7 +640,7 @@ export function useConversationMessages({
   workspaceId,
   limit,
 }: {
-  conversationId: string;
+  conversationId: string | null;
   workspaceId: string;
   limit: number;
 }) {
@@ -649,6 +649,10 @@ export function useConversationMessages({
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfinite(
       (pageIndex: number, previousPageData) => {
+        if (!conversationId) {
+          return null;
+        }
+
         // If we have reached the last page and there are no more
         // messages or the previous page has no messages, return null.
         if (

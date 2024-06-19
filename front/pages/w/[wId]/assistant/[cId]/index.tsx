@@ -4,11 +4,12 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import type { AgentMention, MentionType } from "@dust-tt/types";
+import { Transition } from "@headlessui/react";
 import { cloneDeep } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -17,11 +18,13 @@ import ConversationViewer from "@app/components/assistant/conversation/Conversat
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
+  createConversationWithMessage,
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConversationMessages } from "@app/lib/swr";
 
@@ -30,7 +33,7 @@ const { URL = "", GA_TRACKING_ID = "" } = process.env;
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
-    conversationId: string;
+    conversationId: string | null;
     user: UserType;
   }
 >(async (context, auth) => {
@@ -39,13 +42,27 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
+    const { cId } = context.query;
+
+    if (typeof cId === "string") {
+      return {
+        redirect: {
+          destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
+          permanent: false,
+        },
+      };
+    }
+
     return {
       redirect: {
-        destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
+        destination: "/",
         permanent: false,
       },
     };
   }
+
+  // TODO: We are missing some here.
+  const { cId } = context.params;
 
   return {
     props: {
@@ -54,7 +71,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
-      conversationId: context.params?.cId as string,
+      conversationId: typeof cId === "string" && cId !== "new" ? cId : null,
     },
   };
 });
@@ -86,7 +103,6 @@ export function updateMessagePagesWithOptimisticData(
 }
 
 export default function AssistantConversation({
-  conversationId,
   owner,
   subscription,
   user,
@@ -96,8 +112,22 @@ export default function AssistantConversation({
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    const { cId } = router.query;
+    const conversationId =
+      typeof cId === "string" && cId !== "new" ? cId : null;
+
+    setCurrentConversationId(conversationId);
+  }, [router.query, setCurrentConversationId]);
+
   const { mutateMessages } = useConversationMessages({
-    conversationId,
+    conversationId: currentConversationId,
     workspaceId: owner.sId,
     limit: 50,
   });
@@ -117,11 +147,17 @@ export default function AssistantConversation({
     };
   }, [owner.sId, router]);
 
+  const isNewConversation = !currentConversationId;
+
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
     contentFragments: ContentFragmentInput[]
   ) => {
+    if (isNewConversation) {
+      return null;
+    }
+
     const messageData = { input, mentions, contentFragments };
 
     try {
@@ -134,7 +170,7 @@ export default function AssistantConversation({
           const result = await submitMessage({
             owner,
             user,
-            conversationId,
+            conversationId: currentConversationId,
             messageData,
           });
 
@@ -190,21 +226,77 @@ export default function AssistantConversation({
     }
   };
 
+  const { submit: handleMessageSubmit } = useSubmitFunction(
+    useCallback(
+      async (
+        input: string,
+        mentions: MentionType[],
+        contentFragments: ContentFragmentInput[]
+      ) => {
+        const conversationRes = await createConversationWithMessage({
+          owner,
+          user,
+          messageData: {
+            input,
+            mentions,
+            contentFragments,
+          },
+        });
+        if (conversationRes.isErr()) {
+          if (conversationRes.error.type === "plan_limit_reached_error") {
+            setPlanLimitReached(true);
+          } else {
+            sendNotification({
+              title: conversationRes.error.title,
+              description: conversationRes.error.message,
+              type: "error",
+            });
+          }
+        } else {
+          // We start the push before creating the message to optimize for instantaneity as well.
+          // TODO: We should probably use state here!
+          setCurrentConversationId(conversationRes.value.sId);
+          void router.push(
+            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
+            undefined,
+            { shallow: true }
+          );
+
+          setIsAnimating(true);
+        }
+      },
+      [owner, user, sendNotification, setCurrentConversationId, router]
+    )
+  );
+
   return (
     <>
-      <ConversationViewer
-        owner={owner}
-        user={user}
-        conversationId={conversationId}
-        onStickyMentionsChange={setStickyMentions}
-        key={conversationId}
-      />
+      {currentConversationId && (
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={currentConversationId}
+          onStickyMentionsChange={setStickyMentions}
+          key={currentConversationId}
+        />
+      )}
+      {/* <Transition
+        show={isAnimating}
+        enter="transition-transform duration-500"
+        enterFrom="transform translate-y-full"
+        enterTo="transform translate-y-0"
+        leave="transition-transform duration-500"
+        leaveFrom="transform translate-y-0"
+        leaveTo="transform translate-y-full"
+        afterEnter={() => setIsAnimating(false)} // Stop animating after entering
+      > */}
       <FixedAssistantInputBar
         owner={owner}
-        onSubmit={handleSubmit}
+        onSubmit={isNewConversation ? handleMessageSubmit : handleSubmit}
         stickyMentions={stickyMentions}
-        conversationId={conversationId}
+        conversationId={currentConversationId}
       />
+      {/* </Transition> */}
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
