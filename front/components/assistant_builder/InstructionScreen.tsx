@@ -184,18 +184,10 @@ export function InstructionScreen({
           />
         </div>
         {editor && (
-          <span
-            className={classNames(
-              "text-end text-xs",
-              editor.storage.characterCount.characters() >=
-                INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
-                ? "text-red-500"
-                : "text-slate-500"
-            )}
-          >
-            {editor.storage.characterCount.characters()} /{" "}
-            {INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT} characters
-          </span>
+          <InstructionsCharacterCount
+            count={editor.storage.characterCount.characters()}
+            maxCount={INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT}
+          />
         )}
       </div>
       {instructionsError && (
@@ -212,6 +204,30 @@ export function InstructionScreen({
     </div>
   );
 }
+
+const InstructionsCharacterCount = ({
+  count,
+  maxCount,
+}: {
+  count: number;
+  maxCount: number;
+}) => {
+  // Display character count only when it exceeds half of the maximum limit.
+  if (count <= maxCount / 2) {
+    return null;
+  }
+
+  return (
+    <span
+      className={classNames(
+        "text-end text-xs",
+        count >= maxCount ? "text-red-500" : "text-slate-500"
+      )}
+    >
+      {count} / {maxCount} characters
+    </span>
+  );
+};
 
 function AdvancedSettings({
   owner,
