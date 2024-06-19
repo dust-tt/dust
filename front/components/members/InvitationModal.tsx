@@ -342,6 +342,7 @@ export function EditInvitationModal({
               variant="primaryWarning"
               label="Revoke invitation"
               icon={XMarkIcon}
+              disabled={owner.ssoEnforced}
               onClick={async () => {
                 await updateInvitation({
                   invitation,
