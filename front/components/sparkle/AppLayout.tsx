@@ -394,7 +394,7 @@ export default function AppLayout({
           )}
           <main
             className={classNames(
-              "flex h-full w-full flex-col items-center",
+              "flex h-full w-full flex-col items-center overflow-y-auto",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
