@@ -2,7 +2,7 @@ import { Item, Logo, Tab } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { topNavigation } from "@app/components/navigation/config";

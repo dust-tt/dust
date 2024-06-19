@@ -1,6 +1,7 @@
 import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
+import { Bars3Icon } from "@heroicons/react/20/solid";
 import { Fragment, useContext } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -31,6 +32,16 @@ export function NavigationBar({
   return (
     <div className="flex shrink-0 overflow-x-hidden">
       {/* Mobile sidebar */}
+      <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
+        <button
+          type="button"
+          className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <span className="sr-only">Open sidebar</span>
+          <Bars3Icon className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
       <Transition.Root show={sidebarOpen} as={Fragment}>
         <Dialog
           as="div"

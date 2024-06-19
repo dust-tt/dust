@@ -1,6 +1,5 @@
 import { Banner } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { Bars3Icon } from "@heroicons/react/20/solid";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
@@ -164,25 +163,12 @@ export default function AppLayout({
           id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
           className="relative h-full w-full flex-1 flex-col overflow-y-auto overflow-x-hidden"
         >
-          {/* TODO: This logic should be handled by the navigation bar itself. */}
-          <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
-            <button
-              type="button"
-              className="-m-2.5 p-2.5 text-gray-700 lg:hidden"
-              // TODO
-              // onClick={() => setSidebarOpen(true)}
-            >
-              <span className="sr-only">Open sidebar</span>
-              <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
-
           {!titleChildren && SHOW_INCIDENT_BANNER && (
             <IncidentBanner className="relative" />
           )}
           <main
             className={classNames(
-              "flex h-full w-full flex-col items-center",
+              "flex h-full w-full flex-col items-center overflow-auto",
               titleChildren ? "" : "lg:pt-8"
             )}
           >
