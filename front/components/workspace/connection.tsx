@@ -251,7 +251,7 @@ function CreateOktaEnterpriseConnectionModal({
       variant="side-sm"
     >
       <Page variant="modal">
-        <Page.P>
+        <div>
           Discover how to set up Okta SSO – Read Our{" "}
           <a
             className="font-bold underline decoration-2"
@@ -261,9 +261,9 @@ function CreateOktaEnterpriseConnectionModal({
             Documentation
           </a>
           .
-        </Page.P>
+        </div>
         <Page.Layout direction="vertical">
-          <Page.P>
+          <div>
             Callback URL:
             <Input
               name="Callback URL"
@@ -272,8 +272,8 @@ function CreateOktaEnterpriseConnectionModal({
               disabled={true}
               className="max-w-sm"
             />
-          </Page.P>
-          <Page.P>
+          </div>
+          <div>
             Initiate login URI:
             <Input
               name="Initiate login URI"
@@ -282,9 +282,9 @@ function CreateOktaEnterpriseConnectionModal({
               disabled={true}
               className="max-w-sm"
             />
-          </Page.P>
+          </div>
           <Page.Separator />
-          <Page.P>
+          <div>
             Okta Domain:
             <Input
               name="Okta Domain"
@@ -302,8 +302,8 @@ function CreateOktaEnterpriseConnectionModal({
               hint="See Okta docs for obtaining your Okta Domain"
               link="find-your-domain/main"
             />
-          </Page.P>
-          <Page.P>
+          </div>
+          <div>
             Okta Client Id:
             <Input
               name="Okta Client Id"
@@ -321,8 +321,8 @@ function CreateOktaEnterpriseConnectionModal({
               hint="How to obtain your Okta Client ID?"
               link="find-your-app-credentials/main"
             />
-          </Page.P>
-          <Page.P>
+          </div>
+          <div>
             Okta Client Secret:
             <Input
               name="Okta Client Secret"
@@ -340,7 +340,7 @@ function CreateOktaEnterpriseConnectionModal({
               hint="How to obtain your Okta Client ID?"
               link="find-your-app-credentials/main"
             />
-          </Page.P>
+          </div>
           <Page.Separator />
           <div className="flex items-start">
             <Button
