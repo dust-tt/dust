@@ -22,13 +22,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const wId = context.params?.wId;
-  if (!wId || typeof wId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
   const conversation = await getConversation(auth, cId, true);
   if (!conversation) {
     return {
