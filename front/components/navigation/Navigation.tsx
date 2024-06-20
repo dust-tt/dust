@@ -2,10 +2,13 @@ import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import { Fragment, useContext } from "react";
+import { Fragment, useContext, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
-import { NavigationSidebar } from "@app/components/navigation/NavigationSidebar";
+import {
+  NavigationSidebar,
+  ToggleNavigationSidebarButton,
+} from "@app/components/navigation/NavigationSidebar";
 import { SidebarContext } from "@app/components/sparkle/AppLayout";
 
 interface NavigationProps {
@@ -24,6 +27,7 @@ export function Navigation({
   subNavigation,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
 
   if (hideSidebar) {
     return null;
@@ -107,15 +111,35 @@ export function Navigation({
         </Dialog>
       </Transition.Root>
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:visible lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
-        <NavigationSidebar
-          owner={owner}
-          subscription={subscription}
-          subNavigation={subNavigation}
-        >
-          {navChildren && navChildren}
-        </NavigationSidebar>
+      {/*Desktop sidebar*/}
+      <Transition
+        show={navigationBarOpen}
+        as={Fragment}
+        enter="transition-all duration-2000 ease-out"
+        enterFrom="flex-none lg:w-0 h-full"
+        enterTo="flex flex-1 lg:w-80"
+        leave="transition-all duration-2000 ease-out"
+        leaveFrom="flex flex-1 lg:w-80"
+        leaveTo="flex-none h-full lg:w-0"
+      >
+        <div className="hidden flex-1 lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+          <NavigationSidebar
+            owner={owner}
+            subscription={subscription}
+            subNavigation={subNavigation}
+          >
+            {navChildren && navChildren}
+          </NavigationSidebar>
+        </div>
+      </Transition>
+
+      <div className="left-0 hidden items-center lg:visible lg:flex">
+        <ToggleNavigationSidebarButton
+          isNavigationBarOpened={navigationBarOpen}
+          toggleNavigationBarVisibility={(navigationBar) => {
+            setNavigationBarOpen(navigationBar);
+          }}
+        />
       </div>
     </div>
   );
