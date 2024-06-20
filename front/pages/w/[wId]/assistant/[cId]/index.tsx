@@ -127,6 +127,8 @@ export default function AssistantConversation({
 
   const sendNotification = useContext(SendNotificationsContext);
 
+  console.log(">> initialConversationId:", initialConversationId);
+
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(initialConversationId);
@@ -149,6 +151,11 @@ export default function AssistantConversation({
         currentConversationId
       );
       setCurrentConversationId(conversationId);
+
+      if (cId === "new") {
+        // Reset sticky mentions when switching back to new screen.
+        setStickyMentions([]);
+      }
     }
   }, [router.query, setCurrentConversationId, currentConversationId]);
 
@@ -158,20 +165,20 @@ export default function AssistantConversation({
     limit: 50,
   });
 
-  // useEffect(() => {
-  //   function handleNewConvoShortcut(event: KeyboardEvent) {
-  //     // Check for Command on Mac or Ctrl on others
-  //     const isModifier = event.metaKey || event.ctrlKey;
-  //     if (isModifier && event.key === "/") {
-  //       void router.push(`/w/${owner.sId}/assistant/new`);
-  //     }
-  //   }
+  useEffect(() => {
+    function handleNewConvoShortcut(event: KeyboardEvent) {
+      // Check for Command on Mac or Ctrl on others
+      const isModifier = event.metaKey || event.ctrlKey;
+      if (isModifier && event.key === "/") {
+        void router.push(`/w/${owner.sId}/assistant/new`);
+      }
+    }
 
-  //   window.addEventListener("keydown", handleNewConvoShortcut);
-  //   return () => {
-  //     window.removeEventListener("keydown", handleNewConvoShortcut);
-  //   };
-  // }, [owner.sId, router]);
+    window.addEventListener("keydown", handleNewConvoShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleNewConvoShortcut);
+    };
+  }, [owner.sId, router]);
 
   const isNewConversation = !currentConversationId;
 
@@ -281,7 +288,6 @@ export default function AssistantConversation({
           }
         } else {
           // We start the push before creating the message to optimize for instantaneity as well.
-          // TODO: We should probably use state here!
           setCurrentConversationId(conversationRes.value.sId);
           void router.push(
             `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
@@ -347,25 +353,17 @@ export default function AssistantConversation({
     [setStickyMentions]
   );
 
-  const previousCallbackRef = useRef<any>();
-  useEffect(() => {
-    if (previousCallbackRef.current !== onStickyMentionsChange) {
-      console.log("onStickyMentionsChange was recreated");
-    }
-    previousCallbackRef.current = onStickyMentionsChange;
-  }, [onStickyMentionsChange]);
-
-  useEffect(() => {
-    console.log(">> onStickyMentionsChange changed (1)");
-  }, [onStickyMentionsChange]);
-
   return (
+    // <div
+    //   key={initialConversationId ? initialConversationId : "new"}
+    //   className="flex h-full w-full flex-col"
+    // >
     <>
       {/* // TODO: Do not display when loading existing conversation. */}
       <Transition
         show={!!currentConversationId}
         as={Fragment}
-        enter="transition-all duration-500 ease-out" // Removed opacity and transform transitions
+        enter="transition-all duration-2000 ease-out" // Removed opacity and transform transitions
         enterFrom="flex-none w-full h-0"
         enterTo="flex flex-1 w-full"
         leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
@@ -380,30 +378,33 @@ export default function AssistantConversation({
             conversationId={currentConversationId}
             // TODO: Fix rendering loop with sticky mentions!
             onStickyMentionsChange={onStickyMentionsChange}
-            key={currentConversationId}
+            key={initialConversationId ?? "new"}
           />
         ) : (
           <div></div>
         )}
       </Transition>
       <Transition
+        as={Fragment}
         show={!currentConversationId}
-        enter="transition-opacity duration-100 ease-out"
+        enter="transition-opacity duration-2000 ease-out"
         enterFrom="opacity-0"
         enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
+        leave="transition-opacity duration-2000 ease-out"
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
         <div
           id="assistant-input-header"
-          className="mb-2 flex h-fit w-full flex-col justify-between px-4 py-2"
+          className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
         >
           <Page.SectionHeader title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
         </div>
       </Transition>
       <FixedAssistantInputBar
+        // Rely on key to re-render between conversation!
+        key={initialConversationId ?? "new"}
         owner={owner}
         onSubmit={isNewConversation ? handleMessageSubmit : handleSubmit}
         stickyMentions={stickyMentions}
