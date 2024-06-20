@@ -1746,20 +1746,14 @@ async function* streamRunAgentEvents(
         return;
 
       case "agent_action_success":
-        console.log("==================== agent_action_success", event.runId);
         runIds.push(event.runId);
         yield event;
         break;
       case "agent_actions":
-        console.log("==================== agent_actions", event.runId);
         runIds.push(event.runId);
         break;
       case "agent_generation_success":
         // Store message in database.
-        console.log(
-          "==================== agent_generation_success",
-          event.runId
-        );
         runIds.push(event.runId);
         await agentMessageRow.update({
           runIds,
