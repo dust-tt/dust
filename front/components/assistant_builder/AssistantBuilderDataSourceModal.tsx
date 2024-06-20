@@ -42,8 +42,8 @@ export const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   slack: { singular: "channel", plural: "channels" },
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "article", plural: "articles" },
-  ms_sharepoint: { singular: "folder", plural: "folders" },
-  ms_teams: { singular: "channel", plural: "channels" },
+  microsoft_sharepoint: { singular: "folder", plural: "folders" },
+  microsoft_teams: { singular: "channel", plural: "channels" },
   webcrawler: { singular: "page", plural: "pages" },
 };
 
@@ -621,8 +621,8 @@ function getDisplayNameForDataSource(ds: DataSourceType) {
       case "google_drive":
       case "github":
       case "intercom":
-      case "ms_sharepoint":
-      case "ms_teams":
+      case "microsoft_sharepoint":
+      case "microsoft_teams":
       case "notion":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":

@@ -33,8 +33,8 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     selected: "read",
     unselected: "none",
   },
-  ms_sharepoint: undefined,
-  ms_teams: undefined,
+  microsoft_sharepoint: undefined,
+  microsoft_teams: undefined,
   notion: undefined,
   github: undefined,
   intercom: {

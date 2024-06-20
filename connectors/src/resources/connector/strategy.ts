@@ -27,8 +27,8 @@ export interface ConnectorProviderModelM {
   github: GithubConnectorState;
   google_drive: GoogleDriveConfig;
   intercom: IntercomWorkspace;
-  ms_sharepoint: MicrosoftConfiguration;
-  ms_teams: MicrosoftConfiguration;
+  microsoft_sharepoint: MicrosoftConfiguration;
+  microsoft_teams: MicrosoftConfiguration;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
@@ -67,8 +67,8 @@ export function getConnectorProviderStrategy(type: ConnectorProvider) {
     case "intercom":
       return new IntercomConnectorStrategy();
 
-    case "ms_sharepoint":
-    case "ms_teams":
+    case "microsoft_sharepoint":
+    case "microsoft_teams":
       return new MicrosoftConnectorStrategy();
 
     case "notion":

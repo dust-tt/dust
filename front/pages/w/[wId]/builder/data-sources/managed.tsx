@@ -71,8 +71,8 @@ type DataSourceIntegration = {
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
-  "ms_sharepoint",
-  "ms_teams",
+  "microsoft_sharepoint",
+  "microsoft_teams",
   "slack",
   "intercom",
 ];
@@ -418,8 +418,8 @@ export default function DataSourcesView({
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
           intercom: nangoConfig.intercomConnectorId,
-          ms_sharepoint: nangoConfig.msSharepointConnectorId,
-          ms_teams: nangoConfig.msTeamsConnectorId,
+          microsoft_sharepoint: nangoConfig.msSharepointConnectorId,
+          microsoft_teams: nangoConfig.msTeamsConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
@@ -608,8 +608,8 @@ export default function DataSourcesView({
                                 isDataSourceAllowedInPlan =
                                   planConnectionsLimits.isIntercomAllowed;
                                 break;
-                              case "ms_sharepoint":
-                              case "ms_teams":
+                              case "microsoft_sharepoint":
+                              case "microsoft_teams":
                                 isDataSourceAllowedInPlan = true;
                                 break;
                               case "webcrawler":

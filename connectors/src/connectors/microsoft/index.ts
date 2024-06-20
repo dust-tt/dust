@@ -8,10 +8,10 @@ import type { ConnectorPermissionRetriever } from "@connectors/connectors/interf
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export type MsConnectorType = "ms_sharepoint" | "ms_teams";
+export type MicrosoftConnectorType = "microsoft_sharepoint" | "microsoft_teams";
 
 export const createMicrosoftConnector =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   async (
     dataSourceConfig: DataSourceConfig,
     connectionId: NangoConnectionId
@@ -26,7 +26,7 @@ export const createMicrosoftConnector =
   };
 
 export const updateMicrosoftConnector =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (
     connectorId: ModelId,
     {
@@ -45,37 +45,37 @@ export const updateMicrosoftConnector =
   };
 
 export const stopMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("stopMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const deleteMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("deleteMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const pauseMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("pauseMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const unpauseMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("unpauseMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const resumeMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("resumeMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const fullResyncMicrosoftConnector =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   async (connectorId: ModelId, fromTs: number | null) => {
     console.log(
       "fullResyncMicrosoftConnector",
@@ -87,13 +87,13 @@ export const fullResyncMicrosoftConnector =
   };
 
 export const cleanupMicrosoftConnector =
-  (connectorType: MsConnectorType) => (connectorId: ModelId) => {
+  (connectorType: MicrosoftConnectorType) => (connectorId: ModelId) => {
     console.log("cleanupMicrosoftConnector", connectorType, connectorId);
     throw Error("Not implemented");
   };
 
 export const retrieveMicrosoftConnectorPermissions =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   async ({
     connectorId,
     parentInternalId,
@@ -110,7 +110,7 @@ export const retrieveMicrosoftConnectorPermissions =
   };
 
 export const setMicrosoftConnectorPermissions =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (connectorId: ModelId, permissions: Record<string, ConnectorPermission>) => {
     console.log(
       "setMicrosoftConnectorPermissions",
@@ -122,14 +122,14 @@ export const setMicrosoftConnectorPermissions =
   };
 
 export const getMicrosoftConfig =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (connectorId: ModelId, configKey: string) => {
     console.log("getMicrosoftConfig", connectorType, connectorId, configKey);
     throw Error("Not implemented");
   };
 
 export const setMicrosoftConfig =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (connectorId: ModelId, configKey: string, configValue: string) => {
     console.log(
       "setMicrosoftConfig",
@@ -142,7 +142,7 @@ export const setMicrosoftConfig =
   };
 
 export const retrieveMicrosoftContentNodeParents =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (connectorId: ModelId, internalId: string, memoizationKey?: string) => {
     console.log(
       "retrieveMicrosoftContentNodeParents",
@@ -154,7 +154,7 @@ export const retrieveMicrosoftContentNodeParents =
     throw Error("Not implemented");
   };
 export const retrieveMicrosoftContentNodes =
-  (connectorType: MsConnectorType) =>
+  (connectorType: MicrosoftConnectorType) =>
   (connectorId: ModelId, internalIds: string[]) => {
     console.log(
       "retrieveMicrosoftContentNodes",

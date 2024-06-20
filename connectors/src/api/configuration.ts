@@ -65,8 +65,8 @@ const _patchConnectorConfiguration = async (
     case "github":
     case "google_drive":
     case "intercom":
-    case "ms_teams":
-    case "ms_sharepoint":
+    case "microsoft_teams":
+    case "microsoft_sharepoint":
     case "slack": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`

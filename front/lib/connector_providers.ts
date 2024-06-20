@@ -102,9 +102,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: IntercomLogo,
     isNested: true,
   },
-  ms_sharepoint: {
+  microsoft_sharepoint: {
     name: "Microsoft Sharepoint",
-    connectorProvider: "ms_sharepoint",
+    connectorProvider: "microsoft_sharepoint",
     status: "preview",
     hide: true,
     description:
@@ -114,9 +114,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: MicrosoftLogo,
     isNested: true,
   },
-  ms_teams: {
+  microsoft_teams: {
     name: "Microsoft Teams",
-    connectorProvider: "ms_teams",
+    connectorProvider: "microsoft_teams",
     status: "preview",
     hide: true,
     description:

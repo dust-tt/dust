@@ -125,8 +125,8 @@ async function handler(
         case "google_drive":
         case "intercom":
         case "notion":
-        case "ms_sharepoint":
-        case "ms_teams":
+        case "microsoft_sharepoint":
+        case "microsoft_teams":
         case "slack": {
           if (!auth.isAdmin()) {
             return apiError(req, res, {
@@ -229,8 +229,8 @@ async function handler(
           isDataSourceAllowedInPlan = plan.limits.connections.isIntercomAllowed;
           assistantDefaultSelected = true;
           break;
-        case "ms_sharepoint":
-        case "ms_teams":
+        case "microsoft_sharepoint":
+        case "microsoft_teams":
           isDataSourceAllowedInPlan = true;
           assistantDefaultSelected = true;
           break;
