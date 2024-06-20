@@ -127,7 +127,7 @@ export default function Join({
           label="Sign up"
           icon={LoginIcon}
           onClick={() =>
-            (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
+            (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}&screen_hint=signup`)
           }
         />
       }
@@ -175,7 +175,7 @@ export default function Join({
             label="Sign up"
             icon={LoginIcon}
             onClick={() =>
-              (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}`)
+              (window.location.href = `/api/auth/login?returnTo=${signUpCallbackUrl}&screen_hint=signup`)
             }
           />
         </div>
