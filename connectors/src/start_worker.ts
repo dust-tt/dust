@@ -4,7 +4,8 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
-import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
+import { runMicrosoftSharepointWorker } from "@connectors/connectors/microsoft/sharepoint/temporal/worker";
+import { runMicrosoftTeamsWorker } from "@connectors/connectors/microsoft/teams/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
@@ -22,8 +23,8 @@ const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
   github: runGithubWorker,
   google_drive: runGoogleWorkers,
   intercom: runIntercomWorker,
-  microsoft_sharepoint: runMicrosoftWorker,
-  microsoft_teams: runMicrosoftWorker,
+  microsoft_sharepoint: runMicrosoftSharepointWorker,
+  microsoft_teams: runMicrosoftTeamsWorker,
   notion: runNotionWorker,
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
