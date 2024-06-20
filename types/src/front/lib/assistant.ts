@@ -66,7 +66,7 @@ export function getSmallWhitelistedModel(
     return GPT_3_5_TURBO_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_FLASH_DEFAULT_MODEL_CONFIG;
@@ -428,7 +428,6 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
