@@ -3,7 +3,7 @@ import { Err } from "@dust-tt/types";
 
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export async function launchMicrosoftFullSyncWorkflow(
+export async function launchMicrosoftSharepointFullSyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);

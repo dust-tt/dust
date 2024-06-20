@@ -3,9 +3,11 @@ import type {
   ModelId,
   NangoConnectionId,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { launchMicrosoftSharepointFullSyncWorkflow } from "@connectors/connectors/microsoft/sharepoint/temporal/client";
+import { launchMicrosoftTeamsFullSyncWorkflow } from "@connectors/connectors/microsoft/teams/temporal/client";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export type MicrosoftConnectorType = "microsoft_sharepoint" | "microsoft_teams";
@@ -83,7 +85,14 @@ export const fullResyncMicrosoftConnector =
       connectorId,
       fromTs
     );
-    return launchMicrosoftFullSyncWorkflow(connectorId);
+    switch (connectorType) {
+      case "microsoft_sharepoint":
+        return launchMicrosoftSharepointFullSyncWorkflow(connectorId);
+      case "microsoft_teams":
+        return launchMicrosoftTeamsFullSyncWorkflow(connectorId);
+      default:
+        assertNever(connectorType);
+    }
   };
 
 export const cleanupMicrosoftConnector =
