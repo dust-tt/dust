@@ -1753,12 +1753,9 @@ async function* streamRunAgentEvents(
         break;
       case "agent_generation_success":
         // Store message in database.
-        runIds.push(event.runId);
-        console.log(
-          "--------------------------------- new id : ",
-          agentMessageRow.id,
-          runIds
-        );
+        if (event.runId) {
+          runIds.push(event.runId);
+        }
         await agentMessageRow.update({
           runIds,
           content: event.text,
