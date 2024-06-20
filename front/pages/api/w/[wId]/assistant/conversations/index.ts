@@ -149,10 +149,9 @@ async function handler(
       }
 
       if (message) {
-        /* If a message was provided we do await for the message to be created
-        before returning the conversation along with the message.
-        PostUserMessageWithPubSub returns swiftly since it only waits for the
-        initial message creation event (or error) */
+        // If a message was provided we do await for the message to be created before returning the
+        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
+        // only waits for the initial message creation event (or error) */
         const messageRes = await postUserMessageWithPubSub(
           auth,
           {
@@ -165,6 +164,7 @@ async function handler(
               fullName: user.fullName,
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
+              origin: "web",
             },
           },
           { resolveAfterFullGeneration: false }

@@ -71,6 +71,7 @@ export function createPlaceholderUserMessage({
       profilePictureUrl: image,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
       username,
+      origin: "web",
     },
   };
 }
