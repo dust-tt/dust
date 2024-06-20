@@ -206,7 +206,10 @@ export default function DatasetView({
   );
   const [datasetKeyDescriptions, setDatasetKeyDescriptions] = useState<
     string[]
-  >((schema || []).map((s) => s.description || ""));
+  >(
+    datasetKeys.map((k) => schema?.find((s) => s.key === k)?.description || "")
+  );
+
   const [datasetTypes, setDatasetTypes] = useState<DatasetDataType[]>([]);
   const [datasetInitializing, setDatasetInitializing] = useState(true);
 
