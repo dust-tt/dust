@@ -3,12 +3,54 @@ import type {
   ModelId,
   NangoConnectionId,
 } from "@dust-tt/types";
+import { assertNever, Ok } from "@dust-tt/types";
+import { Client } from "@microsoft/microsoft-graph-client";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
+import {
+  getSites,
+  getTeams,
+} from "@connectors/connectors/microsoft/lib/graph_api";
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
+import { getAccessTokenFromNango } from "@connectors/lib/nango_helpers";
+import { syncSucceeded } from "@connectors/lib/sync_status";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export type MsConnectorType = "ms_sharepoint" | "ms_teams";
+
+const {
+  NANGO_MICROSOFT_SHAREPOINT_CONNECTOR_ID = "",
+  NANGO_MICROSOFT_TEAMS_CONNECTOR_ID = "",
+} = process.env;
+
+function getIntegrationId(connectorType: MsConnectorType) {
+  switch (connectorType) {
+    case "ms_sharepoint":
+      return NANGO_MICROSOFT_SHAREPOINT_CONNECTOR_ID;
+    case "ms_teams":
+      return NANGO_MICROSOFT_TEAMS_CONNECTOR_ID;
+    default:
+      assertNever(connectorType);
+  }
+}
+
+async function getClient(
+  connectionId: NangoConnectionId,
+  connectorType: MsConnectorType
+) {
+  const nangoConnectionId = connectionId;
+
+  const msAccessToken = await getAccessTokenFromNango({
+    connectionId: nangoConnectionId,
+    integrationId: getIntegrationId(connectorType),
+    useCache: false,
+  });
+
+  return Client.init({
+    authProvider: (done) => done(null, msAccessToken),
+  });
+}
 
 export const createMicrosoftConnector =
   (connectorType: MsConnectorType) =>
@@ -16,13 +58,30 @@ export const createMicrosoftConnector =
     dataSourceConfig: DataSourceConfig,
     connectionId: NangoConnectionId
   ) => {
-    console.log(
-      "createMicrosoftConnector",
+    const client = await getClient(connectionId, connectorType);
+    if (connectorType === "ms_sharepoint") {
+      await getSites(client);
+    }
+    if (connectorType === "ms_teams") {
+      await getTeams(client);
+    }
+
+    //   const webhook = await registerWebhook(client, `drives/${drives[0].id}/root`);
+
+    const connector = await ConnectorResource.makeNew(
       connectorType,
-      dataSourceConfig,
-      connectionId
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
+      },
+      {}
     );
-    throw Error("Not implemented");
+
+    await syncSucceeded(connector.id);
+
+    return new Ok(connector.id.toString());
   };
 
 export const updateMicrosoftConnector =
