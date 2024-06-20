@@ -46,13 +46,6 @@ export async function batchRenderUserMessages(
       where: {
         messageId: userMessages.map((m) => m.id),
       },
-      include: [
-        {
-          model: User,
-          as: "user",
-          required: false,
-        },
-      ],
     }),
     (async () => {
       const userIds = userMessages
