@@ -1,19 +1,21 @@
 import type { Transaction } from "sequelize";
 
-import { MicrosoftConfiguration } from "@connectors/lib/models/microsoft";
+import { MicrosoftSharepointConfiguration as MicrosoftSharepointConfiguration } from "@connectors/lib/models/microsoft";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
+export class MicrosoftSharepointConnectorStrategy
+  implements ConnectorProviderStrategy
+{
   async makeNew(
     connector: ConnectorResource,
-    blob: WithCreationAttributes<MicrosoftConfiguration>,
+    blob: WithCreationAttributes<MicrosoftSharepointConfiguration>,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftConfiguration.create(
+    await MicrosoftSharepointConfiguration.create(
       {
         ...blob,
         connectorId: connector.id,
@@ -26,7 +28,37 @@ export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy {
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftConfiguration.destroy({
+    await MicrosoftSharepointConfiguration.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+  }
+}
+
+export class MicrosoftTeamsConnectorStrategy
+  implements ConnectorProviderStrategy
+{
+  async makeNew(
+    connector: ConnectorResource,
+    blob: WithCreationAttributes<MicrosoftSharepointConfiguration>,
+    transaction: Transaction
+  ): Promise<void> {
+    await MicrosoftSharepointConfiguration.create(
+      {
+        ...blob,
+        connectorId: connector.id,
+      },
+      { transaction }
+    );
+  }
+
+  async delete(
+    connector: ConnectorResource,
+    transaction: Transaction
+  ): Promise<void> {
+    await MicrosoftSharepointConfiguration.destroy({
       where: {
         connectorId: connector.id,
       },
