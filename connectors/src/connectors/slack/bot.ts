@@ -403,6 +403,7 @@ async function botAnswerMessage(
         slackChatBotMessage.slackFullName || slackChatBotMessage.slackUserName,
       email: slackChatBotMessage.slackEmail,
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
+      origin: "slack" as const,
     },
   };
 

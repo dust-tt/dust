@@ -343,7 +343,7 @@ export default function AssistantBuilder({
           icon,
         })
       ),
-    [screen]
+    [screen, multiActionsEnabled]
   );
   const modalTitle = agentConfigurationId
     ? `Edit @${builderState.handle}`

@@ -109,6 +109,7 @@ export async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
+        origin: userMessage.userContextOrigin,
       },
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
