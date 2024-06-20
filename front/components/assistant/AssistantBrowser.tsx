@@ -191,6 +191,7 @@ export function AssistantBrowser({
                     subtitle={agent.lastAuthors?.join(", ") ?? ""}
                     description=""
                     variant="minimal"
+                    onActionClick={() => setAssistantIdToShow(agent.sId)}
                   />
                 </div>
               </div>
