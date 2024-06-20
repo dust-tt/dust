@@ -107,8 +107,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     connectorProvider: "ms_sharepoint",
     status: "preview",
     hide: true,
-    description: "Microsoft",
-    limitations: "?.",
+    description:
+      "Authorize access to Microsoft SharePoint for indexing shared documents stored in SharePoint, OneDrive, and Office365.",
+    limitations: "To be defined",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,
@@ -118,8 +119,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     connectorProvider: "ms_teams",
     status: "preview",
     hide: true,
-    description: "Microsoft",
-    limitations: "?.",
+    description:
+      "Authorize access to Microsoft Teams for indexing discussions and resources.",
+    limitations: "To be defined",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,
