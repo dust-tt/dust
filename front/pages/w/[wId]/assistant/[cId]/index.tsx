@@ -1,46 +1,14 @@
-import { Page } from "@dust-tt/sparkle";
-import type {
-  AgentMessageWithRankType,
-  LightAgentConfigurationType,
-  UserMessageWithRankType,
-  UserType,
-} from "@dust-tt/types";
-import type { AgentMention, MentionType } from "@dust-tt/types";
-import { Transition } from "@headlessui/react";
-import { cloneDeep } from "lodash";
+import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import {
-  Fragment,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
-import {
-  createConversationWithMessage,
-  createPlaceholderUserMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import { getRandomGreetingForName } from "@app/lib/client/greetings";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useConversationMessages } from "@app/lib/swr";
-import { AssistantBrowserContainer } from "@app/pages/w/[wId]/assistant/AssistantBrowerContainer";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -105,22 +73,13 @@ export default function AssistantConversation({
     const conversationId =
       typeof cId === "string" && cId !== "new" ? cId : null;
 
-    console.log("> (V) initialConversationId:", initialConversationId);
-    console.log("> (V) conversationId:", conversationId);
-
+    // Set conversation id as key if it exists.
     if (conversationId && initialConversationId) {
       setConversationKey(conversationId);
     } else if (!conversationId && !initialConversationId) {
+      // Otherwise, set to new.
       setConversationKey("new");
     }
-    // if (conversationId !== initialConversationId) {
-    //   setCurrentConversationId(conversationId);
-
-    //   if (cId === "new") {
-    //     // Reset sticky mentions when switching back to new screen.
-    //     setStickyMentions([]);
-    //   }
-    // }
   }, [router.query, setConversationKey, initialConversationId]);
 
   useEffect(() => {
@@ -138,8 +97,11 @@ export default function AssistantConversation({
     };
   }, [owner.sId, router]);
 
+  const onConversationCreated = useCallback((conversationId) => {}, []);
+
   return (
     <ConversationContainer
+      // Key ensures the component re-renders when conversation changes except for shallow browse.
       key={conversationKey}
       conversationId={initialConversationId}
       owner={owner}
