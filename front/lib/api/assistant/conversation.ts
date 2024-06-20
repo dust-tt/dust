@@ -727,6 +727,7 @@ export async function* postUserMessage(
                   userContextFullName: context.fullName,
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
+                  userContextOrigin: context.origin,
                   userId: user ? user.id : null,
                 },
                 { transaction: t }
@@ -1189,6 +1190,7 @@ export async function* editUserMessage(
                   userContextEmail: userMessageRow.userContextEmail,
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
+                  userContextOrigin: userMessageRow.userContextOrigin,
                   userId: userMessageRow.userId,
                 },
                 { transaction: t }

@@ -176,6 +176,7 @@ async function handler(
               fullName: message.context.fullName,
               email: message.context.email,
               profilePictureUrl: message.context.profilePictureUrl,
+              origin: message.context.origin ?? "api",
             },
           },
           { resolveAfterFullGeneration: blocking === true }
