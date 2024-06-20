@@ -230,6 +230,12 @@ UserMessage.init(
   {
     modelName: "user_message",
     sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["userContextOrigin"],
+        concurrently: true,
+      },
+    ],
   }
 );
 
