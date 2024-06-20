@@ -547,11 +547,9 @@ export class Mention extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare messageId: ForeignKey<Message["id"]>;
-  declare userId: ForeignKey<User["id"]> | null;
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
 
   declare message: NonAttribute<Message>;
-  declare user?: NonAttribute<User>;
 }
 
 Mention.init(
@@ -586,10 +584,6 @@ Mention.init(
       {
         fields: ["agentConfigurationId", "createdAt"],
       },
-      {
-        fields: ["userId"],
-        concurrently: true,
-      },
     ],
   }
 );
@@ -600,11 +594,4 @@ Message.hasMany(Mention, {
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
-});
-
-User.hasMany(Mention, {
-  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
-});
-Mention.belongsTo(User, {
-  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
 });
