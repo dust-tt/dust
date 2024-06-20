@@ -105,8 +105,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   ms_sharepoint: {
     name: "Microsoft Sharepoint",
     connectorProvider: "ms_sharepoint",
-    status: "built",
-    hide: false,
+    status: "preview",
+    hide: true,
     description: "Microsoft",
     limitations: "?.",
     guideLink: "https://dust-tt.notion.site/",
@@ -116,8 +116,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   ms_teams: {
     name: "Microsoft Teams",
     connectorProvider: "ms_teams",
-    status: "built",
-    hide: false,
+    status: "preview",
+    hide: true,
     description: "Microsoft",
     limitations: "?.",
     guideLink: "https://dust-tt.notion.site/",
