@@ -83,7 +83,7 @@ export type AgentGenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
-  runId: string;
+  runId: string | null;
 };
 
 // Event sent to stop the generation.

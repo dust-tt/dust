@@ -699,7 +699,7 @@ export async function* runGeneration(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: tokenEmitter.getContent() ?? "",
-            runId: await dustRunId,
+            runId: await Promise.race([dustRunId, Promise.resolve(null)]),
             chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           };
         }
