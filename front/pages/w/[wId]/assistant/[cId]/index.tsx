@@ -1,3 +1,4 @@
+import { Page } from "@dust-tt/sparkle";
 import type {
   AgentMessageWithRankType,
   UserMessageWithRankType,
@@ -9,7 +10,7 @@ import { cloneDeep } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { Fragment, useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -24,6 +25,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConversationMessages } from "@app/lib/swr";
@@ -108,15 +110,16 @@ export default function AssistantConversation({
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
   const [planLimitReached, setPlanLimitReached] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  const [isAnimating, setIsAnimating] = useState(true);
+  const sendNotification = useContext(SendNotificationsContext);
 
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
+
+  console.log(">> currentConversationId:", currentConversationId);
 
   useEffect(() => {
     const { cId } = router.query;
@@ -242,6 +245,7 @@ export default function AssistantConversation({
             contentFragments,
           },
         });
+        // TODO: We need some optimistic ui!!!
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);
@@ -261,42 +265,72 @@ export default function AssistantConversation({
             undefined,
             { shallow: true }
           );
-
-          setIsAnimating(true);
         }
       },
       [owner, user, sendNotification, setCurrentConversationId, router]
     )
   );
 
+  useEffect(() => {
+    console.log(">> currentConversationId has Changed!!");
+  }, [currentConversationId]);
+
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
+
   return (
     <>
-      {currentConversationId && (
-        <ConversationViewer
-          owner={owner}
-          user={user}
-          conversationId={currentConversationId}
-          onStickyMentionsChange={setStickyMentions}
-          key={currentConversationId}
-        />
-      )}
-      {/* <Transition
-        show={isAnimating}
-        enter="transition-transform duration-500"
-        enterFrom="transform translate-y-full"
-        enterTo="transform translate-y-0"
-        leave="transition-transform duration-500"
-        leaveFrom="transform translate-y-0"
-        leaveTo="transform translate-y-full"
-        afterEnter={() => setIsAnimating(false)} // Stop animating after entering
-      > */}
+      {/* // TODO: Do not display when loading existing conversation. */}
+      <Transition
+        show={!!currentConversationId}
+        as={Fragment}
+        enter="transition-all duration-700 ease-out" // Removed opacity and transform transitions
+        enterFrom="flex-none w-full h-0"
+        enterTo="flex grow w-full h-full"
+        leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
+        leaveFrom="flex grow w-full h-full"
+        leaveTo="flex-none w-full h-0"
+      >
+        {currentConversationId ? (
+          <ConversationViewer
+            owner={owner}
+            user={user}
+            conversationId={currentConversationId}
+            // TODO: Fix rendering loop with sticky mentions!
+            onStickyMentionsChange={(mentions) => {
+              console.log("coucou!!!");
+            }}
+            key={currentConversationId}
+          />
+        ) : (
+          <div></div>
+        )}
+      </Transition>
+      <Transition
+        show={!currentConversationId}
+        enter="transition-opacity duration-200 ease-out"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-200 ease-out"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
+        <div
+          id="assistant-input-header"
+          className="mb-2 flex h-fit w-full flex-col justify-between px-4 py-2"
+        >
+          <Page.SectionHeader title={greeting} />
+          <Page.SectionHeader title="Start a conversation" />
+        </div>
+      </Transition>
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={isNewConversation ? handleMessageSubmit : handleSubmit}
         stickyMentions={stickyMentions}
         conversationId={currentConversationId}
       />
-      {/* </Transition> */}
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}

@@ -68,6 +68,7 @@ export default function ConversationLayout({
     };
   }, [router.query, router.events]);
 
+  // This should not belong here!
   const { conversation } = useConversation({
     conversationId,
     workspaceId: owner.sId,
