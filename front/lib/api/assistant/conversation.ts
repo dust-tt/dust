@@ -1,4 +1,5 @@
 import type {
+  AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
@@ -596,6 +597,7 @@ export async function* postUserMessage(
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1008,6 +1010,7 @@ export async function* editUserMessage(
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1420,6 +1423,7 @@ export async function* retryAgentMessage(
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentMessageErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
@@ -1693,6 +1697,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
+    | AgentActionsEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -1706,6 +1711,7 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1716,6 +1722,7 @@ async function* streamRunAgentEvents(
   void
 > {
   let content = "";
+  const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1741,11 +1748,19 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         yield event;
         break;
-
+      case "agent_actions":
+        runIds.push(event.runId);
+        break;
       case "agent_generation_success":
         // Store message in database.
+        runIds.push(event.runId);
+        console.log(
+          "--------------------------------- new id : ",
+          agentMessageRow.id,
+          runIds
+        );
         await agentMessageRow.update({
-          runId: event.runId,
+          runIds,
           content: event.text,
         });
         yield event;

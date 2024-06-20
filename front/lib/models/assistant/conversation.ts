@@ -247,7 +247,7 @@ export class AgentMessage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare runId: string | null;
+  declare runIds: string[] | null;
   declare status: CreationOptional<AgentMessageStatus>;
 
   declare content: string | null;
@@ -278,8 +278,8 @@ AgentMessage.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    runId: {
-      type: DataTypes.STRING,
+    runIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     status: {

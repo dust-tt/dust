@@ -59,6 +59,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -114,6 +115,7 @@ export async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -171,6 +173,8 @@ export async function* runMultiActionsAgentLoop(
             },
             "[ASSISTANT_TRACE] Action inputs generation"
           );
+
+          yield event;
 
           const actionIndexByType: Record<string, number> = {};
           const eventStreamGenerators = event.actions.map(
@@ -691,6 +695,7 @@ export async function* runMultiActionsAgent(
 
   yield {
     type: "agent_actions",
+    runId: await dustRunId,
     created: Date.now(),
     actions,
   };

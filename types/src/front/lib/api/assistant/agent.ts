@@ -106,6 +106,7 @@ export type AgentMessageSuccessEvent = {
 export type AgentActionsEvent = {
   type: "agent_actions";
   created: number;
+  runId: string;
   actions: Array<{
     action: AgentActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
