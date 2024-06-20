@@ -22,6 +22,7 @@ import {
 import React from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -89,54 +90,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   };
 });
 
-/**
- * If no message pages exist, create a single page with the optimistic message.
- * If message pages exist, add the optimistic message to the first page, since
- * the message pages array is not yet reversed.
- */
-export function updateMessagePagesWithOptimisticData(
-  currentMessagePages: FetchConversationMessagesResponse[] | undefined,
-  messageOrPlaceholder: AgentMessageWithRankType | UserMessageWithRankType
-): FetchConversationMessagesResponse[] {
-  if (!currentMessagePages || currentMessagePages.length === 0) {
-    return [
-      {
-        messages: [messageOrPlaceholder],
-        hasMore: false,
-        lastValue: null,
-      },
-    ];
-  }
-
-  // We need to deep clone here, since SWR relies on the reference.
-  const updatedMessages = cloneDeep(currentMessagePages);
-  updatedMessages.at(0)?.messages.push(messageOrPlaceholder);
-
-  return updatedMessages;
-}
-
 export default function AssistantConversation({
   conversationId: initialConversationId,
   owner,
   subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useRouter();
-  const [planLimitReached, setPlanLimitReached] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
-
-  const sendNotification = useContext(SendNotificationsContext);
-
-  console.log(">> initialConversationId:", initialConversationId);
-
-  const [currentConversationId, setCurrentConversationId] = useState<
-    string | null
-  >(initialConversationId);
-
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
-
-  console.log(">> currentConversationId:", currentConversationId);
 
   // TODO: This creates two extra re-rendering!!!
   useEffect(() => {
@@ -144,26 +105,23 @@ export default function AssistantConversation({
     const conversationId =
       typeof cId === "string" && cId !== "new" ? cId : null;
 
-    if (conversationId !== currentConversationId) {
-      console.log(
-        ">> updating current conversation id:",
-        conversationId,
-        currentConversationId
-      );
-      setCurrentConversationId(conversationId);
+    console.log("> (V) initialConversationId:", initialConversationId);
+    console.log("> (V) conversationId:", conversationId);
 
-      if (cId === "new") {
-        // Reset sticky mentions when switching back to new screen.
-        setStickyMentions([]);
-      }
+    if (conversationId && initialConversationId) {
+      setConversationKey(conversationId);
+    } else if (!conversationId && !initialConversationId) {
+      setConversationKey("new");
     }
-  }, [router.query, setCurrentConversationId, currentConversationId]);
+    // if (conversationId !== initialConversationId) {
+    //   setCurrentConversationId(conversationId);
 
-  const { mutateMessages } = useConversationMessages({
-    conversationId: currentConversationId,
-    workspaceId: owner.sId,
-    limit: 50,
-  });
+    //   if (cId === "new") {
+    //     // Reset sticky mentions when switching back to new screen.
+    //     setStickyMentions([]);
+    //   }
+    // }
+  }, [router.query, setConversationKey, initialConversationId]);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {
@@ -180,271 +138,15 @@ export default function AssistantConversation({
     };
   }, [owner.sId, router]);
 
-  const isNewConversation = !currentConversationId;
-
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentInput[]
-  ) => {
-    if (isNewConversation) {
-      return null;
-    }
-
-    const messageData = { input, mentions, contentFragments };
-
-    try {
-      // Update the local state immediately and fire the
-      // request. Since the API will return the updated
-      // data, there is no need to start a new revalidation
-      // and we can directly populate the cache.
-      await mutateMessages(
-        async (currentMessagePages) => {
-          const result = await submitMessage({
-            owner,
-            user,
-            conversationId: currentConversationId,
-            messageData,
-          });
-
-          // Replace placeholder message with API response.
-          if (result.isOk()) {
-            const { message } = result.value;
-
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              message
-            );
-          }
-
-          if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: result.error.title,
-              description: result.error.message,
-              type: "error",
-            });
-          }
-
-          throw result.error;
-        },
-        {
-          // Add optimistic data placeholder.
-          optimisticData: (currentMessagePages) => {
-            const lastMessageRank =
-              currentMessagePages?.at(0)?.messages.at(-1)?.rank ?? 0;
-
-            const placeholderMessage = createPlaceholderUserMessage({
-              input,
-              mentions,
-              user,
-              lastMessageRank,
-            });
-            return updateMessagePagesWithOptimisticData(
-              currentMessagePages,
-              placeholderMessage
-            );
-          },
-          revalidate: false,
-          // Rollback optimistic update on errors.
-          rollbackOnError: true,
-          populateCache: true,
-        }
-      );
-    } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
-      console.error("Failed to post message:", err);
-    }
-  };
-
-  const { submit: handleMessageSubmit } = useSubmitFunction(
-    useCallback(
-      async (
-        input: string,
-        mentions: MentionType[],
-        contentFragments: ContentFragmentInput[]
-      ) => {
-        const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
-          messageData: {
-            input,
-            mentions,
-            contentFragments,
-          },
-        });
-        // TODO: We need some optimistic ui!!!
-        if (conversationRes.isErr()) {
-          if (conversationRes.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: conversationRes.error.title,
-              description: conversationRes.error.message,
-              type: "error",
-            });
-          }
-        } else {
-          // We start the push before creating the message to optimize for instantaneity as well.
-          setCurrentConversationId(conversationRes.value.sId);
-          void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`,
-            undefined,
-            { shallow: true }
-          );
-        }
-      },
-      [owner, user, sendNotification, setCurrentConversationId, router]
-    )
-  );
-
-  useEffect(() => {
-    if (animate) {
-      setTimeout(() => setAnimate(false), 500);
-    }
-  });
-
-  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
-
-  const setInputbarMention = useCallback(
-    (agent: LightAgentConfigurationType) => {
-      setSelectedAssistant({
-        configurationId: agent.sId,
-      });
-      setAnimate(true);
-    },
-    [setSelectedAssistant, setAnimate]
-  );
-
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-  }, [setAnimate, setInputbarMention]);
-
-  useEffect(() => {
-    console.log(">> currentConversationId has Changed!!");
-  }, [currentConversationId]);
-
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(user.firstName));
-  }, [user]);
-
-  const onStickyMentionsChange = useCallback(
-    (mentions: AgentMention[]) => {
-      console.log(">> mentionssssss:", mentions);
-      setStickyMentions(mentions);
-    },
-    [setStickyMentions]
-  );
-
   return (
-    // <div
-    //   key={initialConversationId ? initialConversationId : "new"}
-    //   className="flex h-full w-full flex-col"
-    // >
     <>
       {/* // TODO: Do not display when loading existing conversation. */}
-      <Transition
-        show={!!currentConversationId}
-        as={Fragment}
-        enter="transition-all duration-2000 ease-out" // Removed opacity and transform transitions
-        enterFrom="flex-none w-full h-0"
-        enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
-        leaveFrom="flex flex-1 w-full"
-        leaveTo="flex-none w-full h-0"
-      >
-        {/* // TODO: Fix css classes */}
-        {currentConversationId ? (
-          <ConversationViewer
-            owner={owner}
-            user={user}
-            conversationId={currentConversationId}
-            // TODO: Fix rendering loop with sticky mentions!
-            onStickyMentionsChange={onStickyMentionsChange}
-            key={initialConversationId ?? "new"}
-          />
-        ) : (
-          <div></div>
-        )}
-      </Transition>
-      <Transition
-        as={Fragment}
-        show={!currentConversationId}
-        enter="transition-opacity duration-2000 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-2000 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-      >
-        <div
-          id="assistant-input-header"
-          className="mb-2 flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end px-4 py-2"
-        >
-          <Page.SectionHeader title={greeting} />
-          <Page.SectionHeader title="Start a conversation" />
-        </div>
-      </Transition>
-      <FixedAssistantInputBar
-        // Rely on key to re-render between conversation!
-        key={initialConversationId ?? "new"}
+      <ConversationContainer
+        key={conversationKey}
+        conversationId={initialConversationId}
         owner={owner}
-        onSubmit={isNewConversation ? handleMessageSubmit : handleSubmit}
-        stickyMentions={stickyMentions}
-        conversationId={currentConversationId}
-      />
-      <Transition
-        show={!currentConversationId}
-        enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
-        enterTo="opacity-100"
-        leave="transition-opacity duration-100 ease-out"
-        leaveFrom="opacity-100"
-        leaveTo="opacity-0"
-      >
-        <AssistantBrowserContainer
-          onAgentConfigurationClick={
-            setInputbarMention
-            // setStickyMentions((prevMentions) => {
-            //   console.log(">> prevMentions:", prevMentions);
-            //   // TODO: Make distinct
-            //   prevMentions.push({ configurationId: agent.sId });
-
-            //   console.log(">> newMentions:", agent);
-
-            //   return prevMentions;
-            // })
-          }
-          setAssistantToMention={(assistant) =>
-            (assistantToMention.current = assistant)
-          }
-          owner={owner}
-        />
-      </Transition>
-
-      <ReachedLimitPopup
-        isOpened={planLimitReached}
-        onClose={() => setPlanLimitReached(false)}
         subscription={subscription}
-        owner={owner}
-        code="message_limit"
+        user={user}
       />
     </>
   );

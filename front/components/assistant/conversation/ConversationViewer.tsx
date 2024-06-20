@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useInView } from "react-intersection-observer";
 
+import { updateMessagePagesWithOptimisticData } from "@app/components/assistant/conversation/ConversationContainer";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -30,7 +31,6 @@ import {
   useConversations,
 } from "@app/lib/swr";
 import { classNames } from "@app/lib/utils";
-import { updateMessagePagesWithOptimisticData } from "@app/pages/w/[wId]/assistant/[cId]";
 
 const DEFAULT_PAGE_LIMIT = 50;
 

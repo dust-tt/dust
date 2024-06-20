@@ -234,6 +234,7 @@ export default function AssistantNew({
       "assistant-input-header"
     );
     if (scrollContainerElement) {
+      console.log(">> register observer");
       const observer = new IntersectionObserver(
         () => {
           if (assistantToMention.current) {

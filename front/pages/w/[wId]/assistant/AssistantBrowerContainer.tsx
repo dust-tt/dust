@@ -42,7 +42,7 @@ export function AssistantBrowserContainer({
       // a little margin, -2 instead of 0, since the autoscroll below can
       // sometimes scroll a bit over 0, to -0.3 or -0.5, in which case if there
       // is a clic on a visible assistant we still want this condition to
-      // trigger
+      // trigger.
       if (scrollDistance > -2) {
         return onAgentConfigurationClick(agent);
       }
