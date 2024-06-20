@@ -2,14 +2,16 @@ import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import { Fragment, useContext, useState } from "react";
+import { Fragment, useContext } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
-  ToggleNavigationSidebarButton,
 } from "@app/components/navigation/NavigationSidebar";
-import { SidebarContext } from "@app/components/sparkle/AppLayout";
+import {
+  NavigationBarContext,
+  SidebarContext,
+} from "@app/components/sparkle/AppLayout";
 
 interface NavigationProps {
   hideSidebar: boolean;
@@ -27,8 +29,7 @@ export function Navigation({
   subNavigation,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
-  const [navigationBarOpen, setNavigationBarOpen] = useState(true);
-
+  const { navigationBar } = useContext(NavigationBarContext);
   if (hideSidebar) {
     return null;
   }
@@ -113,7 +114,7 @@ export function Navigation({
 
       {/*Desktop sidebar*/}
       <Transition
-        show={navigationBarOpen}
+        show={navigationBar}
         as={Fragment}
         enter="transition-all duration-2000 ease-out"
         enterFrom="flex-none lg:w-0 h-full"
@@ -132,15 +133,6 @@ export function Navigation({
           </NavigationSidebar>
         </div>
       </Transition>
-
-      <div className="left-0 hidden items-center lg:visible lg:flex">
-        <ToggleNavigationSidebarButton
-          isNavigationBarOpened={navigationBarOpen}
-          toggleNavigationBarVisibility={(navigationBar) => {
-            setNavigationBarOpen(navigationBar);
-          }}
-        />
-      </div>
     </div>
   );
 }

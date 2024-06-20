@@ -4,11 +4,12 @@ import Head from "next/head";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useContext, useEffect, useState } from "react";
 
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
+import { ToggleNavigationSidebarButton } from "@app/components/navigation/NavigationSidebar";
 import { useUser } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
@@ -39,6 +40,32 @@ export const SidebarProvider = ({
     <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
       {children}
     </SidebarContext.Provider>
+  );
+};
+
+export const NavigationBarContext = React.createContext<{
+  navigationBar: boolean;
+  setNavigationBarOpen: (value: boolean) => void;
+}>({
+  navigationBar: true,
+  setNavigationBarOpen: (value) => {
+    throw new Error("NavigationBarContext not initialized: " + value);
+  },
+});
+
+export const NavigationBarProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
+  const [navigationBar, setNavigationBarOpen] = useState(true);
+
+  return (
+    <NavigationBarContext.Provider
+      value={{ navigationBar, setNavigationBarOpen }}
+    >
+      {children}
+    </NavigationBarContext.Provider>
   );
 };
 
@@ -81,6 +108,8 @@ export default function AppLayout({
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { navigationBar, setNavigationBarOpen } =
+    useContext(NavigationBarContext);
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
   const user = useUser();
@@ -185,14 +214,23 @@ export default function AppLayout({
               </div>
               {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
             </div>
-
-            <div
-              className={classNames(
-                "flex h-full w-full flex-col",
-                isWideMode ? "items-center" : "max-w-4xl px-6"
-              )}
-            >
-              {loaded && children}
+            <div className="flex h-full w-full">
+              <div className="hidden items-center lg:visible lg:flex">
+                <ToggleNavigationSidebarButton
+                  isNavigationBarOpened={navigationBar}
+                  toggleNavigationBarVisibility={(navigationBar) => {
+                    setNavigationBarOpen(navigationBar);
+                  }}
+                />
+              </div>
+              <div
+                className={classNames(
+                  "flex h-full w-full flex-col",
+                  isWideMode ? "items-center" : "max-w-4xl px-6"
+                )}
+              >
+                {loaded && children}
+              </div>
             </div>
           </main>
         </div>
