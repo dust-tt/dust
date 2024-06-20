@@ -109,10 +109,10 @@ export async function submitAssistantBuilderForm({
             type: "dust_app_run_configuration",
             appWorkspaceId: owner.sId,
             appId: a.configuration.app.sId,
-            // `name` and `description` are ignored server side as the app name and description are
-            // used instaed.
-            name: null,
-            description: null,
+            // These field are required by the API (`name` and `description`) but will be overriden
+            // with the app name and description.
+            name: a.configuration.app.name,
+            description: a.configuration.app.description,
           },
         ];
 
