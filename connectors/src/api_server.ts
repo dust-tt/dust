@@ -24,7 +24,6 @@ import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
-import { webhookGoogleDriveAPIHandler } from "@connectors/api/webhooks/webhook_google_drive";
 import {
   webhookIntercomAPIHandler,
   webhookIntercomUninstallAPIHandler,
@@ -126,10 +125,7 @@ export function startServer(port: number) {
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
-  app.post(
-    "/webhooks/:webhook_secret/google_drive/:connector_id?",
-    webhookGoogleDriveAPIHandler
-  );
+
   app.post(
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),

@@ -46,13 +46,6 @@ export async function batchRenderUserMessages(
       where: {
         messageId: userMessages.map((m) => m.id),
       },
-      include: [
-        {
-          model: User,
-          as: "user",
-          required: false,
-        },
-      ],
     }),
     (async () => {
       const userIds = userMessages
@@ -116,6 +109,7 @@ export async function batchRenderUserMessages(
         fullName: userMessage.userContextFullName,
         email: userMessage.userContextEmail,
         profilePictureUrl: userMessage.userContextProfilePictureUrl,
+        origin: userMessage.userContextOrigin,
       },
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };

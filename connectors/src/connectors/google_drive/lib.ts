@@ -1,160 +1,16 @@
-import type { ContentNodesViewType, ModelId, Result } from "@dust-tt/types";
+import type { ContentNodesViewType, ModelId } from "@dust-tt/types";
 import {
   cacheWithRedis,
-  Err,
   getGoogleIdsFromSheetContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
-  Ok,
 } from "@dust-tt/types";
 import type { InferAttributes, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
-import { GOOGLE_DRIVE_WEBHOOK_LIFE_MS } from "@connectors/connectors/google_drive/lib/config";
-import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import {
-  getDrivesToSync,
-  getSyncPageToken,
-} from "@connectors/connectors/google_drive/temporal/activities";
 import { isGoogleDriveSpreadSheetFile } from "@connectors/connectors/google_drive/temporal/mime_types";
-import {
-  getAuthObject,
-  getDriveClient,
-} from "@connectors/connectors/google_drive/temporal/utils";
-import { HTTPError } from "@connectors/lib/error";
 import {
   GoogleDriveFiles,
   GoogleDriveSheet,
-  GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-
-const { CONNECTORS_PUBLIC_URL, DUST_CONNECTORS_WEBHOOKS_SECRET } = process.env;
-
-export async function registerWebhooksForAllDrives({
-  connector,
-  maxRenewalTime,
-}: {
-  connector: ConnectorResource;
-  maxRenewalTime: number;
-}): Promise<Result<undefined, Error[]>> {
-  const drivesToSync = await getDrivesToSync(connector.id);
-  const allRes = await Promise.all(
-    drivesToSync.map((drive) => {
-      return ensureWebhookForDriveId(connector, drive.id, maxRenewalTime);
-    })
-  );
-
-  const allErrors = allRes.flatMap((res) => (res.isErr() ? [res.error] : []));
-  if (allErrors.length > 0) {
-    return new Err(allErrors);
-  }
-
-  return new Ok(undefined);
-}
-
-export async function ensureWebhookForDriveId(
-  connector: ConnectorResource,
-  driveId: string,
-  maxRenewalTime: number
-): Promise<Result<string | undefined, Error>> {
-  const webhook = await GoogleDriveWebhook.findOne({
-    where: {
-      connectorId: connector.id,
-      driveId: driveId,
-      expiresAt: {
-        [Op.gt]: new Date(maxRenewalTime),
-      },
-    },
-  });
-  if (!webhook) {
-    const auth = await getAuthObject(connector.connectionId);
-    const remoteFile = await getGoogleDriveObject(auth, driveId);
-    if (!remoteFile) {
-      throw new Error(`Drive with id ${driveId} not found`);
-    }
-    const res = await registerWebhook(
-      connector,
-      driveId,
-      remoteFile.isInSharedDrive
-    );
-    if (res.isErr()) {
-      return res;
-    }
-    const webhook = await GoogleDriveWebhook.create({
-      webhookId: res.value.id,
-      driveId: driveId,
-      expiresAt: new Date(res.value.expirationTsMs),
-      renewAt: new Date(res.value.expirationTsMs),
-      connectorId: connector.id,
-    });
-    logger.info(
-      { webhookId: webhook.webhookId, connectorId: connector.id },
-      "Webhook created"
-    );
-    return new Ok(webhook.webhookId);
-  }
-  return new Ok(undefined);
-}
-
-export async function registerWebhook(
-  // TODO(2024-02-14 flav) Remove ConnectorModel once fully bundled in `ConnectorResource`.
-  connector: ConnectorResource | ConnectorModel,
-  driveId: string,
-  isSharedDrive: boolean
-): Promise<
-  Result<{ id: string; expirationTsMs: number; url: string }, HTTPError | Error>
-> {
-  if (!DUST_CONNECTORS_WEBHOOKS_SECRET) {
-    return new Err(new Error("DUST_CONNECTORS_WEBHOOKS_SECRET is not defined"));
-  }
-  if (!CONNECTORS_PUBLIC_URL) {
-    return new Err(new Error("CONNECTORS_PUBLIC_URL is not defined"));
-  }
-  const auth = await getAuthObject(connector.connectionId);
-  const drive = await getDriveClient(auth);
-
-  const uuid = uuidv4().toString();
-  const syncPageToken = await getSyncPageToken(
-    connector.id,
-    driveId,
-    isSharedDrive
-  );
-  const webhookURL = `${CONNECTORS_PUBLIC_URL}/webhooks/${DUST_CONNECTORS_WEBHOOKS_SECRET}/google_drive/${connector.id}`;
-  const expiration = new Date().getTime() + GOOGLE_DRIVE_WEBHOOK_LIFE_MS;
-  const res = await drive.changes.watch(
-    {
-      includeItemsFromAllDrives: true,
-      supportsAllDrives: true,
-      driveId: driveId,
-      pageToken: syncPageToken,
-      requestBody: {
-        id: uuid,
-        type: "web_hook",
-        address: webhookURL,
-        expiration: expiration.toString(),
-      },
-    },
-    {}
-  );
-  if (res.status !== 200) {
-    return new Err(new HTTPError(res.statusText, res.status));
-  }
-  if (!res.data.expiration) {
-    return new Err(new Error("Missing expiration in response"));
-  }
-  if (!res.data.id) {
-    return new Err(new Error("Missing id in response"));
-  }
-
-  return new Ok({
-    id: res.data.id,
-    expirationTsMs: parseInt(res.data.expiration),
-    url: webhookURL,
-  });
-}
 
 export async function isDriveObjectExpandable({
   objectId,

@@ -3,7 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
-import { CheerioCrawler, Configuration } from "crawlee";
+import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
 import { Op } from "sequelize";
 import turndown from "turndown";
 
@@ -16,7 +16,10 @@ import {
   isTopFolder,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
-import { REQUEST_HANDLING_TIMEOUT } from "@connectors/connectors/webcrawler/temporal/workflows";
+import {
+  MAX_TIME_TO_CRAWL_MINUTES,
+  REQUEST_HANDLING_TIMEOUT,
+} from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteFromDataSource,
@@ -57,6 +60,7 @@ export async function markAsCrawled(connectorId: ModelId) {
 }
 
 export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
+  const startCrawlingTime = Date.now();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found.`);
@@ -123,7 +127,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES,
 
       maxConcurrency: CONCURRENCY,
-      maxRequestsPerMinute: 60, // 5 requests per second to avoid overloading the target website
+      maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
       async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
@@ -131,12 +135,31 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         });
         const currentRequestDepth = request.userData.depth || 0;
 
-        // try-catch allowing activity cancellation by temporal (timeout, or signal)
+        // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
           await Context.current().sleep(1);
         } catch (e) {
           if (isCancellation(e)) {
             childLogger.error("The activity was canceled. Aborting crawl.");
+
+            // raise a panic flag if the activity is aborted because it exceeded the maximum time to crawl
+            const isTooLongToCrawl =
+              Date.now() - startCrawlingTime >
+              1000 * 60 * (MAX_TIME_TO_CRAWL_MINUTES - 1);
+
+            if (isTooLongToCrawl) {
+              childLogger.error(
+                {
+                  url,
+                  configId: webCrawlerConfig.id,
+                  panic: true,
+                },
+                `Website takes too long to crawl (crawls ${Math.round(
+                  pageCount / MAX_TIME_TO_CRAWL_MINUTES
+                )} pages per minute)`
+              );
+            }
+
             // abort crawling
             await crawler.autoscaledPool?.abort();
             await crawler.teardown();
@@ -314,6 +337,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     new Configuration({
       purgeOnStart: true,
       persistStorage: false,
+      logLevel: LogLevel.OFF,
     })
   );
 

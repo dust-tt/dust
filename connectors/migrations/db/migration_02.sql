@@ -1,0 +1,1 @@
+DROP TABLE google_drive_webhooks;
