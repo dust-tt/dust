@@ -18,9 +18,9 @@ import {
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   GPT_3_5_TURBO_MODEL_CONFIG,
@@ -317,7 +317,7 @@ async function _getClaude3SonnetGlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "claude-3-sonnet",
-    description: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.description,
+    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
     instructions:
       "Your name is claude-3-sonnet, but that does not mean you're expected to generate sonnets unless instructed.",
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
@@ -325,8 +325,8 @@ async function _getClaude3SonnetGlobalAgent({
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
-      providerId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
     actions: [],

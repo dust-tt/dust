@@ -103,6 +103,8 @@ export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
+export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
+  "claude-3-5-sonnet-20240620" as const;
 export const CLAUDE_3_SONNET_2024029_MODEL_ID =
   "claude-3-sonnet-20240229" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
@@ -121,6 +123,7 @@ export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
+  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_SONNET_2024029_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
@@ -221,6 +224,55 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Anthropic's Claude 3 Opus model, most powerful model for highly complex tasks.",
   shortDescription: "Anthropic's powerful model.",
+  supportsMultiActions: true,
+  isLegacy: false,
+  delimitersConfiguration: {
+    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
+    delimiters: [
+      {
+        openingPattern: "<thinking>",
+        closingPattern: "</thinking>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_reflection>",
+        closingPattern: "</search_quality_reflection>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<reflecting>",
+        closingPattern: "</reflecting>",
+        isChainOfThought: true,
+        swallow: false,
+      },
+      {
+        openingPattern: "<search_quality_score>",
+        closingPattern: "</search_quality_score>",
+        isChainOfThought: true,
+        swallow: true,
+      },
+      {
+        openingPattern: "<result>",
+        closingPattern: "</result>",
+        isChainOfThought: false,
+        swallow: false,
+      },
+    ],
+  },
+};
+export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  displayName: "Claude 3.5 Sonnet",
+  contextSize: 180_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "Anthropic latest Claude 3.5 Sonnet model, their most intelligent model.",
+  shortDescription: "Anthropic's smartest model.",
   supportsMultiActions: true,
   isLegacy: false,
   delimitersConfiguration: {
@@ -426,6 +478,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
