@@ -19,6 +19,7 @@ import {
   useRef,
   useState,
 } from "react";
+import React from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -135,13 +136,21 @@ export default function AssistantConversation({
 
   console.log(">> currentConversationId:", currentConversationId);
 
+  // TODO: This creates two extra re-rendering!!!
   useEffect(() => {
     const { cId } = router.query;
     const conversationId =
       typeof cId === "string" && cId !== "new" ? cId : null;
 
-    setCurrentConversationId(conversationId);
-  }, [router.query, setCurrentConversationId]);
+    if (conversationId !== currentConversationId) {
+      console.log(
+        ">> updating current conversation id:",
+        conversationId,
+        currentConversationId
+      );
+      setCurrentConversationId(conversationId);
+    }
+  }, [router.query, setCurrentConversationId, currentConversationId]);
 
   const { mutateMessages } = useConversationMessages({
     conversationId: currentConversationId,
@@ -149,20 +158,20 @@ export default function AssistantConversation({
     limit: 50,
   });
 
-  useEffect(() => {
-    function handleNewConvoShortcut(event: KeyboardEvent) {
-      // Check for Command on Mac or Ctrl on others
-      const isModifier = event.metaKey || event.ctrlKey;
-      if (isModifier && event.key === "/") {
-        void router.push(`/w/${owner.sId}/assistant/new`);
-      }
-    }
+  // useEffect(() => {
+  //   function handleNewConvoShortcut(event: KeyboardEvent) {
+  //     // Check for Command on Mac or Ctrl on others
+  //     const isModifier = event.metaKey || event.ctrlKey;
+  //     if (isModifier && event.key === "/") {
+  //       void router.push(`/w/${owner.sId}/assistant/new`);
+  //     }
+  //   }
 
-    window.addEventListener("keydown", handleNewConvoShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleNewConvoShortcut);
-    };
-  }, [owner.sId, router]);
+  //   window.addEventListener("keydown", handleNewConvoShortcut);
+  //   return () => {
+  //     window.removeEventListener("keydown", handleNewConvoShortcut);
+  //   };
+  // }, [owner.sId, router]);
 
   const isNewConversation = !currentConversationId;
 
@@ -330,6 +339,26 @@ export default function AssistantConversation({
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
 
+  const onStickyMentionsChange = useCallback(
+    (mentions: AgentMention[]) => {
+      console.log(">> mentionssssss:", mentions);
+      setStickyMentions(mentions);
+    },
+    [setStickyMentions]
+  );
+
+  const previousCallbackRef = useRef<any>();
+  useEffect(() => {
+    if (previousCallbackRef.current !== onStickyMentionsChange) {
+      console.log("onStickyMentionsChange was recreated");
+    }
+    previousCallbackRef.current = onStickyMentionsChange;
+  }, [onStickyMentionsChange]);
+
+  useEffect(() => {
+    console.log(">> onStickyMentionsChange changed (1)");
+  }, [onStickyMentionsChange]);
+
   return (
     <>
       {/* // TODO: Do not display when loading existing conversation. */}
@@ -350,10 +379,7 @@ export default function AssistantConversation({
             user={user}
             conversationId={currentConversationId}
             // TODO: Fix rendering loop with sticky mentions!
-            onStickyMentionsChange={(mentions) => {
-              console.log("coucou!!!", mentions);
-              // setStickyMentions(mentions);
-            }}
+            onStickyMentionsChange={onStickyMentionsChange}
             key={currentConversationId}
           />
         ) : (

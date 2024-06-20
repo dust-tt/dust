@@ -208,27 +208,44 @@ const ConversationViewer = React.forwardRef<
       isValidating,
     ]);
 
+    useEffect(() => {
+      console.log(">> onStickyMentionsChange changed", onStickyMentionsChange);
+    }, [onStickyMentionsChange]);
+
+    useEffect(() => {
+      console.log(">> user.id changed");
+    }, [user.id]);
+
+    const lastUserMessage = useMemo(() => {
+      console.log(">> latestPage updated", latestPage);
+      return latestPage?.messages.findLast(
+        (message) =>
+          isUserMessageType(message) &&
+          message.visibility !== "deleted" &&
+          message.user?.id === user.id
+      );
+    }, [latestPage, user.id]);
+
+    const agentMentions = useMemo(() => {
+      console.log(">> II recompute agentMentions", lastUserMessage);
+      if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+        return [];
+      }
+      return lastUserMessage.mentions.filter(isAgentMention);
+    }, [lastUserMessage]);
+
     // Handle sticky mentions changes.
     useEffect(() => {
       if (!onStickyMentionsChange) {
         return;
       }
 
-      const lastUserMessage = latestPage?.messages.findLast(
-        (message) =>
-          isUserMessageType(message) &&
-          message.visibility !== "deleted" &&
-          message.user?.id === user.id
-      );
-
-      if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
-        return;
+      console.log(" II useEffect sticky", agentMentions);
+      if (agentMentions.length > 0) {
+        console.log(">> II  updating sticky mentions!", agentMentions);
+        onStickyMentionsChange(agentMentions);
       }
-
-      const { mentions } = lastUserMessage;
-      const agentMentions = mentions.filter(isAgentMention);
-      onStickyMentionsChange(agentMentions);
-    }, [latestPage, onStickyMentionsChange, user.id]);
+    }, [agentMentions, onStickyMentionsChange]);
 
     const { ref: viewRef, inView: isTopOfListVisible } = useInView();
 
