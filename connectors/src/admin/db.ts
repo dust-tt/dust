@@ -20,7 +20,6 @@ import {
   GoogleDriveFolders,
   GoogleDriveSheet,
   GoogleDriveSyncToken,
-  GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import {
   IntercomArticle,
@@ -82,7 +81,6 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
-  await GoogleDriveWebhook.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });

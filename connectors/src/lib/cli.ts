@@ -46,11 +46,7 @@ import {
   launchGithubCodeSyncWorkflow,
   launchGithubFullSyncWorkflow,
 } from "@connectors/connectors/github/temporal/client";
-import { registerWebhooksForAllDrives } from "@connectors/connectors/google_drive/lib";
-import {
-  launchGoogleDriveIncrementalSyncWorkflow,
-  launchGoogleDriveRenewWebhooksWorkflow,
-} from "@connectors/connectors/google_drive/temporal/client";
+import { launchGoogleDriveIncrementalSyncWorkflow } from "@connectors/connectors/google_drive/temporal/client";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getAuthObject,
@@ -753,10 +749,7 @@ export const google_drive = async ({
       });
       return { status: res.status, content: res.data, type: typeof res.data };
     }
-    case "restart-google-webhooks": {
-      await throwOnError(launchGoogleDriveRenewWebhooksWorkflow());
-      return { success: true };
-    }
+
     case "start-incremental-sync": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
@@ -846,61 +839,7 @@ export const google_drive = async ({
 
       return { success: true };
     }
-    case "register-webhook": {
-      // Re-register a webhook for a given connectors. Used for selected connectors who eneded up
-      // without GoogleDriveWebhook.
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
-      }
 
-      const connector = await ConnectorResource.findByDataSourceAndConnection({
-        workspaceId: args.wId,
-        dataSourceName: args.dataSourceName,
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
-        );
-      }
-      const maxRenewalTime = new Date().getTime();
-      const res = await registerWebhooksForAllDrives({
-        connector,
-        maxRenewalTime,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-      return { success: true };
-    }
-    case "register-all-webhooks": {
-      const connectors = await ConnectorResource.listByType("google_drive", {});
-      for (const connector of connectors) {
-        if (connector.errorType !== null) {
-          logger.info(
-            { connectorId: connector.id, errorType: connector.errorType },
-            "Skipping connector with error"
-          );
-          continue;
-        }
-        const maxRenewalTime = new Date().getTime();
-        const res = await registerWebhooksForAllDrives({
-          connector,
-          maxRenewalTime,
-        });
-        if (res.isErr()) {
-          // error registering for this webhook, but we need to keep going
-          // for the other ones.
-          logger.error(
-            { connectorId: connector.id, error: res.error },
-            `Failed to register webhooks for connector`
-          );
-        }
-      }
-      return { success: true };
-    }
     default:
       throw new Error("Unknown google command: " + command);
   }

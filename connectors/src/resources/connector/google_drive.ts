@@ -8,7 +8,6 @@ import {
   GoogleDriveFiles,
   GoogleDriveFolders,
   GoogleDriveSyncToken,
-  GoogleDriveWebhook,
 } from "@connectors/lib/models/google_drive";
 import type {
   ConnectorProviderStrategy,
@@ -55,12 +54,6 @@ export class GoogleDriveConnectorStrategy implements ConnectorProviderStrategy {
     });
 
     await GoogleDriveSyncToken.destroy({
-      where: {
-        connectorId: connector.id,
-      },
-      transaction,
-    });
-    await GoogleDriveWebhook.destroy({
       where: {
         connectorId: connector.id,
       },
