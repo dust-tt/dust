@@ -361,6 +361,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
+  // TODO:
   actions = INPUT_BAR_ACTIONS.slice(),
   disableAutoFocus = false,
 }: {
@@ -377,7 +378,10 @@ export function FixedAssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl duration-700 animate-in fade-in sm:pb-8">
+    <div
+      className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8"
+      id="assistant-input-header"
+    >
       <AssistantInputBar
         owner={owner}
         onSubmit={onSubmit}
