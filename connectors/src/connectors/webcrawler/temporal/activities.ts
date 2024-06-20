@@ -3,7 +3,7 @@ import type { ModelId } from "@dust-tt/types";
 import { WEBCRAWLER_MAX_DEPTH, WEBCRAWLER_MAX_PAGES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
-import { CheerioCrawler, Configuration } from "crawlee";
+import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
 import { Op } from "sequelize";
 import turndown from "turndown";
 
@@ -337,6 +337,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     new Configuration({
       purgeOnStart: true,
       persistStorage: false,
+      logLevel: LogLevel.OFF,
     })
   );
 
