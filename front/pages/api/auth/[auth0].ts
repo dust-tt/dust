@@ -15,10 +15,14 @@ const isString = (value: unknown): value is string => typeof value === "string";
 
 export default handleAuth({
   login: handleLogin((req) => {
-    const { connection, screen_hint } =
+    const { connection, screen_hint, login_hint } =
       "query" in req
         ? req.query
-        : { connection: undefined, screen_hint: undefined };
+        : {
+            connection: undefined,
+            login_hint: undefined,
+            screen_hint: undefined,
+          };
 
     const defaultAuthorizationParams: Partial<
       LoginOptions["authorizationParams"]
@@ -33,6 +37,10 @@ export default handleAuth({
 
     if (isString(screen_hint) && screen_hint === "signup") {
       defaultAuthorizationParams.screen_hint = screen_hint;
+    }
+
+    if (isString(login_hint)) {
+      defaultAuthorizationParams.login_hint = login_hint;
     }
 
     return {
