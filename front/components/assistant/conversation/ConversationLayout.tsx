@@ -35,8 +35,9 @@ export default function ConversationLayout({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [detailViewContent, setDetailViewContent] = useState("");
-  const [activeConversationId, setActiveConversationId] =
-    useState(conversationId);
+  const [activeConversationId, setActiveConversationId] = useState(
+    conversationId !== "new" ? conversationId : null
+  );
 
   const handleCloseModal = () => {
     const currentPathname = router.pathname;
@@ -65,7 +66,8 @@ export default function ConversationLayout({
       if (
         conversationId &&
         typeof conversationId === "string" &&
-        conversationId !== activeConversationId
+        conversationId !== activeConversationId &&
+        conversationId !== "new"
       ) {
         setActiveConversationId(conversationId);
       }

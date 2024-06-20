@@ -31,6 +31,7 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { NewConversationWrapper } from "@app/components/assistant/conversation/NewConversationWrapper";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -249,33 +250,33 @@ export function ConversationContainer({
       <Transition
         show={!!activeConversationId}
         as={Fragment}
-        enter="transition-all duration-2000 ease-out" // Removed opacity and transform transitions
+        enter="transition-all duration-500 ease-out"
         enterFrom="flex-none w-full h-0"
         enterTo="flex flex-1 w-full"
-        leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
+        leave="transition-all duration-0 ease-out"
         leaveFrom="flex flex-1 w-full"
         leaveTo="flex-none w-full h-0"
       >
-        {/* // TODO: Fix css classes */}
         {activeConversationId ? (
           <ConversationViewer
             owner={owner}
             user={user}
             conversationId={activeConversationId}
-            // TODO: Fix rendering loop with sticky mentions!
+            // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
             onStickyMentionsChange={onStickyMentionsChange}
           />
         ) : (
           <div></div>
         )}
       </Transition>
+
       <Transition
         as={Fragment}
         show={!activeConversationId}
-        enter="transition-opacity duration-2000 ease-out"
+        enter="transition-opacity duration-100 ease-out"
         enterFrom="opacity-0"
         enterTo="opacity-100"
-        leave="transition-opacity duration-2000 ease-out"
+        leave="transition-opacity duration-100 ease-out"
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
@@ -287,12 +288,14 @@ export function ConversationContainer({
           <Page.SectionHeader title="Start a conversation" />
         </div>
       </Transition>
+
       <FixedAssistantInputBar
         owner={owner}
         onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}
       />
+
       <Transition
         show={!activeConversationId}
         enter="transition-opacity duration-100 ease-out"
@@ -310,6 +313,10 @@ export function ConversationContainer({
           owner={owner}
         />
       </Transition>
+
+      {activeConversationId !== "new" && (
+        <NewConversationWrapper owner={owner} user={user} />
+      )}
 
       <ReachedLimitPopup
         isOpened={planLimitReached}

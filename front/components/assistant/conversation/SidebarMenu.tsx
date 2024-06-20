@@ -85,7 +85,7 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
               onClick={() => {
                 setSidebarOpen(false);
                 if (
-                  router.pathname === "/w/[wId]/assistant/new" &&
+                  router.pathname === "/w/[wId]/assistant/[cId]" &&
                   triggerInputAnimation
                 ) {
                   triggerInputAnimation();

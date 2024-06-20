@@ -87,8 +87,6 @@ const ConversationViewer = React.forwardRef<
     },
     ref
   ) => {
-    console.log(">> conversationId:", conversationId);
-
     const {
       conversation,
       isConversationError,

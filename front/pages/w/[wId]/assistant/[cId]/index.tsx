@@ -43,7 +43,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  // TODO: We are missing some here.
   const { cId } = context.params;
 
   return {
@@ -73,12 +72,12 @@ export default function AssistantConversation({
     const conversationId =
       typeof cId === "string" && cId !== "new" ? cId : null;
 
-    // Set conversation id as key if it exists.
     if (conversationId && initialConversationId) {
+      // Set conversation id as key if it exists.
       setConversationKey(conversationId);
     } else if (!conversationId && !initialConversationId) {
-      // Otherwise, set to new.
-      setConversationKey("new");
+      // Force re-render by setting a new key with a random number.
+      setConversationKey(`new_${Math.random() * 1000}`);
     }
   }, [router.query, setConversationKey, initialConversationId]);
 
