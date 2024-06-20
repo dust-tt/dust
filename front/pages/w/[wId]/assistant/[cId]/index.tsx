@@ -1,6 +1,7 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
   AgentMessageWithRankType,
+  LightAgentConfigurationType,
   UserMessageWithRankType,
   UserType,
 } from "@dust-tt/types";
@@ -10,13 +11,21 @@ import { cloneDeep } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { Fragment, useCallback, useContext, useEffect, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
   createConversationWithMessage,
@@ -29,6 +38,7 @@ import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConversationMessages } from "@app/lib/swr";
+import { AssistantBrowserContainer } from "@app/pages/w/[wId]/assistant/AssistantBrowerContainer";
 
 const { URL = "", GA_TRACKING_ID = "" } = process.env;
 
@@ -105,6 +115,7 @@ export function updateMessagePagesWithOptimisticData(
 }
 
 export default function AssistantConversation({
+  conversationId: initialConversationId,
   owner,
   subscription,
   user,
@@ -117,7 +128,10 @@ export default function AssistantConversation({
 
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
-  >(null);
+  >(initialConversationId);
+
+  const { animate, setAnimate, setSelectedAssistant } =
+    useContext(InputBarContext);
 
   console.log(">> currentConversationId:", currentConversationId);
 
@@ -272,6 +286,42 @@ export default function AssistantConversation({
   );
 
   useEffect(() => {
+    if (animate) {
+      setTimeout(() => setAnimate(false), 500);
+    }
+  });
+
+  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
+
+  const setInputbarMention = useCallback(
+    (agent: LightAgentConfigurationType) => {
+      setSelectedAssistant({
+        configurationId: agent.sId,
+      });
+      setAnimate(true);
+    },
+    [setSelectedAssistant, setAnimate]
+  );
+
+  useEffect(() => {
+    const scrollContainerElement = document.getElementById(
+      "assistant-input-header"
+    );
+    if (scrollContainerElement) {
+      const observer = new IntersectionObserver(
+        () => {
+          if (assistantToMention.current) {
+            setInputbarMention(assistantToMention.current);
+            assistantToMention.current = null;
+          }
+        },
+        { threshold: 0.8 }
+      );
+      observer.observe(scrollContainerElement);
+    }
+  }, [setAnimate, setInputbarMention]);
+
+  useEffect(() => {
     console.log(">> currentConversationId has Changed!!");
   }, [currentConversationId]);
 
@@ -286,7 +336,7 @@ export default function AssistantConversation({
       <Transition
         show={!!currentConversationId}
         as={Fragment}
-        enter="transition-all duration-700 ease-out" // Removed opacity and transform transitions
+        enter="transition-all duration-500 ease-out" // Removed opacity and transform transitions
         enterFrom="flex-none w-full h-0"
         enterTo="flex flex-1 w-full"
         leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
@@ -301,7 +351,8 @@ export default function AssistantConversation({
             conversationId={currentConversationId}
             // TODO: Fix rendering loop with sticky mentions!
             onStickyMentionsChange={(mentions) => {
-              console.log("coucou!!!");
+              console.log("coucou!!!", mentions);
+              // setStickyMentions(mentions);
             }}
             key={currentConversationId}
           />
@@ -311,10 +362,10 @@ export default function AssistantConversation({
       </Transition>
       <Transition
         show={!currentConversationId}
-        enter="transition-opacity duration-200 ease-out"
+        enter="transition-opacity duration-100 ease-out"
         enterFrom="opacity-0"
         enterTo="opacity-100"
-        leave="transition-opacity duration-200 ease-out"
+        leave="transition-opacity duration-100 ease-out"
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
@@ -332,6 +383,35 @@ export default function AssistantConversation({
         stickyMentions={stickyMentions}
         conversationId={currentConversationId}
       />
+      <Transition
+        show={!currentConversationId}
+        enter="transition-opacity duration-100 ease-out"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-100 ease-out"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
+        <AssistantBrowserContainer
+          onAgentConfigurationClick={
+            setInputbarMention
+            // setStickyMentions((prevMentions) => {
+            //   console.log(">> prevMentions:", prevMentions);
+            //   // TODO: Make distinct
+            //   prevMentions.push({ configurationId: agent.sId });
+
+            //   console.log(">> newMentions:", agent);
+
+            //   return prevMentions;
+            // })
+          }
+          setAssistantToMention={(assistant) =>
+            (assistantToMention.current = assistant)
+          }
+          owner={owner}
+        />
+      </Transition>
+
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}

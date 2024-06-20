@@ -827,6 +827,45 @@ export function useAgentConfigurations({
   };
 }
 
+export function useProgressiveAgentConfigurations({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const {
+    agentConfigurations: initialAgentConfigurations,
+    isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
+  } = useAgentConfigurations({
+    workspaceId,
+    agentsGetView: "assistants-search",
+    limit: 24,
+    includes: ["usage"],
+  });
+
+  const {
+    agentConfigurations: agentConfigurationsWithAuthors,
+    isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+    mutateAgentConfigurations,
+  } = useAgentConfigurations({
+    workspaceId,
+    agentsGetView: "assistants-search",
+    includes: ["authors", "usage"],
+  });
+
+  const isLoading =
+    isInitialAgentConfigurationsLoading ||
+    isAgentConfigurationsWithAuthorsLoading;
+  const agentConfigurations = isAgentConfigurationsWithAuthorsLoading
+    ? initialAgentConfigurations
+    : agentConfigurationsWithAuthors;
+
+  return {
+    agentConfigurations,
+    isLoading,
+    mutateAgentConfigurations,
+  };
+}
+
 /*
  * Agent configurations for poke. Currently only supports archived assistant.
  * A null agentsGetView means no fetching
