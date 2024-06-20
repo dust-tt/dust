@@ -1745,6 +1745,7 @@ async function* streamRunAgentEvents(
       case "agent_generation_success":
         // Store message in database.
         await agentMessageRow.update({
+          runId: event.runId,
           content: event.text,
         });
         yield event;

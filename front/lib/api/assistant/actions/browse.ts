@@ -218,7 +218,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       return;
     }
 
-    const { eventStream } = browseRes.value;
+    const { eventStream, dustRunId } = browseRes.value;
     let output: BrowseActionOutputType | null = null;
 
     for await (const event of eventStream) {
@@ -299,6 +299,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     // Update ProcessAction with the output of the last block.
     await action.update({
       output,
+      runId: await dustRunId,
     });
 
     logger.info(

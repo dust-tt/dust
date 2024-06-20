@@ -90,6 +90,7 @@ export class AgentDustAppRunAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare dustAppRunConfigurationId: string;
 
@@ -122,7 +123,10 @@ AgentDustAppRunAction.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     dustAppRunConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,
