@@ -41,6 +41,7 @@ import {
   ActionWebNavigation,
   isActionWebsearchValid as isActionWebNavigationValid,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
+import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
@@ -100,14 +101,6 @@ export function isActionValid(
   }
 }
 
-function isIncompleteLegacyConfiguration(
-  builderState: AssistantBuilderState
-): boolean {
-  return (
-    builderState.actions.length === 1 && !builderState.actions[0].description
-  );
-}
-
 export default function ActionsScreen({
   owner,
   builderState,
@@ -129,7 +122,7 @@ export default function ActionsScreen({
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
 }) {
-  const isLegacyConfig = isIncompleteLegacyConfiguration(builderState);
+  const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
   const updateAction = useCallback(
     function _updateAction({

@@ -29,12 +29,10 @@ export function usePreviewAssistant({
   owner,
   builderState,
   isPreviewOpened,
-  multiActionsMode,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   isPreviewOpened: boolean;
-  multiActionsMode: boolean;
 }): {
   shouldAnimate: boolean;
   isFading: boolean; // Add isFading to the return type
@@ -101,7 +99,6 @@ export function usePreviewAssistant({
         slackChannelsLinkedWithAgent: [],
       },
       isDraft: true,
-      useMultiActions: multiActionsMode,
     });
 
     if (!aRes.isOk()) {
@@ -132,7 +129,6 @@ export function usePreviewAssistant({
     builderState.actions,
     builderState.maxToolsUsePerRun,
     builderState.templateId,
-    multiActionsMode,
     sendNotification,
   ]);
 

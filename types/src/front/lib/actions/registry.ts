@@ -28,21 +28,6 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "assistant-v2-inputs-generator": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "f4816b1e13",
-      appHash:
-        "96544446491e8f878b3455311e2827f40d6da895db7a6b5f321b972bbeecef54",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: "auto",
-        use_cache: false,
-      },
-    },
-  },
   "assistant-v2-title-generator": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -92,22 +77,6 @@ export const DustProdActionRegistry = createActionRegistry({
         // `provider_id` and `model_id` must be set by caller.
         function_call: "extract_data",
         use_cache: false,
-      },
-    },
-  },
-  "assistant-v2-generator": {
-    app: {
-      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
-      appId: "6a27050429",
-      appHash:
-        "b0b25be4fb6ed264b4240a61117a940c5b366babaa1e0711218eded7428e0ace",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        function_call: null,
-        use_cache: false,
-        use_stream: true,
       },
     },
   },

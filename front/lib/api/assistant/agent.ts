@@ -116,7 +116,10 @@ export async function* runMultiActionsAgentLoop(
 > {
   const now = Date.now();
 
-  for (let i = 0; i < configuration.maxToolsUsePerRun + 1; i++) {
+  const isLegacyAgent = isLegacyAgentConfiguration(configuration);
+  const maxToolsUsePerRun = isLegacyAgent ? 1 : configuration.maxToolsUsePerRun;
+
+  for (let i = 0; i < maxToolsUsePerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
@@ -125,9 +128,8 @@ export async function* runMultiActionsAgentLoop(
 
     localLogger.info("Starting multi-action loop iteration");
 
-    const isLastGenerationIteration = i === configuration.maxToolsUsePerRun;
+    const isLastGenerationIteration = i === maxToolsUsePerRun;
 
-    const isLegacyAgent = isLegacyAgentConfiguration(configuration);
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
@@ -420,7 +422,8 @@ export async function* runMultiActionsAgent(
     DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
   if (isLegacyAgent) {
-    config.MODEL.function_call = specifications[0].name;
+    config.MODEL.function_call =
+      specifications.length === 1 ? specifications[0].name : null;
   } else {
     config.MODEL.function_call = specifications.length === 0 ? null : "auto";
   }

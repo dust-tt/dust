@@ -27,7 +27,6 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { SharingButton } from "@app/components/assistant/Sharing";
-import ActionScreen from "@app/components/assistant_builder/ActionScreen";
 import ActionsScreen, {
   isActionValid,
 } from "@app/components/assistant_builder/ActionsScreen";
@@ -82,7 +81,6 @@ export default function AssistantBuilder({
   defaultIsEdited,
   baseUrl,
   defaultTemplate,
-  multiActionsEnabled,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -306,7 +304,6 @@ export default function AssistantBuilder({
         selectedSlackChannels: selectedSlackChannels || [],
         slackChannelsLinkedWithAgent,
       },
-      useMultiActions: multiActionsEnabled,
     });
 
     if (res.isErr()) {
@@ -332,17 +329,15 @@ export default function AssistantBuilder({
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(BUILDER_SCREENS).map(
-        ([key, { label, labelMultiActions, icon }]) => ({
-          label: multiActionsEnabled ? labelMultiActions : label,
-          current: screen === key,
-          onClick: () => {
-            setScreen(key as BuilderScreen);
-          },
-          icon,
-        })
-      ),
-    [screen, multiActionsEnabled]
+      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
+        label,
+        current: screen === key,
+        onClick: () => {
+          setScreen(key as BuilderScreen);
+        },
+        icon,
+      })),
+    [screen]
   );
   const modalTitle = agentConfigurationId
     ? `Edit @${builderState.handle}`
@@ -424,32 +419,19 @@ export default function AssistantBuilder({
                       />
                     );
                   case "actions":
-                    // TODO(@fontanierh): Remove single actions.
-                    if (!multiActionsEnabled) {
-                      return (
-                        <ActionScreen
-                          owner={owner}
-                          builderState={builderState}
-                          dataSources={dataSources}
-                          dustApps={dustApps}
-                          setBuilderState={setBuilderState}
-                          setEdited={setEdited}
-                        />
-                      );
-                    } else {
-                      return (
-                        <ActionsScreen
-                          owner={owner}
-                          builderState={builderState}
-                          dataSources={dataSources}
-                          dustApps={dustApps}
-                          setBuilderState={setBuilderState}
-                          setEdited={setEdited}
-                          setAction={setAction}
-                          pendingAction={pendingAction}
-                        />
-                      );
-                    }
+                    return (
+                      <ActionsScreen
+                        owner={owner}
+                        builderState={builderState}
+                        dataSources={dataSources}
+                        dustApps={dustApps}
+                        setBuilderState={setBuilderState}
+                        setEdited={setEdited}
+                        setAction={setAction}
+                        pendingAction={pendingAction}
+                      />
+                    );
+
                   case "naming":
                     return (
                       <NamingScreen
@@ -518,14 +500,13 @@ export default function AssistantBuilder({
                 setEdited(true);
               }}
               resetToTemplateActions={async () => {
-                resetToTemplateActions(setBuilderState, multiActionsEnabled);
+                resetToTemplateActions(setBuilderState);
                 setEdited(true);
               }}
               owner={owner}
               rightPanelStatus={rightPanelStatus}
               openRightPanelTab={openRightPanelTab}
               builderState={builderState}
-              multiActionsMode={multiActionsEnabled}
               setAction={setAction}
             />
           }

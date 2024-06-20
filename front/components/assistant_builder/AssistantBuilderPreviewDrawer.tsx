@@ -49,7 +49,6 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus,
   openRightPanelTab,
   builderState,
-  multiActionsMode,
   setAction,
 }: {
   screen: BuilderScreen;
@@ -61,7 +60,6 @@ export default function AssistantBuilderRightPanel({
   rightPanelStatus: AssistantBuilderRightPanelStatus;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
-  multiActionsMode: boolean;
   setAction: (action: AssistantBuilderSetActionType) => void;
 }) {
   const tabsConfig = useMemo(
@@ -94,7 +92,6 @@ export default function AssistantBuilderRightPanel({
     owner,
     builderState,
     isPreviewOpened: rightPanelStatus.tab === "Preview",
-    multiActionsMode,
   });
 
   const { user } = useUser();
@@ -196,7 +193,6 @@ export default function AssistantBuilderRightPanel({
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
-                  multiActionsMode={multiActionsMode}
                 />
               </div>
               <Page.Separator />
@@ -212,11 +208,7 @@ export default function AssistantBuilderRightPanel({
               <div className="flex items-end justify-between pt-2">
                 <Page.Header
                   icon={LightbulbIcon}
-                  title={
-                    multiActionsMode
-                      ? "Template's Tools manual"
-                      : "Template's Actions manual"
-                  }
+                  title={"Template's Tools manual"}
                 />
                 <TemplateDropDownMenu
                   screen={screen}
@@ -224,7 +216,6 @@ export default function AssistantBuilderRightPanel({
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
                   openRightPanelTab={openRightPanelTab}
-                  multiActionsMode={multiActionsMode}
                 />
               </div>
               <Page.Separator />
@@ -241,38 +232,36 @@ export default function AssistantBuilderRightPanel({
                     <Separator />
                   </>
                 )}
-                {template &&
-                  multiActionsMode &&
-                  template.presetActions.length > 0 && (
-                    <div className="flex flex-col gap-6">
-                      <Page.SectionHeader title="Add those tools" />
-                      {template.presetActions.map((presetAction, index) => (
-                        <div className="flex flex-col gap-2" key={index}>
-                          <div>{presetAction.help}</div>
-                          <TemplateAddActionButton
-                            action={presetAction}
-                            addAction={(presetAction) => {
-                              const action = getDefaultActionConfiguration(
-                                presetAction.type
-                              );
-                              if (!action) {
-                                // Unreachable
-                                return;
-                              }
-                              action.name = presetAction.name;
-                              action.description = presetAction.description;
-                              setAction({
-                                type: action.noConfigurationRequired
-                                  ? "insert"
-                                  : "pending",
-                                action,
-                              });
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                {template && template.presetActions.length > 0 && (
+                  <div className="flex flex-col gap-6">
+                    <Page.SectionHeader title="Add those tools" />
+                    {template.presetActions.map((presetAction, index) => (
+                      <div className="flex flex-col gap-2" key={index}>
+                        <div>{presetAction.help}</div>
+                        <TemplateAddActionButton
+                          action={presetAction}
+                          addAction={(presetAction) => {
+                            const action = getDefaultActionConfiguration(
+                              presetAction.type
+                            );
+                            if (!action) {
+                              // Unreachable
+                              return;
+                            }
+                            action.name = presetAction.name;
+                            action.description = presetAction.description;
+                            setAction({
+                              type: action.noConfigurationRequired
+                                ? "insert"
+                                : "pending",
+                              action,
+                            });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -312,14 +301,12 @@ const TemplateDropDownMenu = ({
   resetToTemplateInstructions,
   resetToTemplateActions,
   openRightPanelTab,
-  multiActionsMode,
 }: {
   screen: BuilderScreen;
   removeTemplate: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-  multiActionsMode: boolean;
 }) => {
   const confirm = useContext(ConfirmContext);
 
@@ -373,18 +360,13 @@ const TemplateDropDownMenu = ({
         )}
         {screen === "actions" && (
           <DropdownMenu.Item
-            label={multiActionsMode ? "Reset tools" : "Reset actions"}
-            description={
-              multiActionsMode
-                ? "Remove all tools"
-                : "Set actions back to template's default"
-            }
+            label={"Reset tools"}
+            description={"Remove all tools"}
             onClick={async () => {
               const confirmed = await confirm({
                 title: "Are you sure?",
-                message: multiActionsMode
-                  ? "You will lose the changes you have made to the assistant's tools."
-                  : "You will lose the changes you have made to the assistant's actions and go back to the template's default settings.",
+                message:
+                  "You will lose the changes you have made to the assistant's tools.",
                 validateVariant: "primaryWarning",
               });
               if (confirmed) {

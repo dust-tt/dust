@@ -32,7 +32,7 @@ import {
 } from "@app/lib/api/assistant/actions/retrieval";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { constructPrompt } from "@app/lib/api/assistant/generation";
+import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -230,7 +230,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }),
     };
 
-    const prompt = await constructPrompt(
+    const prompt = await constructPromptMultiActions(
       auth,
       userMessage,
       agentConfiguration,

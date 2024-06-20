@@ -5,16 +5,16 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok, removeNulls } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { SlackChannel } from "@app/components/assistant/SlackIntegration";
+import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { getDefaultAssistantState } from "@app/components/assistant_builder/types";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
@@ -30,7 +30,6 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
-  useMultiActions,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -40,7 +39,6 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
-  useMultiActions: boolean;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -181,6 +179,8 @@ export async function submitAssistantBuilderForm({
 
   const actionParams: ActionsType = builderState.actions.flatMap(map);
 
+  const isLegacyAgent = isLegacyAssistantBuilderConfiguration(builderState);
+
   const body: t.TypeOf<typeof PostOrPatchAgentConfigurationRequestBodySchema> =
     {
       assistant: {
@@ -190,21 +190,17 @@ export async function submitAssistantBuilderForm({
         instructions: instructions.trim(),
         status: isDraft ? "draft" : "active",
         scope: builderState.scope,
-        actions: useMultiActions
-          ? actionParams
-          : removeNulls([actionParams[0]]),
+        actions: actionParams,
         model: {
           modelId: builderState.generationSettings.modelSettings.modelId,
           providerId: builderState.generationSettings.modelSettings.providerId,
           temperature: builderState.generationSettings.temperature,
         },
-        maxToolsUsePerRun: useMultiActions
-          ? builderState.maxToolsUsePerRun ??
-            getDefaultAssistantState().maxToolsUsePerRun
-          : undefined,
+        maxToolsUsePerRun: isLegacyAgent
+          ? undefined
+          : builderState.maxToolsUsePerRun ?? undefined,
         templateId: builderState.templateId,
       },
-      useMultiActions,
     };
 
   const res = await fetch(
