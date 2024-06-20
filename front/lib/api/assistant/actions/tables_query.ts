@@ -397,6 +397,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       type: "tables_query_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
+      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new TablesQueryAction({
         id: action.id,

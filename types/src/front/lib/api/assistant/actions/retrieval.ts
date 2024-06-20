@@ -28,6 +28,7 @@ export type RetrievalSuccessEvent = {
   type: "retrieval_success";
   created: number;
   configurationId: string;
+  runId: string;
   messageId: string;
   action: RetrievalActionType;
 };

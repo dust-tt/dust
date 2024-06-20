@@ -70,6 +70,7 @@ export type AgentActionSpecificEvent =
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
   type: "agent_action_success";
+  runId: string;
   created: number;
   configurationId: string;
   messageId: string;
@@ -83,7 +84,7 @@ export type AgentGenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
-  runId: string | null;
+  runId: string;
 };
 
 // Event sent to stop the generation.

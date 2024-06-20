@@ -625,6 +625,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       type: "retrieval_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
+      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new RetrievalAction({
         id: action.id,

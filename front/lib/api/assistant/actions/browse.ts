@@ -315,6 +315,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       type: "browse_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
+      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new BrowseAction({
         id: action.id,

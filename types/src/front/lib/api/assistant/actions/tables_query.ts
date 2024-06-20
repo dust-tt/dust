@@ -18,6 +18,7 @@ export type TablesQuerySuccessEvent = {
   type: "tables_query_success";
   created: number;
   configurationId: string;
+  runId: string;
   messageId: string;
   action: TablesQueryActionType;
 };

@@ -328,7 +328,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       return;
     }
 
-    const { eventStream } = runRes.value;
+    const { eventStream, dustRunId } = runRes.value;
     let lastBlockOutput: unknown | null = null;
 
     for await (const event of eventStream) {
@@ -396,6 +396,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     // Update DustAppRunAction with the output of the last block.
     await action.update({
+      runId: await dustRunId,
       output,
     });
 
@@ -412,6 +413,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       type: "dust_app_run_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
+      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new DustAppRunAction({
         id: action.id,
