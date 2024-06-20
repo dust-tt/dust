@@ -3,11 +3,21 @@ import type {
   ModelId,
   NangoConnectionId,
 } from "@dust-tt/types";
-import { assertNever, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import {
+  getChannelAsContentNode,
+  getDriveAsContentNode,
+  getFolderAsContentNode,
+  getSiteAsContentNode,
+  getTeamAsContentNode,
+} from "@connectors/connectors/microsoft/lib/content_nodes";
+import {
+  getChannels,
+  getDrives,
+  getFolders,
   getSites,
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -162,10 +172,53 @@ export const retrieveMicrosoftConnectorPermissions =
       "retrieveMicrosoftConnectorPermissions",
       connectorType,
       connectorId,
-      parentInternalId,
       viewType
     );
-    throw Error("Not implemented");
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Could not find connector with id ${connectorId}`)
+      );
+    }
+
+    const client = await getClient(connector.connectionId, connectorType);
+    const res = [];
+
+    if (!parentInternalId) {
+      if (connectorType === "ms_teams") {
+        res.push(
+          ...(await getTeams(client)).map((n) =>
+            getTeamAsContentNode(n, connectorType)
+          )
+        );
+      } else if (connectorType === "ms_sharepoint") {
+        res.push(
+          ...(await getSites(client)).map((n) =>
+            getSiteAsContentNode(n, connectorType)
+          )
+        );
+      }
+    } else if (parentInternalId.startsWith("team-")) {
+      res.push(
+        ...(await getChannels(client, parentInternalId.substring(5))).map((n) =>
+          getChannelAsContentNode(n, parentInternalId, connectorType)
+        )
+      );
+    } else if (parentInternalId.startsWith("site-")) {
+      res.push(
+        ...(await getDrives(client, parentInternalId.substring(5))).map((n) =>
+          getDriveAsContentNode(n, parentInternalId, connectorType)
+        )
+      );
+    } else if (parentInternalId.startsWith("drive-")) {
+      res.push(
+        ...(await getFolders(client, parentInternalId.substring(6))).map((n) =>
+          getFolderAsContentNode(n, parentInternalId, connectorType)
+        )
+      );
+    }
+
+    return new Ok(res);
   };
 
 export const setMicrosoftConnectorPermissions =
