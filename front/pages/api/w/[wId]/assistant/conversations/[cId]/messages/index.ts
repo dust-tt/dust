@@ -156,7 +156,7 @@ async function handler(
             fullName: user.fullName,
             email: user.email,
             profilePictureUrl: context.profilePictureUrl ?? user.image,
-            origin: context.origin,
+            origin: context.origin ?? "web",
           },
         },
         { resolveAfterFullGeneration: false }

@@ -71,7 +71,6 @@ export function createPlaceholderUserMessage({
       profilePictureUrl: image,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
       username,
-      origin: "web",
     },
   };
 }
@@ -237,7 +236,6 @@ export async function createConversationWithMessage({
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
-        origin: "web",
       },
       mentions,
     },
