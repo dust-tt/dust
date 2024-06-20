@@ -68,10 +68,11 @@ export default function ConversationLayout({
       if (
         conversationId &&
         typeof conversationId === "string" &&
-        conversationId !== activeConversationId &&
-        conversationId !== "new"
+        conversationId !== activeConversationId
       ) {
-        setActiveConversationId(conversationId);
+        setActiveConversationId(
+          conversationId !== "new" ? conversationId : null
+        );
       }
     };
 
