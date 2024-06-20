@@ -42,7 +42,7 @@ import {
   constructPromptMultiActions,
   renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
-import { runLegacyAgent } from "@app/lib/api/assistant/legacy_agent";
+import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import type { Authenticator } from "@app/lib/auth";
 import { redisClient } from "@app/lib/redis";
 import logger from "@app/logger/logger";
@@ -84,23 +84,13 @@ export async function* runAgent(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
-  const multiActions = owner.flags.includes("multi_actions");
-
-  const stream = !multiActions
-    ? runLegacyAgent(
-        auth,
-        fullConfiguration,
-        conversation,
-        userMessage,
-        agentMessage
-      )
-    : runMultiActionsAgentLoop(
-        auth,
-        fullConfiguration,
-        conversation,
-        userMessage,
-        agentMessage
-      );
+  const stream = runMultiActionsAgentLoop(
+    auth,
+    fullConfiguration,
+    conversation,
+    userMessage,
+    agentMessage
+  );
 
   for await (const event of stream) {
     yield event;
@@ -137,6 +127,7 @@ export async function* runMultiActionsAgentLoop(
 
     const isLastGenerationIteration = i === configuration.maxToolsUsePerRun;
 
+    const isLegacyAgent = isLegacyAgentConfiguration(configuration);
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
       // This will force the agent to run the generation.
@@ -152,6 +143,7 @@ export async function* runMultiActionsAgentLoop(
       agentMessage,
       availableActions: actions,
       isLastGenerationIteration,
+      isLegacyAgent,
     });
 
     for await (const event of loopIterationStream) {
@@ -284,6 +276,7 @@ export async function* runMultiActionsAgent(
     agentMessage,
     availableActions,
     isLastGenerationIteration,
+    isLegacyAgent,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -291,6 +284,7 @@ export async function* runMultiActionsAgent(
     agentMessage: AgentMessageType;
     availableActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
+    isLegacyAgent: boolean;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -425,7 +419,11 @@ export async function* runMultiActionsAgent(
   const config = cloneBaseConfig(
     DustProdActionRegistry["assistant-v2-multi-actions-agent"].config
   );
-  config.MODEL.function_call = specifications.length === 0 ? null : "auto";
+  if (isLegacyAgent) {
+    config.MODEL.function_call = specifications[0].name;
+  } else {
+    config.MODEL.function_call = specifications.length === 0 ? null : "auto";
+  }
   config.MODEL.provider_id = model.providerId;
   config.MODEL.model_id = model.modelId;
   config.MODEL.temperature = agentConfiguration.model.temperature;

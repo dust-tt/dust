@@ -2,6 +2,7 @@ import {
   BookOpenIcon,
   Button,
   CardButton,
+  ContentMessage,
   DropdownMenu,
   Icon,
   IconButton,
@@ -99,6 +100,14 @@ export function isActionValid(
   }
 }
 
+function isIncompleteLegacyConfiguration(
+  builderState: AssistantBuilderState
+): boolean {
+  return (
+    builderState.actions.length === 1 && !builderState.actions[0].description
+  );
+}
+
 export default function ActionsScreen({
   owner,
   builderState,
@@ -120,6 +129,8 @@ export default function ActionsScreen({
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
 }) {
+  const isLegacyConfig = isIncompleteLegacyConfiguration(builderState);
+
   const updateAction = useCallback(
     function _updateAction({
       actionName,
@@ -245,6 +256,7 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
+                  isLegacyConfig={isLegacyConfig}
                 />
               </div>
             )}
@@ -289,6 +301,7 @@ export default function ActionsScreen({
                     action,
                   });
                 }}
+                isLegacyConfig={isLegacyConfig}
               />
             </div>
           )}
@@ -460,7 +473,7 @@ function ActionCard({
             action.description ? "text-element-700" : "text-warning-500"
           )}
         >
-          {action.description || "Missing description"}
+          {action.description || "Missing description. Click to edit."}
         </div>
       </div>
     </CardButton>
@@ -788,14 +801,35 @@ function AdvancedSettings({
 function AddAction({
   owner,
   onAddAction,
+  isLegacyConfig,
 }: {
   owner: WorkspaceType;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
+  isLegacyConfig: boolean;
 }) {
   const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
     const flag = ACTION_SPECIFICATIONS[key].flag;
     return !flag || owner.flags.includes(flag);
   });
+
+  if (isLegacyConfig) {
+    return (
+      <DropdownMenu>
+        <DropdownMenu.Button>
+          <Button variant="primaryWarning" label="Add a tool" icon={PlusIcon} />
+        </DropdownMenu.Button>
+        <DropdownMenu.Items origin="bottomLeft" width={320} overflow="visible">
+          <ContentMessage
+            variant="red"
+            title="This assistant is using a legacy configuration."
+          >
+            To add new tools, you need to update the missing description of the
+            tool already configured.
+          </ContentMessage>
+        </DropdownMenu.Items>
+      </DropdownMenu>
+    );
+  }
 
   return (
     <DropdownMenu>
