@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  LightWorkspaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
 import React, { useMemo, useState } from "react";
@@ -25,7 +25,7 @@ import { subFilter } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 interface AssistantListProps {
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
   // for speed purposes, there is a partially loaded state for which we
   // can show a subset of the agents
