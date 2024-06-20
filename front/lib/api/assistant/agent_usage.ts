@@ -18,6 +18,7 @@ const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 const popularityComputationTimeframeSec = 2 * 60 * 60;
 
 const TTL_KEY_NOT_EXIST = -2;
+const TTL_KEY_NOT_SET = -1;
 
 type agentUsage = {
   agentId: string;
@@ -70,8 +71,11 @@ export async function getAgentsUsage({
     redis = providedRedis ?? (await redisClient());
     const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
-    // agent mention count doesn't exist
-    if (agentMessageCountTTL === TTL_KEY_NOT_EXIST) {
+    // agent mention count doesn't exist or wasn't set to expire
+    if (
+      agentMessageCountTTL === TTL_KEY_NOT_EXIST ||
+      agentMessageCountTTL === TTL_KEY_NOT_SET
+    ) {
       const [agentMessageCounts, userCounts] = await Promise.all([
         agentMentionsCount(owner.id),
         agentMentionsUserCount(owner.id),
@@ -307,7 +311,11 @@ export async function signalAgentUsage({
   try {
     redis = await redisClient();
     const { agentMessageCountKey } = _getUsageKeys(workspaceId);
-    await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
+    const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
+    if (agentMessageCountTTL !== TTL_KEY_NOT_EXIST) {
+      // We only want to increment if the counts have already been computed
+      await redis.hIncrBy(agentMessageCountKey, agentConfigurationId, 1);
+    }
   } finally {
     if (redis) {
       await redis.quit();
