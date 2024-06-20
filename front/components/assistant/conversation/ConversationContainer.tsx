@@ -71,7 +71,6 @@ export function ConversationContainer({
     limit: 50,
   });
 
-  // This should live at the input bar level!
   useEffect(() => {
     if (animate) {
       setTimeout(() => setAnimate(false), 500);
@@ -171,7 +170,6 @@ export function ConversationContainer({
             contentFragments,
           },
         });
-        // TODO: We need some optimistic ui!!!
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
             setPlanLimitReached(true);
