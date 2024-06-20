@@ -105,8 +105,6 @@ export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
-export const CLAUDE_3_SONNET_2024029_MODEL_ID =
-  "claude-3-sonnet-20240229" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
@@ -124,7 +122,6 @@ export const MODEL_IDS = [
   GPT_4O_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
-  CLAUDE_3_SONNET_2024029_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
