@@ -218,12 +218,9 @@ export function ConversationContainer({
       "assistant-input-header"
     );
 
-    console.log("> register observer", scrollContainerElement);
-
     if (scrollContainerElement) {
       const observer = new IntersectionObserver(
         () => {
-          console.log(">> trigger observer", assistantToMention);
           if (assistantToMention.current) {
             setInputbarMention(assistantToMention.current);
             assistantToMention.current = null;
@@ -291,8 +288,6 @@ export function ConversationContainer({
         </div>
       </Transition>
       <FixedAssistantInputBar
-        // Rely on key to re-render between conversation!
-        // key={initialConversationId ?? "new"}
         owner={owner}
         onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
         stickyMentions={stickyMentions}

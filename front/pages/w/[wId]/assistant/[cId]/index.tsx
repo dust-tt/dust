@@ -2,7 +2,7 @@ import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
 
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
@@ -96,8 +96,6 @@ export default function AssistantConversation({
       window.removeEventListener("keydown", handleNewConvoShortcut);
     };
   }, [owner.sId, router]);
-
-  const onConversationCreated = useCallback((conversationId) => {}, []);
 
   return (
     <ConversationContainer

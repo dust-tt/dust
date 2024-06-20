@@ -35,6 +35,8 @@ export default function ConversationLayout({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [detailViewContent, setDetailViewContent] = useState("");
+  const [activeConversationId, setActiveConversationId] =
+    useState(conversationId);
 
   const handleCloseModal = () => {
     const currentPathname = router.pathname;
@@ -52,10 +54,20 @@ export default function ConversationLayout({
   useEffect(() => {
     const handleRouteChange = () => {
       const assistantSId = router.query.assistantDetails ?? [];
+      const conversationId = router.query.cId ?? ""; // Watch conversationId as well
+
       if (assistantSId && typeof assistantSId === "string") {
         setDetailViewContent(assistantSId);
       } else {
         setDetailViewContent("");
+      }
+
+      if (
+        conversationId &&
+        typeof conversationId === "string" &&
+        conversationId !== activeConversationId
+      ) {
+        setActiveConversationId(conversationId);
       }
     };
 
@@ -66,11 +78,15 @@ export default function ConversationLayout({
     return () => {
       router.events.off("routeChangeComplete", handleRouteChange);
     };
-  }, [router.query, router.events]);
+  }, [
+    router.query,
+    router.events,
+    setActiveConversationId,
+    activeConversationId,
+  ]);
 
-  // This should not belong here!
   const { conversation } = useConversation({
-    conversationId,
+    conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
 
