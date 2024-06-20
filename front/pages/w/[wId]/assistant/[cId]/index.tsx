@@ -288,11 +288,12 @@ export default function AssistantConversation({
         as={Fragment}
         enter="transition-all duration-700 ease-out" // Removed opacity and transform transitions
         enterFrom="flex-none w-full h-0"
-        enterTo="flex grow w-full h-full"
+        enterTo="flex flex-1 w-full"
         leave="transition-all duration-0 ease-out" // Removed opacity and transform transitions
-        leaveFrom="flex grow w-full h-full"
+        leaveFrom="flex flex-1 w-full"
         leaveTo="flex-none w-full h-0"
       >
+        {/* // TODO: Fix css classes */}
         {currentConversationId ? (
           <ConversationViewer
             owner={owner}
