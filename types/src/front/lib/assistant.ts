@@ -311,55 +311,6 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     ],
   },
 };
-export const CLAUDE_3_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "anthropic",
-  modelId: CLAUDE_3_SONNET_2024029_MODEL_ID,
-  displayName: "Claude 3 Sonnet",
-  contextSize: 180_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
-  largeModel: true,
-  description:
-    "Anthropic Claude 3 Sonnet model, targeting balance between intelligence and speed for enterprise workloads.",
-  shortDescription: "Anthropic's balanced model.",
-  supportsMultiActions: true,
-  isLegacy: false,
-  delimitersConfiguration: {
-    incompleteDelimiterRegex: /<\/?[a-zA-Z_]*$/,
-    delimiters: [
-      {
-        openingPattern: "<thinking>",
-        closingPattern: "</thinking>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_reflection>",
-        closingPattern: "</search_quality_reflection>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<reflecting>",
-        closingPattern: "</reflecting>",
-        isChainOfThought: true,
-        swallow: false,
-      },
-      {
-        openingPattern: "<search_quality_score>",
-        closingPattern: "</search_quality_score>",
-        isChainOfThought: true,
-        swallow: true,
-      },
-      {
-        openingPattern: "<result>",
-        closingPattern: "</result>",
-        isChainOfThought: false,
-        swallow: false,
-      },
-    ],
-  },
-};
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_HAIKU_20240307_MODEL_ID,
