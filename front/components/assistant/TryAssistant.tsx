@@ -72,10 +72,10 @@ export function TryAssistantModal({
     >
       <div
         id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
-        className="h-full overflow-y-auto"
+        className="flex h-full w-full flex-col items-center overflow-y-auto"
       >
         <GenerationContextProvider>
-          {conversation && (
+          {conversation ? (
             <ConversationViewer
               owner={owner}
               user={user}
@@ -84,18 +84,19 @@ export function TryAssistantModal({
               isInModal
               key={conversation.sId}
             />
+          ) : (
+            // Empty div to prefill the data.
+            <div className="flex h-full flex-1"></div>
           )}
 
-          <div className="lg:[&>*]:left-0">
-            <FixedAssistantInputBar
-              owner={owner}
-              onSubmit={handleSubmit}
-              stickyMentions={stickyMentions}
-              conversationId={conversation?.sId || null}
-              additionalAgentConfiguration={assistant}
-              actions={["attachment"]}
-            />
-          </div>
+          <FixedAssistantInputBar
+            owner={owner}
+            onSubmit={handleSubmit}
+            stickyMentions={stickyMentions}
+            conversationId={conversation?.sId || null}
+            additionalAgentConfiguration={assistant}
+            actions={["attachment"]}
+          />
         </GenerationContextProvider>
       </div>
     </Modal>
