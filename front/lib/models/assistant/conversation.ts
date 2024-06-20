@@ -3,7 +3,6 @@ import type {
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
-  UserMessageOrigin,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -176,7 +175,6 @@ export class UserMessage extends Model<
   declare userContextFullName: string | null;
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
-  declare userContextOrigin: UserMessageOrigin | null;
 
   declare userId: ForeignKey<User["id"]> | null;
 }
@@ -220,10 +218,6 @@ UserMessage.init(
     },
     userContextProfilePictureUrl: {
       type: DataTypes.STRING(2048),
-      allowNull: true,
-    },
-    userContextOrigin: {
-      type: DataTypes.STRING,
       allowNull: true,
     },
   },

@@ -6,12 +6,6 @@ export const InternalPostMessagesRequestBodySchema = t.type({
   context: t.type({
     timezone: t.string,
     profilePictureUrl: t.union([t.string, t.null]),
-    origin: t.union([
-      t.literal("slack"),
-      t.literal("web"),
-      t.literal("api"),
-      t.null,
-    ]),
   }),
 });
 
