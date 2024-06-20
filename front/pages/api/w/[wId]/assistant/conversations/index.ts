@@ -165,7 +165,6 @@ async function handler(
               fullName: user.fullName,
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
-              origin: "web",
             },
           },
           { resolveAfterFullGeneration: false }

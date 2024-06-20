@@ -103,10 +103,7 @@ async function handler(
           conversation,
           content,
           mentions,
-          context: {
-            ...context,
-            origin: context.origin ?? "api",
-          },
+          context,
         },
         { resolveAfterFullGeneration: blocking === true }
       );
