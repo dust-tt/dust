@@ -250,7 +250,7 @@ export function ConversationContainer({
       <Transition
         show={!!activeConversationId}
         as={Fragment}
-        enter="transition-all duration-500 ease-out"
+        enter="transition-all duration-300 ease-out"
         enterFrom="flex-none w-full h-0"
         enterTo="flex flex-1 w-full"
         leave="transition-all duration-0 ease-out"
@@ -274,11 +274,11 @@ export function ConversationContainer({
         as={Fragment}
         show={!activeConversationId}
         enter="transition-opacity duration-100 ease-out"
-        enterFrom="opacity-0"
+        enterFrom="opacity-0 min-h-[20vh]"
         enterTo="opacity-100"
         leave="transition-opacity duration-100 ease-out"
         leaveFrom="opacity-100"
-        leaveTo="opacity-0"
+        leaveTo="opacity-0 min-h-[20vh]"
       >
         <div
           id="assistant-input-header"

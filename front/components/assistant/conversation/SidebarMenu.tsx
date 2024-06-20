@@ -84,10 +84,13 @@ export function AssistantSidebarMenu({ owner }: { owner: WorkspaceType }) {
               href={`/w/${owner.sId}/assistant/new`}
               onClick={() => {
                 setSidebarOpen(false);
-                if (
+                const { cId } = router.query;
+                const isNewConversation =
                   router.pathname === "/w/[wId]/assistant/[cId]" &&
-                  triggerInputAnimation
-                ) {
+                  typeof cId === "string" &&
+                  cId === "new";
+
+                if (isNewConversation && triggerInputAnimation) {
                   triggerInputAnimation();
                 }
               }}
