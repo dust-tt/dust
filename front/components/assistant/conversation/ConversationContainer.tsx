@@ -56,9 +56,7 @@ export function ConversationContainer({
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  // We should push through sticky mentions!
-  const { animate, setAnimate, setSelectedAssistant } =
-    useContext(InputBarContext);
+  const { animate, setAnimate } = useContext(InputBarContext);
 
   const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
 
@@ -199,12 +197,20 @@ export function ConversationContainer({
 
   const setInputbarMention = useCallback(
     (agent: LightAgentConfigurationType) => {
-      setSelectedAssistant({
-        configurationId: agent.sId,
+      setStickyMentions((prev) => {
+        const alreadyInStickyMention = prev.find(
+          (m) => m.configurationId === agent.sId
+        );
+
+        if (alreadyInStickyMention) {
+          return prev;
+        }
+
+        return [...prev, { configurationId: agent.sId }];
       });
       setAnimate(true);
     },
-    [setSelectedAssistant, setAnimate]
+    [setStickyMentions, setAnimate]
   );
 
   useEffect(() => {
@@ -261,8 +267,6 @@ export function ConversationContainer({
             conversationId={activeConversationId}
             // TODO: Fix rendering loop with sticky mentions!
             onStickyMentionsChange={onStickyMentionsChange}
-            // TODO:
-            // key={initialConversationId ?? "new"}
           />
         ) : (
           <div></div>

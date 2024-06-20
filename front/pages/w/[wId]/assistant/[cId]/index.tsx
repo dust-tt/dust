@@ -139,16 +139,13 @@ export default function AssistantConversation({
   }, [owner.sId, router]);
 
   return (
-    <>
-      {/* // TODO: Do not display when loading existing conversation. */}
-      <ConversationContainer
-        key={conversationKey}
-        conversationId={initialConversationId}
-        owner={owner}
-        subscription={subscription}
-        user={user}
-      />
-    </>
+    <ConversationContainer
+      key={conversationKey}
+      conversationId={initialConversationId}
+      owner={owner}
+      subscription={subscription}
+      user={user}
+    />
   );
 }
 

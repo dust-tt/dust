@@ -61,8 +61,6 @@ interface ConversationViewerProps {
   hideReactions?: boolean;
   isFading?: boolean;
   isInModal?: boolean;
-  // Use a key to trigger a re-render whenever the conversation changes.
-  key: string;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -208,16 +206,7 @@ const ConversationViewer = React.forwardRef<
       isValidating,
     ]);
 
-    useEffect(() => {
-      console.log(">> onStickyMentionsChange changed", onStickyMentionsChange);
-    }, [onStickyMentionsChange]);
-
-    useEffect(() => {
-      console.log(">> user.id changed");
-    }, [user.id]);
-
     const lastUserMessage = useMemo(() => {
-      console.log(">> latestPage updated", latestPage);
       return latestPage?.messages.findLast(
         (message) =>
           isUserMessageType(message) &&
@@ -227,7 +216,6 @@ const ConversationViewer = React.forwardRef<
     }, [latestPage, user.id]);
 
     const agentMentions = useMemo(() => {
-      console.log(">> II recompute agentMentions", lastUserMessage);
       if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
         return [];
       }
@@ -240,9 +228,7 @@ const ConversationViewer = React.forwardRef<
         return;
       }
 
-      console.log(" II useEffect sticky", agentMentions);
       if (agentMentions.length > 0) {
-        console.log(">> II  updating sticky mentions!", agentMentions);
         onStickyMentionsChange(agentMentions);
       }
     }, [agentMentions, onStickyMentionsChange]);
@@ -383,29 +369,6 @@ const ConversationViewer = React.forwardRef<
 
     const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
-    // if (isConversationLoading) {
-    //   return <div className="flex flex-1" ref={ref}></div>;
-    // } else if (isConversationError) {
-    //   return (
-    //     <div className="flex flex-1" ref={ref}>
-    //       Error loading conversation
-    //     </div>
-    //   );
-    // }
-    // if (!conversation) {
-    //   return (
-    //     <div className="flex flex-1" ref={ref}>
-    //       No conversation here
-    //     </div>
-    //   );
-    // }
-
-    // return (
-    //   <div ref={ref} className="conversation-viewer">
-    //     {/* Content of the ConversationViewer */}
-    //   </div>
-    // );
-
     return (
       <div
         className={classNames(
@@ -415,6 +378,11 @@ const ConversationViewer = React.forwardRef<
         )}
         ref={ref}
       >
+        {isConversationError && (
+          <div className="flex flex-1" ref={ref}>
+            Error loading conversation
+          </div>
+        )}
         {/* Invisible span to detect when the user has scrolled to the top of the list. */}
         {hasMore && !isMessagesLoading && !prevFirstMessageId && (
           <span ref={viewRef} className="py-4" />
