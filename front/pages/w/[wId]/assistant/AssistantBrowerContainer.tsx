@@ -1,7 +1,7 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  LightWorkspaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback } from "react";
 
@@ -11,7 +11,7 @@ import { classNames } from "@app/lib/utils";
 
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
 
@@ -26,7 +26,7 @@ export function AssistantBrowserContainer({
     });
 
   const handleAssistantClick = useCallback(
-    // on click, scroll to the input bar and set the selected assistant
+    // On click, scroll to the input bar and set the selected assistant.
     async (agent: LightAgentConfigurationType) => {
       const scrollContainerElement = document.getElementById(
         "assistant-input-header"
@@ -47,10 +47,9 @@ export function AssistantBrowserContainer({
         return onAgentConfigurationClick(agent);
       }
 
-      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer)
+      // Otherwise, scroll to the input bar and set the ref (mention will be set via intersection observer).
       scrollContainerElement.scrollIntoView({ behavior: "smooth" });
 
-      // TODO: The reference lives in the parent component, how can we set it?
       setAssistantToMention(agent);
     },
     [setAssistantToMention, onAgentConfigurationClick]
@@ -70,10 +69,7 @@ export function AssistantBrowserContainer({
       <AssistantBrowser
         owner={owner}
         agents={agentConfigurations}
-        loadingStatus={
-          // TODO: double check loading status!
-          isLoading ? "loading" : "finished"
-        }
+        loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}
         mutateAgentConfigurations={mutateAgentConfigurations}
       />

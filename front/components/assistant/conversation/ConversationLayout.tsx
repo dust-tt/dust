@@ -55,7 +55,9 @@ export default function ConversationLayout({
   useEffect(() => {
     const handleRouteChange = () => {
       const assistantSId = router.query.assistantDetails ?? [];
-      const conversationId = router.query.cId ?? ""; // Watch conversationId as well
+      // We use shallow browsing when creating a new conversation.
+      // Monitor router to update conversation info.
+      const conversationId = router.query.cId ?? "";
 
       if (assistantSId && typeof assistantSId === "string") {
         setDetailViewContent(assistantSId);

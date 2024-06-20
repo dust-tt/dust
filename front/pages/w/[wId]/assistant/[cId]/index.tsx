@@ -66,7 +66,6 @@ export default function AssistantConversation({
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useRouter();
 
-  // TODO: This creates two extra re-rendering!!!
   useEffect(() => {
     const { cId } = router.query;
     const conversationId =

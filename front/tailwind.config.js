@@ -11,9 +11,6 @@ module.exports = {
       scale: {
         99: ".99",
       },
-      transitionDuration: {
-        2000: "2000ms",
-      },
       dropShadow: {
         DEFAULT: "0 2px 4px rgba(15, 23, 42, 0.1)",
         sm: "0 1px 2px rgba(15, 23, 42, 0.08)",
