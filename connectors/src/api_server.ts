@@ -28,7 +28,6 @@ import {
   webhookIntercomAPIHandler,
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
-import { webhookMicrosoftAPIHandler } from "@connectors/api/webhooks/webhook_microsoft";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
@@ -142,7 +141,6 @@ export function startServer(port: number) {
     bodyParser.raw({ type: "application/json" }),
     webhookIntercomUninstallAPIHandler
   );
-  app.post("/webhooks/:webhook_secret/microsoft", webhookMicrosoftAPIHandler);
 
   // /configuration/ is the new configration method, replacing the old /config/ method
   app.patch(
