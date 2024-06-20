@@ -199,9 +199,7 @@ export async function agentMentionsUserCount(
             attributes: [], // No attributes are necessary here for grouping
             required: true,
             where: {
-              userId: {
-                [Op.not]: null,
-              },
+              userContextOrigin: "web",
             },
           },
           {
@@ -252,9 +250,7 @@ export async function agentMentionsCount(
             attributes: [],
             required: true,
             where: {
-              userId: {
-                [Op.not]: null,
-              },
+              userContextOrigin: "web",
             },
           },
           {
