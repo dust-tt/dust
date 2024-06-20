@@ -74,355 +74,344 @@ interface ConversationViewerProps {
 const ConversationViewer = React.forwardRef<
   HTMLDivElement,
   ConversationViewerProps
->(
-  (
-    {
-      owner,
-      user,
-      conversationId,
-      onStickyMentionsChange,
-      isInModal = false,
-      hideReactions = false,
-      isFading = false,
-    },
-    ref
-  ) => {
-    const {
-      conversation,
-      isConversationError,
-      isConversationLoading,
-      mutateConversation,
-    } = useConversation({
-      conversationId,
-      workspaceId: owner.sId,
-    });
+>(function ConversationViewer(
+  {
+    owner,
+    user,
+    conversationId,
+    onStickyMentionsChange,
+    isInModal = false,
+    hideReactions = false,
+    isFading = false,
+  },
+  ref
+) {
+  const {
+    conversation,
+    isConversationError,
+    isConversationLoading,
+    mutateConversation,
+  } = useConversation({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
-    const { mutateConversations } = useConversations({
-      workspaceId: owner.sId,
-    });
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
 
-    const {
-      isLoadingInitialData,
-      isMessagesLoading,
-      isValidating,
-      messages,
-      mutateMessages,
-      setSize,
-      size,
-    } = useConversationMessages({
-      conversationId,
-      workspaceId: owner.sId,
-      limit: DEFAULT_PAGE_LIMIT,
-    });
+  const {
+    isLoadingInitialData,
+    isMessagesLoading,
+    isValidating,
+    messages,
+    mutateMessages,
+    setSize,
+    size,
+  } = useConversationMessages({
+    conversationId,
+    workspaceId: owner.sId,
+    limit: DEFAULT_PAGE_LIMIT,
+  });
 
-    const { reactions } = useConversationReactions({
-      workspaceId: owner.sId,
-      conversationId,
-    });
+  const { reactions } = useConversationReactions({
+    workspaceId: owner.sId,
+    conversationId,
+  });
 
-    const { mutateConversationParticipants } = useConversationParticipants({
-      conversationId,
-      workspaceId: owner.sId,
-    });
+  const { mutateConversationParticipants } = useConversationParticipants({
+    conversationId,
+    workspaceId: owner.sId,
+  });
 
-    const { hasMore, latestPage, oldestPage } = useMemo(() => {
-      return {
-        hasMore: messages.at(0)?.hasMore,
-        latestPage: messages.at(-1),
-        oldestPage: messages.at(0),
-      };
-    }, [messages]);
+  const { hasMore, latestPage, oldestPage } = useMemo(() => {
+    return {
+      hasMore: messages.at(0)?.hasMore,
+      latestPage: messages.at(-1),
+      oldestPage: messages.at(0),
+    };
+  }, [messages]);
 
-    // Handle scroll to bottom on new message input.
-    const latestMessageIdRef = useRef<string | null>(null);
-    useEffect(() => {
-      const lastestMessageId = latestPage?.messages.at(-1)?.sId;
+  // Handle scroll to bottom on new message input.
+  const latestMessageIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const lastestMessageId = latestPage?.messages.at(-1)?.sId;
 
-      // If latest message Id has changed, scroll to bottom of conversation.
-      if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-        const mainTag = document.getElementById(
-          CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
-        );
+    // If latest message Id has changed, scroll to bottom of conversation.
+    if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
+      const mainTag = document.getElementById(
+        CONVERSATION_PARENT_SCROLL_DIV_ID[isInModal ? "modal" : "page"]
+      );
 
-        if (mainTag) {
-          mainTag.scrollTo(0, mainTag.scrollHeight);
-        }
-
-        latestMessageIdRef.current = lastestMessageId;
+      if (mainTag) {
+        mainTag.scrollTo(0, mainTag.scrollHeight);
       }
-    }, [isInModal, latestPage]);
 
-    // Compute the latest mentions ordered by the most recents first.
-    const latestMentions = useMemo(() => {
-      const recentMentions = latestPage?.messages.reduce((acc, message) => {
-        if (isUserMessageType(message)) {
-          for (const mention of message.mentions) {
-            if (isAgentMention(mention)) {
-              acc.add(mention.configurationId);
-            }
+      latestMessageIdRef.current = lastestMessageId;
+    }
+  }, [isInModal, latestPage]);
+
+  // Compute the latest mentions ordered by the most recents first.
+  const latestMentions = useMemo(() => {
+    const recentMentions = latestPage?.messages.reduce((acc, message) => {
+      if (isUserMessageType(message)) {
+        for (const mention of message.mentions) {
+          if (isAgentMention(mention)) {
+            acc.add(mention.configurationId);
           }
         }
-
-        return acc;
-      }, new Set<string>());
-
-      if (!recentMentions) {
-        return [];
       }
 
-      return [...recentMentions].reverse();
-    }, [latestPage]);
+      return acc;
+    }, new Set<string>());
 
-    // Keep a reference to the previous oldest message to maintain user position
-    // after fetching more data. This is a best effort approach to keep the user
-    // roughly at the same place they were before the new data is loaded.
-    const [prevFirstMessageId, setPrevFirstMessageId] = useState<string | null>(
-      null
+    if (!recentMentions) {
+      return [];
+    }
+
+    return [...recentMentions].reverse();
+  }, [latestPage]);
+
+  // Keep a reference to the previous oldest message to maintain user position
+  // after fetching more data. This is a best effort approach to keep the user
+  // roughly at the same place they were before the new data is loaded.
+  const [prevFirstMessageId, setPrevFirstMessageId] = useState<string | null>(
+    null
+  );
+  const prevFirstMessageRef = useRef<HTMLDivElement>(null);
+
+  // Instantly scroll user back to previous position after new data is loaded.
+  // Note: scrolling is from the bottom of the screen.
+  useEffect(() => {
+    if (
+      prevFirstMessageId &&
+      prevFirstMessageRef.current &&
+      !isMessagesLoading &&
+      !isValidating
+    ) {
+      prevFirstMessageRef.current.scrollIntoView({
+        behavior: "instant",
+        block: "start",
+      });
+
+      setPrevFirstMessageId(null);
+    }
+  }, [
+    prevFirstMessageId,
+    prevFirstMessageRef,
+    isMessagesLoading,
+    isValidating,
+  ]);
+
+  const lastUserMessage = useMemo(() => {
+    return latestPage?.messages.findLast(
+      (message) =>
+        isUserMessageType(message) &&
+        message.visibility !== "deleted" &&
+        message.user?.id === user.id
     );
-    const prevFirstMessageRef = useRef<HTMLDivElement>(null);
+  }, [latestPage, user.id]);
 
-    // Instantly scroll user back to previous position after new data is loaded.
-    // Note: scrolling is from the bottom of the screen.
-    useEffect(() => {
-      if (
-        prevFirstMessageId &&
-        prevFirstMessageRef.current &&
-        !isMessagesLoading &&
-        !isValidating
-      ) {
-        prevFirstMessageRef.current.scrollIntoView({
-          behavior: "instant",
-          block: "start",
-        });
+  const agentMentions = useMemo(() => {
+    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+      return [];
+    }
+    return lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
 
-        setPrevFirstMessageId(null);
-      }
-    }, [
-      prevFirstMessageId,
-      prevFirstMessageRef,
-      isMessagesLoading,
-      isValidating,
-    ]);
+  // Handle sticky mentions changes.
+  useEffect(() => {
+    if (!onStickyMentionsChange) {
+      return;
+    }
 
-    const lastUserMessage = useMemo(() => {
-      return latestPage?.messages.findLast(
-        (message) =>
-          isUserMessageType(message) &&
-          message.visibility !== "deleted" &&
-          message.user?.id === user.id
+    if (agentMentions.length > 0) {
+      onStickyMentionsChange(agentMentions);
+    }
+  }, [agentMentions, onStickyMentionsChange]);
+
+  const { ref: viewRef, inView: isTopOfListVisible } = useInView();
+
+  // On page load or when new data is loaded, check if the top of the list
+  // is visible and there is more data to load. If so, set the current
+  // highest message ID and increment the page number to load more data.
+  useEffect(() => {
+    const isLoadingData =
+      isLoadingInitialData ||
+      isMessagesLoading ||
+      isValidating ||
+      prevFirstMessageId;
+
+    if (!isLoadingData && isTopOfListVisible && hasMore) {
+      // Set the current highest message Id.
+      setPrevFirstMessageId(
+        oldestPage ? oldestPage?.messages[0]?.sId ?? null : null
       );
-    }, [latestPage, user.id]);
 
-    const agentMentions = useMemo(() => {
-      if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
-        return [];
-      }
-      return lastUserMessage.mentions.filter(isAgentMention);
-    }, [lastUserMessage]);
+      // Increment the page number to load more data.
+      void setSize(size + 1);
+    }
+  }, [
+    isLoadingInitialData,
+    isMessagesLoading,
+    isValidating,
+    prevFirstMessageId,
+    isTopOfListVisible,
+    hasMore,
+    oldestPage,
+    size,
+    setPrevFirstMessageId,
+    setSize,
+  ]);
 
-    // Handle sticky mentions changes.
-    useEffect(() => {
-      if (!onStickyMentionsChange) {
-        return;
-      }
+  // Hooks related to message streaming.
 
-      if (agentMentions.length > 0) {
-        onStickyMentionsChange(agentMentions);
-      }
-    }, [agentMentions, onStickyMentionsChange]);
-
-    const { ref: viewRef, inView: isTopOfListVisible } = useInView();
-
-    // On page load or when new data is loaded, check if the top of the list
-    // is visible and there is more data to load. If so, set the current
-    // highest message ID and increment the page number to load more data.
-    useEffect(() => {
-      const isLoadingData =
-        isLoadingInitialData ||
-        isMessagesLoading ||
-        isValidating ||
-        prevFirstMessageId;
-
-      if (!isLoadingData && isTopOfListVisible && hasMore) {
-        // Set the current highest message Id.
-        setPrevFirstMessageId(
-          oldestPage ? oldestPage?.messages[0]?.sId ?? null : null
-        );
-
-        // Increment the page number to load more data.
-        void setSize(size + 1);
-      }
-    }, [
-      isLoadingInitialData,
-      isMessagesLoading,
-      isValidating,
-      prevFirstMessageId,
-      isTopOfListVisible,
-      hasMore,
-      oldestPage,
-      size,
-      setPrevFirstMessageId,
-      setSize,
-    ]);
-
-    // Hooks related to message streaming.
-
-    const buildEventSourceURL = useCallback(
-      (lastEvent: string | null) => {
-        const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-        let lastEventId = "";
-        if (lastEvent) {
-          const eventPayload: {
-            eventId: string;
-          } = JSON.parse(lastEvent);
-          lastEventId = eventPayload.eventId;
-        }
-        const url = esURL + "?lastEventId=" + lastEventId;
-
-        return url;
-      },
-      [conversationId, owner.sId]
-    );
-
-    const onEventCallback = useCallback(
-      (eventStr: string) => {
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
         const eventPayload: {
           eventId: string;
-          data:
-            | UserMessageNewEvent
-            | AgentMessageNewEvent
-            | AgentGenerationCancelledEvent
-            | ConversationTitleEvent;
-        } = JSON.parse(eventStr);
+        } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
+      }
+      const url = esURL + "?lastEventId=" + lastEventId;
 
-        const event = eventPayload.data;
+      return url;
+    },
+    [conversationId, owner.sId]
+  );
 
-        if (!eventIds.current.includes(eventPayload.eventId)) {
-          eventIds.current.push(eventPayload.eventId);
-          switch (event.type) {
-            case "user_message_new":
-            case "agent_message_new":
-              if (shouldProcessStreamEvent(messages, event)) {
-                // Temporarily add agent message using event payload until revalidation.
-                void mutateMessages(async (currentMessagePages) => {
-                  if (!currentMessagePages) {
-                    return undefined;
-                  }
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
+          | ConversationTitleEvent;
+      } = JSON.parse(eventStr);
 
-                  const { rank } = event.message;
+      const event = eventPayload.data;
 
-                  // We only support adding at the end of the first page.
-                  const [firstPage] = currentMessagePages;
-                  const firstPageLastMessage = firstPage.messages.at(-1);
-                  if (
-                    firstPageLastMessage &&
-                    firstPageLastMessage.rank < rank
-                  ) {
-                    return updateMessagePagesWithOptimisticData(
-                      currentMessagePages,
-                      event.message
-                    );
-                  }
+      if (!eventIds.current.includes(eventPayload.eventId)) {
+        eventIds.current.push(eventPayload.eventId);
+        switch (event.type) {
+          case "user_message_new":
+          case "agent_message_new":
+            if (shouldProcessStreamEvent(messages, event)) {
+              // Temporarily add agent message using event payload until revalidation.
+              void mutateMessages(async (currentMessagePages) => {
+                if (!currentMessagePages) {
+                  return undefined;
+                }
 
-                  return currentMessagePages;
-                });
-                void mutateConversationParticipants();
-              }
-              break;
+                const { rank } = event.message;
 
-            case "agent_generation_cancelled":
-              if (shouldProcessStreamEvent(messages, event)) {
-                void mutateMessages();
-              }
-              break;
-            case "conversation_title": {
-              void mutateConversation();
-              void mutateConversations(); // to refresh the list of convos in the sidebar
-              break;
+                // We only support adding at the end of the first page.
+                const [firstPage] = currentMessagePages;
+                const firstPageLastMessage = firstPage.messages.at(-1);
+                if (firstPageLastMessage && firstPageLastMessage.rank < rank) {
+                  return updateMessagePagesWithOptimisticData(
+                    currentMessagePages,
+                    event.message
+                  );
+                }
+
+                return currentMessagePages;
+              });
+              void mutateConversationParticipants();
             }
-            default:
-              ((t: never) => {
-                console.error("Unknown event type", t);
-              })(event);
+            break;
+
+          case "agent_generation_cancelled":
+            if (shouldProcessStreamEvent(messages, event)) {
+              void mutateMessages();
+            }
+            break;
+          case "conversation_title": {
+            void mutateConversation();
+            void mutateConversations(); // to refresh the list of convos in the sidebar
+            break;
           }
+          default:
+            ((t: never) => {
+              console.error("Unknown event type", t);
+            })(event);
         }
-      },
-      [
-        mutateConversation,
-        mutateConversations,
-        messages,
-        mutateMessages,
-        mutateConversationParticipants,
-      ]
-    );
+      }
+    },
+    [
+      mutateConversation,
+      mutateConversations,
+      messages,
+      mutateMessages,
+      mutateConversationParticipants,
+    ]
+  );
 
-    useEventSource(buildEventSourceURL, onEventCallback, {
-      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-      isReadyToConsumeStream:
-        !isConversationLoading &&
-        !isLoadingInitialData &&
-        messages.length !== 0,
-    });
-    const eventIds = useRef<string[]>([]);
+  useEventSource(buildEventSourceURL, onEventCallback, {
+    // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
+    isReadyToConsumeStream:
+      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
+  });
+  const eventIds = useRef<string[]>([]);
 
-    const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
+  const groupedMessages = useMemo(() => groupMessages(messages), [messages]);
 
-    return (
-      <div
-        className={classNames(
-          "flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4",
-          isFading ? "animate-fadeout" : "",
-          isInModal ? "pt-4" : "sm:px-4"
-        )}
-        ref={ref}
-      >
-        {isConversationError && (
-          <div className="flex flex-1" ref={ref}>
-            Error loading conversation
-          </div>
-        )}
-        {/* Invisible span to detect when the user has scrolled to the top of the list. */}
-        {hasMore && !isMessagesLoading && !prevFirstMessageId && (
-          <span ref={viewRef} className="py-4" />
-        )}
-        {(isMessagesLoading || prevFirstMessageId) && (
-          <div className="flex justify-center py-4">
-            <Spinner variant="color" size="xs" />
-          </div>
-        )}
+  return (
+    <div
+      className={classNames(
+        "flex w-full max-w-4xl flex-1 flex-col justify-start gap-2 pb-4",
+        isFading ? "animate-fadeout" : "",
+        isInModal ? "pt-4" : "sm:px-4"
+      )}
+      ref={ref}
+    >
+      {isConversationError && (
+        <div className="flex flex-1" ref={ref}>
+          Error loading conversation
+        </div>
+      )}
+      {/* Invisible span to detect when the user has scrolled to the top of the list. */}
+      {hasMore && !isMessagesLoading && !prevFirstMessageId && (
+        <span ref={viewRef} className="py-4" />
+      )}
+      {(isMessagesLoading || prevFirstMessageId) && (
+        <div className="flex justify-center py-4">
+          <Spinner variant="color" size="xs" />
+        </div>
+      )}
 
-        {conversation &&
-          groupedMessages.map((group) => {
-            return group.map((message) => {
-              return (
-                <MessageItem
-                  key={`message-${message.sId}`}
-                  conversationId={conversation.sId}
-                  hideReactions={hideReactions}
-                  isInModal={isInModal}
-                  message={message}
-                  owner={owner}
-                  reactions={reactions}
-                  ref={
-                    message.sId === prevFirstMessageId
-                      ? prevFirstMessageRef
-                      : undefined
-                  }
-                  user={user}
-                  isLastMessage={
-                    latestPage?.messages.at(-1)?.sId === message.sId
-                  }
-                  latestMentions={latestMentions}
-                />
-              );
-            });
-          })}
-      </div>
-    );
-  }
-);
-
-ConversationViewer.displayName = "ConversationViewer";
+      {conversation &&
+        groupedMessages.map((group) => {
+          return group.map((message) => {
+            return (
+              <MessageItem
+                key={`message-${message.sId}`}
+                conversationId={conversation.sId}
+                hideReactions={hideReactions}
+                isInModal={isInModal}
+                message={message}
+                owner={owner}
+                reactions={reactions}
+                ref={
+                  message.sId === prevFirstMessageId
+                    ? prevFirstMessageRef
+                    : undefined
+                }
+                user={user}
+                isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+                latestMentions={latestMentions}
+              />
+            );
+          });
+        })}
+    </div>
+  );
+});
 
 export default ConversationViewer;
 

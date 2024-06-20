@@ -22,6 +22,7 @@ import {
 } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowerContainer";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -37,7 +38,6 @@ import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/m
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useConversationMessages } from "@app/lib/swr";
-import { AssistantBrowserContainer } from "@app/pages/w/[wId]/assistant/AssistantBrowerContainer";
 
 interface ConversationContainerProps {
   conversationId: string | null;
