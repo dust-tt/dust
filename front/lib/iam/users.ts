@@ -6,7 +6,7 @@ import { renderUserType } from "@app/lib/api/user";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { User } from "@app/lib/models/user";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { guessFirstandLastNameFromFullName } from "@app/lib/user";
+import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import { generateModelSId } from "@app/lib/utils";
 
 interface LegacyProviderInfo {
@@ -115,7 +115,7 @@ export async function createOrUpdateUser(
         user.firstName = externalUser.given_name;
         user.lastName = externalUser.family_name;
       } else {
-        const { firstName, lastName } = guessFirstandLastNameFromFullName(
+        const { firstName, lastName } = guessFirstAndLastNameFromFullName(
           externalUser.name
         );
         user.firstName = firstName;
@@ -127,7 +127,7 @@ export async function createOrUpdateUser(
 
     return { user: renderUserType(user), created: false };
   } else {
-    const { firstName, lastName } = guessFirstandLastNameFromFullName(
+    const { firstName, lastName } = guessFirstAndLastNameFromFullName(
       externalUser.name
     );
 
