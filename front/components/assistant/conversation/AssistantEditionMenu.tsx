@@ -102,8 +102,6 @@ export function AssistantEditionMenu({
     setIsUpdatingList(false);
   };
 
-  const showEditionHeader = showAddRemoveToList;
-
   const dropdownButton = (() => {
     switch (variant) {
       case "button":
@@ -125,6 +123,7 @@ export function AssistantEditionMenu({
         assertNever(variant);
     }
   })();
+
   return (
     <>
       {canDelete && showDeletionModal && (
@@ -141,7 +140,9 @@ export function AssistantEditionMenu({
       <DropdownMenu className="text-element-700">
         <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
         <DropdownMenu.Items width={220}>
-          {showEditionHeader && <DropdownMenu.SectionHeader label="Edition" />}
+          {showAddRemoveToList && (
+            <DropdownMenu.SectionHeader label="Edition" />
+          )}
           {/* Should use the router to have a better navigation experience */}
           {(isBuilder(owner) || !isAgentWorkspace) && (
             <DropdownMenu.Item

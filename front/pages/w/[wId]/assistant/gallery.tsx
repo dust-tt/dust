@@ -138,9 +138,6 @@ export default function AssistantsGallery({
       assertNever(orderBy);
   }
 
-  const [testModalAssistant, setTestModalAssistant] =
-    useState<LightAgentConfigurationType | null>(null);
-
   const [showDetails, setShowDetails] = useState<string | null>(null);
 
   useEffect(() => {
@@ -238,14 +235,7 @@ export default function AssistantsGallery({
         onClose={handleCloseAssistantDetails}
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
-      {testModalAssistant && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          assistant={testModalAssistant}
-          onClose={() => setTestModalAssistant(null)}
-        />
-      )}
+
       <div className="pb-16 pt-6">
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
@@ -296,7 +286,6 @@ export default function AssistantsGallery({
                   onUpdate={() => {
                     void mutateAgentConfigurations();
                   }}
-                  setTestModalAssistant={setTestModalAssistant}
                 />
               ))}
             </div>
