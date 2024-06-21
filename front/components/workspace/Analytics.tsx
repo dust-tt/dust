@@ -7,6 +7,14 @@ import {
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 
+import {
+  TableBlock,
+  TableBodyBlock,
+  TableDataBlock,
+  TableHeadBlock,
+  TableHeaderBlock,
+} from "@app/components/assistant/RenderMessageMarkdown";
+import CustomTable from "@app/components/Table";
 import { useWorkspaceAnalytics } from "@app/lib/swr";
 
 interface QuickInsightsProps {
@@ -46,6 +54,12 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
     workspaceId: owner.sId,
     disabled: false,
   });
+  const columns = ["Name", "Age", "Location"];
+  const data = [
+    ["Alice", 30, "New York"],
+    ["Bob", 25, "Los Angeles"],
+    ["Charlie", 35, "Chicago"],
+  ];
 
   return (
     <div className="flex flex-grow flex-col gap-1">
@@ -85,6 +99,12 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
           />
         </div>
       )}
+      <CustomTable
+        columns={columns}
+        rows={data}
+        enableCopy={true}
+        name="TEST"
+      />
     </div>
   );
 }
