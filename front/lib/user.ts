@@ -56,6 +56,6 @@ export const guessFirstandLastNameFromFullName = (
     const lastName = nameParts.join(" ");
     return { firstName, lastName };
   } else {
-    return { firstName: fullName, lastName: null };
+    return { firstName: namePart, lastName: null };
   }
 };
