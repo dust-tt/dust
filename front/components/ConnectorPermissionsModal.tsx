@@ -19,7 +19,6 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "google_drive",
   "microsoft_sharepoint",
   "microsoft_teams",
-  "google_drive",
   "intercom",
 ]);
 
