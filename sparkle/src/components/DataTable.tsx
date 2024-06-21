@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 
 import { Page } from "@sparkle/index";
 import { ClipboardCheckIcon, ClipboardIcon, IconButton } from "@sparkle/index";
@@ -10,7 +10,7 @@ interface DataTableProps {
   rows: (string | number)[][];
   enableCopy?: boolean;
   showLimit?: number;
-  downLoadButton?: Element;
+  downLoadButton?: ReactNode;
 }
 
 export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
