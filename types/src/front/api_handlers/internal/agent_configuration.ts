@@ -177,40 +177,28 @@ const IsSupportedModelSchema = new t.Type<SupportedModel>(
   t.identity
 );
 
-export const PostOrPatchAgentConfigurationRequestBodySchema = t.intersection([
-  t.type({
-    assistant: t.intersection([
-      t.type({
-        name: t.string,
-        description: t.string,
-        instructions: t.union([t.string, t.null]),
-        pictureUrl: t.string,
-        status: t.union([
-          t.literal("active"),
-          t.literal("archived"),
-          t.literal("draft"),
-        ]),
-        scope: t.union([
-          t.literal("workspace"),
-          t.literal("published"),
-          t.literal("private"),
-        ]),
-        model: t.intersection([
-          ModelConfigurationSchema,
-          IsSupportedModelSchema,
-        ]),
-        actions: t.array(ActionConfigurationSchema),
-        templateId: t.union([t.string, t.null, t.undefined]),
-      }),
-      t.partial({
-        maxToolsUsePerRun: t.number,
-      }),
+export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
+  assistant: t.type({
+    name: t.string,
+    description: t.string,
+    instructions: t.union([t.string, t.null]),
+    pictureUrl: t.string,
+    status: t.union([
+      t.literal("active"),
+      t.literal("archived"),
+      t.literal("draft"),
     ]),
+    scope: t.union([
+      t.literal("workspace"),
+      t.literal("published"),
+      t.literal("private"),
+    ]),
+    model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
+    actions: t.array(ActionConfigurationSchema),
+    templateId: t.union([t.string, t.null, t.undefined]),
+    maxToolsUsePerRun: t.union([t.number, t.undefined]),
   }),
-  t.partial({
-    useMultiActions: t.boolean,
-  }),
-]);
+});
 
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema

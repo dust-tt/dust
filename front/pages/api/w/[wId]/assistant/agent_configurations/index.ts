@@ -198,55 +198,36 @@ async function handler(
         });
       }
 
-      if (
-        bodyValidation.right.useMultiActions &&
-        !owner.flags.includes("multi_actions")
-      ) {
+      const maxToolsUsePerRun =
+        bodyValidation.right.assistant.maxToolsUsePerRun;
+
+      const isLegacyConfiguration =
+        bodyValidation.right.assistant.actions.length === 1 &&
+        !bodyValidation.right.assistant.actions[0].description;
+
+      if (isLegacyConfiguration && maxToolsUsePerRun !== undefined) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "app_auth_error",
-            message: "Multi-actions is not enabled on this workspace.",
+            message:
+              "maxToolsUsePerRun is only supported in multi-actions mode.",
           },
         });
       }
-
-      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
-      const maxToolsUsePerRun =
-        bodyValidation.right.assistant.maxToolsUsePerRun;
-
-      if (!bodyValidation.right.useMultiActions) {
-        if (maxToolsUsePerRun !== undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message:
-                "maxToolsUsePerRun is only supported in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: true,
-        });
-      } else {
-        if (maxToolsUsePerRun === undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message: "maxToolsUsePerRun is required in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: false,
+      if (!isLegacyConfiguration && maxToolsUsePerRun === undefined) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "maxToolsUsePerRun is required in multi-actions mode.",
+          },
         });
       }
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+        auth,
+        assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+      });
 
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
@@ -286,32 +267,20 @@ export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
   agentConfigurationId,
-  legacySingleActionMode,
 }: {
   auth: Authenticator;
   assistant: t.TypeOf<
     typeof PostOrPatchAgentConfigurationRequestBodySchema
   >["assistant"];
   agentConfigurationId?: string;
-  legacySingleActionMode: boolean;
-} & ( // Enforce that maxToolsUsePerRun is only (and always) defined in multi-actions mode.
-  | {
-      legacySingleActionMode: true;
-      assistant: { maxToolsUsePerRun?: undefined };
-    }
-  | { legacySingleActionMode: false; assistant: { maxToolsUsePerRun: number } }
-)): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
-
-  if (legacySingleActionMode && actions.length > 1) {
-    return new Err(new Error(`Only one action is supported in legacy mode`));
-  }
 
   const maxToolsUsePerRun = assistant.maxToolsUsePerRun ?? actions.length;
 
-  if (!legacySingleActionMode) {
-    // Multi actions mode:
-    // Enforce that every action has a name and a description and that every name is unique.
+  // Tools mode:
+  // Enforce that every action has a name and a description and that every name is unique.
+  if (actions.length > 1) {
     const actionsWithoutName = actions.filter((action) => !action.name);
     if (actionsWithoutName.length) {
       return new Err(
@@ -332,6 +301,16 @@ export async function createOrUpgradeAgentConfiguration({
         return new Err(new Error(`Duplicate action name: ${action.name}`));
       }
       actionNames.add(action.name);
+    }
+    const actionsWithoutDesc = actions.filter((action) => !action.description);
+    if (actionsWithoutDesc.length) {
+      return new Err(
+        Error(
+          `Every action must have a description. Missing names for: ${actionsWithoutDesc
+            .map((action) => action.type)
+            .join(", ")}`
+        )
+      );
     }
   }
 

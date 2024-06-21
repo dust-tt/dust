@@ -1,9 +1,4 @@
-import type {
-  AgentConfigurationType,
-  AgentStatus,
-  Result,
-  WithAPIErrorReponse,
-} from "@dust-tt/types";
+import type { AgentStatus, WithAPIErrorReponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -130,34 +125,16 @@ async function handler(
         }
       }
 
-      const legacySingleActionMode = !owner.flags.includes("multi_actions");
-      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
-      if (legacySingleActionMode) {
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-            maxToolsUsePerRun: undefined,
-            templateId: assistant.templateId,
-          },
-          agentConfigurationId: assistant.sId,
-          legacySingleActionMode: true,
-        });
-      } else {
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: {
-            ...assistant,
-            scope: bodyValidation.right.scope,
-            status: assistant.status as AgentStatus,
-            templateId: assistant.templateId,
-          },
-          agentConfigurationId: assistant.sId,
-          legacySingleActionMode: false,
-        });
-      }
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+        auth,
+        assistant: {
+          ...assistant,
+          scope: bodyValidation.right.scope,
+          status: assistant.status as AgentStatus,
+          templateId: assistant.templateId,
+        },
+        agentConfigurationId: assistant.sId,
+      });
 
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {

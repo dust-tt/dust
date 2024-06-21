@@ -22,7 +22,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 const { GA_TRACKING_ID = "", URL = "" } = process.env;
@@ -38,7 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: AgentConfigurationType;
   flow: BuilderFlow;
   baseUrl: string;
-  isMultiActionsAgent: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -78,8 +76,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const isMultiActionsAgent = owner.flags.includes("multi_actions");
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
@@ -104,7 +100,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       flow,
       baseUrl: URL,
-      isMultiActionsAgent,
     },
   };
 });
@@ -120,35 +115,34 @@ export default function EditAssistant({
   agentConfiguration,
   flow,
   baseUrl,
-  isMultiActionsAgent,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const action = deprecatedGetFirstActionConfiguration(agentConfiguration);
+  agentConfiguration.actions.map((action) => {
+    if (isRetrievalConfiguration(action)) {
+      if (action.query === "none") {
+        if (
+          action.relativeTimeFrame === "auto" ||
+          action.relativeTimeFrame === "none"
+        ) {
+          /** Should never happen. Throw loudly if it does */
+          throw new Error(
+            "Invalid configuration: exhaustive retrieval must have a definite time frame"
+          );
+        }
+      }
+    }
 
-  if (isRetrievalConfiguration(action)) {
-    if (action.query === "none") {
+    if (isProcessConfiguration(action)) {
       if (
         action.relativeTimeFrame === "auto" ||
         action.relativeTimeFrame === "none"
       ) {
-        /** Should never happen. Throw loudly if it does */
+        /** Should never happen as not permitted for now. */
         throw new Error(
-          "Invalid configuration: exhaustive retrieval must have a definite time frame"
+          "Invalid configuration: process must have a definite time frame"
         );
       }
     }
-  }
-
-  if (isProcessConfiguration(action)) {
-    if (
-      action.relativeTimeFrame === "auto" ||
-      action.relativeTimeFrame === "none"
-    ) {
-      /** Should never happen as not permitted for now. */
-      throw new Error(
-        "Invalid configuration: process must have a definite time frame"
-      );
-    }
-  }
+  });
 
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global assistant");
@@ -181,15 +175,12 @@ export default function EditAssistant({
           temperature: agentConfiguration.model.temperature,
         },
         actions,
-        maxToolsUsePerRun: isMultiActionsAgent
-          ? agentConfiguration.maxToolsUsePerRun
-          : null,
+        maxToolsUsePerRun: agentConfiguration.maxToolsUsePerRun,
         templateId: agentConfiguration.templateId,
       }}
       agentConfigurationId={agentConfiguration.sId}
       baseUrl={baseUrl}
       defaultTemplate={null}
-      multiActionsEnabled={isMultiActionsAgent}
     />
   );
 }

@@ -1,10 +1,3 @@
-import {
-  getAgentActionConfigurationType,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
 import _ from "lodash";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
@@ -54,37 +47,19 @@ export function useTemplate(
     (
       setBuilderState: React.Dispatch<
         React.SetStateAction<AssistantBuilderState>
-      >,
-      multiActionsEnabled: boolean
+      >
     ) => {
       if (template === null) {
         return;
       }
-      let actionType = null;
-      const action = getAgentActionConfigurationType(template.presetAction);
-      if (!multiActionsEnabled) {
-        if (isRetrievalConfiguration(action)) {
-          actionType = "RETRIEVAL_SEARCH";
-        } else if (isDustAppRunConfiguration(action)) {
-          actionType = "DUST_APP_RUN";
-        } else if (isTablesQueryConfiguration(action)) {
-          actionType = "TABLES_QUERY";
-        } else if (isProcessConfiguration(action)) {
-          actionType = "PROCESS";
-        }
-      }
-
-      if (actionType !== null || multiActionsEnabled) {
-        const defaultAssistantState = getDefaultAssistantState();
-
-        setBuilderState((builderState) => {
-          const newState = {
-            ...builderState,
-            actions: defaultAssistantState.actions,
-          };
-          return newState;
-        });
-      }
+      const defaultAssistantState = getDefaultAssistantState();
+      setBuilderState((builderState) => {
+        const newState = {
+          ...builderState,
+          actions: defaultAssistantState.actions,
+        };
+        return newState;
+      });
     },
     [template]
   );

@@ -1,16 +1,9 @@
 import type {
-  AgentChainOfThoughtEvent,
   AgentConfigurationType,
-  AgentErrorEvent,
-  AgentMessageType,
   ContentFragmentMessageTypeModel,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
-  GenerationCancelEvent,
-  GenerationErrorEvent,
-  GenerationSuccessEvent,
-  GenerationTokensEvent,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
@@ -18,8 +11,6 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  cloneBaseConfig,
-  DustProdActionRegistry,
   Err,
   isAgentMessageType,
   isContentFragmentType,
@@ -31,22 +22,12 @@ import {
 } from "@dust-tt/types";
 import moment from "moment-timezone";
 
-import { runActionStreamed } from "@app/lib/actions/server";
-import {
-  retrievalMetaPrompt,
-  retrievalMetaPromptMutiActions,
-} from "@app/lib/api/assistant/actions/retrieval";
-import { TokenEmitter } from "@app/lib/api/assistant/agent";
+import { retrievalMetaPromptMutiActions } from "@app/lib/api/assistant/actions/retrieval";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { getSupportedModelConfig, isLargeModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { deprecatedGetFirstActionConfiguration } from "@app/lib/deprecated_action_configurations";
-import { redisClient } from "@app/lib/redis";
 import { getContentFragmentText } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForText, tokenSplit } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
-
-const CANCELLATION_CHECK_INTERVAL = 500;
 
 /**
  * Model rendering of conversations.
@@ -316,76 +297,6 @@ export async function renderConversationForModelMultiActions({
  * Generation execution.
  */
 
-// Construct the full prompt from the agent configuration.
-// - Meta data about the agent and current time.
-// - Insructions from the agent configuration (in case of generation)
-// - Meta data about the retrieval action (in case of retrieval)
-export async function constructPrompt(
-  auth: Authenticator,
-  userMessage: UserMessageType,
-  configuration: AgentConfigurationType,
-  fallbackPrompt?: string
-) {
-  const d = moment(new Date()).tz(userMessage.context.timezone);
-  const owner = auth.workspace();
-
-  let context = "CONTEXT:\n";
-  context += `{\n`;
-  context += `  "assistant": "@${configuration.name}",\n`;
-  context += `  "local_time": "${d.format("YYYY-MM-DD HH:mm (ddd)")}",\n`;
-  if (owner) {
-    context += `  "workspace": "${owner.name}",\n`;
-  }
-  context += "}\n";
-
-  let instructions = "";
-  if (configuration.instructions) {
-    instructions += `\n${configuration.instructions}`;
-  } else if (fallbackPrompt) {
-    instructions += `\n${fallbackPrompt}`;
-  }
-
-  const actionConfig = deprecatedGetFirstActionConfiguration(configuration);
-
-  if (isRetrievalConfiguration(actionConfig)) {
-    instructions += `\n${retrievalMetaPrompt()}`;
-  }
-  if (instructions.length > 0) {
-    instructions = "\nINSTRUCTIONS:" + instructions;
-  }
-
-  // Replacement if instructions include "{USER_FULL_NAME}".
-  instructions = instructions.replaceAll(
-    "{USER_FULL_NAME}",
-    userMessage.context.fullName || "Unknown user"
-  );
-
-  // Replacement if instructions includes "{ASSISTANTS_LIST}"
-  if (instructions.includes("{ASSISTANTS_LIST}")) {
-    if (!auth.isUser()) {
-      throw new Error("Unexpected unauthenticated call to `constructPrompt`");
-    }
-    const agents = await getAgentConfigurations({
-      auth,
-      agentsGetView: auth.user() ? "list" : "all",
-      variant: "light",
-    });
-    instructions = instructions.replaceAll(
-      "{ASSISTANTS_LIST}",
-      agents
-        .map((agent) => {
-          let agentDescription = "";
-          agentDescription += `@${agent.name}: `;
-          agentDescription += `${agent.description}`;
-          return agentDescription;
-        })
-        .join("\n")
-    );
-  }
-
-  return `${context}${instructions}`;
-}
-
 export async function constructPromptMultiActions(
   auth: Authenticator,
   userMessage: UserMessageType,
@@ -464,250 +375,4 @@ export async function constructPromptMultiActions(
     prompt += `\n${additionalInstructions}`;
   }
   return prompt;
-}
-
-// This function is in charge of running the generation of a message from the agent. It does not
-// create any state, only stream tokens and/or error and final success events.
-export async function* runGeneration(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
-  | AgentErrorEvent
-  | GenerationErrorEvent
-  | GenerationTokensEvent
-  | GenerationSuccessEvent
-  | GenerationCancelEvent
-  | AgentChainOfThoughtEvent,
-  void
-> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected unauthenticated call to `runGeneration`");
-  }
-
-  const model = getSupportedModelConfig(configuration.model);
-
-  if (!model) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "model_not_found",
-        message: "The model selected was not found.",
-      },
-    };
-    return;
-  }
-
-  if (isLargeModel(configuration.model) && !auth.isUpgraded()) {
-    yield {
-      type: "generation_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "free_plan_error",
-        message: `Free plan does not support large models. Please upgrade to a paid plan to use this model.`,
-      },
-    };
-    return;
-  }
-
-  const contextSize = model.contextSize;
-
-  const MIN_GENERATION_TOKENS = 2048;
-
-  if (contextSize < MIN_GENERATION_TOKENS) {
-    throw new Error(
-      `Model contextSize unexpectedly small for model: ${configuration.model.providerId} ${configuration.model.modelId}`
-    );
-  }
-
-  const prompt = await constructPrompt(auth, userMessage, configuration);
-
-  // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModelMultiActions({
-    conversation,
-    model: configuration.model,
-    prompt,
-    allowedTokenCount: contextSize - MIN_GENERATION_TOKENS,
-  });
-
-  if (modelConversationRes.isErr()) {
-    yield {
-      type: "generation_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "internal_server_error",
-        message: `Failed tokenization for ${configuration.model.providerId} ${configuration.model.modelId}: ${modelConversationRes.error.message}`,
-      },
-    };
-    return;
-  }
-
-  const config = cloneBaseConfig(
-    DustProdActionRegistry["assistant-v2-generator"].config
-  );
-  config.MODEL.provider_id = configuration.model.providerId;
-  config.MODEL.model_id = configuration.model.modelId;
-  config.MODEL.temperature = configuration.model.temperature;
-
-  logger.info(
-    {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      providerId: configuration.model.providerId,
-      modelId: configuration.model.modelId,
-      temperature: configuration.model.temperature,
-    },
-    "[ASSISTANT_TRACE] Generation exection"
-  );
-
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-generator",
-    config,
-    [
-      {
-        conversation: modelConversationRes.value.modelConversation,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      userMessageId: userMessage.sId,
-      workspaceId: conversation.owner.sId,
-    }
-  );
-
-  if (res.isErr()) {
-    yield {
-      type: "generation_error",
-      created: Date.now(),
-      configurationId: configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "agent_generation_error",
-        message: `Error generating agent message: [${res.error.type}] ${res.error.message}`,
-      },
-    };
-    return;
-  }
-
-  const { eventStream, dustRunId } = res.value;
-
-  let shouldYieldCancel = false;
-  let lastCheckCancellation = Date.now();
-  const redis = await redisClient();
-  const tokenEmitter = new TokenEmitter(
-    configuration,
-    agentMessage,
-    model.delimitersConfiguration
-  );
-
-  try {
-    const _checkCancellation = async () => {
-      try {
-        const cancelled = await redis.get(
-          `assistant:generation:cancelled:${agentMessage.sId}`
-        );
-        if (cancelled === "1") {
-          shouldYieldCancel = true;
-          await redis.set(
-            `assistant:generation:cancelled:${agentMessage.sId}`,
-            0,
-            {
-              EX: 3600, // 1 hour
-            }
-          );
-        }
-      } catch (error) {
-        console.error("Error checking cancellation:", error);
-        return false;
-      }
-    };
-
-    for await (const event of eventStream) {
-      if (event.type === "error") {
-        yield* tokenEmitter.flushTokens();
-        yield {
-          type: "generation_error",
-          created: Date.now(),
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "agent_generation_error",
-            message: `Error generating agent message: ${event.content.message}`,
-          },
-        };
-        return;
-      }
-
-      const currentTimestamp = Date.now();
-      if (
-        currentTimestamp - lastCheckCancellation >=
-        CANCELLATION_CHECK_INTERVAL
-      ) {
-        void _checkCancellation(); // Trigger the async function without awaiting
-        lastCheckCancellation = currentTimestamp;
-      }
-
-      if (shouldYieldCancel) {
-        yield* tokenEmitter.flushTokens();
-        yield {
-          type: "generation_cancel",
-          created: Date.now(),
-          configurationId: configuration.sId,
-          messageId: agentMessage.sId,
-        };
-        return;
-      }
-
-      if (event.type === "tokens") {
-        yield* tokenEmitter.emitTokens(event);
-      }
-
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
-          yield* tokenEmitter.flushTokens();
-          yield {
-            type: "generation_error",
-            created: Date.now(),
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "agent_generation_error",
-              message: `Error generating agent message: ${e.error}`,
-            },
-          };
-          return;
-        }
-
-        if (event.content.block_name === "MODEL" && e.value) {
-          yield* tokenEmitter.flushTokens();
-          yield {
-            type: "generation_success",
-            created: Date.now(),
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            text: tokenEmitter.getContent() ?? "",
-            runId: await dustRunId,
-            chainOfThought: tokenEmitter.getChainOfThought() ?? "",
-          };
-        }
-      }
-    }
-
-    yield* tokenEmitter.flushTokens();
-  } finally {
-    await redis.quit();
-  }
 }

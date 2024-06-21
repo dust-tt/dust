@@ -1,6 +1,5 @@
 import type {
   AgentConfigurationType,
-  Result,
   WithAPIErrorReponse,
 } from "@dust-tt/types";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
@@ -110,44 +109,37 @@ async function handler(
         });
       }
 
-      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
       const maxToolsUsePerRun =
         bodyValidation.right.assistant.maxToolsUsePerRun;
 
-      if (!bodyValidation.right.useMultiActions) {
-        if (maxToolsUsePerRun !== undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message:
-                "maxToolsUsePerRun is only supported in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: true,
-          agentConfigurationId: req.query.aId as string,
-        });
-      } else {
-        if (maxToolsUsePerRun === undefined) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "app_auth_error",
-              message: "maxToolsUsePerRun is required in multi-actions mode.",
-            },
-          });
-        }
-        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
-          auth,
-          assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
-          legacySingleActionMode: false,
-          agentConfigurationId: req.query.aId as string,
+      const isLegacyConfiguration =
+        bodyValidation.right.assistant.actions.length === 1 &&
+        !bodyValidation.right.assistant.actions[0].description;
+
+      if (isLegacyConfiguration && maxToolsUsePerRun !== undefined) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message:
+              "maxToolsUsePerRun is only supported in multi-actions mode.",
+          },
         });
       }
+      if (!isLegacyConfiguration && maxToolsUsePerRun === undefined) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "app_auth_error",
+            message: "maxToolsUsePerRun is required in multi-actions mode.",
+          },
+        });
+      }
+      const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
+        auth,
+        assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
+        agentConfigurationId: req.query.aId as string,
+      });
 
       if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {

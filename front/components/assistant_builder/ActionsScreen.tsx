@@ -2,6 +2,7 @@ import {
   BookOpenIcon,
   Button,
   CardButton,
+  ContentMessage,
   DropdownMenu,
   Icon,
   IconButton,
@@ -40,6 +41,7 @@ import {
   ActionWebNavigation,
   isActionWebsearchValid as isActionWebNavigationValid,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
+import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderPendingAction,
@@ -120,6 +122,8 @@ export default function ActionsScreen({
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
 }) {
+  const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
+
   const updateAction = useCallback(
     function _updateAction({
       actionName,
@@ -241,7 +245,20 @@ export default function ActionsScreen({
             </Page.P>
           </div>
           <div className="flex flex-row gap-2">
-            {builderState.actions.length > 0 && (
+            {isLegacyConfig && (
+              <ContentMessage title="Update Needed for Your Assistant!">
+                <p>
+                  We're enhancing assistants to make them smarter and more
+                  versatile. You can now add multiple tools to an assistant,
+                  rather than being limited to a single action.
+                </p>
+                <br />
+                <p>Update your assistant to unlock these new capabilities!</p>
+              </ContentMessage>
+            )}
+          </div>
+          <div className="flex flex-row gap-2">
+            {builderState.actions.length > 0 && !isLegacyConfig && (
               <div>
                 <AddAction
                   owner={owner}
@@ -256,29 +273,33 @@ export default function ActionsScreen({
                 />
               </div>
             )}
-            <div className="flex-grow" />
-            <Button
-              label="Read our guide"
-              size="sm"
-              variant="secondary"
-              icon={BookOpenIcon}
-              onClick={() => {
-                window.open(
-                  "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
-                  "_blank"
-                );
-              }}
-            />
-            <AdvancedSettings
-              maxToolsUsePerRun={builderState.maxToolsUsePerRun}
-              setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  maxToolsUsePerRun,
-                }));
-              }}
-            />
+            {!isLegacyConfig && (
+              <>
+                <div className="flex-grow" />
+                <Button
+                  label="Read our guide"
+                  size="sm"
+                  variant="secondary"
+                  icon={BookOpenIcon}
+                  onClick={() => {
+                    window.open(
+                      "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
+                      "_blank"
+                    );
+                  }}
+                />
+                <AdvancedSettings
+                  maxToolsUsePerRun={builderState.maxToolsUsePerRun}
+                  setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
+                    setEdited(true);
+                    setBuilderState((state) => ({
+                      ...state,
+                      maxToolsUsePerRun,
+                    }));
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -315,6 +336,7 @@ export default function ActionsScreen({
                   deleteAction={() => {
                     deleteAction(a.name);
                   }}
+                  isLegacyConfig={isLegacyConfig}
                 />
               </div>
             ))}
@@ -432,10 +454,12 @@ function ActionCard({
   action,
   editAction,
   deleteAction,
+  isLegacyConfig,
 }: {
   action: AssistantBuilderActionConfiguration;
   editAction: () => void;
   deleteAction: () => void;
+  isLegacyConfig: boolean;
 }) {
   const spec = ACTION_SPECIFICATIONS[action.type];
   if (!spec) {
@@ -462,14 +486,25 @@ function ActionCard({
             }}
           />
         </div>
-        <div
-          className={classNames(
-            "w-full truncate text-base",
-            action.description ? "text-element-700" : "text-warning-500"
-          )}
-        >
-          {action.description || "Missing description"}
-        </div>
+        {isLegacyConfig ? (
+          <div className="mx-auto">
+            <Button
+              variant="primary"
+              label="Update the description"
+              onClick={editAction}
+              size="sm"
+            />
+          </div>
+        ) : (
+          <div
+            className={classNames(
+              "w-full truncate text-base",
+              action.description ? "text-element-700" : "text-warning-500"
+            )}
+          >
+            {action.description || "Missing description. Click to edit."}
+          </div>
+        )}
       </div>
     </CardButton>
   );
