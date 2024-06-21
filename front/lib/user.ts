@@ -45,17 +45,13 @@ export async function setUserMetadataFromClient(metadata: UserMetadataType) {
   return;
 }
 
-export const guessFirstandLastNameFromFullName = (
+export const guessFirstAndLastNameFromFullName = (
   fullName: string
 ): { firstName: string; lastName: string | null } => {
-  const [namePart] = fullName.split("@"); // Ignore everything after '@'.
-  const nameParts = namePart.split(/[\s.]+/); // Split on spaces and dots.
+  const [prefixPart] = fullName.split("@"); // Ignore everything after '@'.
+  const nameParts = prefixPart.split(/[\s.]+/); // Split on spaces and dots.
 
-  if (nameParts.length > 1) {
-    const firstName = nameParts.shift() || fullName;
-    const lastName = nameParts.join(" ");
-    return { firstName, lastName };
-  } else {
-    return { firstName: namePart, lastName: null };
-  }
+  const [firstName = prefixPart, ...lastName] = nameParts;
+
+  return { firstName, lastName: lastName.join(" ") || null };
 };
