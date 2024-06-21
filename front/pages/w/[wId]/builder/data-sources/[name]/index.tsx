@@ -9,6 +9,7 @@ import {
   IntercomLogo,
   ListCheckIcon,
   LockIcon,
+  MicrosoftLogo,
   Page,
   PencilSquareIcon,
   PlusIcon,
@@ -38,6 +39,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import ConnectorPermissionsModal from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceConfigurationToggle } from "@app/components/data_source/DataSourceConfigurationToggle";
 import DataSourceDetailsModal from "@app/components/data_source/DataSourceDetailsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -696,44 +698,8 @@ function SlackBotEnableView({
   dataSource: DataSourceType;
   plan: PlanType;
 }) {
-  const { configValue, mutateConfig } = useConnectorConfig({
-    owner,
-    dataSource,
-    configKey: "botEnabled",
-  });
-  const botEnabled = configValue === "true";
-
-  const sendNotification = useContext(SendNotificationsContext);
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
-
-  const handleSetBotEnabled = async (botEnabled: boolean) => {
-    setLoading(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/botEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: botEnabled.toString() }),
-      }
-    );
-    if (res.ok) {
-      await mutateConfig();
-      setLoading(false);
-    } else {
-      setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
-        title: "Failed to enable the Slack bot",
-        description: err.error.message,
-      });
-    }
-    return true;
-  };
 
   return (
     <ContextItem.List>
@@ -742,17 +708,20 @@ function SlackBotEnableView({
         visual={<ContextItem.Visual visual={SlackLogo} />}
         action={
           <div className="relative">
-            <SliderToggle
-              size="xs"
-              onClick={async () => {
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="botEnabled"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to enable the Slack bot"
+              onClick={() => {
                 if (!plan.limits.assistant.isSlackBotAllowed) {
                   setShowNoSlackBotPopup(true);
-                } else {
-                  await handleSetBotEnabled(!botEnabled);
+                  return false;
                 }
+
+                return true;
               }}
-              selected={botEnabled}
-              disabled={readOnly || !isAdmin || loading}
             />
             <Popup
               show={showNoSlackBotPopup}
@@ -781,6 +750,87 @@ function SlackBotEnableView({
   );
 }
 
+function MicrosoftConfigView({
+  owner,
+  readOnly,
+  isAdmin,
+  dataSource,
+}: {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+}) {
+  return (
+    <ContextItem.List>
+      <ContextItem
+        title="Index files"
+        visual={<ContextItem.Visual visual={MicrosoftLogo} />}
+        action={
+          <div className="relative">
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="index_files"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to edit Microsoft Configuration"
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-element-700">
+            If activated, Dust will sync files in sharepoint and onedrive
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+      <ContextItem
+        title="Index PDF"
+        visual={<ContextItem.Visual visual={MicrosoftLogo} />}
+        action={
+          <div className="relative">
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="index_pdf"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to edit Microsoft Configuration"
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-element-700">
+            If activated, Dust will sync files in sharepoint and onedrive
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+
+      <ContextItem
+        title="Index conversations in channels"
+        visual={<ContextItem.Visual visual={MicrosoftLogo} />}
+        action={
+          <div className="relative">
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="index_channels"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to edit Microsoft Configuration"
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-element-700">
+            If activated, Dust will sync channel messages
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+    </ContextItem.List>
+  );
+}
+
 function GithubCodeEnableView({
   owner,
   readOnly,
@@ -792,43 +842,6 @@ function GithubCodeEnableView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
-  const { configValue, mutateConfig } = useConnectorConfig({
-    owner,
-    dataSource,
-    configKey: "codeSyncEnabled",
-  });
-  const codeSyncEnabled = configValue === "true";
-
-  const sendNotification = useContext(SendNotificationsContext);
-  const [loading, setLoading] = useState(false);
-
-  const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
-    setLoading(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/codeSyncEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: codeSyncEnabled.toString() }),
-      }
-    );
-    if (res.ok) {
-      await mutateConfig();
-      setLoading(false);
-    } else {
-      setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
-        title: "Failed to enable GitHub code sync",
-        description: err.error.message,
-      });
-    }
-    return true;
-  };
-
   return (
     <ContextItem.List>
       <ContextItem
@@ -836,13 +849,12 @@ function GithubCodeEnableView({
         visual={<ContextItem.Visual visual={GithubLogo} />}
         action={
           <div className="relative">
-            <SliderToggle
-              size="xs"
-              onClick={async () => {
-                await handleSetCodeSyncEnabled(!codeSyncEnabled);
-              }}
-              selected={codeSyncEnabled}
-              disabled={readOnly || !isAdmin || loading}
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="codeSyncEnabled"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to enable GitHub code sync"
             />
           </div>
         }
@@ -868,45 +880,6 @@ function IntercomConfigView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
-  const configKey = "intercomConversationsNotesSyncEnabled";
-  const { configValue: syncNotesConfig, mutateConfig: mutateSyncNotesConfig } =
-    useConnectorConfig({
-      owner,
-      dataSource,
-      configKey,
-    });
-  const isSyncNotesEnabled = syncNotesConfig === "true";
-
-  const sendNotification = useContext(SendNotificationsContext);
-  const [loading, setLoading] = useState(false);
-
-  const handleSetNewConfig = async (configValue: boolean) => {
-    setLoading(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: configValue.toString() }),
-      }
-    );
-    if (res.ok) {
-      await mutateSyncNotesConfig();
-      setLoading(false);
-    } else {
-      setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
-        title: "Failed to edit Intercom Configuration",
-        description: err.error.message,
-      });
-    }
-    return true;
-  };
-
   return (
     <ContextItem.List>
       <ContextItem
@@ -914,13 +887,12 @@ function IntercomConfigView({
         visual={<ContextItem.Visual visual={IntercomLogo} />}
         action={
           <div className="relative">
-            <SliderToggle
-              size="xs"
-              onClick={async () => {
-                await handleSetNewConfig(!isSyncNotesEnabled);
-              }}
-              selected={isSyncNotesEnabled}
-              disabled={readOnly || !isAdmin || loading}
+            <DataSourceConfigurationToggle
+              owner={owner}
+              dataSource={dataSource}
+              configKey="intercomConversationsNotesSyncEnabled"
+              disabled={readOnly || !isAdmin}
+              errorMessage="Failed to edit Intercom Configuration"
             />
           </div>
         }
@@ -1371,6 +1343,16 @@ function ManagedDataSourceView({
             )}
             {connectorProvider === "intercom" && (
               <IntercomConfigView
+                {...{ owner, readOnly, isAdmin, dataSource }}
+              />
+            )}
+            {connectorProvider === "ms_sharepoint" && (
+              <MicrosoftConfigView
+                {...{ owner, readOnly, isAdmin, dataSource }}
+              />
+            )}
+            {connectorProvider === "ms_teams" && (
+              <MicrosoftConfigView
                 {...{ owner, readOnly, isAdmin, dataSource }}
               />
             )}

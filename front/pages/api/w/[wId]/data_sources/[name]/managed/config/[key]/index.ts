@@ -91,6 +91,9 @@ async function handler(
     ![
       "botEnabled",
       "codeSyncEnabled",
+      "index_files",
+      "index_channels",
+      "index_pdf",
       "intercomConversationsNotesSyncEnabled",
     ].includes(configKey)
   ) {
