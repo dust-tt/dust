@@ -16,7 +16,7 @@ import {
   GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
 } from "./config";
 
-export async function runGoogleWorker() {
+export async function runGoogleWorkers() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const workerFullSync = await Worker.create({
     workflowsPath: require.resolve("./workflows"),
