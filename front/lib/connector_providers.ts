@@ -105,11 +105,13 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   microsoft_sharepoint: {
     name: "Microsoft Sharepoint",
     connectorProvider: "microsoft_sharepoint",
-    status: "preview",
+    status: "rolling_out",
+    rollingOutFlag: "microsoft_connector",
     hide: true,
     description:
       "Authorize access to Microsoft SharePoint for indexing shared documents stored in SharePoint, OneDrive, and Office365.",
-    limitations: "To be defined",
+    limitations:
+      "Dust will index the documents shared with the authorized account only.",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,
@@ -117,11 +119,12 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   microsoft_teams: {
     name: "Microsoft Teams",
     connectorProvider: "microsoft_teams",
-    status: "preview",
+    status: "rolling_out",
+    rollingOutFlag: "microsoft_connector",
     hide: true,
     description:
       "Authorize access to Microsoft Teams for indexing discussions and resources.",
-    limitations: "To be defined",
+    limitations: "Dust will index discussions in the public channels only",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,

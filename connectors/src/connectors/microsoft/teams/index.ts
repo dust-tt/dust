@@ -6,9 +6,12 @@ import type {
   NangoConnectionId,
   Result,
 } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
 import { launchMicrosoftTeamsFullSyncWorkflow } from "@connectors/connectors/microsoft/teams/temporal/client";
+import { syncSucceeded } from "@connectors/lib/sync_status";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function createMicrosoftTeamsConnector(
@@ -16,7 +19,21 @@ export async function createMicrosoftTeamsConnector(
   connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
   console.log("createMicrosoftTeamsConnector", dataSourceConfig, connectionId);
-  throw Error("Not implemented");
+
+  const connector = await ConnectorResource.makeNew(
+    "microsoft_teams",
+    {
+      connectionId,
+      workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
+    },
+    {}
+  );
+
+  await syncSucceeded(connector.id);
+
+  return new Ok(connector.id.toString());
 }
 
 export async function updateMicrosoftTeamsConnector(

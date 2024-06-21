@@ -1,6 +1,9 @@
 import type { Transaction } from "sequelize";
 
-import { MicrosoftSharepointConfiguration as MicrosoftSharepointConfiguration } from "@connectors/lib/models/microsoft";
+import {
+  MicrosoftSharepointConfiguration,
+  MicrosoftTeamsConfiguration,
+} from "@connectors/lib/models/microsoft";
 import type {
   ConnectorProviderStrategy,
   WithCreationAttributes,
@@ -45,7 +48,7 @@ export class MicrosoftTeamsConnectorStrategy
     blob: WithCreationAttributes<MicrosoftSharepointConfiguration>,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftSharepointConfiguration.create(
+    await MicrosoftTeamsConfiguration.create(
       {
         ...blob,
         connectorId: connector.id,
@@ -58,7 +61,7 @@ export class MicrosoftTeamsConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await MicrosoftSharepointConfiguration.destroy({
+    await MicrosoftTeamsConfiguration.destroy({
       where: {
         connectorId: connector.id,
       },
