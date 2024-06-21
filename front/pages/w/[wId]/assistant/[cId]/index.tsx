@@ -29,7 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     if (typeof cId === "string") {
       return {
         redirect: {
-          destination: `/w/${context.query.wId}/join?cId=${context.query.cId}`,
+          destination: `/w/${context.query.wId}/join?cId=${cId}`,
           permanent: false,
         },
       };
@@ -52,7 +52,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       baseUrl: URL,
       gaTrackingId: GA_TRACKING_ID,
-      conversationId: typeof cId === "string" && cId !== "new" ? cId : null,
+      conversationId: getValidConversationId(cId),
     },
   };
 });
@@ -68,8 +68,7 @@ export default function AssistantConversation({
 
   useEffect(() => {
     const { cId } = router.query;
-    const conversationId =
-      typeof cId === "string" && cId !== "new" ? cId : null;
+    const conversationId = getValidConversationId(cId);
 
     if (conversationId && initialConversationId) {
       // Set conversation id as key if it exists.
@@ -110,3 +109,7 @@ export default function AssistantConversation({
 AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
   return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
 };
+
+function getValidConversationId(cId: unknown) {
+  return typeof cId === "string" && cId !== "new" ? cId : null;
+}

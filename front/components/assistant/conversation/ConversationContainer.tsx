@@ -22,8 +22,9 @@ import {
 } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowerContainer";
+import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
+import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
@@ -32,7 +33,6 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
-import { NewConversationWrapper } from "@app/components/assistant/conversation/NewConversationWrapper";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -313,7 +313,7 @@ export function ConversationContainer({
       </Transition>
 
       {activeConversationId !== "new" && (
-        <NewConversationWrapper owner={owner} user={user} />
+        <HelpAndQuickGuideWrapper owner={owner} user={user} />
       )}
 
       <ReachedLimitPopup

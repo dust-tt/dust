@@ -8,15 +8,15 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { useUserMetadata } from "@app/lib/swr";
 import { setUserMetadataFromClient } from "@app/lib/user";
 
-interface NewConversationWrapperProps {
+interface HelpAndQuickGuideWrapperProps {
   owner: WorkspaceType;
   user: UserType;
 }
 
-export function NewConversationWrapper({
+export function HelpAndQuickGuideWrapper({
   owner,
   user,
-}: NewConversationWrapperProps) {
+}: HelpAndQuickGuideWrapperProps) {
   const [isHelpDrawerOpen, setIsHelpDrawerOpen] = useState<boolean>(false);
   const [showQuickGuide, setShowQuickGuide] = useState<boolean>(false);
 

@@ -27,8 +27,6 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 interface AssistantListProps {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  // for speed purposes, there is a partially loaded state for which we
-  // can show a subset of the agents
   loadingStatus: "loading" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   mutateAgentConfigurations: KeyedMutator<GetAgentConfigurationsResponseBody>;
