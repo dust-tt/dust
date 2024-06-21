@@ -37,8 +37,8 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { KeyedMutator } from "swr";
 
+import { AssistantEditionMenu } from "@app/components/assistant/AssistantEditionMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
-import { AssistantEditionMenu } from "@app/components/assistant/conversation/AssistantEditionMenu";
 import { SharingDropdown } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { PermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
@@ -175,7 +175,6 @@ export function AssistantDetails({
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
               variant="button"
-              tryButton
               onAgentDeletion={() => {
                 void mutateCurrentAgentConfiguration();
                 void mutateAgentConfigurations?.();

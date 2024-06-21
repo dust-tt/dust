@@ -9,9 +9,7 @@ import {
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
-  PlanType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -24,7 +22,6 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
 import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
 import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { compareAgentsForSort } from "@app/lib/assistant";
@@ -35,15 +32,12 @@ import { subFilter } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
   owner: WorkspaceType;
-  plan: PlanType | null;
   subscription: SubscriptionType;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
-  const plan = auth.plan();
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
@@ -54,9 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user,
       owner,
-      plan,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -64,9 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function AssistantsGallery({
-  user,
   owner,
-  plan,
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -138,9 +128,6 @@ export default function AssistantsGallery({
     default:
       assertNever(orderBy);
   }
-
-  const [testModalAssistant, setTestModalAssistant] =
-    useState<LightAgentConfigurationType | null>(null);
 
   const [showDetails, setShowDetails] = useState<string | null>(null);
 
@@ -239,14 +226,7 @@ export default function AssistantsGallery({
         onClose={handleCloseAssistantDetails}
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
-      {testModalAssistant && (
-        <TryAssistantModal
-          owner={owner}
-          user={user}
-          assistant={testModalAssistant}
-          onClose={() => setTestModalAssistant(null)}
-        />
-      )}
+
       <div className="pb-16 pt-6">
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
@@ -282,7 +262,6 @@ export default function AssistantsGallery({
                 <GalleryAssistantPreviewContainer
                   key={a.sId}
                   owner={owner}
-                  plan={plan}
                   agentConfiguration={a}
                   onShowDetails={async () => {
                     const href = {
@@ -294,10 +273,6 @@ export default function AssistantsGallery({
                     };
                     await router.replace(href);
                   }}
-                  onUpdate={() => {
-                    void mutateAgentConfigurations();
-                  }}
-                  setTestModalAssistant={setTestModalAssistant}
                 />
               ))}
             </div>

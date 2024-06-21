@@ -1,4 +1,3 @@
-import { Modal } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AgentMention,
@@ -10,172 +9,15 @@ import type {
 import { isEqual } from "lodash";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import {
-  AssistantInputBar,
-  FixedAssistantInputBar,
-} from "@app/components/assistant/conversation/input_bar/InputBar";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import {
-  CONVERSATION_PARENT_SCROLL_DIV_ID as CONVERSATION_PARENT_SCROLL_DIV_ID,
   createConversationWithMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useUser } from "@app/lib/swr";
-import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
-
-export function TryAssistantModal({
-  owner,
-  user,
-  title,
-  assistant,
-  openWithConversation,
-  onClose,
-}: {
-  owner: WorkspaceType;
-  user: UserType;
-  title?: string;
-  openWithConversation?: ConversationType;
-  assistant: LightAgentConfigurationType;
-  onClose: () => void;
-}) {
-  const {
-    conversation,
-    setConversation,
-    stickyMentions,
-    setStickyMentions,
-    handleSubmit,
-  } = useTryAssistantCore({
-    owner,
-    user,
-    assistant,
-    openWithConversation,
-  });
-
-  return (
-    <Modal
-      isOpen={!!assistant}
-      title={title ?? `Trying @${assistant?.name}`}
-      onClose={async () => {
-        onClose();
-        if (conversation && "sId" in conversation) {
-          setConversation(null);
-        }
-      }}
-      hasChanged={false}
-      variant="side-md"
-    >
-      <div
-        id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
-        className="flex h-full w-full flex-col items-center overflow-y-auto"
-      >
-        <GenerationContextProvider>
-          {conversation ? (
-            <ConversationViewer
-              owner={owner}
-              user={user}
-              conversationId={conversation.sId}
-              onStickyMentionsChange={setStickyMentions}
-              isInModal
-              key={conversation.sId}
-            />
-          ) : (
-            // Empty div to prefill the data.
-            <div className="flex h-full flex-1"></div>
-          )}
-
-          <FixedAssistantInputBar
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId || null}
-            additionalAgentConfiguration={assistant}
-            actions={["attachment"]}
-          />
-        </GenerationContextProvider>
-      </div>
-    </Modal>
-  );
-}
-
-export function TryAssistant({
-  owner,
-  assistant,
-  conversationFading,
-}: {
-  owner: WorkspaceType;
-  conversationFading?: boolean;
-  assistant: LightAgentConfigurationType | null;
-}) {
-  const { user } = useUser();
-  const {
-    conversation,
-    setConversation,
-    stickyMentions,
-    setStickyMentions,
-    handleSubmit,
-  } = useTryAssistantCore({
-    owner,
-    user,
-    assistant,
-  });
-
-  useEffect(() => {
-    setConversation(null);
-  }, [assistant?.sId, setConversation]);
-
-  if (!user || !assistant) {
-    return null;
-  }
-
-  return (
-    <div
-      className={classNames(
-        "flex h-full w-full flex-1 flex-col justify-between"
-      )}
-    >
-      <div className="relative h-full w-full">
-        <GenerationContextProvider>
-          {conversation && (
-            <div
-              className="max-h-[100%] overflow-y-auto overflow-x-hidden"
-              id={CONVERSATION_PARENT_SCROLL_DIV_ID.modal}
-            >
-              <ConversationViewer
-                owner={owner}
-                user={user}
-                conversationId={conversation.sId}
-                onStickyMentionsChange={setStickyMentions}
-                isInModal
-                hideReactions
-                isFading={conversationFading}
-                key={conversation.sId}
-              />
-            </div>
-          )}
-
-          <div className="absolute bottom-0 w-full">
-            <AssistantInputBar
-              owner={owner}
-              onSubmit={handleSubmit}
-              stickyMentions={stickyMentions}
-              conversationId={conversation?.sId || null}
-              additionalAgentConfiguration={assistant}
-              actions={["attachment"]}
-              disableAutoFocus
-              isFloating={false}
-            />
-          </div>
-        </GenerationContextProvider>
-      </div>
-    </div>
-  );
-}
 
 export function usePreviewAssistant({
   owner,
