@@ -86,7 +86,6 @@ async function main(): Promise<void> {
   await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
   await MicrosoftConfiguration.sync({ alter: true });
-  await MicrosoftTeamsConfiguration.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
