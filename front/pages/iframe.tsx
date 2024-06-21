@@ -153,6 +153,24 @@ function Iframe({ code }: { code: string }) {
     }
   }
 
+  // This function will execute the code provided by the model and handle its output to communicate with the host page.
+  async function executeFn(
+    fn: (mainView: HTMLElement) => {
+      result: any;
+      files: { content: any; name: string; description: string }[];
+      showIframe: boolean;
+    }
+  ) {
+    const view = document.getElementById("mainview");
+    if (!view) {
+      throw new Error("Main view not found");
+    }
+    const result = await fn(view);
+    for (const file of result.files) {
+      await FileTransferAPI.saveFile(file.name, file.content);
+    }
+  }
+
   return (
     <html>
       <head>
@@ -181,11 +199,9 @@ function Iframe({ code }: { code: string }) {
             
           ${code}
 
+          ${executeFn.toString()} 
           
-          fn(document.getElementById('mainview')).then((result) => {
-            console.log('Result', result);  
-          })
-          
+          executeFn(fn);
           `,
           }}
         ></script>
