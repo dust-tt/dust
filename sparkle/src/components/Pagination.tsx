@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { useState } from "react";
 
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/solid";
@@ -13,6 +13,7 @@ const pagesShownInControls = 7;
 interface PaginationProps {
   itemsCount: number;
   maxItemsPerPage: number;
+  onButtonClick: (pageNumber: number) => void;
   size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
@@ -21,6 +22,7 @@ interface PaginationProps {
 export function Pagination({
   itemsCount,
   maxItemsPerPage,
+  onButtonClick,
   size = "sm",
   showDetails = true,
   showPageButtons = true
@@ -30,7 +32,13 @@ export function Pagination({
   const [currentPage, setCurrentPage] = useState(1);
   const firstFileOnPageIndex = currentPage * maxItemsPerPage - maxItemsPerPage + 1;
   const lastFileOnPageIndex = itemsCount > currentPage * maxItemsPerPage ? currentPage * maxItemsPerPage : itemsCount;
-  const pageButtons: React.ReactNode[] = getPageButtons(currentPage, numPages, pagesShownInControls, (pageNb: number) => setCurrentPage(pageNb), size);
+
+  const onPaginationButtonClick = useCallback((pageNb: number) => {
+    setCurrentPage(pageNb);
+    onButtonClick(pageNb);
+  }, [onButtonClick, setCurrentPage]);
+
+  const pageButtons: React.ReactNode[] = getPageButtons(currentPage, numPages, pagesShownInControls, onPaginationButtonClick, size);
 
   return (
     <div 
@@ -54,7 +62,9 @@ export function Pagination({
           disabledTooltip={true}
           disabled = {currentPage === 1 ? true : false}
           icon={ChevronLeft}
-          onClick={() => setCurrentPage((prev) => prev - 1)}
+          onClick={() => {
+            onPaginationButtonClick(currentPage - 1);
+          }}
         />
 
         <div className={classNames(
@@ -73,7 +83,9 @@ export function Pagination({
           disabledTooltip={true}
           disabled = {currentPage === numPages ? true : false}
           icon={ChevronRight}
-          onClick={() => setCurrentPage((prev) => prev + 1)}
+          onClick={() => {
+            onPaginationButtonClick(currentPage + 1);
+          }}
         />
       </div>
 

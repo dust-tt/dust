@@ -12,19 +12,36 @@ export default meta;
 
 export const PaginationSM = () => {
   return (
-    <Pagination itemsCount={960} maxItemsPerPage={50} />
+    <Pagination 
+      itemsCount={960} 
+      maxItemsPerPage={50}
+      onButtonClick={() => {}}
+    />
   )
 }
 
 export const PaginationXS = () => {
   return (
-    <Pagination itemsCount={960} maxItemsPerPage={50} size="xs" showDetails={false} />
+    <Pagination 
+      itemsCount={960} 
+      maxItemsPerPage={50} 
+      size="xs" 
+      showDetails={false}
+      onButtonClick={() => {}}
+    />
   )
 }
 
 export const PaginationNoPageButtons = () => {
   return (
-    <Pagination itemsCount={960} maxItemsPerPage={50} size="xs" showDetails={false} showPageButtons={false} />
+    <Pagination 
+      itemsCount={960} 
+      maxItemsPerPage={50} 
+      size="xs" 
+      showDetails={false} 
+      showPageButtons={false} 
+      onButtonClick={() => {}}
+    />
   )
 }
 
