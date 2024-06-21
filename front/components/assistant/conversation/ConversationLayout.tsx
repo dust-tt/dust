@@ -101,8 +101,7 @@ export default function ConversationLayout({
         <AppLayout
           subscription={subscription}
           owner={owner}
-          // TODO(2024-06-20 flav) Consider removing.
-          isWideMode={!!conversation}
+          isWideMode
           pageTitle={
             conversation?.title
               ? `Dust - ${conversation?.title}`

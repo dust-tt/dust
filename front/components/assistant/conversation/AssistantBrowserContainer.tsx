@@ -59,7 +59,7 @@ export function AssistantBrowserContainer({
     <div
       id="assistants-lists-container"
       className={classNames(
-        "duration-400 flex h-full w-full flex-col gap-3 pt-9 transition-opacity",
+        "duration-400 flex h-full w-full max-w-4xl flex-col gap-3 pt-9 transition-opacity",
         isLoading ? "opacity-0" : "opacity-100"
       )}
     >
