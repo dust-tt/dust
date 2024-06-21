@@ -9,10 +9,22 @@ interface DataTableProps {
   columns: string[];
   rows: (string | number)[][];
   enableCopy?: boolean;
+  showLimit?: number;
+  downLoadButton?: Element;
 }
 
 export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
-  ({ name, columns, rows, enableCopy }: DataTableProps, ref) => {
+  (
+    {
+      name,
+      columns,
+      rows,
+      enableCopy,
+      showLimit,
+      downLoadButton,
+    }: DataTableProps,
+    ref
+  ) => {
     const [isCopied, copyToClipboard] = useCopyToClipboard
       ? useCopyToClipboard()
       : [false, async () => false];
@@ -38,9 +50,14 @@ export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
       }
     };
 
+    const maxRows = showLimit ?? -1;
+
     return (
       <div className="s-mt-2 s-flex s-flex-col s-gap-2">
-        {name && <Page.H variant="h6">{name}</Page.H>}
+        <div className="s-flex s-w-full s-items-center s-justify-between s-gap-1">
+          {name && <Page.H variant="h6">{name}</Page.H>}
+          {downLoadButton && downLoadButton}
+        </div>
         <div className="s-relative">
           <div className="relative overflow-x-auto s-dark:border-structure-200-dark s-w-auto s-rounded-lg s-border s-border-structure-200">
             <table
@@ -61,7 +78,7 @@ export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
                 </tr>
               </thead>
               <tbody className="s-dark:divide-structure-600 s-divide-y s-divide-structure-100 s-bg-white">
-                {rows.map((row, index) => (
+                {rows.slice(0, maxRows).map((row, index) => (
                   <tr key={index}>
                     <td className="s-dark:text-element-800-dark s-px-4 s-text-sm s-text-element-600">
                       {index + 1}

@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { DataTable } from "../_index";
+import { Button, DataTable } from "../_index";
 
 const meta = {
   title: "Components/DataTable",
@@ -19,10 +19,18 @@ export const DataTableExample = () => {
     ["Paul", 35, "London", "test@test.tt"],
     ["Charles", 5, "Paris", "test@test.tt"],
   ];
-  return <DataTable
-    columns={columns}
-    rows={data}
-    name="Test table"
-    enableCopy={true}
-  />;
+  const downloadButton = (
+    <Button className="mt-4" size="sm" variant="tertiary" label="Download" />
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      rows={data}
+      name="Test table"
+      enableCopy={true}
+      showLimit={3}
+      downLoadButton={downloadButton}
+    />
+  );
 };
