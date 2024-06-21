@@ -91,7 +91,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     googleDriveConnectorId: string;
     intercomConnectorId: string;
     microsoftConnectorId: string;
-    msTeamsConnectorId: string;
   };
   githubAppUrl: string;
 }>(async (context, auth) => {
