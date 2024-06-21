@@ -335,7 +335,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       return;
     }
 
-    const { eventStream } = res.value;
+    const { eventStream, dustRunId } = res.value;
     let outputs: ProcessActionOutputsType | null = null;
 
     for await (const event of eventStream) {
@@ -394,6 +394,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     // Update ProcessAction with the output of the last block.
     await action.update({
       outputs,
+      runId: await dustRunId,
     });
 
     logger.info(

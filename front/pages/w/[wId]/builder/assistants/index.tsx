@@ -8,7 +8,7 @@ import {
   Page,
   PlusIcon,
   Popup,
-  RobotSharedIcon,
+  RobotIcon,
   Searchbar,
   SliderToggle,
   Tab,
@@ -26,6 +26,8 @@ import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
+import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
 import { SCOPE_INFO } from "@app/components/assistant/Sharing";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -74,7 +76,7 @@ export default function WorkspaceAssistants({
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-
+  const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
 
@@ -120,7 +122,6 @@ export default function WorkspaceAssistants({
     );
   });
 
-  filteredAgents.sort(compareAgentsForSort);
   const [showDetails, setShowDetails] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -185,6 +186,33 @@ export default function WorkspaceAssistants({
     };
   }, []);
 
+  switch (orderBy) {
+    case "name": {
+      filteredAgents.sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      });
+      break;
+    }
+    case "usage": {
+      filteredAgents.sort((a, b) => {
+        return (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0);
+      });
+      break;
+    }
+    case "magic": {
+      filteredAgents.sort(compareAgentsForSort);
+      break;
+    }
+    default:
+      assertNever(orderBy);
+  }
+
+  useEffect(() => {
+    if (tabScope === "global") {
+      setOrderBy("magic");
+    }
+  }, [tabScope]);
+
   return (
     <AppLayout
       subscription={subscription}
@@ -202,7 +230,7 @@ export default function WorkspaceAssistants({
         mutateAgentConfigurations={mutateAgentConfigurations}
       />
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header title="Manage Assistants" icon={RobotSharedIcon} />
+        <Page.Header title="Manage Assistants" icon={RobotIcon} />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <Searchbar
@@ -233,13 +261,22 @@ export default function WorkspaceAssistants({
               </Link>
             </Button.List>
           </div>
-          <div className="flex flex-col gap-4">
-            <Tab
-              tabs={tabs}
-              tabClassName={classNames(
-                assistantSearch ? disabledTablineClass : ""
-              )}
-            />
+          <div className="flex flex-col gap-4 pt-3">
+            <div className="flex flex-row gap-2">
+              <Tab
+                tabs={tabs}
+                tabClassName={classNames(
+                  assistantSearch ? disabledTablineClass : ""
+                )}
+              />
+              <div className="flex grow items-end justify-end">
+                <SearchOrderDropdown
+                  orderBy={orderBy}
+                  setOrderBy={setOrderBy}
+                  disabled={tabScope === "global"}
+                />
+              </div>
+            </div>
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"

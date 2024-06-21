@@ -250,6 +250,7 @@ export async function* runLegacyAgent(
           created: event.created,
           configurationId: configuration.sId,
           messageId: agentMessage.sId,
+          runId: event.runId,
           text: event.text,
         };
         agentMessage.content = event.text;

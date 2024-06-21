@@ -95,6 +95,7 @@ export type GenerationSuccessEvent = {
   messageId: string;
   text: string;
   chainOfThought: string;
+  runId: string;
 };
 
 export type GenerationCancelEvent = {

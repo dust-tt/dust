@@ -1,8 +1,8 @@
-import { Item, Logo, Tab } from "@dust-tt/sparkle";
+import { CollapseButton, Item, Logo, Tab } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   AppLayoutNavigation,
@@ -21,12 +21,13 @@ interface NavigationSidebarProps {
   subscription: SubscriptionType;
 }
 
-export function NavigationSidebar({
-  owner,
-  subscription,
-  subNavigation,
-  children,
-}: NavigationSidebarProps) {
+export const NavigationSidebar = React.forwardRef<
+  HTMLDivElement,
+  NavigationSidebarProps
+>(function NavigationSidebar(
+  { owner, subscription, subNavigation, children }: NavigationSidebarProps,
+  ref
+) {
   const router = useRouter();
   const { user } = useUser();
 
@@ -63,7 +64,10 @@ export function NavigationSidebar({
   }, [nav, activePath]);
 
   return (
-    <div className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50">
+    <div
+      ref={ref}
+      className="flex min-w-0 grow flex-col border-r border-structure-200 bg-structure-50"
+    >
       <div className="flex flex-col">
         <div className="flex flex-row justify-between p-3">
           <div className="flex flex-col gap-2">
@@ -164,7 +168,7 @@ export function NavigationSidebar({
       <div className="flex grow flex-col">{children}</div>
     </div>
   );
-}
+});
 
 function SubscriptionEndBanner({ endDate }: { endDate: number }) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
@@ -215,3 +219,34 @@ function SubscriptionPastDueBanner() {
     </div>
   );
 }
+
+interface ToggleNavigationSidebarButtonProps {
+  isNavigationBarOpened: boolean;
+  toggleNavigationBarVisibility: (isOpened: boolean) => void;
+}
+
+export const ToggleNavigationSidebarButton = React.forwardRef<
+  HTMLDivElement,
+  ToggleNavigationSidebarButtonProps
+>(function ToggleSideBarButton(
+  {
+    isNavigationBarOpened,
+    toggleNavigationBarVisibility,
+  }: ToggleNavigationSidebarButtonProps,
+  ref
+) {
+  const [direction, setDirection] = useState<"left" | "right">("left");
+
+  const handleClick = useCallback(() => {
+    toggleNavigationBarVisibility(!isNavigationBarOpened);
+    setDirection((prevDirection) =>
+      prevDirection === "left" ? "right" : "left"
+    );
+  }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
+
+  return (
+    <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
+      <CollapseButton direction={direction} />
+    </div>
+  );
+});

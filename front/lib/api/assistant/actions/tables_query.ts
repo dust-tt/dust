@@ -292,7 +292,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       return;
     }
 
-    const { eventStream } = res.value;
+    const { eventStream, dustRunId } = res.value;
     for await (const event of eventStream) {
       if (event.type === "error") {
         logger.error(
@@ -390,6 +390,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     // Updating action
     await action.update({
       output: sanitizedOutput,
+      runId: await dustRunId,
     });
 
     yield {

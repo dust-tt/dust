@@ -83,6 +83,7 @@ export type AgentGenerationSuccessEvent = {
   configurationId: string;
   messageId: string;
   text: string;
+  runId: string;
 };
 
 // Event sent to stop the generation.
@@ -105,6 +106,7 @@ export type AgentMessageSuccessEvent = {
 export type AgentActionsEvent = {
   type: "agent_actions";
   created: number;
+  runId: string;
   actions: Array<{
     action: AgentActionConfigurationType;
     inputs: Record<string, string | boolean | number>;

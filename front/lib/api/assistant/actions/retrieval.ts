@@ -465,7 +465,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
-    const { eventStream } = res.value;
+    const { eventStream, dustRunId } = res.value;
 
     let documents: RetrievalDocumentType[] = [];
 
@@ -615,6 +615,11 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       },
       "[ASSISTANT_TRACE] Retrieval action execution"
     );
+
+    // Update RetrievalAction with the runId.
+    await action.update({
+      runId: await dustRunId,
+    });
 
     yield {
       type: "retrieval_success",

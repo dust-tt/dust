@@ -220,7 +220,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
-    const { eventStream } = websearchRes.value;
+    const { eventStream, dustRunId } = websearchRes.value;
     let output: WebsearchActionOutputType | null = null;
 
     for await (const event of eventStream) {
@@ -301,6 +301,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     // Update ProcessAction with the output of the last block.
     await action.update({
       output,
+      runId: await dustRunId,
     });
 
     logger.info(

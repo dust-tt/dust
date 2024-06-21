@@ -1,4 +1,10 @@
-import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  Icon,
+  LoginIcon,
+  LogoSquareColorLogo,
+  Page,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
@@ -84,6 +90,16 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             <br />
             Check you spam folder.
           </p>
+
+          <Button
+            variant="tertiary"
+            size="sm"
+            label="Sign in"
+            icon={LoginIcon}
+            onClick={() => {
+              window.location.href = `/api/auth/login?returnTo=/api/login`;
+            }}
+          />
         </>
       );
 

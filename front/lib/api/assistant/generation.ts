@@ -601,7 +601,7 @@ export async function* runGeneration(
     return;
   }
 
-  const { eventStream } = res.value;
+  const { eventStream, dustRunId } = res.value;
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
@@ -699,6 +699,7 @@ export async function* runGeneration(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: tokenEmitter.getContent() ?? "",
+            runId: await dustRunId,
             chainOfThought: tokenEmitter.getChainOfThought() ?? "",
           };
         }

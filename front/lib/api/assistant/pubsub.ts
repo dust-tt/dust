@@ -232,7 +232,6 @@ async function handleUserMessageEvents(
               );
               break;
             }
-
             default:
               assertNever(event);
           }
@@ -336,7 +335,6 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
-
               default:
                 assertNever(event);
             }
