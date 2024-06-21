@@ -33,8 +33,7 @@ export function isConnectorError(val: string): val is ConnectorErrorType {
 export const CONNECTOR_PROVIDERS_USING_NANGO = [
   "confluence",
   "google_drive",
-  "microsoft_sharepoint",
-  "microsoft_teams",
+  "microsoft",
   "intercom",
   "notion",
   "slack",

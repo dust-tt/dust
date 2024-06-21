@@ -102,29 +102,16 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: IntercomLogo,
     isNested: true,
   },
-  microsoft_sharepoint: {
-    name: "Microsoft Sharepoint",
-    connectorProvider: "microsoft_sharepoint",
+  microsoft: {
+    name: "Microsoft",
+    connectorProvider: "microsoft",
     status: "rolling_out",
     rollingOutFlag: "microsoft_connector",
-    hide: true,
+    hide: false,
     description:
-      "Authorize access to Microsoft SharePoint for indexing shared documents stored in SharePoint, OneDrive, and Office365.",
+      "Authorize access to Microsoft for indexing shared documents stored in SharePoint, OneDrive, and Office365, and Teams discussions.",
     limitations:
-      "Dust will index the documents shared with the authorized account only.",
-    guideLink: "https://dust-tt.notion.site/",
-    logoComponent: MicrosoftLogo,
-    isNested: true,
-  },
-  microsoft_teams: {
-    name: "Microsoft Teams",
-    connectorProvider: "microsoft_teams",
-    status: "rolling_out",
-    rollingOutFlag: "microsoft_connector",
-    hide: true,
-    description:
-      "Authorize access to Microsoft Teams for indexing discussions and resources.",
-    limitations: "Dust will index discussions in the public channels only",
+      "Dust will index the documents shared with the authorized account only. Only Teams publi cchannels will be indexed.",
     guideLink: "https://dust-tt.notion.site/",
     logoComponent: MicrosoftLogo,
     isNested: true,

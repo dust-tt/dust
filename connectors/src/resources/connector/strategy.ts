@@ -7,7 +7,7 @@ import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
 import type {
-  MicrosoftSharepointConfiguration,
+  MicrosoftConfiguration,
   MicrosoftTeamsConfiguration,
 } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
@@ -18,7 +18,7 @@ import { GithubConnectorStrategy } from "@connectors/resources/connector/github"
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import {
-  MicrosoftSharepointConnectorStrategy,
+  MicrosoftConnectorStrategy as MicrosoftConnectorStrategy,
   MicrosoftTeamsConnectorStrategy,
 } from "@connectors/resources/connector/microsoft";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
@@ -33,8 +33,7 @@ export interface ConnectorProviderModelM {
   github: GithubConnectorState;
   google_drive: GoogleDriveConfig;
   intercom: IntercomWorkspace;
-  microsoft_sharepoint: MicrosoftSharepointConfiguration;
-  microsoft_teams: MicrosoftTeamsConfiguration;
+  microsoft: MicrosoftConfiguration;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
@@ -73,11 +72,8 @@ export function getConnectorProviderStrategy(type: ConnectorProvider) {
     case "intercom":
       return new IntercomConnectorStrategy();
 
-    case "microsoft_sharepoint":
-      return new MicrosoftSharepointConnectorStrategy();
-
-    case "microsoft_teams":
-      return new MicrosoftTeamsConnectorStrategy();
+    case "microsoft":
+      return new MicrosoftConnectorStrategy();
 
     case "notion":
       return new NotionConnectorStrategy();

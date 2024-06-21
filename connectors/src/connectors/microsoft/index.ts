@@ -9,23 +9,19 @@ import type {
 import { Ok } from "@dust-tt/types";
 
 import type { ConnectorPermissionRetriever } from "@connectors/connectors/interface";
-import { launchMicrosoftSharepointFullSyncWorkflow } from "@connectors/connectors/microsoft/sharepoint/temporal/client";
+import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-export async function createMicrosoftSharepointConnector(
+export async function createMicrosoftConnector(
   dataSourceConfig: DataSourceConfig,
   connectionId: NangoConnectionId
 ): Promise<Result<string, Error>> {
-  console.log(
-    "createMicrosoftSharepointConnector",
-    dataSourceConfig,
-    connectionId
-  );
+  console.log("createMicrosoftConnector", dataSourceConfig, connectionId);
 
   const connector = await ConnectorResource.makeNew(
-    "microsoft_sharepoint",
+    "microsoft",
     {
       connectionId,
       workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
@@ -40,7 +36,7 @@ export async function createMicrosoftSharepointConnector(
   return new Ok(connector.id.toString());
 }
 
-export async function updateMicrosoftSharepointConnector(
+export async function updateMicrosoftConnector(
   connectorId: ModelId,
   {
     connectionId,
@@ -48,59 +44,59 @@ export async function updateMicrosoftSharepointConnector(
     connectionId?: string | null;
   }
 ): Promise<Result<string, ConnectorsAPIError>> {
-  console.log("updateMicrosoftSharepointConnector", connectorId, connectionId);
+  console.log("updateMicrosoftConnector", connectorId, connectionId);
   throw Error("Not implemented");
 }
 
-export async function stopMicrosoftSharepointConnector(
+export async function stopMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  console.log("stopMicrosoftSharepointConnector", connectorId);
+  console.log("stopMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function deleteMicrosoftSharepointConnector(connectorId: ModelId) {
-  console.log("deleteMicrosoftSharepointConnector", connectorId);
+export async function deleteMicrosoftConnector(connectorId: ModelId) {
+  console.log("deleteMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function pauseMicrosoftSharepointConnector(
+export async function pauseMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  console.log("pauseMicrosoftSharepointConnector", connectorId);
+  console.log("pauseMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function unpauseMicrosoftSharepointConnector(
+export async function unpauseMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  console.log("unpauseMicrosoftSharepointConnector", connectorId);
+  console.log("unpauseMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function resumeMicrosoftSharepointConnector(
+export async function resumeMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  console.log("resumeMicrosoftSharepointConnector", connectorId);
+  console.log("resumeMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function fullResyncMicrosoftSharepointConnector(
+export async function fullResyncMicrosoftConnector(
   connectorId: ModelId,
   fromTs: number | null
 ) {
-  console.log("fullResyncMicrosoftSharepointConnector", connectorId, fromTs);
-  return launchMicrosoftSharepointFullSyncWorkflow(connectorId);
+  console.log("fullResyncMicrosoftConnector", connectorId, fromTs);
+  return launchMicrosoftFullSyncWorkflow(connectorId);
 }
 
-export async function cleanupMicrosoftSharepointConnector(
+export async function cleanupMicrosoftConnector(
   connectorId: ModelId
 ): Promise<Result<undefined, Error>> {
-  console.log("cleanupMicrosoftSharepointConnector", connectorId);
+  console.log("cleanupMicrosoftConnector", connectorId);
   throw Error("Not implemented");
 }
 
-export async function retrieveMicrosoftSharepointConnectorPermissions({
+export async function retrieveMicrosoftConnectorPermissions({
   connectorId,
   parentInternalId,
   viewType,
@@ -108,7 +104,7 @@ export async function retrieveMicrosoftSharepointConnectorPermissions({
   Result<ContentNode[], Error>
 > {
   console.log(
-    "retrieveMicrosoftSharepointConnectorPermissions",
+    "retrieveMicrosoftConnectorPermissions",
     connectorId,
     parentInternalId,
     viewType
@@ -116,61 +112,48 @@ export async function retrieveMicrosoftSharepointConnectorPermissions({
   throw Error("Not implemented");
 }
 
-export async function setMicrosoftSharepointConnectorPermissions(
+export async function setMicrosoftConnectorPermissions(
   connectorId: ModelId,
   permissions: Record<string, ConnectorPermission>
 ): Promise<Result<void, Error>> {
-  console.log(
-    "setMicrosoftSharepointConnectorPermissions",
-    connectorId,
-    permissions
-  );
+  console.log("setMicrosoftConnectorPermissions", connectorId, permissions);
   throw Error("Not implemented");
 }
 
-export async function getMicrosoftSharepointConfig(
+export async function getMicrosoftConfig(
   connectorId: ModelId,
   configKey: string
 ): Promise<Result<string | null, Error>> {
-  console.log("getMicrosoftSharepointConfig", connectorId, configKey);
+  console.log("getMicrosoftConfig", connectorId, configKey);
   throw Error("Not implemented");
 }
 
-export async function setMicrosoftSharepointConfig(
+export async function setMicrosoftConfig(
   connectorId: ModelId,
   configKey: string,
   configValue: string
 ): Promise<Result<void, Error>> {
-  console.log(
-    "setMicrosoftSharepointConfig",
-    connectorId,
-    configKey,
-    configValue
-  );
+  console.log("setMicrosoftConfig", connectorId, configKey, configValue);
   throw Error("Not implemented");
 }
 
-export async function retrieveMicrosoftSharepointContentNodeParents(
+export async function retrieveMicrosoftContentNodeParents(
   connectorId: ModelId,
   internalId: string,
   memoizationKey?: string
 ): Promise<Result<string[], Error>> {
   console.log(
-    "retrieveMicrosoftSharepointContentNodeParents",
+    "retrieveMicrosoftContentNodeParents",
     connectorId,
     internalId,
     memoizationKey
   );
   throw Error("Not implemented");
 }
-export function retrieveMicrosoftSharepointContentNodes(
+export function retrieveMicrosoftContentNodes(
   connectorId: ModelId,
   internalIds: string[]
 ): Promise<Result<ContentNode[], Error>> {
-  console.log(
-    "retrieveMicrosoftSharepointContentNodes",
-    connectorId,
-    internalIds
-  );
+  console.log("retrieveMicrosoftContentNodes", connectorId, internalIds);
   throw Error("Not implemented");
 }

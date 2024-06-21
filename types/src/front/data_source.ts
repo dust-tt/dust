@@ -8,8 +8,7 @@ export const CONNECTOR_PROVIDERS = [
   "intercom",
   "notion",
   "slack",
-  "microsoft_sharepoint",
-  "microsoft_teams",
+  "microsoft",
   "webcrawler",
 ] as const;
 

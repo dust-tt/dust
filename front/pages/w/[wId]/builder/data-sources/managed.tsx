@@ -45,8 +45,7 @@ const {
   NANGO_CONFLUENCE_CONNECTOR_ID = "",
   NANGO_GOOGLE_DRIVE_CONNECTOR_ID = "",
   NANGO_INTERCOM_CONNECTOR_ID = "",
-  NANGO_MICROSOFT_SHAREPOINT_CONNECTOR_ID = "",
-  NANGO_MICROSOFT_TEAMS_CONNECTOR_ID = "",
+  NANGO_MICROSOFT_CONNECTOR_ID = "",
   NANGO_NOTION_CONNECTOR_ID = "",
   NANGO_PUBLIC_KEY = "",
   NANGO_SLACK_CONNECTOR_ID = "",
@@ -71,8 +70,7 @@ type DataSourceIntegration = {
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
-  "microsoft_sharepoint",
-  "microsoft_teams",
+  "microsoft",
   "slack",
   "intercom",
 ];
@@ -92,7 +90,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     notionConnectorId: string;
     googleDriveConnectorId: string;
     intercomConnectorId: string;
-    msSharepointConnectorId: string;
+    microsoftConnectorId: string;
     msTeamsConnectorId: string;
   };
   githubAppUrl: string;
@@ -244,8 +242,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notionConnectorId: NANGO_NOTION_CONNECTOR_ID,
         googleDriveConnectorId: NANGO_GOOGLE_DRIVE_CONNECTOR_ID,
         intercomConnectorId: NANGO_INTERCOM_CONNECTOR_ID,
-        msSharepointConnectorId: NANGO_MICROSOFT_SHAREPOINT_CONNECTOR_ID,
-        msTeamsConnectorId: NANGO_MICROSOFT_TEAMS_CONNECTOR_ID,
+        microsoftConnectorId: NANGO_MICROSOFT_CONNECTOR_ID,
       },
       githubAppUrl: GITHUB_APP_URL,
     },
@@ -418,8 +415,7 @@ export default function DataSourcesView({
           notion: nangoConfig.notionConnectorId,
           google_drive: nangoConfig.googleDriveConnectorId,
           intercom: nangoConfig.intercomConnectorId,
-          microsoft_sharepoint: nangoConfig.msSharepointConnectorId,
-          microsoft_teams: nangoConfig.msTeamsConnectorId,
+          microsoft: nangoConfig.microsoftConnectorId,
         }[provider];
         const nango = new Nango({ publicKey: nangoConfig.publicKey });
         const newConnectionId = buildConnectionId(owner.sId, provider);
@@ -608,8 +604,7 @@ export default function DataSourcesView({
                                 isDataSourceAllowedInPlan =
                                   planConnectionsLimits.isIntercomAllowed;
                                 break;
-                              case "microsoft_sharepoint":
-                              case "microsoft_teams":
+                              case "microsoft":
                                 isDataSourceAllowedInPlan = true;
                                 break;
                               case "webcrawler":

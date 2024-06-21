@@ -30,7 +30,7 @@ import {
   IntercomWorkspace,
 } from "@connectors/lib/models/intercom";
 import {
-  MicrosoftSharepointConfiguration,
+  MicrosoftConfiguration,
   MicrosoftTeamsConfiguration,
 } from "@connectors/lib/models/microsoft";
 import {
@@ -85,7 +85,7 @@ async function main(): Promise<void> {
   await GoogleDriveFiles.sync({ alter: true });
   await GoogleDriveSheet.sync({ alter: true });
   await GoogleDriveSyncToken.sync({ alter: true });
-  await MicrosoftSharepointConfiguration.sync({ alter: true });
+  await MicrosoftConfiguration.sync({ alter: true });
   await MicrosoftTeamsConfiguration.sync({ alter: true });
   await NotionConnectorBlockCacheEntry.sync({ alter: true });
   await NotionConnectorPageCacheEntry.sync({ alter: true });
