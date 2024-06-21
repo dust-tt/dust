@@ -136,7 +136,7 @@ export function Navigation({
       <div
         className={classNames(
           "fixed z-40 hidden lg:top-1/2 lg:flex",
-          isNavigationBarOpen ? "lg:px-80" : ""
+          isNavigationBarOpen ? "lg:ml-80" : ""
         )}
       >
         <ToggleNavigationSidebarButton
