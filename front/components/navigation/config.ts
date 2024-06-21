@@ -7,7 +7,7 @@ import {
   FolderOpenIcon,
   PlanetIcon,
   PuzzleIcon,
-  RobotSharedIcon,
+  RobotIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
@@ -153,7 +153,7 @@ export const subNavigationBuild = ({
   assistantMenus.push({
     id: "workspace_assistants",
     label: "Manage Assistants",
-    icon: RobotSharedIcon,
+    icon: RobotIcon,
     href: `/w/${owner.sId}/builder/assistants`,
     current: current === "workspace_assistants",
     subMenuLabel: current === "workspace_assistants" ? subMenuLabel : undefined,
