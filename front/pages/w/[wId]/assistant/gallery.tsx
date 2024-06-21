@@ -24,7 +24,6 @@ import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { GalleryAssistantPreviewContainer } from "@app/components/assistant/GalleryAssistantPreviewContainer";
 import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
 import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
-import { TryAssistantModal } from "@app/components/assistant/TryAssistant";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { compareAgentsForSort } from "@app/lib/assistant";
