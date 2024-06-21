@@ -3,12 +3,15 @@ import { Err, googleDriveIncrementalSyncWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
+import {
+  GDRIVE_FULL_SYNC_QUEUE_NAME,
+  GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
+} from "@connectors/connectors/google_drive/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { QUEUE_NAME } from "./config";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
@@ -42,7 +45,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveFullSync, {
       args: [connectorId, dataSourceConfig],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -89,7 +92,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveIncrementalSync, {
       args: [connectorId, dataSourceConfig],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -143,7 +146,7 @@ export async function launchGoogleGarbageCollector(
     }
     await client.workflow.start(googleDriveGarbageCollectorWorkflow, {
       args: [connector.id, new Date().getTime()],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
