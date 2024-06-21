@@ -182,26 +182,34 @@ export default function ActionsScreen({
           }
 
           // Making sure the name is not used already.
+          let newActionName = newAction.name;
           let index = 1;
-          const newNameWithoutSuffix = newAction.name.replace(/_\d+$/, "");
-          const suffixedName = () =>
-            index > 1
-              ? `${newNameWithoutSuffix}_${index}`
-              : newNameWithoutSuffix;
-          while (builderState.actions.some((a) => a.name === suffixedName())) {
+          let isNameUsed = builderState.actions.some(
+            (a) => a.name === newActionName
+          );
+          while (isNameUsed) {
+            newActionName = `${newAction.name.replace(/_\d+$/, "")}_${index}`;
             index += 1;
+            isNameUsed = builderState.actions.some(
+              (a) => a.name === newActionName
+            );
           }
-          newAction.name = suffixedName();
 
           if (pendingAction.previousActionName) {
             updateAction({
               actionName: pendingAction.previousActionName,
-              newActionName: newAction.name,
+              newActionName: newActionName,
               newActionDescription: newAction.description,
               getNewActionConfig: () => newAction.configuration,
             });
           } else {
-            setAction({ type: "insert", action: newAction });
+            setAction({
+              type: "insert",
+              action: {
+                ...newAction,
+                name: newActionName,
+              },
+            });
           }
           setAction({ type: "clear_pending" });
         }}
