@@ -302,6 +302,7 @@ export function ConversationContainer({
         leave="transition-opacity duration-100 ease-out"
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
+        className="w-full max-w-4xl"
       >
         <AssistantBrowserContainer
           onAgentConfigurationClick={setInputbarMention}
