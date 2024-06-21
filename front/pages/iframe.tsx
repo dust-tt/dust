@@ -12,36 +12,60 @@ export async function getServerSideProps() {
       {
         role: "system",
         content: `
-        Write client side Javascript code to answer to the client query.  
-        The code will be injected inside a <script> tag in the body of an iframe.
-        Feel free to include the window.onload event listener to run your code when the iframe is loaded, if needed.
-        The background color of the iframe is white.
-        The iframe dimension will be 600px x 600px.
-        You must write valid javascript code only that can be run directly in  a web browser <script> tag.
-        Please, include your code in one code block only. Never more than one code block.
-        
-        Do not include the <script> tag.
-        Do not incude anything else than the code block itself.
-        If you have something to render, use the html div with the id "mainview".
-          The code can be interactive since it runs in the web browser. 
-          The code will be running in a sandboxed iframe which won't have access to the internet, 
-          but you will have the following set of libraries pre-loaded: 
-          - d3js v 7.9.0. 
-          - pixi.js v 7.x.
-          You can also decide to fetch files from the context using the folling preloaded functions: 
-         - getFile(fileId) or getFile(http_url) 
-         -  You can also save a file as the result of the execution using saveFile(fileName, content)
+        Above are the instructions provided by the user.
+
+Based on the code instructions provided below, write Javascript code to be interpreted in the user's web browser in a secure iframe of dimension 600px x 600px (white background) as part of a conversation with an assistant.
+
+
+Files can be made available as part of the conversation and can be read using the following library:
+
+\`\`\`
+// Returns the content of \`filedId\`.
+// @param fileId string 
+// @returns any
+function async getFile(fileId: string) : Promise<{name: string; content:any}>
+\`\`\`
+
+The function you have to implement is the following:
+
+\`\`\`
+// Perform a computation to return a result or generate files or inject content in the iFrame mainView div and returns the result of the computation if applicable, the files generated if applicable and whether to show the iFrame to the user.
+function async fn(mainView: HtmlDiv) : { result: any, files: { content: any, name: string, description: string }[], showIframe: boolean }
+\`\`\`
+
+
+It will be executed in the following environment:
+
+\`\`\`
+<html>
+  ...
+  // show imports and security measures. Your code snippet basically
+  <script>
+    let mainView = $('#mainView');
+    const { result, files, showIframe } = await fn(mainView)
+    submitToConversation(result, files);
+  <body>
+    <div id="mainView"/>
+  </body>
+</html>
+\`\`\`
+
+Based on the instructions provided you can do one or multiple of the following:
+
+- Using \`results\`: generate a result object that will be returned to the conversation (eg, the result of a computation). These objects must be small. If there is more than a few hundred bytes of information to return, use a file. Return \`null\` otherwise.
+- Using \`files\`: attach files to the conversation that will be available for the user to download and other assistants to use for their own computations. Return \`[]\` otherwise.
+- Decide whether to show the iframe to the user or not. Return \`true\` or \`false\`.
          `,
       },
       {
         role: "user",
         content: `
-        I want to play a little car racing game in my web browser.
-          
+Can you draw a spinning rainbow circle using canvas please?
           `,
       },
     ],
-    model: "gpt-3.5-turbo",
+    model: "gpt-4-turbo",
+    temperature: 0.2,
   });
 
   console.log("Got response from Openai");
@@ -56,6 +80,9 @@ export async function getServerSideProps() {
       lines.shift();
     }
     if (lines[0].trim().toLowerCase() === "js") {
+      lines.shift();
+    }
+    if (lines[0].trim().toLowerCase() === "jsx") {
       lines.shift();
     }
   }
@@ -90,7 +117,15 @@ function Arico({ code }: { code: string }) {
 
           async function getFile(url) {
             return new Promise((resolve) => {
-              resolve('Hello from getFile!');
+              const payload = {name:url, content: \`
+              House Id;	# of rooms;	Year built;	Price
+              1;	5;	2020;	$600,000
+              2;	4;	1920;	$300,000
+              \`.trim()};
+
+                console.log('Getting file', url, payload);
+                debugger;
+              resolve(payload);
             })
           }
 
@@ -111,6 +146,11 @@ function Arico({ code }: { code: string }) {
           dangerouslySetInnerHTML={{
             __html: `          
           ${code}
+
+          fn(document.getElementById('mainview')).then((result) => {
+            console.log('Result', result);  
+          })
+          
           `,
           }}
         ></script>
