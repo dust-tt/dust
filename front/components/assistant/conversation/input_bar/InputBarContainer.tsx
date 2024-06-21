@@ -22,12 +22,9 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { classNames } from "@app/lib/utils";
 
-export const INPUT_BAR_ACTIONS: InputBarAction[] = [
-  "attachment",
-  "quick-actions",
-];
+export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
-export type InputBarAction = "attachment" | "quick-actions";
+export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];

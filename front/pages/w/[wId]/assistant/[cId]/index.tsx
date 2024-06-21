@@ -66,6 +66,10 @@ export default function AssistantConversation({
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const router = useRouter();
 
+  // This useEffect handles whether to change the key of the ConversationContainer
+  // or not. Altering the key forces a re-render of the component. A random number
+  // is used in the key to maintain the component during the transition from new
+  // to the conversation view. The key is reset when navigating to a new conversation.
   useEffect(() => {
     const { cId } = router.query;
     const conversationId = getValidConversationId(cId);
