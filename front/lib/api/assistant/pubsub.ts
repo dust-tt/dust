@@ -1,5 +1,4 @@
 import type {
-  AgentActionsEvent,
   AgentChainOfThoughtEvent,
   AgentDisabledErrorEvent,
   AgentMessageType,
@@ -112,7 +111,6 @@ async function handleUserMessageEvents(
     | UserMessageErrorEvent
     | UserMessageNewEvent
     | AgentMessageNewEvent
-    | AgentActionsEvent
     | AgentErrorEvent
     | AgentDisabledErrorEvent
     | AgentActionSpecificEvent
@@ -234,8 +232,6 @@ async function handleUserMessageEvents(
               );
               break;
             }
-            case "agent_actions":
-              break;
             default:
               assertNever(event);
           }
@@ -339,8 +335,6 @@ export async function retryAgentMessageWithPubSub(
                 await redis.expire(pubsubChannel, 60 * 10);
                 break;
               }
-              case "agent_actions":
-                break;
               default:
                 assertNever(event);
             }

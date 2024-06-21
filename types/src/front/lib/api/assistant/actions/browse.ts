@@ -24,7 +24,6 @@ export type BrowseSuccessEvent = {
   type: "browse_success";
   created: number;
   configurationId: string;
-  runId: string;
   messageId: string;
   action: BrowseActionType;
 };

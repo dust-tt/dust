@@ -30,7 +30,6 @@ export type ProcessSuccessEvent = {
   type: "process_success";
   created: number;
   configurationId: string;
-  runId: string;
   messageId: string;
   action: ProcessActionType;
 };

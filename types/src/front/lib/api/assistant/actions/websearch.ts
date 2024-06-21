@@ -28,7 +28,6 @@ export type WebsearchSuccessEvent = {
   type: "websearch_success";
   created: number;
   configurationId: string;
-  runId: string;
   messageId: string;
   action: WebsearchActionType;
 };

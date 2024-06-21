@@ -413,7 +413,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       type: "dust_app_run_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
-      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new DustAppRunAction({
         id: action.id,

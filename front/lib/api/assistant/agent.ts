@@ -773,7 +773,6 @@ async function* runAction(
         case "retrieval_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
@@ -852,7 +851,6 @@ async function* runAction(
         case "dust_app_run_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
@@ -901,7 +899,6 @@ async function* runAction(
         case "tables_query_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
@@ -949,7 +946,6 @@ async function* runAction(
         case "process_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
@@ -997,7 +993,6 @@ async function* runAction(
         case "websearch_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
@@ -1045,7 +1040,6 @@ async function* runAction(
         case "browse_success":
           yield {
             type: "agent_action_success",
-            runId: event.runId,
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,

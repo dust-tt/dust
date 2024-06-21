@@ -410,7 +410,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       type: "process_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
-      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new ProcessAction({
         id: action.id,

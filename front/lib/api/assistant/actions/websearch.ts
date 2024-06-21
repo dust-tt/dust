@@ -317,7 +317,6 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       type: "websearch_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
-      runId: await dustRunId,
       messageId: agentMessage.sId,
       action: new WebsearchAction({
         id: action.id,

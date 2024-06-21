@@ -597,7 +597,6 @@ export async function* postUserMessage(
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1010,7 +1009,6 @@ export async function* editUserMessage(
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1423,7 +1421,6 @@ export async function* retryAgentMessage(
 ): AsyncGenerator<
   | AgentMessageNewEvent
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentMessageErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
@@ -1711,7 +1708,6 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1746,7 +1742,6 @@ async function* streamRunAgentEvents(
         return;
 
       case "agent_action_success":
-        runIds.push(event.runId);
         yield event;
         break;
       case "agent_actions":
