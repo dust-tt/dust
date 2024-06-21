@@ -48,7 +48,8 @@ export async function setUserMetadataFromClient(metadata: UserMetadataType) {
 export const guessFirstandLastNameFromFullName = (
   fullName: string
 ): { firstName: string; lastName: string | null } => {
-  const nameParts = fullName.split(" ");
+  const [namePart] = fullName.split("@"); // Ignore everything after '@'.
+  const nameParts = namePart.split(/[\s.]+/); // Split on spaces and dots.
 
   if (nameParts.length > 1) {
     const firstName = nameParts.shift() || fullName;
