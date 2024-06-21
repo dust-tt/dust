@@ -306,9 +306,9 @@ export function AssistantDetails({
         {isLegacyAgent && (
           <ContentMessage
             variant="amber"
-            title="This assistant is using a legacy configuration."
+            title="This assistant is using a legacy action configuration."
           >
-            Consider updating it to benefit from the latest features.
+            Consider updating it to benefit from the latest Tools features.
           </ContentMessage>
         )}
         <InstructionsSection />

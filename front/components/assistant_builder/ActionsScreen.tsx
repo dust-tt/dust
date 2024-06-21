@@ -237,7 +237,20 @@ export default function ActionsScreen({
             </Page.P>
           </div>
           <div className="flex flex-row gap-2">
-            {builderState.actions.length > 0 && (
+            {isLegacyConfig && (
+              <ContentMessage title="Update Needed for Your Assistant!">
+                <p>
+                  We're enhancing assistants to make them smarter and more
+                  versatile. You can now add multiple tools to an assistant,
+                  rather than being limited to a single action.
+                </p>
+                <br />
+                <p>Update your assistant to unlock these new capabilities!</p>
+              </ContentMessage>
+            )}
+          </div>
+          <div className="flex flex-row gap-2">
+            {builderState.actions.length > 0 && !isLegacyConfig && (
               <div>
                 <AddAction
                   owner={owner}
@@ -249,7 +262,6 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
-                  isLegacyConfig={isLegacyConfig}
                 />
               </div>
             )}
@@ -294,7 +306,6 @@ export default function ActionsScreen({
                     action,
                   });
                 }}
-                isLegacyConfig={isLegacyConfig}
               />
             </div>
           )}
@@ -313,6 +324,7 @@ export default function ActionsScreen({
                   deleteAction={() => {
                     deleteAction(a.name);
                   }}
+                  isLegacyConfig={isLegacyConfig}
                 />
               </div>
             ))}
@@ -430,10 +442,12 @@ function ActionCard({
   action,
   editAction,
   deleteAction,
+  isLegacyConfig,
 }: {
   action: AssistantBuilderActionConfiguration;
   editAction: () => void;
   deleteAction: () => void;
+  isLegacyConfig: boolean;
 }) {
   const spec = ACTION_SPECIFICATIONS[action.type];
   if (!spec) {
@@ -460,14 +474,25 @@ function ActionCard({
             }}
           />
         </div>
-        <div
-          className={classNames(
-            "w-full truncate text-base",
-            action.description ? "text-element-700" : "text-warning-500"
-          )}
-        >
-          {action.description || "Missing description. Click to edit."}
-        </div>
+        {isLegacyConfig ? (
+          <div className="mx-auto">
+            <Button
+              variant="primary"
+              label="Update the description"
+              onClick={editAction}
+              size="sm"
+            />
+          </div>
+        ) : (
+          <div
+            className={classNames(
+              "w-full truncate text-base",
+              action.description ? "text-element-700" : "text-warning-500"
+            )}
+          >
+            {action.description || "Missing description. Click to edit."}
+          </div>
+        )}
       </div>
     </CardButton>
   );
@@ -794,35 +819,14 @@ function AdvancedSettings({
 function AddAction({
   owner,
   onAddAction,
-  isLegacyConfig,
 }: {
   owner: WorkspaceType;
   onAddAction: (action: AssistantBuilderActionConfiguration) => void;
-  isLegacyConfig: boolean;
 }) {
   const filteredCapabilities = CAPABILITIES_ACTION_CATEGORIES.filter((key) => {
     const flag = ACTION_SPECIFICATIONS[key].flag;
     return !flag || owner.flags.includes(flag);
   });
-
-  if (isLegacyConfig) {
-    return (
-      <DropdownMenu>
-        <DropdownMenu.Button>
-          <Button variant="primaryWarning" label="Add a tool" icon={PlusIcon} />
-        </DropdownMenu.Button>
-        <DropdownMenu.Items origin="bottomLeft" width={320} overflow="visible">
-          <ContentMessage
-            variant="red"
-            title="This assistant is using a legacy configuration."
-          >
-            To add new tools, you need to update the missing description of the
-            tool already configured.
-          </ContentMessage>
-        </DropdownMenu.Items>
-      </DropdownMenu>
-    );
-  }
 
   return (
     <DropdownMenu>
