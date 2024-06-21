@@ -9,9 +9,7 @@ import {
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
-  PlanType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
