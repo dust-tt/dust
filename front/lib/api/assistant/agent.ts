@@ -59,6 +59,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -114,6 +115,7 @@ export async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionsEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -171,6 +173,8 @@ export async function* runMultiActionsAgentLoop(
             },
             "[ASSISTANT_TRACE] Action inputs generation"
           );
+
+          yield event;
 
           const actionIndexByType: Record<string, number> = {};
           const eventStreamGenerators = event.actions.map(
@@ -243,6 +247,7 @@ export async function* runMultiActionsAgentLoop(
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             text: event.text,
+            runId: event.runId,
           } satisfies AgentGenerationSuccessEvent;
 
           agentMessage.content = event.text;
@@ -466,8 +471,7 @@ export async function* runMultiActionsAgent(
     return;
   }
 
-  const { eventStream } = res.value;
-
+  const { eventStream, dustRunId } = res.value;
   const output: {
     actions: Array<{
       functionCallId: string | null;
@@ -602,6 +606,7 @@ export async function* runMultiActionsAgent(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         text: tokenEmitter.getContent() ?? "",
+        runId: await dustRunId,
         chainOfThought: tokenEmitter.getChainOfThought() ?? "",
       } satisfies GenerationSuccessEvent;
     } else {
@@ -690,6 +695,7 @@ export async function* runMultiActionsAgent(
 
   yield {
     type: "agent_actions",
+    runId: await dustRunId,
     created: Date.now(),
     actions,
   };

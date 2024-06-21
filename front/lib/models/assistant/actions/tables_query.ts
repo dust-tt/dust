@@ -162,6 +162,7 @@ export class AgentTablesQueryAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare tablesQueryConfigurationId: string;
 
@@ -191,6 +192,10 @@ AgentTablesQueryAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
 
     tablesQueryConfigurationId: {

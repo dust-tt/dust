@@ -87,6 +87,7 @@ export class AgentBrowseAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare browseConfigurationId: string;
 
@@ -116,7 +117,10 @@ AgentBrowseAction.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     browseConfigurationId: {
       type: DataTypes.STRING,
       allowNull: false,

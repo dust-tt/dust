@@ -87,6 +87,7 @@ export class AgentWebsearchAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare websearchConfigurationId: string;
 
@@ -115,6 +116,10 @@ AgentWebsearchAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
 
     websearchConfigurationId: {

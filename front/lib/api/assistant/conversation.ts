@@ -1,4 +1,5 @@
 import type {
+  AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
@@ -1693,6 +1694,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
+    | AgentActionsEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -1716,6 +1718,7 @@ async function* streamRunAgentEvents(
   void
 > {
   let content = "";
+  const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1741,10 +1744,14 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         yield event;
         break;
-
+      case "agent_actions":
+        runIds.push(event.runId);
+        break;
       case "agent_generation_success":
         // Store message in database.
+        runIds.push(event.runId);
         await agentMessageRow.update({
+          runIds,
           content: event.text,
         });
         yield event;
