@@ -4,13 +4,15 @@ import { Page } from "@sparkle/index";
 import { ClipboardCheckIcon, ClipboardIcon, IconButton } from "@sparkle/index";
 import { useCopyToClipboard } from "@sparkle/lib/utils";
 
+type SupportedRowType = string | number;
+
 interface DataTableProps {
   name?: string;
   columns: string[];
-  rows: (string | number)[][];
+  rows: SupportedRowType[][];
   enableCopy?: boolean;
   showLimit?: number;
-  downLoadButton?: ReactNode;
+  downloadButton?: ReactNode;
 }
 
 export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
@@ -21,28 +23,21 @@ export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
       rows,
       enableCopy,
       showLimit,
-      downLoadButton,
+      downloadButton,
     }: DataTableProps,
     ref
   ) => {
-    const [isCopied, copyToClipboard] = useCopyToClipboard
-      ? useCopyToClipboard()
-      : [false, async () => false];
+    const [isCopied, copyToClipboard] = useCopyToClipboard();
 
     const handleCopyTable = async () => {
-      function convertToCSV(
-        columns: string[],
-        rows: (string | number)[][]
-      ): string {
-        const columnHeaders = columns.join(",");
-        const data = rows.map((row) => row.join(",")).join("\n");
-        return `${columnHeaders}\n${data}`;
-      }
+      const columnHeaders = columns.join(",");
+      const data = rows.map((row) => row.join(",")).join("\n");
+      const clipboardText = `${columnHeaders}\n${data}`;
 
       if (copyToClipboard) {
         await copyToClipboard(
           new ClipboardItem({
-            "text/plain": new Blob([convertToCSV(columns, rows)], {
+            "text/plain": new Blob([clipboardText], {
               type: "text/plain",
             }),
           })
@@ -56,7 +51,7 @@ export const DataTable = React.forwardRef<HTMLTableElement, DataTableProps>(
       <div className="s-mt-2 s-flex s-flex-col s-gap-2">
         <div className="s-flex s-w-full s-items-center s-justify-between s-gap-1">
           {name && <Page.H variant="h6">{name}</Page.H>}
-          {downLoadButton && downLoadButton}
+          {downloadButton}
         </div>
         <div className="s-relative">
           <div className="relative overflow-x-auto s-dark:border-structure-200-dark s-w-auto s-rounded-lg s-border s-border-structure-200">
