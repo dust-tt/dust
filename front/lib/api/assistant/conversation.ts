@@ -1803,6 +1803,7 @@ async function* streamRunAgentEvents(
             event.chainOfThought,
           ],
         });
+        yield event;
         break;
 
       default:
