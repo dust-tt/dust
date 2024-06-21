@@ -108,7 +108,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       }
 
       if (res.value) {
-        invitationEmail = res.value?.inviteEmail;
+        invitationEmail = res.value.inviteEmail;
       }
       break;
     }
