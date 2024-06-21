@@ -1,7 +1,6 @@
 import { AssistantPreview } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
 
@@ -11,9 +10,7 @@ import { SharingChip } from "@app/components/assistant/Sharing";
 interface GalleryAssistantPreviewContainerProps {
   agentConfiguration: LightAgentConfigurationType;
   onShowDetails: () => void;
-  onUpdate: () => void;
   owner: WorkspaceType;
-  plan: PlanType | null;
 }
 
 export function GalleryAssistantPreviewContainer({

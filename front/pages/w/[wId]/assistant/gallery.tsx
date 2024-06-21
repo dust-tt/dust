@@ -34,15 +34,12 @@ import { subFilter } from "@app/lib/utils";
 const { GA_TRACKING_ID = "" } = process.env;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
   owner: WorkspaceType;
-  plan: PlanType | null;
   subscription: SubscriptionType;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
-  const plan = auth.plan();
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
@@ -53,9 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user,
       owner,
-      plan,
       subscription,
       gaTrackingId: GA_TRACKING_ID,
     },
@@ -63,9 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function AssistantsGallery({
-  user,
   owner,
-  plan,
   subscription,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -271,7 +264,6 @@ export default function AssistantsGallery({
                 <GalleryAssistantPreviewContainer
                   key={a.sId}
                   owner={owner}
-                  plan={plan}
                   agentConfiguration={a}
                   onShowDetails={async () => {
                     const href = {
@@ -282,9 +274,6 @@ export default function AssistantsGallery({
                       },
                     };
                     await router.replace(href);
-                  }}
-                  onUpdate={() => {
-                    void mutateAgentConfigurations();
                   }}
                 />
               ))}
