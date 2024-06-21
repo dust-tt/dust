@@ -28,10 +28,11 @@ export function Navigation({
   subNavigation,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
+  const [isNavigationBarOpen, setNavigationBarOpen] = useState(true);
+
   if (hideSidebar) {
     return null;
   }
-  const [navigationBar, setNavigationBarOpen] = useState(true);
 
   return (
     <div className="flex shrink-0 overflow-x-hidden">
@@ -113,12 +114,12 @@ export function Navigation({
 
       {/*Desktop sidebar*/}
       <Transition
-        show={navigationBar}
+        show={isNavigationBarOpen}
         as={Fragment}
-        enter="transition-all duration-2000 ease-out"
+        enter="transition-all duration-500 ease-out"
         enterFrom="flex-none lg:w-0 h-full"
         enterTo="flex flex-1 lg:w-80"
-        leave="transition-all duration-2000 ease-out"
+        leave="transition-all duration-500 ease-out"
         leaveFrom="flex flex-1 lg:w-80"
         leaveTo="flex-none h-full lg:w-0"
       >
@@ -135,11 +136,11 @@ export function Navigation({
       <div
         className={classNames(
           "fixed z-40 hidden lg:top-1/2 lg:flex",
-          navigationBar ? "lg:px-80" : ""
+          isNavigationBarOpen ? "lg:px-80" : ""
         )}
       >
         <ToggleNavigationSidebarButton
-          isNavigationBarOpened={navigationBar}
+          isNavigationBarOpened={isNavigationBarOpen}
           toggleNavigationBarVisibility={(navigationBar) => {
             setNavigationBarOpen(navigationBar);
           }}
