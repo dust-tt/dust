@@ -114,7 +114,7 @@ export default function ConversationLayout({
               <ConversationTitle
                 owner={owner}
                 conversation={conversation}
-                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${conversationId}`}
+                shareLink={`${baseUrl}/w/${owner.sId}/assistant/${activeConversationId}`}
                 onDelete={async () => {
                   await deleteConversation({
                     workspaceId: owner.sId,
