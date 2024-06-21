@@ -148,7 +148,7 @@ export class CoreAPI {
     this._logger = logger;
   }
   async createProject(): Promise<CoreAPIResponse<{ project: Project }>> {
-    const response = await fetch(`${CORE_API}/projects`, {
+    const response = await this._fetchWithError(`${CORE_API}/projects`, {
       method: "POST",
     });
     return this._resultFromResponse(response);
@@ -159,7 +159,7 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}`,
       {
         method: "DELETE",
@@ -174,7 +174,7 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<GetDatasetsResponse>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/datasets`,
       {
         method: "GET",
@@ -196,7 +196,7 @@ export class CoreAPI {
     datasetName: string;
     datasetHash: string;
   }): Promise<CoreAPIResponse<GetDatasetResponse>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/datasets/${encodeURIComponent(datasetName)}/${encodeURIComponent(
@@ -223,7 +223,7 @@ export class CoreAPI {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/datasets`,
       {
         method: "POST",
@@ -245,7 +245,7 @@ export class CoreAPI {
   }: {
     projectId: string;
   }): Promise<CoreAPIResponse<{ project: Project }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/clone`,
       {
         method: "POST",
@@ -267,7 +267,7 @@ export class CoreAPI {
     credentials,
     secrets,
   }: CoreAPICreateRunParams): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs`,
       {
         method: "POST",
@@ -308,7 +308,7 @@ export class CoreAPI {
       dustRunId: Promise<string>;
     }>
   > {
-    const response = await fetch(
+    const res = await this._fetchWithError(
       `${CORE_API}/projects/${projectId}/runs/stream`,
       {
         method: "POST",
@@ -329,8 +329,14 @@ export class CoreAPI {
       }
     );
 
+    if (res.isErr()) {
+      return res;
+    }
+
+    const response = res.value.response;
+
     if (!response.ok || !response.body) {
-      return this._resultFromResponse(response);
+      return this._resultFromResponse(res);
     }
 
     let hasRunId = false;
@@ -404,7 +410,7 @@ export class CoreAPI {
     projectId: string;
     runId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/runs/${encodeURIComponent(runId)}`,
@@ -423,7 +429,7 @@ export class CoreAPI {
     projectId: string;
     dustRunIds: string[];
   }): Promise<CoreAPIResponse<{ runs: { [key: string]: CoreAPIRun } }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/runs/batch`,
       {
         method: "POST",
@@ -446,7 +452,7 @@ export class CoreAPI {
     projectId: string;
     runId: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/runs/${encodeURIComponent(runId)}`,
@@ -465,7 +471,7 @@ export class CoreAPI {
     projectId: string;
     runId: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/runs/${encodeURIComponent(runId)}/status`,
@@ -486,7 +492,7 @@ export class CoreAPI {
   }): Promise<
     CoreAPIResponse<{ specification: { created: number; data: string } }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/specifications/${encodeURIComponent(specificationHash)}`,
@@ -509,7 +515,7 @@ export class CoreAPI {
     blockType: BlockType;
     blockName: string;
   }): Promise<CoreAPIResponse<{ run: CoreAPIRun }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/runs/${encodeURIComponent(runId)}/blocks/${encodeURIComponent(
@@ -534,7 +540,7 @@ export class CoreAPI {
     config: CoreAPIDataSourceConfig;
     credentials: CredentialsType;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(projectId)}/data_sources`,
       {
         method: "POST",
@@ -559,7 +565,7 @@ export class CoreAPI {
     projectId: string;
     dataSourceId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceId)}`,
@@ -580,7 +586,7 @@ export class CoreAPI {
     projectId: string;
     dataSourceName: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceName)}`,
@@ -617,7 +623,7 @@ export class CoreAPI {
       target_document_tokens?: number | null;
     }
   ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceName)}/search`,
@@ -658,7 +664,7 @@ export class CoreAPI {
       documents: CoreAPIDocument[];
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -688,7 +694,7 @@ export class CoreAPI {
     }>
   > {
     const qs = versionHash ? `?version_hash=${versionHash}` : "";
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -733,7 +739,7 @@ export class CoreAPI {
       params.append("latest_hash", latest_hash);
     }
 
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -781,7 +787,7 @@ export class CoreAPI {
       data_source: CoreAPIDataSource;
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${projectId}/data_sources/${encodeURIComponent(
         dataSourceName
       )}/documents`,
@@ -823,7 +829,7 @@ export class CoreAPI {
       data_source: CoreAPIDataSource;
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -859,7 +865,7 @@ export class CoreAPI {
       data_source: CoreAPIDataSource;
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -888,7 +894,7 @@ export class CoreAPI {
     dataSourceName: string;
     documentId: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -912,7 +918,7 @@ export class CoreAPI {
     providerId: string;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const credentials = dustManagedCredentials();
-    const response = await fetch(`${CORE_API}/tokenize`, {
+    const response = await this._fetchWithError(`${CORE_API}/tokenize`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -937,7 +943,7 @@ export class CoreAPI {
     projectId: string;
     dataSourceName: string;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceName)}/tokenize`,
@@ -965,7 +971,7 @@ export class CoreAPI {
     name: string;
     description: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
@@ -994,7 +1000,7 @@ export class CoreAPI {
     dataSourceName: string;
     tableId: string;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1019,7 +1025,7 @@ export class CoreAPI {
       tables: CoreAPITable[];
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(dataSourceName)}/tables`,
@@ -1040,7 +1046,7 @@ export class CoreAPI {
     dataSourceName: string;
     tableId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1067,7 +1073,7 @@ export class CoreAPI {
     rows: CoreAPIRow[];
     truncate?: boolean;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1099,7 +1105,7 @@ export class CoreAPI {
     tableId: string;
     rowId: string;
   }): Promise<CoreAPIResponse<{ row: CoreAPIRow }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1135,7 +1141,7 @@ export class CoreAPI {
       total: number;
     }>
   > {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1162,7 +1168,7 @@ export class CoreAPI {
     tableId: string;
     rowId: string;
   }): Promise<CoreAPIResponse<{ success: true }>> {
-    const response = await fetch(
+    const response = await this._fetchWithError(
       `${CORE_API}/projects/${encodeURIComponent(
         projectId
       )}/data_sources/${encodeURIComponent(
@@ -1194,7 +1200,7 @@ export class CoreAPI {
       results: CoreAPIQueryResult[];
     }>
   > {
-    const response = await fetch(`${CORE_API}/query_database`, {
+    const response = await this._fetchWithError(`${CORE_API}/query_database`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1208,12 +1214,49 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  private async _fetchWithError(
+    url: string,
+    init?: RequestInit
+  ): Promise<Result<{ response: Response; duration: number }, CoreAPIError>> {
+    const now = Date.now();
+    try {
+      const res = await fetch(url, init);
+      return new Ok({ response: res, duration: Date.now() - now });
+    } catch (e) {
+      const duration = Date.now() - now;
+      const err: CoreAPIError = {
+        code: "unexpected_network_error",
+        message: `Unexpected network error from CoreAPI: ${e}`,
+      };
+      this._logger.error(
+        {
+          url,
+          duration,
+          coreError: err,
+          error: e,
+        },
+        "CoreAPI error"
+      );
+      return new Err(err);
+    }
+  }
+
   private async _resultFromResponse<T>(
-    response: Response
+    res: Result<
+      {
+        response: Response;
+        duration: number;
+      },
+      CoreAPIError
+    >
   ): Promise<CoreAPIResponse<T>> {
+    if (res.isErr()) {
+      return res;
+    }
+
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
-    const text = await response.text();
+    const text = await res.value.response.text();
 
     let json = null;
     try {
@@ -1229,19 +1272,25 @@ export class CoreAPI {
           coreError: err,
           parseError: e,
           rawText: text,
-          status: response.status,
-          url: response.url,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
         },
         "CoreAPI error"
       );
       return new Err(err);
     }
 
-    if (!response.ok) {
+    if (!res.value.response.ok) {
       const err = json?.error;
       if (isCoreAPIError(err)) {
         this._logger.error(
-          { coreError: err, status: response.status, url: response.url },
+          {
+            coreError: err,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "CoreAPI error"
         );
         return new Err(err);
@@ -1251,7 +1300,13 @@ export class CoreAPI {
           message: "Unexpected error format from CoreAPI",
         };
         this._logger.error(
-          { coreError: err, json, status: response.status, url: response.url },
+          {
+            coreError: err,
+            json,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "CoreAPI error"
         );
         return new Err(err);
@@ -1262,7 +1317,13 @@ export class CoreAPI {
 
       if (err && isCoreAPIError(err)) {
         this._logger.error(
-          { coreError: err, json, status: response.status, url: response.url },
+          {
+            coreError: err,
+            json,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "CoreAPI error"
         );
         return new Err(err);
@@ -1274,7 +1335,13 @@ export class CoreAPI {
           message: "Unexpected response format from CoreAPI",
         };
         this._logger.error(
-          { coreError: err, json, status: response.status, url: response.url },
+          {
+            coreError: err,
+            json,
+            status: res.value.response.status,
+            url: res.value.response.url,
+            duration: res.value.duration,
+          },
           "CoreAPI error"
         );
         return new Err(err);

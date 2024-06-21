@@ -1,5 +1,13 @@
-import { ContextItem, Modal, SliderToggle } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContextItem,
+  DropdownMenu,
+  Modal,
+  SliderToggle,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
+import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
 import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useContext, useMemo, useState } from "react";
@@ -51,8 +59,17 @@ export function ProviderManagementModal({
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     initialProviderStates
   );
+  const [embeddingProvider, setDefaultEmbeddingProvider] = useState(
+    owner.defaultEmbeddingProvider
+  );
+
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),
+    [providerStates]
+  );
+
+  const masterToggleDisabled = useMemo(
+    () => Object.values(providerStates).every((state) => state),
     [providerStates]
   );
 
@@ -86,6 +103,7 @@ export function ProviderManagementModal({
           },
           body: JSON.stringify({
             whiteListedProviders: activeProviders,
+            defaultEmbeddingProvider: embeddingProvider,
           }),
         });
 
@@ -112,7 +130,10 @@ export function ProviderManagementModal({
     <Modal
       isOpen={showProviderModal}
       onClose={onClose}
-      hasChanged={!isEqual(providerStates, initialProviderStates)}
+      hasChanged={
+        !isEqual(providerStates, initialProviderStates) ||
+        embeddingProvider !== owner.defaultEmbeddingProvider
+      }
       title="Manage Providers"
       saveLabel="Update providers"
       onSave={handleSave}
@@ -125,6 +146,7 @@ export function ProviderManagementModal({
           <SliderToggle
             size="sm"
             selected={allToggleEnabled}
+            disabled={masterToggleDisabled}
             onClick={() => {
               setProviderStates(
                 MODEL_PROVIDER_IDS.reduce((acc, provider) => {
@@ -162,6 +184,43 @@ export function ProviderManagementModal({
             );
           })}
         </ContextItem.List>
+      </div>
+      <div className="flex flex-row items-center gap-4 px-4 pt-4">
+        <div className="s-text-sm font-semibold">Embedding Provider:</div>
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Tooltip label="Please contact us if you are willing to change this setting.">
+              <Button
+                type="select"
+                labelVisible={true}
+                label={
+                  embeddingProvider
+                    ? prettyfiedProviderNames[embeddingProvider]
+                    : prettyfiedProviderNames["openai"]
+                }
+                variant="secondary"
+                hasMagnifying={false}
+                size="sm"
+                disabled={true}
+              />
+            </Tooltip>
+          </DropdownMenu.Button>
+          <DropdownMenu.Items origin="topRight">
+            {EMBEDDING_PROVIDER_IDS.map((provider) => (
+              <DropdownMenu.Item
+                key={provider}
+                label={prettyfiedProviderNames[provider]}
+                onClick={() => {
+                  setDefaultEmbeddingProvider(provider);
+                }}
+              />
+            ))}
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="px-4 pt-2 text-sm text-gray-500">
+        Embedding models are used to create numerical representations of your
+        data powering the semantic search capabilities of your assistants.
       </div>
     </Modal>
   );

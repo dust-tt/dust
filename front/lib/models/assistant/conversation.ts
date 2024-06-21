@@ -3,6 +3,7 @@ import type {
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
+  UserMessageOrigin,
 } from "@dust-tt/types";
 import type {
   CreationOptional,
@@ -175,6 +176,7 @@ export class UserMessage extends Model<
   declare userContextFullName: string | null;
   declare userContextEmail: string | null;
   declare userContextProfilePictureUrl: string | null;
+  declare userContextOrigin: UserMessageOrigin | null;
 
   declare userId: ForeignKey<User["id"]> | null;
 }
@@ -220,6 +222,10 @@ UserMessage.init(
       type: DataTypes.STRING(2048),
       allowNull: true,
     },
+    userContextOrigin: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "user_message",
@@ -241,7 +247,7 @@ export class AgentMessage extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
+  declare runIds: string[] | null;
   declare status: CreationOptional<AgentMessageStatus>;
 
   declare content: string | null;
@@ -271,6 +277,10 @@ AgentMessage.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    runIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
     },
     status: {
       type: DataTypes.STRING,
@@ -547,11 +557,9 @@ export class Mention extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare messageId: ForeignKey<Message["id"]>;
-  declare userId: ForeignKey<User["id"]> | null;
   declare agentConfigurationId: string | null; // Not a relation as global agents are not in the DB
 
   declare message: NonAttribute<Message>;
-  declare user?: NonAttribute<User>;
 }
 
 Mention.init(
@@ -586,10 +594,6 @@ Mention.init(
       {
         fields: ["agentConfigurationId", "createdAt"],
       },
-      {
-        fields: ["userId"],
-        concurrently: true,
-      },
     ],
   }
 );
@@ -600,11 +604,4 @@ Message.hasMany(Mention, {
 });
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
-});
-
-User.hasMany(Mention, {
-  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
-});
-Mention.belongsTo(User, {
-  foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user mention
 });

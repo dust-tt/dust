@@ -16,7 +16,6 @@ const {
   getDrivesToSync,
   garbageCollector,
   getFoldersToSync,
-  renewWebhooks,
   populateSyncTokens,
   garbageCollectorFinished,
   markFolderAsVisited,
@@ -159,17 +158,6 @@ export async function googleDriveIncrementalSync(
   }
   await syncSucceeded(connectorId);
   console.log("googleDriveIncrementalSync done for connectorId", connectorId);
-}
-
-export async function googleDriveRenewWebhooks() {
-  let count = 0;
-  do {
-    count = await renewWebhooks(10);
-  } while (count);
-}
-
-export function googleDriveRenewWebhooksWorkflowId() {
-  return `googleDrive-RenewWebhook`;
 }
 
 export async function googleDriveGarbageCollectorWorkflow(

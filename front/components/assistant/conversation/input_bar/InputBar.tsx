@@ -14,7 +14,9 @@ import { useSWRConfig } from "swr";
 
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer, {
+  INPUT_BAR_ACTIONS,
+} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { ContentFragmentInput } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -23,6 +25,8 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useAgentConfigurations } from "@app/lib/swr";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
+
+const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 // AGENT MENTION
 
@@ -55,8 +59,7 @@ export function AssistantInputBar({
   conversationId,
   stickyMentions,
   additionalAgentConfiguration,
-  hideQuickActions,
-  hideAttachment,
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
 }: {
@@ -69,8 +72,7 @@ export function AssistantInputBar({
   conversationId: string | null;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions: boolean;
-  hideAttachment?: boolean;
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
 }) {
@@ -285,7 +287,7 @@ export function AssistantInputBar({
   }, [isProcessing, generationContext.generatingMessages, conversationId]);
 
   return (
-    <>
+    <div className="flex w-full flex-col">
       {generationContext.generatingMessages.some(
         (m) => m.conversationId === conversationId
       ) && (
@@ -336,8 +338,7 @@ export function AssistantInputBar({
               )}
 
               <InputBarContainer
-                hideQuickActions={hideQuickActions}
-                hideAttachment={!!hideAttachment}
+                actions={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
@@ -352,7 +353,7 @@ export function AssistantInputBar({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -362,7 +363,7 @@ export function FixedAssistantInputBar({
   stickyMentions,
   conversationId,
   additionalAgentConfiguration,
-  hideQuickActions = false,
+  actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
 }: {
   owner: WorkspaceType;
@@ -374,22 +375,20 @@ export function FixedAssistantInputBar({
   stickyMentions?: AgentMention[];
   conversationId: string | null;
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  hideQuickActions?: boolean;
+  actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
 }) {
   return (
-    <div className="4xl:px-0 fixed bottom-0 left-0 right-0 z-20 flex-initial lg:left-80">
-      <div className="mx-auto max-h-screen max-w-4xl pb-0 sm:pb-8">
-        <AssistantInputBar
-          owner={owner}
-          onSubmit={onSubmit}
-          conversationId={conversationId}
-          stickyMentions={stickyMentions}
-          additionalAgentConfiguration={additionalAgentConfiguration}
-          hideQuickActions={hideQuickActions}
-          disableAutoFocus={disableAutoFocus}
-        />
-      </div>
+    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+      <AssistantInputBar
+        owner={owner}
+        onSubmit={onSubmit}
+        conversationId={conversationId}
+        stickyMentions={stickyMentions}
+        additionalAgentConfiguration={additionalAgentConfiguration}
+        actions={actions}
+        disableAutoFocus={disableAutoFocus}
+      />
     </div>
   );
 }

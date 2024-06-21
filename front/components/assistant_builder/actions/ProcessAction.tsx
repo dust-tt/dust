@@ -333,7 +333,7 @@ export function ActionProcess({
     setEdited(true);
     let fullInstructions = `${instructions}`;
     if (description) {
-      fullInstructions += `\n\nAction description:\n${description}`;
+      fullInstructions += `\n\nTool description:\n${description}`;
     }
     if (instructions !== null) {
       setIsGeneratingSchema(true);
@@ -400,7 +400,7 @@ export function ActionProcess({
       />
 
       <div className="text-sm text-element-700">
-        This action scans selected data sources within the specified time frame,
+        This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
         equivalent to a 1,000-page book (500k tokens). Learn more about this
         feature in the{" "}
@@ -525,19 +525,18 @@ export function ActionProcess({
 
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-element-800">
-            Action description
-          </div>
+          <div className="font-semibold text-element-800">Tool description</div>
           <div className="text-sm text-element-600">
-            Clarify what the action should do and what data it should extract.
-            For example:
+            Clarify what the tool should do and what data it should extract. For
+            example:
             <span className="block text-element-600">
               "Extract from the #reading slack channel a list of books,
-              including their title, author, and publication date".
+              including their title, author, and the reason why they were
+              recommended".
             </span>
           </div>
           <TextArea
-            placeholder={"Action description.."}
+            placeholder={"Extract the list of…"}
             value={description}
             onChange={onDescriptionChange}
             error={!isDescriptionValid ? "Description cannot be empty" : null}

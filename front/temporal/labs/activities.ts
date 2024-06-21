@@ -257,6 +257,7 @@ export async function processTranscriptActivity(
         fullName: user.name,
         email: user.email,
         profilePictureUrl: user.imageUrl,
+        origin: null,
       },
     },
     contentFragment: {

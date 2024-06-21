@@ -18,7 +18,8 @@ export interface ContextWithLogger extends Context {
 
 export type WorkflowErrorType =
   | "unhandled_internal_activity_error"
-  | "upsert_queue_upsert_error";
+  | "upsert_queue_upsert_document_error"
+  | "upsert_queue_upsert_table_error";
 
 export type WorkflowError = {
   type: WorkflowErrorType;

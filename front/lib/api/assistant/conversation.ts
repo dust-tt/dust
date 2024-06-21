@@ -1,4 +1,5 @@
 import type {
+  AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
@@ -727,6 +728,7 @@ export async function* postUserMessage(
                   userContextFullName: context.fullName,
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
+                  userContextOrigin: context.origin,
                   userId: user ? user.id : null,
                 },
                 { transaction: t }
@@ -839,11 +841,8 @@ export async function* postUserMessage(
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
-        userId: user?.id.toString() || context.email || context.username,
         agentConfigurationId: agentMessage.configuration.sId,
         workspaceId: owner.sId,
-        messageModelId: agentMessage.id,
-        timestamp: agentMessage.created,
       });
     }
   }
@@ -1192,6 +1191,7 @@ export async function* editUserMessage(
                   userContextEmail: userMessageRow.userContextEmail,
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
+                  userContextOrigin: userMessageRow.userContextOrigin,
                   userId: userMessageRow.userId,
                 },
                 { transaction: t }
@@ -1345,13 +1345,7 @@ export async function* editUserMessage(
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
-        userId:
-          user?.id.toString() ||
-          message.context.email ||
-          message.context.username,
         agentConfigurationId: agentMessage.configuration.sId,
-        messageModelId: agentMessage.id,
-        timestamp: agentMessage.created,
         workspaceId: owner.sId,
       });
     }
@@ -1700,6 +1694,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
+    | AgentActionsEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -1723,6 +1718,7 @@ async function* streamRunAgentEvents(
   void
 > {
   let content = "";
+  const runIds = [];
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1748,10 +1744,14 @@ async function* streamRunAgentEvents(
       case "agent_action_success":
         yield event;
         break;
-
+      case "agent_actions":
+        runIds.push(event.runId);
+        break;
       case "agent_generation_success":
         // Store message in database.
+        runIds.push(event.runId);
         await agentMessageRow.update({
+          runIds,
           content: event.text,
         });
         yield event;
@@ -1810,6 +1810,7 @@ async function* streamRunAgentEvents(
             event.chainOfThought,
           ],
         });
+        yield event;
         break;
 
       default:

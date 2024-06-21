@@ -16,6 +16,10 @@ const whitelistedCommands = [
     majorCommand: "notion",
     command: "check-url",
   },
+  {
+    majorCommand: "notion",
+    command: "find-url",
+  },
 ];
 
 const _adminAPIHandler = async (

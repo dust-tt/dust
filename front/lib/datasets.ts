@@ -51,16 +51,15 @@ export function checkDatasetData({
   return Object.keys(data[0]);
 }
 
-export function getDatasetTypes(
-  datasetKeys: string[],
-  entry: DatasetEntry
-): ("string" | "number" | "boolean" | "json")[] {
-  return datasetKeys.map((key) => getValueType(entry[key]));
-}
+export const DATASET_DATA_TYPES = [
+  "string",
+  "number",
+  "boolean",
+  "json",
+] as const;
+export type DatasetDataType = (typeof DATASET_DATA_TYPES)[number];
 
-export function getValueType(
-  value: any
-): "string" | "number" | "boolean" | "json" {
+export function getValueType(value: any): DatasetDataType {
   const type = typeof value;
 
   if (type === "object") {
@@ -85,4 +84,11 @@ export function getValueType(
   }
 
   return "string";
+}
+
+export function getDatasetTypes(
+  datasetKeys: string[],
+  entry: DatasetEntry
+): DatasetDataType[] {
+  return datasetKeys.map((key) => getValueType(entry[key]));
 }

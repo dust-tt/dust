@@ -8,8 +8,8 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 
@@ -102,7 +102,6 @@ export default function NewApp({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <div className="flex flex-col">

@@ -10,16 +10,20 @@ import {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { isEmailValid } from "@app/lib/utils";
+
+const isString = (value: unknown): value is string => typeof value === "string";
 
 export default handleAuth({
   login: handleLogin((req) => {
-    let connection: string | undefined = undefined;
-    if ("query" in req && req.query.connection) {
-      connection =
-        typeof req.query.connection === "string"
-          ? req.query.connection
-          : undefined;
-    }
+    const { connection, screen_hint, login_hint } =
+      "query" in req
+        ? req.query
+        : {
+            connection: undefined,
+            login_hint: undefined,
+            screen_hint: undefined,
+          };
 
     const defaultAuthorizationParams: Partial<
       LoginOptions["authorizationParams"]
@@ -28,8 +32,16 @@ export default handleAuth({
     };
 
     // Set the Auth0 connection based on the provided connection param, redirecting the user to the correct screen.
-    if (connection) {
+    if (isString(connection)) {
       defaultAuthorizationParams.connection = connection;
+    }
+
+    if (isString(screen_hint) && screen_hint === "signup") {
+      defaultAuthorizationParams.screen_hint = screen_hint;
+    }
+
+    if (isString(login_hint) && isEmailValid(login_hint)) {
+      defaultAuthorizationParams.login_hint = login_hint;
     }
 
     return {

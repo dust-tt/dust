@@ -27,8 +27,8 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { buildConnectionId } from "@app/lib/connector_connection_id";
@@ -506,7 +506,6 @@ export default function DataSourcesView({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_managed",

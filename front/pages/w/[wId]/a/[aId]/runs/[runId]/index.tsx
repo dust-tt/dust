@@ -10,12 +10,12 @@ import { useContext, useState } from "react";
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   subNavigationApp,
   subNavigationBuild,
-} from "@app/components/sparkle/navigation";
+} from "@app/components/navigation/config";
+import AppLayout from "@app/components/sparkle/AppLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getApp } from "@app/lib/api/app";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -143,7 +143,6 @@ export default function AppRun({
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

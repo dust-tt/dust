@@ -1760,7 +1760,7 @@ export async function renderAndUpsertPageFromCache({
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
-  let maxPropertyLength = 0;
+  let propertiesContentLength = 0;
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText) as PageObjectProperties
   );
@@ -1770,7 +1770,7 @@ export async function renderAndUpsertPageFromCache({
     }
     const propertyValue = Array.isArray(p.value) ? p.value.join(", ") : p.value;
     const propertyContent = `$${p.key}: ${propertyValue}\n`;
-    maxPropertyLength = Math.max(maxPropertyLength, propertyValue.length);
+    propertiesContentLength += propertyContent.length;
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -1880,10 +1880,10 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (documentLength === 0 && maxPropertyLength < 256) {
+  if (documentLength === 0 && propertiesContentLength < 128) {
     localLogger.info(
-      { maxPropertyLength },
-      "notionRenderAndUpsertPageFromCache: Not upserting page without body and free text properties."
+      { propertiesContentLength },
+      "notionRenderAndUpsertPageFromCache: Not upserting page without body nor substantial properties."
     );
   } else if (!skipReason) {
     upsertTs = new Date().getTime();

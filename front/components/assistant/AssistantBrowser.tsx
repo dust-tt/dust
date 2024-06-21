@@ -2,6 +2,7 @@ import {
   AssistantPreview,
   Button,
   ListAddIcon,
+  LockIcon,
   PlanetIcon,
   PlusIcon,
   RobotIcon,
@@ -10,7 +11,6 @@ import {
   Tab,
   Tooltip,
   UserGroupIcon,
-  UserIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -27,9 +27,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 interface AssistantListProps {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  // for speed purposes, there is a partially loaded state for which we
-  // can show a subset of the agents
-  loadingStatus: "loading" | "partial" | "finished";
+  loadingStatus: "loading" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   mutateAgentConfigurations: KeyedMutator<GetAgentConfigurationsResponseBody>;
 }
@@ -39,7 +37,7 @@ const ALL_AGENTS_TABS = [
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: PlanetIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
-  { label: "Personal", icon: UserIcon, id: "personal" },
+  { label: "Personal", icon: LockIcon, id: "personal" },
   { label: "In my list", icon: ListAddIcon, id: "list" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
@@ -82,20 +80,17 @@ export function AssistantBrowser({
       list: filteredAgents.filter(
         (a) => a.scope === "published" && a.userListStatus === "in-list"
       ),
-      // TODO: Implement most popular agents (upcoming PR for issue #5454)
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
-          (a, b) => (b.usage?.messageCount || 0) - (a.usage?.messageCount || 0)
-        )
-        .slice(0, 0), // Placeholder -- most popular agents are not implemented yet
+          (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
+        ),
     };
   }, [assistantSearch, loadingStatus, agents]);
 
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
-
   const [selectedTab, setSelectedTab] = useState<TabId | null>(
     visibleTabs[0]?.id || null
   );
@@ -194,7 +189,6 @@ export function AssistantBrowser({
                     subtitle={agent.lastAuthors?.join(", ") ?? ""}
                     description=""
                     variant="minimal"
-                    onClick={() => handleAssistantClick(agent)}
                     onActionClick={() => setAssistantIdToShow(agent.sId)}
                   />
                 </div>

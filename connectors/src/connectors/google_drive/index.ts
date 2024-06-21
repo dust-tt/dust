@@ -133,7 +133,14 @@ export async function createGoogleDriveConnector(
     googleDriveConfigurationBlob
   );
 
+  // We mark it artificially as sync succeeded as google drive is created empty.
   await syncSucceeded(connector.id);
+
+  // We nonetheless launch the incremental sync.
+  const res = await launchGoogleDriveIncrementalSyncWorkflow(connector.id);
+  if (res.isErr()) {
+    return res;
+  }
 
   return new Ok(connector.id.toString());
 }

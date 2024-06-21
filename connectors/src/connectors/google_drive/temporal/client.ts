@@ -3,20 +3,21 @@ import { Err, googleDriveIncrementalSyncWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
+import {
+  GDRIVE_FULL_SYNC_QUEUE_NAME,
+  GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
+} from "@connectors/connectors/google_drive/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { QUEUE_NAME } from "./config";
 import {
   googleDriveFullSync,
   googleDriveFullSyncWorkflowId,
   googleDriveGarbageCollectorWorkflow,
   googleDriveGarbageCollectorWorkflowId,
   googleDriveIncrementalSync,
-  googleDriveRenewWebhooks,
-  googleDriveRenewWebhooksWorkflowId,
 } from "./workflows";
 const logger = mainLogger.child({ provider: "google" });
 
@@ -44,7 +45,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveFullSync, {
       args: [connectorId, dataSourceConfig],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_FULL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -91,7 +92,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveIncrementalSync, {
       args: [connectorId, dataSourceConfig],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],
@@ -123,46 +124,6 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   }
 }
 
-export async function launchGoogleDriveRenewWebhooksWorkflow(): Promise<
-  Result<string, Error>
-> {
-  const client = await getTemporalClient();
-
-  const workflowId = googleDriveRenewWebhooksWorkflowId();
-  try {
-    const handle = client.workflow.getHandle(workflowId);
-    await handle.terminate();
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
-  }
-  try {
-    await client.workflow.start(googleDriveRenewWebhooks, {
-      args: [],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      cronSchedule: "*/30 * * * *", // every hour, on the hour
-    });
-    logger.info(
-      {
-        workflowId,
-      },
-      `Started workflow.`
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
-      },
-      `Failed starting workflow.`
-    );
-    return new Err(e as Error);
-  }
-}
-
 export async function launchGoogleGarbageCollector(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
@@ -185,7 +146,7 @@ export async function launchGoogleGarbageCollector(
     }
     await client.workflow.start(googleDriveGarbageCollectorWorkflow, {
       args: [connector.id, new Date().getTime()],
-      taskQueue: QUEUE_NAME,
+      taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
         connectorId: [connectorId],

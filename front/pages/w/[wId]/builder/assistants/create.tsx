@@ -202,10 +202,8 @@ export default function CreateAssistant({
     <AppLayout
       subscription={subscription}
       hideSidebar
-      isWideMode
       owner={owner}
       gaTrackingId={gaTrackingId}
-      topNavigationCurrent="assistants"
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={"Create an Assistant"}

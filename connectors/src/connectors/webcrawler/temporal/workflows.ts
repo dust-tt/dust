@@ -14,9 +14,11 @@ import type * as activities from "@connectors/connectors/webcrawler/temporal/act
 // leeway to crawl on slow websites
 export const REQUEST_HANDLING_TIMEOUT = 420;
 
+export const MAX_TIME_TO_CRAWL_MINUTES = 240;
+
 const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
   proxyActivities<typeof activities>({
-    startToCloseTimeout: "120 minutes",
+    startToCloseTimeout: `${MAX_TIME_TO_CRAWL_MINUTES} minutes`,
     // for each page crawl, there are heartbeats, but a page crawl can last at max
     // REQUEST_HANDLING_TIMEOUT seconds
     heartbeatTimeout: `${REQUEST_HANDLING_TIMEOUT + 120} seconds`,

@@ -11,6 +11,7 @@ import { parse } from "csv-parse";
 import { DateTime } from "luxon";
 
 import { guessDelimiter } from "@app/lib/api/csv";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
 
@@ -108,7 +109,7 @@ export async function deleteTable({
 }
 
 export async function upsertTableFromCsv({
-  owner,
+  auth,
   projectId,
   dataSourceName,
   tableName,
@@ -117,7 +118,7 @@ export async function upsertTableFromCsv({
   csv,
   truncate,
 }: {
-  owner: WorkspaceType;
+  auth: Authenticator;
   projectId: string;
   dataSourceName: string;
   tableName: string;
@@ -127,6 +128,26 @@ export async function upsertTableFromCsv({
   truncate: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+
+  const owner = auth.workspace();
+
+  if (!owner) {
+    logger.error(
+      {
+        type: "internal_server_error",
+        message: "Failed to get workspace.",
+      },
+      "Failed to get workspace."
+    );
+    return new Err({
+      type: "internal_server_error",
+      coreAPIError: {
+        code: "workspace_not_found",
+        message: "Failed to get workspace.",
+      },
+      message: "Failed to get workspace.",
+    });
+  }
 
   let csvRows: CoreAPIRow[] | undefined = undefined;
   if (csvRowsRes) {

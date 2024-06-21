@@ -136,6 +136,7 @@ export class AgentProcessAction extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare runId: string | null;
 
   declare processConfigurationId: string;
 
@@ -167,6 +168,10 @@ AgentProcessAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    runId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     processConfigurationId: {
       type: DataTypes.STRING,

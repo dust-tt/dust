@@ -34,8 +34,8 @@ import ActionsScreen, {
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
+  INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   InstructionScreen,
-  MAX_INSTRUCTIONS_LENGTH,
 } from "@app/components/assistant_builder/InstructionScreen";
 import NamingScreen, {
   validateHandle,
@@ -60,12 +60,12 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
+import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { subNavigationBuild } from "@app/components/sparkle/navigation";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 
@@ -221,10 +221,10 @@ export default function AssistantBuilder({
 
     if (
       builderState.instructions &&
-      builderState.instructions.length > MAX_INSTRUCTIONS_LENGTH
+      builderState.instructions.length > INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
     ) {
       setInstructionsError(
-        `Instructions must be less than ${MAX_INSTRUCTIONS_LENGTH} characters.`
+        `Instructions must be less than ${INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT} characters.`
       );
       valid = false;
     } else {
@@ -298,17 +298,25 @@ export default function AssistantBuilder({
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
-    try {
-      await submitAssistantBuilderForm({
-        owner,
-        builderState,
-        agentConfigurationId,
-        slackData: {
-          selectedSlackChannels: selectedSlackChannels || [],
-          slackChannelsLinkedWithAgent,
-        },
-        useMultiActions: multiActionsEnabled,
+    const res = await submitAssistantBuilderForm({
+      owner,
+      builderState,
+      agentConfigurationId,
+      slackData: {
+        selectedSlackChannels: selectedSlackChannels || [],
+        slackChannelsLinkedWithAgent,
+      },
+      useMultiActions: multiActionsEnabled,
+    });
+
+    if (res.isErr()) {
+      setIsSavingOrDeleting(false);
+      sendNotification({
+        title: "Error saving Assistant",
+        description: res.error.message,
+        type: "error",
       });
+    } else {
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
       );
@@ -319,29 +327,22 @@ export default function AssistantBuilder({
       } else {
         await router.push(`/w/${owner.sId}/builder/assistants`);
       }
-    } catch (e) {
-      setIsSavingOrDeleting(false);
-      sendNotification({
-        title: "Error saving Assistant",
-        description: `Please try again. If the error persists, reach out to team@dust.tt (error ${
-          (e as Error).message
-        })`,
-        type: "error",
-      });
     }
   };
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const tabs = useMemo(
     () =>
-      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
-        label,
-        current: screen === key,
-        onClick: () => {
-          setScreen(key as BuilderScreen);
-        },
-        icon,
-      })),
-    [screen]
+      Object.entries(BUILDER_SCREENS).map(
+        ([key, { label, labelMultiActions, icon }]) => ({
+          label: multiActionsEnabled ? labelMultiActions : label,
+          current: screen === key,
+          onClick: () => {
+            setScreen(key as BuilderScreen);
+          },
+          icon,
+        })
+      ),
+    [screen, multiActionsEnabled]
   );
   const modalTitle = agentConfigurationId
     ? `Edit @${builderState.handle}`
@@ -355,7 +356,6 @@ export default function AssistantBuilder({
         isWideMode
         owner={owner}
         gaTrackingId={gaTrackingId}
-        topNavigationCurrent="assistants"
         subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",

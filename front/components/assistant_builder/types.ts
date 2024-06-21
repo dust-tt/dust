@@ -334,12 +334,14 @@ export type AssistantBuilderProps = {
 export const BUILDER_SCREENS = {
   instructions: {
     label: "Instructions",
+    labelMultiActions: "Instructions",
     icon: CircleIcon,
   },
   actions: {
     label: "Actions & Data sources",
+    labelMultiActions: "Tools & Data sources",
     icon: SquareIcon,
   },
-  naming: { label: "Naming", icon: TriangleIcon },
+  naming: { label: "Naming", labelMultiActions: "Naming", icon: TriangleIcon },
 };
 export type BuilderScreen = keyof typeof BUILDER_SCREENS;

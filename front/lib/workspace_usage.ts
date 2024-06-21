@@ -51,13 +51,7 @@ export async function unsafeGetUsageData(
             WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") > 1 THEN 'multiActions'
             ELSE NULL
         END AS "actionType",
-        CASE
-            WHEN um."id" IS NOT NULL THEN
-                CASE
-                    WHEN um."userId" IS NOT NULL THEN 'web'
-                    ELSE 'slack'
-                END
-        END AS "source"
+        um."userContextOrigin" AS "source"
     FROM
         "messages" m
     JOIN

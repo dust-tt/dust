@@ -7,7 +7,7 @@ import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
-import { runGoogleWorker } from "./connectors/google_drive/temporal/worker";
+import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
 import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
 import { runNotionWorker } from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
@@ -19,7 +19,7 @@ setupGlobalErrorHandler(logger);
 const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
   confluence: runConfluenceWorker,
   github: runGithubWorker,
-  google_drive: runGoogleWorker,
+  google_drive: runGoogleWorkers,
   intercom: runIntercomWorker,
   notion: runNotionWorker,
   slack: runSlackWorker,
