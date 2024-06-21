@@ -110,7 +110,7 @@ async function handler(
         });
       }
 
-      let agentConfiguration: Result<AgentConfigurationType, Error>;
+      let agentConfigurationRes: Result<AgentConfigurationType, Error>;
       const maxToolsUsePerRun =
         bodyValidation.right.assistant.maxToolsUsePerRun;
 
@@ -125,7 +125,7 @@ async function handler(
             },
           });
         }
-        agentConfiguration = await createOrUpgradeAgentConfiguration({
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
           auth,
           assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
           legacySingleActionMode: true,
@@ -141,7 +141,7 @@ async function handler(
             },
           });
         }
-        agentConfiguration = await createOrUpgradeAgentConfiguration({
+        agentConfigurationRes = await createOrUpgradeAgentConfiguration({
           auth,
           assistant: { ...bodyValidation.right.assistant, maxToolsUsePerRun },
           legacySingleActionMode: false,
@@ -149,18 +149,18 @@ async function handler(
         });
       }
 
-      if (agentConfiguration.isErr()) {
+      if (agentConfigurationRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
-            type: "internal_server_error",
-            message: agentConfiguration.error.message,
+            type: "assistant_saving_error",
+            message: `Error updating assistant: ${agentConfigurationRes.error.message}`,
           },
         });
       }
 
       return res.status(200).json({
-        agentConfiguration: agentConfiguration.value,
+        agentConfiguration: agentConfigurationRes.value,
       });
 
     case "DELETE":

@@ -298,17 +298,25 @@ export default function AssistantBuilder({
   const onAssistantSave = async () => {
     setDisableUnsavedChangesPrompt(true);
     setIsSavingOrDeleting(true);
-    try {
-      await submitAssistantBuilderForm({
-        owner,
-        builderState,
-        agentConfigurationId,
-        slackData: {
-          selectedSlackChannels: selectedSlackChannels || [],
-          slackChannelsLinkedWithAgent,
-        },
-        useMultiActions: multiActionsEnabled,
+    const res = await submitAssistantBuilderForm({
+      owner,
+      builderState,
+      agentConfigurationId,
+      slackData: {
+        selectedSlackChannels: selectedSlackChannels || [],
+        slackChannelsLinkedWithAgent,
+      },
+      useMultiActions: multiActionsEnabled,
+    });
+
+    if (res.isErr()) {
+      setIsSavingOrDeleting(false);
+      sendNotification({
+        title: "Error saving Assistant",
+        description: res.error.message,
+        type: "error",
       });
+    } else {
       await mutate(
         `/api/w/${owner.sId}/data_sources/${slackDataSource?.name}/managed/slack/channels_linked_with_agent`
       );
@@ -319,15 +327,6 @@ export default function AssistantBuilder({
       } else {
         await router.push(`/w/${owner.sId}/builder/assistants`);
       }
-    } catch (e) {
-      setIsSavingOrDeleting(false);
-      sendNotification({
-        title: "Error saving Assistant",
-        description: `Please try again. If the error persists, reach out to team@dust.tt (error ${
-          (e as Error).message
-        })`,
-        type: "error",
-      });
     }
   };
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
