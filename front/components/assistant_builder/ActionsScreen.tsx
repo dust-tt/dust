@@ -265,29 +265,33 @@ export default function ActionsScreen({
                 />
               </div>
             )}
-            <div className="flex-grow" />
-            <Button
-              label="Read our guide"
-              size="sm"
-              variant="secondary"
-              icon={BookOpenIcon}
-              onClick={() => {
-                window.open(
-                  "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
-                  "_blank"
-                );
-              }}
-            />
-            <AdvancedSettings
-              maxToolsUsePerRun={builderState.maxToolsUsePerRun}
-              setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
-                setEdited(true);
-                setBuilderState((state) => ({
-                  ...state,
-                  maxToolsUsePerRun,
-                }));
-              }}
-            />
+            {!isLegacyConfig && (
+              <>
+                <div className="flex-grow" />
+                <Button
+                  label="Read our guide"
+                  size="sm"
+                  variant="secondary"
+                  icon={BookOpenIcon}
+                  onClick={() => {
+                    window.open(
+                      "https://dust-tt.notion.site/Multi-Actions-Assistants-7c08db0c9cad44559c166401e6afb7e6",
+                      "_blank"
+                    );
+                  }}
+                />
+                <AdvancedSettings
+                  maxToolsUsePerRun={builderState.maxToolsUsePerRun}
+                  setMaxToolsUsePerRun={(maxToolsUsePerRun) => {
+                    setEdited(true);
+                    setBuilderState((state) => ({
+                      ...state,
+                      maxToolsUsePerRun,
+                    }));
+                  }}
+                />
+              </>
+            )}
           </div>
         </div>
 
